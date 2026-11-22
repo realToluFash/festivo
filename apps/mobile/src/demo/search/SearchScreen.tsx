@@ -113,7 +113,7 @@ export function SearchScreen({ start }: { start: SearchStart }) {
       return;
     }
     if (!phone) close();
-    if (row.kind === 'event') openEvent(row.id);
+    if (row.kind === 'event') openEvent(row.id, { from: 'search' });
     else
       router.push(
         (row.kind === 'guest' ? '/demo/guests?state=guest' : '/demo/settings/members') as Href,

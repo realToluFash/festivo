@@ -50,6 +50,7 @@ import { ListTop } from '../../components/ListTop.tsx';
 import { sideInsets } from '../../components/bodyEdges.ts';
 import { LIST_EDGES } from '../../components/listFrame.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { withFrom } from '../events/opener.ts';
 
 /** The demo keeps its own place, so it never moves the real Calendar's. */
 const DEMO_PERSON = 'demo';
@@ -85,7 +86,7 @@ function NeedsRow({ item, locale, big, onOpen }: RowProps) {
   );
 }
 
-const openItem = (item: ProductItem) => router.push(itemHref(item) as Href);
+const openItem = (item: ProductItem) => router.push(withFrom(itemHref(item), 'calendar') as Href);
 
 /** The Calendar in B, weeks as lanes, on the demo's sample: every state the AC names, by ?state=. */
 export function CalendarPage({ state }: { state: CalendarState | null }) {

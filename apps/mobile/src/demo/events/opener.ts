@@ -1,0 +1,138 @@
+import type { CoverLayout } from '../../components/TodayCover.tsx';
+
+/** What an event's Overview was pushed over (sc-83008). Navigation state, never the API's: the app knows it from where the person tapped. */
+export const OPENERS = [
+  'events',
+  'happeningNow',
+  'today',
+  'todayNew',
+  'calendar',
+  'calendarNew',
+  'search',
+  'notifications',
+  'audit',
+  'outside',
+  'notificationStart',
+  'signIn',
+] as const;
+export type Opener = (typeof OPENERS)[number];
+
+/** The screen ‹ names and goes back to. */
+export type BackScreen =
+  'events' | 'today' | 'calendar' | 'search' | 'notifications' | 'auditLog' | 'entry';
+
+export const BACK_KEY: Record<BackScreen, string> = {
+  events: 'eventsScreen.title',
+  today: 'todayScreen.tab.today',
+  calendar: 'calendar.title',
+  search: 'todayScreen.search',
+  notifications: 'notifications.heading',
+  auditLog: 'auditLog.title',
+  entry: 'auditLog.entry',
+};
+
+export const BACK_HREF: Record<BackScreen, string> = {
+  events: '/demo/events',
+  today: '/demo/today',
+  calendar: '/demo/calendar',
+  search: '/demo/search',
+  notifications: '/demo/bell',
+  auditLog: '/demo/settings/data-and-control/audit-log',
+  entry: '/demo/settings/data-and-control/audit-log',
+};
+
+export function openerOf(value: string | undefined): Opener | null {
+  return OPENERS.find((opener) => opener === value) ?? null;
+}
+
+/** The screen behind the event. New event gives its place to the event it made, so ‹ names what New event was opened from. The audit log shows an entry beside itself on an iPad and as its own screen on a phone, one level below the log (sc-611). Nothing in the app behind it, the unmatched value, is Events, as today. */
+export function backScreenOf(opener: Opener | null, layout: CoverLayout): BackScreen {
+  switch (opener) {
+    case 'today':
+    case 'todayNew':
+      return 'today';
+    case 'calendar':
+    case 'calendarNew':
+      return 'calendar';
+    case 'search':
+      return 'search';
+    case 'notifications':
+      return 'notifications';
+    case 'audit':
+      return layout === 'phone' ? 'entry' : 'auditLog';
+    default:
+      return 'events';
+  }
+}
+
+/** Whether something in the app is behind the event, so the platform's own back and ‹ both return to it. */
+export function opensOver(opener: Opener | null): boolean {
+  return (
+    opener != null && opener !== 'outside' && opener !== 'notificationStart' && opener !== 'signIn'
+  );
+}
+
+export function withFrom(href: string, opener: Opener): string {
+  return `${href}${href.includes('?') ? '&' : '?'}from=${opener}`;
+}
+
+/** The picker's words for each opener; on a phone an audit log event opens from the entry's own screen. */
+export function openerWords(opener: Opener, layout: CoverLayout): string {
+  switch (opener) {
+    case 'events':
+      return 'Events list';
+    case 'happeningNow':
+      return 'Happening now';
+    case 'today':
+      return 'Today';
+    case 'todayNew':
+      return 'New event from Today';
+    case 'calendar':
+      return 'Calendar';
+    case 'calendarNew':
+      return 'New event from the Calendar';
+    case 'search':
+      return 'Search';
+    case 'notifications':
+      return 'Notifications';
+    case 'audit':
+      return layout === 'phone' ? 'An audit log entry' : 'Audit log';
+    case 'outside':
+      return 'A link from outside';
+    case 'notificationStart':
+      return 'A notification that started the app';
+    case 'signIn':
+      return 'After signing in';
+  }
+}
+
+const BOARD_EVENT = '/demo/events/evt-wed-4';
+
+/** The demo's list: each opener, the iPhone SE's Spanish beside Refreshing…, and the move into another organisation over Today. */
+export const BEHIND_BOARDS: readonly { title: string; what: string; href: string }[] = [
+  ...OPENERS.map((opener) => ({
+    title: `‹ over ${openerWords(opener, 'portrait')}`,
+    what:
+      opener === 'audit'
+        ? 'Audit log on an iPad, Entry on a phone'
+        : opensOver(opener)
+          ? 'Names it and goes back to it'
+          : 'Nothing behind it: Events, as today',
+    href: withFrom(BOARD_EVENT, opener),
+  })),
+  {
+    title: '‹ Notificaciones · Actualizando…',
+    what: 'The iPhone SE in Spanish: whole beside it, its own line at larger sizes',
+    href: `${withFrom(BOARD_EVENT, 'notifications')}&lang=es&refreshing=1`,
+  },
+  {
+    title: '‹ Today · Refreshing…',
+    what: 'Any opener: Refreshing… beside ‹, from the picker',
+    href: `${withFrom(BOARD_EVENT, 'today')}&refreshing=1`,
+  },
+  {
+    title: '‹ Today after a move',
+    what: 'Its link moved the account into Casa Lumen, over Today (sc-80863)',
+    href: `${BOARD_EVENT}?link=moved&from=today`,
+  },
+];

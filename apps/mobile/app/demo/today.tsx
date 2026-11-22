@@ -154,7 +154,7 @@ function DemoTodayScreen() {
       demoShell(tell, {
         events: toEvents,
         calendar: toCalendar,
-        event: (key) => openEvent(EVENT_OF_KEY[key]),
+        event: (key) => openEvent(EVENT_OF_KEY[key], { from: 'today' }),
         search: openSearch,
       }),
     [tell],

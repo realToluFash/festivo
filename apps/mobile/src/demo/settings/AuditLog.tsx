@@ -56,6 +56,7 @@ import { memberLooking } from './sample.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 import { pageStateOf } from './EnterpriseAsk.ts';
 import { EnterpriseStep } from './EnterpriseStep.tsx';
+import { withFrom } from '../events/opener.ts';
 
 /** A linked menu opens once the page has laid out, from its button. */
 const MENU_AFTER_MS = 600;
@@ -114,7 +115,7 @@ function AuditPage({ start }: { start: AuditStart }) {
     );
 
   const entry = entryOf(open);
-  const openEvent = (href: string) => router.push(href as Href);
+  const openEvent = (href: string) => router.push(withFrom(href, 'audit') as Href);
 
   if (phone && entry != null)
     return (
