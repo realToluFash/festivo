@@ -1,0 +1,15 @@
+# sc-83720: ${EV_NONE}'s Edit details Hosted by, a draft with no hosts, then Add a host (Android phone), for the side-by-side pair: Host 1 with the cursor and the keys up.
+# Needs: EV_NONE, a draft of the signed-in host's with no hosts.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_NONE}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: none
+- tapOn:
+    id: 'event.edit.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
