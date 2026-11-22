@@ -17,6 +17,7 @@ import { followReadingAgain } from '../followTopic.ts';
 import { currentLocale } from '../i18n/index.ts';
 import {
   type DoorRow,
+  beforeOpenTags,
   clockOf,
   countLine,
   doorRows,
@@ -238,7 +239,7 @@ export function CheckInView({
     <GuestsCard
       kind={kind}
       event={shown}
-      tags={shown == null ? [] : cardTags(shown, now, t)}
+      tags={shown == null ? [] : before ? beforeOpenTags(shown, now, t) : cardTags(shown, now, t)}
       says={before ? t('checkIn.opensAt', { time: opensAt }) : countLine(t, checkIn.count)}
       arrived={!before && attended > 0 && expected > 0 ? { attended, expected } : null}
       line={
