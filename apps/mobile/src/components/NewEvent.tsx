@@ -56,6 +56,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { discardCoverUpload } from './CoverField.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 import { EventCover } from './EventCover.tsx';
 import {
   ArrivalNoteField,
@@ -183,6 +184,7 @@ export function NewEventScreen({
   const { draft, venue, timeZone, currency, hosts } = typed;
   const quietAfter = quietOn?.field ?? null;
   const dirty = isDirty(typed, from) || photo.kind !== 'none';
+  const leaves = useLeaveAsk(dirty && status !== 'created', () => setLeaving(true), onClose);
 
   const [lookup] = useState(() =>
     addressLookup({
@@ -462,8 +464,7 @@ export function NewEventScreen({
 
   function cancel(): void {
     if (busy) return;
-    if (dirty) setLeaving(true);
-    else onClose();
+    leaves.leave();
   }
 
   const leave: AskProps | null = leaving
@@ -472,10 +473,13 @@ export function NewEventScreen({
         line: t('eventForm.leaveBody'),
         keep: { label: t('eventEdit.keepEditing'), testID: 'eventForm.leave.keep' },
         confirm: { label: t('eventEdit.leave'), testID: 'eventForm.leave.go', removes: true },
-        onKeep: () => setLeaving(false),
+        onKeep: () => {
+          setLeaving(false);
+          leaves.keep();
+        },
         onConfirm: () => {
           setLeaving(false);
-          onClose();
+          leaves.discard();
         },
         width: ASK_WIDTH,
       }

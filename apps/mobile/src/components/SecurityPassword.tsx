@@ -26,6 +26,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { SentBody } from './SecurityForgot.tsx';
 import { FocusedScreen, Line, ShapeMark, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Input = RefObject<TextInputInstance | null>;
@@ -105,6 +106,11 @@ export function ChangePasswordScreen({
   const [other, setOther] = useState<{ message: string } | null>(null);
   const [emailSays, setEmailSays] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState(email);
+  const leaves = useLeaveAsk(
+    open && changed && !busy && stage !== 'forgot' && stage !== 'sent',
+    () => setDiscarding(true),
+    onClose,
+  );
 
   async function save(): Promise<void> {
     if (busy) return;
@@ -246,13 +252,22 @@ export function ChangePasswordScreen({
         testID: 'security.change.save',
       }}
       waits={busy}
-      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave()}
       cancelTestID="security.change.cancel"
       opener={opener}
       ask={discardAsk(
         discarding,
         t('security.changeStays'),
-        { keep: () => setDiscarding(false), discard: onClose },
+        {
+          keep: () => {
+            setDiscarding(false);
+            leaves.keep();
+          },
+          discard: () => {
+            setDiscarding(false);
+            leaves.discard();
+          },
+        },
         'security.change.discard',
         t,
       )}
@@ -358,6 +373,11 @@ export function SetPasswordScreen({
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(0);
   const first = useRef(false);
+  const leaves = useLeaveAsk(
+    open && typed && !busy && stage === 'choose',
+    () => setDiscarding(true),
+    onClose,
+  );
 
   async function sendCode(): Promise<void> {
     setOther(null);
@@ -449,13 +469,22 @@ export function SetPasswordScreen({
           testID: 'security.choose.save',
         }}
         waits={busy}
-        onCancel={() => (typed ? setDiscarding(true) : onClose())}
+        onCancel={() => leaves.leave()}
         cancelTestID="security.choose.cancel"
         opener={opener}
         ask={discardAsk(
           discarding,
           t('security.nothingAdded'),
-          { keep: () => setDiscarding(false), discard: onClose },
+          {
+            keep: () => {
+              setDiscarding(false);
+              leaves.keep();
+            },
+            discard: () => {
+              setDiscarding(false);
+              leaves.discard();
+            },
+          },
           'security.choose.discard',
           t,
         )}

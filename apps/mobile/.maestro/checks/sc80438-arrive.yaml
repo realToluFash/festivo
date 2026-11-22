@@ -1,0 +1,18 @@
+# sc-80438: Arrived then Undo arrival on one row, with the toasts they show.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'bisi'
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'checkIn.arrive.${BISI}' }, timeout: 10000 }
+- takeScreenshot: row-before
+- tapOn: { id: 'checkIn.arrive.${BISI}' }
+- takeScreenshot: arrived-toast
+- extendedWaitUntil: { visible: { id: 'checkIn.undo.${BISI}' }, timeout: 10000 }
+- takeScreenshot: arrived-row
+- tapOn: { id: 'checkIn.undo.${BISI}' }
+- takeScreenshot: undone-toast
+- extendedWaitUntil: { visible: { id: 'checkIn.arrive.${BISI}' }, timeout: 10000 }
+- takeScreenshot: undone-row

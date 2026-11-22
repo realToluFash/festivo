@@ -1,0 +1,27 @@
+# sc-80438: Check-in on an open event, its count and opened line, search and no match.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: door-top
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: door-rows
+- scrollUntilVisible: { element: { id: 'checkIn.search' }, direction: UP, timeout: 20000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'okon'
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: search-okon-keyboard
+- hideKeyboard
+- takeScreenshot: search-okon
+- eraseText: 20
+- inputText: 'bisi'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: search-one
+- eraseText: 20
+- inputText: 'zzqx'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: no-match

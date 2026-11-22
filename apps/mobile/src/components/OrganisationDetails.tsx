@@ -48,6 +48,7 @@ import {
   SummaryCard,
   TextAction,
 } from './Summary.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -276,6 +277,7 @@ export function DetailsScreen({
   const [discarding, setDiscarding] = useState(false);
   const [changes, setChanges] = useState(() => changeCount(saved, picked, given));
   const [refused, setRefused] = useState<{ field: Typed } | null>(null);
+  const leaves = useLeaveAsk(open && changes > 0 && !saving, () => setDiscarding(true), onClose);
   const nameRef = useRef<TextInputInstance>(null);
   const contactRef = useRef<TextInputInstance>(null);
   const rowRefs = useRef<Partial<Record<Picked, ViewInstance | null>>>({});
@@ -369,6 +371,7 @@ export function DetailsScreen({
 
     setSaving(false);
     if (outcome.kind === 'saved') {
+      leaves.release();
       onSaved(outcome.details, savedWords(t, outcome.details, saved));
       return;
     }
@@ -395,8 +398,14 @@ export function DetailsScreen({
           testID: 'organisation.details.discard',
           removes: true,
         },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
 
@@ -461,7 +470,7 @@ export function DetailsScreen({
         onPress: () => void save(),
         testID: 'organisation.details.save',
       }}
-      onCancel={() => (changes > 0 ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave()}
       waits={saving}
       cancelTestID="organisation.details.cancel"
       opener={opener}
