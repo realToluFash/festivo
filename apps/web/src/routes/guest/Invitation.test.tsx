@@ -2462,6 +2462,75 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     ]);
   });
 
+  it('keeps the picks off the page while the host has paused replies with courses still open', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...comingBack(
+              [MAIN, DESSERT],
+              [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })],
+            ),
+            phase: 'paused',
+            answersOpen: false,
+          },
+        },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Answers are closed while the event is paused. Anything you sent is kept.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Your meal picks' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Change (main|dessert) for you$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+  });
+
+  it('lands on the page as it stands when the API refuses a kitchen change 409', async () => {
+    const before = [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })];
+    const { sent } = api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        {
+          status: 200,
+          body: { ...comingBack([MAIN, DESSERT], before), phase: 'paused', answersOpen: false },
+        },
+      ],
+      '/api/guest-links/needs': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/guest.event_paused',
+            title: 'Paused',
+            status: 409,
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Change what the kitchen must know' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Peanuts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: 'Your meal picks' })).toBeNull(),
+    );
+    expect(screen.queryByText('Not sent. Check your connection and try again.')).toBeNull();
+    expect(sent.map(({ path }) => path)).toEqual([
+      '/api/guest-links/page',
+      '/api/guest-links/needs',
+      '/api/guest-links/page',
+    ]);
+  });
+
   it('refuses Send my changes when an allergy given on the kitchen row rules out a pick', async () => {
     const before = [saved('main', { dish: 'egusi' }), saved('dessert', { answer: 'skipped' })];
     const { sent } = api({

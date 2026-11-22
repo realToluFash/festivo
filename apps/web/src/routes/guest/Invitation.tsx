@@ -851,8 +851,23 @@ export function Card({
       },
       (error: unknown) => {
         if (error instanceof ApiError && error.status === 404) setGone(true);
+        else if (error instanceof ApiError && error.status === 409) refetchAfterRefusal();
         else setMeal((was) => ({ ...was, busy: false, told: 'failed' }));
       },
+    );
+  }
+
+  /** A send the API refused because the event paused or started meanwhile: the page as it now stands. */
+  function refetchAfterRefusal(): void {
+    api.guestPage(token).then(
+      (after) => {
+        seen.current = standing(after);
+        setPage(after);
+        setKitchen(null);
+        setMeal(savedMeal(after));
+        setView(opening(after, token));
+      },
+      () => setMeal((was) => ({ ...was, busy: false, told: 'failed' })),
     );
   }
 
@@ -1063,8 +1078,9 @@ export function Card({
       />
     );
   })();
+  const picksShut = courses.every((one) => one.picksClose.closed);
   const comingBack =
-    courses.length > 0 && guest.reply?.answer === 'coming' ? (
+    courses.length > 0 && guest.reply?.answer === 'coming' && (page.answersOpen || picksShut) ? (
       <MealsSaved
         told={meal.told}
         marked={marked}
@@ -1080,7 +1096,7 @@ export function Card({
             />
           ) : null
         }
-        closed={courses.every((one) => one.picksClose.closed)}
+        closed={picksShut}
         hosts={hosts}
         onSend={sendChanges}
       >
