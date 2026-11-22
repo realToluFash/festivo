@@ -1,0 +1,41 @@
+# sc-33154: Finish and Start refused in the run view, because another device pressed first: the 409's words on screen.
+# Needs the app's presses held a few seconds on their way (QA_API_URL through a holding proxy), so the other press lands first.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/run
+- extendedWaitUntil: { visible: { id: 'run.finish.${ITEM_A}' }, timeout: 15000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'run.finish.${ITEM_A}' }
+- runScript:
+    file: ../sc33154-press-elsewhere.js
+    env:
+      {
+        EVENT: '${EVENT}',
+        ITEM: '${ITEM_A}',
+        KIND: 'done',
+        API_URL: '${API_URL}',
+        EMAIL: '${EMAIL}',
+        PASSWORD: '${PASSWORD}',
+      }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 9000, optional: true }
+- takeScreenshot: finish-refused
+- scrollUntilVisible:
+    { element: { id: 'run.start.${ITEM_B}' }, timeout: 10000, centerElement: true }
+- tapOn: { id: 'run.start.${ITEM_B}' }
+- runScript:
+    file: ../sc33154-press-elsewhere.js
+    env:
+      {
+        EVENT: '${EVENT}',
+        ITEM: '${ITEM_B}',
+        KIND: 'start',
+        API_URL: '${API_URL}',
+        EMAIL: '${EMAIL}',
+        PASSWORD: '${PASSWORD}',
+      }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 9000, optional: true }
+- swipe: { start: '50%, 30%', end: '50%, 90%' }
+- swipe: { start: '50%, 30%', end: '50%, 90%' }
+- swipe: { start: '50%, 30%', end: '50%, 90%' }
+- waitForAnimationToEnd
+- takeScreenshot: start-refused
