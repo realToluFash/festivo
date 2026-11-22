@@ -28,6 +28,7 @@ import {
 import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
+import { PausedHere } from '../OrgSwitcher.tsx';
 import { PAGE_TITLE, TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
@@ -173,7 +174,12 @@ export function SettingsHome({
     </Title>
   );
 
-  if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
+  if (held != null)
+    return (
+      <PausedHere.Provider value={held === 'paused'}>
+        <HeldSettings held={held} onSignOut={onSignOut} />
+      </PausedHere.Provider>
+    );
 
   if (shell.layout === 'landscape')
     return (
@@ -240,7 +246,7 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused has no Search in any layout (sc-82858). */
+/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). */
 function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
   const shell = useShell();
   const search = held !== 'paused';
@@ -250,7 +256,14 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
   if (shell.layout === 'landscape')
     return (
       <Landscape column={null} search={search}>
-        <View style={styles.heldSide}>{standIn}</View>
+        <View style={styles.heldSide}>
+          {held === 'paused' && (
+            <View style={styles.heldSideTop}>
+              <Bell tell={shell.tell} />
+            </View>
+          )}
+          {standIn}
+        </View>
       </Landscape>
     );
 
@@ -345,6 +358,13 @@ const styles = StyleSheet.create({
   heldPhone: { flex: 1, paddingHorizontal: tokens.spaceXxl },
   heldUpright: { flex: 1, paddingHorizontal: tokens.space5xl },
   heldSide: { flex: 1, paddingHorizontal: 30 },
+  // The product's side header with no title: the bell alone at the content's top right (sc-83881).
+  heldSideTop: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 26,
+    paddingBottom: tokens.spaceLg,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
