@@ -408,7 +408,8 @@ permit = [
 # last price's currency is one of the organisation's offered currencies; each change is
 # audited. An event's menu is published whole on its topic, and an allergen added to a
 # picked dish is counted against the allergies its pickers have recorded (sc-3777).
-# A variant's or a folded dish's cost holds the event's currency (sc-3903).
+# A variant's or a folded dish's cost holds the event's currency (sc-3903). Who has not
+# chosen a meal is told to the guest summary through Messaging's port (sc-80901).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Menu\\"
 permit = [
@@ -416,6 +417,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_event",
     "@layer:domain_organisation",
     "@layer:domain_guest",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\GuestReplies;
 
 use App\Domain\Messaging\Audience\MemberAudienceResolver;
+use App\Domain\Messaging\Interfaces\MealsNotChosenInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
@@ -36,7 +37,7 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
 {
     public const string NAME = 'guest_replies.summary';
 
-    /** An event's section adds who is not seated from this long before it starts. */
+    /** An event's section adds who is not seated and who has not chosen a meal from this long before it starts. */
     public const string EVENT_WEEK = 'P7D';
 
     public function __construct(
@@ -49,6 +50,7 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
         #[AutowireServiceClosure(MemberAudienceResolver::class)]
         private Closure $memberAudienceResolver,
         private EventMuteRepository $eventMuteRepository,
+        private MealsNotChosenInterface $mealsNotChosen,
         private ClockInterface $clock,
         #[Autowire(env: 'CORS_WEB_ORIGIN')]
         private string $webOrigin,
@@ -182,10 +184,16 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
             $lines[] = $this->guestReplyWording->line('guestReplies.email.flaggedFix', [], $locale);
         }
 
-        $unseated = $this->inEventWeek($event) ? $this->notSeated($eventId) : 0;
+        $eventWeek = $this->inEventWeek($event);
+        $unseated = $eventWeek ? $this->notSeated($eventId) : 0;
+        $unchosen = $eventWeek ? Iter\count($this->mealsNotChosen->people($event)) : 0;
 
         if ($unseated > 0) {
             $lines[] = $this->guestReplyWording->line('guestReplies.email.notSeated', ['count' => $unseated], $locale);
+        }
+
+        if ($unchosen > 0) {
+            $lines[] = $this->guestReplyWording->line('guestReplies.email.noMealChosen', ['count' => $unchosen], $locale);
         }
 
         $lines[] = $this->link('guestReplies.email.openGuestList', $origin . '/app/events/' . $eventId . '/guests', $locale);

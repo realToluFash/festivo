@@ -443,6 +443,7 @@
     "guestReplies.email.flagged": "Lien peut-être reçu par erreur :",
     "guestReplies.email.flaggedFix": "Remplacez le lien depuis la liste des invités.",
     "guestReplies.email.notSeated": "Sans place : {count, number, ::group-auto}",
+    "guestReplies.email.noMealChosen": "No meal chosen: {count, number, ::group-auto}",
     "guestReplies.email.openGuestList": "Ouvrir la liste des invités",
     "guestReplies.email.footer": "Vous recevez ce message parce que vous pouvez voir les invités de ces événements dans l’organisation {organisation}.",
     "guestReplies.email.turnOff": "Désactiver les e-mails sur les réponses des invités",
