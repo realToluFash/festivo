@@ -60,6 +60,7 @@ import { LeadMark, WhyNot } from './MessagesParts.tsx';
 import { UntoldBanner } from './MessagesTell.tsx';
 import { MESSAGES_WORD } from './messagesWords.ts';
 import { resetLooked } from './changedSince.ts';
+import { isBellState } from './bellFeed.ts';
 import { offButton } from '../offButton.ts';
 import { Tag } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
@@ -194,7 +195,7 @@ export function MessagesPage({
   const [params] = useSearchParams();
   const [inbox, act] = useReducer(changed, null, () => {
     const start = state != null ? seedOf(state) : keptInbox();
-    if (state === 'bell') resetLooked();
+    if (isBellState(state)) resetLooked();
     const asked = params.get('c') as ConvoId | null;
 
     return asked != null && start.present.includes(asked)
@@ -253,7 +254,7 @@ function Messages({
   const [keys, setKeys] = useState(singleKeys);
   const [keysSaid, setKeysSaid] = useState('');
   const [bellRead, setBellRead] = useState(false);
-  const bellFirst = useRef(state === 'bell');
+  const bellFirst = useRef(isBellState(state));
   const takeFirst = useCallback(() => {
     const first = bellFirst.current;
 
@@ -454,7 +455,12 @@ function Messages({
     mesh,
     keys,
     whyOff: closed == null ? undefined : whyId,
-    bell: { read: bellRead, markRead: () => setBellRead(true), takeFirst },
+    bell: {
+      read: bellRead,
+      markRead: () => setBellRead(true),
+      takeFirst,
+      state: isBellState(state) ? state : 'bell',
+    },
     to,
   };
   const empty = inbox.present.length === 0 && sections.top.length === 0;

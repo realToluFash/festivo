@@ -91,7 +91,7 @@ import {
 import { useStopWriting } from './MessagesStop.tsx';
 import { StreamItems } from './MessagesStream.tsx';
 import { TapLines } from './MessagesTap.tsx';
-import { MessagesBell } from './MessagesTell.tsx';
+import { MessagesBell } from './MessagesBell.tsx';
 import { AskOwner } from './MessagesWaits.tsx';
 
 const SHARERS = [
