@@ -94,7 +94,15 @@ const config: ExpoConfig = {
     'expo-system-ui',
     'expo-notifications',
     'expo-sharing',
-    // The system's photo picker needs no library access, so nothing asks for it or for the camera.
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'Soirely uses the camera to scan the codes guests show at the door.',
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
+    // The system's photo picker needs no library access, so nothing asks for it.
     [
       'expo-image-picker',
       { photosPermission: false, cameraPermission: false, microphonePermission: false },

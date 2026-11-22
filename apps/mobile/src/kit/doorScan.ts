@@ -1,4 +1,5 @@
 import type { Arrival, CheckIn, CheckInCompanion, CheckInGuest } from '@soirely/api-client';
+import { zoneOffsets } from '@soirely/domain';
 
 /** An arrival recorded on this device while it had no connection, sent with its time once it has one (sc-1301). */
 export interface WaitingArrival {
@@ -91,4 +92,21 @@ export async function sendWaiting(
   }
 
   return { left: [], checkIn };
+}
+
+/** Now as the API writes an arrival: RFC 3339 in the event zone's own offset, so a waiting arrival reads at the door's wall clock. */
+export function zonedStamp(at: Date, timeZone: string): string {
+  const offset = zoneOffsets(timeZone)?.(at.getTime()) ?? 0;
+  const wall = new Date(at.getTime() + offset).toISOString().slice(0, 19);
+  const minutes = Math.round(Math.abs(offset) / 60_000);
+  const hours = String(Math.floor(minutes / 60)).padStart(2, '0');
+
+  return `${wall}${offset < 0 ? '-' : '+'}${hours}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+/** The scanned guest as the list now holds them, so an arrival recorded from the result shows on it; gone from the list reads as not on it. */
+export function rescanned(checkIn: CheckIn, guestId: string): ScanRead {
+  const guest = checkIn.guests.find((one) => one.id === guestId);
+
+  return guest == null || guest.code == null ? { kind: 'notOnList' } : scanned(checkIn, guest.code);
 }

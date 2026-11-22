@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isCheckInCode,
+  rescanned,
   scanned,
   sendWaiting,
   unwait,
   waitFor,
   withWaiting,
   type WaitingArrival,
+  zonedStamp,
 } from './doorScan.ts';
 
 const CODE_DIGEST = 'a'.repeat(64);
@@ -132,5 +134,21 @@ describe('arrivals waiting to sync (sc-1301)', () => {
 
     expect(sent).toEqual(['adaeze', 'obi', 'musa']);
     expect(result).toEqual({ left: [musa], checkIn: LIST });
+  });
+
+  it("writes an arrival kept offline at the door's wall clock, in the zone's offset", () => {
+    const at = new Date('2030-11-14T18:31:05Z');
+
+    expect(zonedStamp(at, 'Africa/Lagos')).toBe('2030-11-14T19:31:05+01:00');
+    expect(zonedStamp(at, 'America/Sao_Paulo')).toBe('2030-11-14T15:31:05-03:00');
+    expect(zonedStamp(at, 'UTC')).toBe('2030-11-14T18:31:05+00:00');
+  });
+
+  it('shows a scanned guest as the list now holds them, and one since removed as not on it', () => {
+    const arrival = { at: '2030-11-14T19:00:00+01:00', by: 'Ana' };
+    const list = { ...LIST, guests: [{ ...ADAEZE, arrival }] };
+
+    expect(rescanned(list, 'adaeze')).toMatchObject({ kind: 'guest', arrived: arrival });
+    expect(rescanned({ ...LIST, guests: [] }, 'adaeze')).toEqual({ kind: 'notOnList' });
   });
 });

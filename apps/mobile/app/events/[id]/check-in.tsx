@@ -18,7 +18,11 @@ import { tokens } from '../../../src/theme/tokens.ts';
 export default function EventCheckIn() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const {
+    id = '',
+    focus,
+    tap,
+  } = useLocalSearchParams<{ id?: string; focus?: string; tap?: string }>();
   const navigation = useNavigation();
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
@@ -83,6 +87,8 @@ export default function EventCheckIn() {
           )
         }
         onEvent={setEvent}
+        onScan={() => router.push({ pathname: '/events/[id]/scan', params: { id } })}
+        searchAsk={focus === 'search' ? (tap ?? '0') : null}
       />
     </AppFrame>
   );
