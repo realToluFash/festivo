@@ -2,6 +2,7 @@ import type { Allergen } from './guestKitchenWords.ts';
 import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS } from './menuLibrary.ts';
 import { allergenList } from './mealStep.ts';
 import { type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
+import { SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3907's meal step for each person coming (board MealStep, page e32): person by person, course by course, then Check and send. */
@@ -252,14 +253,22 @@ export interface MealScreen {
   total: number;
 }
 
-export const SCREENS: readonly MealScreen[] = PARTY.flatMap((person) =>
-  COURSES.map((course, at) => ({
-    who: person.key,
-    course: course.key,
-    n: at + 1,
-    total: COURSES.length,
-  })),
-);
+export const EVERYONE: readonly Who[] = PARTY.map((one) => one.key);
+
+export const partyOf = (people: readonly Who[]): readonly PartyPerson[] =>
+  PARTY.filter((one) => people.includes(one.key));
+
+export const screensOf = (people: readonly Who[]): readonly MealScreen[] =>
+  partyOf(people).flatMap((person) =>
+    COURSES.map((course, at) => ({
+      who: person.key,
+      course: course.key,
+      n: at + 1,
+      total: COURSES.length,
+    })),
+  );
+
+export const SCREENS: readonly MealScreen[] = screensOf(EVERYONE);
 
 export const screenAt = (who: Who, course: CourseKey): number =>
   SCREENS.findIndex((one) => one.who === who && one.course === course);
@@ -345,6 +354,10 @@ export const oneDate = (dates: PicksDates): boolean =>
 export interface PartyStart {
   name: string;
   note: string;
+  /** Who is coming; Preview as guest runs the host alone, as For you. */
+  people: readonly Who[];
+  /** The person replying's full name: the guest's, or in Preview as guest the signed-in host's. */
+  you: string;
   mode: 'reply' | 'back';
   /** What is recorded (sc-3777) before this answer. */
   recorded: Allergies;
@@ -388,6 +401,8 @@ const COCONUT_DESSERT: Answers = {
 
 function start(over: Partial<PartyStart> & { name: string; note: string }): PartyStart {
   return {
+    people: EVERYONE,
+    you: personOf('me').name,
     mode: 'reply',
     recorded: NO_ALLERGIES,
     added: NO_ALLERGIES,
@@ -407,6 +422,13 @@ const at = (who: Who, course: CourseKey) =>
   ({ kind: 'course', at: screenAt(who, course) }) as const;
 
 export const PARTY_STATES = {
+  preview: () =>
+    start({
+      name: 'Preview as guest, from the Menu',
+      note: 'Opened from Preview as guest on the Menu, with Preview on: the host alone, as For you, with no allergies, on the first meal screen. Back goes to the kitchen note, where an allergy can be tried. Close preview, in the band or at Check and send, goes back to the Menu.',
+      people: ['me'],
+      you: SAMPLE.name,
+    }),
   start: () =>
     start({
       name: 'The first meal screen',
@@ -545,20 +567,26 @@ export const isPartyState = (raw: string | null): raw is PartyStateName =>
 
 export const partyStart = (state: PartyStateName): PartyStart => PARTY_STATES[state]();
 
+const MENU_WITH_PREVIEW = '/demo/events/evt-wed-4/menu';
+
 const partyAt = (state: PartyStateName, preview = false) =>
   `/demo/guest/meal?state=${state}${preview ? '&preview=1' : ''}`;
 
 export const PARTY_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'A meal for each person coming (sc-3907)',
-    states: (Object.keys(PARTY_STATES) as PartyStateName[]).map((state) => ({
-      to: partyAt(state),
-      name: PARTY_STATES[state]().name,
-    })),
+    states: (Object.keys(PARTY_STATES) as PartyStateName[])
+      .filter((state) => state !== 'preview')
+      .map((state) => ({
+        to: partyAt(state),
+        name: PARTY_STATES[state]().name,
+      })),
   },
   {
     name: 'Preview as guest (sc-3907, the host with menu.read)',
     states: [
+      { to: MENU_WITH_PREVIEW, name: 'The way in: Preview as guest on the Menu' },
+      { to: partyAt('preview', true), name: 'Preview as guest, the host alone' },
       { to: partyAt('start', true), name: 'Preview, the first meal screen' },
       { to: partyAt('checkAndSend', true), name: 'Preview, Close preview in place of Send' },
     ],
