@@ -585,6 +585,7 @@ export function MealCards({
   hosts,
   pending,
   refused,
+  unsaved,
   locked = false,
   onChange,
 }: {
@@ -598,6 +599,7 @@ export function MealCards({
   hosts: string;
   pending: (key: string) => boolean;
   refused: ReadonlySet<string>;
+  unsaved: ReadonlySet<string>;
   /** Paused: every row read-only with its own close line, open courses too. */
   locked?: boolean;
   onChange: (key: string) => void;
@@ -635,23 +637,23 @@ export function MealCards({
                     {pending(key) && !shut && !locked && (
                       <p className="mx-pending">{t('guestMeal.notSent')}</p>
                     )}
-                    {refused.has(course.id) && (
-                      <p
-                        className="desk-error"
-                        role="alert"
-                        tabIndex={-1}
-                        data-focus={`refused-${course.id}`}
-                      >
-                        <Glyph name="alert" size={15} weight={2.2} />
-                        {t('guestMeal.refusedClosed', { course: course.name, date })}
-                      </p>
-                    )}
                     {(!single || locked) && (
                       <p className="mx-close">
                         <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
                         {shut
                           ? t('guestMeal.picksClosed', { date })
                           : t('guestMeal.picksClose', { date })}
+                      </p>
+                    )}
+                    {unsaved.has(key) && (
+                      <p
+                        className="desk-error ms-refused"
+                        role="alert"
+                        tabIndex={-1}
+                        data-focus={`refused-${key}`}
+                      >
+                        <Glyph name="alert" size={16} weight={2.2} />
+                        {t('guestMeal.refusedClosed', { course: course.name, date })}
                       </p>
                     )}
                     {mark != null && (
