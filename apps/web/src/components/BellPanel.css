@@ -262,7 +262,7 @@
   white-space: nowrap;
 }
 
-.bell-gone {
+.bell-row > .bell-gone {
   flex-basis: 100%;
   margin: calc(-1 * var(--spaceSm)) 0 var(--spaceLg) 56px;
   color: var(--colorInk);

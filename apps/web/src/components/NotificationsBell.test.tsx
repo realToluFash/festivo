@@ -6,6 +6,7 @@ import { BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
+import { placeUnder } from './bellPlace.ts';
 
 const BELL_CSS = stylesheet(import.meta.dirname, 'BellPanel.css');
 
@@ -650,6 +651,65 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
   });
 
+  function bellAt(bottom: number, right: number): HTMLElement {
+    const bell = document.createElement('button');
+    bell.getBoundingClientRect = () =>
+      ({ top: bottom - 44, bottom, left: right - 44, right, width: 44, height: 44 }) as DOMRect;
+    return bell;
+  }
+
+  it('is fixed under the bell, so a hero that clips its overflow cannot cut it off (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+
+    const pop = document.createElement('div');
+    placeUnder(bellAt(78, 1240), pop);
+
+    expect(pop.style.position).toBe('fixed');
+    expect(pop.style.top).toBe('86px');
+    expect(pop.style.right).toBe('40px');
+    expect(pop.style.maxHeight).toBe('704px');
+  });
+
+  it('keeps its foot in the window when a band above moves the bell down (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+
+    const pop = document.createElement('div');
+
+    placeUnder(bellAt(144, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 152 - 10}px`);
+    placeUnder(bellAt(40, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 96}px`);
+  });
+
+  it('places the open popover under the bell, and again on a scroll outside it but not inside it (#84360)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+
+    expect(pop?.style.position).toBe('fixed');
+    expect(pop?.style.top).toBe('86px');
+    expect(pop?.style.right).toBe('40px');
+
+    bottom = 144;
+    fireEvent.scroll(container.querySelector('.bell-body') ?? document);
+    expect(pop?.style.top).toBe('86px');
+
+    fireEvent.scroll(document);
+    expect(pop?.style.top).toBe('152px');
+  });
+
   it('scrolls only the items', () => {
     expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
     expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
@@ -660,6 +720,14 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(glyph).toMatch(/width: 40px;/u);
     expect(glyph).toMatch(/height: 40px;/u);
     expect(glyph).toMatch(/background: var\(--colorInset\);/u);
+  });
+
+  it('keeps the gone line inset under its item, over the popover reset of p margins', () => {
+    expect(cssRule('.bell-pop p', BELL_CSS)).toMatch(/margin: 0;/u);
+    expect(cssRule('.bell-gone', BELL_CSS)).toBe('');
+    expect(cssRule('.bell-row > .bell-gone', BELL_CSS)).toMatch(
+      /margin: calc\(-1 \* var\(--spaceSm\)\) 0 var\(--spaceLg\) 56px;/u,
+    );
   });
 
   it('holds the popover still under Reduce Motion', () => {

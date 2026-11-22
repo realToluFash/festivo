@@ -3351,22 +3351,22 @@
     "count_many": "Llegadas: {{count, number}} de {{expected, number}}",
     "countAlone_many": "Llegadas: {{count, number}}",
     "scan": {
-      "title": "Scan a code",
-      "pointAtCode": "Point at the code",
-      "next": "Scan the next code",
-      "companionLine": "Companion · {{line}}",
-      "companionHeld": "Held · until their host is coming",
-      "nothingNew": "Nothing new was recorded. You decide what happens next.",
-      "notOnList": "This code is not on this event’s guest list. Search by name instead.",
-      "noListTitle": "Connect once to scan codes",
-      "noListBody": "This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.",
-      "cameraOffTitle": "Soirely cannot use the camera",
-      "cameraOffBody": "Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.",
-      "openSettings": "Open Settings",
-      "offlineSince": "Offline since {{time}}",
-      "offlineWaiting_one": "Offline since {{time}} · {{count, number}} arrival waiting to sync",
-      "offlineWaiting_other": "Offline since {{time}} · {{count, number}} arrivals waiting to sync",
-      "offlineWaiting_many": "Offline since {{time}} · {{count, number}} arrivals waiting to sync"
+      "title": "Escanear un código",
+      "pointAtCode": "Apunte al código",
+      "next": "Escanear el siguiente código",
+      "companionLine": "Acompañante · {{line}}",
+      "companionHeld": "En espera · hasta que se acepte la invitación",
+      "nothingNew": "No se ha registrado nada nuevo. Usted decide qué hacer ahora.",
+      "notOnList": "Este código no está en la lista de invitados de este evento. Pruebe a buscar por nombre.",
+      "noListTitle": "Conecte el dispositivo una vez para escanear códigos",
+      "noListBody": "Este dispositivo necesita la lista de invitados para comprobar los códigos. Se descargará en cuanto vuelva a tener conexión, y el escáner se abrirá solo.",
+      "cameraOffTitle": "Soirely no puede usar la cámara",
+      "cameraOffBody": "Para escanear códigos, permita que Soirely use la cámara en Ajustes. La búsqueda por nombre funciona sin ella.",
+      "openSettings": "Abrir Ajustes",
+      "offlineSince": "Sin conexión desde {{time}}",
+      "offlineWaiting_one": "Sin conexión desde {{time}} · {{count, number}} llegada pendiente de sincronizar",
+      "offlineWaiting_other": "Sin conexión desde {{time}} · {{count, number}} llegadas pendientes de sincronizar",
+      "offlineWaiting_many": "Sin conexión desde {{time}} · {{count, number}} llegadas pendientes de sincronizar"
     }
   }
 }
