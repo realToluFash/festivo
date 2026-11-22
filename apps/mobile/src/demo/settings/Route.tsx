@@ -89,6 +89,16 @@ export function settingsHref(
   return `${path}${query === '' ? '' : `?${query}`}` as Href;
 }
 
+function withQuery(href: Href, kept: Record<string, string | undefined>): Href {
+  const extra = Object.entries(kept)
+    .filter((entry): entry is [string, string] => entry[1] != null && entry[1] !== '')
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`);
+  if (extra.length === 0) return href;
+  const path = String(href);
+
+  return `${path}${path.includes('?') ? '&' : '?'}${extra.join('&')}` as Href;
+}
+
 /** Settings in B, on sample data: the list, and each section's page under it; Data and control's pages are the demo's own (sc-560). */
 export function SettingsRoute({
   section,
@@ -135,10 +145,23 @@ export function SettingsRoute({
     },
     [layout, shown, viewer, from],
   );
+  const held = heldOf(params.held);
+  // Paused is the session's state in the product, so Settings reached from a paused screen is the same paused session.
+  const settingsHome = useMemo(
+    () =>
+      held === 'paused'
+        ? withQuery(settingsHref(viewer, null, undefined, from), {
+            held,
+            switcher: params.switcher,
+            scheme: params.scheme,
+          })
+        : settingsHref(viewer, null, undefined, from),
+    [held, viewer, from, params.switcher, params.scheme],
+  );
   const toSettings = useCallback(() => {
-    if (layout === 'landscape') router.replace(settingsHref(viewer, null, undefined, from));
-    else router.dismissTo(settingsHref(viewer, null, undefined, from));
-  }, [layout, viewer, from]);
+    if (layout === 'landscape') router.replace(settingsHome);
+    else router.dismissTo(settingsHome);
+  }, [layout, settingsHome]);
   const toNone = useCallback(() => router.dismissTo(noOrgHome(board ?? null) as Href), [board]);
   const onTab = useCallback(
     (tab: Tab) => {
@@ -181,7 +204,15 @@ export function SettingsRoute({
         : sso && shown === 'signInRules'
           ? SingleSignOnSection
           : PAGES[shown];
-  const home = <SettingsHome {...handlers} held={heldOf(params.held)} />;
+  const home = <SettingsHome {...handlers} held={held} />;
+  // A section pushed while paused: the paused page stands in for it under ‹ Settings, which goes back to the paused Settings (sc-83881).
+  const pausedOver = held === 'paused' && Page != null && (
+    <SettingsHome
+      {...handlers}
+      held={held}
+      back={layout === 'landscape' ? undefined : () => router.replace(settingsHome)}
+    />
+  );
 
   return (
     <ShellContext.Provider value={shell}>
@@ -189,7 +220,9 @@ export function SettingsRoute({
         <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
           <View style={styles.fill}>
             <DataOpenContext.Provider value={dataShown}>
-              {Page != null ? (
+              {pausedOver !== false ? (
+                pausedOver
+              ) : Page != null ? (
                 <Page />
               ) : member ? (
                 <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
