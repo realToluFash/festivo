@@ -4331,7 +4331,6 @@ export class ApiClient {
     );
   }
 
-  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   /** Preview as guest (sc-3907): the guest page's meal step for the signed-in member alone, with no allergies or companions; menu.read, and it reads no guest. */
   async menuPreview(eventId: string): Promise<GuestPage> {
     const route = `${this.menuPath(eventId)}/preview`;
@@ -4339,6 +4338,7 @@ export class ApiClient {
     return this.guestPageOf(await this.get<unknown>(route), `GET ${route}`);
   }
 
+  /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
       await this.post<unknown>('/api/guest-links/page', { token }, { anonymous: true }),
