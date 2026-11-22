@@ -10,7 +10,9 @@ const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf
 
 describe('the sidebar on an iPad on its side (sc-68052)', () => {
   it('draws no Search inside an event', () => {
-    expect(frame).toMatch(/\n\s*search: organisation != null && !inEvent,\n/u);
+    expect(frame).toMatch(
+      /\n\s*search: searchOffered\(\{ organisation, pausedIn \}\) && !inEvent,\n/u,
+    );
   });
 
   it('keeps Search outside an event (sc-39534)', () => {
