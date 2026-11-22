@@ -16,6 +16,11 @@ describe('which requests the proxy holds', () => {
     expect(holds('GET', '/api/events/ev1/guests/export', guests)).toBe(false);
     expect(holds('GET', '/api/events/ev1', guests)).toBe(false);
   });
+
+  it('holds the method it was given instead of GET', () => {
+    expect(holds('POST', '/api/events/ev1/guests', guests, 'POST')).toBe(true);
+    expect(holds('GET', '/api/events/ev1/guests', guests, 'POST')).toBe(false);
+  });
 });
 
 describe('forwarding through the proxy', () => {
@@ -24,7 +29,7 @@ describe('forwarding through the proxy', () => {
     await Promise.all(servers.splice(0).map((s) => new Promise((done) => s.close(done))));
   });
 
-  async function stack(delay) {
+  async function stack(delay, method) {
     const api = createServer((req, res) => {
       let body = '';
       req.on('data', (chunk) => (body += chunk));
@@ -39,6 +44,7 @@ describe('forwarding through the proxy', () => {
       target: `http://127.0.0.1:${api.address().port}`,
       delay,
       pattern: guests,
+      method,
     });
     servers.push(proxy);
     return `http://127.0.0.1:${proxy.address().port}`;
@@ -59,6 +65,14 @@ describe('forwarding through the proxy', () => {
     const started = Date.now();
     const answer = await fetch(`${base}/api/events/ev1/guests`, { method: 'POST', body: 'x=1' });
     expect(Date.now() - started).toBeLessThan(2000);
+    expect(await answer.text()).toBe('POST /api/events/ev1/guests x=1');
+  });
+
+  it('holds a POST, body included, when told to hold POST', async () => {
+    const base = await stack(300, 'POST');
+    const started = Date.now();
+    const answer = await fetch(`${base}/api/events/ev1/guests`, { method: 'POST', body: 'x=1' });
+    expect(Date.now() - started).toBeGreaterThanOrEqual(290);
     expect(await answer.text()).toBe('POST /api/events/ev1/guests x=1');
   });
 

@@ -131,6 +131,10 @@ A check is written like a flow, and also:
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
+A check that needs one request held, not the whole API, runs with `QA_API_URL` pointed at
+`node scripts/qa-slow-proxy.mjs --target <api url> --path <regex> [--method POST] [--delay ms]`,
+which holds requests of that method (GET unless told) whose path matches, and names the command in its header.
+
 A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
 service is there, and `up` once it is healthy again. Hold it after the screen before has
