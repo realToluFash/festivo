@@ -29,6 +29,7 @@ import {
   TextAction,
 } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Sending = 'idle' | 'saving' | 'saved';
@@ -537,6 +538,11 @@ export function AddScreen<R extends string, T>({
         : outside.words.find;
   const roleName = words.name(role);
   const roleMeans = words.means(role);
+  const leaves = useLeaveAsk(
+    (typed.trim() !== '' || ticked.length > 0) && !busy,
+    () => setDiscarding(true),
+    onClose,
+  );
 
   async function send(): Promise<void> {
     if (!canAdd) return;
@@ -571,8 +577,7 @@ export function AddScreen<R extends string, T>({
   }
 
   function cancel(): void {
-    if (typed.trim() !== '' || ticked.length > 0) setDiscarding(true);
-    else onClose();
+    leaves.leave();
   }
 
   function type(text: string): void {
@@ -590,8 +595,14 @@ export function AddScreen<R extends string, T>({
         line: words.discardLine,
         keep: { label: words.discardKeep, testID: 'people.add.keep' },
         confirm: { label: words.discard, removes: true, testID: 'people.add.discard' },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
   const over: Layer | null = picking
