@@ -369,30 +369,22 @@ function Blocks({
       </>
     );
   return (
-    <View style={styles.grid} experimental_accessibilityOrder={READING_ORDER}>
-      <View nativeID="service.course">{course}</View>
+    <View style={styles.grid}>
+      {course}
       <View style={styles.columns}>
-        <View style={styles.column}>
-          <View nativeID="service.sections">{sections}</View>
-          <View nativeID="service.earlier">{earlier}</View>
+        {/* Not collapsable, so VoiceOver reads the left column, then the right, whatever the cards' heights. */}
+        <View style={styles.column} collapsable={false}>
+          {sections}
+          {earlier}
         </View>
-        <View style={styles.column}>
-          <View nativeID="service.kitchen">{kitchen}</View>
-          <View nativeID="service.alerts">{alerts}</View>
+        <View style={styles.column} collapsable={false}>
+          {kitchen}
+          {alerts}
         </View>
       </View>
     </View>
   );
 }
-
-/** Ignored until React Native's enableAccessibilityOrder flag is on; it ships off, so VoiceOver reads the cards by position. */
-const READING_ORDER = [
-  'service.course',
-  'service.sections',
-  'service.kitchen',
-  'service.alerts',
-  'service.earlier',
-];
 
 const COUNTS: readonly { key: CountKey; word: string }[] = [
   { key: 'choice', word: 'Waiting for a choice' },
