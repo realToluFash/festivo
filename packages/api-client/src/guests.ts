@@ -127,6 +127,8 @@ export interface Companion {
   needs?: GuestNeeds | null;
   /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
   seat?: CompanionSeat | null;
+  /** Has a meal answer stored other than skipped (sc-3907), so removing them in Edit asks first. */
+  meal?: boolean;
   /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
   arrival?: Arrival | null;
 }
@@ -661,6 +663,7 @@ function asCompanion(value: unknown): Companion | null {
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
     seat: asCompanionSeat(row.seat),
+    meal: row.meal === true,
     arrival: asArrival(row.arrival),
   };
 }

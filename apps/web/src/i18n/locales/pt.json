@@ -3610,6 +3610,8 @@
     "backOnList": "De volta à lista, tal como estava: com a ligação, a resposta e os acompanhantes.",
     "alreadyRemoved": "Outra pessoa já tinha removido {{name}} da lista.",
     "seatedLine": "{{name}} tem lugar em {{table}}. Se remover este acompanhante, o lugar fica livre.",
+    "seatedMealLine": "{{name}} has a seat at {{table}} and a meal chosen. Removing this companion frees the seat and drops the meal.",
+    "mealLine": "{{name}} has a meal chosen. Removing this companion drops the meal.",
     "arrival": "Chegada",
     "arrived": "Chegou",
     "staysArrived": "Esta pessoa fica na lista porque já chegou. Os dados são conservados de acordo com a definição de dados dos convidados do evento.",

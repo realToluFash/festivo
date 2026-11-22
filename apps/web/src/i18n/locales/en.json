@@ -3444,6 +3444,8 @@
     "backOnList": "Back on the list. As they were, with their link, reply and companions.",
     "alreadyRemoved": "{{name}} was already removed by someone else.",
     "seatedLine": "{{name}} has a seat at {{table}}. Removing this companion frees the seat.",
+    "seatedMealLine": "{{name}} has a seat at {{table}} and a meal chosen. Removing this companion frees the seat and drops the meal.",
+    "mealLine": "{{name}} has a meal chosen. Removing this companion drops the meal.",
     "arrival": "Arrival",
     "arrived": "Arrived",
     "staysArrived": "They have arrived, so they stay on the list. Their record ends with the event’s guest data setting.",

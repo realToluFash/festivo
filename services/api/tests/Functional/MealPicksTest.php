@@ -307,6 +307,30 @@ final class MealPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCompanionWithAMealIsMarkedForEditGuestAndSavingTheirRemovalDropsTheirAnswers(): void
+    {
+        $token = $this->coming(['companions' => [['fullName' => 'Chidi Okonkwo-Williams'], ['fullName' => 'Nneka Obi']]], []);
+        [$chidi, $nneka] = $this->companionIds($this->open($token));
+        $this->meals($token, [
+            ['person' => $chidi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+            ['person' => $nneka, 'course' => $this->id($this->main), 'answer' => 'chefsChoice'],
+        ]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $guest = $this->guestId();
+
+        $this->as('GET', $this->guests() . '/' . $guest);
+        $etag = (string) $this->client->getResponse()->headers->get('ETag');
+        self::assertSame([true, true], Vec\map($this->companionsOf($this->last()), static fn (array $one): mixed => $one['meal'] ?? null));
+
+        $this->as('PUT', $this->guests() . '/' . $guest, ['fullName' => 'Bisi Adewale', 'companions' => [['id' => $nneka, 'fullName' => 'Nneka Obi']]], $etag);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::em()->clear();
+        self::assertSame([$nneka], Vec\map(self::em()->getRepository(MealAnswer::class)->findAll(), static fn (MealAnswer $answer): string => $answer->getPerson()->getId()->toRfc4122()));
+        self::assertFalse($this->jollofPicked(), 'the kitchen loses the plate once the edit is saved');
+    }
+
+    #[Test]
     public function aPersonNotWithTheGuestIsRefused(): void
     {
         $token = $this->coming([], []);
@@ -485,6 +509,16 @@ final class MealPicksTest extends ApiTestCase
         $body = $this->last();
 
         return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce(Type\mixed_dict()->coerce($body['menu'] ?? $body)['courses'] ?? null);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function companionsOf(array $body): array
+    {
+        return Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce(Type\mixed_dict()->coerce($body['guest'] ?? null)['companions'] ?? null);
     }
 
     private function guests(): string
