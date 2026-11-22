@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   type TextInputInstance,
+  useWindowDimensions,
   View,
   type ViewInstance,
 } from 'react-native';
@@ -107,6 +108,8 @@ export function HandoverAsk({
   const origin = useWindowOrigin();
   const [centred, setCentred] = useState<number | null>(null);
   const [inAsk, setInAsk] = useState<Anchor | null>(null);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const windowSize = useRef({ width: windowWidth, height: windowHeight });
   const placedAt = useRef<number | null>(null);
   const button = useRef<ViewInstance>(null);
   const layer = useRef<ViewInstance>(null);
@@ -225,9 +228,12 @@ export function HandoverAsk({
     setTimeout(() => moveScreenReaderFocus(button.current), SETTLED_MS);
   }
 
-  // Measured against the Ask's own window at one moment, and then carried with the Ask, so the menu stays under the button wherever the Ask moves (sc-31310).
+  // Measured against the Ask's own window at one moment, and then carried with the Ask, so the menu stays under the button wherever the Ask moves; a turned window measures it again (sc-31310).
   function placeMenu(): void {
-    if (inAsk != null) return;
+    if (inAsk == null) measureMenu();
+  }
+
+  function measureMenu(): void {
     layer.current?.measureInWindow((_lx, layerTop) =>
       button.current?.measureInWindow((x, y, width, height) => {
         const top = y - layerTop - (placedAt.current ?? 0);
@@ -235,6 +241,17 @@ export function HandoverAsk({
       }),
     );
   }
+
+  useEffect(() => {
+    const turned =
+      windowSize.current.width !== windowWidth || windowSize.current.height !== windowHeight;
+    windowSize.current = { width: windowWidth, height: windowHeight };
+    if (!menuOpen || !turned) return;
+    setInAsk(null);
+    const wait = setTimeout(measureMenu, SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [windowWidth, windowHeight, menuOpen]);
 
   function pick(id: string): void {
     setTaker(id);
@@ -288,7 +305,7 @@ export function HandoverAsk({
                       }
                 }
                 onClose={closeMenu}
-                width={menuAt.width}
+                width={inAsk?.width ?? menuAt.width}
                 align="start"
                 below={tokens.spaceXs}
                 floor={keys == null ? null : keyboardInWindow(keys, origin) - tokens.spaceSm}
