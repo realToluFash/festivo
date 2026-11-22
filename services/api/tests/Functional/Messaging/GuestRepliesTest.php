@@ -420,7 +420,7 @@ final class GuestRepliesTest extends MessagingTestCase
 
     private function guest(string $name, ?Event $event = null): Guest
     {
-        $guest = Guest::listed($event ?? $this->event, $name, Str\lowercase($name), null, null, null, Str\pad_right(Str\replace(Uuid::v4()->toBase58(), '1', 'x'), 43, 'a'));
+        $guest = Guest::listed($event ?? $this->event, $name, Str\lowercase($name), null, null, null, Str\pad_right(Str\replace(Uuid::v4()->toBase58(), '1', 'x'), 43, 'a'), Uuid::v4()->toRfc4122());
         $guest->invite(GuestInvitationMethod::InPerson, self::now(), null);
         self::em()->persist($guest);
         self::em()->flush();

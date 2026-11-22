@@ -247,7 +247,7 @@ final class GuestRepliesApiTest extends ApiTestCase
 
     private function guest(string $name): Guest
     {
-        $guest = Guest::listed($this->event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122());
+        $guest = Guest::listed($this->event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122(), Uuid::v4()->toRfc4122());
         $guest->invite(GuestInvitationMethod::InPerson, self::service(ClockInterface::class)->now(), null);
         self::em()->persist($guest);
         self::em()->flush();
