@@ -4,19 +4,22 @@ import {
   CREDIT_TYPED,
   OSM_COPYRIGHT,
   OSM_CREDIT,
+  STADIA_ATTRIBUTION,
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
 import { suggestionsFor } from './events.ts';
 
-describe('the OpenStreetMap credit (sc-80918)', () => {
-  it('keeps OpenStreetMap as written in every language', () => {
+describe('the Stadia Maps and OpenStreetMap credit (sc-80918)', () => {
+  it('keeps Stadia Maps and OpenStreetMap as written in every language', () => {
     for (const words of Object.values(OSM_CREDIT)) {
-      expect(words).toMatch(/^© .*OpenStreetMap/);
+      expect(words.stadia).toBe('Stadia Maps');
+      expect(words.osm).toMatch(/OpenStreetMap/);
     }
   });
 
-  it('links to OpenStreetMap’s copyright page', () => {
+  it('links to Stadia’s attribution page and OpenStreetMap’s copyright page', () => {
+    expect(STADIA_ATTRIBUTION).toBe('https://stadiamaps.com/attribution/');
     expect(OSM_COPYRIGHT).toBe('https://www.openstreetmap.org/copyright');
   });
 

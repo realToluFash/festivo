@@ -44,6 +44,7 @@ import {
   type CreditLanguage,
   OSM_COPYRIGHT,
   OSM_CREDIT,
+  STADIA_ATTRIBUTION,
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
@@ -385,10 +386,12 @@ export function VenueFields({
   const shown = down || !listOpen || off ? [] : suggestionsFor(address);
   const [holder, setHolder] = useState<HTMLDivElement | null>(null);
   const combo = holder?.querySelector<HTMLElement>('.ev-combo') ?? null;
-  const creditRef = useRef<HTMLAnchorElement>(null);
-  const closeUnlessOnCredit = () =>
+  const creditRef = useRef<HTMLParagraphElement>(null);
+  const closeUnlessOn = (keepOnField: boolean) => () =>
     window.setTimeout(() => {
-      if (document.activeElement !== creditRef.current) setListOpen(false);
+      const now = document.activeElement;
+      const onCredit = now != null && creditRef.current?.contains(now) === true;
+      if (!onCredit && !(keepOnField && now === field.current)) setListOpen(false);
     });
 
   useEffect(() => {
@@ -427,7 +430,7 @@ export function VenueFields({
           setListOpen(true);
           setZoneSet(null);
         }}
-        onDismiss={closeUnlessOnCredit}
+        onDismiss={closeUnlessOn(false)}
         onPick={(chosen) => {
           const one = shown.find((venue) => venue.name === chosen.id);
           if (one == null) return;
@@ -449,8 +452,8 @@ export function VenueFields({
         createPortal(
           <AddressCredit
             language={credit}
-            linkRef={creditRef}
-            onLeave={closeUnlessOnCredit}
+            creditRef={creditRef}
+            onLeave={closeUnlessOn(true)}
             onEscape={() => {
               setListOpen(false);
               field.current?.focus();
@@ -462,35 +465,39 @@ export function VenueFields({
   );
 }
 
-/** sc-80918: the line at the foot of the suggestions' surface, after the listbox and never one of its options; pressing it keeps Address focused so the list stays. */
+/** sc-80918: the line at the foot of the suggestions' surface, after the listbox and never one of its options; pressing a link keeps Address focused so the list stays. */
 function AddressCredit({
   language,
-  linkRef,
+  creditRef,
   onLeave,
   onEscape,
 }: {
   language: CreditLanguage;
-  linkRef: RefObject<HTMLAnchorElement | null>;
+  creditRef: RefObject<HTMLParagraphElement | null>;
   onLeave: () => void;
   onEscape: () => void;
 }) {
+  const words = OSM_CREDIT[language];
+  const link = (href: string, name: string) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onPointerDown={(pointer) => pointer.preventDefault()}
+      onBlur={onLeave}
+      onKeyDown={(key) => {
+        if (key.key !== 'Escape') return;
+        key.stopPropagation();
+        onEscape();
+      }}
+    >
+      {name}
+    </a>
+  );
+
   return (
-    <p className="ev-osm" lang={language}>
-      <a
-        ref={linkRef}
-        href={OSM_COPYRIGHT}
-        target="_blank"
-        rel="noopener noreferrer"
-        onPointerDown={(pointer) => pointer.preventDefault()}
-        onBlur={onLeave}
-        onKeyDown={(key) => {
-          if (key.key !== 'Escape') return;
-          key.stopPropagation();
-          onEscape();
-        }}
-      >
-        {OSM_CREDIT[language]}
-      </a>
+    <p className="ev-osm" lang={language} ref={creditRef}>
+      © {link(STADIA_ATTRIBUTION, words.stadia)} © {link(OSM_COPYRIGHT, words.osm)}
     </p>
   );
 }

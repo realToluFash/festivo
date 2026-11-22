@@ -4,6 +4,7 @@ import {
   CREDIT_TYPED,
   OSM_COPYRIGHT,
   OSM_CREDIT,
+  STADIA_ATTRIBUTION,
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
@@ -16,9 +17,13 @@ function found(typed: string) {
     : SUGGESTIONS.filter((one) => folded(one.name).includes(folded(typed)));
 }
 
-describe('the OpenStreetMap credit (sc-80918)', () => {
-  it('keeps OpenStreetMap as written and links to its copyright page', () => {
-    for (const words of Object.values(OSM_CREDIT)) expect(words).toMatch(/^© .*OpenStreetMap/);
+describe('the Stadia Maps and OpenStreetMap credit (sc-80918)', () => {
+  it('keeps Stadia Maps and OpenStreetMap as written, each linking to its own page', () => {
+    for (const words of Object.values(OSM_CREDIT)) {
+      expect(words.stadia).toBe('Stadia Maps');
+      expect(words.osm).toMatch(/OpenStreetMap/);
+    }
+    expect(STADIA_ATTRIBUTION).toBe('https://stadiamaps.com/attribution/');
     expect(OSM_COPYRIGHT).toBe('https://www.openstreetmap.org/copyright');
   });
 

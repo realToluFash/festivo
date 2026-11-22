@@ -1,12 +1,13 @@
-/** sc-80918: the credit OpenStreetMap's licence asks for wherever its data shows, at the foot of the address suggestions and nowhere else. */
+/** sc-80918: the credit Stadia's terms (§8) and OpenStreetMap's licence (ODbL §4.3) ask for wherever their data shows, at the foot of the address suggestions and nowhere else. */
+export const STADIA_ATTRIBUTION = 'https://stadiamaps.com/attribution/';
 export const OSM_COPYRIGHT = 'https://www.openstreetmap.org/copyright';
 
 export type CreditLanguage = 'en' | 'fr';
 
-/** "OpenStreetMap" is never translated; the linguist words the rest in es, fr and pt. */
-export const OSM_CREDIT: Record<CreditLanguage, string> = {
-  en: '© OpenStreetMap contributors',
-  fr: '© les contributeurs d’OpenStreetMap',
+/** "©", "Stadia Maps" and "OpenStreetMap" are never translated; the linguist words the rest in es, fr and pt. Each part is one link. */
+export const OSM_CREDIT: Record<CreditLanguage, { stadia: string; osm: string }> = {
+  en: { stadia: 'Stadia Maps', osm: 'OpenStreetMap contributors' },
+  fr: { stadia: 'Stadia Maps', osm: 'les contributeurs d’OpenStreetMap' },
 };
 
 /** What each credit state has typed into Address. */

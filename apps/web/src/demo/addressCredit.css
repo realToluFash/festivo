@@ -1,4 +1,4 @@
-/* sc-80918: the OpenStreetMap credit, inside the suggestions' surface under a hairline, after the listbox. */
+/* sc-80918: the Stadia Maps and OpenStreetMap credit, inside the suggestions' surface under a hairline, after the listbox. */
 
 .ev-venue {
   display: contents;
@@ -34,6 +34,7 @@
 .ev-osm a {
   display: inline-flex;
   align-items: center;
+  min-width: 24px;
   min-height: 24px;
   color: inherit;
   text-decoration: underline;

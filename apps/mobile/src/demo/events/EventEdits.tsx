@@ -61,6 +61,7 @@ import {
   type CreditLanguage,
   OSM_COPYRIGHT,
   OSM_CREDIT,
+  STADIA_ATTRIBUTION,
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
@@ -608,22 +609,37 @@ export function VenueFields({
   );
 }
 
-/** sc-80918: under the last suggestion, past a hairline, and not one of them: it opens OpenStreetMap's copyright page in the device's browser. */
+/** sc-80918: under the last suggestion, past a hairline, and not one of them: each link opens in the device's browser, and each is its own 48pt target. */
 function AddressCredit({ language, testID }: { language: CreditLanguage; testID: string }) {
+  const words = OSM_CREDIT[language];
+  const link = (url: string, name: string, id: string) => (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLanguage={language}
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
+      testID={`${testID}.${id}`}
+    >
+      <Text size={13} weight="medium" style={styles.creditWords}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <>
       <RowRule inset={40} />
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLanguage={language}
-        onPress={() => void Linking.openURL(OSM_COPYRIGHT)}
-        style={({ pressed }) => [styles.credit, pressed && styles.pressed]}
-        testID={testID}
-      >
-        <Text size={13} weight="medium" style={styles.creditWords}>
-          {OSM_CREDIT[language]}
+      <View style={styles.credit} testID={testID}>
+        <Text size={13} weight="medium" style={styles.secondary}>
+          ©{' '}
         </Text>
-      </Pressable>
+        {link(STADIA_ATTRIBUTION, words.stadia, 'stadia')}
+        <Text size={13} weight="medium" style={styles.secondary}>
+          {' '}
+          ©{' '}
+        </Text>
+        {link(OSM_COPYRIGHT, words.osm, 'osm')}
+      </View>
     </>
   );
 }
@@ -1001,10 +1017,16 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
   credit: {
-    minHeight: 44,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     paddingLeft: 40,
-    paddingVertical: tokens.spaceSm,
+  },
+  creditLink: {
+    minWidth: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexShrink: 1,
+    justifyContent: 'center',
   },
   creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   acPill: {

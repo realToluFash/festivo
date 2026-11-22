@@ -21,11 +21,15 @@ async function address(): Promise<HTMLInputElement> {
   return (await screen.findByRole('combobox', { name: /Address/ }, WAIT)) as HTMLInputElement;
 }
 
-function credit(name = '© OpenStreetMap contributors') {
+function credit(name = 'OpenStreetMap contributors') {
   return screen.queryByRole('link', { name });
 }
 
-describe('Address suggestions credit OpenStreetMap (sc-80918)', () => {
+function stadia() {
+  return screen.queryByRole('link', { name: 'Stadia Maps' });
+}
+
+describe('Address suggestions credit Stadia Maps and OpenStreetMap (sc-80918)', () => {
   beforeEach(() => {
     __setConfig({ ...tested, environment: 'development' });
     resetSample();
@@ -33,19 +37,28 @@ describe('Address suggestions credit OpenStreetMap (sc-80918)', () => {
   afterEach(cleanup);
 
   it(
-    'ends the list with the credit, outside the listbox, to the copyright page in a new tab',
+    'ends the list with the credit, outside the listbox, two links each in a new tab',
     SLOW,
     async () => {
       open('venueSuggestions');
       await address();
       const list = await screen.findByRole('listbox', {}, WAIT);
-      const link = credit();
+      const links = [stadia(), credit()];
 
       expect(within(list).getAllByRole('option')).toHaveLength(3);
-      expect(link?.getAttribute('href')).toBe('https://www.openstreetmap.org/copyright');
-      expect(link?.getAttribute('target')).toBe('_blank');
-      expect(list.contains(link)).toBe(false);
-      expect(list.nextElementSibling?.contains(link)).toBe(true);
+      expect(links[0]?.closest('p')?.textContent).toBe(
+        '© Stadia Maps © OpenStreetMap contributors',
+      );
+      expect(links.map((link) => link?.getAttribute('href'))).toEqual([
+        'https://stadiamaps.com/attribution/',
+        'https://www.openstreetmap.org/copyright',
+      ]);
+      for (const link of links) {
+        expect(link?.getAttribute('target')).toBe('_blank');
+        expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(list.contains(link)).toBe(false);
+        expect(list.nextElementSibling?.contains(link)).toBe(true);
+      }
       expect(screen.getByText(/^3 suggestions/).getAttribute('role')).toBe('status');
     },
   );
@@ -58,6 +71,7 @@ describe('Address suggestions credit OpenStreetMap (sc-80918)', () => {
       within(await screen.findByRole('listbox', {}, WAIT)).getAllByRole('option'),
     ).toHaveLength(1);
     expect(credit()).not.toBeNull();
+    expect(stadia()).not.toBeNull();
   });
 
   it.each(['venueShort', 'venueNoMatch', 'venueDown'])(
@@ -69,19 +83,24 @@ describe('Address suggestions credit OpenStreetMap (sc-80918)', () => {
 
       expect(screen.queryByRole('listbox')).toBeNull();
       expect(credit()).toBeNull();
+      expect(stadia()).toBeNull();
     },
   );
 
-  it('writes the credit in French, OpenStreetMap as written', SLOW, async () => {
+  it('writes the credit in French, Stadia Maps and OpenStreetMap as written', SLOW, async () => {
     open('venueFrench');
     await address();
     const link = await screen.findByRole(
       'link',
-      { name: '© les contributeurs d’OpenStreetMap' },
+      { name: 'les contributeurs d’OpenStreetMap' },
       WAIT,
     );
 
     expect(link.closest('p')?.getAttribute('lang')).toBe('fr');
+    expect(link.closest('p')?.textContent).toBe(
+      '© Stadia Maps © les contributeurs d’OpenStreetMap',
+    );
+    expect(stadia()?.getAttribute('href')).toBe('https://stadiamaps.com/attribution/');
   });
 
   it(
@@ -104,6 +123,41 @@ describe('Address suggestions credit OpenStreetMap (sc-80918)', () => {
       expect(field.value).toBe('Eko Hot');
     },
   );
+
+  it(
+    'keeps the list while focus moves between the two links and back to Address',
+    SLOW,
+    async () => {
+      open('venueSuggestions');
+      const field = await address();
+      const first = stadia();
+      const second = credit();
+      if (first == null || second == null) throw new Error('no credit');
+
+      const settle = () => new Promise((done) => setTimeout(done, 10));
+
+      first.focus();
+      await settle();
+      second.focus();
+      await settle();
+      field.focus();
+      await settle();
+
+      expect(screen.queryByRole('listbox')).not.toBeNull();
+      expect(document.activeElement).toBe(field);
+    },
+  );
+
+  it('still closes the list on Escape in Address', SLOW, async () => {
+    open('venueSuggestions');
+    const field = await address();
+    await screen.findByRole('listbox', {}, WAIT);
+
+    fireEvent.keyDown(field, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    expect(credit()).toBeNull();
+  });
 
   it(
     'never makes the credit the active option: the arrows stop at the last suggestion',
