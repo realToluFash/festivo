@@ -3228,7 +3228,7 @@
       "notOnList": "This code is not on this event’s guest list. Search by name instead.",
       "noListTitle": "Connect once to scan codes",
       "noListBody": "This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.",
-      "cameraOffTitle": "Soirely can’t use the camera",
+      "cameraOffTitle": "Soirely cannot use the camera",
       "cameraOffBody": "Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.",
       "openSettings": "Open Settings",
       "offlineSince": "Offline since {{time}}",

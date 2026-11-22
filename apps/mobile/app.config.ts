@@ -40,6 +40,13 @@ const config: ExpoConfig = {
   // toggle no longer exists. Both keys typecheck as errors rather than being
   // ignored, which is the good outcome — a silently-accepted dead flag reads
   // as a decision somebody made.
+  // The permission sheets in the host's language; the linguist writes es, fr and pt (sc-80603).
+  locales: {
+    en: './locales/en.json',
+    es: './locales/es.json',
+    fr: './locales/fr.json',
+    pt: './locales/pt.json',
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.soirely.app',
