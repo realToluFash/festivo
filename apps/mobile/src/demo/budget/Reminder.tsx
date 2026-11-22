@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -6,10 +7,9 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { type ReminderKind, paymentOf, reminderRows, reminderSheet } from './BudgetModel.ts';
 import { EVENT_NAME, REMINDER_DAYS, VENDORS } from './BudgetSample.ts';
-import { OverdueTag } from './BudgetParts.tsx';
 import { W, say } from './BudgetWords.ts';
 
-/** sc-95's reminder as it arrives: one message for everything due, overdue first and marked as the last about it; it opens Due now. */
+/** sc-95's reminder as iOS draws its push: a one-line title and a two-line plain body that a long press opens in full, overdue rows first and marked as the last about it; a tap opens Due now. */
 export function ReminderBanner({
   kind,
   locale,
@@ -20,6 +20,7 @@ export function ReminderBanner({
   onOpen: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const [open, setOpen] = useState(false);
   const { layout } = useShell();
   if (kind == null) return null;
 
@@ -47,6 +48,13 @@ export function ReminderBanner({
     .filter(Boolean)
     .join('. ');
 
+  const body = [
+    ...rows.map((row) => (row.late ? `${row.words} · ${W.overdueLast}` : row.words)),
+    closing,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
   return (
     <View
       style={[styles.wrap, { top: insets.top + tokens.spaceSm }, layout !== 'phone' && styles.pad]}
@@ -54,41 +62,37 @@ export function ReminderBanner({
     >
       <Pressable
         onPress={onOpen}
+        onLongPress={() => setOpen((was) => !was)}
         style={({ pressed }) => [styles.banner, pressed && styles.pressed]}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityHint={W.dueNow}
         testID={`budget.reminder.${kind}`}
       >
-        <View style={styles.head}>
-          <Text size={13} weight="semibold" accessible={false} style={styles.grow}>
-            {W.app}
-          </Text>
-          <Text size={13} weight="medium" accessible={false} style={styles.secondary}>
-            {W.justNow}
+        <View style={styles.mark}>
+          <Text size={18} weight="bold" accessible={false} style={styles.onDark}>
+            S
           </Text>
         </View>
-        <Text size={16} weight="bold" accessible={false} style={styles.title}>
-          {title}
-        </Text>
-        {rows.map((row) => (
-          <View key={row.id} style={styles.row}>
-            <Text size={14} weight="medium" accessible={false} style={styles.line}>
-              {row.words}
+        <View style={styles.words}>
+          <View style={styles.head}>
+            <Text
+              size={15}
+              weight="semibold"
+              accessible={false}
+              numberOfLines={1}
+              style={styles.grow}
+            >
+              {title}
             </Text>
-            {row.late && <OverdueTag word={W.overdueLast} />}
+            <Text size={13} accessible={false} style={styles.secondary}>
+              {W.justNow}
+            </Text>
           </View>
-        ))}
-        {closing != null && (
-          <Text
-            size={14}
-            weight="medium"
-            accessible={false}
-            style={[styles.line, styles.secondary]}
-          >
-            {closing}
+          <Text size={15} accessible={false} numberOfLines={open ? undefined : 2}>
+            {body}
           </Text>
-        )}
+        </View>
       </Pressable>
     </View>
   );
@@ -98,19 +102,30 @@ const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: tokens.spaceMd, right: tokens.spaceMd },
   pad: { left: undefined, right: tokens.spaceXxl, width: 420 },
   banner: {
-    gap: tokens.spaceXs,
-    paddingVertical: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceXl,
-    borderRadius: tokens.radiusCardLarge,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceSm,
+    paddingVertical: tokens.spaceMd,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
     ...tokens.elevationNative.dialog.ios,
     elevation: tokens.elevationNative.dialog.android.elevation,
   },
   pressed: { opacity: tokens.opacityPressed },
-  head: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  mark: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: tokens.colorAccentHover,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onDark: { color: tokens.colorInkOnDark },
+  words: { flex: 1, minWidth: 0, gap: 2 },
+  head: { flexDirection: 'row', alignItems: 'baseline', gap: tokens.spaceSm },
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
-  title: { lineHeight: 16 * 1.3 },
-  row: { gap: tokens.spaceXxs },
-  line: { lineHeight: 14 * 1.4 },
 });
