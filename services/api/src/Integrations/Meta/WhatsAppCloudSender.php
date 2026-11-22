@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Integrations\Meta;
 
+use App\Domain\Messaging\Channel\WhatsAppPaymentRefusal;
 use App\Domain\User\Interfaces\WhatsAppSenderInterface;
-use App\Domain\User\Verification\WhatsAppPaymentRefusal;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;

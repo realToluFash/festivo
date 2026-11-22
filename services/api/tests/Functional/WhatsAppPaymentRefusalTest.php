@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Domain\User\Verification\WhatsAppPaymentRefusal;
+use App\Domain\Messaging\Channel\WhatsAppPaymentRefusal;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RecordingLogger;
 use PHPUnit\Framework\Attributes\Test;

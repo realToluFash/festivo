@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\Messaging\Channel\WhatsAppPaymentRefusal;
 use App\Domain\User\Verification\PhoneCodeDispatch;
-use App\Domain\User\Verification\WhatsAppPaymentRefusal;
 use App\Http\Access\Policy\PublicAccess;
 use Psl\Json;
 use Psl\Type;

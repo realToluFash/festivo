@@ -562,10 +562,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
-# WhatsApp, for phone codes (sc-750). It sees the port it implements and nothing else of ours.
+# WhatsApp, for phone codes (sc-750). It sees the port it implements, and messaging's
+# payment refusal that every WhatsApp sender raises (sc-45470), and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Meta\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:domain_messaging"]
 
 # Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]

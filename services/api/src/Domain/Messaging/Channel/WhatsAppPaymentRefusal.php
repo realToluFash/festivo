@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\User\Verification;
+namespace App\Domain\Messaging\Channel;
 
 use Psr\Log\LoggerInterface;
 
