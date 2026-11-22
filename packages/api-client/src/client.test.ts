@@ -4022,6 +4022,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     },
     phase: 'live',
     started: false,
+    onTheDay: false,
     answersOpen: true,
   };
 
