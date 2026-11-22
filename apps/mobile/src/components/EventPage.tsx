@@ -200,7 +200,7 @@ export function EventPage({
             .join(' ')
         : null;
 
-  const card = (
+  const eventCard = (
     <View style={styles.card}>
       <EventCard
         event={shown}
@@ -218,6 +218,15 @@ export function EventPage({
       {resumeSays != null && <AlertLine text={resumeSays} />}
     </View>
   );
+  const card =
+    moved == null ? (
+      eventCard
+    ) : (
+      <View style={styles.headed}>
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={moved.words} answer={moved} />
+        {eventCard}
+      </View>
+    );
   const details = (
     <PartsSection
       title={t('eventPage.details')}
@@ -362,23 +371,7 @@ export function EventPage({
     <View style={styles.page} testID="events.page">
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
-        card={
-          <BellRow>
-            {moved == null ? (
-              card
-            ) : (
-              <View style={styles.headed}>
-                <Notice
-                  tone="done"
-                  mark={tokens.marks.done.glyph}
-                  body={moved.words}
-                  answer={moved}
-                />
-                {card}
-              </View>
-            )}
-          </BellRow>
-        }
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {notice}
