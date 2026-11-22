@@ -29,6 +29,7 @@ import {
   hostErrorsShownOf,
   hostsChanged,
   keepsLastHost,
+  newEventHosts,
   positionPart,
   type ReplyByAsk,
   replyByAfterStart,
@@ -797,7 +798,6 @@ function HostsEdit(props: PartEditProps) {
   const [refused, setRefused] = useState<Partial<Record<number, string>>>({});
   const [said, setSaid] = useState<string | null>(null);
   const { busy, save, elsewhere, failed, noticed } = usePartSave('hosts', props);
-  const names = hosts.map((host) => host.name);
   const found = hostErrorsOf(hosts, t);
   const shown = hostErrorsShownOf(hosts, t, tried);
   const errors = hosts.map((host) => shown[host.key] ?? refused[host.key] ?? null);
@@ -815,7 +815,10 @@ function HostsEdit(props: PartEditProps) {
   return (
     <EditShell
       {...useShellProps('hosts', props)}
-      changed={hostsChanged(event.hosts, names)}
+      changed={hostsChanged(
+        event.hosts,
+        newEventHosts(hosts).map((host) => host.name),
+      )}
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
