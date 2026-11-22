@@ -38,3 +38,5 @@ appId: host.exp.Exponent
     notVisible:
       id: guests.changedFailed
     timeout: 10000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: changedFailed-retried-product
