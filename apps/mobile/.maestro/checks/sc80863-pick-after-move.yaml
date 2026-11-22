@@ -1,0 +1,37 @@
+# sc-80863: after the link moved the account into B, a pick of A on Today's pill stays in A. Pass A_ID, EVENT.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 20000
+- tapOn:
+    point: '17%,10%'
+- extendedWaitUntil:
+    visible:
+      id: 'home.switchOrganisation'
+    timeout: 20000
+- takeScreenshot: today-in-b
+- tapOn:
+    id: 'home.switchOrganisation'
+- tapOn:
+    text: '.*Adire Studio.*'
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: picked-a
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: picked-a-later
