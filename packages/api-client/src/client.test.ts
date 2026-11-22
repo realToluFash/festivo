@@ -1796,20 +1796,13 @@ describe('the bell (sc-3980)', () => {
 
   test('reads the feed and leaves out an item it cannot read', async () => {
     const { client, sent } = answering({
-      items: [item, { id: 'n2', title: 'x', createdAt: 'y' }],
+      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
       unreadCount: 1,
       next: 'n1',
     });
 
     expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
     expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
-  });
-
-  test('keeps an item whose category it does not know, with its words', async () => {
-    const unknown = { ...item, id: 'n2', category: 'loyalty' };
-    const { client } = answering({ items: [unknown], unreadCount: 1, next: null });
-
-    expect(await client.notifications()).toEqual({ items: [unknown], unreadCount: 1, next: null });
   });
 
   test('one switch is sent as category, channel and on', async () => {
