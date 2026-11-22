@@ -11,6 +11,7 @@ final readonly class RenderedNotification
      * @param list<string> $lines       one per line under the subject, already in order
      * @param ?string      $thread      the member's one unread item it updates rather than adding another; with an empty subject, it removes that item
      * @param ?string      $threadFrom  the source an item it starts begins with
+     * @param bool         $reopens     the thread keeps one item, read or unread: a new one turns the member's read item unread again and leaves no other (sc-4331)
      * @param bool         $quiet       only rewrites the member's unread item in the thread, neither re-dating nor announcing it
      * @param bool         $silent      a push to the app alone, on its silent channel and passive on iOS: the run-of-show card (sc-66580)
      * @param ?string      $unsubscribe an email's one-click unsubscribe URL (RFC 8058), sent as its List-Unsubscribe
@@ -25,6 +26,7 @@ final readonly class RenderedNotification
         public bool $quiet = false,
         public bool $silent = false,
         public ?string $unsubscribe = null,
+        public bool $reopens = false,
     ) {
     }
 }
