@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  type KeyboardEvent,
   Platform,
   type StyleProp,
   View,
@@ -39,10 +40,17 @@ export function KeysClear({
   useEffect(() => {
     const ios = Platform.OS === 'ios';
     top.current = keyboardTopNow(origin);
-    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (event) => {
+    const keysAt = (event: KeyboardEvent) => {
       top.current = keyboardInWindow(event.endCoordinates.screenY, origin);
       measure();
-    });
+    };
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', keysAt);
+    // iOS adds the suggestion bar after the keys are up and says so only as a frame change (sc-31370).
+    const moved = ios
+      ? Keyboard.addListener('keyboardWillChangeFrame', (event) => {
+          if (top.current != null) keysAt(event);
+        })
+      : null;
     const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => {
       top.current = null;
       measure();
@@ -53,6 +61,7 @@ export function KeysClear({
     return () => {
       clearTimeout(settled);
       shown.remove();
+      moved?.remove();
       hidden.remove();
     };
   }, [origin, measure]);
