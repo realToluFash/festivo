@@ -1,6 +1,7 @@
 import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   type ReactNode,
   type RefObject,
@@ -29,7 +30,7 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, BellRow, EventFrame, type EventToast } from './EventFrame.tsx';
+import { AreaPage, BellRow, EventFrame, type EventToast, backToEvents } from './EventFrame.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -128,6 +129,18 @@ import {
 import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
+import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
+import { RefreshingWords } from '../guests/RefreshingWords.tsx';
+import {
+  BACK_HREF,
+  BACK_KEY,
+  OPENERS,
+  type Opened,
+  type Opener,
+  backScreenOf,
+  openerWords,
+  wayBack,
+} from './opener.ts';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
@@ -216,6 +229,7 @@ export function EventScreen({
   origin = null,
   linked = false,
   failed = null,
+  opened: openedOver,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -239,8 +253,11 @@ export function EventScreen({
   linked?: boolean;
   /** The event did not load, and Try again reads it again (sc-80863). */
   failed?: (() => void) | null;
+  /** What the event was opened over, and the board's Spanish and Refreshing… (sc-83008). */
+  opened?: Opened | undefined;
 }) {
   const shell = useShell();
+  const top = useBehind(openedOver);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const now = useMemo(
     () => (guests == null ? clockOf(state) : guestsClock(guests)),
@@ -686,6 +703,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         without={without}
+        behind={top.behind}
         loading
       >
         <BellRow>{null}</BellRow>
@@ -811,6 +829,7 @@ export function EventScreen({
         landscape={shell.layout === 'landscape'}
         card={
           <BellRow>
+            {top.ownLine}
             {linked && !leftOverview ? (
               <View style={styles.headed}>
                 <SwitchedNotice />
@@ -855,6 +874,7 @@ export function EventScreen({
             {guestsPage}
             {forYou}
             {manage}
+            {top.picker}
           </>
         }
       />
@@ -870,6 +890,8 @@ export function EventScreen({
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       without={without}
+      behind={top.behind}
+      besideBack={at === 'overview' ? top.besideBack : undefined}
       toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
@@ -963,6 +985,72 @@ export function EventScreen({
     </EventFrame>
   );
 }
+
+/** ‹ names the screen the event was opened over and goes back to it; nothing in the app behind it reads Events and opens Events, as today. Refreshing… sits beside ‹ where ‹ stays whole with it, else on its own line above the event's card, ‹ whole (sc-83008, as sc-71821 on Guests). */
+function useBehind(opened: Opened | undefined) {
+  const shell = useShell();
+  const { i18n } = useTranslation();
+  const [spanish, setSpanish] = useState(opened?.spanish ?? false);
+  const words = useMemo(() => i18n.getFixedT(spanish ? 'es' : 'en'), [i18n, spanish]);
+  const [over, setOver] = useState<Opener>(opened?.opener ?? 'events');
+  const [refreshing, setRefreshing] = useState(opened?.refreshing ?? false);
+  const [beside, setBeside] = useState(false);
+  const upright = shell.layout !== 'landscape';
+  const screen = backScreenOf(over, shell.layout);
+  const leave = () => {
+    const way = wayBack(screen, over, opened);
+    if (way === 'events') backToEvents();
+    else if (way === 'back' && router.canGoBack()) router.back();
+    else router.dismissTo((way === 'back' ? BACK_HREF[screen] : way) as Href);
+  };
+  const node = refreshing ? (
+    <RefreshingWords words={words('eventsScreen.refreshing')} testID="event.refreshing" />
+  ) : null;
+
+  return {
+    behind: upright ? { label: words(BACK_KEY[screen]), onPress: leave } : undefined,
+    besideBack: upright && node != null ? { node, onPlaced: setBeside } : undefined,
+    ownLine: upright && node != null && !beside ? <View style={styles.ownLine}>{node}</View> : null,
+    picker: upright ? (
+      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. Nothing is sent.">
+        <Choices
+          heading="Opened over"
+          options={OPENERS.map((key) => ({ key, label: openerWords(key, shell.layout) }))}
+          chosen={over}
+          onChoose={setOver}
+          id="opener"
+          prefix="event.behind"
+        />
+        <Choices
+          heading="Refreshing…"
+          options={ON_OFF}
+          chosen={refreshing ? 'on' : 'off'}
+          onChoose={(key) => setRefreshing(key === 'on')}
+          id="refreshing"
+          prefix="event.behind"
+        />
+        <Choices
+          heading="Language"
+          options={LANGUAGES}
+          chosen={spanish ? 'es' : 'en'}
+          onChoose={(key) => setSpanish(key === 'es')}
+          id="language"
+          prefix="event.behind"
+        />
+      </DemoOnly>
+    ) : null,
+  };
+}
+
+const LANGUAGES = [
+  { key: 'en', label: 'English' },
+  { key: 'es', label: 'Spanish' },
+] as const;
+
+const ON_OFF = [
+  { key: 'off', label: 'Off' },
+  { key: 'on', label: 'On' },
+] as const;
 
 function Details({
   shown,
@@ -1147,6 +1235,7 @@ const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean 
 
 const styles = StyleSheet.create({
   headed: { gap: 18 },
+  ownLine: { marginBottom: tokens.spaceMd },
   dashed: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceLg,

@@ -768,7 +768,8 @@ function HostsEdit(edit: EditProps) {
   const names = hosts.map((host) => host.name);
   const problems = hostProblems(names);
   const kept = keepsLastHost(event, hosts.length);
-  const changed = names.join('\n') !== event.hosts.join('\n');
+  const changed =
+    names.length !== event.hosts.length || names.some((name, at) => name !== event.hosts[at]);
 
   useReadOut(said);
 
