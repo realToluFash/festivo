@@ -1,0 +1,20 @@
+# sc-31370: the app demo's Messages (B), side, one screenshot per state.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: first, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: loading, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: inUse, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: conversation, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: replyArrived, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: answered, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: channelReply, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: to, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: write, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: preview, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: check, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: countdown, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelled, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sending, LAYOUT: side } }
+- setOrientation: PORTRAIT

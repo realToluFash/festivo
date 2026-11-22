@@ -1,0 +1,11 @@
+# sc-31370: the countdown on the app demo's Messages (B), reached from a loaded screen so it is shot inside its ten seconds. Pass ORIENT.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=write
+- waitForAnimationToEnd:
+    timeout: 6000
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=countdown
+- takeScreenshot: messages-${LAYOUT}-countdown-demo
+- setOrientation: PORTRAIT
