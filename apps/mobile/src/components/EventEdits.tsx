@@ -119,7 +119,7 @@ export function EditShell({
   const { t } = useTranslation();
   const [question, setQuestion] = useState<'discard' | 'latest' | null>(asking);
   const gap = useEditGap();
-  const leaves = useLeaveAsk(open && changed, () => setQuestion('discard'), onClose);
+  const leaves = useLeaveAsk(open && changed && !busy, () => setQuestion('discard'), onClose);
   const discard: AskProps | null =
     question === 'discard'
       ? {

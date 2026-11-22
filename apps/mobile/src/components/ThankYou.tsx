@@ -205,7 +205,7 @@ export function ThankYouScreen({
     setDiscarding(false);
     onClose();
   };
-  const leaves = useLeaveAsk(open && changed, () => setDiscarding(true), close);
+  const leaves = useLeaveAsk(open && changed && !busy, () => setDiscarding(true), close);
   const discard: AskProps | null = discarding
     ? {
         title: t('thankYou.discardTitle'),

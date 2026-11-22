@@ -277,7 +277,7 @@ export function DetailsScreen({
   const [discarding, setDiscarding] = useState(false);
   const [changes, setChanges] = useState(() => changeCount(saved, picked, given));
   const [refused, setRefused] = useState<{ field: Typed } | null>(null);
-  const leaves = useLeaveAsk(open && changes > 0, () => setDiscarding(true), onClose);
+  const leaves = useLeaveAsk(open && changes > 0 && !saving, () => setDiscarding(true), onClose);
   const nameRef = useRef<TextInputInstance>(null);
   const contactRef = useRef<TextInputInstance>(null);
   const rowRefs = useRef<Partial<Record<Picked, ViewInstance | null>>>({});

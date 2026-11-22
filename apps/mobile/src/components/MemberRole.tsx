@@ -63,7 +63,7 @@ export function RoleScreen({
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== current && role != null;
   const leaves = useLeaveAsk(
-    open && changed,
+    open && changed && !busy,
     () => {
       setProving(null);
       setDiscarding(true);

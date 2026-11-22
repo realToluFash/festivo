@@ -112,7 +112,7 @@ export function GuestForm({
   const picker = useRef<ViewInstance>(null);
   const companionFields = useRef(new Map<number, TextInputInstance>());
   const changed = JSON.stringify(values) !== JSON.stringify(first);
-  const leaves = useLeaveAsk(open && changed, () => setAsk('discard'), onClose);
+  const leaves = useLeaveAsk(open && changed && !sending, () => setAsk('discard'), onClose);
   const chose = editing?.guest.chosenLanguage ?? null;
   const count = values.companions.length;
 
