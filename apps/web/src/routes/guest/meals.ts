@@ -144,6 +144,43 @@ export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
   return [...new Set([...base, ...options.flatMap((one) => one.allergens)])];
 }
 
+/** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. */
+export function cardParts(
+  dish: MealDish,
+  plate: Plate | null,
+): { way: string | null; name: string; allergens: readonly string[] | null }[] | null {
+  if (plate?.kind !== 'chosen' || plate.dish !== dish.id) return null;
+  const way =
+    dish.variants.length >= 2 ? dish.variants.find((one) => one.id === plate.variant) : undefined;
+  const head =
+    way == null
+      ? {
+          way: null,
+          name: dish.name,
+          allergens:
+            dish.variants.length === 1 ? (dish.variants[0]?.allergens ?? null) : dish.allergens,
+        }
+      : { way: way.name, name: dish.name, allergens: way.allergens };
+
+  return [
+    head,
+    ...dish.choices.flatMap((choice) =>
+      choice.options
+        .filter((one) => (plate.options[choice.id] ?? []).includes(one.id))
+        .map((one) => ({ way: null, name: one.name, allergens: one.allergens })),
+    ),
+  ];
+}
+
+/** Every part's allergens together; not stated when any part never stated them. */
+export function partsAllergens(
+  parts: readonly { allergens: readonly string[] | null }[],
+): string[] | null {
+  if (parts.some((one) => one.allergens == null)) return null;
+
+  return [...new Set(parts.flatMap((one) => one.allergens ?? []))];
+}
+
 export function markOf(
   course: MealCourse,
   plate: Plate | undefined,

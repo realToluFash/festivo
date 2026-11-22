@@ -23,7 +23,9 @@ import {
   oneCloseDay,
   plateDish,
   against,
+  cardParts,
   changeFocus,
+  partsAllergens,
 } from './meals.ts';
 import '../../components/SettingsParts.css';
 import './meals.css';
@@ -238,6 +240,7 @@ export function MealScreen({
     options: {},
   };
   const choice = step.kind === 'choice' ? step.choice : null;
+  const way = dish?.variants.find((one) => one.id === chosen?.variant) ?? null;
 
   const dishes =
     step.kind === 'dish'
@@ -248,6 +251,7 @@ export function MealScreen({
           diets: one.diets,
           contains: dishContains(one),
           ways: one.variants.length >= 2,
+          card: cardParts(one, plate),
           reason: reasonOf(dishRuled(one, allergies), eater, t),
           on: chosen?.dish === one.id,
           pick: () =>
@@ -339,6 +343,9 @@ export function MealScreen({
         <div className="ms-dish">
           <p className="ms-option-name">{dish.name}</p>
           {dish.description != null && <p className="ms-quiet">{dish.description}</p>}
+          <p>
+            <ContainsLine allergens={dishContains(dish)} />
+          </p>
         </div>
       )}
       <fieldset className="ms-set" aria-describedby={describedBy}>
@@ -357,7 +364,11 @@ export function MealScreen({
             <span className="gk-text">{t('guestMeal.pickExactly', { count: choice.pick })}</span>
           )}
           {choice != null && (dish?.variants.length ?? 0) >= 2 && (
-            <span className="gk-text is-quiet">{t('guestMeal.sameForEvery')}</span>
+            <span className="gk-text is-quiet">
+              {way == null
+                ? t('guestMeal.sameForEvery')
+                : t('guestMeal.sameForEither', { dish: dish?.name ?? '', way: lower(way.name) })}
+            </span>
           )}
         </legend>
         {other != null && (
@@ -414,7 +425,27 @@ export function MealScreen({
             >
               {one.desc != null && <span className="ms-quiet">{one.desc}</span>}
               <Tags diets={one.diets} />
-              {one.ways ? (
+              {one.card != null ? (
+                <>
+                  <ContainsLine allergens={partsAllergens(one.card)} />
+                  {one.card.map((part) => (
+                    <span key={`${part.name}|${part.way ?? ''}`} className="ms-quiet">
+                      {t('guestMeal.cardSource', {
+                        name:
+                          part.way == null
+                            ? part.name
+                            : t('guestMeal.dishWith', { dish: part.name, way: lower(part.way) }),
+                        list:
+                          part.allergens == null
+                            ? lower(t('menuLibrary.notStated'))
+                            : part.allergens.length === 0
+                              ? t('guestMeal.noneOf14')
+                              : allergenList(part.allergens, t),
+                      })}
+                    </span>
+                  ))}
+                </>
+              ) : one.ways ? (
                 <span className="ms-quiet">{t('guestMeal.pickWayNext')}</span>
               ) : (
                 <ContainsLine allergens={one.contains} />

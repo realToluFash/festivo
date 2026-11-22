@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   against,
+  cardParts,
   dishRuled,
   markOf,
   nothingSafe,
+  partsAllergens,
   picksOf,
   refusalOf,
   samePlate,
@@ -135,5 +137,34 @@ describe('what Send sends', () => {
       { person: 'g1', course: 'main', answer: 'chosen', dish: 'rice', variant: null, options: [] },
     ]);
     expect(samePlate(plates['me|main'], { ...plates['me|main'], kind: 'chosen' })).toBe(true);
+  });
+});
+
+describe('the dish card once picked', () => {
+  const rice = dish({ allergens: [], variants: WAYS, choices: [SIDE] });
+
+  it('lists the way and each picked option with its own allergens, and adds them up', () => {
+    const parts = cardParts(rice, {
+      kind: 'chosen',
+      dish: 'rice',
+      variant: 'fish',
+      options: { side: ['beans'] },
+    });
+    expect(parts).toEqual([
+      { way: 'Fish', name: 'Jollof rice', allergens: ['fish'] },
+      { way: null, name: 'Beans', allergens: ['milk'] },
+    ]);
+    expect(partsAllergens(parts ?? [])).toEqual(['fish', 'milk']);
+  });
+
+  it('shows the dish alone before its way, and nothing for another dish or chef’s choice', () => {
+    const plate = { kind: 'chosen', dish: 'rice', variant: null, options: {} } as const;
+    expect(cardParts(rice, plate)).toEqual([{ way: null, name: 'Jollof rice', allergens: [] }]);
+    expect(cardParts(dish({ id: 'coconut' }), plate)).toBeNull();
+    expect(cardParts(rice, { ...plate, kind: 'chefsChoice' })).toBeNull();
+  });
+
+  it('reads not stated when any part never stated its allergens', () => {
+    expect(partsAllergens([{ allergens: [] }, { allergens: null }])).toBeNull();
   });
 });
