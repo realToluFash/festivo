@@ -408,6 +408,13 @@ class LoginDoor:
         return said.get("status") or 502, said.get("location"), (said.get("body") or "").encode()
 
 
+def named_here(host):
+    """Whether a `Host` names this machine's loopback, which a page that rebound its own
+    name to 127.0.0.1 cannot send."""
+    name = urllib.parse.urlsplit(f"//{host or ''}").hostname
+    return name in ("localhost", "127.0.0.1", "::1")
+
+
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch, config=dict,
           desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge):
@@ -531,10 +538,13 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             origin = self.headers.get("Origin")
             if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):
                 return self.send_error(403)
+            near = remote.loopback(self.client_address[0])
+            if near and not named_here(self.headers.get("Host")):
+                return self.send_error(403)
             asked = self.asked(ASKED_MOST_BYTES)
             if isinstance(asked, int):
                 return self.send_error(asked)
-            status, said = door.act(path, asked, remote.loopback(self.client_address[0]))
+            status, said = door.act(path, asked, near)
             self.answer(status, json.dumps(said).encode())
             return None
 

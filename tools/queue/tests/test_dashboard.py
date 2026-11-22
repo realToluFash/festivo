@@ -538,14 +538,14 @@ class Serve(unittest.TestCase):
 class ServeElsewhere(unittest.TestCase):
     """As another machine on the network sees it: every client is treated as remote."""
 
-    def start(self, **kwargs):
+    def start(self, near=False, **kwargs):
         said, ready = [], threading.Event()
 
         def say(line):
             said.append(line)
             ready.set()
 
-        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch = mock.patch.object(remote, "loopback", return_value=near)
         patch.start()
         self.addCleanup(patch.stop)
         threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: {"m": 1}, 0),
@@ -588,6 +588,20 @@ class ServeElsewhere(unittest.TestCase):
         answer = self.get(said, "/login/state?id=L1", bearer)
         self.assertEqual((answer.status, json.loads(answer.read())["id"]), (200, "L1"))
         self.assertEqual(self.get(said, "/login/state?id=gone", bearer).status, 404)
+
+    def test_a_login_step_from_this_machine_must_name_loopback_as_its_host(self):
+        desk = FakeDesk()
+        said = self.start(near=True, desk=desk, opener=lambda *a: False)
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        body = json.dumps({"folder": "~/.claude-qa"})
+        rebound = {"Content-Type": "application/json", "Host": f"evil.example:{port}",
+                   "Origin": f"http://evil.example:{port}"}
+        self.assertEqual(self.post_login(said, "/login/start", body, rebound)[0], 403)
+        self.assertEqual(desk.steps, [])
+        for name in ("localhost", "127.0.0.1", "[::1]"):
+            here = {"Content-Type": "application/json", "Host": f"{name}:{port}",
+                    "Origin": f"http://{name}:{port}"}
+            self.assertEqual(self.post_login(said, "/login/start", body, here)[0], 200)
 
     def test_without_a_token_it_will_not_listen_beyond_this_machine(self):
         said = []

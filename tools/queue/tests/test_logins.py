@@ -187,6 +187,12 @@ class Logins(unittest.TestCase):
         self.addCleanup(self.folder.cleanup)
         self.started, self.answers = [], [said()]
         self.clock = [0.0]
+        self.timers = []
+
+    def timer(self, seconds, act, args):
+        found = mock.Mock(seconds=seconds, fire=lambda: act(*args))
+        self.timers.append(found)
+        return found
 
     def desk(self, process=None, direct=DIRECT.format(port=54321)):
         def popen(argv, env, **kwargs):
@@ -200,7 +206,8 @@ class Logins(unittest.TestCase):
 
         config = {"roles": {"qa": {"claudeConfigDir": str(self.root / "qa")}}}
         return logins.Desk(lambda: config, popen=popen, run=run, clock=lambda: self.clock[0],
-                           wait=lambda s: self.clock.__setitem__(0, self.clock[0] + s))
+                           wait=lambda s: self.clock.__setitem__(0, self.clock[0] + s),
+                           timer=self.timer)
 
     def test_only_a_folder_a_role_here_runs_under_can_be_logged_in(self):
         desk = self.desk()
@@ -234,6 +241,24 @@ class Logins(unittest.TestCase):
         self.assertTrue(desk.paste(login, "  abc#def \n"))
         self.assertEqual(process.stdin.getvalue(), b"abc#def\n")
         self.assertEqual(login.said(), "That doesn't look like the full code.")
+
+    def test_a_code_claude_left_before_reading_ends_the_paste_not_the_request(self):
+        process = FakeProcess()
+        process.stdin = mock.Mock(write=mock.Mock(side_effect=BrokenPipeError()))
+        desk = self.desk(process)
+        self.assertFalse(desk.paste(desk.start(self.root / "qa"), "abc"))
+
+    def test_a_login_nobody_follows_ends_on_its_own_timer(self):
+        process = FakeProcess()
+        login = self.desk(process).start(self.root / "qa")
+        (ending,) = self.timers
+        self.assertEqual(ending.seconds, logins.OPEN_SECONDS)
+        self.assertTrue(ending.daemon)
+        ending.start.assert_called_once_with()
+        ending.fire()
+        self.assertEqual(login.ended, {"state": "failed", "message": "nobody signed in in time"})
+        self.assertTrue(process.terminated or process.returncode is not None)
+        self.assertFalse(login.workdir.exists())
 
     def test_a_finished_login_is_read_again_and_a_different_account_is_named(self):
         process = FakeProcess()

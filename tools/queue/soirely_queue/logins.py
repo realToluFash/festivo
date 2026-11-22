@@ -218,8 +218,9 @@ class Desk:
     """The logins this machine holds, by id: at most one per folder."""
 
     def __init__(self, config, popen=subprocess.Popen, run=subprocess.run,
-                 clock=time.monotonic, wait=time.sleep):
+                 clock=time.monotonic, wait=time.sleep, timer=threading.Timer):
         self.config, self.popen, self.run, self.clock, self.wait = config, popen, run, clock, wait
+        self.timer = timer
         self.held, self.lock = {}, threading.Lock()
 
     def folder(self, asked):
@@ -248,6 +249,9 @@ class Desk:
         threading.Thread(target=login.keep_reading, daemon=True).start()
         with self.lock:
             self.held[login.id] = login
+        ending = self.timer(OPEN_SECONDS, self.expire, [login])
+        ending.daemon = True
+        ending.start()
         deadline = self.clock() + LINK_SECONDS
         while self.clock() < deadline and process.poll() is None \
                 and not (login.link() and login.direct()):
@@ -287,8 +291,11 @@ class Desk:
         """Hands Claude the code its sign-in page showed."""
         if login.ended or login.process.poll() is not None:
             return False
-        login.process.stdin.write((code.strip() + "\n").encode())
-        login.process.stdin.flush()
+        try:
+            login.process.stdin.write((code.strip() + "\n").encode())
+            login.process.stdin.flush()
+        except OSError:
+            return False
         return True
 
     def callback(self, login, query):
@@ -311,6 +318,9 @@ class Desk:
     def cancel(self, login):
         self.end(login, {"state": "cancelled", "message": "cancelled"})
 
+    def expire(self, login):
+        self.end(login, {"state": "failed", "message": "nobody signed in in time"})
+
     def end(self, login, how):
         if login.ended:
             return
@@ -328,7 +338,7 @@ class Desk:
             held = list(self.held.values())
         for login in held:
             if not login.ended and now - login.started >= OPEN_SECONDS:
-                self.end(login, {"state": "failed", "message": "nobody signed in in time"})
+                self.expire(login)
             elif login.ended and now - login.started >= OPEN_SECONDS + KEPT_SECONDS:
                 with self.lock:
                     self.held.pop(login.id, None)
