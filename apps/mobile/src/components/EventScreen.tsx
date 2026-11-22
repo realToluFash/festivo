@@ -197,11 +197,14 @@ export function EventScreen({
     outside != null,
     () => moveScreenReaderFocus(cardName.current ?? title.current),
     area === 'overview',
-    (into) => {
+    (into, landed) => {
       const name = signedIn.organisations.find(({ id }) => id === into)?.name;
 
       if (name == null) return;
-      switchOrganisation(into, () => setMoved({ into, words: t('switcher.switched', { name }) }));
+      switchOrganisation(into, () => {
+        landed();
+        setMoved({ into, words: t('switcher.switched', { name }) });
+      });
     },
     signedIn.organisations,
   );
@@ -721,7 +724,7 @@ function useOpened(
   outside: boolean,
   focusTitle: () => void,
   overview: boolean,
-  moveInto: (organisationId: string) => void,
+  moveInto: (organisationId: string, landed: () => void) => void,
   memberships: readonly Membership[],
 ): Opened & {
   retry: () => void;
@@ -776,8 +779,11 @@ function useOpened(
           setHeld({ for: key, opened: next.opened });
           return;
         }
-        setHeld({ for: `${next.moves}/${eventId}`, opened: { kind: 'loaded', event } });
-        move(next.moves);
+        // Until the move lands the page stays in this organisation, so Stay on an unsaved-changes ask leaves it as it would be here.
+        setHeld({ for: key, opened: openedOf({ event }, holder) });
+        move(next.moves, () =>
+          setHeld({ for: `${next.moves}/${eventId}`, opened: { kind: 'loaded', event } }),
+        );
       },
       (error: unknown) =>
         live &&
