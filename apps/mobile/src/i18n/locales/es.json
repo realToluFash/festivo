@@ -3311,6 +3311,7 @@
     "countWord_one": "llegada",
     "countWord_other": "llegadas",
     "countWord_many": "llegadas",
+    "todayAt": "Today, {{time}}",
     "opensAt": "Apertura del registro de llegada: {{time}}",
     "searchWorksNow": "Ya puede buscar. Las llegadas y las personas sin invitación se podrán registrar desde la apertura, {{time}}.",
     "openedAt": "Apertura del registro de llegada: {{time}}. Puede registrar la llegada de cualquier persona de la lista, responda lo que responda.",

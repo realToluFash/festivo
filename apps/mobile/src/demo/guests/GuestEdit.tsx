@@ -39,7 +39,8 @@ import { GreetAsField } from './GuestGreetAs.tsx';
 import { Quote } from './PasteReply.tsx';
 import { PW } from './PasteReplyModel.ts';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
-import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
+import { Amber, AmberChoices, AmberLine } from '../../components/Amber.tsx';
+import { DoneLine } from './GuestsParts.tsx';
 import {
   type Companion,
   type GuestLanguage,
@@ -433,7 +434,7 @@ export function EditGuest({
             yours={joinPhone(country, number) ?? W.none}
           />
           <AmberLine text={W.conflictLine} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.useTheirs,
               onPress: () => {
@@ -454,7 +455,7 @@ export function EditGuest({
       {same && (
         <Amber title={say.sameName(name.trim())} testID="guest.edit.same">
           <AmberLine text={W.sameName} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.saveAnyway,
               onPress: () => {
@@ -873,7 +874,7 @@ export function RecordReply({
           testID="guest.record.replace"
         >
           <AmberLine text={W.replaceTheirsLine} />
-          <Choices
+          <AmberChoices
             primary
             first={{
               label: W.replaceTheirs,
