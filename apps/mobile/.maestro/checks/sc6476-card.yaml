@@ -1,0 +1,61 @@
+# sc-6476: a Finished event's thank-you card on the app, through Add, Save, Edit, over the limit, discard and remove. Needs ${METRO_URL}, ${EV_NONE}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_NONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: finished
+- tapOn:
+    id: 'event.thankYou.add'
+- waitForAnimationToEnd
+- takeScreenshot: thankYouAdding
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: 'Thank you for dancing with us and for every kind word. We felt so loved, and we will remember this day for a long time.'
+- hideKeyboard
+- takeScreenshot: thankYouTyped
+- tapOn:
+    id: 'event.thankYou.save'
+- waitForAnimationToEnd
+- takeScreenshot: thankYouLine
+- assertVisible:
+    id: 'event.thankYou.line'
+- tapOn:
+    id: 'event.thankYou.edit'
+- waitForAnimationToEnd
+- takeScreenshot: thankYouEditing
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: ' Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.'
+- hideKeyboard
+- takeScreenshot: thankYouOver
+- tapOn:
+    id: 'event.thankYou.save'
+- waitForAnimationToEnd
+- takeScreenshot: thankYouOverPressed
+- tapOn:
+    id: 'event.thankYou.cancel'
+- waitForAnimationToEnd
+- takeScreenshot: discardAsk
+- tapOn:
+    id: 'event.thankYou.discard'
+- waitForAnimationToEnd
+- takeScreenshot: afterDiscard
+- tapOn:
+    id: 'event.thankYou.edit'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.thankYou.field'
+- eraseText: 400
+- tapOn:
+    id: 'event.thankYou.save'
+- waitForAnimationToEnd
+- takeScreenshot: removed
