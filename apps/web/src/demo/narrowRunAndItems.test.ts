@@ -21,8 +21,18 @@ describe('the run of show and Menu’s Items at 400% zoom, 320 CSS px (sc-32279)
   it('gives an item’s field the row, its buttons under it', () => {
     expect(cssRule('.mn-item-row', MENU)).toContain('flex-wrap: wrap;');
     expect(cssRule('.mn-item-main', MENU)).toContain(
-      'flex-basis: calc(100% - 20px - var(--spaceSm));',
+      'flex-basis: calc(100% - var(--mnItemN) - var(--spaceSm));',
     );
-    expect(cssRule('.mn-choice-item-name', MENU)).toContain('overflow-wrap: normal;');
+  });
+
+  it('lets a choice’s name shrink and wrap between words beside its glyph, its tag under it', () => {
+    const name = cssRule('.mn-choice-item-name', MENU);
+
+    expect(name).toContain('flex: 1 1 calc(100% - var(--mnChoiceGlyph) - var(--spaceSm));');
+    expect(name).toContain('min-width: 0;');
+    expect(name).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.mn-choice-item-name + *', MENU)).toContain(
+      'margin-inline-start: calc(var(--mnChoiceGlyph) + var(--spaceSm));',
+    );
   });
 });
