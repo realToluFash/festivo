@@ -3629,7 +3629,7 @@
       "changedOn": "Modification : {{date}}",
       "needs": "Notes sur l’alimentation mises à jour",
       "flagged": "Lien peut-être reçu par erreur",
-      "failed": "We could not load what changed."
+      "failed": "Impossible de charger les changements."
     }
   },
   "guestNumbers": {
