@@ -1,10 +1,12 @@
-# Stands in for the SMS provider.
+# Stands in for the providers the stacks would otherwise call: SMS, WhatsApp, DNS, push and addresses.
 #
-# Returns a provider-shaped 201 so the API's client parses a real response
-# rather than a simplified one that hides a mapping bug until production.
+# Each answers in its provider's own shape, so the API's client parses a real response rather
+# than a simplified one that hides a mapping bug until production. Where two mocks match a
+# request, the one further down the file answers.
 #
 # Reload after editing:  docker compose up smocker-init
 
+# The SMS provider: a 201 for every message.
 - request:
     method: POST
     path:
@@ -108,3 +110,110 @@
       Content-Type: [application/json]
     body: >
       {"data": [{"status": "ok", "id": "00000000-0000-0000-0000-000000000000"}]}
+
+# Stands in for OpenStreetMap's Nominatim (sc-80880), at ADDRESS_ENDPOINT=http://smocker:8080/nominatim,
+# answering in its jsonv2 shape: osm_id a number, lat and lon strings. A query or an id it has no answer
+# for gets an empty list, so the field offers nothing and the address is saved as typed. To offer more,
+# add a /nominatim/search mock matching `q` below these, and a /nominatim/lookup one for each `osm_ids`.
+- request:
+    method: GET
+    path: /nominatim/search
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: '[]'
+
+- request:
+    method: GET
+    path: /nominatim/lookup
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: '[]'
+
+# sc-15545: six answers, two pairs of which read the same, so the field lists four.
+- request:
+    method: GET
+    path: /nominatim/search
+    query_params:
+      q:
+        matcher: ShouldMatch
+        value: '(?i)pra[cç]a do com[eé]rcio'
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      [
+        {"osm_type": "way", "osm_id": 25414350, "lat": "38.7075287", "lon": "-9.1364438",
+         "display_name": "Praça do Comércio, Baixa, Santa Maria Maior, Lisboa, 1100-148, Portugal"},
+        {"osm_type": "way", "osm_id": 25414351, "lat": "38.7076120", "lon": "-9.1362210",
+         "display_name": "Praça do Comércio, Baixa, Santa Maria Maior, Lisboa, 1100-148, Portugal"},
+        {"osm_type": "node", "osm_id": 4511023977, "lat": "38.7079102", "lon": "-9.1366730",
+         "display_name": "Praça do Comércio, Rua Augusta, Santa Maria Maior, Lisboa, 1100-053, Portugal"},
+        {"osm_type": "node", "osm_id": 2617833104, "lat": "38.7072015", "lon": "-9.1359800",
+         "display_name": "Terminal Fluvial do Terreiro do Paço, Praça do Comércio, Lisboa, 1100-148, Portugal"},
+        {"osm_type": "node", "osm_id": 2617833105, "lat": "38.7072020", "lon": "-9.1359810",
+         "display_name": "Terminal Fluvial do Terreiro do Paço, Praça do Comércio, Lisboa, 1100-148, Portugal"},
+        {"osm_type": "node", "osm_id": 5120934871, "lat": "38.7081455", "lon": "-9.1371009",
+         "display_name": "Arco da Rua Augusta, Praça do Comércio, Lisboa, 1100-053, Portugal"}
+      ]
+
+- request:
+    method: GET
+    path: /nominatim/lookup
+    query_params:
+      osm_ids: W25414350
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      [
+        {"osm_type": "way", "osm_id": 25414350, "lat": "38.7075287", "lon": "-9.1364438",
+         "display_name": "Praça do Comércio, Baixa, Santa Maria Maior, Lisboa, 1100-148, Portugal",
+         "address": {"road": "Praça do Comércio", "neighbourhood": "Baixa", "suburb": "Santa Maria Maior",
+                     "city": "Lisboa", "state": "Lisboa", "postcode": "1100-148", "country": "Portugal",
+                     "country_code": "pt"}}
+      ]
+
+# sc-48600: "12 Hox", with the suggestions open under the field.
+- request:
+    method: GET
+    path: /nominatim/search
+    query_params:
+      q:
+        matcher: ShouldMatch
+        value: '(?i)hox'
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      [
+        {"osm_type": "way", "osm_id": 4256181, "lat": "51.5285634", "lon": "-0.0826377",
+         "display_name": "Hoxton Square, Hoxton, London Borough of Hackney, London, N1 6NU, United Kingdom"},
+        {"osm_type": "way", "osm_id": 4256190, "lat": "51.5303118", "lon": "-0.0806554",
+         "display_name": "Hoxton Street, Hoxton, London Borough of Hackney, London, N1 6NB, United Kingdom"},
+        {"osm_type": "way", "osm_id": 4256222, "lat": "51.5277419", "lon": "-0.0849733",
+         "display_name": "Hoxton Market, Hoxton, London Borough of Hackney, London, N1 6HG, United Kingdom"}
+      ]
+
+- request:
+    method: GET
+    path: /nominatim/lookup
+    query_params:
+      osm_ids: W4256181
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      [
+        {"osm_type": "way", "osm_id": 4256181, "lat": "51.5285634", "lon": "-0.0826377",
+         "display_name": "Hoxton Square, Hoxton, London Borough of Hackney, London, N1 6NU, United Kingdom",
+         "address": {"road": "Hoxton Square", "suburb": "Hoxton", "city": "London",
+                     "state": "England", "postcode": "N1 6NU", "country": "United Kingdom", "country_code": "gb"}}
+      ]

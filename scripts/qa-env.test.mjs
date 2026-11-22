@@ -214,6 +214,10 @@ describe('the QA .env', () => {
     expect(values.COMPOSE_PROJECT_NAME).toBe(COMPOSE_PROJECT);
   });
 
+  it('asks the address stand-in, never the public Nominatim server (sc-80880)', () => {
+    expect(values.ADDRESS_ENDPOINT).toBe('http://smocker:8080/nominatim');
+  });
+
   it('moves every port the example publishes', () => {
     const examplePorts = [...example.matchAll(/^([A-Z_]+_PORT)=/gm)].map(([, key]) => key);
 
