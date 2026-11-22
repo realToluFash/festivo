@@ -21,7 +21,8 @@ final readonly class GuestRepliesUnsubscribe
     /** The page the footer link opens, holding the token after the `#`, which no server and no referrer ever sees. */
     public const string PAGE = '/unsubscribe/guest-replies#';
 
-    public const string PATTERN = '[A-Za-z0-9_-]{44}';
+    /** Wider than a token, so a link a mail client cut short still opens the page, which says it does not work. */
+    public const string PATTERN = '[^/]{1,256}';
 
     private const string PURPOSE = 'unsubscribe:guest_replies:';
 

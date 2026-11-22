@@ -3628,7 +3628,8 @@
       "changedAt": "Cambio: {{time}}",
       "changedOn": "Cambio: {{date}}",
       "needs": "Notas sobre alimentación actualizadas",
-      "flagged": "Puede que el enlace haya llegado a otra persona"
+      "flagged": "Puede que el enlace haya llegado a otra persona",
+      "failed": "We could not load what changed."
     }
   },
   "guestNumbers": {

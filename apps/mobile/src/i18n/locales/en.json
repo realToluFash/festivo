@@ -2591,7 +2591,9 @@
       "changedAt": "Changed at {{time}}",
       "changedOn": "Changed {{date}}",
       "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "flagged": "Link may have reached the wrong person",
+      "failed": "We could not load what changed.",
+      "retry": "Try again"
     }
   },
   "guestNumbers": {

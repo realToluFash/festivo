@@ -43,7 +43,7 @@ final readonly class GuestRepliesUnsubscribeController
     #[Route('/api/unsubscribe/guest-replies/{token}', name: 'guest_replies_unsubscribe', requirements: ['token' => GuestRepliesUnsubscribe::PATTERN], methods: ['GET'])]
     public function open(#[SensitiveParameter] string $token): Response
     {
-        return self::private(new RedirectResponse(Str\trim_right($this->webOrigin, '/') . GuestRepliesUnsubscribe::PAGE . $token, Response::HTTP_SEE_OTHER));
+        return self::private(new RedirectResponse(Str\trim_right($this->webOrigin, '/') . GuestRepliesUnsubscribe::PAGE . \rawurlencode($token), Response::HTTP_SEE_OTHER));
     }
 
     #[Route('/api/unsubscribe/guest-replies/{token}', name: 'guest_replies_unsubscribe_post', requirements: ['token' => GuestRepliesUnsubscribe::PATTERN], methods: ['POST'])]
