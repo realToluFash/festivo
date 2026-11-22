@@ -207,12 +207,10 @@ function focused(): { on: string | null; was: Element } | null {
 
 /** The guest's own page in A · The cover card (sc-1526). Opening it records nothing; only an answer sent does (sc-1439). */
 export function Invitation() {
-  const { t } = useTranslation();
   const token = useOutletContext<string>();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [retrying, setRetrying] = useState(false);
-  const wide = useWideWidth();
 
   useEffect(() => {
     let current = true;
@@ -241,57 +239,72 @@ export function Invitation() {
 
   if (load.kind === 'gone') return <InvalidInvitation />;
 
-  if (load.kind === 'unreachable') {
+  if (load.kind === 'unreachable')
     return (
-      <div className="gp-alone-wrap">
-        <div className="gp-alone">
-          <span className="gp-alone-mark" aria-hidden="true">
-            <Glyph name="alert" size={26} />
-          </span>
-          <h1 className="gp-alone-title">{t('session.unreachableTitle')}</h1>
-          <p>{t('session.unreachableBodySignedOut')}</p>
-          <button
-            className="gp-filled is-narrow"
-            type="button"
-            aria-busy={retrying}
-            {...offButton(retrying, { dim: false })}
-            onClick={() => {
-              setRetrying(true);
-              setAttempt((n) => n + 1);
-            }}
-          >
-            {retrying && <span className="gp-spinner" aria-hidden="true" />}
-            {retrying ? t('session.retrying') : t('error.retry')}
-          </button>
-        </div>
-      </div>
+      <PageUnreachable
+        retrying={retrying}
+        onRetry={() => {
+          setRetrying(true);
+          setAttempt((n) => n + 1);
+        }}
+      />
     );
-  }
 
-  if (load.kind === 'loading') {
-    return (
-      <div className="gp-columns" aria-busy="true">
-        <p className="visually-hidden" role="status">
-          {t('pending.loading')}
-        </p>
-        <span className="gp-skel gp-skel-cover gp-left" aria-hidden="true" />
-        <div className="gp-skel-under" aria-hidden="true">
-          <span className="gp-skel is-head" />
-          <span className="gp-skel is-line" />
-          <span className="gp-skel is-short" />
-          {ROWS.map((row) => (
-            <span key={row} className="gp-skel-row">
-              <span className="gp-skel is-dot" />
-              <span className="gp-skel is-bar" />
-            </span>
-          ))}
-        </div>
-        {wide && <span className="gp-skel gp-skel-details gp-left-after" aria-hidden="true" />}
-      </div>
-    );
-  }
+  if (load.kind === 'loading') return <PageLoading />;
 
   return <Card token={token} first={load.page} />;
+}
+
+export function PageUnreachable({ retrying, onRetry }: { retrying: boolean; onRetry: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="gp-alone-wrap">
+      <div className="gp-alone">
+        <span className="gp-alone-mark" aria-hidden="true">
+          <Glyph name="alert" size={26} />
+        </span>
+        <h1 className="gp-alone-title">{t('session.unreachableTitle')}</h1>
+        <p>{t('session.unreachableBodySignedOut')}</p>
+        <button
+          className="gp-filled is-narrow"
+          type="button"
+          aria-busy={retrying}
+          {...offButton(retrying, { dim: false })}
+          onClick={onRetry}
+        >
+          {retrying && <span className="gp-spinner" aria-hidden="true" />}
+          {retrying ? t('session.retrying') : t('error.retry')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function PageLoading() {
+  const { t } = useTranslation();
+  const wide = useWideWidth();
+
+  return (
+    <div className="gp-columns" aria-busy="true">
+      <p className="visually-hidden" role="status">
+        {t('pending.loading')}
+      </p>
+      <span className="gp-skel gp-skel-cover gp-left" aria-hidden="true" />
+      <div className="gp-skel-under" aria-hidden="true">
+        <span className="gp-skel is-head" />
+        <span className="gp-skel is-line" />
+        <span className="gp-skel is-short" />
+        {ROWS.map((row) => (
+          <span key={row} className="gp-skel-row">
+            <span className="gp-skel is-dot" />
+            <span className="gp-skel is-bar" />
+          </span>
+        ))}
+      </div>
+      {wide && <span className="gp-skel gp-skel-details gp-left-after" aria-hidden="true" />}
+    </div>
+  );
 }
 
 /** From 64rem the cover and its details sit left, placed by their measured heights, so the page reads cover, answer, details, foot at every width. */
@@ -343,16 +356,40 @@ function savedMeal(page: GuestPage): Meal {
   };
 }
 
-function Card({ token, first }: { token: string; first: GuestPage }) {
+const PREVIEW_START: View = {
+  kind: 'meal',
+  from: 'answer',
+  to: 'flow',
+  eater: 0,
+  course: 0,
+  step: 0,
+};
+
+/** In Preview as guest (sc-3907) the card opens on the first meal screen, sends nothing, and either Close preview leaves it. */
+export function Card({
+  token,
+  first,
+  preview = null,
+}: {
+  token: string;
+  first: GuestPage;
+  preview?: { onClose: () => void } | null;
+}) {
   const { t } = useTranslation();
   const [page, setPage] = useState(first);
-  const [view, setView] = useState<View>(() => opening(first, token));
+  const [view, setView] = useState<View>(() =>
+    preview == null ? opening(first, token) : PREVIEW_START,
+  );
   const [party, setParty] = useState<Party>(() => partyOf(first));
-  const [kitchen, setKitchen] = useState<Kitchen | null>(null);
+  const [kitchen, setKitchen] = useState<Kitchen | null>(() =>
+    preview == null ? null : kitchenOf(first, partyOf(first), null),
+  );
   const [kitchenSaved, setKitchenSaved] = useState(false);
   const [meal, setMeal] = useState<Meal>(() => savedMeal(first));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
-  const [want, setWant] = useState<{ on: string } | null>(null);
+  const [want, setWant] = useState<{ on: string } | null>(() =>
+    preview == null ? null : { on: 'mealHead' },
+  );
   const [gone, setGone] = useState(false);
   const columns = useColumns();
   const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
@@ -412,13 +449,17 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   }
 
   useEffect(() => {
+    if (preview != null) return undefined;
     const timer = setInterval(askAgain, REFRESH_MS);
 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- askAgain reads only the token, setters and refs
   }, [token]);
 
-  const topics = useMemo(() => [realtimeTopic('EventGuestPages', page.event.id)], [page.event.id]);
+  const topics = useMemo(
+    () => (preview == null ? [realtimeTopic('EventGuestPages', page.event.id)] : []),
+    [page.event.id, preview],
+  );
 
   useHubTopics(topics, () => api.guestPageSubscription(token), askAgain, askAgain);
 
@@ -519,6 +560,10 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
 
   function sendComing(): void {
     if (view.kind !== 'check' || view.busy) return;
+    if (preview != null) {
+      preview.onClose();
+      return;
+    }
     const marked = markedOpen(meal.plates, eaters, courses, allergies);
     if (marked[0] != null) {
       setMeal((was) => ({ ...was, told: 'marked' }));
@@ -961,7 +1006,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
   return (
     <div ref={columns} className="gp-columns">
       <PhaseNotice phase={page.phase} />
-      <LanguageUnsaved token={token} />
+      {preview == null && <LanguageUnsaved token={token} />}
       <Cover page={page} tagged={tagged && !ended(page.phase)} />
       <div className="gp-under">
         {tell.kind === 'card' && (
@@ -970,6 +1015,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
             page={page}
             party={party}
             kitchen={kitchen}
+            preview={preview != null}
             onCard={card}
             onKitchenBack={kitchenBack}
             onKitchenNext={kitchenNext}
@@ -1135,6 +1181,7 @@ function Shown({
   page,
   party,
   kitchen,
+  preview,
   onCard,
   onKitchenBack,
   onKitchenNext,
@@ -1161,6 +1208,7 @@ function Shown({
   page: GuestPage;
   party: Party;
   kitchen: Kitchen | null;
+  preview: boolean;
   onCard: (key: string, change: (one: Person) => Partial<Person>, focus?: string) => void;
   onKitchenBack: () => void;
   onKitchenNext: () => void;
@@ -1232,7 +1280,7 @@ function Shown({
           hostCount={Math.max(page.event.hosts.length, 1)}
           timeZone={page.event.timeZone}
           onChange={onCard}
-          onBack={onKitchenBack}
+          onBack={preview && view.fromCheck !== true ? null : onKitchenBack}
           onNext={onKitchenNext}
           onSkip={onKitchenSkip}
         />
@@ -1274,6 +1322,7 @@ function Shown({
             onParty={onPartyChange}
             onKitchen={onCheckKitchen}
             onSend={onSend}
+            preview={preview}
           >
             {checkMeals}
           </KitchenCheck>

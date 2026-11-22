@@ -403,3 +403,22 @@
   font: 700 12.5px/1.3 var(--fontFamily);
   white-space: nowrap;
 }
+
+.gp-preview {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceXs);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--colorAttentionBorder);
+  background: var(--colorAttentionTint);
+  color: var(--colorAttentionText);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.gp-preview-close {
+  margin-inline-start: var(--spaceS);
+}

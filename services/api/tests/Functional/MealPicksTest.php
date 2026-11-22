@@ -21,7 +21,9 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\NeedKind;
+use App\Enum\Permission;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
@@ -351,6 +353,38 @@ final class MealPicksTest extends ApiTestCase
         $this->open($this->coming([], []));
 
         self::assertSame([], $this->courses());
+    }
+
+    #[Test]
+    public function previewAsGuestServesTheMenuAsAGuestIsOfferedItForTheMemberAloneAndReadsNoGuest(): void
+    {
+        $token = $this->coming(['companions' => [['fullName' => 'Chidi Okonkwo-Williams']]], ['milk']);
+        $this->meals($token, [['person' => $this->guestId(), 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)]]);
+        $stored = Iter\count(self::em()->getRepository(MealAnswer::class)->findAll());
+
+        $this->as('GET', $this->menu('/preview'));
+        $page = $this->last();
+
+        self::assertSame(200, $this->statusCode(), Json\encode($page));
+        $guest = Type\shape(['fullName' => Type\string(), 'reply' => Type\null(), 'companions' => Type\vec(Type\mixed()), 'places' => Type\int(), 'needs' => Type\dict(Type\string(), Type\mixed())], true)->coerce($page['guest'] ?? null);
+        self::assertSame('Person', $guest['fullName']);
+        self::assertSame([[], 0], [$guest['companions'], $guest['places']]);
+        self::assertSame([], $guest['needs']['allergies'] ?? null);
+        $meals = Type\shape(['answers' => Type\vec(Type\mixed()), 'courses' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($page['meals'] ?? null);
+        self::assertSame([], $meals['answers']);
+        self::assertSame(['Main'], Vec\map($meals['courses'], static fn (array $course): string => $course['name']));
+        self::assertStringNotContainsString('Chidi', Json\encode($page));
+        self::assertSame($stored, Iter\count(self::em()->getRepository(MealAnswer::class)->findAll()));
+    }
+
+    #[Test]
+    public function previewAsGuestIsRefusedWithoutMenuRead(): void
+    {
+        self::service(WithholdingMembershipDirectory::class)->withhold(Permission::MenuRead);
+
+        $this->as('GET', $this->menu('/preview'));
+
+        self::assertSame(403, $this->statusCode());
     }
 
     private function id(MenuCourse|MenuDish $row): string

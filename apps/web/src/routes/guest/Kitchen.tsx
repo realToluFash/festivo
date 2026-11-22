@@ -372,7 +372,8 @@ export function KitchenStep({
   hostCount: number;
   timeZone: string;
   onChange: Change;
-  onBack: () => void;
+  /** Null in Preview as guest, whose note opens from the first meal screen with nothing before it. */
+  onBack: (() => void) | null;
   onNext: () => void;
   onSkip: () => void;
   /** After Reply by (sc-3780): the step on its own, whose Save sends only the needs. */
@@ -383,14 +384,16 @@ export function KitchenStep({
 
   return (
     <section className="gk" aria-labelledby="gk-h" aria-busy={busy}>
-      <TextAction
-        ink
-        off={busy}
-        icon={<Glyph name="back" size={18} weight={2.2} />}
-        onClick={onBack}
-      >
-        {t('guest.back')}
-      </TextAction>
+      {onBack != null && (
+        <TextAction
+          ink
+          off={busy}
+          icon={<Glyph name="back" size={18} weight={2.2} />}
+          onClick={onBack}
+        >
+          {t('guest.back')}
+        </TextAction>
+      )}
       <div className="gk-head">
         {after != null && <p className="gk-label">{t('guestKitchen.row')}</p>}
         <h2
@@ -508,6 +511,7 @@ export function KitchenCheck({
   onParty,
   onKitchen,
   onSend,
+  preview = false,
   children,
 }: {
   kitchen: Kitchen;
@@ -519,6 +523,8 @@ export function KitchenCheck({
   onParty: () => void;
   onKitchen: () => void;
   onSend: () => void;
+  /** Preview as guest: the answer is not the host's to change, and Close preview takes Send's place. */
+  preview?: boolean;
   children?: ReactNode;
 }) {
   const { t, words } = useWords();
@@ -542,9 +548,11 @@ export function KitchenCheck({
             <p className="gk-label">{t('guest.yourAnswer')}</p>
             <p className="gk-value">{t('guest.coming')}</p>
           </div>
-          <RowChange label={t('guestKitchen.changeAnswer')} off={busy} onClick={onAnswer}>
-            {t('guest.changeShort')}
-          </RowChange>
+          {!preview && (
+            <RowChange label={t('guestKitchen.changeAnswer')} off={busy} onClick={onAnswer}>
+              {t('guest.changeShort')}
+            </RowChange>
+          )}
         </div>
         {party != null && (
           <div className="gk-row">
@@ -588,9 +596,9 @@ export function KitchenCheck({
       {children}
       {alert != null && <Notice kind="broken">{alert}</Notice>}
       <Filled busy={busy} focus="send" onClick={onSend}>
-        {t('guest.send')}
+        {preview ? t('guestMeal.closePreview') : t('guest.send')}
       </Filled>
-      <p className="gk-text is-quiet">{t('guest.nothingSent')}</p>
+      {!preview && <p className="gk-text is-quiet">{t('guest.nothingSent')}</p>}
     </section>
   );
 }

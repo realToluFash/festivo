@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Controller;
 
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
-use App\Domain\Event\EventVenue;
-use App\Domain\Event\Http\EventSerialiser;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
+use App\Domain\Guest\Http\GuestPageEvent;
 use App\Domain\Guest\Http\GuestSerialiser;
 use App\Domain\Guest\Link\InvitationLinks;
 use App\Domain\Guest\Model\GuestNeeds;
@@ -45,7 +44,7 @@ final readonly class GuestPageController
 {
     public function __construct(
         private InvitationLinks $invitationLinks,
-        private EventSerialiser $eventSerialiser,
+        private GuestPageEvent $guestPageEvent,
         private RateLimiterFactoryInterface $guestLinkWrongPersonLimiter,
         private GuestAnswers $guestAnswers,
         private GuestRules $guestRules,
@@ -166,7 +165,6 @@ final readonly class GuestPageController
     {
         $event = $guest->getEvent();
         $zone = new DateTimeZone($event->getTimeZone());
-        $venue = EventVenue::of($event);
         $reply = $guest->getReply();
         $repliedAt = $guest->getRepliedAt();
         $places = $this->guestRepository->findCompanionsOf($guest);
@@ -211,20 +209,7 @@ final readonly class GuestPageController
                 'host' => $guest->getLanguage(),
                 'organisation' => SupportedLocales::narrow($event->getOrganisation()->getLocale()),
             ],
-            'event' => [
-                'id' => $event->getId()->toRfc4122(),
-                'name' => $event->getName(),
-                'type' => $event->getType()->value,
-                'cover' => $this->eventSerialiser->coverOf($event),
-                'hosts' => $event->getHosts(),
-                // The hosts' own words, shown only once it is over and never translated (sc-6476).
-                'thankYou' => GuestPagePhase::Finished === $phase ? $event->getThankYou() : null,
-                'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
-                'timeZone' => $event->getTimeZone(),
-                'venue' => null === $venue ? null : ['name' => $venue->name, 'address' => $venue->address?->formatted],
-                'arrivalNote' => $event->getArrivalNote(),
-                'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
-            ],
+            'event' => $this->guestPageEvent->of($event, $phase),
             'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
             'answersOpen' => $this->guestAnswers->open($guest),

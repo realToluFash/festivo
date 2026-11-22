@@ -60,7 +60,7 @@ import {
 import type { TFunction } from 'i18next';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import {
@@ -365,7 +365,12 @@ function Courses({
   const [open, setOpen] = useState<Open | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [refused, setRefused] = useState<Refusal | null>(null);
-  const [said, setSaid] = useState<Told | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const backFromPreview = (location.state as { told?: string } | null)?.told === 'preview';
+  const [said, setSaid] = useState<Told | null>(() =>
+    backFromPreview ? { words: t('eventMenu.previewNothingSaved'), more: null } : null,
+  );
   const [dragging, setDragging] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ dishes: Dish[]; prices: boolean } | null>(null);
   const [libraryFailed, setLibraryFailed] = useState(false);
@@ -375,7 +380,7 @@ function Courses({
   const [choiceAsk, setChoiceAsk] = useState<ChoiceAsk | null>(null);
   const [choiceRefused, setChoiceRefused] = useState<ChoiceHandlers['addRefused']>(null);
   const prices = canOn(event, 'budget.read');
-  const focusAfter = useRef<string | null>(null);
+  const focusAfter = useRef<string | null>(backFromPreview ? 'mc-preview' : null);
   const counts = menuCounts(courses);
   useShowMenuReady(event.id, counts.ready, counts.courses);
   const headClose = menuClose(courses);
@@ -420,6 +425,10 @@ function Courses({
     document.getElementById(focusAfter.current)?.focus();
     focusAfter.current = null;
   });
+
+  useEffect(() => {
+    if (backFromPreview) void navigate('.', { replace: true, state: null });
+  }, [backFromPreview, navigate]);
 
   useEffect(() => {
     if (!manage || organisation == null) return undefined;
@@ -1368,6 +1377,16 @@ function Courses({
             {refreshing && <Refreshing />}
           </p>
         </div>
+        {courses.some((course) => course.picksClose != null) && (
+          <Link
+            id="mc-preview"
+            className="gs-pill is-secondary mc-preview"
+            to={`/preview/events/${encodeURIComponent(event.id)}/meals`}
+          >
+            <Glyph name="eye" size={16} weight={2.4} />
+            {t('eventMenu.previewAsGuest')}
+          </Link>
+        )}
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button

@@ -4001,7 +4001,9 @@
     "nothingToSend": "Nothing has changed, so there is nothing to send.",
     "changesSaved": "Your changes are saved.",
     "notSaved": "Not sent. Check your connection and try again.",
-    "refusedClosed": "Picks for {{course}} closed on {{date}}, so your change was not saved."
+    "refusedClosed": "Picks for {{course}} closed on {{date}}, so your change was not saved.",
+    "preview": "Preview. Nothing is saved.",
+    "closePreview": "Close preview"
   },
   "eventReplyBy": {
     "replyBy": "Plazo de respuesta",
@@ -4812,7 +4814,9 @@
     "failedDelete": "No se ha eliminado nada. Compruebe su conexión y vuelva a pulsar Eliminar pase.",
     "cannotReach": "No se puede conectar con Soirely",
     "cannotReachBody": "No se ha podido cargar el menú. Compruebe su conexión y vuelva a intentarlo.",
-    "tryAgain": "Reintentar"
+    "tryAgain": "Reintentar",
+    "previewAsGuest": "Preview as guest",
+    "previewNothingSaved": "Nothing was saved."
   },
   "guestExport": {
     "export": "Exportar",
