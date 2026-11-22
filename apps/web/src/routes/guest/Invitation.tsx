@@ -830,6 +830,7 @@ function Card({ token, first }: { token: string; first: GuestPage }) {
         ? was
         : {
             ...was,
+            left: false,
             people: was.people.map((one) => (one.key === key ? { ...one, ...change(one) } : one)),
           },
     );
