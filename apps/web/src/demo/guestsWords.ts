@@ -47,6 +47,7 @@ export const GW = {
   changedSince: 'Changed since you looked',
   nothingChanged: 'Nothing has changed since you last looked.',
   showAllGuests: 'Show all guests',
+  changedFailed: 'We could not load what changed.',
   repliedAt: (time: string) => `Replied at ${time}`,
   repliedDay: (date: string) => `Replied ${date}`,
   changedAt: (time: string) => `Changed at ${time}`,

@@ -178,6 +178,9 @@ export interface ListProps {
   /** sc-4331: the guests Changed since you looked would list; its menu row shows while above 0 or in use. */
   changed: number;
   onFilter: (key: ListFilter) => void;
+  /** sc-4331: choosing Changed since you looked failed; the list stays as it was. */
+  changeFailed: boolean;
+  onRetryChanged: () => void;
   typed: string;
   onTyped: (typed: string) => void;
   searched: string;
@@ -205,6 +208,8 @@ export function GuestsRows({
   filter,
   changed,
   onFilter,
+  changeFailed,
+  onRetryChanged,
   typed,
   onTyped,
   searched,
@@ -254,6 +259,7 @@ export function GuestsRows({
         {pasteInRow}
       </View>
       {paste}
+      {changeFailed && <ChangedFailed onRetry={onRetryChanged} />}
       {looking ? (
         <View>
           <ShownLine
@@ -320,6 +326,28 @@ export function GuestsRows({
         </>
       )}
     </>
+  );
+}
+
+/** sc-4331: choosing Changed since you looked failed: nothing is marked read, and Try again chooses it again. */
+function ChangedFailed({ onRetry }: { onRetry: () => void }) {
+  useReadOut(W.changedFailed);
+
+  return (
+    <View style={styles.changedFailed} accessibilityRole="alert" testID="guests.changedFailed">
+      <View style={styles.changedFailedLine}>
+        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
+        <Text size={14} weight="medium" style={styles.grow}>
+          {W.changedFailed}
+        </Text>
+      </View>
+      <TextAction
+        label={W.tryAgain}
+        glyph="refresh"
+        onPress={onRetry}
+        testID="guests.changedFailed.retry"
+      />
+    </View>
   );
 }
 
@@ -423,6 +451,8 @@ const styles = StyleSheet.create({
   },
   menuTick: { width: 18, alignItems: 'center' },
   noMatch: { gap: 6, paddingTop: tokens.spaceXs },
+  changedFailed: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
+  changedFailedLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   noMatchTitle: { lineHeight: 18 * 1.3 },
   loading: { gap: 18 },
   sunkCard: { borderRadius: 26, backgroundColor: tokens.colorNeutralFill },
