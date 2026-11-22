@@ -1,0 +1,40 @@
+# sc-6476 (waits for the failure message): End now with a line while the API hangs (Ending…) and then is gone (Not ended.). Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_END}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    timeout: 30000
+- tapOn:
+    id: 'events.end'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.endThankYou'
+- inputText: 'Thank you for dancing with us and for every kind word.'
+- hideKeyboard
+- waitForAnimationToEnd
+- evalScript: "${http.get(HELPER_URL + '/api?to=paused').body}"
+- tapOn:
+    id: 'events.endYes'
+- takeScreenshot: endNowEnding
+- evalScript: "${http.get(HELPER_URL + '/api?to=stopped').body}"
+- extendedWaitUntil:
+    visible: '.*Not ended.*'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: endNowNotEnded
+- evalScript: "${http.get(HELPER_URL + '/api?to=up').body}"
+- tapOn:
+    id: 'events.endNo'

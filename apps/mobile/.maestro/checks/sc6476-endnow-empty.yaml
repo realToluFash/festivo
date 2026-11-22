@@ -1,7 +1,13 @@
-# sc-6476: End now with the field left empty ends the event as before. Needs ${METRO_URL}, ${EV_END}, ${ORIENT}.
+# sc-6476: End now with the field left empty ends the event as before. Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
 - openLink: ${METRO_URL}/--/events/${EV_END}
 - extendedWaitUntil:
     visible:

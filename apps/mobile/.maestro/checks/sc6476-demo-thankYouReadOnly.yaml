@@ -1,0 +1,24 @@
+# sc-6476: the app's design demo in state thankYouReadOnly, the demo half of its side-by-side pair. Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=thankYouReadOnly
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 15000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou'
+    timeout: 8000
+    optional: true
+- takeScreenshot: demo-thankYouReadOnly

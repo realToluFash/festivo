@@ -1,7 +1,13 @@
-# sc-6476: Edit thank-you while the API hangs (Saving) and then is gone (Not saved). Needs ${METRO_URL}, ${EV_LINE}, ${ORIENT}, ${HELPER_URL}.
+# sc-6476: Edit thank-you while the API hangs (Saving) and then is gone (Not saved). Needs ${METRO_URL}, ${EV_LINE}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
 - openLink: ${METRO_URL}/--/events/${EV_LINE}
 - extendedWaitUntil:
     visible:

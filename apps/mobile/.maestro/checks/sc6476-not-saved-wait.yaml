@@ -1,0 +1,37 @@
+# sc-6476 (waits for the failure message): Edit thank-you while the API hangs (Saving) and then is gone (Not saved). Needs ${METRO_URL}, ${EV_LINE}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_LINE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.edit'
+    timeout: 20000
+- tapOn:
+    id: 'event.thankYou.edit'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: ' See you soon.'
+- hideKeyboard
+- evalScript: "${http.get(HELPER_URL + '/api?to=paused').body}"
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: thankYouSaving
+- evalScript: "${http.get(HELPER_URL + '/api?to=stopped').body}"
+- extendedWaitUntil:
+    visible: '.*Not saved.*'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: thankYouNotSaved
+- evalScript: "${http.get(HELPER_URL + '/api?to=up').body}"
