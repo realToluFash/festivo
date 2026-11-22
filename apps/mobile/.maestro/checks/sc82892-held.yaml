@@ -1,0 +1,14 @@
+# sc-82892: ${EV}'s Hosted by screen with Tayo Adeyemi, Funmi Adeyemi, Kemi Olatunji and an empty Host 4 added, keyboard down, left at rest for a TalkBack pass on Move and Remove.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EV}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- tapOn:
+    id: 'event.edit.hosts.add'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: held
