@@ -40,6 +40,8 @@ import type { AreaKey } from '../events/EventsSample.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Bell } from '../settings/Frame.tsx';
+import { BellPlace } from './BellPlace.tsx';
+import type { BellState } from './BellStates.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
@@ -69,14 +71,7 @@ import {
   spokenAt,
   toChip,
 } from './MessagesModel.ts';
-import {
-  BellPlace,
-  FilterPicker,
-  MatchPicker,
-  ToPicker,
-  TopToast,
-  WhenItGoes,
-} from './MessagesOverlays.tsx';
+import { FilterPicker, MatchPicker, ToPicker, TopToast, WhenItGoes } from './MessagesOverlays.tsx';
 import {
   FIXED_ADDRESS,
   GUESTS,
@@ -184,7 +179,7 @@ export function MessagesScreen({
   onArea: (area: AreaKey) => void;
   /** sc-4331: the bell's Guest replies item opens the guest list on Changed since you looked. */
   onChanged?: () => void;
-  start: { fix: boolean; push: boolean; keys: boolean };
+  start: { fix: boolean; push: boolean; keys: boolean; bell: BellState };
   extra?: ReactNode;
 }) {
   const shell = useShell();
@@ -733,6 +728,7 @@ export function MessagesScreen({
         at={m.bell ? bellAt : null}
         opener={bellRef}
         push={start.push}
+        state={start.bell}
         allRead={m.allRead}
         onAllRead={() => {
           dispatch({ type: 'allRead' });
@@ -744,7 +740,8 @@ export function MessagesScreen({
           dispatch({ type: 'bell', open: false });
           if (key === 'missed')
             dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } });
-          else if (key === 'change') onArea('overview');
+          else if (key === 'security') shell.openSection('security');
+          else if (key !== 'replies') onArea('overview');
           else if (onChanged != null) onChanged();
           else if (phone) dispatch({ type: 'open', open: null });
         }}
