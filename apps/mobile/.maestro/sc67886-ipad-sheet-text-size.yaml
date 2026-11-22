@@ -7,7 +7,8 @@
 # Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
 # Each field, the eye and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
 # a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal. The password is
-# tapped again once the keys have gone down (QA #68774), and Forgot your password? is reached after the refusal.
+# tapped again once the keys have gone down (QA #68774), and Forgot your password? is reached with the keys down both
+# before the refusal and after it.
 # The keys go down by the iPad's hide key, never hideKeyboard, which stops the flow on an iPad.
 appId: host.exp.Exponent
 ---
@@ -34,6 +35,27 @@ appId: host.exp.Exponent
 - assertNotVisible: 'Enter your password.'
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-typed
+# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line (lead review).
+- scrollUntilVisible:
+    element:
+      id: 'signIn.forgot'
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: sc67886-ipad-sheet-forgot-keys-down
+- tapOn:
+    id: 'signIn.forgot'
+    point: '50%,92%'
+- extendedWaitUntil:
+    visible:
+      id: 'recovery.email'
+    timeout: 10000
+- tapOn:
+    id: 'recovery.back'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.password'
+    timeout: 10000
 - scrollUntilVisible:
     element:
       id: 'signIn.password'
