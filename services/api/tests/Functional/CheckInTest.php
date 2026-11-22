@@ -179,7 +179,7 @@ final class CheckInTest extends ApiTestCase
         $read = $this->as($this->owner, 'GET', $this->checkIn());
 
         $row = Type\shape(['guests' => Type\vec(Type\dict(Type\string(), Type\mixed()))], true)->coerce($read)['guests'][0];
-        self::assertSame(['id', 'fullName', 'reply', 'walkIn', 'arrival', 'companions'], Vec\keys($row));
+        self::assertSame(['id', 'fullName', 'reply', 'repliedAt', 'code', 'walkIn', 'arrival', 'companions'], Vec\keys($row));
         self::assertStringNotContainsString('adaeze@example.com', Json\encode($read));
         self::assertStringNotContainsString('Family', Json\encode($read));
     }
@@ -395,12 +395,77 @@ final class CheckInTest extends ApiTestCase
         self::assertSame([self::ADAEZE, 'Bisi Adewale'], $this->names());
     }
 
+    #[Test]
+    public function aComingGuestsPageShowsTheirCodeAndTheDoorsListHoldsOnlyItsDigest(): void
+    {
+        $guest = $this->add(self::ADAEZE, ['Obi Okonkwo']);
+        $token = $this->token($guest);
+        $this->reply($token, 'maybe');
+        self::assertNull($this->page($token)['checkInCode']);
+
+        $this->reply($token, 'coming');
+
+        $shown = Type\shape(['code' => Type\string(), 'qrSvg' => Type\string()])->coerce($this->page($token)['checkInCode']);
+        self::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $shown['code']);
+        self::assertNotSame($token, $shown['code']);
+        self::assertStringContainsString('<svg', $shown['qrSvg']);
+        $door = Json\encode($this->as($this->owner, 'GET', $this->checkIn()));
+        self::assertStringNotContainsString($shown['code'], $door);
+        self::assertSame(\hash('sha256', $shown['code']), $this->row($this->last(), $guest)['code']);
+        $this->reply($token, 'notComing');
+        self::assertNull($this->page($token)['checkInCode']);
+    }
+
+    #[Test]
+    public function anArrivalRecordedOfflineCountsOnceAtTheEarlierOfTwoDevicesTimes(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        self::mockTime(new DateTimeImmutable(self::OPEN));
+        $this->arrive($guest);
+
+        $read = $this->arrive($guest, '2030-11-14T19:30:00+01:00');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($read));
+        self::assertSame('2030-11-14T19:30:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $guest)['arrival'])['at']);
+        $read = $this->arrive($guest, '2030-11-14T19:35:00+01:00');
+        self::assertSame('2030-11-14T19:30:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $guest)['arrival'])['at']);
+        self::assertSame(1, Type\shape(['count' => Type\shape(['attended' => Type\int()], true)], true)->coerce($read)['count']['attended']);
+    }
+
+    #[Test]
+    public function anArrivalRecordedOfflineBeforeTheDoorOpenedIsRefusedAndOneFromTheFutureIsNow(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        self::mockTime(new DateTimeImmutable(self::OPEN));
+
+        $this->arrive($guest, '2030-11-14T13:00:00+01:00');
+        self::assertSame([409, 'check_in_closed'], [$this->statusCode(), $this->code()]);
+        $read = $this->arrive($guest, '2030-11-14T23:00:00+01:00');
+
+        self::assertSame('2030-11-14T19:42:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $guest)['arrival'])['at']);
+        $this->arrive($guest, 'not a time');
+        self::assertSame(422, $this->statusCode());
+        $stamped = $this->add('Bisi Adewale');
+        $read = $this->arrive($stamped, '2030-11-14T18:30:00.000Z');
+
+        self::assertSame('2030-11-14T19:30:00+01:00', Type\shape(['at' => Type\string()], true)->coerce($this->row($read, $stamped)['arrival'])['at']);
+    }
+
     /** @return array<string, mixed> */
-    private function arrive(string $person): array
+    private function arrive(string $person, ?string $at = null): array
     {
         $this->client->setServerParameter('HTTP_X_DEVICE_ID', self::DEVICE);
 
-        return $this->as($this->owner, 'POST', $this->checkIn() . '/arrivals', ['guestId' => $person]);
+        return $this->as($this->owner, 'POST', $this->checkIn() . '/arrivals', ['guestId' => $person, ...null === $at ? [] : ['arrivedAt' => $at]]);
+    }
+
+    /** @return array<string, mixed> */
+    private function page(#[SensitiveParameter] string $token): array
+    {
+        $this->client->request('POST', '/api/guest-links/page', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => 'en'], content: Json\encode(['token' => $token]));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        return $this->last();
     }
 
     /** @return array<string, mixed> */

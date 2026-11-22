@@ -3345,6 +3345,24 @@
     "failed": "Não foi possível carregar o registo de entradas. Verifique a ligação e tente novamente.",
     "tryAgain": "Tentar novamente",
     "count_many": "Chegadas: {{count, number}} de {{expected, number}}",
-    "countAlone_many": "Chegadas: {{count, number}}"
+    "countAlone_many": "Chegadas: {{count, number}}",
+    "scan": {
+      "title": "Scan a code",
+      "pointAtCode": "Point at the code",
+      "next": "Scan the next code",
+      "companionLine": "Companion · {{line}}",
+      "companionHeld": "Held · until their host is coming",
+      "nothingNew": "Nothing new was recorded. You decide what happens next.",
+      "notOnList": "This code is not on this event’s guest list. Search by name instead.",
+      "noListTitle": "Connect once to scan codes",
+      "noListBody": "This device needs the guest list before it can check codes. It downloads as soon as the device is back online, and the scanner opens by itself.",
+      "cameraOffTitle": "Soirely cannot use the camera",
+      "cameraOffBody": "Allow the camera for Soirely in Settings to scan codes. Searching by name works without it.",
+      "openSettings": "Open Settings",
+      "offlineSince": "Offline since {{time}}",
+      "offlineWaiting_one": "Offline since {{time}} · {{count, number}} arrival waiting to sync",
+      "offlineWaiting_other": "Offline since {{time}} · {{count, number}} arrivals waiting to sync",
+      "offlineWaiting_many": "Offline since {{time}} · {{count, number}} arrivals waiting to sync"
+    }
   }
 }

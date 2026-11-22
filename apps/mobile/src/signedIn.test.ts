@@ -20,9 +20,13 @@ vi.mock('./runOfShowCards.ts', () => ({ takeDownRunOfShowCards: cards.takeDown }
 vi.mock('./i18n/index.ts', () => ({ currentLocale: () => shown.language }));
 vi.mock('./tokens.ts', () => ({ tokens: { clear: vi.fn() } }));
 vi.mock('expo-router', () => ({ router }));
-vi.mock('@react-native-async-storage/async-storage', () => ({
-  default: { getItem: vi.fn(async () => null), setItem: vi.fn(async () => {}) },
+const storage = vi.hoisted(() => ({
+  getItem: vi.fn(async () => null),
+  setItem: vi.fn(async () => {}),
+  getAllKeys: vi.fn(async (): Promise<string[]> => []),
+  multiRemove: vi.fn(async () => {}),
 }));
+vi.mock('@react-native-async-storage/async-storage', () => ({ default: storage }));
 vi.mock('react', () => ({
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => snapshot(),
   useEffect: (effect: () => void) => effect(),
@@ -99,6 +103,19 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
     await settle();
 
     expect(cards.takeDown).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves no door's list or waiting arrivals for the next person on this device (sc-1301)", async () => {
+    storage.getAllKeys.mockResolvedValue([
+      'door.list.evt_1',
+      'door.waiting.evt_1',
+      'soirely.organisation',
+    ]);
+
+    signOutHere();
+    await settle();
+
+    expect(storage.multiRemove).toHaveBeenCalledWith(['door.list.evt_1', 'door.waiting.evt_1']);
   });
 
   it('opens welcome with no "You were signed out" banner', async () => {

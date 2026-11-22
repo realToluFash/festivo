@@ -21,7 +21,17 @@ const t = ((key: string, values?: Record<string, unknown>) =>
 const ADAEZE = 'Chief Mrs Adaeze Okonkwo-Williams';
 
 function guest(id: string, fullName: string, more: Partial<CheckInGuest> = {}): CheckInGuest {
-  return { id, fullName, reply: 'coming', walkIn: false, arrival: null, companions: [], ...more };
+  return {
+    id,
+    fullName,
+    reply: 'coming',
+    repliedAt: null,
+    code: null,
+    walkIn: false,
+    arrival: null,
+    companions: [],
+    ...more,
+  };
 }
 
 const LIST: CheckIn = {

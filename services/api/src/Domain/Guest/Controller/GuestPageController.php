@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Controller;
 
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
+use App\Domain\Guest\Arrival\CheckInCodes;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestPageEvent;
@@ -55,6 +56,7 @@ final readonly class GuestPageController
         private GuestProgramme $guestProgramme,
         private SharedSeats $sharedSeats,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private CheckInCodes $checkInCodes,
         private MealPicks $mealPicks,
         private GuestMenu $guestMenu,
         private ServedMeals $servedMeals,
@@ -216,6 +218,7 @@ final readonly class GuestPageController
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
+            'checkInCode' => $this->checkInCodes->of($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
             'meals' => [
                 'you' => $guest->getId()->toRfc4122(),

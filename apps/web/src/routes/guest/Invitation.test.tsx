@@ -2760,3 +2760,73 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     ).toBe(true);
   });
 });
+
+describe('Show this at the door (sc-1301)', () => {
+  const CODE = { code: 'q2k9tD0tX3vYb1mLw7pZc4sRf8hJn6aE5uGi0oKy2Vx', qrSvg: '<svg></svg>' };
+  const NOT_COMING = { ...CHIDI, coming: false };
+
+  it('shows a Coming guest the code, above Add to calendar, telling one with companions coming that it lets them in too', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: {
+            ...answered('coming', undefined, 1, [CHIDI]),
+            checkInCode: CODE,
+            calendarFeed: '/api/guest-calendars/abc.ics',
+          },
+        },
+      ],
+    });
+    open();
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Show this at the door' });
+    const code = screen.getByRole('img', { name: 'Your code for the door. It holds no name.' });
+    const calendar = screen.getByRole('heading', { level: 2, name: 'Add to calendar' });
+
+    expect(heading).toBeDefined();
+    expect(
+      screen.getByText('It lets you and your companions in. A screenshot works too.'),
+    ).toBeDefined();
+    expect(code.getAttribute('src')).toBe(
+      `data:image/svg+xml;charset=utf-8,${encodeURIComponent(CODE.qrSvg)}`,
+    );
+    expect(heading.compareDocumentPosition(calendar) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(
+      0,
+    );
+  });
+
+  it('says only that a screenshot works to a guest alone, or whose companions are all not coming', async () => {
+    for (const companions of [[], [NOT_COMING]]) {
+      api({
+        '/api/guest-links/page': [
+          {
+            status: 200,
+            body: {
+              ...answered('coming', undefined, companions.length, companions),
+              checkInCode: CODE,
+            },
+          },
+        ],
+      });
+      const { unmount } = open();
+
+      expect(await screen.findByText('A screenshot works too.')).toBeDefined();
+      expect(screen.queryByText(/companions in/u)).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('is not there without a code: no reply, Not coming or Not sure yet', async () => {
+    for (const body of [PAGE, answered('notComing'), answered('maybe')]) {
+      api({ '/api/guest-links/page': [{ status: 200, body: { ...body, checkInCode: null } }] });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Show this at the door' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+});

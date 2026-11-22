@@ -927,6 +927,20 @@
   white-space: nowrap;
 }
 
+/* sc-1301: the door's code, the demo's card (GuestParts DoorCode) */
+:where(.guest-page) .gp-code {
+  align-self: flex-start;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 20px;
+  background: var(--colorCard);
+}
+
+:where(.guest-page) .gp-code img {
+  display: block;
+}
+
 /* sc-3627: Add to calendar, the demo's rows (GuestParts AddToCalendar) */
 :where(.guest-page) .gp-cal {
   color: var(--colorAccent);

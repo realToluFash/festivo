@@ -18,6 +18,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetDoor } from './kit/doorStore.ts';
 import { leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';
@@ -256,6 +257,7 @@ export function endedHere(): void {
 
 function forget(): void {
   void takeDownRunOfShowCards().catch(() => undefined);
+  void forgetDoor();
   ended = true;
   loading = null;
   set(SIGNED_OUT);
