@@ -160,7 +160,7 @@ describe('the dish card once picked', () => {
 
   it('shows the dish alone before its way, and nothing for another dish or chef’s choice', () => {
     const plate = { kind: 'chosen', dish: 'rice', variant: null, options: {} } as const;
-    expect(cardParts(rice, plate)).toEqual([{ way: null, name: 'Jollof rice', allergens: [] }]);
+    expect(cardParts(rice, plate)).toEqual([{ way: null, name: 'Jollof rice', allergens: null }]);
     expect(cardParts(dish({ id: 'coconut' }), plate)).toBeNull();
     expect(cardParts(rice, { ...plate, kind: 'chefsChoice' })).toBeNull();
   });
@@ -176,6 +176,13 @@ describe('the dish card once picked', () => {
 
     expect(plateAllergens(fish, plate)).toEqual(['fish', 'milk']);
     expect(partsAllergens(cardParts(fish, plate) ?? [])).toEqual(plateAllergens(fish, plate));
+  });
+
+  it('reads not stated for a dish of two ways with no way stored, whatever the dish says', () => {
+    const plate = { kind: 'needsHost', dish: 'rice', variant: null, options: {} } as const;
+
+    expect(plateAllergens(rice, plate)).toBeNull();
+    expect(markOf(course([rice]), plate, ['fish'])).toEqual({ kind: 'notStated' });
   });
 
   it('reads not stated when any part never stated its allergens', () => {

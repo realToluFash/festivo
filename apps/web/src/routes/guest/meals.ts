@@ -143,12 +143,12 @@ export function dishContains(dish: MealDish): readonly string[] | null {
 type CardPart = { way: string | null; name: string; allergens: readonly string[] | null };
 
 function plateParts(dish: MealDish, plate: Plate): CardPart[] {
-  const way =
-    dish.variants.length >= 2 ? dish.variants.find((one) => one.id === plate.variant) : undefined;
+  const ways = dish.variants.length >= 2;
+  const way = ways ? dish.variants.find((one) => one.id === plate.variant) : undefined;
   const head: CardPart =
     way != null
       ? { way: way.name, name: dish.name, allergens: way.allergens }
-      : { way: null, name: dish.name, allergens: dishContains(dish) };
+      : { way: null, name: dish.name, allergens: ways ? null : dishContains(dish) };
 
   return [
     head,
