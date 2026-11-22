@@ -35,6 +35,7 @@ import {
 import { GroupHead, type Layout, ShownLine } from './GuestsParts.tsx';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MarkSlot } from '../../components/ReplyMark.tsx';
+import { SETTLE_EVERY_MS, SETTLE_TRIES, hasSettled } from './MenuSettles.ts';
 import { NW } from './GuestNeeds.ts';
 import { AllergyMark } from './GuestNeedsParts.tsx';
 
@@ -65,8 +66,26 @@ function FilterChoice({
 
   useEffect(() => {
     if (!start) return;
-    const wait = setTimeout(() => anchorUnder(trigger, setAt), MENU_AFTER_MS);
-    return () => clearTimeout(wait);
+    let gone = false;
+    let tries = 0;
+    let before: Anchor | null = null;
+    let wait: ReturnType<typeof setTimeout>;
+    const measure = () =>
+      anchorUnder(trigger, (now) => {
+        if (gone) return;
+        if (hasSettled(before, now) || (++tries >= SETTLE_TRIES && now.width > 0)) {
+          setAt(now);
+          return;
+        }
+        if (tries >= SETTLE_TRIES) return;
+        before = now;
+        wait = setTimeout(measure, SETTLE_EVERY_MS);
+      });
+    wait = setTimeout(measure, MENU_AFTER_MS);
+    return () => {
+      gone = true;
+      clearTimeout(wait);
+    };
   }, [start]);
 
   return (
