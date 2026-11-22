@@ -93,7 +93,9 @@ final readonly class MealPicks
             $before = $stored[$pick['person'] . '/' . $pick['course']] ?? null;
 
             if ($course['picksClose']['closed']) {
-                if (null === $before || !self::same($before, self::asSent($pick, $kind))) {
+                $chosen = MealAnswerKind::Chosen === $kind;
+
+                if (null === $before || !self::same($before, $kind, $chosen ? $pick['dish'] ?? null : null, $chosen ? $pick['variant'] ?? null : null, $chosen ? $pick['options'] ?? [] : [])) {
                     $closed[] = $course['id'];
                 }
 
@@ -121,7 +123,7 @@ final readonly class MealPicks
 
             if (null === $before) {
                 $this->entityManager->persist(new MealAnswer($person, $course, $answer['kind'], $dish, $variant, $answer['options'], $allergens));
-            } elseif (!self::same($before, $answer)) {
+            } elseif (!self::same($before, $answer['kind'], $answer['dish'], $answer['variant'], $answer['options'])) {
                 $before->answer($answer['kind'], $dish, $variant, $answer['options'], $allergens);
             }
         }
@@ -223,32 +225,13 @@ final readonly class MealPicks
         return ['kind' => MealAnswerKind::Chosen, 'dish' => $dish['id'], 'variant' => $variant['id'] ?? null, 'options' => $kept];
     }
 
-    /**
-     * A pick as sent, unchecked: a closed course compares it with what was stored before, since a pick a later allergy rules out still repeats unchanged.
-     *
-     * @param Sent $pick
-     *
-     * @return array{kind: MealAnswerKind, dish: ?string, variant: ?string, options: list<string>}
-     */
-    private static function asSent(array $pick, MealAnswerKind $kind): array
+    /** @param list<string> $options */
+    private static function same(MealAnswer $before, MealAnswerKind $kind, ?string $dish, ?string $variant, array $options): bool
     {
-        $chosen = MealAnswerKind::Chosen === $kind;
-
-        return [
-            'kind' => $kind,
-            'dish' => $chosen ? $pick['dish'] ?? null : null,
-            'variant' => $chosen ? $pick['variant'] ?? null : null,
-            'options' => $chosen ? $pick['options'] ?? [] : [],
-        ];
-    }
-
-    /** @param array{kind: MealAnswerKind, dish: ?string, variant: ?string, options: list<string>} $answer */
-    private static function same(MealAnswer $before, array $answer): bool
-    {
-        return $before->getKind() === $answer['kind']
-            && $before->getDish()?->getId()->toRfc4122() === $answer['dish']
-            && $before->getVariant()?->getId()->toRfc4122() === $answer['variant']
-            && Vec\sort($before->getOptions()) === Vec\sort($answer['options']);
+        return $before->getKind() === $kind
+            && $before->getDish()?->getId()->toRfc4122() === $dish
+            && $before->getVariant()?->getId()->toRfc4122() === $variant
+            && Vec\sort($before->getOptions()) === Vec\sort($options);
     }
 
     /**
