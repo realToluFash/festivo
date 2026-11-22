@@ -29,12 +29,21 @@ export function SwitchedProvider({
   return <Say.Provider value={value}>{children}</Say.Provider>;
 }
 
-export function SwitchedNotice({ style }: { style?: StyleProp<ViewStyle> }) {
+/** Given `said`, a page that made the move itself says it here, outside the switcher. */
+export function SwitchedNotice({
+  style,
+  said,
+}: {
+  style?: StyleProp<ViewStyle>;
+  said?: Switched | null;
+}) {
   const say = useContext(Say);
-  if (say == null) throw new Error('A switched notice is drawn inside a SwitchedProvider.');
-  const { slot, switched } = say;
+  if (said === undefined && say == null)
+    throw new Error('A switched notice is drawn inside a SwitchedProvider.');
+  const slot = said === undefined ? say?.slot : undefined;
+  const switched = said === undefined ? (say?.switched ?? null) : said;
 
-  useLayoutEffect(() => slot(), [slot]);
+  useLayoutEffect(() => slot?.(), [slot]);
 
   if (switched == null) return null;
 

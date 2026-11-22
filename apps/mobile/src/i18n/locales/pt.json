@@ -2684,7 +2684,9 @@
       "changedAt": "Alteração: {{time}}",
       "changedOn": "Alteração: {{date}}",
       "needs": "Notas sobre alimentação atualizadas",
-      "flagged": "A ligação pode ter chegado a outra pessoa"
+      "flagged": "A ligação pode ter chegado a outra pessoa",
+      "failed": "Não foi possível carregar as alterações.",
+      "retry": "Tentar novamente"
     }
   },
   "guestNumbers": {
@@ -3309,6 +3311,7 @@
     "countWord_one": "chegada",
     "countWord_other": "chegadas",
     "countWord_many": "chegadas",
+    "todayAt": "Hoje, {{time}}",
     "opensAt": "Abertura do registo de entradas: {{time}}",
     "searchWorksNow": "A pesquisa já funciona. As chegadas e as entradas sem convite podem ser registadas a partir da abertura, {{time}}.",
     "openedAt": "Abertura do registo de entradas: {{time}}. Pode registar a chegada de qualquer pessoa da lista, seja qual for a resposta.",

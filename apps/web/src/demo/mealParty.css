@@ -210,3 +210,7 @@
   color: var(--colorAttentionText);
   font: 600 15px/1.4 var(--fontFamily);
 }
+
+.pc-preview-close {
+  margin-inline-start: var(--spaceS);
+}

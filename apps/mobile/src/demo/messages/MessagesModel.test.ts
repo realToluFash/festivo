@@ -591,6 +591,19 @@ describe('a scheduled message', () => {
     expect(sectionsOf(saved).scheduled.map(nameOf)).toEqual(['sched']);
   });
 
+  it('previews an edit of a scheduled message, goes back to it, and saves from the preview', () => {
+    const editing = run(startOf('scheduledEdit', false), { type: 'body', text: 'New words' });
+    const previewed = reduce(editing, { type: 'preview' });
+    expect(previewed.draft).toMatchObject({ step: 'preview', body: 'New words' });
+    expect(previewed.draft?.was).not.toBeNull();
+
+    expect(reduce(previewed, { type: 'edit' }).draft).toMatchObject({ step: 'write' });
+    expect(reduce(previewed, { type: 'edit' }).draft?.was).not.toBeNull();
+
+    const saved = reduce(previewed, { type: 'saveScheduled' });
+    expect(saved.draft).toMatchObject({ step: 'scheduled', was: null, body: 'New words' });
+  });
+
   it('sends now through the check and the ten seconds, or keeps its time', () => {
     const now = reduce(startOf('scheduled', false), { type: 'sendNow' });
     expect(now.draft?.step).toBe('check');

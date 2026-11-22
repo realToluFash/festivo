@@ -1,6 +1,7 @@
 import { ApiError, type OrganisationEvent, eventVersion } from '@soirely/api-client';
 import {
   type PlaceholderEventArea,
+  eventMovesInto,
   formatEventRange,
   isPlaceholderEventArea,
   rememberTabHolding,
@@ -20,7 +21,7 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn, outsideOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, switchOrganisation, useSession } from '../../../session.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { DuplicateEvent } from './DuplicateEvent.tsx';
 import { DraftRow, StatusPill } from './MakeLive.tsx';
@@ -44,6 +45,7 @@ import { OutsideOverview } from './OutsideOverview.tsx';
 import { OutsideGone } from '../OutsideShell.tsx';
 import { useGoneEvent, useShowEvent } from './EventNav.tsx';
 import { Arrived, Skeleton } from '../../../components/Skeleton.tsx';
+import { Switched } from '../../../components/Switched.tsx';
 import { NotFound } from '../../public/NotFound.tsx';
 import '../../../components/eventsDesk.css';
 import './budget.css';
@@ -116,13 +118,39 @@ export function EventAreaPage() {
   return isPlaceholderEventArea(area) ? <ForEvent page={area} /> : <Withheld />;
 }
 
+/** The event its link opened in another organisation, carried into that organisation so it shows at once, with Now working in under its crumb (sc-80863). */
+interface Moved {
+  organisationId: string;
+  name: string;
+  event: OrganisationEvent;
+  tag: string;
+}
+
 function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
   const outside = outsideOn(session, eventId);
   const organisationId = outside == null ? (session.organisation?.id ?? null) : OUTSIDE;
+  const [moved, setMoved] = useState<Moved | null>(null);
+
+  if (moved != null && (moved.organisationId !== organisationId || moved.event.id !== eventId))
+    setMoved(null);
 
   if (organisationId == null) return null;
+
+  const movesInto =
+    page === 'event' && outside == null
+      ? (event: OrganisationEvent, tag: string): boolean => {
+          const into = eventMovesInto(event, organisationId, session.organisations);
+          const membership = session.organisations.find(({ id }) => id === into);
+
+          if (membership == null) return false;
+          setMoved({ organisationId: membership.id, name: membership.name, event, tag });
+          switchOrganisation(membership.id);
+
+          return true;
+        }
+      : null;
 
   return (
     <EventOf
@@ -130,6 +158,8 @@ function ForEvent({ page }: { page: Page }) {
       organisationId={organisationId}
       eventId={eventId}
       page={page}
+      moved={moved?.organisationId === organisationId ? moved : null}
+      movesInto={movesInto}
     />
   );
 }
@@ -180,17 +210,28 @@ function EventOf({
   organisationId,
   eventId,
   page,
+  moved,
+  movesInto,
 }: {
   organisationId: string;
   eventId: string;
   page: Page;
+  moved: Moved | null;
+  /** Moves the account into the event's organisation, or answers false when it may not. */
+  movesInto: ((event: OrganisationEvent, tag: string) => boolean) | null;
 }) {
   const { t } = useTranslation();
   const session = useSession();
   const outside = outsideOn(session, eventId);
   const noOrganisation = session.organisation == null && session.pausedIn == null;
   const looking = outside != null && outside.role !== 'can_edit' ? outside : null;
-  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [load, setLoad] = useState<Load>(
+    moved == null ? { kind: 'loading' } : { kind: 'loaded', event: moved.event, tag: moved.tag },
+  );
+  const moves = useRef(movesInto);
+  useEffect(() => {
+    moves.current = movesInto;
+  });
   const [attempt, setAttempt] = useState(0);
   const [refresh, setRefresh] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -210,6 +251,7 @@ function EventOf({
     watch(api.taggedEvent(eventId)).then(
       ({ event, tag }) => {
         if (!current) return;
+        if (!ofOrganisation(event, organisationId) && moves.current?.(event, tag) === true) return;
         answered.current = new Date();
         setLoad((was) => {
           if (!ofOrganisation(event, organisationId)) return { kind: 'notFound' };
@@ -376,6 +418,7 @@ function EventOf({
                 {refreshing && <Refreshing />}
               </EventCrumb>
             )}
+            {moved != null && <Switched name={moved.name} />}
             {states}
             {load.kind === 'loaded' && (
               <Arrived>

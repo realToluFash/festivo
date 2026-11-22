@@ -20,6 +20,17 @@ export function choosePaused<T extends { id: string }>(
   );
 }
 
+/** An event opened by its link while working in another organisation: the event's own, when the account is a member of it (sc-80863). The API answers only what the account may open, so membership is all that is left to ask. */
+export function eventMovesInto(
+  event: { organisationId: string },
+  workingIn: string | null,
+  memberships: readonly { id: string }[],
+): string | null {
+  if (workingIn == null || event.organisationId === workingIn) return null;
+
+  return memberships.some(({ id }) => id === event.organisationId) ? event.organisationId : null;
+}
+
 /** Switch organisation on the paused screen: straight into the only other active one, the switcher for more, absent for none. */
 export function pausedSwitch<T>(others: readonly T[]): T | 'switcher' | null {
   if (others.length > 1) return 'switcher';

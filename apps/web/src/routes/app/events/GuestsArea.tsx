@@ -100,7 +100,7 @@ import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
 import { ExportDialog } from './GuestExport.tsx';
@@ -253,6 +253,7 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
+  const readerZone = useSession().timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -282,6 +283,7 @@ export function GuestsArea({
   } = useGuestsAddress();
   const [unseen, setUnseen] = useState(0);
   const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [changedFailed, setChangedFailed] = useState(false);
   const [dietaryOnly, setDietary] = useState(false);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [grouping, setGrouping] = useState(false);
@@ -978,14 +980,20 @@ export function GuestsArea({
   }
 
   function chooseChanged(): void {
+    setChangedFailed(false);
     api.lookAtGuestChanges(event.id).then(
       (from) => {
         setChanges(from.rows);
         setUnseen(0);
         setChanged(from.since);
       },
-      () => undefined,
+      () => setChangedFailed(true),
     );
+  }
+
+  function chooseReply(next: Choice): void {
+    setChangedFailed(false);
+    setChoice(next);
   }
 
   function clearView(): void {
@@ -1124,7 +1132,7 @@ export function GuestsArea({
                           counts={counts}
                           menu={menu}
                           onQ={setQ}
-                          onChoice={setChoice}
+                          onChoice={chooseReply}
                           onChanged={chooseChanged}
                           onMenu={setMenu}
                         />
@@ -1148,6 +1156,15 @@ export function GuestsArea({
                             filter={groupFilter}
                             onFilter={setGroupFilter}
                           />
+                        )}
+                        {changedFailed && (
+                          <div className="gs-shown gs-changed-failed" role="alert">
+                            <p>
+                              <Glyph name="alert" size={18} weight={2.2} />
+                              {t('guestList.changed.failed')}
+                            </p>
+                            <TextAction label={t('events.retry')} onClick={chooseChanged} />
+                          </div>
                         )}
                         <div className={looking ? 'gs-shown' : 'visually-hidden'}>
                           <p role="status">
@@ -1240,6 +1257,7 @@ export function GuestsArea({
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
+                            readerZone={readerZone}
                             replyBy={replies.replyBy}
                             open={open}
                             onOpen={openGuest}
@@ -1264,6 +1282,7 @@ export function GuestsArea({
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
+                                readerZone={readerZone}
                                 replyBy={replies.replyBy}
                                 open={open}
                                 onOpen={openGuest}
@@ -1711,6 +1730,7 @@ function Rows({
   choice: Choice;
   eventId: string;
   timeZone: string;
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1750,6 +1770,7 @@ function RowsFrom({
   choice,
   eventId,
   timeZone,
+  readerZone,
   replyBy,
   open,
   onOpen,
@@ -1763,6 +1784,8 @@ function RowsFrom({
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
+  /** The member's (sc-868, else the device's): when a guest changed since the last look. */
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1794,7 +1817,7 @@ function RowsFrom({
             ? words.line
             : t('guestList.changed.line', {
                 answer: changeAnswer(t, change, person),
-                when: changeWhen(t, change, timeZone, dateLocale(), new Date()),
+                when: changeWhen(t, change, readerZone, dateLocale(), new Date()),
               });
 
         if (companion == null)

@@ -20,7 +20,7 @@ import { EventsList } from './EventsList.tsx';
 import { EventGone } from './EventGone.tsx';
 import { linkStateOf } from './EventLink.ts';
 import { EventLinkPage } from './EventLinkPage.tsx';
-import { eventStateOf, listStateOf } from './EventsModel.ts';
+import { eventStateBeside, listStateOf } from './EventsModel.ts';
 import { AT_READ, refusedStartOf } from './DeleteRefusal.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
@@ -196,7 +196,7 @@ export function EventRoute() {
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
-  const state = noBudget || noStaff ? 'more' : eventStateOf(params.state);
+  const state = noBudget || noStaff ? 'more' : eventStateBeside(params.state, messages);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
   const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;

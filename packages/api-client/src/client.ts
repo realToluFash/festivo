@@ -45,7 +45,12 @@ import {
   type GuestGroup,
   type GuestList,
   type GuestPage,
+  type GuestMeals,
   type Headcount,
+  type MealAnswer,
+  type MealAnswerKind,
+  type MealCourse,
+  type MealPick,
   type MarkedTogether,
   type MovedTogether,
   type RemovedTogether,
@@ -4326,6 +4331,13 @@ export class ApiClient {
     );
   }
 
+  /** Preview as guest (sc-3907): the guest page's meal step for the signed-in member alone, with no allergies or companions; menu.read, and it reads no guest. */
+  async menuPreview(eventId: string): Promise<GuestPage> {
+    const route = `${this.menuPath(eventId)}/preview`;
+
+    return this.guestPageOf(await this.get<unknown>(route), `GET ${route}`);
+  }
+
   /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
@@ -4377,6 +4389,14 @@ export class ApiClient {
         { anonymous: true },
       ),
       'POST /api/guest-links/needs',
+    );
+  }
+
+  /** Each person's meal answers (sc-3907), sent after the kitchen note so its allergens count, and answers the page as it now stands. Refused 422 for a pick the person is not offered, a wrong count or a plate holding their allergen, nothing saved, and 409 `meal_picks_closed` with the closed `courses` once the open ones are saved. */
+  async sendMealPicks(token: string, picks: readonly MealPick[]): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/meals', { token, picks }, { anonymous: true }),
+      'POST /api/guest-links/meals',
     );
   }
 
@@ -6169,6 +6189,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     language,
     programme,
     seating,
+    meals,
   } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
@@ -6256,7 +6277,42 @@ function asGuestPage(raw: unknown): GuestPage | null {
     calendar: null,
     programme: items.filter((one) => one != null),
     seating: asGuestSeating(seating),
+    meals: asGuestMeals(meals),
   };
+}
+
+/** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
+function asGuestMeals(raw: unknown): GuestMeals {
+  const { you, courses, answers } = (raw ?? {}) as Record<string, unknown>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
+  const known = Array.isArray(courses)
+    ? courses.filter(
+        (course): course is MealCourse =>
+          typeof course === 'object' &&
+          course != null &&
+          typeof (course as MealCourse).id === 'string' &&
+          Array.isArray((course as MealCourse).dishes) &&
+          typeof (course as MealCourse).picksClose?.at === 'string',
+      )
+    : [];
+  const byPerson: Record<string, MealAnswer[]> = {};
+
+  for (const [person, list] of Object.entries((answers ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    byPerson[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.answer === 'string')
+      .map((one) => ({
+        course: one.course as string,
+        answer: one.answer as MealAnswerKind,
+        dish: typeof one.dish === 'string' ? one.dish : null,
+        variant: typeof one.variant === 'string' ? one.variant : null,
+        options: strings(one.options),
+      }));
+  }
+
+  return { you: typeof you === 'string' ? you : '', courses: known, answers: byPerson };
 }
 
 /** Undefined when the shape is not one this client knows. */

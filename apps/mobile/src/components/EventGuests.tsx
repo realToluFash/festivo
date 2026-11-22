@@ -71,7 +71,7 @@ import {
   phaseCardOf,
 } from '../kit/guestRows.ts';
 import { checksIn, onEventDay } from '../kit/checkIn.ts';
-import { CHANGED, changeLine, filterMenuWidth } from '../kit/guestChanges.ts';
+import { CHANGED, changeLine, filterMenuWidth, readerZoneOf } from '../kit/guestChanges.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
@@ -208,15 +208,30 @@ export function EventGuests({
   const [choice, setReplyChoice] = useState<Choice>(filter);
   const [since, setSince] = useState<string | null>(changedSince ?? null);
   const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [changedFailed, setChangedFailed] = useState(false);
   const [unseen, setUnseen] = useState(0);
+  const readerZone = readerZoneOf(account?.timezone);
   const sinceNow = useRef(since);
   useEffect(() => {
     sinceNow.current = since;
   }, [since]);
   const setChoice = useCallback((next: Choice) => {
     setSince(null);
+    setChangedFailed(false);
     setReplyChoice(next);
   }, []);
+  const chooseChanged = () => {
+    setChangedFailed(false);
+    api.lookAtGuestChanges(eventId).then(
+      (from) => {
+        setChanges(from.rows);
+        setUnseen(0);
+        setReplyChoice('all');
+        setSince(from.since);
+      },
+      () => setChangedFailed(true),
+    );
+  };
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [open, setOpen] = useState<string | null>(opens ?? null);
@@ -678,16 +693,8 @@ export function EventGuests({
           inUse: since != null,
           count: since != null ? (changes?.length ?? 0) : unseen,
           rows: changes,
-          onChoose: () =>
-            api.lookAtGuestChanges(eventId).then(
-              (from) => {
-                setChanges(from.rows);
-                setUnseen(0);
-                setReplyChoice('all');
-                setSince(from.since);
-              },
-              () => undefined,
-            ),
+          failed: changedFailed,
+          onChoose: chooseChanged,
         }}
         typed={typed}
         onTyped={setTyped}
@@ -703,6 +710,7 @@ export function EventGuests({
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
+        readerZone={readerZone}
         locale={locale}
         manages={manages}
         replies={replies}
@@ -860,7 +868,8 @@ export function EventGuests({
         }}
         backInFrame
         headingInList
-        spacing={SPACING}
+        spacing={stale != null ? OFFLINE_SPACING : SPACING}
+        pageFills={exporting && docked}
       />
       {!docked && exportProps != null && (
         <ExportSheet
@@ -1010,6 +1019,7 @@ function GuestRows({
   kind,
   searchRef,
   timeZone,
+  readerZone,
   locale,
   manages,
   replies,
@@ -1036,6 +1046,8 @@ function GuestRows({
   kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
+  /** The member's (sc-868, else the device's): when a guest changed since the last look. */
+  readerZone: string;
   locale: string;
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
@@ -1118,7 +1130,7 @@ function GuestRows({
 
   const changedRow = (person: Person, change: GuestChange) => {
     const name = person.guest.fullName;
-    const line = changeLine(t, change, person, timeZone, locale, new Date());
+    const line = changeLine(t, change, person, readerZone, locale, new Date());
     const selected = open === person.guest.id;
 
     return {
@@ -1174,6 +1186,7 @@ function GuestRows({
         {pastes && pasteInRow}
       </View>
       {pastes && pasteUnder}
+      {changed.failed && <ChangedFailed onRetry={changed.onChoose} />}
       {view.kind === 'rows' ? (
         <View>
           {looking && (
@@ -1329,6 +1342,8 @@ interface ChangedFilter {
   inUse: boolean;
   count: number;
   rows: readonly GuestChange[] | null;
+  /** Choosing it failed: nothing is marked read, and the list stays as it was. */
+  failed: boolean;
   onChoose: () => void;
 }
 
@@ -1373,6 +1388,28 @@ function ChangedRow({
         {n}
       </Text>
     </Pressable>
+  );
+}
+
+function ChangedFailed({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  useReadOut(t('guestList.changed.failed'));
+
+  return (
+    <View style={styles.changedFailed} accessibilityRole="alert" testID="guests.changedFailed">
+      <View style={styles.shownRow}>
+        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
+        <Text size={14} weight="medium" style={styles.grow}>
+          {t('guestList.changed.failed')}
+        </Text>
+      </View>
+      <TextAction
+        label={t('guestList.changed.retry')}
+        glyph="refresh"
+        onPress={onRetry}
+        testID="guests.changedFailed.retry"
+      />
+    </View>
   );
 }
 
@@ -1489,8 +1526,15 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   rows: { gap: LIST_GAP },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: tokens.spaceXxs,
+  },
   shownRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  changedFailed: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   indent: { paddingLeft: 40 },
   pick: { paddingTop: 120, alignItems: 'center' },
   added: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
@@ -1521,6 +1565,7 @@ const styles = StyleSheet.create({
   },
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   phone: { ...LIST_EDGES.phone, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  phoneUnderBand: { paddingTop: LIST_GAP },
   portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
   landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
   column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
@@ -1546,4 +1591,9 @@ const SPACING: ListAndPageSpacing = {
   listWidth: 400,
   between: tokens.spaceXxl,
   ruled: { list: styles.ruledList, page: styles.ruledPage },
+};
+
+const OFFLINE_SPACING: ListAndPageSpacing = {
+  ...SPACING,
+  phone: [styles.phone, styles.phoneUnderBand],
 };

@@ -39,6 +39,7 @@ import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -139,6 +140,11 @@ export const routes = [
             ],
           },
         ],
+      },
+      {
+        path: '/preview',
+        element: <AppLayout bare />,
+        children: [{ path: 'events/:eventId/meals', element: <MealPreview /> }],
       },
       {
         path: '/i/:token',

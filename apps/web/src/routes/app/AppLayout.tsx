@@ -70,8 +70,11 @@ import './wideDesk.css';
  * The error boundary wraps the OUTLET, not the shell: a screen that throws
  * should leave the navigation and the organisation switcher usable, because
  * the way out of a broken screen is the navigation.
+ *
+ * Bare, it is the same gate around a page that is not the desk: Preview as
+ * guest shows the guest's page as a guest sees it.
  */
-export function AppLayout() {
+export function AppLayout({ bare = false }: { bare?: boolean }) {
   const state = useSessionState();
   const { pathname, search } = useLocation();
 
@@ -106,6 +109,8 @@ export function AppLayout() {
   // The product is behind the onboarding gate: verified, then complete.
   const landing = landingFor(state.session.awaiting);
   if (landing !== '/app') return <Navigate to={landing} replace />;
+
+  if (bare) return <Outlet />;
 
   const { organisation, pausedIn } = state.session;
 

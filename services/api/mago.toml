@@ -362,8 +362,9 @@ permit = [
 # account's parser, a name folded by the shared rule; each add is audited and published.
 # A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
 # and the items the hosts show to guests as the running order works them out (sc-3899),
-# and their table once the hosts share the tables (sc-4022). A reply, a guest's own needs
-# and a flagged link tell the event's members through messaging's Guest replies (sc-4331).
+# and their table once the hosts share the tables (sc-4022), and the meal picks for
+# each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
+# event's members through messaging's Guest replies (sc-4331).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -372,6 +373,7 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_menu",
     "@layer:domain_messaging",
     "@layer:domain_run_of_show",
     "@layer:domain_seating",
@@ -406,7 +408,8 @@ permit = [
 # last price's currency is one of the organisation's offered currencies; each change is
 # audited. An event's menu is published whole on its topic, and an allergen added to a
 # picked dish is counted against the allergies its pickers have recorded (sc-3777).
-# A variant's or a folded dish's cost holds the event's currency (sc-3903).
+# A variant's or a folded dish's cost holds the event's currency (sc-3903). Who has not
+# chosen a meal is told to the guest summary through Messaging's port (sc-80901).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Menu\\"
 permit = [
@@ -414,6 +417,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_event",
     "@layer:domain_organisation",
     "@layer:domain_guest",
@@ -564,10 +568,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
-# WhatsApp, for phone codes (sc-750). It sees the port it implements and nothing else of ours.
+# WhatsApp, for phone codes (sc-750). It sees the port it implements, and messaging's
+# payment refusal that every WhatsApp sender raises (sc-45470), and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Meta\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:domain_messaging"]
 
 # Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]

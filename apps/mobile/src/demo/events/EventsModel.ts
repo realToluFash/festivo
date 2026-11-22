@@ -516,6 +516,14 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
   return EVENT_STATES.find((state) => state === value) ?? null;
 }
 
+/** The event page's ?state=, unless the open area took it as its own: Messages' loading is not the event's. */
+export function eventStateBeside(
+  value: string | undefined,
+  areaState: string | null,
+): EventDemoState | null {
+  return areaState == null ? eventStateOf(value) : null;
+}
+
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
   if (

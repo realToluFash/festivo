@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\Messaging\Channel\WhatsAppPaymentRefusal;
 use App\Domain\User\Verification\PhoneCodeDispatch;
 use App\Http\Access\Policy\PublicAccess;
 use Psl\Json;
@@ -13,12 +14,13 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** Meta's delivery reports for phone codes (sc-750): signed with the app secret, or ignored. */
+/** Meta's delivery reports for phone codes (sc-750), and its payment refusals for any message (sc-45470): signed with the app secret, or ignored. */
 #[PublicAccess]
 final readonly class WhatsAppWebhookController
 {
     public function __construct(
         private PhoneCodeDispatch $phoneCodeDispatch,
+        private WhatsAppPaymentRefusal $paymentRefusal,
         #[SensitiveParameter]
         private string $verifyToken,
         #[SensitiveParameter]
@@ -49,12 +51,24 @@ final readonly class WhatsAppWebhookController
         }
 
         $statuses = Type\shape(['entry' => Type\vec(Type\shape(['changes' => Type\vec(Type\shape(['value' => Type\shape([
-            'statuses' => Type\optional(Type\vec(Type\shape(['id' => Type\string(), 'status' => Type\string()], true))),
+            'statuses' => Type\optional(Type\vec(Type\shape([
+                'id' => Type\string(),
+                'status' => Type\string(),
+                'errors' => Type\optional(Type\vec(Type\shape([
+                    'code' => Type\optional(Type\int()),
+                    'title' => Type\optional(Type\string()),
+                    'message' => Type\optional(Type\string()),
+                ], true))),
+            ], true))),
         ], true)], true))], true))], true);
 
         foreach ($statuses->coerce(Json\decode($raw))['entry'] as $entry) {
             foreach ($entry['changes'] as $change) {
                 foreach ($change['value']['statuses'] ?? [] as $status) {
+                    if ('failed' === $status['status']) {
+                        $this->paymentRefusal->noticeAmong($status['id'], $status['errors'] ?? []);
+                    }
+
                     $this->phoneCodeDispatch->reported($status['id'], $status['status']);
                 }
             }

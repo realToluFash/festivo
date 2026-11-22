@@ -2,7 +2,7 @@ import type { Guest } from '@soirely/api-client';
 import { changedRows } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { changeLine, filterMenuWidth } from './guestChanges.ts';
+import { changeLine, filterMenuWidth, readerZoneOf } from './guestChanges.ts';
 
 function guest(id: string, fullName: string, reply: Guest['reply']): Guest {
   return { id, fullName, reply, companions: [], needs: null } as unknown as Guest;
@@ -22,6 +22,21 @@ describe('Changed since you looked on the app (sc-4331)', () => {
     expect(
       changeLine(t, row!.change, row!.person, 'UTC', 'en-GB', new Date('2026-11-02T12:00:00Z')),
     ).toBe('guestList.changed.line(guestList.changed.needs|guestList.changed.changedAt(09:31))');
+  });
+
+  it('dates a change by the member’s zone, so a late reply in Lagos is the next day in Tokyo', () => {
+    const late = { guestId: 'g_1', kind: 'replied', at: '2026-10-30T20:00:00Z' } as const;
+    const [row] = changedRows([ADA], [late], '');
+    const now = new Date('2026-11-02T12:00:00Z');
+
+    expect(changeLine(t, row!.change, row!.person, readerZoneOf('Asia/Tokyo'), 'en-GB', now)).toBe(
+      'guestList.changed.line(guestList.reply.coming|guestList.changed.repliedOn(31 Oct))',
+    );
+  });
+
+  it('reads in the device’s zone while the account has none', () => {
+    expect(readerZoneOf(null)).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(readerZoneOf('Asia/Tokyo')).toBe('Asia/Tokyo');
   });
 
   it('widens the menu while its row leads it', () => {

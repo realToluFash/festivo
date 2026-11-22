@@ -443,6 +443,7 @@
     "guestReplies.email.flagged": "Link may have reached the wrong person:",
     "guestReplies.email.flaggedFix": "Replace their link from the guest list.",
     "guestReplies.email.notSeated": "Not seated: {count, number, ::group-auto}",
+    "guestReplies.email.noMealChosen": "No meal chosen: {count, number, ::group-auto}",
     "guestReplies.email.openGuestList": "Open the guest list",
     "guestReplies.email.footer": "You get this because you can see the guests of these events in {organisation}.",
     "guestReplies.email.turnOff": "Turn off guest reply emails",
