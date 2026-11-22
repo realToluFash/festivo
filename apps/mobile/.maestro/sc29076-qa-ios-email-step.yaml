@@ -1,0 +1,67 @@
+# iOS email step: arrival, Next, wrong pair by Go, chevron back, edge swipe back, blank, right pair. sc-29076.
+appId: host.exp.Exponent
+---
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-01-arrival-keys
+- inputText: ${EMAIL}
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-02-after-next
+- inputText: 'wrong-password-123'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match.*'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-03-refused-go
+- tapOn:
+    id: 'signIn.back'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 10000
+- takeScreenshot: ${OUT}-04-back-chevron-welcome
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- swipe:
+    start: 1%, 50%
+    end: 80%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-05-edge-swipe
+- assertVisible:
+    id: 'welcome.brand'
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- tapOn:
+    id: 'signIn.submit'
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-06-blank
+- tapOn:
+    id: 'signIn.email'
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- inputText: ${PASSWORD}
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: 'home\.openSettings|completeProfile\..*|noOrganisation|event\.nav\..*'
+    timeout: 30000
+- takeScreenshot: ${OUT}-07-signed-in
