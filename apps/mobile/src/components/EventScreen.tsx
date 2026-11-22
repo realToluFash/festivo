@@ -89,7 +89,7 @@ import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { useSidebarCard } from './sidebarCard.ts';
 import { backToEvents, eventTop } from '../kit/eventTop.ts';
 import { BACK_KEY, eventBack, overviewGivesWay } from '../kit/eventBack.ts';
-import { SEARCH_HREF, SEARCH_TERM } from '../kit/searchLinks.ts';
+import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -278,7 +278,7 @@ export function EventScreen({
     if (original != null) goUpToEvent(navigation, router, original);
     else if (behind.way === 'back' && router.canGoBack()) router.back();
     else if (behind.way === 'search')
-      router.replace({ pathname: SEARCH_HREF, params: { [SEARCH_TERM]: behind.term } });
+      router.replace({ pathname: SEARCH_HREF, params: { [SEARCH_OPENED_WITH]: behind.term } });
     else backToEvents(router);
   };
   const fromSearch = phone && opensGuest != null;

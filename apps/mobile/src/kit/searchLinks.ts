@@ -15,7 +15,7 @@ export const EVENTS_SEARCHED = 'q';
 export const SEARCH_HREF = '/search';
 
 /** The route param Search opens with a term already typed, as an event's ‹ Search opens it on a tablet (sc-83008). */
-export const SEARCH_TERM = 'q';
+export const SEARCH_OPENED_WITH = 'q';
 
 /** A row's place. `searched` is what was typed when Search closes before the event opens, as on a tablet, so the event's ‹ Search can open it again (sc-83008). */
 export function searchRowHref(row: SearchRow, searched?: string): string {
