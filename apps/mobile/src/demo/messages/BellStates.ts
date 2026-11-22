@@ -16,6 +16,7 @@ export const BELL_STATES = [
   'bellGone',
   'bellOffline',
   'bellRefreshing',
+  'bellUnknown',
 ] as const;
 
 export type BellState = 'bell' | (typeof BELL_STATES)[number];
@@ -32,6 +33,7 @@ export const BELL_BOARDS: Record<(typeof BELL_STATES)[number], readonly [string,
   bellGone: ['the bell · an event that has gone', 'This event is no longer available.'],
   bellOffline: ['the bell · offline', 'Offline · as of 09:40, with Try again'],
   bellRefreshing: ['the bell · refreshing', 'Refreshing… beside the title, the band kept'],
+  bellUnknown: ['the bell · a category this app does not know', 'The plain bell, Unread and Muted'],
 };
 
 export type Category =
@@ -47,10 +49,13 @@ export const CATEGORY_MARK: Record<Category, GlyphName> = {
   account_security: 'shield',
 };
 
-/** A category the client does not know draws no mark, and its item keeps its words. */
-export function markOf(category: string): GlyphName | null {
-  return Object.hasOwn(CATEGORY_MARK, category) ? CATEGORY_MARK[category as Category] : null;
+/** A category the client does not know takes the plain bell, which names no category, in the same square (sc-84143). */
+export function markOf(category: string): GlyphName {
+  return Object.hasOwn(CATEGORY_MARK, category) ? CATEGORY_MARK[category as Category] : 'bell';
 }
+
+/** The sample's category from a server newer than the app. */
+export const UNKNOWN_CATEGORY = 'venue_news' as const;
 
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
 
@@ -64,6 +69,8 @@ export interface BellStart {
   /** The item whose event has gone is listed, its line showing as after a tap. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
+  /** An unread item of a category the client does not know, on the muted event. */
+  unknown: boolean;
 }
 
 const REST: BellStart = {
@@ -75,6 +82,7 @@ const REST: BellStart = {
   muted: false,
   gone: false,
   offline: 'none',
+  unknown: false,
 };
 
 export function bellStartOf(state: BellState): BellStart {
@@ -101,6 +109,8 @@ export function bellStartOf(state: BellState): BellStart {
       return { ...REST, offline: 'band' };
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
+    case 'bellUnknown':
+      return { ...REST, unknown: true, muted: true };
     case 'bell':
       return REST;
   }
@@ -137,4 +147,5 @@ export const BW = {
   overdue: (event: string) => `1 payment overdue on ${event}`,
   due: (event: string) => `2 payments due in the next 7 days on ${event}`,
   signIn: 'New sign-in to Soirely',
+  unknown: 'Ana Souza added a note to the event',
 };

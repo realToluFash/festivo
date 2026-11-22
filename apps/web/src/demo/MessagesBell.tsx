@@ -9,6 +9,7 @@ import {
   type Category,
   GONE_EVENT,
   OLDER_COUNT,
+  UNKNOWN_CATEGORY,
   asOf,
   bellStartOf,
   markOf,
@@ -34,7 +35,7 @@ const BUSY_MS = 900;
 
 interface Item {
   key: string;
-  category: Category | 'unknown';
+  category: Category | typeof UNKNOWN_CATEGORY;
   title: string;
   line: string;
   unread: boolean;
@@ -76,6 +77,18 @@ export function MessagesBell() {
           unread: repliesUnread(),
           event: EVENT_NAME,
         },
+        ...(start.unknown
+          ? [
+              {
+                key: 'unknown',
+                category: UNKNOWN_CATEGORY,
+                title: W.samples.unknown,
+                line: where(EVENT_NAME, today('08:40')),
+                unread: !bell.read,
+                event: EVENT_NAME,
+              },
+            ]
+          : []),
         {
           key: 'day',
           category: 'event_day',
@@ -335,7 +348,6 @@ export function MessagesBell() {
             {feed === 'loaded' && items.length > 0 && (
               <ul className="mg-bell-items">
                 {items.map((item) => {
-                  const mark = markOf(item.category);
                   const isMuted = muted && item.event === EVENT_NAME;
 
                   return (
@@ -346,11 +358,9 @@ export function MessagesBell() {
                         className="mg-bell-item"
                         onClick={() => pick(item)}
                       >
-                        {mark != null && (
-                          <span className="mg-bell-glyph" aria-hidden="true">
-                            <Glyph name={mark} size={20} />
-                          </span>
-                        )}
+                        <span className="mg-bell-glyph" aria-hidden="true">
+                          <Glyph name={markOf(item.category)} size={20} />
+                        </span>
                         <span className="mg-bell-words">
                           <span
                             className={item.unread ? 'mg-bell-title is-unread' : 'mg-bell-title'}

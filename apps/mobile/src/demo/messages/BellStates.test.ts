@@ -16,7 +16,7 @@ describe('the bell’s states (sc-83081)', () => {
     expect(markOf('event_day')).toBe('today');
     expect(markOf('money')).toBe('wallet');
     expect(markOf('account_security')).toBe('shield');
-    expect(markOf('venue_news')).toBeNull();
+    expect(markOf('venue_news')).toBe('bell');
   });
 
   it('starts each state in the one thing it shows', () => {
@@ -27,6 +27,7 @@ describe('the bell’s states (sc-83081)', () => {
     expect(bellStartOf('bellMoreFailed').more).toBe('failed');
     expect(bellStartOf('bellMute').menu).toBe('missed');
     expect(bellStartOf('bellRefreshing').offline).toBe('refreshing');
+    expect(bellStartOf('bellUnknown')).toMatchObject({ unknown: true, muted: true });
   });
 
   it('knows its own keys and no others', () => {

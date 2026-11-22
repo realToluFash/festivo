@@ -26,6 +26,7 @@ import {
   BW,
   GONE_EVENT,
   OLDER_COUNT,
+  UNKNOWN_CATEGORY,
   bellStartOf,
   markOf,
 } from './BellStates.ts';
@@ -37,7 +38,7 @@ type Opener = RefObject<ScreenReaderTarget | null>;
 
 interface BellItem {
   key: string;
-  category: Category;
+  category: Category | typeof UNKNOWN_CATEGORY;
   title: string;
   line: string;
   unread: boolean;
@@ -60,6 +61,18 @@ function itemsOf(start: BellStart, allRead: boolean, older: boolean): BellItem[]
       unread: repliesUnread(),
       event: EVENT,
     },
+    ...(start.unknown
+      ? [
+          {
+            key: 'unknown',
+            category: UNKNOWN_CATEGORY,
+            title: BW.unknown,
+            line: where(EVENT, say.atTime('08:40')),
+            unread: !allRead,
+            event: EVENT,
+          },
+        ]
+      : []),
     {
       key: 'day',
       category: 'event_day',
@@ -444,8 +457,6 @@ function BellRow({
   onMenu: (open: boolean) => void;
   onMute: (muted: boolean) => void;
 }) {
-  const mark = markOf(item.category);
-
   return (
     <View>
       <View style={styles.rowLine}>
@@ -463,11 +474,9 @@ function BellRow({
             .join(', ')}
           testID={`messages.bell.${item.key}`}
         >
-          {mark != null && (
-            <View style={styles.bellTile}>
-              <Glyph name={mark} size={20} ink={tokens.colorInkSecondary} />
-            </View>
-          )}
+          <View style={styles.bellTile}>
+            <Glyph name={markOf(item.category)} size={20} ink={tokens.colorInkSecondary} />
+          </View>
           <View style={styles.grow}>
             <Text
               size={16}
