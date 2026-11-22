@@ -128,6 +128,14 @@ function firstFocus(state: MessagesState | null): string | null {
       return 'to-pick';
     case 'whoNoneSend':
       return 'refused';
+    case 'chooseNone':
+    case 'allRefused':
+      return 'to-chip';
+    case 'longSubject':
+      return 'subject';
+    case 'blankMessage':
+    case 'longMessage':
+      return 'body';
     case 'sendWithout':
       return 'cancel';
     case 'stopAction':

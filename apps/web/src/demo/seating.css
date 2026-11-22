@@ -492,6 +492,13 @@
   stroke-dasharray: 3 2.5;
 }
 
+.st-chair-q {
+  fill: var(--colorAttention);
+  font-family: var(--fontFamily);
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .st-chair.is-unusable {
   fill: var(--stOff);
   stroke: var(--stOffEdge);
@@ -1960,6 +1967,18 @@
   background: none;
 }
 
+.st-party.is-left {
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+}
+
+.st-party.is-left svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--colorAttention);
+}
+
 .st-avatar {
   display: flex;
   flex: none;
@@ -3000,4 +3019,14 @@
 .st-kept {
   flex: none;
   padding: var(--spaceMd) var(--spaceLg) 0 24px;
+}
+
+.st-avatar.is-proposed {
+  border: 1.5px dashed var(--colorAttention);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.st-row-line.is-amber {
+  color: var(--colorAttentionText);
 }

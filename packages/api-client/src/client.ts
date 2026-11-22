@@ -309,6 +309,39 @@ export interface NotificationArrival {
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
+/** What a guest did since a look (sc-4331): a reply outranks the rest on the guest's one row. */
+export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged';
+const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = ['replied', 'changed', 'needs', 'flagged'];
+
+export interface GuestChange {
+  guestId: string;
+  kind: GuestChangeKind;
+  at: string;
+}
+
+/** `since` is the time the rows count from, or `all` for a member who had never looked. */
+export interface GuestChanges {
+  since: string;
+  rows: GuestChange[];
+}
+
+function guestChangesOf(body: Record<string, unknown>): GuestChanges {
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+
+  return {
+    since: typeof body.since === 'string' ? body.since : 'all',
+    rows: rows.flatMap((row: unknown): GuestChange[] => {
+      if (typeof row !== 'object' || row == null) return [];
+      const { guestId, kind, at } = row as Record<string, unknown>;
+      const known = GUEST_CHANGE_KINDS.find((each) => each === kind);
+
+      return typeof guestId === 'string' && typeof at === 'string' && known != null
+        ? [{ guestId, kind: known, at }]
+        : [];
+    }),
+  };
+}
+
 export interface EventMute {
   muted: boolean;
 }
@@ -1637,6 +1670,48 @@ export class ApiClient {
     );
 
     return { muted: body.muted === true };
+  }
+
+  /** Changed since you looked (sc-4331): from `since` in the address (`all` for every change), or from the caller's last look when none is given. Marks nothing read. */
+  async guestChanges(eventId: string, since?: string): Promise<GuestChanges> {
+    const query = since == null ? '' : `?since=${encodeURIComponent(since)}`;
+
+    return guestChangesOf(
+      await this.get<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes${query}`,
+      ),
+    );
+  }
+
+  /** Choosing Changed since you looked from the menu: a look, which marks the event's Guest replies item read. */
+  async lookAtGuestChanges(eventId: string): Promise<GuestChanges> {
+    return guestChangesOf(
+      await this.post<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes/look`,
+        {},
+      ),
+    );
+  }
+
+  /** Where Guest replies email stands for the member the summary's link names (sc-4331); a link that does not work is a 404. */
+  async guestReplyEmails(token: string): Promise<boolean> {
+    const body = await this.post<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
+  }
+
+  async setGuestReplyEmails(token: string, emailOn: boolean): Promise<boolean> {
+    const body = await this.put<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token, emailOn },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */

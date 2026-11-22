@@ -18,6 +18,15 @@ import {
   toSeedOf,
 } from './messagesTo.ts';
 import { type PersonId, previewDraftOf } from './messagesPreviewSample.ts';
+import {
+  CHOSE_NOBODY,
+  LONG_SUBJECT,
+  LONG_TAIL,
+  REFUSAL_GROUP,
+  REFUSAL_STATES,
+  isRefusalState,
+  refusalSeedOf,
+} from './messagesRefusals.ts';
 import { EMAIL_ONLY, WAITS_STATES, waitsTicksOf } from './messagesWaits.ts';
 import {
   OTHER_MEMBER,
@@ -204,6 +213,7 @@ export const MESSAGE_STATES = [
   ...TELL_STATES,
   ...WA_ANSWER_STATES,
   ...TAP_STATES,
+  ...REFUSAL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -237,7 +247,8 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
         !isInviteState(one.key) &&
         !isSmsState(one.key) &&
         !isTellState(one.key) &&
-        !isTapState(one.key),
+        !isTapState(one.key) &&
+        !isRefusalState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -266,6 +277,13 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: TAP_GROUP,
     states: [...WA_ANSWER_STATES, ...TAP_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
+  },
+  {
+    name: REFUSAL_GROUP,
+    states: REFUSAL_STATES.map((one) => ({
       to: `${MESSAGES_AT}?state=${one.key}`,
       name: one.name,
     })),
@@ -2552,6 +2570,24 @@ function compose(base: Inbox, to: Audience, step: Draft['step'], ticks: Ticks = 
   return { ...base, pane: { kind: 'compose' }, draft: { ...draftOf(to, step), ticks } };
 }
 
+/** The composer after Send was pressed with fields that fail (sc-3942): nothing sent, every sentence shown. */
+function refusedSeed(base: Inbox, state: Parameters<typeof refusalSeedOf>[0]): Inbox {
+  const seed = refusalSeedOf(state);
+  const draft = draftOf(seed.chooseNone ? CHOSE_NOBODY : COMING);
+  const body: readonly Segment[] =
+    seed.body === 'blank'
+      ? []
+      : seed.body === 'long'
+        ? [...draft.body, { kind: 'text', text: `\n\n${LONG_TAIL}` }]
+        : draft.body;
+
+  return {
+    ...base,
+    pane: { kind: 'compose' },
+    draft: { ...draft, subject: seed.subject === 'long' ? LONG_SUBJECT : draft.subject, body },
+  };
+}
+
 export function seedOf(state: MessagesState | null): Inbox {
   const base: Inbox = {
     loading: false,
@@ -2903,6 +2939,8 @@ export function seedOf(state: MessagesState | null): Inbox {
           ],
         };
       }
+
+      if (isRefusalState(state)) return refusedSeed(base, state);
 
       const waits = waitsTicksOf(state);
 
