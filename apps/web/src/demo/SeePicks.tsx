@@ -12,7 +12,8 @@ import { EventSidebar } from './EventSidebar.tsx';
 import type { SampleEvent } from './events.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockOfKitchen } from './kitchen.ts';
-import { type DishAllergen, DISH_ALLERGENS, allergenName } from './menuLibrary.ts';
+import { allergenList } from './mealStep.ts';
+import { type DishAllergen, listOf } from './menuLibrary.ts';
 import { type EvCourse, type EvDish, CW, coursesAt } from './menuCourses.ts';
 import { MENU_EVENT } from './menuServed.ts';
 import { keptInbox, waitingLine } from './messages.ts';
@@ -37,7 +38,6 @@ import {
   goesBackTo,
   hasVariant,
   header,
-  listOf,
   needsHost,
   neverGiven,
   numberIn,
@@ -580,14 +580,7 @@ function CourseCard({
   );
 }
 
-/** The allergens in the menu's order, joined as the reader's language joins a list. */
-function allergensOf(codes: readonly DishAllergen[]): string {
-  return listOf(
-    DISH_ALLERGENS.filter((code) => codes.includes(code)).map((code) =>
-      allergenName(code, 'en').toLocaleLowerCase('en'),
-    ),
-  );
-}
+const allergensOf = (codes: readonly DishAllergen[]): string => allergenList(codes, 'en', listOf);
 
 function goesBack(course: EvCourse, person: Person): string {
   const back = goesBackTo(course, person);

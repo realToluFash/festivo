@@ -10,6 +10,7 @@ import {
   allergenName,
   dietClashes,
   lengthOf,
+  listOf,
   priceExample,
   readPrice,
   sameName,
@@ -439,9 +440,6 @@ export function copiedVariants(
     };
   });
 }
-
-const listOf = (names: readonly string[]): string =>
-  new Intl.ListFormat('en', { type: 'conjunction' }).format(names);
 
 export function variantAllergenLine(
   dish: string,

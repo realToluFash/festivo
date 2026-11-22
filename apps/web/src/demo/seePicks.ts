@@ -3,7 +3,7 @@ import { type Allergen, type Diet, GUEST_KITCHEN_NAMES } from './guestKitchenWor
 import { type Choice, type ChoiceOption, hasChoices } from './dishChoices.ts';
 import { type Variant, hasVariants, isForEveryone, variantsOf } from './dishVariants.ts';
 import { type EvCourse, type EvDish, coursesAt, picksCourses } from './menuCourses.ts';
-import { type Contains, type DishAllergen, DISH_ALLERGENS } from './menuLibrary.ts';
+import { type Contains, type DishAllergen, DISH_ALLERGENS, listOf } from './menuLibrary.ts';
 import { MENU_EVENT } from './menuServed.ts';
 import { dayWords } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
@@ -195,10 +195,6 @@ export const numberIn = (n: number, locale = 'en'): string => n.toLocaleString(l
 /** Rounds down, so 100% shows only when everyone is in. */
 export const percentOf = (n: number, room: number): number =>
   room === 0 ? 0 : Math.floor((n * 100) / room);
-
-/** A list in the reader's words: “a, b and c”. */
-export const listOf = (items: readonly string[], lang = 'en'): string =>
-  new Intl.ListFormat(lang, { type: 'conjunction' }).format(items);
 
 export const shownCourses = (world: PicksWorld): readonly EvCourse[] =>
   world.courses.filter((course) => course.dishes.length > 0);
