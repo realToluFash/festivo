@@ -27,9 +27,10 @@ import { Thanks } from '../../components/Thanks.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
-import { useWideWidth } from '../../phoneWidth.ts';
+import { usePhoneWidth, useWideWidth } from '../../phoneWidth.ts';
 import { useServerNow } from '../../serverNow.ts';
 import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
+import { WhereBlock, YourCode, hasWhere, leadsOnTheDay, placeOf } from './GuestDay.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { Programme } from './Programme.tsx';
 import { YourTable } from './YourTable.tsx';
@@ -418,7 +419,10 @@ export function Card({
   const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
   const seen = useRef(standing(first));
   const sends = useRef(0);
+  const [leads] = useState(() => preview == null && leadsOnTheDay(first));
+  const phone = usePhoneWidth();
   const { guest, event } = page;
+  const when = useWhen(event);
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
   const courses = askedCourses(page.meals);
@@ -1046,6 +1050,7 @@ export function Card({
     view.kind === 'kitchen' ||
     view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
+  const dayOrder = leads && tell.kind === 'card' && forTheDay(page, view);
   const saved = savedPlates(page.meals, eaters);
   const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
@@ -1135,96 +1140,126 @@ export function Card({
     <div ref={columns} className="gp-columns">
       <PhaseNotice phase={page.phase} />
       {preview == null && <LanguageUnsaved token={token} />}
-      <Cover page={page} tagged={tagged && !ended(page.phase)} />
-      <div className="gp-under">
-        {tell.kind === 'card' && (
-          <Shown
+      <Cover
+        page={page}
+        tagged={tagged && !ended(page.phase)}
+        dayOrder={dayOrder}
+        band={dayOrder && phone}
+      />
+      {dayOrder && (
+        <div className="gp-under is-day">
+          {page.checkInCode != null && (
+            <YourCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
+          )}
+          <WhereBlock page={page} when={when} />
+          <YourTable page={page} onTheDay />
+          <Programme page={page} onTheDay />
+          <DayAnswer
             view={view}
             page={page}
             party={party}
-            kitchen={kitchen}
-            preview={preview != null}
-            onCard={card}
-            onKitchenBack={kitchenBack}
-            onKitchenNext={kitchenNext}
-            onKitchenSkip={kitchenSkip}
             kitchenSaved={kitchenSaved}
-            onKitchenAfter={kitchenAfter}
-            onKitchenAfterLeave={kitchenAfterLeave}
-            onKitchenAfterSave={kitchenAfterSave}
-            onParty={(change, on) => {
-              setParty(change);
-              if (on != null) focus(on);
-            }}
-            onPartyNext={partyNext}
-            onPartyChange={withYou}
-            onCheckBack={checkBack}
-            onCheckKitchen={checkKitchen}
-            mealScreen={mealScreen}
-            checkMeals={checkMeals}
-            comingBack={comingBack}
-            onChoose={choose}
-            onSend={sendComing}
-            onBack={back}
             onChange={() => {
               setView({ kind: 'changing', busy: null, failed: false });
               focus('newHead');
             }}
-            onKeep={() => {
-              setKitchen(null);
-              setView({ kind: 'recorded', same: false });
-              focus('change');
-            }}
+            onKitchenAfter={kitchenAfter}
           />
-        )}
-        {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
-          <YourTable page={page} />
-        )}
-        {tell.kind === 'card' && forTheDay(page, view) && page.checkInCode != null && (
-          <DoorCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
-        )}
-        {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
-          <AddToCalendar calendar={page.calendar} />
-        )}
-        {tell.kind === 'asking' && (
-          <section className="gp-tell" aria-labelledby="gp-tell-h">
-            <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
-              {t('guest.tellQuestion', { hosts })}
-            </h2>
-            <p className="gp-sub">{t('guest.tellLine', { name: guest.fullName, count })}</p>
-            {tell.result === 'failed' && <Notice kind="broken">{t('guest.tellFailed')}</Notice>}
-            {tell.result === 'limited' && (
-              <Notice kind="attention" alert>
-                {t('guest.tellLimited')}
-              </Notice>
-            )}
-            <Filled busy={tell.busy} onClick={tellThem}>
-              {t('guest.tellThem')}
-            </Filled>
-            <button
-              className="gp-outlined"
-              type="button"
-              onClick={() => {
-                setTell({ kind: 'card' });
-                focus('tell');
+          {comingBack}
+          {page.calendar != null && <AddToCalendar calendar={page.calendar} />}
+        </div>
+      )}
+      {!dayOrder && (
+        <div className="gp-under">
+          {tell.kind === 'card' && (
+            <Shown
+              view={view}
+              page={page}
+              party={party}
+              kitchen={kitchen}
+              preview={preview != null}
+              onCard={card}
+              onKitchenBack={kitchenBack}
+              onKitchenNext={kitchenNext}
+              onKitchenSkip={kitchenSkip}
+              kitchenSaved={kitchenSaved}
+              onKitchenAfter={kitchenAfter}
+              onKitchenAfterLeave={kitchenAfterLeave}
+              onKitchenAfterSave={kitchenAfterSave}
+              onParty={(change, on) => {
+                setParty(change);
+                if (on != null) focus(on);
               }}
-            >
-              {t('guest.goBack')}
-            </button>
-          </section>
-        )}
-        {tell.kind === 'told' && (
-          <div className="gp-told" role="status" aria-live="polite">
-            <span className="gp-mark is-coming" aria-hidden="true">
-              <Glyph name="tick" size={17} weight={3} />
-            </span>
-            <p tabIndex={-1} data-focus="thanks">
-              {t('guest.tellThanks', { hosts, count })}
-            </p>
-          </div>
-        )}
-      </div>
-      {!alone && <Details page={page} hosts={hosts} />}
+              onPartyNext={partyNext}
+              onPartyChange={withYou}
+              onCheckBack={checkBack}
+              onCheckKitchen={checkKitchen}
+              mealScreen={mealScreen}
+              checkMeals={checkMeals}
+              comingBack={comingBack}
+              onChoose={choose}
+              onSend={sendComing}
+              onBack={back}
+              onChange={() => {
+                setView({ kind: 'changing', busy: null, failed: false });
+                focus('newHead');
+              }}
+              onKeep={() => {
+                setKitchen(null);
+                setView({ kind: 'recorded', same: false });
+                focus('change');
+              }}
+            />
+          )}
+          {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
+            <YourTable page={page} />
+          )}
+          {tell.kind === 'card' && forTheDay(page, view) && page.checkInCode != null && (
+            <DoorCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
+          )}
+          {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
+            <AddToCalendar calendar={page.calendar} />
+          )}
+          {tell.kind === 'asking' && (
+            <section className="gp-tell" aria-labelledby="gp-tell-h">
+              <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
+                {t('guest.tellQuestion', { hosts })}
+              </h2>
+              <p className="gp-sub">{t('guest.tellLine', { name: guest.fullName, count })}</p>
+              {tell.result === 'failed' && <Notice kind="broken">{t('guest.tellFailed')}</Notice>}
+              {tell.result === 'limited' && (
+                <Notice kind="attention" alert>
+                  {t('guest.tellLimited')}
+                </Notice>
+              )}
+              <Filled busy={tell.busy} onClick={tellThem}>
+                {t('guest.tellThem')}
+              </Filled>
+              <button
+                className="gp-outlined"
+                type="button"
+                onClick={() => {
+                  setTell({ kind: 'card' });
+                  focus('tell');
+                }}
+              >
+                {t('guest.goBack')}
+              </button>
+            </section>
+          )}
+          {tell.kind === 'told' && (
+            <div className="gp-told" role="status" aria-live="polite">
+              <span className="gp-mark is-coming" aria-hidden="true">
+                <Glyph name="tick" size={17} weight={3} />
+              </span>
+              <p tabIndex={-1} data-focus="thanks">
+                {t('guest.tellThanks', { hosts, count })}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      {!alone && <Details page={page} hosts={hosts} dayOrder={dayOrder} />}
       {!alone && (
         <div className="gp-foot">
           {page.answersOpen && (
@@ -1257,6 +1292,83 @@ function forTheDay(page: GuestPage, view: View): boolean {
     page.guest.reply?.answer === 'coming' &&
     page.phase === 'live' &&
     (view.kind === 'recorded' || view.kind === 'closed')
+  );
+}
+
+/** sc-1439's recorded and closed views under Your answer on the day, without the place, which shows once, in Where (sc-24381). */
+function DayAnswer({
+  view,
+  page,
+  party,
+  kitchenSaved,
+  onChange,
+  onKitchenAfter,
+}: {
+  view: View;
+  page: GuestPage;
+  party: Party;
+  kitchenSaved: boolean;
+  onChange: () => void;
+  onKitchenAfter: () => void;
+}) {
+  const { t } = useTranslation();
+  const { reply } = page.guest;
+
+  if (reply == null) return null;
+  const day = dayOf(reply.at, page.event.timeZone);
+  const closed = view.kind === 'closed';
+  const closedOn = page.started ? null : (page.answersClosedOn ?? null);
+
+  return (
+    <section className="gp-day-block" aria-labelledby="gp-day-answer-h">
+      <h2 id="gp-day-answer-h" className="gp-h2">
+        {t('guest.yourAnswer')}
+      </h2>
+      <p className="gp-day-answered" tabIndex={-1} data-focus={closed ? 'closedHead' : 'greeting'}>
+        {reply.recordedBy == null
+          ? t(ANSWERED[reply.answer], { date: day })
+          : t('guest.recordedFor', { name: reply.recordedBy, date: day })}
+      </p>
+      {view.kind === 'recorded' && view.same && (
+        <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
+      )}
+      {hasStep(party) && <p className="gp-sub">{partyLine(partyOf(page), t)}</p>}
+      {closed && kitchenSaved && !page.started && <KitchenSaved />}
+      {closed && (
+        <p className="gp-sub">
+          {closedOn == null
+            ? t('guest.closed')
+            : t('guest.closedBy', { date: wallDayOf(closedOn) })}
+        </p>
+      )}
+      {!closed && (
+        <TextAction focus="change" onClick={onChange}>
+          {t('guest.change')}
+        </TextAction>
+      )}
+      {closed && !page.started && (
+        <TextAction
+          focus="kitchen"
+          {...(kitchenSaved ? { describedBy: KITCHEN_SAVED_ID } : {})}
+          icon={
+            <svg
+              className="gp-line"
+              width={18}
+              height={18}
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              strokeWidth={2.2}
+            >
+              <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+            </svg>
+          }
+          onClick={onKitchenAfter}
+        >
+          {t('guest.kitchen')}
+        </TextAction>
+      )}
+    </section>
   );
 }
 
@@ -2009,7 +2121,7 @@ function useWhen(event: GuestPage['event']): string {
 }
 
 /** When, where and who, as Events A writes them, and the host's arrival note under the Where line, never translated. */
-function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
+function Details({ page, hosts, dayOrder }: { page: GuestPage; hosts: string; dayOrder: boolean }) {
   const { t } = useTranslation();
   const { event } = page;
   const when = useWhen(event);
@@ -2023,6 +2135,12 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
       {note}
     </p>
   );
+  const hostsRow = named && (
+    <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
+  );
+
+  if (dayOrder)
+    return hostsRow === false ? null : <div className="gp-details gp-left-after">{hostsRow}</div>;
 
   return (
     <div className="gp-details gp-left-after">
@@ -2060,9 +2178,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
       {!where && noteLine !== false && (
         <div className={named ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
-      {named && (
-        <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
-      )}
+      {hostsRow}
       <Programme page={page} />
     </div>
   );
@@ -2081,7 +2197,17 @@ function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: 
 }
 
 /** The cover the event's page shows: the organiser's photo, or its colour from meshFor, under the scrim; the answer as a tag once given. */
-function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
+function Cover({
+  page,
+  tagged,
+  dayOrder,
+  band,
+}: {
+  page: GuestPage;
+  tagged: boolean;
+  dayOrder: boolean;
+  band: boolean;
+}) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   const { event, guest } = page;
@@ -2090,15 +2216,44 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
   const when = useWhen(event);
   const line = [
     format(event.startsAt, event.timeZone, { weekday: 'short', month: 'short', day: 'numeric' }),
-    when,
-    event.venue?.name,
+    dayOrder && hasWhere(placeOf(page)) ? null : when,
+    dayOrder ? null : event.venue?.name,
   ]
     .filter((part) => part != null)
     .join(' · ');
+  const look = `today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}`;
+  const head = over ? (
+    <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
+      {event.name}
+    </h1>
+  ) : (
+    <>
+      <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
+        {t('guest.invitationTitle')}
+      </h1>
+      <p className="gp-cover-guest">{guest.fullName}</p>
+      <p className="gp-cover-name">{event.name}</p>
+    </>
+  );
+
+  if (band) {
+    return (
+      <>
+        <span className={`gp-band gp-left ev-card ${look}`} aria-hidden="true">
+          {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
+          <span className="ev-scrim" />
+        </span>
+        <section className="gp-head" aria-labelledby="gp-h1">
+          {head}
+          <p className="gp-cover-line">{line}</p>
+        </section>
+      </>
+    );
+  }
 
   return (
     <section
-      className={`gp-cover gp-left ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}${page.phase === 'calledOff' ? ' is-grey' : ''}`}
+      className={`gp-cover gp-left ev-card ${look}${page.phase === 'calledOff' ? ' is-grey' : ''}`}
       aria-labelledby="gp-h1"
     >
       {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
@@ -2114,19 +2269,7 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
             {t(WORD[guest.reply.answer])}
           </p>
         )}
-        {over ? (
-          <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
-            {event.name}
-          </h1>
-        ) : (
-          <>
-            <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
-              {t('guest.invitationTitle')}
-            </h1>
-            <p className="gp-cover-guest">{guest.fullName}</p>
-            <p className="gp-cover-name">{event.name}</p>
-          </>
-        )}
+        {head}
         <p className="gp-cover-line">{line}</p>
       </div>
     </section>

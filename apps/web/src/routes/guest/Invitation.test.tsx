@@ -2831,3 +2831,133 @@ describe('Show this at the door (sc-1301)', () => {
     }
   });
 });
+
+describe("on the event's day (sc-24381)", () => {
+  const CODE = { code: 'q2k9tD0tX3vYb1mLw7pZc4sRf8hJn6aE5uGi0oKy2Vx', qrSvg: '<svg></svg>' };
+  const CEREMONY = {
+    title: 'Ceremony',
+    startsAt: '2030-11-14T17:20:00+01:00',
+    day: '2030-11-14',
+    place: null,
+  };
+
+  function today(body: object, more: object = {}) {
+    return { ...body, onTheDay: true, checkInCode: CODE, ...more };
+  }
+
+  function headings(): string[] {
+    return screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent ?? '');
+  }
+
+  it('leads a Coming guest with Your code, then Where, The day and Your answer, the place shown once', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            programme: [CEREMONY],
+            event: { ...PAGE.event, arrivalNote: 'Enter by the garden gate.' },
+          }),
+        },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    expect(headings()).toEqual(['Your code', 'Where', 'The day', 'Your answer']);
+    expect(screen.getAllByText('The Civic Centre')).toHaveLength(1);
+    expect(screen.getAllByText('Ozumba Mbadiwe Ave, Victoria Island, Lagos')).toHaveLength(1);
+    expect(screen.getAllByText('Enter by the garden gate.')).toHaveLength(1);
+    expect(screen.getAllByRole('link', { name: 'Open in maps' })).toHaveLength(1);
+    expect(screen.getByText('Show this at the door')).toBeDefined();
+  });
+
+  it('has no Where without a venue name, an address or a note, and the head keeps the time', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            event: { ...PAGE.event, venue: null, arrivalNote: null },
+          }),
+        },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Your code' });
+
+    expect(headings()).toEqual(['Your code', 'Your answer']);
+    expect(document.querySelector('.gp-cover-line')?.textContent).toMatch(/·/u);
+  });
+
+  it('shows a name with no address without Open in maps', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: today(answered('coming'), {
+            event: { ...PAGE.event, venue: { name: 'The Civic Centre', address: null } },
+          }),
+        },
+      ],
+    });
+    open();
+
+    const where = await screen.findByRole('region', { name: 'Where' });
+
+    expect(within(where).getByText('The Civic Centre')).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Open in maps' })).toBeNull();
+  });
+
+  it('keeps the usual order for Not coming, Not sure yet and no answer', async () => {
+    for (const body of [answered('notComing'), answered('maybe'), PAGE]) {
+      api({
+        '/api/guest-links/page': [
+          { status: 200, body: { ...body, onTheDay: true, checkInCode: null } },
+        ],
+      });
+      const { unmount } = open();
+
+      expect(await screen.findAllByRole('heading', { level: 1 })).toBeDefined();
+      expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Where' })).toBeNull();
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('keeps the usual order for a Coming guest on any other day', async () => {
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...answered('coming'), onTheDay: false, checkInCode: CODE } },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Show this at the door' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+  });
+
+  it('keeps the order the page opened with when the page asks again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: { ...answered('coming'), onTheDay: false, checkInCode: CODE } },
+        { status: 200, body: today(answered('coming')) },
+      ],
+    });
+    open();
+
+    await screen.findByRole('heading', { level: 2, name: 'Show this at the door' });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Show this at the door' })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Your code' })).toBeNull();
+  });
+});
