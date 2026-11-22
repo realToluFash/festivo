@@ -11,7 +11,7 @@ use App\Enum\NotificationPriority;
 use Psl\Iter;
 use Symfony\Component\Uid\Uuid;
 
-/** The member's one bell item per event, kept up to date with every guest they have not looked at (AC 1), and opening Changed since you looked from their last look (AC 2). */
+/** The member's one bell item per event, read or unread, kept up to date with every guest they have not looked at (AC 1), and opening Changed since you looked from their last look (AC 2). */
 final readonly class GuestRepliesItem extends GuestRepliesType
 {
     public const string NAME = 'guest_replies.item';
@@ -67,6 +67,6 @@ final readonly class GuestRepliesItem extends GuestRepliesType
         $title = $this->guestReplyWording->title($tally, $recipient->locale);
         $place = GuestReplyLog::place($eventId, $looked);
 
-        return new RenderedNotification($title, $title, place: $place, thread: $thread);
+        return new RenderedNotification($title, $title, place: $place, thread: $thread, reopens: true);
     }
 }

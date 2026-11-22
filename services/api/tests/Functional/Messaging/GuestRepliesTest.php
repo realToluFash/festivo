@@ -46,6 +46,7 @@ use App\Repository\GuestRepository;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\Types\Types;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -92,9 +93,54 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->reply($changed, GuestReply::NotComing);
         $this->reply($this->guest('Bisi Oke'), GuestReply::Coming);
 
-        self::assertSame(['1 coming, 1 changed their reply', '2 coming, 1 not coming'], $this->titles($this->ada));
-        self::assertSame(['2 coming, 2 not coming'], Vec\take($this->titles($this->owner), 1), 'A first reply changed before the member looked counts as the answer it is now.');
+        self::assertSame(['1 coming, 1 changed their reply'], $this->titles($this->ada));
+        self::assertSame(['2 coming, 2 not coming'], $this->titles($this->owner), 'A first reply changed before the member looked counts as the answer it is now.');
         self::assertSame(1, self::rowCount('SELECT COUNT(*) FROM notification_items WHERE user_id = :user AND read_at IS NULL', ['user' => $this->ada->getId()->toRfc4122()]));
+    }
+
+    #[Test]
+    public function aChangeAfterTheItemWasReadTurnsThatSameItemUnreadAtTheTopCountingOnlyWhatCameSince(): void
+    {
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        $first = $this->itemIds($this->ada);
+        self::at('2026-11-02 10:01');
+        $this->open($this->ada);
+        self::at('2026-11-02 10:02');
+        self::connection()->executeStatement(
+            "INSERT INTO notification_items (id, user_id, category, title, lines, muted, created_at) VALUES (:id, :user, 'event_changes', 'Another item', '[]', false, :at)",
+            ['id' => Uuid::v7()->toRfc4122(), 'user' => $this->ada->getId()->toRfc4122(), 'at' => self::now()],
+            ['at' => Types::DATETIME_IMMUTABLE],
+        );
+        self::at('2026-11-02 10:05');
+        $this->reply($this->guest('Kemi Ade'), GuestReply::NotComing);
+        self::at('2026-11-02 10:06');
+        $this->readAll($this->ada);
+        self::at('2026-11-02 10:07');
+        $this->reply($this->guest('Femi Ojo'), GuestReply::Coming);
+
+        self::assertSame(['1 coming'], $this->titles($this->ada));
+        self::assertSame($first, $this->itemIds($this->ada), 'The event keeps the item it had, read or unread.');
+        self::assertSame(GuestReplyLog::thread($this->eventId()), self::scalar('SELECT thread FROM notification_items WHERE user_id = :user ORDER BY created_at DESC LIMIT 1', ['user' => $this->ada->getId()->toRfc4122()]));
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM notification_items WHERE user_id = :user AND category = 'guest_replies' AND read_at IS NULL", ['user' => $this->ada->getId()->toRfc4122()]));
+    }
+
+    #[Test]
+    public function anEventsEarlierReadItemsGoWhenItsItemTurnsUnreadAgain(): void
+    {
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        self::at('2026-11-02 10:01');
+        $this->open($this->ada);
+        $kept = Type\string()->coerce(self::scalar("SELECT id FROM notification_items WHERE user_id = :user AND category = 'guest_replies'", ['user' => $this->ada->getId()->toRfc4122()]));
+        self::connection()->executeStatement(
+            "INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
+             SELECT :id, user_id, category, '3 coming', lines, event_id, event_name, place, muted, read_at - INTERVAL '1 hour', thread, thread_from, created_at - INTERVAL '1 hour' FROM notification_items WHERE id = :kept",
+            ['id' => Uuid::v7()->toRfc4122(), 'kept' => $kept],
+        );
+        self::at('2026-11-02 10:05');
+        $this->reply($this->guest('Kemi Ade'), GuestReply::Coming);
+
+        self::assertSame([$kept], $this->itemIds($this->ada));
+        self::assertSame(['1 coming'], $this->titles($this->ada));
     }
 
     #[Test]
@@ -117,7 +163,7 @@ final class GuestRepliesTest extends MessagingTestCase
         self::at('2026-11-02 10:05');
         $this->reply($this->guest('Kemi Ade'), GuestReply::Maybe);
 
-        self::assertSame(['1 not sure yet', '1 coming'], $this->titles($this->ada));
+        self::assertSame(['1 not sure yet'], $this->titles($this->ada));
         self::assertSame('/app/events/' . $this->eventId() . '/guests?filter=changed&since=' . \rawurlencode('2026-11-02T09:01:00+00:00'), $this->place($this->ada));
         self::assertSame(['Kemi Ade'], Vec\map($this->log()->unseen($this->ada->getId(), $this->eventId())->rows, static fn ($row): string => $row->name));
     }
@@ -513,7 +559,7 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->transaction(fn () => self::service(GuestNeedsRecord::class)->write($kemi, self::diet(['halal']), $this->owner));
         self::runUntilIdle();
 
-        self::assertSame(['1 updated dietary needs', '1 coming'], $this->titles($this->ada), 'The same reply with new needs is a needs change, not a changed reply.');
+        self::assertSame(['1 updated dietary needs'], $this->titles($this->ada), 'The same reply with new needs is a needs change, not a changed reply.');
         self::assertSame([[GuestChangeKind::Needs, 'Tomi Bello']], Vec\map($this->log()->unseen($this->ada->getId(), $this->eventId())->rows, static fn ($row): array => [$row->kind, $row->name]));
     }
 
@@ -713,6 +759,15 @@ final class GuestRepliesTest extends MessagingTestCase
         return Vec\map(
             self::connection()->fetchFirstColumn("SELECT title FROM notification_items WHERE user_id = :user AND category = 'guest_replies' ORDER BY created_at DESC, id DESC", ['user' => $user->getId()->toRfc4122()]),
             static fn (mixed $title): string => Type\string()->coerce($title),
+        );
+    }
+
+    /** @return list<string> the member's Guest replies items, newest first */
+    private function itemIds(User $user): array
+    {
+        return Vec\map(
+            self::connection()->fetchFirstColumn("SELECT id FROM notification_items WHERE user_id = :user AND category = 'guest_replies' ORDER BY created_at DESC, id DESC", ['user' => $user->getId()->toRfc4122()]),
+            static fn (mixed $id): string => Type\string()->coerce($id),
         );
     }
 
