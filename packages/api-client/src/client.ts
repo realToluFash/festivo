@@ -277,7 +277,7 @@ export type PushTarget =
 /** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
 export interface NotificationItem {
   id: string;
-  category: NotificationCategory;
+  category: string;
   title: string;
   lines: string[];
   eventId: string | null;
@@ -7289,20 +7289,19 @@ export function asNotificationItem(raw: unknown): NotificationItem | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const category = notificationCategory(candidate.category);
 
   if (
     typeof candidate.id !== 'string' ||
     typeof candidate.title !== 'string' ||
     typeof candidate.createdAt !== 'string' ||
-    category == null
+    typeof candidate.category !== 'string'
   ) {
     return null;
   }
 
   return {
     id: candidate.id,
-    category,
+    category: candidate.category,
     title: candidate.title,
     lines: strings(candidate.lines),
     eventId: optionalString(candidate.eventId),
