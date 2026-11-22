@@ -227,7 +227,8 @@
     "messagesCounts:audit.field.type",
     "messagesCounts:audit.field.format",
     "messagesCounts:audit.value.invitation",
-    "messagesCounts:guestReplies.push.title"
+    "messagesCounts:guestReplies.push.title",
+    "web:seePicks.side"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
