@@ -396,20 +396,7 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
 
 
 def account_env(config_dir):
-    """The environment a folder's Claude runs in: its own token when the env file holds one,
-    and never another account's."""
-    folder = machine.expand(config_dir)
-    env = {key: value for key, value in os.environ.items()
-           if not key.startswith(machine.TOKEN)}
-    source = machine.token_source(folder)
-    if source:
-        env[machine.TOKEN] = os.environ[source]
-    # Claude's own folder runs as Claude does by default, with nothing set.
-    if machine.is_claude_default(folder):
-        env.pop("CLAUDE_CONFIG_DIR", None)
-    else:
-        env["CLAUDE_CONFIG_DIR"] = str(folder)
-    return env
+    return machine.account_env(machine.expand(config_dir))
 
 
 def process_table():
