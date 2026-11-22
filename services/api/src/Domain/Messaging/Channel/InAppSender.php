@@ -111,10 +111,30 @@ final readonly class InAppSender implements ChannelSenderInterface
         ];
         $types = ['muted' => Types::BOOLEAN, 'createdAt' => Types::DATETIME_IMMUTABLE];
         $written = null !== $notification->thread && $notification->reopens ? $this->reopen($recipient, $params, $types) : false;
+        $written = false !== $written ? $written : $this->insert($notification->thread, $params, $types);
 
-        // A thread's unread item takes the new words and rises to the top, keeping its id; a retry of the delivery that began it lands there too.
-        $written = false !== $written ? $written : $this->connection->fetchOne(
-            null === $notification->thread
+        $published = NotificationItemSerialiser::item($item, $delivery['event_available']);
+
+        if (false !== $written) {
+            $published['id'] = $written;
+        }
+
+        $published['unreadCount'] = $this->unreadFor($recipient);
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
+
+        return null;
+    }
+
+    /**
+     * A thread's unread item takes the new words and rises to the top, keeping its id; a retry of the delivery that began it lands there too.
+     *
+     * @param array<string, mixed>  $params
+     * @param array<string, string> $types
+     */
+    private function insert(?string $thread, array $params, array $types): string|false
+    {
+        $written = $this->connection->fetchOne(
+            null === $thread
                 ? <<<'SQL'
                     INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
                     VALUES (:id, :user, :category, :title, :lines, :event, :eventName, :place, :muted, NULL, NULL, NULL, :createdAt)
@@ -134,16 +154,7 @@ final readonly class InAppSender implements ChannelSenderInterface
             $types,
         );
 
-        $published = NotificationItemSerialiser::item($item, $delivery['event_available']);
-
-        if (false !== $written) {
-            $published['id'] = Type\string()->coerce($written);
-        }
-
-        $published['unreadCount'] = $this->unreadFor($recipient);
-        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
-
-        return null;
+        return false === $written ? false : Type\string()->coerce($written);
     }
 
     /**
