@@ -308,9 +308,9 @@ describe('a course’s default (sc-1362)', () => {
     );
     expect(names(neverGiven(world))).toEqual(['Bea Mensah', 'Kojo Asante', 'Nadia Petrova']);
     expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
-      'Not chosen: Main · Vegetarian, Dessert',
+      'Not chosen: Main · Vegetarian and Dessert',
       'Not chosen: Main · allergy',
-      'Not chosen: Main · Other diet, Dessert',
+      'Not chosen: Main · Other diet and Dessert',
     ]);
     const listed = whoHasnt(world).flatMap((one) => one.people.map((each) => each.person.name));
     expect(listed).not.toContain('Bea Mensah');
@@ -355,7 +355,7 @@ describe('a course’s default (sc-1362)', () => {
     expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
       'Not chosen: Main · Vegetarian',
       'Not chosen: Main · allergy',
-      'Not chosen: Main · Other diet, Dessert · Other diet',
+      'Not chosen: Main · Other diet and Dessert · Other diet',
     ]);
   });
 

@@ -14,10 +14,10 @@ const hostsEdit = parts.slice(parts.indexOf('function HostsEdit('));
 describe('Hosted by is typed in as the AC has it (sc-15497)', () => {
   it('puts the cursor in the row Add a host adds', () => {
     expect(rows).toMatch(
-      /added\.current = key;\s+onHosts\(\[\.\.\.hosts, \{ key, name: '' \}\]\);/u,
+      /focusNext\.current = \{ to: \{ key, control: 'name' \}, keys: true \};\s+onHosts\(\[\.\.\.hosts, \{ key, name: '' \}\]\);/u,
     );
     expect(rows).toMatch(
-      /if \(key != null\) focusChecked\(\{ current: inputs\.current\.get\(key\) \?\? null \}\);\s+\}, \[hosts\]\);/u,
+      /if \(keys && to !== 'add'\) \{\s+focusChecked\(\{ current: inputs\.current\.get\(to\.key\) \?\? null \}\);/u,
     );
   });
 

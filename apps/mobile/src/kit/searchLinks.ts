@@ -1,5 +1,6 @@
 import type { SearchRow } from '@soirely/domain';
 
+import type { SignedIn } from '../signedIn.ts';
 import { EVENT_AREA, eventHref } from './eventNav.ts';
 
 /** The route param Guests opens a guest's details from, as a match in Search opens them (sc-39534). */
@@ -12,6 +13,17 @@ export const SEARCHED_MEMBER = 'member';
 export const EVENTS_SEARCHED = 'q';
 
 export const SEARCH_HREF = '/search';
+
+/** Search runs over the organisation in use, so it is absent while the member is suspended from the one the screen names (sc-82858). */
+export function searchOffered({
+  organisation,
+  pausedIn,
+}: {
+  organisation: SignedIn['organisation'];
+  pausedIn?: SignedIn['pausedIn'] | undefined;
+}): boolean {
+  return organisation != null && pausedIn == null;
+}
 
 export function searchRowHref(row: SearchRow): string {
   if (row.kind === 'event') return eventHref(row.id);

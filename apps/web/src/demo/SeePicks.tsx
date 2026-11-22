@@ -13,7 +13,7 @@ import type { SampleEvent } from './events.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import { allergenList } from './mealStep.ts';
-import type { DishAllergen } from './menuLibrary.ts';
+import { type DishAllergen, listOf } from './menuLibrary.ts';
 import { type EvCourse, type EvDish, CW, coursesAt } from './menuCourses.ts';
 import { MENU_EVENT } from './menuServed.ts';
 import { keptInbox, waitingLine } from './messages.ts';
@@ -33,7 +33,6 @@ import {
   containsOf,
   courseFigures,
   defaultedOn,
-  firstName,
   giveVariant,
   givenDefault,
   goesBackTo,
@@ -231,7 +230,7 @@ function Picks({ first }: { first: PicksStart }) {
                         : SW.allergyFor(
                             one.course.name,
                             one.reason.dish,
-                            allergenList(one.reason.allergens, 'en'),
+                            allergensOf(one.reason.allergens),
                           )}
                     </span>
                   </div>
@@ -581,6 +580,8 @@ function CourseCard({
   );
 }
 
+const allergensOf = (codes: readonly DishAllergen[]): string => allergenList(codes, 'en', listOf);
+
 function goesBack(course: EvCourse, person: Person): string {
   const back = goesBackTo(course, person);
 
@@ -631,19 +632,19 @@ function outcomeFor(
   confirmed: boolean,
   refuses: boolean,
 ): ForOutcome {
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
   if (choice.dishId == null)
-    return { kind: 'error', words: SW.blank(course.name, first), focus: 'pk-for-dish' };
+    return { kind: 'error', words: SW.blank(course.name, who), focus: 'pk-for-dish' };
   if (dish != null && hasVariants(dish) && choice.variantId == null)
-    return { kind: 'error', words: SW.blankWay(dish.name, first), focus: 'pk-for-way' };
+    return { kind: 'error', words: SW.blankWay(dish.name, who), focus: 'pk-for-way' };
   const unanswered = (dish?.choices ?? []).find(
     (one) => one.required && !one.options.some((option) => choice.optionIds.includes(option.id)),
   );
   if (unanswered != null)
     return {
       kind: 'error',
-      words: SW.blankOption(unanswered.question, first),
+      words: SW.blankOption(unanswered.question, who),
       focus: 'pk-for-option',
     };
   const allergens =
@@ -666,9 +667,8 @@ function outcomeFor(
   return {
     kind: 'saved',
     pick,
-    line: SW.savedFor(course.name, first, what),
-    overridden:
-      allergens.length > 0 ? SW.savedOverride(first, what, allergenList(allergens, 'en')) : null,
+    line: SW.savedFor(course.name, who, what),
+    overridden: allergens.length > 0 ? SW.savedOverride(who, what, allergensOf(allergens)) : null,
   };
 }
 
@@ -770,7 +770,7 @@ function ChooseFor({
   }, [shown]);
 
   const course = courses[at] as EvCourse;
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
 
   const save = (confirmed: boolean) => {
@@ -838,7 +838,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     allergens={dishAllergens(one, person)}
-                    first={first}
+                    who={who}
                     onPick={() => pickDish(one.id)}
                   />
                 ))}
@@ -848,7 +848,7 @@ function ChooseFor({
                   label={SW.kitchenChoose}
                   checked={choice.dishId === 'kitchen'}
                   allergens={[]}
-                  first={first}
+                  who={who}
                   onPick={() => pickDish('kitchen')}
                 />
               </div>
@@ -866,7 +866,7 @@ function ChooseFor({
                       childrenOnly={!isForEveryone(variant)}
                       checked={choice.variantId === variant.id}
                       allergens={ruledOut(person, containsOf(dish, variant.id, []))}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({ ...choice, variantId: variant.id });
                         setError(null);
@@ -889,7 +889,7 @@ function ChooseFor({
                         label={option.name}
                         checked={choice.optionIds.includes(option.id)}
                         allergens={ruledOut(person, codesOf(option.contains))}
-                        first={first}
+                        who={who}
                         onPick={() => {
                           setChoice({
                             ...choice,
@@ -936,11 +936,11 @@ function ChooseFor({
       </div>
       {asking != null && dish != null && (
         <Override
-          title={SW.overrideTitle(first, allergenList(asking, 'en'))}
+          title={SW.overrideTitle(who, allergensOf(asking))}
           body={SW.overrideBody(
             pickName(dish, { kind: 'dish', ...choice, dishId: dish.id, how: 'host' }),
-            allergenList(asking, 'en'),
-            first,
+            allergensOf(asking),
+            who,
           )}
           keep={SW.chooseAnother}
           go={SW.pickAnyway}
@@ -971,7 +971,7 @@ function DishOption({
   label,
   checked,
   allergens,
-  first,
+  who,
   childrenOnly = false,
   onPick,
 }: {
@@ -980,7 +980,7 @@ function DishOption({
   label: string;
   checked: boolean;
   allergens: readonly DishAllergen[];
-  first: string;
+  who: string;
   childrenOnly?: boolean;
   onPick: () => void;
 }) {
@@ -1007,7 +1007,7 @@ function DishOption({
               <Triangle />
               {SW.allergyMark}
             </span>
-            {SW.ruledOut(allergenList(allergens, 'en'), first)}
+            {SW.ruledOut(allergensOf(allergens), who)}
           </span>
         )}
       </span>
@@ -1118,7 +1118,7 @@ function outcomeWho(
       ruled.length > 0 ? { by: HOST, at: CONFIRMED_AT } : null,
     ),
     line: SW.whoSaved(variant.name, dish.name, ticked.size),
-    overridden: ruled.length > 0 ? SW.whoOverride(ruled.map((one) => one.name).join(', ')) : null,
+    overridden: ruled.length > 0 ? SW.whoOverride(listOf(ruled.map((one) => one.name))) : null,
   };
 }
 
@@ -1230,7 +1230,7 @@ function ChooseWho({
                                   <Triangle />
                                   {SW.allergyMark}
                                 </span>
-                                {SW.ruledOutWho(allergenList(ruled, 'en'), firstName(person.name))}
+                                {SW.ruledOutWho(allergensOf(ruled), person.name)}
                               </span>
                             )}
                             {leaving && (
@@ -1265,15 +1265,12 @@ function ChooseWho({
       </div>
       {asking != null && (
         <Override
-          title={SW.overrideWhoTitle(
-            asking.map((one) => firstName(one.name)).join(', '),
-            variant.name,
-          )}
+          title={SW.overrideWhoTitle(listOf(asking.map((one) => one.name)), variant.name)}
           body={SW.overrideWhoBody(
             asking
               .map(
                 (one) =>
-                  `${variant.name} contains ${allergenList(ruledOut(one, contains), 'en')}, which ${firstName(one.name)} is allergic to.`,
+                  `${variant.name} contains ${allergensOf(ruledOut(one, contains))}, which ${one.name} is allergic to.`,
               )
               .join(' '),
           )}

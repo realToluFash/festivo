@@ -91,7 +91,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
-import { SEARCH_HREF } from '../kit/searchLinks.ts';
+import { SEARCH_HREF, searchOffered } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
 import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -1935,7 +1935,7 @@ function FrameSidebar({
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
-  const { account } = useSignedIn();
+  const { account, pausedIn } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
   const [you, setYou] = useState(false);
@@ -1949,7 +1949,7 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: organisation != null && !inEvent,
+      search: searchOffered({ organisation, pausedIn }) && !inEvent,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
@@ -1957,7 +1957,7 @@ function FrameSidebar({
       },
       useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation, person, inEvent],
+    [organisation, pausedIn, person, inEvent],
   );
   const places = inEvent
     ? entries.map((entry) => (

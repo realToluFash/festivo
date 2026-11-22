@@ -412,7 +412,7 @@
     "payment_reminder.last_about": "C’est le dernier rappel concernant {vendor} : {what}.",
     "payment_reminder.email.open_payments": "{count, plural, one {Ouvrir le paiement} many {Ouvrir les paiements} other {Ouvrir les paiements}}",
     "payment_reminder.email.open_budget": "Ouvrir le budget",
-    "payment_reminder.email.link": "{label}: {url}",
+    "payment_reminder.email.link": "{label} : {url}",
     "payment_reminder.email.settings": "Paramètres de notification",
     "payment_reminder.email.footer": "Vous recevez ce message parce que vous pouvez enregistrer des paiements dans l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez les e-mails Facturation dans Paramètres de notification.",
     "limits.staff_links": "Ce lien a été ouvert trop souvent. Réessayez {hour, plural, other {à {time}}}.",

@@ -168,7 +168,7 @@ final readonly class PaymentReminder implements NotificationTypeInterface
             default => $this->trans('payment_reminder.title.mixed', ['overdue' => $overdueCount, 'count' => $comingCount, 'days' => $days], $locale),
         };
 
-        $short = null !== $oneEvent && (0 === $comingCount || 0 === $overdueCount);
+        $short = NotificationChannel::Push !== $channel && null !== $oneEvent && (0 === $comingCount || 0 === $overdueCount);
 
         $lines = Vec\map($payments, function (ScheduledPayment $payment) use ($kinds, $short, $locale): string {
             $late = PaymentReminders::OVERDUE === $kinds[$payment->getId()->toRfc4122()];
