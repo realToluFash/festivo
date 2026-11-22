@@ -70,8 +70,8 @@ final readonly class AppleClientSecret
         try {
             return Builder::new(new JoseEncoder(), ChainedFormatter::withUnixTimestampDates())
                 ->withHeader('kid', $this->keyId)
-                ->issuedBy($this->teamId)
-                ->relatedTo($this->clientId)
+                ->issuedBy(Type\non_empty_string()->coerce($this->teamId))
+                ->relatedTo(Type\non_empty_string()->coerce($this->clientId))
                 ->permittedFor(self::AUDIENCE)
                 ->issuedAt($issuedAt)
                 ->expiresAt($issuedAt->modify('+' . self::LIFETIME_SECONDS . ' seconds'))
