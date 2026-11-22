@@ -1033,6 +1033,7 @@ export function Card({
     view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
   const saved = savedPlates(page.meals, eaters);
+  const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
   const cards = (head: 'check' | 'back') => (
     <MealCards
@@ -1046,6 +1047,7 @@ export function Card({
       hosts={hosts}
       pending={(key) => head === 'back' && !samePlate(meal.plates[key], saved[key])}
       refused={meal.refused}
+      locked={head === 'back' && paused}
       onChange={changeMeal}
     />
   );
@@ -1080,23 +1082,25 @@ export function Card({
   })();
   const picksShut = courses.every((one) => one.picksClose.closed);
   const comingBack =
-    courses.length > 0 && guest.reply?.answer === 'coming' && (page.answersOpen || picksShut) ? (
+    courses.length > 0 &&
+    guest.reply?.answer === 'coming' &&
+    (page.answersOpen || picksShut || paused) ? (
       <MealsSaved
         told={meal.told}
         marked={marked}
         busy={meal.busy}
-        savedUntil={oneCloseDay(courses, (at) => dayOf(at, event.timeZone))}
+        savedUntil={paused ? null : oneCloseDay(courses, (at) => dayOf(at, event.timeZone))}
         kitchen={
-          page.answersOpen ? (
+          page.answersOpen || paused ? (
             <KitchenRow
               kitchen={kitchen ?? kitchenOf(page, partyOf(page), null)}
               busy={meal.busy}
               pending={kitchenPending}
-              onKitchen={savedKitchen}
+              onKitchen={page.answersOpen && !picksShut ? savedKitchen : null}
             />
           ) : null
         }
-        closed={picksShut}
+        ending={paused ? 'none' : picksShut ? 'askHosts' : 'send'}
         hosts={hosts}
         onSend={sendChanges}
       >

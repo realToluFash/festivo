@@ -585,6 +585,7 @@ export function MealCards({
   hosts,
   pending,
   refused,
+  locked = false,
   onChange,
 }: {
   eaters: readonly Eater[];
@@ -597,6 +598,8 @@ export function MealCards({
   hosts: string;
   pending: (key: string) => boolean;
   refused: ReadonlySet<string>;
+  /** Paused: every row read-only with its own close line, open courses too. */
+  locked?: boolean;
   onChange: (key: string) => void;
 }) {
   const { t } = useTranslation();
@@ -629,7 +632,7 @@ export function MealCards({
                   <div className="mx-words">
                     <p className="mx-course">{course.name}</p>
                     <Pick plate={plates[key]} course={course} />
-                    {pending(key) && !shut && (
+                    {pending(key) && !shut && !locked && (
                       <p className="mx-pending">{t('guestMeal.notSent')}</p>
                     )}
                     {refused.has(course.id) && (
@@ -643,7 +646,7 @@ export function MealCards({
                         {t('guestMeal.refusedClosed', { course: course.name, date })}
                       </p>
                     )}
-                    {!single && (
+                    {(!single || locked) && (
                       <p className="mx-close">
                         <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
                         {shut
@@ -661,7 +664,7 @@ export function MealCards({
                       <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>
                     )}
                   </div>
-                  {!shut && (
+                  {!shut && !locked && (
                     <button
                       type="button"
                       className="gp-text is-ink"
@@ -712,7 +715,7 @@ export function MealsSaved({
   busy,
   savedUntil,
   kitchen,
-  closed,
+  ending,
   hosts,
   onSend,
   children,
@@ -724,8 +727,8 @@ export function MealsSaved({
   savedUntil: string | null;
   /** For the kitchen, above the picks, while answers are open. */
   kitchen: ReactNode;
-  /** Every course closed: the rows are read-only and there is nothing to send. */
-  closed: boolean;
+  /** How the section ends: Send my changes, the line to ask the hosts once every course is closed, or nothing while the event is paused. */
+  ending: 'send' | 'askHosts' | 'none';
   hosts: string;
   onSend: () => void;
   children: ReactNode;
@@ -751,9 +754,8 @@ export function MealsSaved({
         {told === 'nothing' && <p>{t('guestMeal.nothingToSend')}</p>}
         {told === 'saved' && <p>{t('guestMeal.changesSaved')}</p>}
       </div>
-      {closed ? (
-        <p className="gk-text">{t('guestMeal.askHosts', { hosts })}</p>
-      ) : (
+      {ending === 'askHosts' && <p className="gk-text">{t('guestMeal.askHosts', { hosts })}</p>}
+      {ending === 'send' && (
         <div className="gk-actions">
           <Filled busy={busy} focus="mealsSend" onClick={onSend}>
             {t('guestMeal.sendChanges')}

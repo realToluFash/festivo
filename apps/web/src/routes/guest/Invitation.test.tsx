@@ -2462,14 +2462,14 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     ]);
   });
 
-  it('keeps the picks off the page while the host has paused replies with courses still open', async () => {
+  it('keeps the picks read-only under the paused card, with each close line and no send (#82715)', async () => {
     api({
       '/api/guest-links/page': [
         {
           status: 200,
           body: {
             ...comingBack(
-              [MAIN, DESSERT],
+              [{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT],
               [saved('main', { dish: 'jollof' }), saved('dessert', { answer: 'skipped' })],
             ),
             phase: 'paused',
@@ -2485,9 +2485,41 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
         'Answers are closed while the event is paused. Anything you sent is kept.',
       ),
     ).toBeDefined();
-    expect(screen.queryByRole('heading', { name: 'Your meal picks' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText(/^Picks closed on /)).toBeDefined();
+    expect(screen.getByText(/^Picks close /)).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Change (main|dessert) for you$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Change what the kitchen must know' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.queryByText(/^Saved\. You can change them until/)).toBeNull();
+    expect(screen.queryByText(/^To change a pick now, ask/)).toBeNull();
+  });
+
+  it('offers no Change on For the kitchen while answers are open and every course is closed', async () => {
+    const shut = [
+      { ...MAIN, picksClose: CLOSED_CLOSE },
+      { ...DESSERT, picksClose: CLOSED_CLOSE },
+    ];
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: comingBack(shut, [
+            saved('main', { dish: 'jollof' }),
+            saved('dessert', { answer: 'skipped' }),
+          ]),
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('For the kitchen')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change what the kitchen must know' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull();
+    expect(screen.getByText(/^To change a pick now, ask/)).toBeDefined();
   });
 
   it('lands on the page as it stands when the API refuses a kitchen change 409', async () => {
@@ -2521,8 +2553,9 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
 
     await waitFor(() =>
-      expect(screen.queryByRole('heading', { name: 'Your meal picks' })).toBeNull(),
+      expect(screen.queryByRole('button', { name: 'Send my changes' })).toBeNull(),
     );
+    expect(screen.queryByText('Not sent yet')).toBeNull();
     expect(screen.queryByText('Not sent. Check your connection and try again.')).toBeNull();
     expect(sent.map(({ path }) => path)).toEqual([
       '/api/guest-links/page',

@@ -500,7 +500,7 @@ function RowChange({
   );
 }
 
-/** For the kitchen, with its Change: on Check and send, and above the picks on coming back (sc-3907), where an unsent change reads Not sent yet. */
+/** For the kitchen, with its Change: on Check and send, and above the picks on coming back (sc-3907), where an unsent change reads Not sent yet. Read-only, with no Change, when nothing on the page could send it. */
 export function KitchenRow({
   kitchen,
   busy,
@@ -510,7 +510,7 @@ export function KitchenRow({
   kitchen: Kitchen;
   busy: boolean;
   pending: boolean;
-  onKitchen: () => void;
+  onKitchen: (() => void) | null;
 }) {
   const { t, words } = useWords();
 
@@ -534,14 +534,16 @@ export function KitchenRow({
           </div>
         ))}
       </div>
-      <RowChange
-        label={t('guestKitchen.changeKitchen')}
-        off={busy}
-        focus="kitchenRow"
-        onClick={onKitchen}
-      >
-        {t('guest.changeShort')}
-      </RowChange>
+      {onKitchen != null && (
+        <RowChange
+          label={t('guestKitchen.changeKitchen')}
+          off={busy}
+          focus="kitchenRow"
+          onClick={onKitchen}
+        >
+          {t('guest.changeShort')}
+        </RowChange>
+      )}
     </div>
   );
 }
