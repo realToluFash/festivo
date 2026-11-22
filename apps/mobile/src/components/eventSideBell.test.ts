@@ -28,7 +28,7 @@ describe('the bell on an iPad on its side (sc-68052)', () => {
   });
 
   it('draws none in the pane of a missing event, which stands in the bare Events frame (sc-80863)', () => {
-    expect(screen).toMatch(/bareList=\{opened\.kind === 'notFound'\}/u);
+    expect(screen).toMatch(/bareList=\{!top\.inEvent\}/u);
   });
 
   it('ends the title row of every area the event leaves untitled', () => {
