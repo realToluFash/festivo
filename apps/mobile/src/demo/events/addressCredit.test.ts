@@ -8,14 +8,7 @@ import {
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
-import { folded } from './EventsModel.ts';
-import { SUGGESTIONS } from './EventsSample.ts';
-
-function found(typed: string) {
-  return folded(typed).length < 3
-    ? []
-    : SUGGESTIONS.filter((one) => folded(one.name).includes(folded(typed)));
-}
+import { suggestionsFor as found } from './EventsModel.ts';
 
 describe('the Stadia Maps and OpenStreetMap credit (sc-80918)', () => {
   it('keeps Stadia Maps and OpenStreetMap as written, each linking to its own page', () => {

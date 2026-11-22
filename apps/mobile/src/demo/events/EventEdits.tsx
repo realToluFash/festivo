@@ -65,7 +65,13 @@ import {
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
-import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
+import {
+  type EditPart,
+  type EventDemoState,
+  instantOf,
+  suggestionsFor,
+  wallOf,
+} from './EventsModel.ts';
 import {
   CLOSES_AT,
   datesAsk,
@@ -555,10 +561,7 @@ export function VenueFields({
 }) {
   const [chosen, setChosen] = useState<Suggestion | null>(offering);
   const [offer, setOffer] = useState(offering != null);
-  const looking = chosen == null && !down && folded(address).length >= 3;
-  const found = looking
-    ? SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)))
-    : [];
+  const found = chosen == null && !down ? suggestionsFor(address) : [];
 
   useReadOut(found.length > 0 ? say.suggestionsBelow(found.length) : null);
 
