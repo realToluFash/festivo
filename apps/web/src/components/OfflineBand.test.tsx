@@ -366,10 +366,9 @@ describe('the offline band (sc-22586)', () => {
       return events;
     }
 
-    const eventsBand = () =>
-      document.querySelector('.offline-band:not(.notifications-band), .ev-offline');
-    const feedBand = () => document.querySelector('.notifications-band');
-    const panel = () => document.querySelector<HTMLElement>('.notifications-panel')!;
+    const eventsBand = () => document.querySelector('.offline-band:not(.bell-band), .ev-offline');
+    const feedBand = () => document.querySelector('.bell-band');
+    const panel = () => document.querySelector<HTMLElement>('.bell-pop')!;
     const asked = (fetched: ReturnType<typeof serving>, path: string) =>
       fetched.mock.calls.filter(([input]) => new URL(String(input)).pathname === path).length;
 

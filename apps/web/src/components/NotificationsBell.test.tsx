@@ -2,9 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
+import { BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
-import { STYLES, cssRule } from '../test-styles.ts';
+import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
+
+const BELL_CSS = stylesheet(import.meta.dirname, 'BellPanel.css');
 
 function json(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -256,8 +259,8 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
 
     const line = await screen.findByRole('alert');
-    expect(line.textContent).toBe('!Could not mark them all read. Try again.');
-    expect(line.querySelector('.mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(line.textContent).toBe('Could not mark them all read. Try again.');
+    expect(line.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
   });
 
@@ -329,7 +332,7 @@ describe('the bell (sc-3980)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('a feed that did not load is the broken notice, the mark, the words and Try again under them (sc-23233)', async () => {
+  it('a feed that did not load is its line in ink with Try again under it (sc-83081)', async () => {
     let attempts = 0;
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       attempts += 1;
@@ -342,10 +345,9 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
 
     const notice = await screen.findByRole('alert');
-    expect(notice.className).toContain('notice-broken');
-    expect(notice.querySelector('.mark-broken')?.getAttribute('aria-hidden')).toBe('true');
+    expect(notice.className).toBe('bell-failed');
     expect(within(notice).getByText('Your notifications did not load.').className).toBe(
-      'notice-title',
+      'desk-line is-ink',
     );
 
     fireEvent.click(within(notice).getByRole('button', { name: 'Try again' }));
@@ -369,11 +371,11 @@ describe('the bell (sc-3980)', () => {
     fireEvent.click(more);
 
     const mute = await screen.findByRole('switch', { name: 'Mute this event' });
-    await waitFor(() => expect((mute as HTMLInputElement).disabled).toBe(false));
+    await waitFor(() => expect(mute.getAttribute('aria-busy')).toBe('false'));
     fireEvent.click(mute);
 
     await waitFor(() => expect(sent).toContain('PUT /api/events/e1/mute'));
-    await waitFor(() => expect((mute as HTMLInputElement).checked).toBe(true));
+    await waitFor(() => expect(mute.getAttribute('aria-checked')).toBe('true'));
     expect(screen.queryByText('Muted')).toBeNull();
 
     mute.focus();
@@ -409,9 +411,9 @@ describe('the bell (sc-3980)', () => {
     render(<RouterProvider router={router} />);
 
     const page = within(screen.getByRole('region', { name: 'Just for you' }));
-    const pageSwitch = (await page.findByRole('switch')) as HTMLInputElement;
-    await waitFor(() => expect(pageSwitch.disabled).toBe(false));
-    expect(pageSwitch.checked).toBe(false);
+    const pageSwitch = await page.findByRole('switch');
+    await waitFor(() => expect(pageSwitch.getAttribute('aria-busy')).toBe('false'));
+    expect(pageSwitch.getAttribute('aria-checked')).toBe('false');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
     fireEvent.click(
@@ -419,11 +421,11 @@ describe('the bell (sc-3980)', () => {
     );
     const more = (await screen.findAllByRole('switch', { name: 'Mute this event' })).find(
       (shown) => shown !== pageSwitch,
-    ) as HTMLInputElement;
-    await waitFor(() => expect(more.disabled).toBe(false));
+    ) as HTMLElement;
+    await waitFor(() => expect(more.getAttribute('aria-busy')).toBe('false'));
     fireEvent.click(more);
 
-    await waitFor(() => expect(pageSwitch.checked).toBe(true));
+    await waitFor(() => expect(pageSwitch.getAttribute('aria-checked')).toBe('true'));
   });
 
   it('More says when the mute state did not load, and Try again reads it again', async () => {
@@ -446,14 +448,18 @@ describe('the bell (sc-3980)', () => {
     );
 
     expect(await screen.findByText('Could not check whether this event is muted.')).toBeTruthy();
-    const mute = screen.getByRole('switch', { name: 'Mute this event' }) as HTMLInputElement;
-    expect(mute.disabled).toBe(true);
+    const mute = screen.getByRole('switch', { name: 'Mute this event' });
+    expect(mute.getAttribute('aria-busy')).toBe('true');
     expect(screen.queryByText('Not saved. Try again.')).toBeNull();
 
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Try again' }));
+    fireEvent.click(
+      within(
+        screen.getByRole('dialog', { name: 'More for Ada Obi changed the event, Ada & Tomi' }),
+      ).getByRole('button', { name: 'Try again' }),
+    );
 
-    await waitFor(() => expect(mute.checked).toBe(true));
-    expect(mute.disabled).toBe(false);
+    await waitFor(() => expect(mute.getAttribute('aria-checked')).toBe('true'));
+    expect(mute.getAttribute('aria-busy')).toBe('false');
     expect(screen.queryByText('Could not check whether this event is muted.')).toBeNull();
   });
 
@@ -636,48 +642,92 @@ describe('the push ask', () => {
   });
 });
 
-describe('the bell in [fd] (sc-23233)', () => {
-  it("dims More's switch while the mute has not loaded, when nothing else would say it does nothing", () => {
-    expect(
-      cssRule(
-        '.notification-mute .notification-switch:has(input:disabled) .notification-switch-track',
-      ),
-    ).toMatch(/background: var\(--colorInset\);/u);
+describe('the bell in the B frame (sc-83081)', () => {
+  it('opens a popover 380 wide under the bell, its right edge in line with it', () => {
+    const pop = cssRule('.bell-pop', BELL_CSS);
+    expect(pop).toMatch(/right: 0;/u);
+    expect(pop).toMatch(/width: 380px;/u);
+    expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
   });
 
-  it("marks the edge of More's knob with the board's shadow", () => {
-    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
-      /box-shadow: var\(--shadowKnob\);/u,
-    );
+  it('scrolls only the items', () => {
+    expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
+    expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
   });
 
-  it("moves in the board's motion", () => {
-    expect(cssRule('.notifications-panel')).toMatch(/animation: rise-in var\(--motionBase\)/u);
-    expect(cssRule('.notification-mute')).toMatch(/animation: rise-in var\(--motionBase\)/u);
-    expect(cssRule('.notifications-failure-line')).toMatch(
-      /animation: drop-in var\(--motionFast\)/u,
-    );
-    expect(cssRule('.notifications-failed')).toMatch(/animation: drop-in var\(--motionFast\)/u);
-    expect(cssRule('.notifications-skeleton')).toMatch(
-      /animation: skeleton-pulse var\(--motionPulse\)/u,
-    );
-    expect(cssRule('.notification-mute .notification-switch-knob')).toMatch(
-      /transition: transform var\(--motionBase\)/u,
-    );
+  it('draws each mark in a tinted 40 square', () => {
+    const glyph = cssRule('.bell-glyph', BELL_CSS);
+    expect(glyph).toMatch(/width: 40px;/u);
+    expect(glyph).toMatch(/height: 40px;/u);
+    expect(glyph).toMatch(/background: var\(--colorInset\);/u);
   });
 
-  it('fades, and holds the skeleton and the switch still, under Reduce Motion', () => {
-    expect(STYLES).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{\s*\.notifications-panel,\s*\.notification-mute,\s*\.notifications-failure-line,\s*\.notifications-failed \{\s*animation-name: fade-in;\s*\}\s*\.notifications-skeleton \{\s*animation: none;\s*\}\s*\.notification-mute \.notification-switch-track,\s*\.notification-mute \.notification-switch-knob \{\s*transition: none;\s*\}\s*\}/u,
+  it('holds the popover still under Reduce Motion', () => {
+    expect(BELL_CSS).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.bell-pop \{\s*animation: none;\s*\}\s*\}/u,
     );
   });
 });
 
-describe('the heading at 320px (sc-21358)', () => {
-  it('keeps the heading whole and wraps Mark all as read under it', () => {
-    expect(cssRule('.notifications-header')).toMatch(/flex-wrap: wrap;/u);
-    expect(cssRule('.notifications-header h2')).toMatch(/flex: none;/u);
-    expect(cssRule('.notifications-header .link-button')).toMatch(/text-align: start;/u);
+describe('the marks (sc-83081)', () => {
+  it.each([
+    ['guest_replies', 'users'],
+    ['messages', 'message'],
+    ['event_changes', 'calendar'],
+    ['event_day', 'day'],
+    ['money', 'wallet'],
+    ['account_security', 'shield'],
+  ])('gives %s its category mark, hidden from a screen reader', async (category) => {
+    answering({
+      'GET /api/notifications': () =>
+        json({ items: [item({ category })], unreadCount: 1, next: null }),
+    });
+    bell();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const shown = await screen.findByRole('button', { name: /^Ada Obi changed the event/ });
+
+    expect(shown.querySelector('.bell-glyph svg')).not.toBeNull();
+    expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('draws no mark for a category it does not know, and keeps its words', () => {
+    render(
+      <BellPanel
+        titleId="t"
+        heading={null}
+        refreshing={false}
+        unread={0}
+        onReadAll={() => undefined}
+        band={null}
+        notice={null}
+        ask={null}
+        feed="loaded"
+        rows={[
+          {
+            id: 'n1',
+            category: 'something_new',
+            title: 'A new kind',
+            lines: [],
+            where: 'at 09:00',
+            unread: false,
+            muted: false,
+            more: null,
+            goneShown: false,
+          },
+        ]}
+        onPick={() => undefined}
+        onTryAgain={() => undefined}
+        more={null}
+        menu={null}
+        onMenu={() => undefined}
+        settings={null}
+      />,
+    );
+    const shown = screen.getByRole('button', { name: /^A new kind/ });
+
+    expect(shown.querySelector('.bell-glyph')).toBeNull();
+    expect(shown.textContent).toBe('A new kindat 09:00');
   });
 });
 
@@ -709,7 +759,7 @@ describe('offline (sc-27096)', () => {
     });
   }
 
-  const band = () => document.querySelector('.notifications-band');
+  const band = () => document.querySelector('.bell-band');
 
   it('shows its own band under the header, keeps the feed, and Try again reloads only the feed with what arrived meanwhile', async () => {
     let unseen = false;
@@ -733,7 +783,7 @@ describe('offline (sc-27096)', () => {
     goOffline(net);
 
     expect(band()?.textContent).toMatch(/^Offline · as of /);
-    expect(band()?.previousElementSibling?.classList.contains('notifications-header')).toBe(true);
+    expect(band()?.previousElementSibling?.classList.contains('bell-head')).toBe(true);
     expect(screen.getByText('Ada Obi changed the event')).toBeTruthy();
 
     net.reachable = true;
@@ -747,7 +797,7 @@ describe('offline (sc-27096)', () => {
       name: /^(Kemi replied|Ada Obi changed the event)/,
     });
     expect(rows[0]?.textContent).toMatch(/^Kemi replied.*Unread/);
-    expect(rows[0]?.classList.contains('unread')).toBe(true);
+    expect(rows[0]?.querySelector('.bell-title.is-unread')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Notifications' })),
@@ -866,10 +916,9 @@ describe('offline (sc-27096)', () => {
     const heading = screen.getByRole('heading', { name: 'Notifications' });
     expect(heading.textContent).toBe('Notifications');
     expect(heading.contains(refreshing)).toBe(false);
-    expect(refreshing.closest('.notifications-heading')).toBe(heading.parentElement);
+    expect(refreshing.closest('.bell-heading')).toBe(heading.parentElement);
     expect(band()?.textContent).toMatch(/^Offline · as of /);
-    expect(cssRule('.notifications-heading')).toMatch(/flex-wrap: wrap;/u);
-    expect(cssRule('.notifications-band')).toMatch(/padding-inline: var\(--spaceXl\);/u);
+    expect(cssRule('.bell-heading', BELL_CSS)).toMatch(/flex-wrap: wrap;/u);
   });
 
   it('shows the band above an empty feed, and Try again reloads it', async () => {

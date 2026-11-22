@@ -17,6 +17,7 @@ import type { Tab } from './TodayCover.tsx';
 import { followTodayFigures } from './todayFigures.ts';
 import { TodayScreen } from './TodayScreen.tsx';
 import { useRunSchedule } from './todayRunSchedule.ts';
+import { useBellOpens } from './BellOpens.tsx';
 import { type Opens, type TodayShell, TodayShellProvider } from './todayShell.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../kit/appNav.ts';
@@ -149,6 +150,7 @@ export function TodayLanding({
       search: true,
       open,
       useOrgOpener: useFrameOrgOpener,
+      useBell: useBellOpens,
     }),
     [account.name, organisation, unread, open, t],
   );
