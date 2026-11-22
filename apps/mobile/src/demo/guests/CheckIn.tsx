@@ -468,15 +468,17 @@ export function CheckInScreen({
         overlay={told}
       >
         <View style={styles.panes}>
-          <ScrollView
-            style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}
-            contentContainerStyle={styles.paneBody}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {title}
-            {body}
-          </ScrollView>
+          <View style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}>
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.paneBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {title}
+              {body}
+            </ScrollView>
+          </View>
           {walkIn != null && (
             <ScrollView
               style={styles.grow}
@@ -659,7 +661,7 @@ const styles = StyleSheet.create({
   noOne: { gap: 14 },
   panes: { flex: 1, flexDirection: 'row' },
   doorPane: { flex: 1, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
-  doorPaneNarrow: { flexGrow: 0, flexShrink: 0, width: 520 },
+  doorPaneNarrow: { flex: 0, width: 520 },
   paneBody: { gap: 14, paddingTop: 22, paddingHorizontal: 20, paddingBottom: tokens.space6xl * 2 },
   sideBody: { gap: 14, paddingTop: 22, paddingHorizontal: 32 },
   sideHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
