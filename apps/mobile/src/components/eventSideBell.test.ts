@@ -7,6 +7,7 @@ const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const screen = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
 const page = readFileSync(join('src', 'components', 'EventPage.tsx'), 'utf8');
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
+const button = readFileSync(join('src', 'components', 'SearchButton.tsx'), 'utf8');
 
 describe('the sidebar on an iPad on its side (sc-68052)', () => {
   it('draws no Search inside an event', () => {
@@ -18,6 +19,12 @@ describe('the sidebar on an iPad on its side (sc-68052)', () => {
   it('keeps Search outside an event (sc-39534)', () => {
     expect(frame).not.toMatch(/\n\s*search: false,\n/u);
     expect(frame).not.toMatch(/\n\s*search: inEvent\b/u);
+  });
+});
+
+describe('the Search on a phone and upright (sc-82858)', () => {
+  it('is absent while the member is suspended from the organisation in use', () => {
+    expect(button).toMatch(/if \(!searchOffered\(signedIn\)\) return null;/u);
   });
 });
 
