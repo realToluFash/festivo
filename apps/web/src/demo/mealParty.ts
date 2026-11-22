@@ -1,6 +1,7 @@
 import type { Allergen } from './guestKitchenWords.ts';
 import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS } from './menuLibrary.ts';
 import { allergenList } from './mealStep.ts';
+import { coursesAt } from './menuCourses.ts';
 import { type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import { SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
@@ -220,7 +221,6 @@ export const PW = {
   changesSaved: '[Your changes are saved.]',
   preview: 'Preview. Nothing is saved.',
   closePreview: 'Close preview',
-  nothingSaved: '[Nothing was saved.]',
   again: 'Start this state again',
 } as const;
 
@@ -270,8 +270,11 @@ export const screensOf = (people: readonly Who[]): readonly MealScreen[] =>
 
 export const SCREENS: readonly MealScreen[] = screensOf(EVERYONE);
 
-export const screenAt = (who: Who, course: CourseKey): number =>
-  SCREENS.findIndex((one) => one.who === who && one.course === course);
+export const screenAt = (
+  who: Who,
+  course: CourseKey,
+  screens: readonly MealScreen[] = SCREENS,
+): number => screens.findIndex((one) => one.who === who && one.course === course);
 
 export interface ClearedPick {
   dishId: string;
@@ -289,10 +292,11 @@ export const allergyList = (allergies: readonly Allergen[], lang: Lang): string 
 export function clearRuledOut(
   answers: Answers,
   allergies: Allergies,
+  screens: readonly MealScreen[],
 ): { answers: Answers; cleared: Cleared } {
   const next: Partial<Record<RowKey, PartyAnswer>> = { ...answers };
   const cleared: Partial<Record<RowKey, ClearedPick>> = {};
-  for (const { who, course } of SCREENS) {
+  for (const { who, course } of screens) {
     const key = rowKey(who, course);
     const answer = answers[key];
     if (answer?.kind !== 'chosen' || answer.by === 'host') continue;
@@ -326,11 +330,14 @@ export function markedOpen(
   allergies: Allergies,
   closed: (course: CourseKey) => boolean,
   lang: Lang,
+  screens: readonly MealScreen[],
 ): RowKey[] {
-  return SCREENS.map(({ who, course }) => rowKey(who, course)).filter(
-    (key) =>
-      !closed(key.split('|')[1] as CourseKey) && markOf(key, answers, allergies, lang) != null,
-  );
+  return screens
+    .map(({ who, course }) => rowKey(who, course))
+    .filter(
+      (key) =>
+        !closed(key.split('|')[1] as CourseKey) && markOf(key, answers, allergies, lang) != null,
+    );
 }
 
 export const sameAnswer = (a: PartyAnswer | undefined, b: PartyAnswer | undefined): boolean =>
@@ -567,7 +574,7 @@ export const isPartyState = (raw: string | null): raw is PartyStateName =>
 
 export const partyStart = (state: PartyStateName): PartyStart => PARTY_STATES[state]();
 
-const MENU_WITH_PREVIEW = '/demo/events/evt-wed-4/menu';
+export const MENU_WITH_PREVIEW = coursesAt('menu');
 
 const partyAt = (state: PartyStateName, preview = false) =>
   `/demo/guest/meal?state=${state}${preview ? '&preview=1' : ''}`;

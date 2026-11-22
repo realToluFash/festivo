@@ -8,7 +8,7 @@ import { LAYOUT_MEDIA, layoutOf, startOf, twoColumns, wordsFor } from './guest.t
 import { Cover, Filled, Notice, TextAction } from './GuestParts.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { MealParty, PreviewBand } from './MealParty.tsx';
-import { isPartyState, partyStart } from './mealParty.ts';
+import { MENU_WITH_PREVIEW, isPartyState, partyStart } from './mealParty.ts';
 import { DishScreen, Refused } from './MealParts.tsx';
 import { Summary } from './MealSummary.tsx';
 import { GUEST_PICKS } from './mealClose.ts';
@@ -48,10 +48,10 @@ export function MealStepPage() {
   const preview = party != null && (party === 'preview' || params.get('preview') === '1');
   const navigate = useNavigate();
   const from = params.get('from');
-  const closePreview =
-    preview && from?.startsWith('/demo/') === true
-      ? () => void navigate(`${from}${from.includes('?') ? '&' : '?'}told=preview`)
-      : null;
+  const back = from?.startsWith('/demo/') === true ? from : MENU_WITH_PREVIEW;
+  const closePreview = preview
+    ? () => void navigate(`${back}${back.includes('?') ? '&' : '?'}told=preview`)
+    : null;
   const format = params.get('format');
   const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
   const layout = layoutOf({
@@ -71,7 +71,7 @@ export function MealStepPage() {
         <header className="gp-header">
           <img className="gp-lockup" src={lockupUrl} alt="Soirely" />
         </header>
-        {preview && <PreviewBand onClose={closePreview} />}
+        {closePreview != null && <PreviewBand onClose={closePreview} />}
         <main id="content" className={twoColumns(layout) ? 'gp-main is-two' : 'gp-main is-one'}>
           <div className="gp-columns">
             <Cover visit={visit} words={words} ended={false} />

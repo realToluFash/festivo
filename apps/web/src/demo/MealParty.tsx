@@ -36,6 +36,7 @@ import {
   ruledOut,
   sameAllergies,
   sameAnswer,
+  screenAt,
   screensOf,
 } from './mealParty.ts';
 import { Refused } from './MealParts.tsx';
@@ -50,7 +51,7 @@ type View =
   | { kind: 'course'; at: number; from: From }
   | { kind: 'check' }
   | { kind: 'sent' };
-type Told = 'marked' | 'nothing' | 'saved' | 'preview' | null;
+type Told = 'marked' | 'nothing' | 'saved' | null;
 
 const changeId = (key: RowKey | 'kitchen') => `pc-change-${key.replace('|', '-')}`;
 const reasonId = (key: RowKey) => `pc-reason-${key.replace('|', '-')}`;
@@ -174,7 +175,7 @@ export function MealParty({
             toCheck(changeId('kitchen'));
             return;
           }
-          const result = clearRuledOut(answers, allergies);
+          const result = clearRuledOut(answers, allergies, SCREENS);
           setAnswers(result.answers);
           setCleared((was) => ({ ...was, ...result.cleared }));
           openCourse(0, 'flow', result.answers);
@@ -254,7 +255,7 @@ export function MealParty({
   }
 
   const closed = (course: CourseKey) => closeOf(course, first.dates).closed;
-  const marked = markedOpen(answers, allergies, closed, lang);
+  const marked = markedOpen(answers, allergies, closed, lang, SCREENS);
   const back = first.mode === 'back';
   const kitchenPending =
     back && PARTY.some((one) => !sameAllergies(added[one.key], savedAdded[one.key]));
@@ -262,8 +263,7 @@ export function MealParty({
 
   function send() {
     if (preview) {
-      if (onClosePreview != null) onClosePreview();
-      else setTold('preview');
+      onClosePreview?.();
       return;
     }
     const firstMarked = marked[0];
@@ -312,10 +312,7 @@ export function MealParty({
       }}
       onChange={(key) => {
         const [who, course] = key.split('|') as [Who, CourseKey];
-        openCourse(
-          SCREENS.findIndex((one) => one.who === who && one.course === course),
-          'check',
-        );
+        openCourse(screenAt(who, course, SCREENS), 'check');
       }}
       onSend={send}
     />
@@ -775,7 +772,6 @@ function CheckAndSend({
       <div className="mx-told" role="status">
         {told === 'nothing' && <p>{PW.nothingToSend}</p>}
         {told === 'saved' && <p>{PW.changesSaved}</p>}
-        {told === 'preview' && <p>{PW.nothingSaved}</p>}
       </div>
       <div className="gk-actions">
         <Filled onClick={onSend}>
@@ -786,16 +782,14 @@ function CheckAndSend({
   );
 }
 
-export function PreviewBand({ onClose }: { onClose: (() => void) | null }) {
+export function PreviewBand({ onClose }: { onClose: () => void }) {
   return (
     <div className="pc-preview" role="note">
       <Glyph name="eye" size={17} weight={2.2} />
       <span>{PW.preview}</span>
-      {onClose != null && (
-        <button type="button" className="gp-text is-ink pc-preview-close" onClick={onClose}>
-          <span>{PW.closePreview}</span>
-        </button>
-      )}
+      <button type="button" className="gp-text is-ink pc-preview-close" onClick={onClose}>
+        <span>{PW.closePreview}</span>
+      </button>
     </div>
   );
 }
