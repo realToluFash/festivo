@@ -27,6 +27,7 @@ import {
   copyAnswers,
   courseOf,
   dishOf,
+  mapWho,
   markOf,
   markedOpen,
   nothingSafe,
@@ -60,12 +61,10 @@ const changeId = (key: RowKey | 'kitchen') => `pc-change-${key.replace('|', '-')
 const reasonId = (key: RowKey) => `pc-reason-${key.replace('|', '-')}`;
 
 function unite(recorded: Allergies, added: Allergies): Allergies {
-  return Object.fromEntries(
-    (Object.keys(recorded) as Who[]).map((who) => [
-      who,
-      [...recorded[who], ...added[who].filter((one) => !recorded[who].includes(one))],
-    ]),
-  ) as unknown as Allergies;
+  return mapWho((who) => [
+    ...recorded[who],
+    ...added[who].filter((one) => !recorded[who].includes(one)),
+  ]);
 }
 
 /** A pick that a later allergy rules out opens with nothing chosen; anything else opens as it was. */

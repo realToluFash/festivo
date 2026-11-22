@@ -148,6 +148,8 @@ export const dishOf = (course: CourseKey, id: string): PartyDish | null =>
 
 const lower = (words: string) => words.toLocaleLowerCase('en');
 
+const sameAs = (from: PartyPerson) => (from.you ? 'Same as mine' : `Same as ${from.name}`);
+
 export const PW = {
   forWho: (person: PartyPerson) => (person.you ? 'For you' : `For ${person.name}`),
   forWhoLegend: (person: PartyPerson, course: string, n: number, total: number) =>
@@ -226,9 +228,9 @@ export const PW = {
   preview: 'Preview. Nothing is saved.',
   closePreview: 'Close preview',
   again: 'Start this state again',
-  sameAs: (from: PartyPerson) => (from.you ? 'Same as mine' : `Same as ${from.name}`),
+  sameAs,
   sameAsName: (from: PartyPerson, to: PartyPerson) =>
-    `${from.you ? 'Same as mine' : `Same as ${from.name}`}, for ${to.you ? 'you' : to.name}`,
+    `${sameAs(from)}, for ${to.you ? 'you' : to.name}`,
   cantCopy: (from: PartyPerson, course: string, to: PartyPerson) =>
     `${from.you ? 'Your' : `${from.name}’s`} ${lower(course)} can’t be picked for ${to.you ? 'you' : to.name}.`,
   copiedFrom: (from: PartyPerson) =>
@@ -361,6 +363,14 @@ export const sameAllergies = (a: readonly Allergen[], b: readonly Allergen[]): b
   a.length === b.length && a.every((one) => b.includes(one));
 
 export const NO_ALLERGIES: Allergies = { me: [], chidi: [], isabela: [], kemi: [], tom: [] };
+
+export const mapWho = (of: (who: Who) => readonly Allergen[]): Allergies => ({
+  me: of('me'),
+  chidi: of('chidi'),
+  isabela: of('isabela'),
+  kemi: of('kemi'),
+  tom: of('tom'),
+});
 
 /** sc-17283: whether one person's answer on a course can be copied to another, under sc-3907's allergy rule. */
 export function copyable(
