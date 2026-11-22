@@ -189,6 +189,18 @@ export function weekHeight(week: Week, look: WeekLook): number {
   );
 }
 
+export interface ScrollReport {
+  y: number;
+  byHand: boolean;
+}
+
+/** Where the reader is after a list reports a scroll: a jump to the very top that neither their hand nor a scroll we asked for made is the list resetting itself, as an iPad's grid does when an event closes over it, and the place stays where it was (sc-83008). */
+export function placeAfter(kept: number, report: ScrollReport, asked: number | null): number {
+  const steered = report.byHand || (asked != null && Math.abs(report.y - asked) <= 1);
+
+  return steered || report.y > 1 || kept <= 1 ? report.y : kept;
+}
+
 export function offsetsOf(weeks: readonly Week[], look: WeekLook): number[] {
   const offsets = [0];
 

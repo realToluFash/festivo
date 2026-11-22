@@ -12,8 +12,13 @@ import {
   calEventOf,
   landingIn,
   offRule,
+  offsetsOf,
   piecesOf,
+  pinnedOf,
+  placeAfter,
   shownIn,
+  topIndex,
+  WIDE_WEEK,
   weekIndexOf,
   weeksAround,
 } from './calendar.ts';
@@ -156,5 +161,30 @@ describe('Agenda', () => {
     expect(agendaMonth(entries, { year: 2026, month: 9 }, 1)).toEqual(NOVEMBER);
     expect(agendaMonth(entries, NOVEMBER, 1)).toBeNull();
     expect(landingIn(entries, '2026-10-01', '2026-11-03')).toBe('month-2026-11');
+  });
+});
+
+describe('‹ Calendar returns to the month it showed (sc-83008)', () => {
+  const weeks = weeksAround(NOVEMBER, 1, new Map());
+  const offsets = offsetsOf(weeks, WIDE_WEEK);
+  const shown = offsets[weekIndexOf(weeks, '2026-11-23')] ?? 0;
+  const monthAt = (y: number) => pinnedOf(weeks[topIndex(offsets, y)], NOVEMBER);
+
+  it('keeps the month when the grid jumps to its first week by itself', () => {
+    const y = placeAfter(shown, { y: 0, byHand: false }, shown);
+
+    expect(monthAt(0)).toEqual({ year: 2024, month: 11 });
+    expect(y).toBe(shown);
+    expect(monthAt(y)).toEqual(NOVEMBER);
+  });
+
+  it('follows the reader to the first week, and a scroll we asked for there', () => {
+    expect(placeAfter(shown, { y: 0, byHand: true }, null)).toBe(0);
+    expect(placeAfter(shown, { y: 0, byHand: false }, 0)).toBe(0);
+  });
+
+  it('follows any report away from the first week', () => {
+    expect(placeAfter(shown, { y: 640, byHand: false }, null)).toBe(640);
+    expect(placeAfter(0, { y: 0, byHand: false }, null)).toBe(0);
   });
 });

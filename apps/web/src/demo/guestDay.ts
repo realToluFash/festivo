@@ -1,6 +1,8 @@
 import { guestPlace } from './arrivalNote.ts';
 import type { Lang, Visit } from './guest.ts';
 import { type SampleEvent, localDay, sampleEvent } from './events.ts';
+import { SAMPLE_PARTY } from './guestCompanions.ts';
+import { closedKitchen } from './guestKitchen.ts';
 import type { DemoLink } from './settings.ts';
 
 const WEDDING = sampleEvent('evt-wed-4') as SampleEvent;
@@ -107,6 +109,29 @@ export const GUEST_DAY_STATES = {
   onTheDayStarted: {
     name: 'On the day, from the start, Coming: the closed view under Your answer',
     starts: { ...STARTED, ...COMING, ...CLOSED },
+  },
+  onTheDayWithParty: {
+    name: 'On the day, Coming with companions: the party line under Your answer, as on any day',
+    starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, party: SAMPLE_PARTY },
+  },
+  onTheDayKitchenSaved: {
+    name: 'On the day, after the date to answer by: the kitchen needs saved, under Your answer',
+    starts: {
+      ...ON_THE_DAY,
+      ...COMING,
+      ...CLOSED,
+      replyBy: '2026-11-01',
+      kitchen: closedKitchen(2, '2026-10-20', { saved: true }),
+    },
+  },
+  onTheDayStartedKitchenSaved: {
+    name: 'On the day, from the start, the kitchen needs saved: the note stays, the pencil goes',
+    starts: {
+      ...STARTED,
+      ...COMING,
+      ...CLOSED,
+      kitchen: closedKitchen(2, '2026-10-20', { saved: true }),
+    },
   },
   onTheDayNameOnly: {
     name: 'On the day, a venue name and no address: no Open in maps',

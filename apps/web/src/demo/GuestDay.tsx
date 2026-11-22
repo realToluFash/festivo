@@ -9,7 +9,9 @@ import {
   dayOf,
   eventTime,
 } from './guest.ts';
+import { hasStep, partyLine } from './guestCompanions.ts';
 import { dayWords, hasWhere, mapsLink, placeOf } from './guestDay.ts';
+import { GUEST_KITCHEN_SAVED_ID, GuestKitchenSaved } from './GuestKitchen.tsx';
 import { DoorCode, Line, TextAction } from './GuestParts.tsx';
 import { useWakeLock } from './useWakeLock.ts';
 import './guestDay.css';
@@ -72,7 +74,7 @@ export function WhereBlock({ visit, words }: { visit: Visit; words: Words }) {
   );
 }
 
-/** sc-1439's recorded and closed views, without the place: on the day it shows once, in Where. */
+/** sc-1439's recorded and closed views as on any other day, the party line and the kitchen's saved note included, without the place: on the day it shows once, in Where. */
 export function DayAnswer({
   visit,
   words,
@@ -89,6 +91,7 @@ export function DayAnswer({
   if (recorded == null) return null;
   const on = dayOf(recorded.on, lang);
   const closed = view.kind === 'closed';
+  const saved = closed && visit.kitchen?.saved === true;
 
   return (
     <section className="gp-day-block" aria-labelledby="gp-day-answer-h">
@@ -103,6 +106,10 @@ export function DayAnswer({
       {view.kind === 'recorded' && view.same && (
         <p className="gp-sub is-ink">{words.same(recorded.answer)}</p>
       )}
+      {view.kind === 'recorded' && hasStep(visit.party) && (
+        <p className="gp-sub">{partyLine(visit.party, lang)}</p>
+      )}
+      {saved && <GuestKitchenSaved lang={lang} />}
       {closed && (
         <p className="gp-sub">
           {started || !answersClosedByDate(visit)
@@ -118,6 +125,7 @@ export function DayAnswer({
       {closed && !started && (
         <TextAction
           focus="kitchen"
+          {...(saved ? { describedBy: GUEST_KITCHEN_SAVED_ID } : {})}
           icon={<Line name="pencil" size={18} weight={2.2} />}
           onClick={onKitchen}
         >
