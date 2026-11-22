@@ -828,13 +828,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         />
       ),
       align: 'start',
-      foot: (
-        <PreviewBar
-          onEdit={() => dispatch({ type: 'edit' })}
-          onSend={talk.onSaveScheduled}
-          onSave={talk.onSaveScheduled}
-        />
-      ),
+      foot: <PreviewBar onEdit={() => dispatch({ type: 'edit' })} onSave={talk.onSaveScheduled} />,
     };
   if (cancelled)
     rest = (

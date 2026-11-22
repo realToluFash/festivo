@@ -323,15 +323,15 @@ export function NewComposer({
             onPress={onInsert ?? (() => undefined)}
             testID="messages.insert"
           />
+          <TextAction
+            label={W.preview}
+            glyph="eye"
+            onPress={onPreview ?? (() => undefined)}
+            off={!on}
+            testID="messages.preview"
+          />
           {editing == null ? (
             <>
-              <TextAction
-                label={W.preview}
-                glyph="eye"
-                onPress={onPreview ?? (() => undefined)}
-                off={!on}
-                testID="messages.preview"
-              />
               <View style={styles.grow}>
                 <Text size={13} weight="medium" style={[styles.secondary, styles.goes]}>
                   {W.goesOnTheirPage}
@@ -341,13 +341,6 @@ export function NewComposer({
             </>
           ) : (
             <>
-              <TextAction
-                label={W.preview}
-                glyph="eye"
-                onPress={onPreview ?? (() => undefined)}
-                off={!on}
-                testID="messages.preview"
-              />
               <TextAction
                 label={W.changeWhen}
                 glyph="clock"
@@ -638,8 +631,7 @@ export function WhyNot({ words }: { words: string }) {
   );
 }
 
-/** The preview's one-line bar: back to the words, Preview on, and Send. */
-/** With onSave, the preview of a scheduled message being edited: it saves, and still goes at its time. */
+/** The preview's one-line bar: back to the words, Preview on, and Send; with onSave, a scheduled message being edited, Save instead, and it still goes at its time. */
 export function PreviewBar({
   sendRef,
   onEdit,
@@ -648,9 +640,7 @@ export function PreviewBar({
 }: {
   sendRef?: Ref<ViewInstance> | undefined;
   onEdit: () => void;
-  onSend: () => void;
-  onSave?: (() => void) | undefined;
-}) {
+} & ({ onSend: () => void; onSave?: undefined } | { onSend?: undefined; onSave: () => void })) {
   return (
     <View style={styles.bar}>
       <TextAction label={W.edit} glyph="edit" onPress={onEdit} testID="messages.edit" />
