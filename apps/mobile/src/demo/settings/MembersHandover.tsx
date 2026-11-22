@@ -44,6 +44,7 @@ import {
   TextAction,
   TurningMark,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 
 export const NOBODY = 'nobody';
 
@@ -169,16 +170,11 @@ export function HandoverAsk({
 
   useEffect(() => {
     if (!open || start?.menu !== true) return;
-    let wait: ReturnType<typeof setTimeout>;
-    const tryAt = (tries: number) => {
-      wait = setTimeout(() => {
-        if (button.current != null) anchorUnder(button, setMenuAt);
-        else if (tries > 0) tryAt(tries - 1);
-      }, MENU_AFTER_MS);
-    };
-    tryAt(4);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled(
+      (then) => (button.current == null ? then(null) : anchorUnder(button, then)),
+      setMenuAt,
+      MENU_AFTER_MS,
+    );
   }, [open, start]);
 
   useEffect(() => {
