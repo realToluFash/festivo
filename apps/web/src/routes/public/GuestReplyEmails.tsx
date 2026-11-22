@@ -1,5 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 
@@ -55,7 +55,7 @@ function GuestReplyEmailsPage({ token }: { token: string }) {
     };
   }, [token]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (changed.current) heading.current?.focus();
   }, [standing]);
 
