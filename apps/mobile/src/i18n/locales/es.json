@@ -795,7 +795,11 @@
     "close": "Cerrar",
     "labelSwitchWaiting_one": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} invitación pendiente",
     "labelSwitchWaiting_other": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} invitaciones pendientes",
-    "labelSwitchWaiting_many": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} de invitaciones pendientes"
+    "labelSwitchWaiting_many": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count, number}} de invitaciones pendientes",
+    "labelPaused": "Organisation: {{name}}, access paused. Switch organisation",
+    "labelPausedWaiting_one": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitation waiting",
+    "labelPausedWaiting_other": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitations waiting",
+    "labelPausedWaiting_many": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitations waiting"
   },
   "createOrganisation": {
     "row": "Crear una organización",

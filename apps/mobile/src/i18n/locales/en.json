@@ -774,7 +774,10 @@
     "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
     "close": "Close",
     "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitation waiting",
-    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitations waiting"
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count, number}} invitations waiting",
+    "labelPaused": "Organisation: {{name}}, access paused. Switch organisation",
+    "labelPausedWaiting_one": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitation waiting",
+    "labelPausedWaiting_other": "Organisation: {{name}}, access paused. Switch organisation. {{count, number}} invitations waiting"
   },
   "createOrganisation": {
     "row": "Create an organisation",

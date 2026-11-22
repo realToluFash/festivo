@@ -54,6 +54,7 @@ import {
 import { backRowHiding } from '../kit/backRow.ts';
 import { type Currencies, freshWalk } from '../kit/createWalk.ts';
 import { phonePillAlone } from '../kit/frameBand.ts';
+import { type Named, openerLabel, pillNames } from '../kit/pillNames.ts';
 import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBack.ts';
 import { EVENT_PLACES, type EventPlace, MORE_PLACES, eventHref } from '../kit/eventNav.ts';
 import { useServerNow } from '../kit/serverNow.ts';
@@ -162,22 +163,17 @@ export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
 }
 
-function useOpenerLabel(organisation: Membership | null, waiting: number, switches: boolean) {
+function useOpenerLabel(organisation: Named | null, waiting: number, switches: boolean) {
   const { t } = useTranslation();
   if (organisation == null) return '';
-  const name = organisation.name;
-  const role = roleName(t, organisation.role);
 
-  if (!switches) return t('switcher.label', { name, role });
-  if (waiting > 0) return t('switcher.labelSwitchWaiting', { name, role, count: waiting });
-
-  return t('switcher.labelSwitch', { name, role });
+  return openerLabel(t, organisation, waiting, switches);
 }
 
 /** Today's openers in the signed-in app: the organisation being worked in, opening the frame's switcher. */
 export function useFrameOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   const { t } = useTranslation();
-  const { organisation } = useSignedIn();
+  const organisation = pillNames(useSignedIn());
   const { invitations, outcomes } = useWaitingInvitations();
   const open = useOpenSwitcher();
   const openedBy = useContext(SwitcherOpenedBy);
@@ -484,7 +480,10 @@ export function AppFrame({
   );
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
-    signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
+    signedIn.organisation != null ||
+    signedIn.pausedIn != null ||
+    waiting.invitations.length > 0 ||
+    offer.organisation != null
       ? (opener: RefObject<ViewInstance | null>) => {
           setSwitcherOpenedOnOverdue(overdueOn);
           setCreated(null);
@@ -624,9 +623,13 @@ export function AppFrame({
         {switchedWords}
       </View>
     ) : null;
-  const titleCap = useTitleCap(`${kind}|${untitled}|${title}`, PAGE_TITLE);
+  // The paused card's own heading heads the page in place of the route's title (sc-83881).
+  const paused = standIn === 'paused';
+  const frameUntitled = untitled || paused;
+  const titleCap = useTitleCap(`${kind}|${frameUntitled}|${title}`, PAGE_TITLE);
   // A page the frame draws no title for is capped only by a title its body draws, as an event area's (sc-67338).
-  const cap = framed && (titleCap.drawn || !untitled) ? titleCap.cap : null;
+  const cap = framed && (titleCap.drawn || !frameUntitled) ? titleCap.cap : null;
+  const named = pillNames(signedIn);
   const header: FrameHeaderProps = {
     current,
     kind,
@@ -639,6 +642,8 @@ export function AppFrame({
     back: headerDrawsBack(kind, back, backInBody),
     backHidden,
     organisation: signedIn.organisation,
+    named,
+    paused,
     waiting: count,
     onSwitch: switchFromPill,
     pill,
@@ -648,7 +653,7 @@ export function AppFrame({
     besideTitle: standIn == null ? besideTitle : undefined,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
-    untitled,
+    untitled: frameUntitled,
     bareList,
     cap,
     onTitleDrawn: titleCap.onDrawn,
@@ -671,6 +676,7 @@ export function AppFrame({
                 up={inEvent?.up}
                 outside={inEvent?.outside?.id ?? null}
                 organisation={signedIn.organisation}
+                named={named}
                 waiting={count}
                 onSwitch={switchFromPill}
                 pill={pill}
@@ -903,6 +909,10 @@ interface FrameHeaderProps {
   back: { label: string; onPress: () => void; off?: boolean; pill?: boolean } | undefined;
   backHidden: boolean;
   organisation: Membership | null;
+  /** What the pill names: the organisation in use, or the paused one (sc-83881). */
+  named: Named | null;
+  /** The paused page stands in for the body: no title, and on its side the bell alone (sc-83881). */
+  paused: boolean;
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
@@ -954,7 +964,15 @@ export function FrameSwitched() {
 }
 
 /** What stays put above a demo's top: upright, the pill, the tabs and the bell; on a phone, the status bar's white. */
-function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: FrameHeaderProps) {
+function FixedTop({
+  kind,
+  current,
+  organisation,
+  named,
+  waiting,
+  onSwitch,
+  pill,
+}: FrameHeaderProps) {
   const insets = useSafeAreaInsets();
   const tabs = useFrameTabs(current, organisation);
   const fromNone = useWayBackToNone();
@@ -966,9 +984,9 @@ function FixedTop({ kind, current, organisation, waiting, onSwitch, pill }: Fram
   return (
     <PortraitTop
       renderPill={(room, givesWay) =>
-        organisation != null && (
+        named != null && (
           <OrgPill
-            organisation={organisation}
+            organisation={named}
             waiting={waiting}
             onSwitch={onSwitch}
             room={room}
@@ -992,7 +1010,7 @@ function ScreenTop({
   switchAnswer,
   back,
   backHidden,
-  organisation,
+  named,
   waiting,
   onSwitch,
   pill,
@@ -1050,13 +1068,8 @@ function ScreenTop({
           titleRef={read}
           onTitleDrawn={onTitleDrawn}
           pill={
-            organisation != null ? (
-              <OrgPill
-                organisation={organisation}
-                waiting={waiting}
-                onSwitch={onSwitch}
-                ref={pill}
-              />
+            named != null ? (
+              <OrgPill organisation={named} waiting={waiting} onSwitch={onSwitch} ref={pill} />
             ) : (
               wayBack
             )
@@ -1125,6 +1138,8 @@ function FrameHeader({
   back,
   backHidden,
   organisation,
+  named,
+  paused,
   waiting,
   onSwitch,
   pill,
@@ -1146,6 +1161,13 @@ function FrameHeader({
   const tabs = useFrameTabs(current, organisation);
 
   if (kind === 'tabletLandscape') {
+    if (paused) {
+      return (
+        <View style={[styles.landscapeHeader, styles.bellAlone]}>
+          <BellButton />
+        </View>
+      );
+    }
     if (untitled) return null;
     // Inside an event the bell ends the area's name's row at every size, the name wrapping to its left (sc-68052).
     const stacks = large && !inEvent;
@@ -1168,9 +1190,9 @@ function FrameHeader({
     );
   }
 
-  const pillView = organisation != null && (
+  const pillView = named != null && (
     <View style={styles.shrink}>
-      <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+      <OrgPill organisation={named} waiting={waiting} onSwitch={onSwitch} ref={pill} />
     </View>
   );
   const backView =
@@ -1210,9 +1232,9 @@ function FrameHeader({
       <View style={[styles.portraitHeader, top]}>
         <PortraitRow
           renderPill={(room, givesWay) =>
-            organisation != null && (
+            named != null && (
               <OrgPill
-                organisation={organisation}
+                organisation={named}
                 waiting={waiting}
                 onSwitch={onSwitch}
                 room={room}
@@ -1227,7 +1249,7 @@ function FrameHeader({
           tabsCentred
         />
         {backView}
-        {!bareList && titleRow()}
+        {!bareList && !paused && titleRow()}
       </View>
     );
   }
@@ -1290,18 +1312,24 @@ function FrameHeader({
           <View style={styles.fill} />
           <SearchAndBell />
         </View>
-        {titleRow()}
+        {!paused && titleRow()}
       </View>
     );
   }
 
   return (
     <View style={[styles.phoneHeader, top]}>
-      {pillAlone && organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
+      {pillAlone && named != null && (
+        <OrgPill organisation={named} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {backView}
-      {titleRow(<BellButton />)}
+      {paused ? (
+        <View style={styles.bellAlone}>
+          <BellButton />
+        </View>
+      ) : (
+        titleRow(<BellButton />)
+      )}
     </View>
   );
 }
@@ -1914,6 +1942,7 @@ function FrameSidebar({
   up,
   outside,
   organisation,
+  named,
   waiting,
   onSwitch,
   pill,
@@ -1927,6 +1956,7 @@ function FrameSidebar({
   /** The event held from outside, when it is one. */
   outside: string | null;
   organisation: Membership | null;
+  named: Named | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
   pill: Ref<ViewInstance>;
@@ -1988,9 +2018,9 @@ function FrameSidebar({
       <TitleCap.Provider value={inEvent && large ? cap : null}>
         <SidebarColumn listing={!inEvent}>
           <SidebarHead>
-            {organisation != null && outside == null && (
+            {named != null && outside == null && (
               <OrgPill
-                organisation={organisation}
+                organisation={named}
                 waiting={waiting}
                 onSwitch={onSwitch}
                 sidebar
@@ -2042,7 +2072,7 @@ function OrgPill({
   givesWay = false,
   ref,
 }: {
-  organisation: Membership;
+  organisation: Named;
   waiting: number;
   onSwitch: (() => void) | undefined;
   sidebar?: boolean;
@@ -2123,6 +2153,7 @@ const styles = StyleSheet.create({
   },
   stacked: { flexDirection: 'column', alignItems: 'flex-start', gap: tokens.spaceXs },
   bellAtTop: { alignItems: 'flex-start' },
+  bellAlone: { flexDirection: 'row', justifyContent: 'flex-end' },
   noneBackUpright: { flexDirection: 'row' },
   noneBackSide: { flexDirection: 'row', marginBottom: tokens.spaceXs },
   bellHigh: { minHeight: tokens.sizeHit },
