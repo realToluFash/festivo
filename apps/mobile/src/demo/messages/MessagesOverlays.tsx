@@ -730,7 +730,7 @@ export function MatchPicker({
   const searchRef = useRef<TextInputInstance>(null);
   const [laidOut, setLaidOut] = useState(false);
   if (!open && laidOut) setLaidOut(false);
-  // Not on a timer from open: a field that takes the keys before an iOS sheet's window is up can lose the window (qa3 #47084, #83800).
+  // Focus waits for the sheet's first layout, then SETTLED_MS, not a fixed delay from open (qa3 #83800).
   useEffect(() => {
     if (!open || !laidOut) return;
     const later = setTimeout(() => searchRef.current?.focus(), SETTLED_MS);
@@ -751,7 +751,11 @@ export function MatchPicker({
         label={W.searchGuests}
         testID="messages.match.search"
       />
-      <View accessibilityRole="radiogroup" onLayout={() => setLaidOut(true)}>
+      <View
+        key={open ? 'open' : 'shut'}
+        accessibilityRole="radiogroup"
+        onLayout={() => setLaidOut(true)}
+      >
         {shown.map((one) => (
           <Row
             key={one.name}
