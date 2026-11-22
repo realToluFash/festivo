@@ -70,13 +70,13 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
       .parentElement as HTMLElement;
     const links = within(group).getAllByRole('link');
 
-    expect(links).toHaveLength(142);
+    expect(links).toHaveLength(141);
     expect(links[0]?.getAttribute('href')).toBe(`${AT}?state=first`);
     expect(links[7]?.getAttribute('href')).toBe(`${AT}?state=noticeCost`);
-    expect(links[26]?.getAttribute('href')).toBe(`${AT}?state=bell`);
-    expect(links[57]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
-    expect(links[59]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
-    expect(links[84]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
+    expect(links.some((one) => one.getAttribute('href') === `${AT}?state=bell`)).toBe(false);
+    expect(links[56]?.getAttribute('href')).toBe(`${AT}?state=tellPlace`);
+    expect(links[58]?.getAttribute('href')).toBe(`${AT}?state=closedEnded`);
+    expect(links[83]?.getAttribute('href')).toBe(`${AT}?state=nobodyDue`);
   });
 
   it('is the event’s own Messages entry, with the count under it', SLOW, async () => {

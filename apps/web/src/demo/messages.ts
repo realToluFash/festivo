@@ -128,8 +128,6 @@ export const MESSAGE_STATES = [
   { key: 'untold', name: 'Not told yet' },
   { key: 'invited', name: 'Invitations sent' },
   { key: 'scheduled', name: 'Scheduled' },
-  { key: 'bell', name: 'The bell' },
-  ...BELL_STATES,
   { key: 'invitedReached', name: 'Who it reached, an invitation' },
   { key: 'sentReached', name: 'Who it reached, just sent' },
   { key: 'notMatched', name: 'A sender not matched' },
@@ -229,6 +227,8 @@ export const MESSAGE_STATES = [
   ...TAP_STATES,
   ...REFUSAL_STATES,
   ...CHOOSE_STATES,
+  { key: 'bell', name: 'The bell' },
+  ...BELL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
