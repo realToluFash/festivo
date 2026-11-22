@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CATEGORY_MARK, markOf } from '../../components/notificationMarks.ts';
-import { BELL_STATES, bellStartOf, isBellState } from './BellStates.ts';
+import { BELL_STATES, HELD_BY_MUTE, bellStartOf, isBellState, mutedOf } from './BellStates.ts';
 
 describe('the bell’s states (sc-83081)', () => {
   it('gives each of the six categories its own mark, and an unknown one none', () => {
@@ -31,8 +31,26 @@ describe('the bell’s states (sc-83081)', () => {
   });
 
   it('marks Muted only the items delivered after the mute, as main does at delivery', () => {
-    expect(bellStartOf('bellMuted')).toMatchObject({ muted: true, marked: ['replies', 'day'] });
+    const muted = bellStartOf('bellMuted');
+    expect(muted).toMatchObject({ muted: true, marked: ['replies'] });
+    expect(mutedOf(muted, { key: 'replies', category: 'guest_replies' })).toBe(true);
+    expect(mutedOf(muted, { key: 'missed', category: 'messages' })).toBe(false);
     expect(bellStartOf('bellMute')).toMatchObject({ muted: false, marked: [] });
+  });
+
+  it('marks nothing for the switch alone, and never Event day or Account & security', () => {
+    const switchedOn = { ...bellStartOf('bellMute'), muted: true };
+    expect(mutedOf(switchedOn, { key: 'replies', category: 'guest_replies' })).toBe(false);
+
+    const all = { ...bellStartOf('bellMuted'), marked: ['day', 'security'] };
+    expect(mutedOf(all, { key: 'day', category: 'event_day' })).toBe(false);
+    expect(mutedOf(all, { key: 'security', category: 'account_security' })).toBe(false);
+    expect([...HELD_BY_MUTE].sort()).toEqual([
+      'event_changes',
+      'guest_replies',
+      'messages',
+      'money',
+    ]);
   });
 
   it('knows its own keys and no others', () => {

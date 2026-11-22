@@ -1,3 +1,5 @@
+import type { NotificationCategory } from '@soirely/api-client';
+
 /** The demo home's group for the bell, named as the web's is. */
 export const BELL_GROUP = 'The bell (sc-83081)';
 
@@ -26,7 +28,7 @@ export const BELL_BOARDS: Record<(typeof BELL_STATES)[number], readonly [string,
   bellMore: ['the bell · show more', 'Two older items under Show more'],
   bellMoreFailed: ['the bell · more did not load', 'Show more, and Try again in a moment'],
   bellMute: ['the bell · an item’s more', 'Mute this event, its switch and its word'],
-  bellMuted: ['the bell · a muted event', 'Today’s two items marked Muted, the older ones not'],
+  bellMuted: ['the bell · a muted event', 'Today’s replies marked Muted, the older items not'],
   bellGone: ['the bell · an event that has gone', 'This event is no longer available.'],
   bellOffline: ['the bell · offline', 'Offline · as of 09:40, with Try again'],
   bellRefreshing: ['the bell · refreshing', 'Refreshing… beside the title, the band kept'],
@@ -78,7 +80,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellMute':
       return { ...REST, menu: 'missed' };
     case 'bellMuted':
-      return { ...REST, muted: true, marked: ['replies', 'day'] };
+      return { ...REST, muted: true, marked: ['replies'] };
     case 'bellGone':
       return { ...REST, gone: true };
     case 'bellOffline':
@@ -108,3 +110,19 @@ export const BW = {
   due: (event: string) => `2 payments due in the next 7 days on ${event}`,
   signIn: 'New sign-in to Soirely',
 };
+
+/** The categories Mute this event holds, as the API's NotificationCategory::heldByMute: never Event day or Account & security. */
+export const HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
+  'guest_replies',
+  'messages',
+  'event_changes',
+  'money',
+]);
+
+/** An item is marked Muted when it arrived after the mute, in a category the mute holds; the switch re-marks nothing shown. */
+export function mutedOf(
+  start: BellStart,
+  item: { key: string; category: NotificationCategory },
+): boolean {
+  return start.marked.includes(item.key) && HELD_BY_MUTE.has(item.category);
+}

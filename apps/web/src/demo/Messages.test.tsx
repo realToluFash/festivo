@@ -1282,7 +1282,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     cleanup();
     await messages('bellMuted');
     bell = screen.getByRole('dialog', { name: 'Notifications' });
-    expect(within(bell).getAllByText('Muted').length).toBe(2);
+    expect(within(bell).getAllByText('Muted').length).toBe(1);
   });
 
   it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {

@@ -64,7 +64,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellMute':
       return { ...REST, menu: 'missed' };
     case 'bellMuted':
-      return { ...REST, muted: true, marked: ['replies', 'day'] };
+      return { ...REST, muted: true, marked: ['replies'] };
     case 'bellGone':
       return { ...REST, gone: true };
     case 'bellOffline':
