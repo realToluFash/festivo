@@ -1,4 +1,5 @@
 import { type CalendarMonth, type CalendarView, monthOfDay, shiftMonth } from '@soirely/domain';
+import { useIsFocused } from 'expo-router';
 import {
   type ComponentType,
   type ReactNode,
@@ -202,6 +203,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const places = useRef(new Map<string, number>());
   const glide = useGlide(reduced);
   const placed = start.view != null && start.at != null;
+  const here = useIsFocused();
+  const wasHere = useRef(here);
 
   useEffect(() => {
     if (placed) return;
@@ -266,10 +269,23 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     setLastDay(day);
     setOpen(day);
   }, []);
-  const onTop = useCallback((index: number, y: number) => {
-    weekY.current = y;
-    setTop(index);
-  }, []);
+  // On an iPad the grid reports itself at its first week while an event is over it, which would land ‹ Calendar 24 months back (sc-83008).
+  const onTop = useCallback(
+    (index: number, y: number) => {
+      if (!here) return;
+      weekY.current = y;
+      setTop(index);
+    },
+    [here],
+  );
+
+  useEffect(() => {
+    const back = here && !wasHere.current;
+    wasHere.current = here;
+    if (!back) return;
+    if (view === 'agenda') agendaRef.current?.scrollTo({ y: agendaY.current, animated: false });
+    else listRef.current?.scrollToOffset({ offset: weekY.current, animated: false });
+  }, [here, view]);
 
   const scrollWeeks = (index: number, toToday: boolean) => {
     const to = offsets[index] ?? 0;
@@ -327,6 +343,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     agendaY.current = y;
   }, []);
   const onAgendaScroll = (y: number) => {
+    if (!here) return;
     agendaY.current = y;
     let found: string | null = null;
     for (const entry of entries) {

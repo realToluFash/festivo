@@ -25,6 +25,7 @@ import {
   GONE_EVENT,
   OLDER_COUNT,
   bellStartOf,
+  mutedOf,
 } from './BellStates.ts';
 import { BELL, EVENT, PARKING, PARKING_REACH } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
@@ -218,7 +219,7 @@ export function BellPlace({
         lines: [],
         where: item.line,
         unread: item.unread,
-        muted: muted && item.event === EVENT,
+        muted: mutedOf(start, item),
         more:
           item.event == null
             ? null

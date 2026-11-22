@@ -26,7 +26,10 @@ export interface BellStart {
   more: More;
   asking: boolean;
   menu: string | null;
+  /** Mute this event's switch as it opens; flipping it marks no item already shown. */
   muted: boolean;
+  /** The items delivered after the event was muted, each marked Muted when it arrived (sc-3980). */
+  marked: readonly string[];
   /** The item whose event has gone is listed, its line showing as after a press. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
@@ -39,6 +42,7 @@ const REST: BellStart = {
   asking: false,
   menu: null,
   muted: false,
+  marked: [],
   gone: false,
   offline: 'none',
 };
@@ -60,7 +64,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellMute':
       return { ...REST, menu: 'missed' };
     case 'bellMuted':
-      return { ...REST, muted: true };
+      return { ...REST, muted: true, marked: ['replies'] };
     case 'bellGone':
       return { ...REST, gone: true };
     case 'bellOffline':
