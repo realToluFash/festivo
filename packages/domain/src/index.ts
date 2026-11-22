@@ -17,6 +17,7 @@ export * from './guestLine.ts';
 export * from './guestView.ts';
 export * from './guestExport.ts';
 export * from './guestRows.ts';
+export * from './guestChanges.ts';
 export * from './userAgent.ts';
 export * from './contacts.ts';
 export * from './connection.ts';

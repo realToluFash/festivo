@@ -3617,7 +3617,19 @@
     "justArrived": "{{name}} acabou de chegar, por isso fica na lista.",
     "companionJustArrived": "{{name}} fica na lista: um dos acompanhantes acabou de chegar.",
     "backToDetails": "Voltar aos dados",
-    "companionStays": "{{name}} já chegou, por isso fica na lista."
+    "companionStays": "{{name}} já chegou, por isso fica na lista.",
+    "changed": {
+      "filter": "Alterações desde a última visita",
+      "nothing": "Nada mudou desde a sua última visita.",
+      "showAll": "Mostrar todos os convidados",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Resposta: {{time}}",
+      "repliedOn": "Resposta: {{date}}",
+      "changedAt": "Alteração: {{time}}",
+      "changedOn": "Alteração: {{date}}",
+      "needs": "Notas sobre alimentação atualizadas",
+      "flagged": "A ligação pode ter chegado a outra pessoa"
+    }
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -6034,5 +6046,21 @@
     "failedLine": "Verifique a ligação e tente novamente.",
     "tryAgain": "Tentar novamente",
     "notSaved": "Os dias não foram guardados. Verifique a ligação e tente novamente."
+  },
+  "guestReplyEmails": {
+    "onTitle": "E-mails de respostas dos convidados",
+    "turnOff": "Desativar os e-mails de respostas dos convidados",
+    "offTitle": "Os e-mails de respostas dos convidados estão desativados",
+    "offBody": "Continuará a ver as respostas em Notificações, e as notificações push mantêm-se como as definiu.",
+    "turnOn": "Voltar a ativá-los",
+    "backOnTitle": "Os e-mails de respostas dos convidados voltaram a estar ativados",
+    "backOnBody": "O seu resumo de convidados chegará de manhã quando houver novidades.",
+    "saving": "A guardar…",
+    "failed": "Não foi possível guardar. Nada foi alterado.",
+    "tryAgain": "Tentar novamente",
+    "unknownTitle": "Esta ligação não funciona",
+    "unknownBody": "Nada foi alterado. Para ativar ou desativar os e-mails de respostas dos convidados, inicie sessão e abra as definições de notificações.",
+    "signIn": "Iniciar sessão nas definições de notificações",
+    "settings": "Definições de notificações"
   }
 }

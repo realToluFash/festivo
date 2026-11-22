@@ -3617,7 +3617,19 @@
     "justArrived": "{{name}} acaba de llegar, así que se queda en la lista.",
     "companionJustArrived": "{{name}} se queda en la lista: acaba de llegar una persona que le acompaña.",
     "backToDetails": "Volver a los datos",
-    "companionStays": "{{name}} ya ha llegado, así que se queda en la lista."
+    "companionStays": "{{name}} ya ha llegado, así que se queda en la lista.",
+    "changed": {
+      "filter": "Cambios desde su última visita",
+      "nothing": "No ha cambiado nada desde su última visita.",
+      "showAll": "Mostrar todos los invitados",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Respuesta: {{time}}",
+      "repliedOn": "Respuesta: {{date}}",
+      "changedAt": "Cambio: {{time}}",
+      "changedOn": "Cambio: {{date}}",
+      "needs": "Notas sobre alimentación actualizadas",
+      "flagged": "Puede que el enlace haya llegado a otra persona"
+    }
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -6034,5 +6046,21 @@
     "failedLine": "Compruebe su conexión y vuelva a intentarlo.",
     "tryAgain": "Reintentar",
     "notSaved": "No se han guardado los días. Compruebe su conexión y vuelva a intentarlo."
+  },
+  "guestReplyEmails": {
+    "onTitle": "Correos de respuestas de invitados",
+    "turnOff": "Desactivar los correos de respuestas de invitados",
+    "offTitle": "Los correos de respuestas de invitados están desactivados",
+    "offBody": "Seguirá viendo las respuestas en Notificaciones, y las notificaciones push siguen como las haya configurado.",
+    "turnOn": "Volver a activarlos",
+    "backOnTitle": "Los correos de respuestas de invitados vuelven a estar activados",
+    "backOnBody": "Recibirá su resumen de invitados por la mañana cuando haya novedades.",
+    "saving": "Guardando…",
+    "failed": "No se ha podido guardar. No ha cambiado nada.",
+    "tryAgain": "Reintentar",
+    "unknownTitle": "Este enlace no funciona",
+    "unknownBody": "No ha cambiado nada. Para activar o desactivar los correos de respuestas de invitados, inicie sesión y abra la configuración de notificaciones.",
+    "signIn": "Iniciar sesión y abrir la configuración de notificaciones",
+    "settings": "Configuración de notificaciones"
   }
 }

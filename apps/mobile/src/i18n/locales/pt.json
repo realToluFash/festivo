@@ -2673,7 +2673,19 @@
     "reopenNotSaved": "Não foi guardado. Verifique a sua ligação e tente novamente.",
     "askedBy": "{{reply}} · resposta até {{date}}",
     "askedByOn": "resposta até {{date}}",
-    "companionStays": "{{name}} já chegou, por isso fica na lista."
+    "companionStays": "{{name}} já chegou, por isso fica na lista.",
+    "changed": {
+      "filter": "Alterações desde a última visita",
+      "nothing": "Nada mudou desde a sua última visita.",
+      "showAll": "Mostrar todos os convidados",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Resposta: {{time}}",
+      "repliedOn": "Resposta: {{date}}",
+      "changedAt": "Alteração: {{time}}",
+      "changedOn": "Alteração: {{date}}",
+      "needs": "Notas sobre alimentação atualizadas",
+      "flagged": "A ligação pode ter chegado a outra pessoa"
+    }
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -3284,7 +3296,7 @@
     "change": "Alterar o seu endereço de e-mail principal"
   },
   "checkIn": {
-    "title": "Registo de entradas",
+    "title": "Entradas",
     "back": "Convidados",
     "open": "Abrir registo de entradas",
     "checkGuestsIn": "Registar entradas",

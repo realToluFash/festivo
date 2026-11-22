@@ -1205,6 +1205,10 @@ export type EditState =
   | 'venueSuggestions'
   | 'venueZone'
   | 'venueDown'
+  | 'venueOne'
+  | 'venueShort'
+  | 'venueNoMatch'
+  | 'venueFrench'
   | 'venueNote'
   | 'venueNoteTooLong'
   | 'venueNoteRefused'
@@ -1303,6 +1307,10 @@ export const EVENT_STATES: Record<EventStateName, string> = {
   venueSuggestions: 'evt-wed-4',
   venueZone: 'evt-wed-4',
   venueDown: 'evt-wed-4',
+  venueOne: 'evt-wed-4',
+  venueShort: 'evt-wed-4',
+  venueNoMatch: 'evt-wed-4',
+  venueFrench: 'evt-wed-4',
   venueNote: 'evt-wed-4',
   venueNoteTooLong: 'evt-wed-4',
   venueNoteRefused: 'evt-wed-4',
@@ -1439,6 +1447,10 @@ export function partOf(state: EventStateName | null): Part | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':
@@ -1692,6 +1704,17 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       on('venueSuggestions', 'Venue, suggestions'),
       on('venueZone', 'Venue, in another time zone'),
       on('venueDown', 'Venue, the lookup down'),
+    ],
+  },
+  {
+    name: 'The suggestions credit OpenStreetMap (sc-80918)',
+    states: [
+      on('venueSuggestions', 'Three suggestions, the credit at the foot of the list'),
+      on('venueOne', 'One suggestion, the credit still there'),
+      on('venueShort', 'Two letters typed: no list, no credit'),
+      on('venueNoMatch', 'Nothing matches: no credit'),
+      on('venueDown', 'Suggestions not available: no credit'),
+      on('venueFrench', 'The credit in French, whole at 320 px'),
     ],
   },
   {

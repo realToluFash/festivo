@@ -59,7 +59,8 @@
     "mobile:auditLog.csv",
     "mobile:auditLog.jsonLines",
     "messagesCounts:audit.value.baby_shower",
-    "messagesCounts:audit.field.plan"
+    "messagesCounts:audit.field.plan",
+    "messagesCounts:guestReplies.push.title"
   ],
   "fr": [
     "web:staffRates.hoursMinutes",
@@ -225,7 +226,8 @@
     "messagesCounts:audit.value.baby_shower",
     "messagesCounts:audit.field.type",
     "messagesCounts:audit.field.format",
-    "messagesCounts:audit.value.invitation"
+    "messagesCounts:audit.value.invitation",
+    "messagesCounts:guestReplies.push.title"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
@@ -288,6 +290,7 @@
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
-    "mobile:auditLog.jsonLines"
+    "mobile:auditLog.jsonLines",
+    "messagesCounts:guestReplies.push.title"
   ]
 }

@@ -18,6 +18,8 @@ import { EventScreen } from './EventPage.tsx';
 import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { EventGone } from './EventGone.tsx';
+import { linkStateOf } from './EventLink.ts';
+import { EventLinkPage } from './EventLinkPage.tsx';
 import { eventStateOf, listStateOf } from './EventsModel.ts';
 import { AT_READ, refusedStartOf } from './DeleteRefusal.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
@@ -170,7 +172,7 @@ function ListRoute({
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863); with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -181,7 +183,9 @@ export function EventRoute() {
     people?: string;
     filter?: string;
     staff?: string;
+    link?: string;
   }>();
+  const link = linkStateOf(params.link);
   const area = areaOf(params.area);
   const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
   // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
@@ -196,6 +200,13 @@ export function EventRoute() {
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
   const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;
+
+  if (link != null)
+    return (
+      <EventsShell key={link}>
+        <EventLinkPage id={params.id} state={link} />
+      </EventsShell>
+    );
 
   if (area === 'guests' && params.state === 'eventDeleted')
     return (

@@ -35,6 +35,7 @@ import {
   foundedPlace,
   walkFor,
 } from './createOrg/CreateWalk.ts';
+import { linkMoved } from './events/EventLink.ts';
 import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
@@ -98,6 +99,8 @@ interface Switcher {
   answerInvite: (id: string, yes: boolean) => void;
   /** Open, once joined from no organisation: into it, the notice focused. */
   openJoined: (id: string) => void;
+  /** An event's link from another organisation, once the event has loaded: into it, the notice read where it lands (sc-80863). */
+  linkMove: (id: string) => void;
 }
 
 const SwitcherContext = createContext<Switcher | null>(null);
@@ -337,9 +340,26 @@ export function OrgSwitcherProvider({
     },
     [t],
   );
+  const linkMove = useCallback(
+    (id: string) => {
+      const next = linkMoved(store.session, id);
+      setSession(next);
+      setSwitched({ words: t('switcher.switched', { name: currentPlace(next).name }) });
+    },
+    [t],
+  );
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, startWalk, registerStart, answerInvite, openJoined }),
-    [register, show, openedBy, startWalk, registerStart, answerInvite, openJoined],
+    () => ({
+      register,
+      show,
+      openedBy,
+      startWalk,
+      registerStart,
+      answerInvite,
+      openJoined,
+      linkMove,
+    }),
+    [register, show, openedBy, startWalk, registerStart, answerInvite, openJoined, linkMove],
   );
 
   return (
@@ -426,6 +446,16 @@ export function useStartWalk(opener: OpenerRef): () => void {
   useEffect(() => registerStart(opener), [registerStart, opener]);
 
   return () => startWalk(opener);
+}
+
+/** An event's link (sc-80863): `start` puts the account in Ire Events, as it was before the link; `move` moves it once the event has loaded. */
+export function useLinkMove(): { start: () => void; move: (id: string) => void } {
+  const { linkMove } = useSwitcher();
+
+  return useMemo(
+    () => ({ start: () => setSession(sessionFor('populated')), move: linkMove }),
+    [linkMove],
+  );
 }
 
 /** The organisation being worked in, or null for someone in none. */

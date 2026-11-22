@@ -3617,7 +3617,19 @@
     "justArrived": "{{name}} vient d’arriver et reste donc sur la liste.",
     "companionJustArrived": "{{name}} reste sur la liste : une personne qui l’accompagne vient d’arriver.",
     "backToDetails": "Retour aux informations",
-    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste."
+    "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste.",
+    "changed": {
+      "filter": "Changements depuis votre dernière visite",
+      "nothing": "Rien n’a changé depuis votre dernière visite.",
+      "showAll": "Afficher tous les invités",
+      "line": "{{answer}} · {{when}}",
+      "repliedAt": "Réponse : {{time}}",
+      "repliedOn": "Réponse : {{date}}",
+      "changedAt": "Modification : {{time}}",
+      "changedOn": "Modification : {{date}}",
+      "needs": "Notes sur l’alimentation mises à jour",
+      "flagged": "Lien peut-être reçu par erreur"
+    }
   },
   "guestNumbers": {
     "title": "Invités",
@@ -6034,5 +6046,21 @@
     "failedLine": "Vérifiez votre connexion, puis réessayez.",
     "tryAgain": "Réessayer",
     "notSaved": "Les jours n’ont pas été enregistrés. Vérifiez votre connexion, puis réessayez."
+  },
+  "guestReplyEmails": {
+    "onTitle": "E-mails sur les réponses des invités",
+    "turnOff": "Désactiver les e-mails sur les réponses des invités",
+    "offTitle": "Les e-mails sur les réponses des invités sont désactivés",
+    "offBody": "Vous verrez toujours les réponses dans Notifications, et les notifications push restent telles que vous les avez réglées.",
+    "turnOn": "Les réactiver",
+    "backOnTitle": "Les e-mails sur les réponses des invités sont réactivés",
+    "backOnBody": "Votre récapitulatif des invités arrivera le matin lorsqu’il y aura du nouveau.",
+    "saving": "Enregistrement…",
+    "failed": "L’enregistrement n’a pas abouti. Rien n’a changé.",
+    "tryAgain": "Réessayer",
+    "unknownTitle": "Ce lien ne fonctionne pas",
+    "unknownBody": "Rien n’a changé. Pour activer ou désactiver les e-mails sur les réponses des invités, connectez-vous et ouvrez les paramètres de notification.",
+    "signIn": "Se connecter aux paramètres de notification",
+    "settings": "Paramètres de notification"
   }
 }
