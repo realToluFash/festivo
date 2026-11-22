@@ -385,7 +385,7 @@ function Blocks({
   );
 }
 
-/** Two columns on a tablet in landscape; VoiceOver keeps the AC's order. */
+/** Ignored until React Native's enableAccessibilityOrder flag is on; it ships off, so VoiceOver reads the cards by position. */
 const READING_ORDER = [
   'service.course',
   'service.sections',
