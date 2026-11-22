@@ -137,7 +137,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         }
 
         $published['unreadCount'] = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), $published);
 
         return null;
     }
@@ -155,7 +155,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         }
 
         $unread = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'removedId' => Type\string()->coerce($removed),
             'unreadCount' => $unread,
         ]);
@@ -168,7 +168,7 @@ final readonly class InAppSender implements ChannelSenderInterface
         $this->entityManager->refresh($item);
 
         $unread = $this->unreadFor($recipient);
-        $this->realtimePublisher->publish(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
+        $this->realtimePublisher->publishOrFail(RealtimeTopic::UserNotifications, $recipient->id->toRfc4122(), [
             'updated' => NotificationItemSerialiser::item($item, $eventAvailable),
             'unreadCount' => $unread,
         ]);

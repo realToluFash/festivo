@@ -13,6 +13,7 @@ use Psl\Iter;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Vec;
+use Psr\Log\NullLogger;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -51,7 +52,7 @@ final class RealtimeTopicsTest extends TestCase
             return 'id';
         });
 
-        new RealtimePublisher($hub)->publish(RealtimeTopic::UserNotifications, 'someone', ['unread' => 3]);
+        new RealtimePublisher($hub, new NullLogger())->publish(RealtimeTopic::UserNotifications, 'someone', ['unread' => 3]);
 
         self::assertCount(1, $published);
         self::assertSame(['users/someone/notifications'], $published[0]->getTopics());
