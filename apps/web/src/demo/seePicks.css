@@ -80,6 +80,17 @@
   padding: var(--spaceXl) var(--spaceXxl);
 }
 
+/* The Menu's course card (.mn-course): a light card, so the secondary lines keep 4.5:1. */
+.pk-host,
+.pk-course,
+.pk-waiting,
+.pk-summary {
+  min-height: 0;
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
 .pk-host {
   border: 2px solid var(--colorAttention);
 }
@@ -278,6 +289,13 @@
 
 .pk-dialog {
   width: 36rem;
+}
+
+/* Under 40rem the dialog is the shell's full-width sheet; a bare .pk-dialog would hold it at 36rem. */
+@media (width <= 40rem) {
+  .dialog.pk-dialog {
+    width: 100%;
+  }
 }
 
 .pk-form {
