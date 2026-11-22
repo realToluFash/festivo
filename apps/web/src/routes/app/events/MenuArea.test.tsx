@@ -479,7 +479,7 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(await screen.findByText('Jollof rice saved.')).toBeDefined();
     expect(
       screen.getByText(
-        '4 guests who picked Jollof rice have Peanuts and Sesame recorded, and nobody has told them.',
+        '4 guests who picked Jollof rice have peanuts and sesame recorded, and nobody has told them.',
       ),
     ).toBeDefined();
     expect(
