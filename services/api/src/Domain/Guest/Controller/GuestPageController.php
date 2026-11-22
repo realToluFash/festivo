@@ -131,13 +131,14 @@ final readonly class GuestPageController
         return $this->answered($guest);
     }
 
-    /** A meal for each person coming (sc-3907): the guest's and each named companion's answers, sent after the kitchen note so its allergens count. Refused 422 by MealPicks's rules with nothing saved, and 409 `meal_picks_closed` for a changed answer on a closed course, once the open ones are saved. Answers the page as it now stands. */
+    /** A meal for each person coming (sc-3907): the guest's and each named companion's answers, sent after the kitchen note so its allergens count. Refused 409 `event_paused` or `event_concluded` by the event's phase, 422 by MealPicks's rules with nothing saved, and 409 `meal_picks_closed` for a changed answer on a closed course, once the open ones are saved. Answers the page as it now stands. */
     #[Route('/api/guest-links/meals', name: 'guest_links_meals', methods: ['POST'])]
     #[PublicAccess]
     public function meals(Request $request): JsonResponse
     {
         $body = Input::body($request, Type\shape(['token' => Type\string(), 'picks' => MealPicks::sent()]));
         $guest = $this->invitationLinks->guestFor($body['token']) ?? throw ApiException::notFound('access.not_found');
+        $this->guestAnswers->refuseByPhase($guest);
 
         $this->mealPicks->send($guest, $body['picks']);
 

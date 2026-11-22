@@ -3793,6 +3793,7 @@
     "changesSaved": "Your changes are saved.",
     "notSaved": "Not sent. Check your connection and try again.",
     "refusedClosed": "Picks for {{course}} closed on {{date}}, so your change was not saved.",
+    "askHosts": "To change a pick now, ask {{hosts}}.",
     "preview": "Preview. Nothing is saved.",
     "closePreview": "Close preview"
   },

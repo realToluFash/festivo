@@ -34,7 +34,13 @@ import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { Programme } from './Programme.tsx';
 import { YourTable } from './YourTable.tsx';
 import { useHubTopics } from '../app/events/useHubTopics.ts';
-import { KITCHEN_SAVED_ID, KitchenCheck, KitchenSaved, KitchenStep } from './Kitchen.tsx';
+import {
+  KITCHEN_SAVED_ID,
+  KitchenCheck,
+  KitchenRow,
+  KitchenSaved,
+  KitchenStep,
+} from './Kitchen.tsx';
 import { openIn, saveAgain, useGuestLanguage } from './guestLanguage.ts';
 import {
   type Party,
@@ -73,6 +79,7 @@ import {
   markOf,
   markedOpen,
   nothingSafe,
+  oneCloseDay,
   otherOf,
   picksOf,
   refusalOf,
@@ -91,7 +98,12 @@ type Load =
 type View =
   | { kind: 'answer'; busy: GuestAnswer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'withYou'; from: 'answer' | 'changing' }
-  | { kind: 'kitchen'; from: 'answer' | 'changing'; fromCheck?: boolean }
+  | {
+      kind: 'kitchen';
+      from: 'answer' | 'changing';
+      /** Where Next and Back return when the note was opened from a row: Check and send, or the picks saved. */
+      returns?: 'check' | 'saved';
+    }
   | {
       kind: 'meal';
       from: 'answer' | 'changing';
@@ -177,6 +189,13 @@ function ended(phase: GuestPagePhase): boolean {
 
 function standing(page: GuestPage): string {
   return `${page.phase}:${String(page.started)}:${String(page.answersOpen)}`;
+}
+
+/** What the kitchen note would send, so an unsent change on coming back can be told from the record. */
+function sentNeeds(kitchen: Kitchen, page: GuestPage): string {
+  const me = kitchen.people.find((one) => one.key === YOU);
+
+  return JSON.stringify([me == null ? null : needsOf(me), placeNeeds(kitchen, page)]);
 }
 
 function sameParty(was: GuestPage, now: GuestPage): boolean {
@@ -402,6 +421,9 @@ export function Card({
   const eaters = eatersOf(page.meals, party);
   const allergies = allergiesOf(page, kitchen);
   const others = otherOf(page, kitchen);
+  const kitchenPending =
+    kitchen != null &&
+    sentNeeds(kitchen, page) !== sentNeeds(kitchenOf(page, partyOf(page), null), page);
 
   useLayoutEffect(() => {
     if (want == null) return;
@@ -583,10 +605,27 @@ export function Card({
     focus('withYouHead');
   }
 
-  function toKitchen(from: 'answer' | 'changing', fromCheck = false): void {
+  function toKitchen(from: 'answer' | 'changing', returns?: 'check' | 'saved'): void {
     setKitchen((was) => kitchenOf(page, party, was));
-    setView({ kind: 'kitchen', from, fromCheck });
+    setView(returns == null ? { kind: 'kitchen', from } : { kind: 'kitchen', from, returns });
     focus('kitchenHead');
+  }
+
+  /** Change on the kitchen row of the picks saved: the note, then back to the picks, where its change waits for Send my changes. */
+  function savedKitchen(): void {
+    if (meal.busy) return;
+    setMeal((was) => ({ ...was, told: null }));
+    toKitchen('changing', 'saved');
+  }
+
+  /** Back to wherever a row opened the kitchen note from, with focus on that row's Change. */
+  function kitchenReturn(returns: 'check' | 'saved', from: 'answer' | 'changing'): void {
+    setView(
+      returns === 'check'
+        ? { kind: 'check', busy: false, failed: false, from }
+        : { kind: 'recorded', same: false },
+    );
+    focus('kitchenRow');
   }
 
   /** Each person's picks, sent once the answer and the kitchen note are, so the API checks them against the allergens as now recorded. */
@@ -609,12 +648,22 @@ export function Card({
       (error: unknown) => {
         if (error instanceof ApiError && error.is('meal_picks_closed')) {
           const refused = new Set(error.problem.courses ?? []);
+          const first = askedCourses(at.meals).find((one) => refused.has(one.id));
+          const shown = () => {
+            if (first != null) focus(`refused-${first.id}`);
+          };
           api.guestPage(token).then(
             (after) => {
+              seen.current = standing(after);
               setPage(after);
+              if (!after.answersOpen) setView(opening(after, token));
               setMeal({ ...savedMeal(after), refused });
+              shown();
             },
-            () => setMeal((was) => ({ ...was, busy: false, refused })),
+            () => {
+              setMeal((was) => ({ ...was, busy: false, refused }));
+              shown();
+            },
           );
           return;
         }
@@ -655,10 +704,13 @@ export function Card({
   }
 
   /** Next or Nothing to add on the kitchen note: on to the first meal screen, clearing a pick an allergy given there rules out, or back to Check and send. */
-  function afterKitchen(from: 'answer' | 'changing', fromCheck: boolean, now: Kitchen): void {
-    if (fromCheck) {
-      setView({ kind: 'check', busy: false, failed: false, from });
-      focus('kitchenRow');
+  function afterKitchen(
+    from: 'answer' | 'changing',
+    returns: 'check' | 'saved' | undefined,
+    now: Kitchen,
+  ): void {
+    if (returns != null) {
+      kitchenReturn(returns, from);
       return;
     }
     if (courses.length === 0) {
@@ -772,11 +824,51 @@ export function Card({
           !samePlate(meal.plates[keyOf(eater.key, course.id)], saved[keyOf(eater.key, course.id)]),
       ),
     );
+    if (kitchen != null && kitchenPending) {
+      sendKitchen(kitchen, changed);
+      return;
+    }
     if (!changed) {
       setMeal((was) => ({ ...was, told: 'nothing' }));
       return;
     }
     sendPicks(page, meal.plates, 'saved');
+  }
+
+  /** The kitchen row's change, sent with Send my changes before the picks, so the API checks them against its allergens. */
+  function sendKitchen(now: Kitchen, picks: boolean): void {
+    const me = now.people.find((one) => one.key === YOU);
+    const { companions, unnamed } = placeNeeds(now, page);
+    const { plates } = meal;
+    setMeal((was) => ({ ...was, busy: true, told: null }));
+    sends.current += 1;
+    api.sendGuestNeeds(token, me == null ? null : needsOf(me), companions, unnamed).then(
+      (next) => {
+        setPage(next);
+        setKitchen(null);
+        if (picks) sendPicks(next, plates, 'saved');
+        else setMeal({ ...savedMeal(next), told: 'saved' });
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === 404) setGone(true);
+        else if (error instanceof ApiError && error.status === 409) refetchAfterRefusal();
+        else setMeal((was) => ({ ...was, busy: false, told: 'failed' }));
+      },
+    );
+  }
+
+  /** A send the API refused because the event paused or started meanwhile: the page as it now stands. */
+  function refetchAfterRefusal(): void {
+    api.guestPage(token).then(
+      (after) => {
+        seen.current = standing(after);
+        setPage(after);
+        setKitchen(null);
+        setMeal(savedMeal(after));
+        setView(opening(after, token));
+      },
+      () => setMeal((was) => ({ ...was, busy: false, told: 'failed' })),
+    );
   }
 
   function partyNext(): void {
@@ -799,21 +891,19 @@ export function Card({
       return;
     }
     setKitchen({ ...kitchen, tried: false });
-    afterKitchen(view.from, view.fromCheck === true, kitchen);
+    afterKitchen(view.from, view.returns, kitchen);
   }
 
   function kitchenSkip(): void {
     if (view.kind !== 'kitchen' || kitchen == null) return;
     const left = skipped(kitchen, page);
     setKitchen(left);
-    afterKitchen(view.from, view.fromCheck === true, left);
+    afterKitchen(view.from, view.returns, left);
   }
 
   function kitchenBack(): void {
-    if (view.kind === 'kitchen' && view.fromCheck === true) {
-      setView({ kind: 'check', busy: false, failed: false, from: view.from });
-      focus('kitchenRow');
-    } else if (hasStep(party)) withYou();
+    if (view.kind === 'kitchen' && view.returns != null) kitchenReturn(view.returns, view.from);
+    else if (hasStep(party)) withYou();
     else back();
   }
 
@@ -892,7 +982,7 @@ export function Card({
 
   function checkKitchen(): void {
     if (view.kind !== 'check') return;
-    toKitchen(view.from, true);
+    toKitchen(view.from, 'check');
   }
 
   function changeMeal(key: string): void {
@@ -943,6 +1033,7 @@ export function Card({
     view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
   const saved = savedPlates(page.meals, eaters);
+  const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
   const cards = (head: 'check' | 'back') => (
     <MealCards
@@ -956,6 +1047,7 @@ export function Card({
       hosts={hosts}
       pending={(key) => head === 'back' && !samePlate(meal.plates[key], saved[key])}
       refused={meal.refused}
+      locked={head === 'back' && paused}
       onChange={changeMeal}
     />
   );
@@ -988,9 +1080,30 @@ export function Card({
       />
     );
   })();
+  const picksShut = courses.every((one) => one.picksClose.closed);
   const comingBack =
-    courses.length > 0 && guest.reply?.answer === 'coming' && page.answersOpen ? (
-      <MealsSaved told={meal.told} marked={marked} busy={meal.busy} onSend={sendChanges}>
+    courses.length > 0 &&
+    guest.reply?.answer === 'coming' &&
+    (page.answersOpen || picksShut || paused) ? (
+      <MealsSaved
+        told={meal.told}
+        marked={marked}
+        busy={meal.busy}
+        savedUntil={paused ? null : oneCloseDay(courses, (at) => dayOf(at, event.timeZone))}
+        kitchen={
+          page.answersOpen || paused ? (
+            <KitchenRow
+              kitchen={kitchen ?? kitchenOf(page, partyOf(page), null)}
+              busy={meal.busy}
+              pending={kitchenPending}
+              onKitchen={page.answersOpen && !picksShut ? savedKitchen : null}
+            />
+          ) : null
+        }
+        ending={paused ? 'none' : picksShut ? 'askHosts' : 'send'}
+        hosts={hosts}
+        onSend={sendChanges}
+      >
         {cards('back')}
       </MealsSaved>
     ) : null;
@@ -1043,6 +1156,7 @@ export function Card({
               focus('newHead');
             }}
             onKeep={() => {
+              setKitchen(null);
               setView({ kind: 'recorded', same: false });
               focus('change');
             }}
@@ -1280,7 +1394,7 @@ function Shown({
           hostCount={Math.max(page.event.hosts.length, 1)}
           timeZone={page.event.timeZone}
           onChange={onCard}
-          onBack={preview && view.fromCheck !== true ? null : onKitchenBack}
+          onBack={preview && view.returns == null ? null : onKitchenBack}
           onNext={onKitchenNext}
           onSkip={onKitchenSkip}
         />
@@ -1484,53 +1598,56 @@ function Shown({
       const kitchenAfter = page.phase === 'live' && !page.started && reply?.answer === 'coming';
 
       return (
-        <section
-          className={page.phase === 'live' ? 'gp-closed is-live' : 'gp-closed'}
-          aria-labelledby="gp-closed-h"
-        >
-          <h2 id="gp-closed-h" className="gp-h2 is-19" tabIndex={-1} data-focus="closedHead">
-            {said}
-          </h2>
-          {page.phase === 'live' && reply?.recordedBy != null && (
-            <p className="gp-sub is-recorded">
-              {t('guest.recordedOn', { name: reply.recordedBy, date: day })}
-            </p>
-          )}
-          {kitchenAfter && kitchenSaved && <KitchenSaved />}
-          {page.phase === 'live' && <p className="gp-sub">{closedLine}</p>}
-          {kitchenAfter && (
-            <TextAction
-              focus="kitchen"
-              {...(kitchenSaved ? { describedBy: KITCHEN_SAVED_ID } : {})}
-              icon={
-                <svg
-                  className="gp-line"
-                  width={18}
-                  height={18}
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                  focusable="false"
-                  strokeWidth={2.2}
-                >
-                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
-                </svg>
-              }
-              onClick={onKitchenAfter}
-            >
-              {t('guest.kitchen')}
-            </TextAction>
-          )}
-          {page.phase === 'paused' && !page.started && (
-            <>
-              <TextAction off focus="change" describedBy="gp-reason">
-                {t('guest.change')}
-              </TextAction>
-              <p id="gp-reason" className="gp-sub">
-                {t('guest.pausedReason')}
+        <>
+          <section
+            className={page.phase === 'live' ? 'gp-closed is-live' : 'gp-closed'}
+            aria-labelledby="gp-closed-h"
+          >
+            <h2 id="gp-closed-h" className="gp-h2 is-19" tabIndex={-1} data-focus="closedHead">
+              {said}
+            </h2>
+            {page.phase === 'live' && reply?.recordedBy != null && (
+              <p className="gp-sub is-recorded">
+                {t('guest.recordedOn', { name: reply.recordedBy, date: day })}
               </p>
-            </>
-          )}
-        </section>
+            )}
+            {kitchenAfter && kitchenSaved && <KitchenSaved />}
+            {page.phase === 'live' && <p className="gp-sub">{closedLine}</p>}
+            {kitchenAfter && (
+              <TextAction
+                focus="kitchen"
+                {...(kitchenSaved ? { describedBy: KITCHEN_SAVED_ID } : {})}
+                icon={
+                  <svg
+                    className="gp-line"
+                    width={18}
+                    height={18}
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                    focusable="false"
+                    strokeWidth={2.2}
+                  >
+                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                  </svg>
+                }
+                onClick={onKitchenAfter}
+              >
+                {t('guest.kitchen')}
+              </TextAction>
+            )}
+            {page.phase === 'paused' && !page.started && (
+              <>
+                <TextAction off focus="change" describedBy="gp-reason">
+                  {t('guest.change')}
+                </TextAction>
+                <p id="gp-reason" className="gp-sub">
+                  {t('guest.pausedReason')}
+                </p>
+              </>
+            )}
+          </section>
+          {reply?.answer === 'coming' && comingBack}
+        </>
       );
     }
   }
