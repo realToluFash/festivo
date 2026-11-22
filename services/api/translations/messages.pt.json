@@ -272,7 +272,7 @@
     "guest.changed_since": "Outra pessoa alterou os dados deste convidado desde que os abriu. A sua alteração não foi guardada.",
     "guest.replies_closed": "O prazo de resposta terminou. Se algo mudou, contacte quem organiza o evento.",
     "menu.picks_closed": "Terminou a escolha de um serviço, por isso a sua alteração a esse serviço não foi guardada.",
-    "menu.pick_ruled_out": "Their record rules this out. Confirm to pick it anyway.",
+    "menu.pick_ruled_out": "O registo exclui esta opção. Confirme para a escolher mesmo assim.",
     "guest.replies_open": "As respostas continuam abertas, por isso esta pessoa já pode alterar a resposta.",
     "guest.reply_is_theirs": "Esta pessoa já respondeu por conta própria. Confirme que quer substituir a resposta.",
     "guest.event_paused": "Não é possível responder enquanto o evento estiver em pausa. O que já enviou fica guardado.",
