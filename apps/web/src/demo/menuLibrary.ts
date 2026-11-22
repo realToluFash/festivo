@@ -43,6 +43,10 @@ export const allergenName = (code: DishAllergen, lang: Lang): string =>
   GUEST_KITCHEN_NAMES[lang].allergens[code];
 export const dietName = (code: Diet, lang: Lang): string => GUEST_KITCHEN_NAMES[lang].diets[code];
 
+/** A list in the reader's words: “a, b and c”. */
+export const listOf = (items: readonly string[], lang = 'en'): string =>
+  new Intl.ListFormat(lang, { type: 'conjunction' }).format(items);
+
 export type Contains = readonly DishAllergen[] | 'none' | null;
 
 export interface Price {

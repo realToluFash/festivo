@@ -91,10 +91,16 @@ export const MW = {
   again: 'Start this step again',
 } as const;
 
-export const allergenList = (codes: readonly DishAllergen[], lang: Lang): string =>
-  DISH_ALLERGENS.filter((code) => codes.includes(code))
-    .map((code) => allergenName(code, lang).toLocaleLowerCase(lang))
-    .join(', ');
+export const allergenList = (
+  codes: readonly DishAllergen[],
+  lang: Lang,
+  join = (names: readonly string[]): string => names.join(', '),
+): string =>
+  join(
+    DISH_ALLERGENS.filter((code) => codes.includes(code)).map((code) =>
+      allergenName(code, lang).toLocaleLowerCase(lang),
+    ),
+  );
 
 export function containsLine(contains: MealContains, lang: Lang): string {
   return contains === 'none' ? MW.containsNone : MW.contains(allergenList(contains, lang));
