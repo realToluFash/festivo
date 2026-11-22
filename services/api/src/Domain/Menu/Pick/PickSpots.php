@@ -54,6 +54,8 @@ final readonly class PickSpots
         $spots = [];
 
         foreach ($courses as $course) {
+            $spots[$course['id']] = [];
+
             foreach ($room as $person) {
                 $id = $person->getId()->toRfc4122();
                 $answer = $answers[$course['id'] . '/' . $id] ?? null;

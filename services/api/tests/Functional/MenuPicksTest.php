@@ -271,6 +271,18 @@ final class MenuPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEventWithCoursesAndNobodyComingHasAnEmptyRoom(): void
+    {
+        $picks = $this->picks();
+
+        self::assertSame([0, 0, 0], [$picks['room'], $picks['held'], $picks['answered']]);
+
+        foreach (self::courses($picks) as $course) {
+            self::assertSame([0, 0, 0], [self::sum($course), $course['needsHost'], $course['notChosen']], $course['name']);
+        }
+    }
+
+    #[Test]
     public function seePicksNeedsMenuRead(): void
     {
         self::service(WithholdingMembershipDirectory::class)->withhold(Permission::MenuRead);
