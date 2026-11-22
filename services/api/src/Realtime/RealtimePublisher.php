@@ -20,11 +20,7 @@ final readonly class RealtimePublisher
     ) {
     }
 
-    /**
-     * A nudge to look again: a refusing hub never fails the write that made the change, and its clients catch up on their next fetch (sc-81423).
-     *
-     * @param array<string, mixed> $data
-     */
+    /** @param array<string, mixed> $data a nudge to look again: a refusing hub never fails the write that made it (sc-81423) */
     public function publish(RealtimeTopic $topic, string $id, array $data): void
     {
         try {
@@ -38,8 +34,6 @@ final readonly class RealtimePublisher
      * For a caller that retries when the hub refuses, as the bell's delivery does (sc-3980).
      *
      * @param array<string, mixed> $data
-     *
-     * @throws RuntimeException when the hub refuses the update
      */
     public function publishOrFail(RealtimeTopic $topic, string $id, array $data): void
     {
