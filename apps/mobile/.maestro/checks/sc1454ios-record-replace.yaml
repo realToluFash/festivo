@@ -1,0 +1,27 @@
+# sc-1454 (needs an invited guest with no reply, their name, and their link's token): GuestRecord's "replace their reply" panel, on the shared Amber, after the guest replied themselves.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.search' }, timeout: 30000 }
+- tapOn: { id: 'guests.search' }
+- inputText: ${GUEST_NAME}
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST}' }, timeout: 10000 }
+- tapOn: { id: 'guests.row.${GUEST}' }
+- extendedWaitUntil: { visible: { id: 'guest.card.step' }, timeout: 15000 }
+- tapOn: { id: 'guest.card.step' }
+- extendedWaitUntil: { visible: { id: 'guest.record.notComing' }, timeout: 10000 }
+- tapOn: { id: 'guest.record.notComing' }
+- tapOn: { id: 'guest.record.how.phone' }
+- runScript:
+    file: sc1454ios-guest-replies.js
+    env:
+      API_URL: http://127.0.0.1:18080
+      WEB_URL: http://127.0.0.1:15173
+      GUEST_TOKEN: ${GUEST_TOKEN}
+- tapOn: { id: 'guest.record.save' }
+- extendedWaitUntil: { visible: { id: 'guest.record.replace' }, timeout: 10000 }
+- assertVisible: { id: 'guest.record.replaceYes' }
+- assertVisible: { id: 'guest.record.keep' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: replace
