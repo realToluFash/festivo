@@ -59,13 +59,20 @@ function close(): void {
 }
 
 /** Search (sc-39534) as its demo draws it: on a phone a screen of its own, the field on top and Cancel beside it; on a tablet a palette over the page. */
-export function SearchScreen({ organisationId }: { organisationId: string }) {
+export function SearchScreen({
+  organisationId,
+  term,
+}: {
+  organisationId: string;
+  /** Typed already, as an event's ‹ Search opens it on a tablet (sc-83008). */
+  term?: string | undefined;
+}) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const phone = kind === 'phone';
   const field = useRef<TextInputInstance>(null);
   const [reach, setReach] = useState<SearchReach | null>(null);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(term ?? '');
   const [asked, setAsked] = useState({ term: '', round: 0 });
   const [answer, setAnswer] = useState<Answer>({ kind: 'idle' });
   const keys = searchFieldKeys(reach ?? NO_REACH);
@@ -181,7 +188,7 @@ export function SearchScreen({ organisationId }: { organisationId: string }) {
       answer={answer}
       hint={keys.hint == null ? null : t(keys.hint)}
       onShowAll={() => answer.kind === 'found' && open(eventsSearchHref(answer.term))}
-      onRow={(row) => open(searchRowHref(row))}
+      onRow={(row) => open(searchRowHref(row, phone ? undefined : typed.trim()))}
       onClear={clear}
       onRetry={retry}
     />

@@ -11,6 +11,12 @@ describe('Search’s links (sc-39534)', () => {
     );
   });
 
+  it('carries what was typed to an event opened after a tablet’s palette closed (sc-83008)', () => {
+    expect(searchRowHref({ kind: 'event', id: 'ev1', name: 'Gala', line: '' }, 'ga la')).toBe(
+      '/events/ev1?searched=ga%20la',
+    );
+  });
+
   it('opens a guest’s details on their event’s Guests', () => {
     expect(searchRowHref({ kind: 'guest', id: 'g1', name: 'Inês', line: '', event: 'ev1' })).toBe(
       '/events/ev1?area=guests&guest=g1',
