@@ -8,6 +8,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { IosBanner } from '../IosBanner.tsx';
 import {
   CARD_STATES,
   CARD_WORDS,
@@ -32,7 +33,7 @@ function openNight(card: RunCard): void {
   router.push(`/demo/night?state=populated&track=${card.trackId}` as Href);
 }
 
-/** The card as the system draws it, in white with the house ink: nothing of Soirely's but the words and their order, and no button. */
+/** The card as the system draws it, in white with the house ink: nothing of Soirely's but the words and their order, and no button. iOS's is the demo's one iOS banner. */
 export function RunCardView({
   card,
   age,
@@ -44,43 +45,48 @@ export function RunCardView({
   surface?: Surface;
   onPress?: (card: RunCard) => void;
 }) {
-  const android = surface === 'shade' || surface === 'shadeOpen';
   const collapsed = surface === 'shade';
+  const hint = `Opens the night on ${card.title.split(' · ').slice(1).join(' · ')}`;
+
+  if (surface !== 'shade' && surface !== 'shadeOpen') {
+    return (
+      <IosBanner
+        key={surface}
+        title={card.title}
+        age={age}
+        body={card.lines.join('\n')}
+        lines={card.lines.length}
+        startOpen={surface === 'held'}
+        onPress={() => onPress(card)}
+        accessibilityLabel={card.spoken}
+        accessibilityHint={hint}
+        testID={`lockCard.${card.trackId}`}
+      />
+    );
+  }
 
   return (
     <Pressable
       onPress={() => onPress(card)}
       accessibilityLabel={card.spoken}
-      accessibilityHint={`Opens the night on ${card.title.split(' · ').slice(1).join(' · ')}`}
-      style={[styles.card, android ? styles.cardAndroid : styles.cardIos]}
+      accessibilityHint={hint}
+      style={styles.card}
       testID={`lockCard.${card.trackId}`}
     >
       <View style={styles.cardHead} {...hidden}>
-        <View style={android ? styles.markSmall : styles.mark}>
-          <Text accessible={false} size={android ? 12 : 18} weight="bold" style={styles.onDark}>
+        <View style={styles.markSmall}>
+          <Text accessible={false} size={12} weight="bold" style={styles.onDark}>
             S
           </Text>
         </View>
-        <Text
-          accessible={false}
-          size={13}
-          weight="semibold"
-          style={android ? styles.label : styles.grow}
-        >
+        <Text accessible={false} size={13} weight="semibold" style={styles.label}>
           {CW.app}
         </Text>
-        {android && (
-          <Text accessible={false} size={13} style={[styles.secondary, styles.grow]}>
-            {`· ${age}`}
-          </Text>
-        )}
-        {!android && (
-          <Text accessible={false} size={13} style={styles.secondary}>
-            {age}
-          </Text>
-        )}
+        <Text accessible={false} size={13} style={[styles.secondary, styles.grow]}>
+          {`· ${age}`}
+        </Text>
       </View>
-      <View style={android ? styles.wordsAndroid : styles.wordsIos} {...hidden}>
+      <View style={styles.words} {...hidden}>
         <Text
           accessible={false}
           size={15}
@@ -326,18 +332,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     gap: tokens.spaceXs,
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: tokens.spaceLg,
   },
-  cardIos: { borderRadius: 22, paddingVertical: tokens.spaceMd, paddingHorizontal: 14 },
-  cardAndroid: { borderRadius: 24, paddingVertical: 14, paddingHorizontal: tokens.spaceLg },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  mark: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: tokens.colorAccentHover,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   markSmall: {
     width: 22,
     height: 22,
@@ -346,8 +345,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wordsIos: { paddingLeft: 46, gap: 2 },
-  wordsAndroid: { paddingLeft: 30, gap: 2 },
+  words: { paddingLeft: 30, gap: 2 },
   label: { color: tokens.colorInk },
   secondary: { color: tokens.colorInkSecondary },
   accentText: { color: tokens.colorAccentText },

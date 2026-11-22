@@ -177,7 +177,6 @@ export const say = {
     `${overdue === 1 ? '1 payment' : `${overdue} payments`} overdue, ${due} due ${within(days)}`,
   reminderDue: (count: number, days: number, event: string) =>
     `${count === 1 ? '1 payment' : `${count} payments`} due ${within(days)} on ${event}`,
-  reminderRow: (vendor: string, amount: string, when: string) => `${vendor} · ${amount} · ${when}`,
   reminderRowOn: (vendor: string, event: string, amount: string, when: string) =>
     `${vendor} · ${event} · ${amount} · ${when}`,
   wasDue: (date: string) => `was due ${date}`,
