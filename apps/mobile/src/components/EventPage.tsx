@@ -49,7 +49,7 @@ import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { BellRow } from './BellButton.tsx';
-import { Notice } from './Notice.tsx';
+import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -223,7 +223,7 @@ export function EventPage({
       eventCard
     ) : (
       <View style={styles.headed}>
-        <Notice tone="done" mark={tokens.marks.done.glyph} body={moved.words} answer={moved} />
+        <SwitchedNotice said={moved} />
         {eventCard}
       </View>
     );
