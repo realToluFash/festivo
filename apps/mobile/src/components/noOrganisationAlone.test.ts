@@ -31,7 +31,7 @@ describe('You are not in an organisation, alone (sc-75471)', () => {
       /if \(outcome\?\.kind === 'accepted'\) openJoined\?\.\(outcome\.organisationId\);/u,
     );
     expect(frame).toMatch(
-      /const openJoined = useCallback\([^]*?setCreated\(\{ name, takesFocus: true \}\)/u,
+      /const openJoined = useCallback\([^]*?setCreated\(\{ id, name, takesFocus: true \}\)/u,
     );
     expect(frame).toMatch(/<OpenJoined\.Provider value=\{openJoined\}>/u);
   });

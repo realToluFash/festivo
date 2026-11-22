@@ -45,7 +45,14 @@ import {
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
-import { type Opened, openedOf, openedOrMoved, openedWithoutAsking } from '../kit/eventsOpen.ts';
+import {
+  type LinkFrom,
+  linkFromIn,
+  type Opened,
+  openedOf,
+  openedOrMoved,
+  openedWithoutAsking,
+} from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { backRow } from '../layout/backRow.ts';
@@ -743,9 +750,12 @@ function useOpened(
   });
   const [attempt, setAttempt] = useState(0);
   const key = `${organisationId ?? ''}/${eventId}`;
-  const moves = useRef({ moveInto, memberships, overview });
+  const [link, setLink] = useState<LinkFrom>({ eventId, from: organisationId });
+  const linkNow = linkFromIn(link, eventId, organisationId);
+  if (linkNow !== link) setLink(linkNow);
+  const moves = useRef({ moveInto, memberships, overview, from: linkNow.from });
   useEffect(() => {
-    moves.current = { moveInto, memberships, overview };
+    moves.current = { moveInto, memberships, overview, from: linkNow.from };
   });
   const retry = useCallback(() => {
     setHeld({ for: null, opened: { kind: 'loading' } });
@@ -772,8 +782,8 @@ function useOpened(
     watch(api.event(eventId)).then(
       (event) => {
         if (!live) return;
-        const { memberships: all, overview: onOverview, moveInto: move } = moves.current;
-        const next = openedOrMoved(event, holder, all, onOverview);
+        const { memberships: all, overview: onOverview, moveInto: move, from } = moves.current;
+        const next = openedOrMoved(event, holder, all, onOverview, from);
 
         if ('opened' in next) {
           setHeld({ for: key, opened: next.opened });

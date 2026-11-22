@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   hasNoEvents,
+  linkFromIn,
   openedOf,
   openedOrMoved,
   openedWithoutAsking,
@@ -130,23 +131,45 @@ describe("a link to another of the account's organisations", () => {
   const memberships = [{ id: 'org_a' }, { id: 'org_b' }];
 
   it("moves the account into the event's organisation from Overview", () => {
-    expect(openedOrMoved(gala, 'org_b', memberships, true)).toEqual({ moves: 'org_a' });
+    expect(openedOrMoved(gala, 'org_b', memberships, true, 'org_b')).toEqual({ moves: 'org_a' });
   });
 
   it('reads as not found from Guests, and stays where it is', () => {
-    expect(openedOrMoved(gala, 'org_b', memberships, false)).toEqual({
+    expect(openedOrMoved(gala, 'org_b', memberships, false, 'org_b')).toEqual({
       opened: { kind: 'notFound' },
     });
   });
 
   it('reads as not found where the account is no member', () => {
-    expect(openedOrMoved(gala, 'org_b', [{ id: 'org_b' }], true)).toEqual({
+    expect(openedOrMoved(gala, 'org_b', [{ id: 'org_b' }], true, 'org_b')).toEqual({
       opened: { kind: 'notFound' },
     });
   });
 
+  it('stays where the switcher puts it after the move, and reads not found there (sc-46032)', () => {
+    const opened = linkFromIn({ eventId: 'ev_gala', from: 'org_b' }, 'ev_gala', 'org_b');
+    const moved = linkFromIn(opened, 'ev_gala', 'org_a');
+    const picked = linkFromIn(moved, 'ev_gala', 'org_b');
+
+    expect(openedOrMoved(gala, 'org_b', memberships, true, opened.from)).toEqual({
+      moves: 'org_a',
+    });
+    expect(picked.from).toBeNull();
+    expect(openedOrMoved(gala, 'org_b', memberships, true, picked.from)).toEqual({
+      opened: { kind: 'notFound' },
+    });
+  });
+
+  it('moves from the first organisation to load on a cold start, and again for another event', () => {
+    const cold = linkFromIn({ eventId: 'ev_gala', from: undefined }, 'ev_gala', 'org_b');
+    const another = linkFromIn({ eventId: 'ev_gala', from: null }, 'ev_other', 'org_b');
+
+    expect(openedOrMoved(gala, 'org_b', memberships, true, cold.from)).toEqual({ moves: 'org_a' });
+    expect(another.from).toBe('org_b');
+  });
+
   it('opens the event where it is held, from any area', () => {
-    expect(openedOrMoved(gala, 'org_a', memberships, false)).toEqual({
+    expect(openedOrMoved(gala, 'org_a', memberships, false, 'org_b')).toEqual({
       opened: { kind: 'loaded', event: gala },
     });
   });
