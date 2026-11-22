@@ -868,7 +868,8 @@ export function EventGuests({
         }}
         backInFrame
         headingInList
-        spacing={SPACING}
+        spacing={stale != null ? OFFLINE_SPACING : SPACING}
+        pageFills={exporting && docked}
       />
       {!docked && exportProps != null && (
         <ExportSheet
@@ -1558,6 +1559,7 @@ const styles = StyleSheet.create({
   },
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   phone: { ...LIST_EDGES.phone, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  phoneUnderBand: { paddingTop: LIST_GAP },
   portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
   landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
   column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
@@ -1583,4 +1585,9 @@ const SPACING: ListAndPageSpacing = {
   listWidth: 400,
   between: tokens.spaceXxl,
   ruled: { list: styles.ruledList, page: styles.ruledPage },
+};
+
+const OFFLINE_SPACING: ListAndPageSpacing = {
+  ...SPACING,
+  phone: [styles.phone, styles.phoneUnderBand],
 };

@@ -189,7 +189,7 @@ export default function AuditLog() {
         return;
       }
       if (answer.kind !== 'file') return;
-      const hand = await writeToShare(
+      const { hand } = await writeToShare(
         answer.bytes,
         auditFileName(format, new Date(), zone),
         AUDIT_FILE_TYPES[format],
