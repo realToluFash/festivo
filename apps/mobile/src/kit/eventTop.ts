@@ -25,6 +25,10 @@ export function eventTop(kind: LayoutKind, area: EventPlace, opened: Opened['kin
   const inEvent = opened === 'loaded' || opened === 'loading';
   const landscape = kind === 'tabletLandscape';
 
+  // A missing event stands in the Events frame with its own Back to Events, as the demo's deleted event does (sc-1468, sc-80863).
+  if (opened === 'notFound')
+    return { inEvent, cardNamed: true, areaTitled: false, frameBack: null, bodyBack: false };
+
   return {
     inEvent,
     // On its side the frame's title is dropped only when the card takes its place: a failed or missing event has none.
