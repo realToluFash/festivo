@@ -6,7 +6,14 @@ import type { NotificationCategory } from '@soirely/api-client';
 import { BellMute, BellPanel } from '../components/BellPanel.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { StaleBand } from '../components/OfflineBand.tsx';
-import { type BellStart, GONE_EVENT, OLDER_COUNT, asOf, bellStartOf } from './bellFeed.ts';
+import {
+  type BellStart,
+  GONE_EVENT,
+  OLDER_COUNT,
+  UNKNOWN_CATEGORY,
+  asOf,
+  bellStartOf,
+} from './bellFeed.ts';
 import { lastLooked, markLooked, repliesUnread } from './changedSince.ts';
 import { CLOCKS } from './events.ts';
 import { guestsAt } from './guests.ts';
@@ -26,7 +33,7 @@ const BUSY_MS = 900;
 
 interface Item {
   key: string;
-  category: NotificationCategory;
+  category: NotificationCategory | typeof UNKNOWN_CATEGORY;
   title: string;
   line: string;
   unread: boolean;
@@ -67,6 +74,18 @@ export function MessagesBell() {
           unread: repliesUnread(),
           event: EVENT_NAME,
         },
+        ...(start.unknown
+          ? [
+              {
+                key: 'unknown',
+                category: UNKNOWN_CATEGORY,
+                title: W.samples.unknown,
+                line: where(EVENT_NAME, today('08:40')),
+                unread: !bell.read,
+                event: EVENT_NAME,
+              },
+            ]
+          : []),
         {
           key: 'day',
           category: 'event_day',

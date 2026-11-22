@@ -828,6 +828,7 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     case 'bellGone':
     case 'bellOffline':
     case 'bellRefreshing':
+    case 'bellUnknown':
       return { ...BASE, bell: true, open: wide ? ines : null };
     case 'forbidden':
       return { ...BASE, forbidden: true };

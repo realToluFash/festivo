@@ -1285,6 +1285,29 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     expect(within(bell).getAllByText('Muted').length).toBe(1);
   });
 
+  it(
+    'shows an item of a category it does not know, with Unread and Muted (sc-84143)',
+    SLOW,
+    async () => {
+      await messages('bellUnknown');
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+      const item = within(bell).getByRole('button', {
+        name: /^Ana Souza added a note to the event/u,
+      });
+
+      expect(item.querySelector('.bell-glyph')).toBeNull();
+      expect(within(item).getByText('Unread')).toBeDefined();
+      expect(within(item).getByText('Muted')).toBeDefined();
+      expect(
+        within(bell).getByRole('button', {
+          name: /^More for Ana Souza added a note to the event/u,
+        }),
+      ).toBeDefined();
+      fireEvent.click(within(bell).getByRole('button', { name: 'Mark all read' }));
+      expect(within(item).queryByText('Unread')).toBeNull();
+    },
+  );
+
   it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {
     await messages('bellGone');
     expect(screen.getByText('This event is no longer available.')).toBeDefined();

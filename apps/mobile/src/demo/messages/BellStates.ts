@@ -16,6 +16,7 @@ export const BELL_STATES = [
   'bellGone',
   'bellOffline',
   'bellRefreshing',
+  'bellUnknown',
 ] as const;
 
 export type BellState = 'bell' | (typeof BELL_STATES)[number];
@@ -32,7 +33,11 @@ export const BELL_BOARDS: Record<(typeof BELL_STATES)[number], readonly [string,
   bellGone: ['the bell · an event that has gone', 'This event is no longer available.'],
   bellOffline: ['the bell · offline', 'Offline · as of 09:40, with Try again'],
   bellRefreshing: ['the bell · refreshing', 'Refreshing… beside the title, the band kept'],
+  bellUnknown: ['the bell · a category this app does not know', 'The plain bell, Unread and Muted'],
 };
+
+/** The sample's category from a server newer than the app (sc-84143). */
+export const UNKNOWN_CATEGORY = 'venue_news' as const;
 
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
 
@@ -49,6 +54,8 @@ export interface BellStart {
   /** The item whose event has gone is listed, its line showing as after a tap. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
+  /** An unread item of a category the client does not know, on the muted event. */
+  unknown: boolean;
 }
 
 const REST: BellStart = {
@@ -61,6 +68,7 @@ const REST: BellStart = {
   marked: [],
   gone: false,
   offline: 'none',
+  unknown: false,
 };
 
 export function bellStartOf(state: BellState): BellStart {
@@ -87,6 +95,8 @@ export function bellStartOf(state: BellState): BellStart {
       return { ...REST, offline: 'band' };
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
+    case 'bellUnknown':
+      return { ...REST, unknown: true, muted: true };
     case 'bell':
       return REST;
   }
@@ -109,6 +119,7 @@ export const BW = {
   overdue: (event: string) => `1 payment overdue on ${event}`,
   due: (event: string) => `2 payments due in the next 7 days on ${event}`,
   signIn: 'New sign-in to Soirely',
+  unknown: 'Ana Souza added a note to the event',
 };
 
 /** The categories Mute this event holds, as the API's NotificationCategory::heldByMute: never Event day or Account & security. */

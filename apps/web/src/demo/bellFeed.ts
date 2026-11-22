@@ -13,9 +13,13 @@ export const BELL_STATES = [
   { key: 'bellGone', name: 'The bell: an event that has gone' },
   { key: 'bellOffline', name: 'The bell: offline' },
   { key: 'bellRefreshing', name: 'The bell: offline, Refreshing…' },
+  { key: 'bellUnknown', name: 'The bell: a category this app does not know (sc-84143)' },
 ] as const;
 
 export type BellState = 'bell' | (typeof BELL_STATES)[number]['key'];
+
+/** The sample's category from a server newer than the app (sc-84143). */
+export const UNKNOWN_CATEGORY = 'venue_news' as const;
 
 export type Feed = 'loading' | 'failed' | 'loaded';
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
@@ -33,6 +37,8 @@ export interface BellStart {
   /** The item whose event has gone is listed, its line showing as after a press. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
+  /** An unread item of a category the client does not know, on the muted event. */
+  unknown: boolean;
 }
 
 const REST: BellStart = {
@@ -45,6 +51,7 @@ const REST: BellStart = {
   marked: [],
   gone: false,
   offline: 'none',
+  unknown: false,
 };
 
 export function bellStartOf(state: BellState): BellStart {
@@ -71,6 +78,8 @@ export function bellStartOf(state: BellState): BellStart {
       return { ...REST, offline: 'band' };
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
+    case 'bellUnknown':
+      return { ...REST, unknown: true, muted: true };
     case 'bell':
       return REST;
   }

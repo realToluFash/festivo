@@ -431,7 +431,7 @@ export const BELL_WORDS = {
   atTime: 'at {{time}}',
   moreShown_other: '{{count, number}} more notifications shown.',
   more: 'More for {{title}}, {{event}}',
-  /** Sample items in the words the server sends for them (eventChanges.title.*, payment_reminder.title.*, newDevice.subject). */
+  /** Sample items in the words the server sends for them (eventChanges.title.*, payment_reminder.title.*, newDevice.subject); `unknown` stands for a category the server does not send yet (sc-84143). */
   samples: {
     paused: 'Ana Souza paused the event',
     changed: 'Ana Souza changed the event',
@@ -440,5 +440,6 @@ export const BELL_WORDS = {
     overdue: '1 payment overdue on {{event}}',
     due: '2 payments due in the next 7 days on {{event}}',
     signIn: 'New sign-in to Soirely',
+    unknown: 'Ana Souza added a note to the event',
   },
 };
