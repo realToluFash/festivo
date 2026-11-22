@@ -2675,16 +2675,16 @@
     "askedByOn": "réponse attendue d’ici le {{date}}",
     "companionStays": "Arrivée enregistrée pour {{name}}, qui reste donc sur la liste.",
     "changed": {
-      "filter": "Changed since you looked",
-      "nothing": "Nothing has changed since you last looked.",
-      "showAll": "Show all guests",
+      "filter": "Changements depuis votre dernière visite",
+      "nothing": "Rien n’a changé depuis votre dernière visite.",
+      "showAll": "Afficher tous les invités",
       "line": "{{answer}} · {{when}}",
-      "repliedAt": "Replied at {{time}}",
-      "repliedOn": "Replied {{date}}",
-      "changedAt": "Changed at {{time}}",
-      "changedOn": "Changed {{date}}",
-      "needs": "Updated dietary needs",
-      "flagged": "Link may have reached the wrong person"
+      "repliedAt": "Réponse : {{time}}",
+      "repliedOn": "Réponse : {{date}}",
+      "changedAt": "Modification : {{time}}",
+      "changedOn": "Modification : {{date}}",
+      "needs": "Notes sur l’alimentation mises à jour",
+      "flagged": "Lien peut-être reçu par erreur"
     }
   },
   "guestNumbers": {
