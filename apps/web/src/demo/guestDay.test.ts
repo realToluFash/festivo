@@ -85,6 +85,8 @@ describe('the day’s order', () => {
     expect(led).toEqual([
       'onTheDay',
       'onTheDayStarted',
+      'onTheDayWithParty',
+      'onTheDayKitchenSaved',
       'onTheDayNameOnly',
       'onTheDayAddressOnly',
       'onTheDayNoteOnly',
