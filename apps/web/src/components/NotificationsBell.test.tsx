@@ -6,6 +6,7 @@ import { BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
+import { placeUnder } from './bellPlace.ts';
 
 const BELL_CSS = stylesheet(import.meta.dirname, 'BellPanel.css');
 
@@ -648,6 +649,37 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop).toMatch(/right: 0;/u);
     expect(pop).toMatch(/width: 380px;/u);
     expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
+  });
+
+  function bellAt(bottom: number, right: number): HTMLElement {
+    const bell = document.createElement('button');
+    bell.getBoundingClientRect = () =>
+      ({ top: bottom - 44, bottom, left: right - 44, right, width: 44, height: 44 }) as DOMRect;
+    return bell;
+  }
+
+  it('is fixed under the bell, so a hero that clips its overflow cannot cut it off (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+
+    const pop = document.createElement('div');
+    placeUnder(bellAt(78, 1240), pop);
+
+    expect(pop.style.position).toBe('fixed');
+    expect(pop.style.top).toBe('86px');
+    expect(pop.style.right).toBe('40px');
+    expect(pop.style.maxHeight).toBe('704px');
+  });
+
+  it('keeps its foot in the window when a band above moves the bell down (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+
+    const pop = document.createElement('div');
+
+    placeUnder(bellAt(144, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 152 - 10}px`);
+    placeUnder(bellAt(40, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 96}px`);
   });
 
   it('scrolls only the items', () => {
