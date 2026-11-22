@@ -709,6 +709,28 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(document.querySelectorAll('.vr-inset.is-lit')).toHaveLength(1);
     });
 
+    it('saves an edited variant with the line counting who has it recorded', async () => {
+      await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WAYS])),
+        'PUT /api/events/ev_1/menu/variants/v_chicken': () =>
+          json({
+            menu: { courses: [course('c_main', 'Main', [WAYS])] },
+            unwarned: { count: 2, allergens: ['milk'] },
+          }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Chicken' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit Chicken' });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save variant' }));
+
+      expect(await screen.findByText('Chicken saved.')).toBeDefined();
+      expect(
+        screen.getByText(
+          '2 guests who picked Jollof rice (Chicken) have milk recorded, and nobody has told them.',
+        ),
+      ).toBeDefined();
+    });
+
     it('folds the last two into a single dish once asked', async () => {
       const sent = await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [TWO])),
