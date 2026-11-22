@@ -211,10 +211,7 @@ function AuditPage({ start }: { start: AuditStart }) {
           say={say}
           lang={start.lang}
           opener={opener}
-          onEvent={(id) => {
-            setOpen(null);
-            openEvent(id);
-          }}
+          onEvent={openEvent}
           onClose={() => setOpen(null)}
         />
       )}

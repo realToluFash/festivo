@@ -41,6 +41,15 @@ export const BACK_HREF: Record<BackScreen, string> = {
   entry: '/demo/settings/data-and-control/audit-log',
 };
 
+/** What the route read: the opener, whether a screen of the demo really pushed the event over it, and Search's term (sc-83008). */
+export interface Opened {
+  opener: Opener | null;
+  pushed: boolean;
+  term: string | null;
+  spanish: boolean;
+  refreshing: boolean;
+}
+
 export function openerOf(value: string | undefined): Opener | null {
   return OPENERS.find((opener) => opener === value) ?? null;
 }
@@ -72,8 +81,35 @@ export function opensOver(opener: Opener | null): boolean {
   );
 }
 
+/** The query a screen of the demo adds when it pushes an event over itself, so ‹ can go back to it rather than to the screen it names. */
+export function openedOver(opener: Opener): Record<string, string> {
+  return { from: opener, pushed: '1' };
+}
+
+/** The event's link from a screen that pushes it over itself. */
 export function withFrom(href: string, opener: Opener): string {
+  return `${fromOnly(href, opener)}&pushed=1`;
+}
+
+/** The event's link from the page list, with nothing of the opener's under it. */
+function fromOnly(href: string, opener: Opener): string {
   return `${href}${href.includes('?') ? '&' : '?'}from=${opener}`;
+}
+
+/** Where ‹ takes the event: Events as today, back when the screen it names is really under the event, else straight to that screen, Search with what was typed (an iPad closes its palette before the event opens). */
+export function wayBack(
+  screen: BackScreen,
+  over: Opener,
+  opened: Opened | undefined,
+): 'events' | 'back' | string {
+  if (screen === 'events') return 'events';
+  const asOpened = opened != null && over === opened.opener;
+  if (asOpened && opened.pushed && opensOver(over)) return 'back';
+  const term = asOpened ? opened.term : null;
+
+  return screen === 'search' && term != null && term !== ''
+    ? `${BACK_HREF.search}?q=${encodeURIComponent(term)}`
+    : BACK_HREF[screen];
 }
 
 /** The picker's words for each opener; on a phone an audit log event opens from the entry's own screen. */
@@ -118,17 +154,17 @@ export const BEHIND_BOARDS: readonly { title: string; what: string; href: string
         : opensOver(opener)
           ? 'Names it and goes back to it'
           : 'Nothing behind it: Events, as today',
-    href: withFrom(BOARD_EVENT, opener),
+    href: fromOnly(BOARD_EVENT, opener),
   })),
   {
     title: '‹ Notificaciones · Actualizando…',
     what: 'The iPhone SE in Spanish: whole beside it, its own line at larger sizes',
-    href: `${withFrom(BOARD_EVENT, 'notifications')}&lang=es&refreshing=1`,
+    href: `${fromOnly(BOARD_EVENT, 'notifications')}&lang=es&refreshing=1`,
   },
   {
     title: '‹ Today · Refreshing…',
     what: 'Any opener: Refreshing… beside ‹, from the picker',
-    href: `${withFrom(BOARD_EVENT, 'today')}&refreshing=1`,
+    href: `${fromOnly(BOARD_EVENT, 'today')}&refreshing=1`,
   },
   {
     title: '‹ Today after a move',

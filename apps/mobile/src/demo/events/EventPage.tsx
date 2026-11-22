@@ -135,10 +135,11 @@ import {
   BACK_HREF,
   BACK_KEY,
   OPENERS,
+  type Opened,
   type Opener,
   backScreenOf,
   openerWords,
-  opensOver,
+  wayBack,
 } from './opener.ts';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
@@ -983,12 +984,6 @@ export function EventScreen({
   );
 }
 
-export interface Opened {
-  opener: Opener | null;
-  spanish: boolean;
-  refreshing: boolean;
-}
-
 /** ‹ names the screen the event was opened over and goes back to it; nothing in the app behind it reads Events and opens Events, as today. Refreshing… sits beside ‹ where ‹ stays whole with it, else on its own line above the event's card, ‹ whole (sc-83008, as sc-71821 on Guests). */
 function useBehind(opened: Opened | undefined) {
   const shell = useShell();
@@ -1000,11 +995,11 @@ function useBehind(opened: Opened | undefined) {
   const [beside, setBeside] = useState(false);
   const upright = shell.layout !== 'landscape';
   const screen = backScreenOf(over, shell.layout);
-  const pushedOver = over === opened?.opener && opensOver(over);
   const leave = () => {
-    if (screen === 'events') backToEvents();
-    else if (pushedOver && router.canGoBack()) router.back();
-    else router.dismissTo(BACK_HREF[screen] as Href);
+    const way = wayBack(screen, over, opened);
+    if (way === 'events') backToEvents();
+    else if (way === 'back' && router.canGoBack()) router.back();
+    else router.dismissTo((way === 'back' ? BACK_HREF[screen] : way) as Href);
   };
   const node = refreshing ? (
     <RefreshingWords words={words('eventsScreen.refreshing')} testID="event.refreshing" />

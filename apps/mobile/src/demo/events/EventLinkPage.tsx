@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { useCurrentPlace, useLinkMove } from '../OrgSwitcher.tsx';
 import { EventGone } from './EventGone.tsx';
 import { type LinkState, type Load, LOAD_MS, answerOf, eventOrgOf, moveOf } from './EventLink.ts';
-import { EventScreen, type Opened } from './EventPage.tsx';
+import { EventScreen } from './EventPage.tsx';
+import type { Opened } from './opener.ts';
 
 /** /demo/events/[id]?link=: the event opened from its link while working in Ire Events; the account moves only once it has loaded (sc-80863). */
 export function EventLinkPage({

@@ -145,7 +145,7 @@ export function EventFrame({
   phoneBack?: { label: string; onPress: () => void } | undefined;
   /** On Overview, ‹ and the screen the event was opened over, in place of Events (sc-83008). */
   behind?: { label: string; onPress: () => void } | undefined;
-  /** A status beside Back, as Guests' Refreshing… on the phone and Overview's on the phone and upright; told whether it had room there (sc-71821, sc-83008). */
+  /** A status beside Back, as Guests' Refreshing… and Overview's; pass it on a phone or upright only, since landscape has no ‹ to sit beside. Told whether it had room there (sc-71821, sc-83008). */
   besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;

@@ -11,7 +11,9 @@ import {
   OPENERS,
   backScreenOf,
   openerOf,
+  type Opened,
   opensOver,
+  wayBack,
   withFrom,
 } from './opener.ts';
 
@@ -79,10 +81,10 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
     expect(wordAt(es, 'eventsScreen.refreshing')).toBe('Actualizando…');
   });
 
-  it('adds what the event was opened over to its link', () => {
-    expect(withFrom('/demo/events/evt-1', 'today')).toBe('/demo/events/evt-1?from=today');
+  it('adds what the event was opened over to its link, and that it is under the event', () => {
+    expect(withFrom('/demo/events/evt-1', 'today')).toBe('/demo/events/evt-1?from=today&pushed=1');
     expect(withFrom('/demo/events/evt-1?area=schedule', 'calendar')).toBe(
-      '/demo/events/evt-1?area=schedule&from=calendar',
+      '/demo/events/evt-1?area=schedule&from=calendar&pushed=1',
     );
     expect(openerOf('search')).toBe('search');
   });
@@ -96,5 +98,50 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
     expect(BEHIND_BOARDS.map(({ href }) => href)).toContain(
       '/demo/events/evt-wed-4?link=moved&from=today',
     );
+  });
+
+  const opened = (opener: Opened['opener'], more: Partial<Opened> = {}): Opened => ({
+    opener,
+    pushed: false,
+    term: null,
+    spanish: false,
+    refreshing: false,
+    ...more,
+  });
+
+  it('goes back only when the screen it names was pushed under the event', () => {
+    expect(wayBack('today', 'today', opened('today', { pushed: true }))).toBe('back');
+    expect(
+      wayBack('notifications', 'notifications', opened('notifications', { pushed: true })),
+    ).toBe('back');
+  });
+
+  it('goes straight to the screen from the page list, where nothing of it is under the event', () => {
+    expect(wayBack('today', 'today', opened('today'))).toBe('/demo/today');
+    expect(wayBack('calendar', 'calendar', opened('calendar'))).toBe('/demo/calendar');
+    expect(wayBack('auditLog', 'audit', opened('audit'))).toBe(
+      '/demo/settings/data-and-control/audit-log',
+    );
+  });
+
+  it('goes straight to the screen the picker chose, whatever pushed the event', () => {
+    expect(wayBack('calendar', 'calendar', opened('today', { pushed: true }))).toBe(
+      '/demo/calendar',
+    );
+  });
+
+  it('reopens Search with what was typed when an iPad closed its palette', () => {
+    expect(wayBack('search', 'search', opened('search', { term: 'ada obi' }))).toBe(
+      '/demo/search?q=ada%20obi',
+    );
+    expect(wayBack('search', 'search', opened('search'))).toBe('/demo/search');
+  });
+
+  it('reads Events, as today, with nothing in the app behind it', () => {
+    expect(wayBack('events', 'outside', opened('outside', { pushed: true }))).toBe('events');
+  });
+
+  it('never marks the page list’s rows as pushed', () => {
+    for (const { href } of BEHIND_BOARDS) expect(href).not.toContain('pushed=');
   });
 });
