@@ -17,8 +17,23 @@ describe('Hosted by is typed in as the AC has it (sc-15497)', () => {
       /focusNext\.current = \{ to: \{ key, control: 'name' \}, keys: true \};\s+onHosts\(\[\.\.\.hosts, \{ key, name: '' \}\]\);/u,
     );
     expect(rows).toMatch(
-      /if \(keys && to !== 'add'\) \{\s+focusChecked\(\{ current: inputs\.current\.get\(to\.key\) \?\? null \}\);/u,
+      /if \(keys && to !== 'add'\) return focusNewField\(inputs\.current\.get\(to\.key\) \?\? null\);/u,
     );
+  });
+
+  it('raises the Android keys again once the row it adds is bound to them (sc-82892)', () => {
+    const field = readFileSync(join('src', 'components', 'Field.tsx'), 'utf8');
+    const raise = /export function focusNewField\([^)]*\): \(\) => void \{([\s\S]*?)\n\}/u.exec(
+      field,
+    )?.[1];
+
+    expect(raise).toMatch(
+      /focusChecked\(\{ current: input \}\);\s+if \(Platform\.OS !== 'android'\) return/u,
+    );
+    expect(raise).toMatch(
+      /if \(input\.isFocused\(\) && !Keyboard\.isVisible\(\)\) raiseKeysOn\(input\);/u,
+    );
+    expect(raise).toMatch(/return \(\) => clearTimeout\(bound\);/u);
   });
 
   it('wraps a long name onto more lines, never scrolling it sideways', () => {
