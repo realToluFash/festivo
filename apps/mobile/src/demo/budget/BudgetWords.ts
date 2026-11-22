@@ -182,5 +182,5 @@ export const say = {
   wasDue: (date: string) => `was due ${date}`,
   dueWhen: (date: string) => `due ${date}`,
   lastAbout: (what: string, vendor: string) =>
-    `This is the last reminder about the ${what.toLowerCase()} to ${vendor}.`,
+    `This is the last reminder about ${vendor}: ${what}.`,
 };

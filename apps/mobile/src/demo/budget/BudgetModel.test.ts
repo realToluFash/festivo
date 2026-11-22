@@ -617,7 +617,7 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
       '1 payment overdue on Adaeze & Tunde’s wedding',
     );
     expect(say.lastAbout('Balance', 'Bloom & Co')).toBe(
-      'This is the last reminder about the balance to Bloom & Co.',
+      'This is the last reminder about Bloom & Co: Balance.',
     );
     expect(opened.reminder).toBeNull();
     expect(opened.dueNow).toMatchObject({ fromReminder: true, lastAbout: ['bloom-balance'] });
