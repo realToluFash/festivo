@@ -1,5 +1,7 @@
 import type { NotificationCategory } from '@soirely/api-client';
 
+import { CATEGORY_MARK } from '../../components/notificationMarks.ts';
+
 /** The demo home's group for the bell, named as the web's is. */
 export const BELL_GROUP = 'The bell (sc-83081)';
 
@@ -96,7 +98,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
     case 'bellUnknown':
-      return { ...REST, unknown: true, muted: true };
+      return { ...REST, unknown: true, muted: true, marked: ['replies', 'unknown'] };
     case 'bell':
       return REST;
   }
@@ -130,7 +132,10 @@ export const HELD_BY_MUTE: ReadonlySet<string> = new Set<NotificationCategory>([
   'money',
 ]);
 
-/** An item is marked Muted when it arrived after the mute, in a category the mute holds; the switch re-marks nothing shown. */
+/** An item is marked Muted when it arrived after the mute, in a category the mute holds or one the app does not know, whose Muted is the server's; the switch re-marks nothing shown. */
 export function mutedOf(start: BellStart, item: { key: string; category: string }): boolean {
-  return start.marked.includes(item.key) && HELD_BY_MUTE.has(item.category);
+  return (
+    start.marked.includes(item.key) &&
+    (HELD_BY_MUTE.has(item.category) || !Object.hasOwn(CATEGORY_MARK, item.category))
+  );
 }

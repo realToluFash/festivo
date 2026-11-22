@@ -29,6 +29,9 @@ describe('the bell’s states (sc-83081)', () => {
     expect(bellStartOf('bellMute').menu).toBe('missed');
     expect(bellStartOf('bellRefreshing').offline).toBe('refreshing');
     expect(bellStartOf('bellUnknown')).toMatchObject({ unknown: true, muted: true });
+    expect(mutedOf(bellStartOf('bellUnknown'), { key: 'unknown', category: 'venue_news' })).toBe(
+      true,
+    );
   });
 
   it('marks Muted only the items delivered after the mute, as main does at delivery', () => {
