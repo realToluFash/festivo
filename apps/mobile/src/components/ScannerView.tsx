@@ -44,12 +44,10 @@ import { RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { useCoverStatusBar } from './Welcome.tsx';
 
-/** The list is read again this often while the live channel is quiet, and while the device is offline. */
 const READ_AGAIN_MS = 10_000;
 const SIDE_PANEL = 420;
 const UP_PANEL = 540;
 
-/** What a scan brought up, kept by guest so an arrival recorded from it shows on it; `twice` when the guest had already arrived as the code was read. */
 type Shown = { kind: 'guest'; guestId: string; twice: boolean } | { kind: 'notOnList' };
 
 interface Person {
@@ -145,7 +143,6 @@ function useDoorList(eventId: string, by: string | null) {
     };
   }, [eventId, read]);
 
-  /** Arrived: sent at once while online; offline, or when the send finds no connection, kept on the device with its time. */
   const arrive = async (personId: string): Promise<'recorded' | 'refused'> => {
     if (list == null) return 'refused';
     const keep = () =>
@@ -248,7 +245,6 @@ function saidOf(people: readonly Person[], twice: boolean, nothingNew: string): 
     .join('. ');
 }
 
-/** The not-on-list mark: a slash in a ring, as the demo draws it. */
 function NotListedMark() {
   return (
     <View
@@ -289,7 +285,6 @@ function WarningMark() {
   );
 }
 
-/** A result: the door's own row, larger, companions under it with their own Arrived; or the one answer for a code not on the list. */
 function Result({
   people,
   twice,
@@ -411,7 +406,6 @@ function Result({
   );
 }
 
-/** The camera refused, or no list on a device that has never had a connection: a heading, its line, and what can be done. */
 function Closed({
   cameraOff,
   big,
@@ -509,7 +503,6 @@ export function ScannerView({
   eventId: string;
   kind: LayoutKind;
   onBack: () => void;
-  /** Search by name: back on Check-in, in its search. */
   onSearch: () => void;
 }) {
   const { t } = useTranslation();
@@ -826,7 +819,15 @@ const styles = StyleSheet.create({
   room: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 },
   finder: { alignItems: 'center', justifyContent: 'center' },
   corner: { position: 'absolute', width: 42, height: 42, borderColor: tokens.colorInkOnDark },
-  dim: { ...StyleSheet.absoluteFillObject, backgroundColor: tokens.colorInk, opacity: 0.38 },
+  dim: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: tokens.colorInk,
+    opacity: 0.38,
+  },
   sheet: {
     position: 'absolute',
     left: 0,

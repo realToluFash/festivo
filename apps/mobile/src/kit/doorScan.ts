@@ -104,7 +104,6 @@ export function zonedStamp(at: Date, timeZone: string): string {
   return `${wall}${offset < 0 ? '-' : '+'}${hours}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
-/** The scanned guest as the list now holds them, so an arrival recorded from the result shows on it; gone from the list reads as not on it. */
 export function rescanned(checkIn: CheckIn, guestId: string): ScanRead {
   const guest = checkIn.guests.find((one) => one.id === guestId);
 
