@@ -508,7 +508,7 @@ export function ToPopover({
                 onClick={() => setChoosing(true)}
               >
                 {chosenIds(to).length === 0
-                  ? CHW.choose
+                  ? MW.chooseGuests
                   : `${chw.filled(CHW.chosen, { count: chosenIds(to).length })} · ${CHW.change}`}
               </button>
             </div>

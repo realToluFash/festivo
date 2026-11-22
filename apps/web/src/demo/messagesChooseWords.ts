@@ -14,6 +14,5 @@ export const CHW = {
   more: '{{count}} more',
   remove: 'Remove {{name}}',
   chosenTo: 'Chosen guests',
-  choose: 'Choose guests',
   change: 'Change',
 } as const;

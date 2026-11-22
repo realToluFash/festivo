@@ -1,7 +1,8 @@
 import { demoWords } from './demoWords.ts';
 import { CHW } from './messagesChooseWords.ts';
 import { NW } from './messagesNoticeWords.ts';
-import { type Audience, POPULATION } from './messagesTo.ts';
+import { POPULATION } from './messagesPopulation.ts';
+import type { Audience } from './messagesTo.ts';
 import { MW } from './messagesWords.ts';
 
 /** Choose guests, one by one (sc-3942, Messaging-B-Web-Choose): the guest list's names, their addresses with guests.manage, and why email can't reach some. */
