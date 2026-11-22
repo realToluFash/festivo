@@ -26,6 +26,7 @@ import {
   type Days,
   type Item,
   PHONE_WEEK,
+  type ScrollReport,
   WIDE_WEEK,
   type Week,
   agendaMonth,
@@ -38,6 +39,8 @@ import {
   monthName,
   offsetsOf,
   pinnedOf,
+  placeAfter,
+  topIndex,
   weekIndexOf,
   weeksAround,
 } from '../kit/calendar.ts';
@@ -200,6 +203,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const agendaRef = useRef<ScrollViewInstance>(null);
   const weekY = useRef(0);
   const agendaY = useRef(0);
+  const weekAsked = useRef<number | null>(null);
   const places = useRef(new Map<string, number>());
   const glide = useGlide(reduced);
   const placed = start.view != null && start.at != null;
@@ -269,44 +273,43 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     setLastDay(day);
     setOpen(day);
   }, []);
-  // On an iPad the grid reports itself at its first week while an event is over it, which would land ‹ Calendar 24 months back (sc-83008).
+  const toWeekY = useCallback((y: number) => {
+    weekAsked.current = y;
+    listRef.current?.scrollToOffset({ offset: y, animated: false });
+  }, []);
+  const toAgendaY = useCallback((y: number) => {
+    agendaRef.current?.scrollTo({ y, animated: false });
+  }, []);
   const onTop = useCallback(
-    (index: number, y: number) => {
+    (report: ScrollReport) => {
       if (!here) return;
+      const y = placeAfter(weekY.current, report, weekAsked.current);
+      if (report.byHand) weekAsked.current = null;
+      if (y !== report.y) toWeekY(y);
       weekY.current = y;
-      setTop(index);
+      setTop(topIndex(offsets, y));
     },
-    [here],
+    [here, offsets, toWeekY],
   );
 
   useEffect(() => {
     const back = here && !wasHere.current;
     wasHere.current = here;
     if (!back) return;
-    if (view === 'agenda') agendaRef.current?.scrollTo({ y: agendaY.current, animated: false });
-    else listRef.current?.scrollToOffset({ offset: weekY.current, animated: false });
-  }, [here, view]);
+    if (view === 'agenda') toAgendaY(agendaY.current);
+    else toWeekY(weekY.current);
+  }, [here, view, toAgendaY, toWeekY]);
 
   const scrollWeeks = (index: number, toToday: boolean) => {
     const to = offsets[index] ?? 0;
     if (toToday) setTodayRuns(true);
-    glide(
-      weekY.current,
-      to,
-      (y) => listRef.current?.scrollToOffset({ offset: y, animated: false }),
-      () => setTodayRuns(false),
-    );
+    glide(weekY.current, to, toWeekY, () => setTodayRuns(false));
   };
   const scrollAgenda = (key: string, toToday: boolean) => {
     const to = places.current.get(key);
     if (to == null) return;
     if (toToday) setTodayRuns(true);
-    glide(
-      agendaY.current,
-      to,
-      (y) => agendaRef.current?.scrollTo({ y, animated: false }),
-      () => setTodayRuns(false),
-    );
+    glide(agendaY.current, to, toAgendaY, () => setTodayRuns(false));
   };
   const onStep = (step: -1 | 1) => {
     if (view === 'agenda') {
@@ -538,7 +541,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
               pinned={pinned}
               locale={locale}
               lateOf={parts.lateOf}
-              start={startIndex}
+              start={top ?? startIndex}
               bottom={bottom}
               onDay={onDay}
               onTop={onTop}
