@@ -49,6 +49,7 @@ import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { BellRow } from './BellButton.tsx';
+import { Notice } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -73,6 +74,7 @@ export function EventPage({
   opensEndNow = false,
   onEndNowOpened,
   notice,
+  moved = null,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
@@ -101,6 +103,8 @@ export function EventPage({
   onEndNowOpened?: () => void;
   /** A notice about the event as it was saved, first under its card. */
   notice?: ReactNode;
+  /** Now working in, at the head of the body, once the event's link has moved the account into its organisation (sc-80863). */
+  moved?: { words: string } | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -358,7 +362,23 @@ export function EventPage({
     <View style={styles.page} testID="events.page">
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
-        card={<BellRow>{card}</BellRow>}
+        card={
+          <BellRow>
+            {moved == null ? (
+              card
+            ) : (
+              <View style={styles.headed}>
+                <Notice
+                  tone="done"
+                  mark={tokens.marks.done.glyph}
+                  body={moved.words}
+                  answer={moved}
+                />
+                {card}
+              </View>
+            )}
+          </BellRow>
+        }
         left={
           <>
             {notice}
@@ -447,6 +467,7 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
 
 const styles = StyleSheet.create({
   page: { gap: 18 },
+  headed: { gap: 18 },
   card: { gap: tokens.spaceSm },
   manage: { gap: tokens.spaceSm },
 });

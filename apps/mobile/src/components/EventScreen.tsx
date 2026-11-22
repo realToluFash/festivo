@@ -2,6 +2,7 @@ import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import {
   type Choice,
   type EventArea,
+  eventMovesInto,
   rememberTabHolding,
   roleHolds,
   takesCardStep,
@@ -50,7 +51,7 @@ import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { backRow } from '../layout/backRow.ts';
 import { useLayout } from '../layout/useLayout.ts';
-import { rereadAccount, useSignedIn } from '../signedIn.ts';
+import { rereadAccount, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AppFrame, BackButton } from './AppFrame.tsx';
 import { BellRow } from './BellButton.tsx';
@@ -188,9 +189,23 @@ export function EventScreen({
   const outside = outsideOn(signedIn, eventId);
   const outsideAt = outside == null ? null : outsidePlaces(outside.role);
   const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
-  const opened = useOpened(eventId, account != null, organisation, outside != null, () =>
-    moveScreenReaderFocus(cardName.current ?? title.current),
+  // An event's link from another of the account's organisations moves it there once the event has loaded, said at the head of Overview until the person leaves it (sc-80863).
+  const [moved, setMoved] = useState<{ into: string; words: string } | null>(null);
+  const opened = useOpened(
+    eventId,
+    account != null,
+    organisation,
+    outside != null,
+    () => moveScreenReaderFocus(cardName.current ?? title.current),
+    (into) => {
+      const name = signedIn.organisations.find(({ id }) => id === into)?.name;
+
+      if (name == null) return;
+      switchOrganisation(into, () => setMoved({ into, words: t('switcher.switched', { name }) }));
+    },
+    signedIn.organisations,
   );
+  if (moved != null && (area !== 'overview' || moved.into !== organisationId)) setMoved(null);
   const { reload, freshen, change } = opened;
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
@@ -342,6 +357,7 @@ export function EventScreen({
             tell={(words) => setToast({ eventId, area, words })}
             opensEndNow={opensEndNow}
             onEndNowOpened={() => navigation.setParams({ [ASKS_END]: undefined })}
+            moved={moved}
             notice={
               coverRefused?.eventId === eventId ? (
                 <EventNotice
@@ -704,6 +720,8 @@ function useOpened(
   organisation: Membership | null,
   outside: boolean,
   focusTitle: () => void,
+  moveInto: (organisationId: string) => void,
+  memberships: readonly Membership[],
 ): Opened & {
   retry: () => void;
   reload: () => void;
@@ -721,6 +739,10 @@ function useOpened(
   });
   const [attempt, setAttempt] = useState(0);
   const key = `${organisationId ?? ''}/${eventId}`;
+  const moves = useRef({ moveInto, memberships });
+  useEffect(() => {
+    moves.current = { moveInto, memberships };
+  });
   const retry = useCallback(() => {
     setHeld({ for: null, opened: { kind: 'loading' } });
     setAttempt((n) => n + 1);
@@ -744,7 +766,17 @@ function useOpened(
     const holder = outside ? null : (organisationId ?? null);
 
     watch(api.event(eventId)).then(
-      (event) => live && setHeld({ for: key, opened: openedOf({ event }, holder) }),
+      (event) => {
+        if (!live) return;
+        const into = eventMovesInto(event, holder, moves.current.memberships);
+
+        if (into == null) {
+          setHeld({ for: key, opened: openedOf({ event }, holder) });
+          return;
+        }
+        setHeld({ for: `${into}/${eventId}`, opened: { kind: 'loaded', event } });
+        moves.current.moveInto(into);
+      },
       (error: unknown) =>
         live &&
         setHeld((before) =>
