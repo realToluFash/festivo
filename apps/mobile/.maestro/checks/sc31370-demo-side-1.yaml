@@ -1,7 +1,10 @@
-# sc-31370: the app demo's Messages (B), side, one screenshot per state.
+# sc-31370: the app demo's Messages (B), side, one screenshot per state. On a landscape-natural tablet pass SIDE=PORTRAIT and UPRIGHT=LANDSCAPE_LEFT.
 appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
+  UPRIGHT: PORTRAIT
 ---
-- setOrientation: LANDSCAPE_LEFT
+- setOrientation: ${SIDE}
 - waitForAnimationToEnd
 - runFlow: { file: sc31370/demo-state.yaml, env: { STATE: first, LAYOUT: side } }
 - runFlow: { file: sc31370/demo-state.yaml, env: { STATE: loading, LAYOUT: side } }
@@ -17,4 +20,4 @@ appId: host.exp.Exponent
 - runFlow: { file: sc31370/demo-state.yaml, env: { STATE: countdown, LAYOUT: side } }
 - runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelled, LAYOUT: side } }
 - runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sending, LAYOUT: side } }
-- setOrientation: PORTRAIT
+- setOrientation: ${UPRIGHT}
