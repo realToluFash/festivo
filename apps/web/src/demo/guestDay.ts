@@ -124,6 +124,15 @@ export const GUEST_DAY_STATES = {
       kitchen: closedKitchen(2, '2026-10-20', { saved: true }),
     },
   },
+  onTheDayStartedKitchenSaved: {
+    name: 'On the day, from the start, the kitchen needs saved: the note stays, the pencil goes',
+    starts: {
+      ...STARTED,
+      ...COMING,
+      ...CLOSED,
+      kitchen: closedKitchen(2, '2026-10-20', { saved: true }),
+    },
+  },
   onTheDayNameOnly: {
     name: 'On the day, a venue name and no address: no Open in maps',
     starts: { ...ON_THE_DAY, ...COMING, ...RECORDED, where: 'nameOnly' },

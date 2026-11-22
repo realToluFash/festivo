@@ -87,6 +87,7 @@ describe('the day’s order', () => {
       'onTheDayStarted',
       'onTheDayWithParty',
       'onTheDayKitchenSaved',
+      'onTheDayStartedKitchenSaved',
       'onTheDayNameOnly',
       'onTheDayAddressOnly',
       'onTheDayNoteOnly',
