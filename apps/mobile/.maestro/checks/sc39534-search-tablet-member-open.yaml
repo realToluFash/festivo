@@ -1,0 +1,35 @@
+# sc-39534: on the upright tablet, picking a member match by name closes the palette and opens Settings › Members with that row in view. Needs ORIENT and NAME, a member of the signed-in organisation.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- inputText: ${NAME}
+- extendedWaitUntil:
+    visible:
+      id: 'search\.row\..*'
+    timeout: 15000
+- hideKeyboard
+- takeScreenshot: before
+- tapOn:
+    id: 'search\.row\..*'
+- waitForAnimationToEnd
+- takeScreenshot: after
+- extendedWaitUntil:
+    notVisible:
+      id: 'search.field'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Members'
+    timeout: 15000
+- takeScreenshot: members

@@ -1,0 +1,25 @@
+# sc-78219: the Calendar's Show menu at the device's text size (set outside the flow): open, its foot, choosing Events only closes it, reopened with it chosen, then back to Events and milestones.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil: { visible: { id: 'calendar.show' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-calendar
+- tapOn: { id: 'calendar.show' }
+- extendedWaitUntil: { visible: { id: 'calendar.showMenu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-open
+- swipe: { from: { id: 'calendar.showMenu' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: p-open-foot
+- tapOn: { id: 'calendar.show.events' }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'calendar.showMenu' }
+- takeScreenshot: p-events-closed
+- tapOn: { id: 'calendar.show' }
+- extendedWaitUntil: { visible: { id: 'calendar.showMenu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: p-events-open
+- tapOn: { id: 'calendar.show.all' }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'calendar.showMenu' }

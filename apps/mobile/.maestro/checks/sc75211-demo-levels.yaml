@@ -1,0 +1,35 @@
+# sc-75211: the demo's Filter menu at the device's size with Anniversary and Party chosen, each level from its top, in English and French.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=twoTypes&level=top
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-en-top
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=twoTypes&level=type
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-en-type
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=twoTypes&level=when
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-en-when
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=twoTypes&level=hosts
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-en-hosts
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=twoTypes&level=top
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-fr-top
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=twoTypes&level=type
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-fr-type
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=twoTypes&level=when
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-fr-when
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=twoTypes&level=hosts
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: demo-fr-hosts

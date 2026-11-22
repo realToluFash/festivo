@@ -1,0 +1,43 @@
+# Needs the organisation sc39348-filter-picks needs.
+# sc-39348: six picks chosen, the menu left open, so the screen-reader labels can be read: Filter's and each row's name every pick in full.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.filter'
+- extendedWaitUntil:
+    visible:
+      id: 'events.filter.menu'
+    timeout: 10000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.filter.type'
+- tapOn:
+    id: 'events.filter.type.wedding'
+- tapOn:
+    id: 'events.filter.type.birthday'
+- tapOn:
+    id: 'events.filter.type.gala'
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    id: 'events.filter.when'
+- tapOn:
+    id: 'events.filter.when.week'
+- tapOn:
+    id: 'events.filter.back'
+- tapOn:
+    id: 'events.filter.hosts'
+- tapOn:
+    id: 'events.filter.host.Adaeze Obi'
+- tapOn:
+    id: 'events.filter.host.Tunde Bakare'
+- tapOn:
+    id: 'events.filter.back'
+- waitForAnimationToEnd
+- takeScreenshot: six-menu-labels

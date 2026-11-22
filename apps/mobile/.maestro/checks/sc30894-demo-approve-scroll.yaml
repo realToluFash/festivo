@@ -1,0 +1,13 @@
+# sc-30894: the demo's recoveryApprove confirm, too tall, scrolls to its Cancel. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=recoveryApprove
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-ask-top
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.cancel'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: demo-ask-foot

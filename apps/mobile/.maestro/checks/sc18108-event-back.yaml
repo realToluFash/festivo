@@ -1,0 +1,39 @@
+# Android only. sc-18108: from Home, Events > ${TAB} > the event ${EVENT}, scrolled to; Back shows the list on ${TAB} with the row in view, and a second Back shows Home.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'frame.events'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.${TAB}'
+    timeout: 30000
+- tapOn:
+    id: 'events.tab.${TAB}'
+- scrollUntilVisible:
+    element:
+      id: 'events.row.${EVENT}'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: list-before
+- tapOn:
+    id: 'events.row.${EVENT}'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- takeScreenshot: page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'events.row.${EVENT}'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-second-back

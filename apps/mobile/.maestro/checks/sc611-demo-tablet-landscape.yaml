@@ -1,0 +1,21 @@
+# sc-611: the audit log demo on a tablet on its side, list, export and detail, for the pairs beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=list
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-list-landscape-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=export
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-export-landscape-demo
+- openLink: ${METRO_URL}/--/demo/settings/data-and-control/audit-log?state=detail
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: audit-detail-landscape-demo

@@ -1,0 +1,8 @@
+# sc-68417: the demo's event Guests on a tablet, its title row with Export, the + and the bell.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: d-event-guests

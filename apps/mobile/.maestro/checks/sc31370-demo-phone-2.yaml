@@ -1,0 +1,17 @@
+# sc-31370: the app demo's Messages (B), phone, one screenshot per state.
+appId: host.exp.Exponent
+---
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sent, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: failed, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: reached, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: fix, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: resend, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: tell, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: untold, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: invited, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduled, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: bell, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: invitedReached, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sentReached, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: notMatched, LAYOUT: phone } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: matchPicker, LAYOUT: phone } }

@@ -1,0 +1,76 @@
+# A welcome notice on a tablet in LANGUAGE, portrait then landscape: signed out, Google's failed notice and
+# Cannot reach Soirely, photographed as ${TAG}-portrait-* and ${TAG}-landscape-*, to read each against the
+# board's 480 pt column. sc-35333. Welcome keeps providerFailed in its state and openLink does not remount it,
+# so Cannot reach Soirely is opened before each Google notice.
+#
+#   node .qa/bin/qa-env.mjs maestro sc35333-tablet-notice-width LANGUAGE_CODE=es TAG=es --ipad
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 90000
+- runFlow: expo-go-menu.yaml
+- tapOn:
+    id: 'language.open'
+- tapOn:
+    id: 'language.${LANGUAGE_CODE}'
+- tapOn:
+    id: 'language.done'
+    optional: true
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/welcome?signedOut=1
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-portrait-signed-out
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-portrait-unreachable
+- openLink: ${METRO_URL}/--/welcome?providerFailed=Google
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-portrait-google
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-landscape-unreachable
+- openLink: ${METRO_URL}/--/welcome?signedOut=1
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-landscape-signed-out
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/welcome?providerFailed=Google
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${TAG}-landscape-google
+- setOrientation: PORTRAIT

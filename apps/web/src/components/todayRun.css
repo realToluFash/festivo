@@ -1,0 +1,142 @@
+/* The web's Now as the run of show (sc-61017): the product's Now banner with Next alone on its row and a rail whose stops carry their titles. */
+
+.tn-headline {
+  overflow-wrap: anywhere;
+}
+
+.tn-line {
+  flex-wrap: wrap;
+  row-gap: var(--spaceXs);
+}
+
+.tn-rail {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  margin: 0;
+  padding: var(--spaceXxs) 0 0;
+}
+
+.tn-stop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-width: 0;
+  color: color-mix(in srgb, var(--colorInkOnDark) 82%, transparent);
+  text-align: center;
+}
+
+.tn-stop-line {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  height: var(--spaceXl);
+  margin-bottom: var(--spaceXxs);
+}
+
+.tn-stop-line::before,
+.tn-stop-line::after {
+  position: absolute;
+  top: calc(50% - 1px);
+  width: 50%;
+  height: 2px;
+  background: color-mix(in srgb, var(--colorInkOnDark) 18%, transparent);
+  content: '';
+}
+
+.tn-stop-line::before {
+  left: 0;
+}
+
+.tn-stop-line::after {
+  right: 0;
+}
+
+.tn-stop:first-child .tn-stop-line::before,
+.tn-stop:last-child .tn-stop-line::after {
+  display: none;
+}
+
+.tn-stop:is(.is-done, .is-now) .tn-stop-line::before,
+.tn-stop.is-done .tn-stop-line::after {
+  background: var(--colorInkOnDark);
+}
+
+.tn-stop-node {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--spaceSm);
+  height: var(--spaceSm);
+  border: 1.5px solid var(--colorInkOnDark);
+  border-radius: 50%;
+}
+
+.tn-stop.is-later .tn-stop-node {
+  opacity: 0.6;
+}
+
+.tn-stop.is-done .tn-stop-node {
+  background: var(--colorInkOnDark);
+}
+
+.tn-stop.is-next .tn-stop-node {
+  width: var(--spaceMd);
+  height: var(--spaceMd);
+  border-width: 2px;
+}
+
+.tn-stop.is-now .tn-stop-node {
+  width: var(--spaceLg);
+  height: var(--spaceLg);
+  background: var(--colorInkOnDark);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--colorInkOnDark) 20%, transparent);
+}
+
+.tn-stop-time {
+  font: 500 12px/1.2 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.tn-stop-title {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-inline: var(--spaceXxs);
+  overflow: hidden;
+  font: 500 12px/1.3 var(--fontFamily);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tn-stop:is(.is-now, .is-next) {
+  color: var(--colorInkOnDark);
+}
+
+.tn-stop:is(.is-now, .is-next) :is(.tn-stop-time, .tn-stop-title) {
+  font-weight: 600;
+}
+
+.tn-as-of {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: var(--spaceXxs) 0 0;
+  color: var(--colorInkOnDark);
+  font: 600 14px/1.35 var(--fontFamily);
+}
+
+/* Out of the flow while empty, so the column's gap is not taken; display: none would silence the live region. */
+.tn-as-of:empty {
+  position: absolute;
+  margin: 0;
+}
+
+.tn-as-of-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}

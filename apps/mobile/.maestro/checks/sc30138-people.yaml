@@ -1,0 +1,25 @@
+# sc-30138: an event's People in each locale. ${EV} has two people; ${PERSON} (a 44-character name) opens its role sheet, then Remove's confirm, kept.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.row.${PERSON}'
+    timeout: 30000
+- takeScreenshot: list
+- tapOn:
+    id: 'people.row.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'people.remove'
+    timeout: 10000
+- takeScreenshot: role
+- tapOn:
+    id: 'people.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'people.remove.keep'
+    timeout: 10000
+- takeScreenshot: remove
+- tapOn:
+    id: 'people.remove.keep'
