@@ -831,6 +831,7 @@ function HostsEdit(props: PartEditProps) {
         errors={errors}
         kept={keepsLastHost(event, hosts.length)}
         off={busy}
+        saysNone
         onSaid={setSaid}
         testID="event.edit.hosts"
       />
