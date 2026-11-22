@@ -1546,6 +1546,7 @@
     "firstRunCreate": "Créer un événement",
     "firstRunAskOwner": "Les événements créés par votre organisation s’afficheront ici. Pour en créer un, adressez-vous à une personne ayant le rôle Propriétaire.",
     "loadingEvent": "Chargement de l’événement…",
+    "failedLoadEvent": "The event did not load. Check your connection and try again.",
     "when": "{{range}} · {{timeZone}}",
     "notFound": "Cet événement n’est pas disponible",
     "backToEvents": "Retour aux événements",

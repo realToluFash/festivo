@@ -710,7 +710,7 @@ export function EventScreen({
         {failed == null ? (
           <LoadingBlock words={W.loadingEvent} />
         ) : (
-          <EventsFailed onRetry={failed} testID="event.link.retry" />
+          <EventsFailed words={W.failedLoadEvent} onRetry={failed} testID="event.link.retry" />
         )}
       </EventFrame>
     );
