@@ -2590,5 +2590,5 @@
 
 .mg-bell-settings {
   flex: none;
-  border-top: 1px solid var(--colorBorder);
+  align-self: flex-start;
 }
