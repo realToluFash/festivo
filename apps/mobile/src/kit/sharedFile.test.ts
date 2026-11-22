@@ -38,19 +38,24 @@ describe('writeToShare', () => {
   it('deletes the file once the share sheet closes', async () => {
     share.mockResolvedValue();
 
-    await (
-      await writeToShare(bytes, 'guests.csv', CSV)
-    )();
+    await (await writeToShare(bytes, 'guests.csv', CSV)).hand();
 
     expect(disk).toMatchObject({ exists: false, deleted: 1 });
   });
 
   it('deletes the file when the share sheet fails', async () => {
     share.mockRejectedValue(new Error('no sheet'));
-    const hand = await writeToShare(bytes, 'guests.csv', CSV);
+    const { hand } = await writeToShare(bytes, 'guests.csv', CSV);
 
     await expect(hand()).rejects.toThrow('no sheet');
     expect(disk).toMatchObject({ exists: false, deleted: 1 });
+  });
+
+  it('deletes the file discarded, without opening the share sheet', async () => {
+    (await writeToShare(bytes, 'guests.csv', CSV)).discard();
+
+    expect(disk).toMatchObject({ exists: false, deleted: 1 });
+    expect(share).not.toHaveBeenCalled();
   });
 
   it('deletes the file when writing it fails', async () => {

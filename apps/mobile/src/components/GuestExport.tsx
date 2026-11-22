@@ -119,7 +119,8 @@ export interface ExportProps {
   onShare: () => void;
 }
 
-function useExport(props: ExportProps) {
+/** `live` is false once the dialog has closed: a press still preparing its file then shares nothing. */
+function useExport(props: ExportProps, live: boolean) {
   const { t } = useTranslation();
   const [asked, setAsked] = useState<ExportScope>('view');
   const [format, setFormat] = useState<ExportFormat>('xlsx');
@@ -128,11 +129,23 @@ function useExport(props: ExportProps) {
   const scope = exportScope(asked, props.inView.length);
   const file = exportFileName(t, props.event, props.now, format);
   const busy = making === 'preparing';
+  const press = useRef(0);
+
+  useEffect(() => {
+    if (!live) press.current += 1;
+  }, [live]);
+  useEffect(
+    () => () => {
+      press.current += 1;
+    },
+    [],
+  );
 
   const share = async () => {
     if (busy) return;
     setRefused(false);
     if (!props.offline) setMaking('preparing');
+    const mine = ++press.current;
 
     const { shared, hand } = await exportToShare({
       offline: props.offline,
@@ -144,8 +157,13 @@ function useExport(props: ExportProps) {
         }),
       write: (bytes) => writeToShare(bytes, file, EXPORT_TYPES[format]),
       unreachable: (error) => error instanceof ApiUnreachableError,
+      abandoned: () => press.current !== mine,
     });
 
+    if (shared === 'abandoned') {
+      setMaking('ready');
+      return;
+    }
     if (hand == null) {
       setMaking(shared === 'failed' ? 'failed' : 'ready');
       setRefused(shared === 'dropped');
@@ -234,7 +252,7 @@ export function ExportSheet({
   ...props
 }: ExportProps & { open: boolean; opener: RefObject<ScreenReaderTarget | null> }) {
   const { t } = useTranslation();
-  const { body, foot } = useExport(props);
+  const { body, foot } = useExport(props, open);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
@@ -262,7 +280,7 @@ export function ExportSheet({
 
 /** On a tablet in landscape the dialog docks beside the list, not modal: the list stays usable and This view follows it. */
 export function ExportPanel(props: ExportProps) {
-  const { body, foot } = useExport(props);
+  const { body, foot } = useExport(props, true);
   const title = useRef<TextHandle>(null);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
