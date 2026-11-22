@@ -15,10 +15,6 @@ appId: host.exp.Exponent
 - tapOn: { id: 'guest.record.how.phone' }
 - runScript:
     file: sc1454ios-guest-replies.js
-    env:
-      API_URL: http://127.0.0.1:18080
-      WEB_URL: http://127.0.0.1:15173
-      GUEST_TOKEN: ${GUEST_TOKEN}
 - tapOn: { id: 'guest.record.save' }
 - extendedWaitUntil: { visible: { id: 'guest.record.replace' }, timeout: 10000 }
 - assertVisible: { id: 'guest.record.replaceYes' }
