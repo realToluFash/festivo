@@ -460,6 +460,12 @@ build a topic only with `realtimeTopic()` from `@soirely/api-client`, whose
   test fails when anything else in `src/` reaches the Mercure component. A plain
   controller's command publishes this way too, since `mercure: true` only covers a
   resource's own writes.
+- **A refused publish never fails the write** (sc-81423). The database is the record and
+  an update is only a nudge to look again, so `publish()` logs a warning naming the topic,
+  with none of the update's data, and the request answers as it would with the hub up.
+  Clients catch up on their next fetch or reconnect. Only a caller that retries on a
+  refusal uses `publishOrFail()`: the bell's delivery, so the worker tries it again on the
+  notification backoff (sc-3980).
 - **Subscribing:** `POST /api/realtime/subscriptions` gives the signed-in member a
   15-minute token, signed with the hub's subscriber key, naming only their own topics. A
   private update reaches no other token. A screen that adds a topic adds it to the enum

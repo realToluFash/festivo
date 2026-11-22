@@ -89,6 +89,22 @@ final class SchedulePressTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPressWhileTheHubIsDownIsKeptAndAnsweredAsUsualAndItsReplayAnswersTheSame(): void
+    {
+        $id = $this->add('Speeches', '2027-03-06T19:00');
+        self::service(RecordingHub::class)->failuresLeft = 2;
+
+        $first = $this->press($this->owner, $id, 'start', '2027-03-06T19:12:40+01:00', 'hub-down');
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        $again = $this->press($this->owner, $id, 'start', '2027-03-06T19:12:40+01:00', 'hub-down');
+        self::assertSame(200, $this->statusCode(), Json\encode($again));
+
+        self::assertSame($first, $again);
+        self::assertSame('2027-03-06T19:12:40+01:00', $this->item($id)['startedAt']);
+        self::assertCount(1, self::em()->getRepository(SchedulePress::class)->findAll());
+    }
+
+    #[Test]
     public function aPressWithNoTimeIsTakenAsPressedNow(): void
     {
         $id = $this->add('Speeches', '2027-03-06T19:00');

@@ -195,6 +195,17 @@ final class GuestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aGuestAddedWhileTheHubIsDownIsKeptAndAnsweredAsUsual(): void
+    {
+        self::service(RecordingHub::class)->failuresLeft = 2;
+
+        $guest = $this->add(['fullName' => 'Bisi']);
+
+        self::assertSame('Bisi', $guest['fullName'] ?? null);
+        self::assertSame(1, $this->people());
+    }
+
+    #[Test]
     public function eachAddIsPublishedAsTheWholeList(): void
     {
         $this->add(['fullName' => 'Bisi']);
