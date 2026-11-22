@@ -79,6 +79,16 @@
   padding: var(--spaceXl) var(--spaceXxl);
 }
 
+.pk-host,
+.pk-course,
+.pk-waiting,
+.pk-summary {
+  min-height: 0;
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
 .pk-host {
   border: 2px solid var(--colorAttention);
 }
@@ -252,8 +262,11 @@
   align-self: flex-start;
 }
 
-.pk-dialog {
-  width: 36rem;
+/* Under 40rem the dialog is the shell's full-width sheet, so the fixed width holds only above it. */
+@media (width > 40rem) {
+  .pk-dialog {
+    width: 36rem;
+  }
 }
 
 .pk-form {

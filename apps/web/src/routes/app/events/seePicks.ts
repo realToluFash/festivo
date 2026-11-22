@@ -8,8 +8,6 @@ import type {
   PicksRoomPerson,
 } from '@soirely/api-client';
 
-export const firstName = (name: string): string => name.split(' ')[0] || name;
-
 export const shareOf = (n: number, room: number): number =>
   room === 0 ? 0 : Math.floor((n * 100) / room);
 

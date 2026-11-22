@@ -153,7 +153,7 @@ function picksOf(more: Record<string, unknown> = {}) {
   };
 }
 
-type Answer = (body: unknown) => Response;
+type Answer = (body: unknown) => Response | Promise<Response>;
 
 function onPicks(
   answers: Record<string, Answer>,
@@ -243,7 +243,7 @@ describe('See picks (sc-3909)', () => {
     const dialog = screen.getByRole('dialog', { name: 'Choosing for Kwame Mensah' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     expect(
-      within(dialog).getByText('Choose main for Kwame, or let the kitchen choose.'),
+      within(dialog).getByText('Choose main for Kwame Mensah, or let the kitchen choose.'),
     ).toBeDefined();
 
     fireEvent.click(within(dialog).getByRole('radio', { name: /Jollof rice/ }));
@@ -252,6 +252,9 @@ describe('See picks (sc-3909)', () => {
     expect(within(ask).getByRole('button', { name: 'Choose another dish' })).toBe(
       document.activeElement,
     );
+    expect(
+      within(ask).getByText('Kwame Mensah’s record says celery. Pick it anyway?'),
+    ).toBeDefined();
     expect(sent.some((one) => one.line === CHOOSE_KWAME)).toBe(false);
 
     fireEvent.click(within(ask).getByRole('button', { name: 'Pick it anyway' }));
@@ -264,7 +267,111 @@ describe('See picks (sc-3909)', () => {
         anyway: true,
       }),
     );
-    expect(await screen.findByText('Main chosen for Kwame: Jollof rice.')).toBeDefined();
+    expect(await screen.findByText('Main chosen for Kwame Mensah: Jollof rice.')).toBeDefined();
+  });
+
+  it('lists every course a guest has not chosen as words, not commas', async () => {
+    const main = picksOf().picks.courses[0];
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          picksOf({
+            courses: [{ ...main, id: 'c_starter', name: 'Starter' }, main],
+            waiting: [
+              {
+                id: 'g_bisi',
+                replier: 'Bisi Adewale',
+                people: [{ id: 'g_ada', name: 'Ada Obi', courses: ['c_starter', 'c_main'] }],
+              },
+            ],
+          }),
+        ),
+    });
+
+    expect(await screen.findByText('Not chosen: Starter and Main')).toBeDefined();
+  });
+
+  it('names everyone a variant rules out as words when asking to give it anyway', async () => {
+    const main = picksOf().picks.courses[0];
+    const small = {
+      id: 'v_small',
+      kind: 'variant',
+      name: 'Small plate',
+      dish: 'd_jollof',
+      for: 'children',
+      allergens: ['celery'],
+      chosen: 0,
+      defaulted: 0,
+      holders: [],
+    };
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          picksOf({
+            courses: [{ ...main, rows: [...(main?.rows ?? []), small] }],
+            people: [
+              { id: 'g_kwame', name: 'Kwame Mensah', party: 'g_bisi', allergens: ['celery'] },
+              { id: 'g_ada', name: 'Ada Obi', party: 'g_bisi', allergens: ['celery'] },
+            ],
+          }),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Choose who gets Small plate/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Choose who gets Small plate' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Kwame Mensah' }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Ada Obi' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText('Kwame Mensah and Ada Obi: give Small plate anyway?'),
+    ).toBeDefined();
+  });
+
+  it('focuses Save when Choose who gets it fails to save', async () => {
+    let fail: (answer: Response) => void = () => undefined;
+    const saving = new Promise<Response>((resolve) => {
+      fail = resolve;
+    });
+    const main = picksOf().picks.courses[0];
+    const small = {
+      id: 'v_small',
+      kind: 'variant',
+      name: 'Small plate',
+      dish: 'd_jollof',
+      for: 'children',
+      allergens: [],
+      chosen: 0,
+      defaulted: 0,
+      holders: [],
+    };
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(picksOf({ courses: [{ ...main, rows: [...(main?.rows ?? []), small] }] })),
+      ['PUT /api/events/ev_1/menu/picks/variants/v_small']: () => saving,
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Choose who gets Small plate/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Choose who gets Small plate' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Ada Obi' }));
+    const save = within(dialog).getByRole('button', { name: 'Save' });
+    fireEvent.click(save);
+
+    await waitFor(() => expect(save.getAttribute('aria-disabled')).toBe('true'));
+    expect(save).toHaveProperty('disabled', false);
+    fail(problem('server_error', 500));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain(
+      'Nothing was saved. Check your connection, then press Save again.',
+    );
+    expect(within(dialog).getByRole('checkbox', { name: 'Ada Obi' })).toHaveProperty(
+      'checked',
+      true,
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Save' })),
+    );
   });
 
   it('says nothing was saved when the role lost Guests manage', async () => {
@@ -357,6 +464,46 @@ describe('See picks narrowed to one course (sc-3909)', () => {
       'Nothing was saved. Check your connection, then press Save and go on again.',
     );
     expect(within(dialog).getByRole('radio', { name: 'Egusi' })).toHaveProperty('checked', true);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(dialog).getByRole('button', { name: 'Save and go on' }),
+      ),
+    );
+  });
+
+  it('keeps the focus in the dialog when Pick it anyway goes on to the next course', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () =>
+          json(
+            picksOf({
+              waiting: [
+                {
+                  id: 'g_bisi',
+                  replier: 'Bisi Adewale',
+                  people: [
+                    { id: 'g_kwame', name: 'Kwame Mensah', courses: ['c_starter', 'c_main'] },
+                  ],
+                },
+              ],
+            }),
+          ),
+        ['GET /api/events/ev_1/menu']: () => json(twoCourses),
+        [CHOOSE_KWAME]: () => json(picksOf()),
+      },
+      NARROWED,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Choose for Kwame Mensah' }));
+    const dialog = screen.getByRole('dialog', { name: 'Choosing for Kwame Mensah' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and go on' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Pick it anyway' }),
+    );
+
+    expect(await within(dialog).findByText('Starter · 2 of 2')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
   });
 });
 
@@ -389,7 +536,7 @@ describe('The picks on the event’s Menu (sc-3909)', () => {
     const card = screen.getByRole('complementary', { name: 'Picks' });
     expect(within(card).getByText('2 of 4 picks in · 50% of the room')).toBeDefined();
     expect(within(card).getByText('Who hasn’t picked · 2')).toBeDefined();
-    expect(screen.getByText(/You still can choose for any guest\./)).toBeDefined();
+    expect(screen.getByText(/You can still choose for any guest\./)).toBeDefined();
     expect(screen.getByRole('link', { name: 'Who hasn’t picked Main' }).getAttribute('href')).toBe(
       '/app/events/ev_1/menu/picks?course=c_main',
     );
@@ -405,7 +552,7 @@ describe('The picks on the event’s Menu (sc-3909)', () => {
     );
 
     expect(await screen.findByText('1 pick · 25% of the room')).toBeDefined();
-    expect(screen.queryByText(/You still can choose/)).toBeNull();
+    expect(screen.queryByText(/You can still choose/)).toBeNull();
     expect(screen.queryByRole('link', { name: 'Who hasn’t picked Main' })).toBeNull();
   });
 });
