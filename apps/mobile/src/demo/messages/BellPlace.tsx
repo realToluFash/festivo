@@ -1,33 +1,30 @@
+import type { NotificationCategory } from '@soirely/api-client';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ConfettiSwitch } from '../../components/ConfettiSwitch.tsx';
+import { BellBody, BellFrame, BellMute } from '../../components/BellParts.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OfflineBand } from '../../components/OfflineBand.tsx';
-import { ReadOut, readOut } from '../../components/ReadOut.tsx';
+import { readOut } from '../../components/ReadOut.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import {
   moveScreenReaderFocus,
   type ScreenReaderTarget,
 } from '../../components/screenReaderFocus.ts';
-import { Back, Pill } from '../../components/SettingsParts.tsx';
-import { Skeleton } from '../../components/Skeleton.tsx';
-import { type Anchor, AnchoredMenu, RowList, TextAction } from '../../components/Summary.tsx';
+import { type Anchor } from '../../components/Summary.tsx';
 import { Text, type TextHandle } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { repliesUnread } from '../guests/ChangedSince.ts';
 import {
   type BellStart,
   type BellState,
-  type Category,
   BUSY_MS,
   BW,
   GONE_EVENT,
   OLDER_COUNT,
   bellStartOf,
-  markOf,
 } from './BellStates.ts';
 import { BELL, EVENT, PARKING, PARKING_REACH } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
@@ -37,7 +34,7 @@ type Opener = RefObject<ScreenReaderTarget | null>;
 
 interface BellItem {
   key: string;
-  category: Category;
+  category: NotificationCategory;
   title: string;
   line: string;
   unread: boolean;
@@ -189,17 +186,6 @@ export function BellPlace({
     setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
   };
 
-  const markAllRead = (
-    <TextAction
-      label={W.markAllRead}
-      off={read}
-      onPress={() => {
-        onAllRead();
-        readOut(W.allRead);
-      }}
-      testID="messages.bell.markAll"
-    />
-  );
   const band = (
     <OfflineBand
       stale={
@@ -221,326 +207,138 @@ export function BellPlace({
     />
   );
   const refreshing = offline === 'refreshing' && <Refreshing testID="messages.bell.refreshing" />;
-  const ask = asking && (
-    <View style={styles.ask} testID="messages.bell.pushAsk">
-      <Text size={16} weight="bold" accessibilityRole="header">
-        {BW.pushTitle}
-      </Text>
-      <Text size={14} style={styles.secondary}>
-        {BW.pushReason}
-      </Text>
-      <View style={styles.askActs}>
-        <Pill
-          label={BW.turnOn}
-          full={false}
-          height={tokens.sizeHit}
-          onPress={answered}
-          testID="messages.bell.turnOn"
-        />
-        <TextAction label={BW.notNow} onPress={answered} testID="messages.bell.notNow" />
-      </View>
-    </View>
-  );
   const body = (
-    <View>
-      {ask}
-      {feed === 'loading' && (
-        <Skeleton shape="rows" rowHeight={64} picture rows={3} inCard words={BW.loading} />
-      )}
-      {feed === 'failed' && (
-        <View style={styles.failed} accessibilityRole="alert">
-          <Text size={15}>{BW.couldNotLoad}</Text>
-          <TextAction
-            label={BW.tryAgain}
-            onPress={() => {
-              setFeed('loading');
-              later(() => setFeed('loaded'));
-            }}
-            testID="messages.bell.tryAgain"
-          />
-        </View>
-      )}
-      {feed === 'loaded' && items.length === 0 && (
-        <View style={styles.empty}>
-          <View style={styles.bellTile}>
-            <Glyph name="bell" size={20} ink={tokens.colorInkSecondary} />
-          </View>
-          <Text size={15} style={[styles.grow, styles.secondary]}>
-            {BW.empty}
-          </Text>
-        </View>
-      )}
-      {feed === 'loaded' && items.length > 0 && (
-        <RowList
-          items={items.map((item) => ({
-            key: item.key,
-            inset: 52,
-            row: (
-              <BellRow
-                item={item}
-                muted={muted && item.event === EVENT}
-                menu={menu === item.key}
-                goneShown={goneShown}
-                onPress={() => {
-                  if (item.gone === true) setGoneShown(true);
-                  else onItem(item.key);
-                }}
-                onMenu={(shown) => setMenu(shown ? item.key : null)}
-                onMute={setMuted}
-              />
-            ),
-          }))}
-        />
-      )}
-      {feed === 'loaded' && items.length > 0 && more !== 'none' && more !== 'shown' && (
-        <View style={styles.more}>
-          <TextAction
-            label={BW.showMore}
-            off={more === 'loading'}
-            onPress={() => {
-              setMore('loading');
-              later(() => {
-                if (start.more === 'failed') {
-                  setMore('failed');
-                  return;
-                }
-                setMore('shown');
-                readOut(BW.moreShown(OLDER_COUNT));
-              });
-            }}
-            testID="messages.bell.showMore"
-          />
-          {more === 'failed' && (
-            <View style={styles.attention} accessibilityRole="alert">
-              <Glyph name="alert" size={16} ink={tokens.colorAttentionText} weight={2.2} />
-              <Text size={14} weight="semibold" style={[styles.grow, styles.attentionInk]}>
-                {BW.moreFailed}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-      <TextAction
-        label={W.notificationSettings}
-        onPress={onSettings}
-        testID="messages.bell.settings"
-      />
-    </View>
+    <BellBody
+      ask={asking ? { onAnswer: answered } : null}
+      feed={feed}
+      rows={items.map((item) => ({
+        id: item.key,
+        category: item.category,
+        title: item.title,
+        lines: [],
+        where: item.line,
+        unread: item.unread,
+        muted: muted && item.event === EVENT,
+        more:
+          item.event == null
+            ? null
+            : {
+                label: BW.more(item.title, item.event),
+                mute: (
+                  <BellMute
+                    on={muted}
+                    onChange={setMuted}
+                    testID={`messages.bell.${item.key}.mute`}
+                  />
+                ),
+              },
+        goneShown: item.gone === true && goneShown,
+        testID: `messages.bell.${item.key}`,
+      }))}
+      menu={menu}
+      onMenu={setMenu}
+      onPick={(row) => {
+        if (row.id === 'gone') setGoneShown(true);
+        else onItem(row.id);
+      }}
+      onTryAgain={() => {
+        setFeed('loading');
+        later(() => setFeed('loaded'));
+      }}
+      more={
+        more !== 'none' && more !== 'shown'
+          ? {
+              busy: more === 'loading',
+              failed: more === 'failed',
+              onMore: () => {
+                setMore('loading');
+                later(() => {
+                  if (start.more === 'failed') {
+                    setMore('failed');
+                    return;
+                  }
+                  setMore('shown');
+                  readOut(BW.moreShown(OLDER_COUNT));
+                });
+              },
+            }
+          : null
+      }
+      onSettings={onSettings}
+      testID="messages.bell"
+    />
   );
-
-  if (!phone)
-    return (
-      <AnchoredMenu
-        at={open ? at : null}
-        onClose={onClose}
-        opener={opener}
-        width={380}
-        align="end"
-        head={
-          <View style={styles.popoverHead}>
-            <View style={styles.bellHead}>
-              <View style={styles.titleLine}>
-                <Text ref={heading} size={18} weight="bold" accessibilityRole="header">
-                  {W.notifications}
-                </Text>
-                {refreshing}
-              </View>
-              {markAllRead}
-            </View>
-            {band}
-          </View>
-        }
-        testID="messages.bellPopover"
-      >
-        <View style={styles.popover}>{body}</View>
-      </AnchoredMenu>
-    );
-  if (!open) return null;
+  const markAllRead = {
+    off: read,
+    onPress: () => {
+      onAllRead();
+      readOut(W.allRead);
+    },
+    testID: 'messages.bell.markAll',
+  };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.bellTop}>
-        <Back label={W.back} onPress={onClose} />
-        <View style={styles.grow} />
-        {markAllRead}
-      </View>
-      {band}
-      <ScrollView
-        contentContainerStyle={[
-          styles.bellPage,
-          { paddingBottom: insets.bottom + tokens.space6xl },
-        ]}
-      >
-        <View style={styles.titleLine}>
-          <Text
-            ref={heading}
-            size={30}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.pageTitle}
-          >
-            {W.notifications}
-          </Text>
-          {refreshing}
-        </View>
-        {body}
-      </ScrollView>
-      {pushing && (
-        <View style={[styles.pushAt, { top: insets.top + tokens.spaceXxs }]}>
-          <Pressable
-            onPress={() => {
-              setPushing(false);
-              onItem('replies');
-            }}
-            style={styles.push}
-            accessibilityRole="button"
-            accessibilityLabel={BELL.push}
-            testID="messages.push"
-          >
-            <View style={styles.pushTile}>
-              <Glyph name="bell" size={18} ink={tokens.colorInkOnDark} weight={2.2} />
-            </View>
-            <View style={styles.grow}>
-              <View style={styles.pushHead}>
-                <Text
-                  size={13}
-                  weight="semibold"
-                  accessible={false}
-                  style={[styles.grow, styles.secondary]}
-                >
-                  SOIRELY
-                </Text>
-                <Text size={13} weight="semibold" accessible={false} style={styles.secondary}>
-                  now
-                </Text>
-              </View>
-              <Text size={15} weight="semibold" accessible={false}>
-                {BELL.push}
-              </Text>
-            </View>
-          </Pressable>
-          <PushTimer onGone={() => setPushing(false)} />
-        </View>
-      )}
-    </View>
-  );
-}
-
-/** One item: its mark, its words, Unread and Muted, its More with Mute this event under it, and the line for an event that has gone. */
-function BellRow({
-  item,
-  muted,
-  menu,
-  goneShown,
-  onPress,
-  onMenu,
-  onMute,
-}: {
-  item: BellItem;
-  muted: boolean;
-  menu: boolean;
-  goneShown: boolean;
-  onPress: () => void;
-  onMenu: (open: boolean) => void;
-  onMute: (muted: boolean) => void;
-}) {
-  const mark = markOf(item.category);
-
-  return (
-    <View>
-      <View style={styles.rowLine}>
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [styles.bellItem, styles.grow, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={[
-            item.title,
-            item.line,
-            item.unread ? W.unread : null,
-            muted ? BW.muted : null,
-          ]
-            .filter(Boolean)
-            .join(', ')}
-          testID={`messages.bell.${item.key}`}
-        >
-          {mark != null && (
-            <View style={styles.bellTile}>
-              <Glyph name={mark} size={20} ink={tokens.colorInkSecondary} />
-            </View>
-          )}
-          <View style={styles.grow}>
-            <Text
-              size={16}
-              weight={item.unread ? 'bold' : 'medium'}
-              accessible={false}
-              style={styles.bellTitle}
-            >
-              {item.title}
-            </Text>
-            <Text
-              size={13.5}
-              weight="medium"
-              accessible={false}
-              style={[styles.secondary, styles.bellLine]}
-            >
-              {item.line}
-            </Text>
-            {(item.unread || muted) && (
-              <View style={styles.marks}>
-                {item.unread && (
-                  <View style={styles.mark}>
-                    <View style={styles.dot} />
-                    <Text size={12.5} weight="semibold" accessible={false} style={styles.accent}>
-                      {W.unread}
-                    </Text>
-                  </View>
-                )}
-                {muted && (
-                  <View style={styles.mark}>
-                    <Glyph name="bellOff" size={14} ink={tokens.colorInkSecondary} weight={2.2} />
-                    <Text size={12.5} weight="semibold" accessible={false} style={styles.secondary}>
-                      {BW.muted}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        </Pressable>
-        {item.event != null && (
-          <Pressable
-            onPress={() => onMenu(!menu)}
-            style={({ pressed }) => [styles.moreButton, (pressed || menu) && styles.moreOn]}
-            accessibilityRole="button"
-            accessibilityLabel={BW.more(item.title, item.event)}
-            accessibilityState={{ expanded: menu }}
-            testID={`messages.bell.${item.key}.more`}
-          >
-            <Glyph name="dots" size={20} ink={tokens.colorInkSecondary} weight={3} />
-          </Pressable>
-        )}
-      </View>
-      {menu && item.event != null && (
-        <View style={styles.mute} testID={`messages.bell.${item.key}.mute`}>
-          <Text size={15} weight="semibold" style={styles.grow}>
-            {BW.muteEvent}
-          </Text>
-          <ConfettiSwitch
-            on={muted}
-            label={BW.muteEvent}
-            words={{ on: 'On', off: 'Off' }}
-            onChange={onMute}
-            testID={`messages.bell.${item.key}.muteSwitch`}
-          />
-        </View>
-      )}
-      {item.gone === true && goneShown && (
-        <View style={styles.gone}>
-          <ReadOut words={BW.eventGone} />
-          <Text size={14}>{BW.eventGone}</Text>
-        </View>
-      )}
-    </View>
+    <BellFrame
+      where={
+        phone
+          ? {
+              kind: 'screen',
+              open,
+              back: W.back,
+              onBack: onClose,
+              over: pushing && (
+                <View style={[styles.pushAt, { top: insets.top + tokens.spaceXxs }]}>
+                  <Pressable
+                    onPress={() => {
+                      setPushing(false);
+                      onItem('replies');
+                    }}
+                    style={styles.push}
+                    accessibilityRole="button"
+                    accessibilityLabel={BELL.push}
+                    testID="messages.push"
+                  >
+                    <View style={styles.pushTile}>
+                      <Glyph name="bell" size={18} ink={tokens.colorInkOnDark} weight={2.2} />
+                    </View>
+                    <View style={styles.grow}>
+                      <View style={styles.pushHead}>
+                        <Text
+                          size={13}
+                          weight="semibold"
+                          accessible={false}
+                          style={[styles.grow, styles.secondary]}
+                        >
+                          SOIRELY
+                        </Text>
+                        <Text
+                          size={13}
+                          weight="semibold"
+                          accessible={false}
+                          style={styles.secondary}
+                        >
+                          now
+                        </Text>
+                      </View>
+                      <Text size={15} weight="semibold" accessible={false}>
+                        {BELL.push}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <PushTimer onGone={() => setPushing(false)} />
+                </View>
+              ),
+            }
+          : { kind: 'popover', at: open ? at : null, opener, onClose }
+      }
+      heading={heading}
+      refreshing={refreshing}
+      markAllRead={markAllRead}
+      band={band}
+      testID={phone ? 'messages.bellScreen' : 'messages.bellPopover'}
+    >
+      {body}
+    </BellFrame>
   );
 }
 
@@ -557,117 +355,6 @@ function PushTimer({ onGone }: { onGone: () => void }) {
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
-  pressed: { opacity: tokens.opacityPressed },
-  rowLine: { flexDirection: 'row', alignItems: 'flex-start' },
-  bellItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-  },
-  bellTile: {
-    width: 40,
-    height: 40,
-    borderRadius: tokens.spaceLg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.colorInset,
-  },
-  bellTitle: { lineHeight: 16 * 1.35 },
-  bellLine: { marginTop: 3, lineHeight: 13.5 * 1.4 },
-  marks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceLg },
-  mark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    marginTop: tokens.spaceXs,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colorAccent },
-  moreButton: {
-    width: tokens.sizeHit,
-    height: tokens.sizeHit,
-    marginTop: tokens.spaceSm,
-    marginRight: -tokens.spaceSm,
-    borderRadius: tokens.sizeHit / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moreOn: { backgroundColor: tokens.colorInset },
-  mute: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    marginLeft: 56,
-    marginBottom: tokens.spaceLg,
-    paddingVertical: tokens.spaceXs,
-    paddingLeft: tokens.spaceLg,
-    paddingRight: tokens.spaceXs,
-    borderRadius: tokens.radiusInset,
-    backgroundColor: tokens.colorInset,
-  },
-  gone: { marginLeft: 56, marginTop: -tokens.spaceSm, marginBottom: tokens.spaceLg },
-  ask: {
-    gap: tokens.spaceXs,
-    marginTop: tokens.spaceXs,
-    marginBottom: tokens.spaceSm,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
-    backgroundColor: tokens.colorInset,
-  },
-  askActs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    marginTop: tokens.spaceXs,
-  },
-  failed: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingVertical: tokens.spaceLg },
-  empty: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-  },
-  more: { alignItems: 'flex-start', gap: tokens.spaceXs, paddingBottom: tokens.spaceXs },
-  attention: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
-  attentionInk: { color: tokens.colorAttentionText },
-  popoverHead: { paddingTop: tokens.spaceSm, paddingHorizontal: tokens.spaceXl },
-  popover: { paddingHorizontal: tokens.spaceXl, paddingBottom: tokens.spaceXs },
-  bellHead: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-  },
-  titleLine: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: tokens.spaceMd,
-  },
-  screen: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: tokens.colorCard,
-  },
-  bellTop: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: tokens.spaceXxl,
-  },
-  bellPage: { paddingHorizontal: tokens.spaceXxl, gap: tokens.spaceSm },
-  pageTitle: {
-    paddingTop: 14,
-    paddingBottom: tokens.spaceXs,
-    letterSpacing: -0.6,
-    lineHeight: 30 * 1.12,
-  },
   pushAt: { position: 'absolute', left: tokens.spaceMd, right: tokens.spaceMd },
   push: {
     flexDirection: 'row',

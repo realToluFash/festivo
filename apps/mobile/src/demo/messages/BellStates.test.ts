@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { BELL_STATES, CATEGORY_MARK, bellStartOf, isBellState, markOf } from './BellStates.ts';
+import { CATEGORY_MARK, markOf } from '../../components/notificationMarks.ts';
+import { BELL_STATES, bellStartOf, isBellState } from './BellStates.ts';
 
 describe('the bell’s states (sc-83081)', () => {
   it('gives each of the six categories its own mark, and an unknown one none', () => {

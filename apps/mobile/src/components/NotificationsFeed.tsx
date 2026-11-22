@@ -12,23 +12,8 @@ import {
   whenShown,
 } from '@soirely/domain';
 import { router } from 'expo-router';
-import {
-  type RefObject,
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-  type ViewInstance,
-} from 'react-native';
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -39,17 +24,17 @@ import { markAllRead } from '../kit/notificationFeed.ts';
 import { appPlace } from '../kit/notificationPlace.ts';
 import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
-import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { BellMark } from './BellMark.tsx';
-import { PrimaryButton, QuietButton } from './Buttons.tsx';
-import { MuteEventSwitch } from './MuteEventCard.tsx';
+import { type BellRowData, BellBody, BellFrame, BellMute } from './BellParts.tsx';
+import { useEventMute } from './MuteEventCard.tsx';
 import { Notice } from './Notice.tsx';
+import { OfflineBand } from './OfflineBand.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { Sheet } from './Sheet.tsx';
-import { Text, type TextHandle } from './Text.tsx';
-import { Skeleton } from './Skeleton.tsx';
+import { Refreshing } from './Refreshing.tsx';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
+import type { Anchor } from './SummaryOverlays.tsx';
+import { TextAction } from './SummaryRows.tsx';
+import { type TextHandle } from './Text.tsx';
 import { rereadOrganisations } from '../signedIn.ts';
 
 type Feed =
@@ -57,14 +42,23 @@ type Feed =
   | { status: 'failed' }
   | { status: 'loaded'; items: NotificationItem[]; unread: number; next: string | null };
 
-/** `NotificationsBell-*` in the app (sc-3980): the feed, live, with its push ask, Mark all read and Show more; `heading` is the frame's title, and `onOffline` hands the screen the feed's band and Refreshing… (sc-27096). */
-export function NotificationsFeed({
-  heading,
-  onOffline,
-}: {
-  heading: RefObject<TextHandle | null>;
-  onOffline: (offline: ScreenOffline) => void;
-}) {
+export type FeedWhere =
+  | { kind: 'screen'; onBack: () => void }
+  | {
+      kind: 'popover';
+      open: boolean;
+      at: Anchor | null;
+      opener: RefObject<ScreenReaderTarget | null>;
+      onClose: () => void;
+    }
+  | {
+      kind: 'framed';
+      heading: RefObject<TextHandle | null>;
+      onOffline: (offline: ScreenOffline) => void;
+    };
+
+/** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame for a phone on its side (sc-62023). */
+export function NotificationsFeed({ where }: { where: FeedWhere }) {
   const { t } = useTranslation();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -72,7 +66,11 @@ export function NotificationsFeed({
   const [asking, setAsking] = useState(false);
   const [said, setSaid] = useState<{ words: string } | null>(null);
   const [notSaved, setNotSaved] = useState<string | null>(null);
-  const { kind } = useLayout();
+  const [menu, setMenu] = useState<string | null>(null);
+  const ownHeading = useRef<TextHandle>(null);
+  const heading = where.kind === 'framed' ? where.heading : ownHeading;
+  const onOffline = where.kind === 'framed' ? where.onOffline : null;
+  const opened = where.kind === 'popover' ? where.open : true;
   const nextAction = useCallback((): void => setNotSaved(null), []);
 
   const refetch = useRef(() => {});
@@ -83,7 +81,7 @@ export function NotificationsFeed({
   });
 
   useLayoutEffect(() => {
-    onOffline({ stale, refreshing });
+    onOffline?.({ stale, refreshing });
   }, [onOffline, stale, refreshing]);
 
   /** Only a load Soirely never answered keeps the rows; an error it answered with replaces them, and takes the band down. */
@@ -128,6 +126,17 @@ export function NotificationsFeed({
       () => undefined,
     );
   }, [fetchFeed]);
+
+  const wasOpen = useRef(opened);
+  useEffect(() => {
+    if (opened && !wasOpen.current) {
+      setMenu(null);
+      setNotSaved(null);
+      setFeed({ status: 'loading' });
+      fetchFeed();
+    }
+    wasOpen.current = opened;
+  }, [opened, fetchFeed]);
 
   const reread = (): void => {
     watch(readSettled(() => api.notifications(), arrivalsSeen)).then((page) => {
@@ -214,7 +223,9 @@ export function NotificationsFeed({
     }
 
     const place = appPlace(item.place);
-    if (place != null) router.push(place);
+    if (place == null) return;
+    if (where.kind === 'popover') where.onClose();
+    router.push(place);
   }
 
   async function readAll(): Promise<void> {
@@ -261,430 +272,153 @@ export function NotificationsFeed({
     );
   }
 
-  const opening = useRef(openItem);
-  useEffect(() => {
-    opening.current = openItem;
-  });
-  const onOpen = useCallback((item: NotificationItem) => opening.current(item), []);
-
   const unread = feed.status === 'loaded' ? feed.unread : 0;
-  const rows = feed.status === 'loaded' ? feed.items : [];
 
-  return (
-    <FlatList
-      data={rows}
-      keyExtractor={(item) => item.id}
-      extraData={gone}
-      renderItem={({ item, index }) => (
-        <FeedRow
-          item={item}
-          gone={gone.has(item.id)}
-          opensCard={index === 0 && !asking}
-          onOpen={onOpen}
-          onMore={nextAction}
-        />
-      )}
-      contentContainerStyle={[styles.feed, kind !== 'phone' && styles.feedUnderBack]}
-      ListHeaderComponent={
-        <>
-          <View style={styles.part}>
-            <View style={styles.header}>
-              <QuietButton
-                label={t('notifications.markAllRead')}
-                onPress={() => void readAll()}
-                off={unread === 0}
-                testID="notifications.markAllRead"
-              />
-            </View>
-
-            {notSaved != null && (
-              <Notice tone="attention" mark="!" body={notSaved} announce wordsInTone />
-            )}
-          </View>
-
-          {(asking || rows.length === 0) && (
-            <View style={[styles.card, styles.cardTop]}>
-              {asking && (
-                <View style={styles.cardPart}>
-                  <View style={styles.ask} testID="notifications.pushAsk">
-                    <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
-                      {t('notifications.pushAsk.title')}
-                    </Text>
-                    <Text size={tokens.typeBodyPhone.size}>
-                      {t('notifications.pushAsk.reason')}
-                    </Text>
-                    <View style={styles.askActions}>
-                      <PrimaryButton
-                        label={t('notifications.pushAsk.turnOn')}
-                        onPress={() => void answerPush(true)}
-                        testID="notifications.pushAsk.turnOn"
-                      />
-                      <QuietButton
-                        label={t('notifications.pushAsk.notNow')}
-                        onPress={() => void answerPush(false)}
-                        testID="notifications.pushAsk.notNow"
-                      />
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {feed.status === 'loading' && (
-                <View style={styles.loading}>
-                  <Skeleton
-                    words={t('notifications.loading')}
-                    shape="rows"
-                    rowHeight={64}
-                    rows={3}
-                    inCard
-                    edgeToEdge
-                  />
-                </View>
-              )}
-
-              {feed.status === 'failed' && (
-                <View style={styles.cardPart}>
-                  <Notice
-                    tone="broken"
-                    mark={tokens.marks.broken.glyph}
-                    body={t('notifications.couldNotLoad')}
-                    announce
-                    wordsInTone
-                    action={{
-                      label: t('notifications.tryAgain'),
-                      onPress: () => {
-                        void rereadOrganisations();
-                        load();
-                      },
-                      testID: 'notifications.tryAgain',
-                    }}
-                  />
-                </View>
-              )}
-
-              {feed.status === 'loaded' && rows.length === 0 && (
-                <View style={styles.empty}>
-                  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                    <BellMark ink={tokens.colorInkSecondary} />
-                  </View>
-                  <Text size={tokens.typeBodyPhone.size} muted style={styles.centred}>
-                    {t('notifications.empty')}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-        </>
-      }
-      ListFooterComponent={
-        <View style={[styles.card, styles.cardFoot]}>
-          {feed.status === 'loaded' && feed.next != null && (
-            <View style={styles.more}>
-              <Pressable
-                style={styles.textButton}
-                onPress={() => more !== 'loading' && feed.next != null && showMore(feed.next)}
-                accessibilityRole="button"
-                accessibilityState={{ busy: more === 'loading' }}
-                testID="notifications.showMore"
-              >
-                {more === 'loading' && <ActivityIndicator color={tokens.colorAccent} />}
-                <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
-                  {t('notifications.showMore')}
-                </Text>
-              </Pressable>
-              {more === 'failed' && (
-                <Notice
-                  tone="attention"
-                  mark="!"
-                  body={t('notifications.moreFailed')}
-                  announce
-                  wordsInTone
-                />
-              )}
-            </View>
-          )}
-
-          <Pressable
-            style={styles.settings}
-            onPress={() => {
-              nextAction();
-              router.push(SECTION_HREF.notifications);
-            }}
-            accessibilityRole="link"
-            testID="notifications.settings"
-          >
-            <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
-              {t('notifications.settings')}
-            </Text>
-          </Pressable>
-        </View>
-      }
-    />
-  );
-}
-
-/** One item of the feed, drawing its share of the one card so the list stays virtualised; a page or a live arrival renders only the rows that changed. */
-const FeedRow = memo(function FeedRow({
-  item,
-  gone,
-  opensCard,
-  onOpen,
-  onMore,
-}: {
-  item: NotificationItem;
-  gone: boolean;
-  opensCard: boolean;
-  onOpen: (item: NotificationItem) => void;
-  onMore: () => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <View style={[styles.card, opensCard && styles.cardTop]}>
-      <View style={styles.row}>
-        <View style={styles.itemRow}>
-          <Pressable
-            style={[styles.item, styles.fill]}
-            onPress={() => onOpen(item)}
-            accessibilityRole="button"
-            testID={`notifications.item.${item.id}`}
-          >
-            <Text size={tokens.typeBodyPhone.size} weight={item.read ? 'regular' : 'bold'}>
-              {item.title}
-            </Text>
-            {item.lines.map((line, index) => (
-              <Text key={index} size={tokens.typeBodyPhone.size}>
-                {line}
-              </Text>
-            ))}
-            <Text size={tokens.typeSmall.size} muted>
-              {item.eventName == null
-                ? when(item.createdAt)
-                : t('notifications.whereWhen', {
-                    event: item.eventName,
-                    when: when(item.createdAt),
-                  })}
-            </Text>
-            {(!item.read || item.muted) && (
-              <View style={styles.marks}>
-                {!item.read && (
-                  <View style={styles.mark}>
-                    <View style={styles.dot} />
-                    <Text size={tokens.typeSmall.size} weight="semibold" style={styles.accent}>
-                      {t('notifications.unread')}
-                    </Text>
-                  </View>
-                )}
-                {item.muted && (
-                  <View style={styles.mark}>
-                    <View
-                      accessibilityElementsHidden
-                      importantForAccessibility="no-hide-descendants"
-                    >
-                      <BellMark ink={tokens.colorInkSecondary} slashed side={MUTED_MARK_SIDE} />
-                    </View>
-                    <Text size={tokens.typeSmall.size} muted>
-                      {t('notifications.muted')}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </Pressable>
-          {item.eventId != null && item.eventAvailable && item.eventName != null && (
-            <MuteMore
-              eventId={item.eventId}
-              eventName={item.eventName}
-              label={t('notifications.more', { title: item.title, event: item.eventName })}
-              testID={`notifications.item.${item.id}.more`}
-              onOpened={onMore}
-            />
-          )}
-        </View>
-        {gone && (
-          <View style={styles.goneLine}>
-            <Notice
-              tone="quiet"
-              mark={tokens.marks.info.glyph}
-              body={t('notifications.eventGone')}
-              announce
-            />
-          </View>
-        )}
-      </View>
-    </View>
-  );
+  function rowOf(item: NotificationItem): BellRowData {
+    return {
+      id: item.id,
+      category: item.category,
+      title: item.title,
+      lines: item.lines,
+      where:
+        item.eventName == null
+          ? when(item.createdAt)
+          : t('notifications.whereWhen', { event: item.eventName, when: when(item.createdAt) }),
+      unread: !item.read,
+      muted: item.muted,
+      more:
+        item.eventId != null && item.eventAvailable && item.eventName != null
+          ? {
+              label: t('notifications.more', { title: item.title, event: item.eventName }),
+              mute: (
+                <FeedMute eventId={item.eventId} testID={`notifications.item.${item.id}.mute`} />
+              ),
+            }
+          : null,
+      goneShown: gone.has(item.id),
+      testID: `notifications.item.${item.id}`,
+    };
+  }
 
   function when(createdAt: string): string {
     const shown = whenShown(createdAt, new Date(), currentLocale());
 
     return shown.today ? t('notifications.atTime', { time: shown.time }) : shown.date;
   }
-});
 
-/** The item's More (sc-3980): the event's own Mute this event switch, in the app's sheet. */
-function MuteMore({
-  eventId,
-  eventName,
-  label,
-  testID,
-  onOpened,
-}: {
-  eventId: string;
-  eventName: string;
-  label: string;
-  testID: string;
-  onOpened: () => void;
-}) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const opener = useRef<ViewInstance>(null);
-  const close = (): void => setOpen(false);
+  const body = (
+    <BellBody
+      ask={asking ? { onAnswer: (turnOn) => void answerPush(turnOn) } : null}
+      feed={feed.status}
+      rows={feed.status === 'loaded' ? feed.items.map(rowOf) : []}
+      menu={menu}
+      onMenu={(id) => {
+        nextAction();
+        setMenu(id);
+      }}
+      onPick={(row) => {
+        const item =
+          feed.status === 'loaded' ? feed.items.find((one) => one.id === row.id) : undefined;
+        if (item != null) openItem(item);
+      }}
+      onTryAgain={() => {
+        void rereadOrganisations();
+        load();
+      }}
+      more={
+        feed.status === 'loaded' && feed.next != null
+          ? {
+              busy: more === 'loading',
+              failed: more === 'failed',
+              onMore: () => feed.next != null && showMore(feed.next),
+            }
+          : null
+      }
+      notice={notSaved}
+      onSettings={() => {
+        nextAction();
+        if (where.kind === 'popover') where.onClose();
+        router.push(SECTION_HREF.notifications);
+      }}
+      testID="notifications"
+    />
+  );
+
+  if (where.kind === 'framed')
+    return (
+      <ScrollView contentContainerStyle={styles.framed}>
+        <View style={styles.header}>
+          <TextAction
+            label={t('notifications.markAllRead')}
+            off={unread === 0}
+            onPress={() => void readAll()}
+            testID="notifications.markAllRead"
+          />
+        </View>
+        {body}
+      </ScrollView>
+    );
 
   return (
-    <>
-      <Pressable
-        ref={opener}
-        style={styles.moreButton}
-        onPress={() => {
-          onOpened();
-          setOpen(true);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ expanded: open }}
-        testID={testID}
-      >
-        <Text size={tokens.typeRowTitle.size} weight="bold">
-          ⋯
-        </Text>
-      </Pressable>
-      <Sheet
-        open={open}
-        onClose={close}
-        scrimLabel={t('notifications.moreDone')}
-        opener={opener}
-        testID={`${testID}.sheet`}
-      >
-        {open && (
-          <View style={styles.sheet}>
-            <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
-              {eventName}
-            </Text>
-            <MuteEventSwitch eventId={eventId} testID={`${testID}.mute`} />
-            <QuietButton
-              label={t('notifications.moreDone')}
-              onPress={close}
-              testID={`${testID}.done`}
-            />
-          </View>
-        )}
-      </Sheet>
-    </>
+    <BellFrame
+      where={
+        where.kind === 'screen'
+          ? { kind: 'screen', open: true, back: t('notifications.back'), onBack: where.onBack }
+          : {
+              kind: 'popover',
+              at: where.open ? where.at : null,
+              opener: where.opener,
+              onClose: where.onClose,
+            }
+      }
+      heading={ownHeading}
+      refreshing={refreshing ? <Refreshing testID="notifications.refreshing" /> : null}
+      markAllRead={{
+        off: unread === 0,
+        onPress: () => void readAll(),
+        testID: 'notifications.markAllRead',
+      }}
+      band={<OfflineBand stale={stale} inFront={opened} />}
+      testID={where.kind === 'screen' ? 'notifications.screen' : 'notifications.popover'}
+    >
+      {body}
+    </BellFrame>
   );
 }
 
-const MUTED_MARK_SIDE = 14;
+/** Mute this event in an item's More (sc-3980), the same mute as the event's own page, inline under the item (sc-83081). */
+function FeedMute({ eventId, testID }: { eventId: string; testID: string }) {
+  const { t } = useTranslation();
+  const { mute, loaded, muted, busy, change, retry, tap } = useEventMute(eventId);
+
+  return (
+    <BellMute on={loaded && muted} busy={busy || !loaded} onChange={change} testID={testID}>
+      {mute.status === 'failed' && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('eventMute.notLoaded')}
+          announce
+          action={{ label: t('eventMute.tryAgain'), onPress: retry, testID: `${testID}.tryAgain` }}
+        />
+      )}
+      {mute.status === 'loaded' && mute.unsaved && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('eventMute.notSaved')}
+          answer={tap}
+        />
+      )}
+    </BellMute>
+  );
+}
 
 const styles = StyleSheet.create({
-  feed: {
+  framed: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
-  feedUnderBack: { paddingTop: tokens.spaceXxs },
-  part: { gap: tokens.spaceLg, paddingVertical: tokens.spaceSm },
-  card: {
-    overflow: 'hidden',
-    backgroundColor: tokens.colorCard,
-    borderColor: tokens.colorBorder,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-  },
-  cardTop: {
-    paddingTop: tokens.spaceXxs,
-    borderTopWidth: 1,
-    borderTopLeftRadius: tokens.radiusCardPhone,
-    borderTopRightRadius: tokens.radiusCardPhone,
-  },
-  cardFoot: {
-    borderBottomWidth: 1,
-    borderBottomLeftRadius: tokens.radiusCardPhone,
-    borderBottomRightRadius: tokens.radiusCardPhone,
-  },
-  cardPart: {
-    paddingTop: tokens.spaceSm,
-    paddingBottom: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceXl,
-  },
-  loading: { paddingVertical: tokens.spaceSm },
-  empty: {
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingVertical: tokens.space3xl,
-    paddingHorizontal: tokens.spaceXl,
-  },
-  centred: { textAlign: 'center' },
   header: { flexDirection: 'row', justifyContent: 'flex-end' },
-  fill: { flex: 1 },
-  textButton: {
-    minHeight: tokens.sizeHit,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-  },
-  accent: { color: tokens.colorAccentText },
-  ask: {
-    gap: tokens.spaceSm,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
-    backgroundColor: tokens.colorInset,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-  },
-  askActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  row: {
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
-  goneLine: { marginHorizontal: tokens.spaceXl, marginBottom: tokens.spaceLg },
-  itemRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  moreButton: {
-    marginTop: tokens.spaceSm,
-    marginRight: tokens.spaceSm,
-    minWidth: tokens.sizeHit,
-    minHeight: tokens.sizeHit,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheet: { gap: tokens.spaceLg, padding: tokens.space3xl },
-  item: {
-    gap: tokens.spaceXxs,
-    minHeight: tokens.sizeHit,
-    paddingVertical: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceXl,
-  },
-  marks: { flexDirection: 'row', gap: tokens.spaceLg },
-  mark: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
-  dot: {
-    width: tokens.spaceSm,
-    height: tokens.spaceSm,
-    borderRadius: tokens.spaceSm / 2,
-    backgroundColor: tokens.colorAccent,
-  },
-  more: {
-    gap: tokens.spaceSm,
-    paddingVertical: tokens.spaceSm,
-    paddingHorizontal: tokens.spaceXl,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
-  settings: {
-    minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXl,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
 });
