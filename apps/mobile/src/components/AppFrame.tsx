@@ -283,7 +283,7 @@ export function AppFrame({
   bodyTakesSwitch = false,
   ownChrome = false,
   inEvent,
-  untitled = false,
+  untitled: bodyUntitled = false,
   bareList = false,
   primary,
   underTitle,
@@ -625,10 +625,10 @@ export function AppFrame({
     ) : null;
   // The paused card's own heading heads the page in place of the route's title (sc-83881).
   const paused = standIn === 'paused';
-  const frameUntitled = untitled || paused;
-  const titleCap = useTitleCap(`${kind}|${frameUntitled}|${title}`, PAGE_TITLE);
+  const untitled = bodyUntitled || paused;
+  const titleCap = useTitleCap(`${kind}|${untitled}|${title}`, PAGE_TITLE);
   // A page the frame draws no title for is capped only by a title its body draws, as an event area's (sc-67338).
-  const cap = framed && (titleCap.drawn || !frameUntitled) ? titleCap.cap : null;
+  const cap = framed && (titleCap.drawn || !untitled) ? titleCap.cap : null;
   const named = pillNames(signedIn);
   const header: FrameHeaderProps = {
     current,
@@ -653,7 +653,7 @@ export function AppFrame({
     besideTitle: standIn == null ? besideTitle : undefined,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
-    untitled: frameUntitled,
+    untitled,
     bareList,
     cap,
     onTitleDrawn: titleCap.onDrawn,
@@ -1160,14 +1160,15 @@ function FrameHeader({
   const titleSize = frameTitleSize(kind !== 'phone', Math.min(width, height));
   const tabs = useFrameTabs(current, organisation);
 
+  if (kind === 'tabletLandscape' && paused) {
+    return (
+      <View style={[styles.landscapeHeader, styles.bellAlone]}>
+        <BellButton />
+      </View>
+    );
+  }
+
   if (kind === 'tabletLandscape') {
-    if (paused) {
-      return (
-        <View style={[styles.landscapeHeader, styles.bellAlone]}>
-          <BellButton />
-        </View>
-      );
-    }
     if (untitled) return null;
     // Inside an event the bell ends the area's name's row at every size, the name wrapping to its left (sc-68052).
     const stacks = large && !inEvent;
