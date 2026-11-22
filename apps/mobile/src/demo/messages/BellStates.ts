@@ -123,7 +123,7 @@ export const BW = {
 };
 
 /** The categories Mute this event holds, as the API's NotificationCategory::heldByMute: never Event day or Account & security. */
-export const HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
+export const HELD_BY_MUTE: ReadonlySet<string> = new Set<NotificationCategory>([
   'guest_replies',
   'messages',
   'event_changes',
@@ -131,9 +131,6 @@ export const HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
 ]);
 
 /** An item is marked Muted when it arrived after the mute, in a category the mute holds; the switch re-marks nothing shown. */
-export function mutedOf(
-  start: BellStart,
-  item: { key: string; category: NotificationCategory },
-): boolean {
+export function mutedOf(start: BellStart, item: { key: string; category: string }): boolean {
   return start.marked.includes(item.key) && HELD_BY_MUTE.has(item.category);
 }
