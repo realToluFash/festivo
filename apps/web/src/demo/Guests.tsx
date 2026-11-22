@@ -296,6 +296,8 @@ function GuestsPage({
   const status = kept.offline && !kept.areaKept ? 'failed' : loaded;
   const { choice, q, since, setChoice, setQ, clear } = useGuestsAddress(base);
   const [looked, setLooked] = useState(lastLooked);
+  const changeFails = useRef(start.changeFails !== null);
+  const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [dietaryOnly, setDietary] = useState(start.dietary);
   const [groups, setGroups] = useState<GuestGroup[]>(start.groups);
   const [groupFilter, setGroupFilter] = useState(start.groupFilter);
@@ -338,13 +340,20 @@ function GuestsPage({
     choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly) || groupFilter != null;
   const nothingChanged = choice === 'changed' && listed.length === 0;
 
-  /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. */
+  /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. A failed fetch leaves the filter, the rows and the read mark as they were. */
   function choose(next: Filter): void {
     if (next === choice) return;
+    setChangeFailed(false);
     if (next !== 'changed') return setChoice(next);
+    if (changeFails.current) return setChangeFailed(true);
     setChoice('changed', looked);
     markLooked(start.clock);
     setLooked(lastLooked());
+  }
+
+  function retryChanged(): void {
+    changeFails.current = false;
+    choose('changed');
   }
   const open = pane.kind === 'guest' ? pane.id : null;
   const paneGuest = 'id' in pane ? (list.find((one) => one.id === pane.id) ?? null) : null;
@@ -803,6 +812,15 @@ function GuestsPage({
                         filter={groupFilter}
                         onFilter={setGroupFilter}
                       />
+                      {changeFailed && (
+                        <div className="gs-shown gs-changed-failed" role="alert">
+                          <p>
+                            <Glyph name="alert" size={18} weight={2.2} />
+                            {GW.changedFailed}
+                          </p>
+                          <TextAction label={GW.retry} onClick={retryChanged} />
+                        </div>
+                      )}
                       {looking && (
                         <div className="gs-shown">
                           <p role="status">{GW.shown(shown, counts.all)}</p>

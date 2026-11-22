@@ -7,13 +7,16 @@ namespace App\Domain\Staff;
 use App\Audit\Auditor;
 use App\Domain\Staff\Model\StaffDetails;
 use App\Entity\Event;
+use App\Entity\StaffJob;
 use App\Entity\StaffMember;
+use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
 use App\Repository\StaffMemberRepository;
+use App\Repository\StaffShiftRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -32,18 +35,20 @@ final readonly class StaffRoster
     public function __construct(
         private EntityManagerInterface $entityManager,
         private StaffMemberRepository $staffMemberRepository,
+        private StaffShiftRepository $staffShiftRepository,
         private RosterMemberMatch $rosterMemberMatch,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private StaffPlan $staffPlan,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
     }
 
-    /** Refused 409 `staff_number_shared`, naming the first entry on that number in roster order, unless `allowShared`. */
-    public function add(Event $event, StaffDetails $details, User $by, bool $allowShared): StaffMember
+    /** Refused 409 `staff_number_shared`, naming the first entry on that number in roster order, unless `allowShared`; a `shift` is refused as Assign refuses it. */
+    public function add(Event $event, StaffDetails $details, ?StaffJob $job, ?StaffShift $shift, User $by, bool $allowShared): StaffMember
     {
-        $entry = $this->entityManager->wrapInTransaction(function () use ($event, $details, $by, $allowShared): StaffMember {
+        $entry = $this->entityManager->wrapInTransaction(function () use ($event, $details, $job, $shift, $by, $allowShared): StaffMember {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
 
             if (!$allowShared) {
@@ -51,8 +56,13 @@ final readonly class StaffRoster
             }
 
             $entry = new StaffMember($event, $details->fullName, $details->mobile, $details->email, $this->rosterMemberMatch->of($event->getOrganisation(), $details));
+            $entry->setJob($job);
             $this->entityManager->persist($entry);
             $this->audit(self::ADDED, $entry, $by);
+
+            if (null !== $shift) {
+                $this->staffPlan->assignWithin($shift, $entry, $by);
+            }
             $this->entityManager->flush();
 
             return $entry;
@@ -63,13 +73,14 @@ final readonly class StaffRoster
         return $entry;
     }
 
-    /** Warns as Add does only when the stored number changes; once the contacts are erased only the name is kept. */
-    public function edit(StaffMember $entry, StaffDetails $details, User $by, bool $allowShared): StaffMember
+    /** Warns as Add does only when the stored number changes; once the contacts are erased only the name and job are kept. Refused 409 `staff_on_shifts` when someone on a shift would change job. */
+    public function edit(StaffMember $entry, StaffDetails $details, ?StaffJob $job, User $by, bool $allowShared): StaffMember
     {
         $event = $entry->getEvent();
 
-        $this->entityManager->wrapInTransaction(function () use ($event, $entry, $details, $by, $allowShared): void {
+        $this->entityManager->wrapInTransaction(function () use ($event, $entry, $details, $job, $by, $allowShared): void {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            $this->staffPlan->refuseJobChange($entry, $job);
             $erased = null !== $entry->getContactsErasedAt();
 
             if (!$erased && !$allowShared && $details->mobile !== $entry->getMobile()) {
@@ -77,6 +88,7 @@ final readonly class StaffRoster
             }
 
             $entry->rename($details->fullName);
+            $entry->setJob($job);
 
             if (!$erased) {
                 $entry->reach($details->mobile, $details->email, $this->rosterMemberMatch->of($event->getOrganisation(), $details));
@@ -104,6 +116,7 @@ final readonly class StaffRoster
             }
 
             $this->audit(self::REMOVED, $entry, $by);
+            $this->staffPlan->release($entry);
             $this->entityManager->remove($entry);
             $this->entityManager->flush();
         });
@@ -114,7 +127,7 @@ final readonly class StaffRoster
     private function refuseShared(Event $event, ?string $mobile, ?StaffMember $besides): void
     {
         $shared = null === $mobile ? null : Iter\search(
-            RosterOrder::sort($this->staffMemberRepository->findOnEvent($event)),
+            RosterOrder::sort($this->staffMemberRepository->findOnEvent($event), $this->earliest($event)),
             static fn (StaffMember $entry): bool => $entry->getMobile() === $mobile && $entry !== $besides,
         );
 
@@ -125,6 +138,20 @@ final readonly class StaffRoster
                 members: ['sharedWith' => $shared->getFullName()],
             );
         }
+    }
+
+    /** @return array<string, list<StaffShift>> */
+    private function earliest(Event $event): array
+    {
+        $theirs = [];
+
+        foreach ($this->staffShiftRepository->findOnEvent($event) as $shift) {
+            foreach ($shift->getPeople() as $person) {
+                $theirs[$person->getId()->toRfc4122()][] = $shift;
+            }
+        }
+
+        return $theirs;
     }
 
     private function audit(string $action, StaffMember $entry, User $by): void

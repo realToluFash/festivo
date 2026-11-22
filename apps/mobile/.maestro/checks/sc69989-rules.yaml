@@ -1,0 +1,9 @@
+# sc-69989 regression: Sign-in rules' New tag on a change this device has not shown.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil: { visible: '{{t:signInRules.stand.whereTitle}}', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: '{{t:signInRules.stand.new}}', direction: DOWN, timeout: 15000, optional: true }
+- takeScreenshot: rules

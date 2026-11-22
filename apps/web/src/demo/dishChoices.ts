@@ -14,6 +14,7 @@ import {
   LW,
   allergenName,
   lengthOf,
+  listOf,
   sameName,
 } from './menuLibrary.ts';
 
@@ -426,9 +427,6 @@ export function savedChoice(form: ChoiceForm, was: Choice | null): Choice {
     noneAnswers: was?.noneAnswers ?? 0,
   };
 }
-
-const listOf = (names: readonly string[]): string =>
-  new Intl.ListFormat('en', { type: 'conjunction' }).format(names);
 
 /** Until sc-3913: one line per picked option whose added allergens somebody who picked it has recorded. Each person counts once; an Other allergy never matches. */
 export function optionAllergenLines(was: Choice, next: Choice, lang: Lang = 'en'): string[] {

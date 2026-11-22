@@ -336,3 +336,8 @@
   color: var(--colorInk);
   font: var(--deskLine);
 }
+
+/* sc-74701: whatever a notice landing rings (a notice, the next notice's words, the page heading) keeps 12px clear of its scroller's edges, so its ring shows whole. */
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
+}

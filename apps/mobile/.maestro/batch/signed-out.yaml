@@ -16,5 +16,5 @@ appId: host.exp.Exponent
       - runFlow: sign-in-form.yaml
       - openLink: ${METRO_URL}/--/
       - extendedWaitUntil:
-          visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
+          visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.dueSetUp}}|{{t:any:signInRules.unlinkedLink}}|{{t:any:signInRules.gateTitle}}|{{t:any:signInRules.changedSee}}|{{t:any:signInRules.overdueTitle}}'
           timeout: 30000

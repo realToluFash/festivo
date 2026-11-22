@@ -15,6 +15,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_audit_subject', columns: ['subject_type', 'subject_id'])]
 #[ORM\Index(name: 'idx_audit_occurred', columns: ['occurred_at'])]
 #[ORM\Index(name: 'idx_audit_actor', columns: ['actor_type', 'actor_id'])]
+#[ORM\Index(name: 'idx_audit_organisation', columns: ['organisation_id', 'occurred_at'])]
 class AuditEntry
 {
     #[ORM\Id]
@@ -52,6 +53,23 @@ class AuditEntry
     #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
     private ?string $correlationId;
 
+    /** Whose log it shows in, read when it was recorded (sc-611); null for an entry about a person's own account. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $organisationId;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $eventId;
+
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $eventName;
+
+    /** The name of what it was done to, as it was then. */
+    #[ORM\Column(type: Types::STRING, length: 720, nullable: true)]
+    private ?string $target;
+
+    #[ORM\Column(type: Types::STRING, length: 512, nullable: true)]
+    private ?string $userAgent;
+
     /** @param array<string, array{0: mixed, 1: mixed}> $changes */
     public function __construct(
         Actor $actorType,
@@ -64,6 +82,11 @@ class AuditEntry
         ?string $ip = null,
         ?string $correlationId = null,
         ?DateTimeImmutable $occurredAt = null,
+        ?Uuid $organisationId = null,
+        ?Uuid $eventId = null,
+        ?string $eventName = null,
+        ?string $target = null,
+        ?string $userAgent = null,
     ) {
         $this->id = Uuid::v7();
         $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
@@ -76,6 +99,11 @@ class AuditEntry
         $this->changes = $changes;
         $this->ip = $ip;
         $this->correlationId = $correlationId;
+        $this->organisationId = $organisationId;
+        $this->eventId = $eventId;
+        $this->eventName = $eventName;
+        $this->target = $target;
+        $this->userAgent = $userAgent;
     }
 
     public function getId(): Uuid
@@ -132,5 +160,30 @@ class AuditEntry
     public function getIp(): ?string
     {
         return $this->ip;
+    }
+
+    public function getOrganisationId(): ?Uuid
+    {
+        return $this->organisationId;
+    }
+
+    public function getEventId(): ?Uuid
+    {
+        return $this->eventId;
+    }
+
+    public function getEventName(): ?string
+    {
+        return $this->eventName;
+    }
+
+    public function getTarget(): ?string
+    {
+        return $this->target;
+    }
+
+    public function getUserAgent(): ?string
+    {
+        return $this->userAgent;
     }
 }

@@ -2196,24 +2196,6 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.no-organisation-invitations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-}
-
-.no-organisation-footnote {
-  justify-content: space-between;
-}
-
-.no-organisation .no-organisation-heading {
-  margin-top: var(--spaceXs);
-  font: var(--typeLabel);
-  letter-spacing: var(--typeLabelTracking);
-  text-transform: uppercase;
-  color: var(--colorInkSecondary);
-}
-
 /* A dialog over the whole shell: centred on a desk, a sheet at phone width. */
 .dialog-scrim {
   position: fixed;
@@ -2995,7 +2977,7 @@ span {
 }
 
 .no-organisation-main {
-  padding: var(--space6xl) var(--spaceXl);
+  padding: 0 var(--spaceXl);
 }
 
 .no-organisation-account {
@@ -3009,16 +2991,6 @@ span {
 /* The Settings list takes its 272 beside the account page, which keeps the width it had alone. */
 .no-organisation-account:has(> .settings-desk) {
   max-width: calc(47.5rem + 2 * var(--space5xl) + 17rem);
-}
-
-.no-organisation {
-  max-width: 35rem;
-  margin: 0 auto;
-}
-
-.no-organisation h1,
-.no-organisation p {
-  margin: 0;
 }
 
 /* ── A phone number: its country code, then the number ───────────────────── */
@@ -4850,7 +4822,12 @@ button.members-row {
   font: var(--typeSmall);
 }
 
-.timeline-row > .link-button {
+.timeline-action {
+  text-decoration: none;
+}
+
+.timeline-row > .link-button,
+.timeline-row > .timeline-action {
   grid-area: action;
   justify-self: start;
 }

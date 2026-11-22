@@ -121,6 +121,9 @@ function headcountOf(counts: Record<string, number> = {}) {
       held: 0,
       declined: 0,
       heldBy: { hostNoReply: 0, hostMaybe: 0, hostNotComing: 0 },
+      walkIns: 0,
+      attended: 0,
+      expected: counts.accepted ?? 0,
       ...counts,
     },
     byGroup: [],
@@ -384,17 +387,17 @@ describe('Events Home (sc-3594)', () => {
         live('Wedding', {
           id: 'ev_wed',
           name: 'Adaeze & Tunde’s wedding',
-          guests: { invited: 142, coming: 96, notReplied: 25 },
+          guests: { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 },
         }),
         live('Party', {
           startsAt: '2026-11-20T16:00:00+01:00',
           endsAt: '2026-11-20T22:00:00+01:00',
-          guests: { invited: 3, coming: 0, notReplied: 3 },
+          guests: { invited: 3, coming: 0, notReplied: 3, attended: 0, expected: 0 },
         }),
         live('Nobody yet', {
           startsAt: '2026-11-21T16:00:00+01:00',
           endsAt: '2026-11-21T22:00:00+01:00',
-          guests: { invited: 0, coming: 0, notReplied: 0 },
+          guests: { invited: 0, coming: 0, notReplied: 0, attended: 0, expected: 0 },
         }),
         live('Unread', {
           startsAt: '2026-11-22T16:00:00+01:00',
@@ -457,7 +460,7 @@ describe('Events Home (sc-3594)', () => {
     const hub = () =>
       json({ token: 'tok', expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
     const headcounts = () => made.filter((one) => one.url.includes('headcount'));
-    let figures = { invited: 142, coming: 96, notReplied: 25 };
+    let figures = { invited: 142, coming: 96, notReplied: 25, attended: 0, expected: 0 };
     const sent = answering({
       'GET /api/orgs/org_1/events': (body, url) =>
         listed([
@@ -477,7 +480,7 @@ describe('Events Home (sc-3594)', () => {
       sent.find((one) => one.line === 'POST /api/orgs/org_1/events/headcounts/subscriptions')?.body,
     ).toEqual({ events: ['ev_wed'] });
 
-    figures = { invited: 142, coming: 97, notReplied: 24 };
+    figures = { invited: 142, coming: 97, notReplied: 24, attended: 0, expected: 0 };
     act(() => headcounts()[0]!.onmessage?.({ data: JSON.stringify({ headcount: {} }) }));
 
     expect(
@@ -2184,14 +2187,17 @@ describe("An event's page", () => {
     expect(screen.queryByText('Not yours')).toBeNull();
   });
 
-  it.each(['dates', 'people', 'messages', 'budget', 'reports'])(
+  it.each(['dates', 'people', 'messages', 'reports'])(
     'ends where Overview ends at a wide desk, on /%s (sc-59375)',
     async (area) => {
       signedIn();
       answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
       at(`/app/events/ev_1/${area}`);
 
-      const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+      const heading = await screen.findByRole('heading', {
+        level: 1,
+        name: area === 'people' ? 'People' : 'Adaeze and Tunde',
+      });
 
       expect(heading.closest('.event-page')).not.toBeNull();
       expect(heading.closest('.ev')).toBeNull();
@@ -5560,6 +5566,38 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
     expect(within(page).queryByRole('listitem')).toBeNull();
   });
+
+  it('links a milestone to where it is acted on under its row, on Coming up and All dates, and only the action is a link (sc-3905)', async () => {
+    clockAt('2026-10-11T08:00:00Z');
+    signedIn();
+    const picks = {
+      ...milestone('2026-10-17T16:00:00+02:00', 'Picks close', 'automatic'),
+      area: 'menu',
+      action: { label: 'Open the menu', link: '/app/events/ev_1/menu' },
+    };
+    answering({
+      'GET /api/events/ev_1': () => json({ event: event() }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({ ...MADRID, milestones: [picks, ...MADRID.milestones.slice(1)] }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+    const link = await within(panel).findByRole('link', { name: 'Open the menu' });
+
+    expect(link.getAttribute('href')).toBe('/app/events/ev_1/menu');
+    expect(link.closest('li')!.textContent).toContain('Picks close');
+    expect(within(link.closest('li')!).getAllByRole('link')).toEqual([link]);
+
+    fireEvent.click(within(panel).getByRole('link', { name: 'All dates' }));
+    const page = (await screen.findByRole('heading', { level: 2, name: 'All dates' })).closest(
+      'section',
+    )!;
+    const onAllDates = await within(page).findByRole('link', { name: 'Open the menu' });
+
+    expect(onAllDates.getAttribute('href')).toBe('/app/events/ev_1/menu');
+    expect(within(page).getAllByRole('link', { name: 'Open the menu' })).toHaveLength(1);
+  });
 });
 
 describe('Someone who can only view an event is never told to change its dates or resume it (sc-50996)', () => {
@@ -5721,4 +5759,342 @@ describe('Make live, Pause, Call off and End now keep the keyboard in their dial
       expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
     },
   );
+});
+
+describe('A currency change refused once amounts are recorded takes focus to its notice (sc-74372)', () => {
+  const IN_USE = 'The currency cannot change once amounts are recorded against this event.';
+
+  async function refusedPick(saving: () => Response | Promise<Response>) {
+    signedIn();
+    const sent: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (line === 'PATCH /api/events/ev_1') return saving();
+
+      return json({ event: event() });
+    });
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Currency$/u }));
+    const [currency] = await within(details).findAllByRole('group', { name: 'Currency' });
+    const radios = within(currency!).getAllByRole('radio');
+    const last = radios[radios.length - 1]!;
+    fireEvent.click(last);
+    const save = within(currency!).getByRole('button', { name: 'Save' });
+
+    return { sent, currency: currency!, last, save };
+  }
+
+  it('focuses the notice once the API answers 409 event_currency_in_use, with no live role to read it twice', async () => {
+    const { currency, last, save } = await refusedPick(() => problem(409, 'event_currency_in_use'));
+
+    save.focus();
+    fireEvent.click(save);
+
+    const notice = (await within(currency).findByText(IN_USE)).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+    expect(notice?.getAttribute('tabindex')).toBe('-1');
+    expect(notice?.hasAttribute('data-notice-landing')).toBe(true);
+    expect((last as HTMLInputElement).checked).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('false');
+    expect(notice!.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
+  it('takes focus to the notice again when Save is pressed again with the same pick', async () => {
+    const { sent, currency, save } = await refusedPick(() => problem(409, 'event_currency_in_use'));
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(currency).getByText(IN_USE).closest('.notice')),
+    );
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(currency).getByText(IN_USE).closest('.notice')),
+    );
+    expect(within(currency).getAllByText(IN_USE)).toHaveLength(1);
+  });
+
+  it('leaves focus where the person moved it while saving, and announces the notice as it appears', async () => {
+    let answer: (response: Response) => void = () => {};
+    const { sent, currency, last, save } = await refusedPick(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+
+    save.focus();
+    fireEvent.click(save);
+    await waitFor(() => expect(sent).toContain('PATCH /api/events/ev_1'));
+    last.focus();
+    await act(async () => answer(problem(409, 'event_currency_in_use')));
+
+    const notice = (await within(currency).findByText(IN_USE)).closest('.notice');
+    expect(notice?.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('keeps focus on Save for the part’s other notices', async () => {
+    const { currency, save } = await refusedPick(() => problem(500, 'internal_error'));
+
+    save.focus();
+    fireEvent.click(save);
+
+    expect(
+      await within(currency).findByText('Not saved. Your changes are still here. Try again.'),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(save);
+    expect(within(currency).queryByText(IN_USE)).toBeNull();
+  });
+});
+
+describe('A part’s save notices show directly above Cancel and Save (sc-74398)', () => {
+  const ANSWERS = [
+    [
+      'a save that failed',
+      () => problem(500, 'internal_error'),
+      'Not saved. Your changes are still here. Try again.',
+    ],
+    [
+      'a role that no longer allows it',
+      () => problem(403, 'permission_required'),
+      'Nothing was changed. Your role does not include the permission this needs.',
+    ],
+    [
+      'a change made elsewhere',
+      () => problem(412, 'precondition_failed'),
+      'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+    ],
+  ] as const;
+
+  async function pickedLastCurrency(saving: () => Response) {
+    signedIn();
+    const sent: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      sent.push(line);
+      if (line === 'PATCH /api/events/ev_1') return saving();
+
+      return json({ event: event() });
+    });
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Currency$/u }));
+    const [currency] = await within(details).findAllByRole('group', { name: 'Currency' });
+    const radios = within(currency!).getAllByRole('radio');
+    const last = radios[radios.length - 1]!;
+    fireEvent.click(last);
+
+    return {
+      sent,
+      currency: currency!,
+      last,
+      save: within(currency!).getByRole('button', { name: 'Save' }),
+    };
+  }
+
+  function directlyAboveSave(part: HTMLElement, words: string): HTMLElement {
+    const notices = within(part).getAllByText(words);
+
+    expect(notices).toHaveLength(1);
+
+    const said = notices[0]!.closest('.ev-save-said');
+
+    expect(said).not.toBeNull();
+    expect(said?.parentElement).toBe(part);
+    expect(said?.nextElementSibling?.classList.contains('ev-opened-actions')).toBe(true);
+
+    return said as HTMLElement;
+  }
+
+  it.each(ANSWERS)(
+    'shows %s below the last currency, right above Cancel and Save, with focus left on Save',
+    async (_, saving, words) => {
+      const { currency, last, save } = await pickedLastCurrency(saving);
+
+      save.focus();
+      fireEvent.click(save);
+
+      await within(currency).findByText(words);
+      const said = directlyAboveSave(currency, words);
+
+      expect(last.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+      expect(document.activeElement).toBe(save);
+    },
+  );
+
+  it('keeps one notice in the same place when Save is pressed again, and brings Save and it back into view', async () => {
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const words = ANSWERS[0][2];
+    const { sent, currency, save } = await pickedLastCurrency(ANSWERS[0][1]);
+
+    fireEvent.click(save);
+    await within(currency).findByText(words);
+    const first = scrolled.mock.calls.length;
+
+    expect(first).toBeGreaterThan(0);
+
+    fireEvent.click(save);
+    await waitFor(() =>
+      expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+    );
+    await waitFor(() => expect(scrolled.mock.calls.length).toBeGreaterThan(first));
+    directlyAboveSave(currency, words);
+  });
+
+  it('puts Show the latest inside the notice right above Save, and Shift+Tab order runs Save, Cancel, Show the latest', async () => {
+    const words = ANSWERS[2][2];
+    const { currency, save } = await pickedLastCurrency(ANSWERS[2][1]);
+
+    fireEvent.click(save);
+    await within(currency).findByText(words);
+    const said = directlyAboveSave(currency, words);
+    const latest = within(said).getByRole('button', { name: 'Show the latest' });
+    const cancel = within(currency).getByRole('button', { name: 'Cancel' });
+
+    expect(latest.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(cancel.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+
+    fireEvent.click(latest);
+    expect(
+      await screen.findByRole('alertdialog', { name: 'Show the latest version?' }),
+    ).toBeDefined();
+  });
+
+  it('shows the role’s refusal in Venue below the arrival note, right above Cancel and Save', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+      `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}` === 'PATCH /api/events/ev_1'
+        ? problem(403, 'permission_required')
+        : json({ event: event() }),
+    );
+    at('/app/events/ev_1');
+    const details = await screen.findByRole('region', { name: 'Details' });
+
+    fireEvent.click(within(details).getByRole('button', { name: /Venue to be confirmed/ }));
+    const note = await within(details).findByLabelText(/Arrival note/u);
+    fireEvent.change(note, { target: { value: 'Doors close at 23:00.' } });
+    fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+
+    const words = ANSWERS[1][2];
+    await within(details).findByText(words);
+    const venue = screen.getByRole('group', { name: 'Venue' });
+    const said = directlyAboveSave(venue, words);
+
+    expect(note.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  });
+
+  it('brings Save into view with room for its whole focus ring, at every width (QA #75127)', () => {
+    expect(cssRule('.ev-opened-actions', EVENT_PAGE_CSS)).toContain(
+      'scroll-margin-block: var(--spaceSm);',
+    );
+  });
+
+  describe('in Reply by, a role that no longer allows it (sc-74926)', () => {
+    const ROLE = ANSWERS[1][2];
+
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function pickedReplyBy(day: string, saving: () => Response) {
+      signedIn();
+      const sent: string[] = [];
+
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+        sent.push(line);
+        if (line === 'PATCH /api/events/ev_1') return saving();
+
+        return json({ event: event({ replyBy: '2026-11-10' }) });
+      });
+      at('/app/events/ev_1');
+      const details = await screen.findByRole('region', { name: 'Details' });
+
+      fireEvent.click(within(details).getByRole('button', { name: /Reply by ·/u }));
+      const part = await within(details).findByRole('group', { name: 'Reply by' });
+      const field = within(part).getByLabelText<HTMLInputElement>(/^Reply by/u);
+      fireEvent.change(field, { target: { value: day } });
+
+      return {
+        sent,
+        details,
+        part,
+        field,
+        save: within(part).getByRole('button', { name: 'Save' }),
+      };
+    }
+
+    it('says nothing was changed, right above Cancel and Save, keeps the date and focus on Save, and offers no retry', async () => {
+      const { sent, details, part, field, save } = await pickedReplyBy('2026-11-12', () =>
+        problem(403, 'permission_required'),
+      );
+
+      save.focus();
+      fireEvent.click(save);
+
+      expect((await within(part).findByRole('alert')).textContent).toContain(ROLE);
+      directlyAboveSave(part, ROLE);
+      expect(within(part).queryByText(/Not saved|Try again/u)).toBeNull();
+      expect(field.value).toBe('2026-11-12');
+      expect(document.activeElement).toBe(save);
+
+      fireEvent.click(save);
+      await waitFor(() =>
+        expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      directlyAboveSave(part, ROLE);
+      expect(within(details).getByText('Tue, Nov 10, 2026')).toBeDefined();
+    });
+
+    it.each([
+      ['Close replies sooner', '2026-11-05'],
+      ['Close replies now', '2026-10-30'],
+    ])('says the same after %s in its ask', async (go, day) => {
+      const { part, field } = await pickedReplyBy(day, () => problem(403, 'permission_required'));
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+      fireEvent.click(await screen.findByRole('button', { name: go }));
+
+      await within(part).findByText(ROLE);
+      directlyAboveSave(part, ROLE);
+      expect(field.value).toBe(day);
+    });
+
+    it('keeps Not saved for a save that failed for another reason', async () => {
+      const { part } = await pickedReplyBy('2026-11-12', ANSWERS[0][1]);
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+
+      await within(part).findByText(ANSWERS[0][2]);
+      directlyAboveSave(part, ANSWERS[0][2]);
+      expect(within(part).queryByText(ROLE)).toBeNull();
+    });
+
+    it('takes the notice away when the date changes', async () => {
+      const { part, field } = await pickedReplyBy('2026-11-12', () =>
+        problem(403, 'permission_required'),
+      );
+
+      fireEvent.click(within(part).getByRole('button', { name: 'Save' }));
+      await within(part).findByText(ROLE);
+      fireEvent.change(field, { target: { value: '2026-11-11' } });
+
+      expect(within(part).queryByText(ROLE)).toBeNull();
+    });
+  });
 });

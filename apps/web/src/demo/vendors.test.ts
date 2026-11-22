@@ -22,6 +22,7 @@ import {
   restored,
   rowLine,
   sampleVendors,
+  savedVendor,
   savedWebsite,
   schemeOf,
   shown,
@@ -38,8 +39,10 @@ const STATES = [
   'category_menu',
   'empty',
   'archived',
+  'none_archived',
   'add_blank',
   'add_invalid',
+  'add_refused',
   'edit',
   'archived_toast',
   'member',
@@ -83,7 +86,7 @@ describe('the vendor directory’s rules (sc-82)', () => {
       'Lens & Light · Marco Rossi · marco@lensandlight.com',
       'Delta Frames · Tolu Ade · +44 20 7946 0321',
       'Golden Spoon · Ama Owusu · events@goldenspoon.co.uk',
-      'Harbour Boats · Sam Okafor · +44 7700 900877',
+      'Harbour Boats · Sam Okafor · +44 117 496 0877',
     ]);
     expect(vendors.filter((one) => one.phone !== '').every((one) => one.country === 'GB')).toBe(
       true,
@@ -155,6 +158,8 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(noMatchLine({ view: 'archived', q: '', category: 'flowers' })).toBe(
       'No archived vendors in Flowers.',
     );
+    expect(noMatchLine({ view: 'archived', q: '', category: 'all' })).toBe('No archived vendors.');
+    expect(noMatchLine({ view: 'inUse', q: '', category: 'all' })).toBe('No vendor matches “”.');
   });
 
   it('counts the card as Members does, and says what an empty directory is for', () => {
@@ -205,11 +210,11 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(draftProblems({ ...base, email: 'sam@harbourboats' }).email).toBe(
       'That does not look like an email address. Check it has an @ and a domain.',
     );
-    expect(draftProblems({ ...base, phone: '7700 900877' }).country).toBe('Choose a country.');
+    expect(draftProblems({ ...base, phone: '0117 496 0877' }).country).toBe('Choose a country.');
     expect(draftProblems({ ...base, country: 'GB', phone: '77' }).phone).toBe(
       'That number looks too short for United Kingdom. Check it and try again.',
     );
-    expect(draftProblems({ ...base, country: 'GB', phone: '7700 900877' })).toEqual({});
+    expect(draftProblems({ ...base, country: 'GB', phone: '0117 496 0877' })).toEqual({});
     expect(draftProblems({ ...base, website: 'ftp://harbourboats.co.uk' }).website).toBe(
       'Enter a web address that starts with https:// or http://, or leave that part off.',
     );
@@ -217,11 +222,27 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(fieldsToFix({ country: 'x', phone: 'y', email: 'z' })).toBe(2);
   });
 
-  it('stands in for the API refusing a number the country does not use', () => {
-    expect(refusedPhone({ ...BLANK, country: 'GB', phone: '000 000 0000' })).toEqual({
+  it('refuses a number the country does not use, as the API does', () => {
+    const refused = {
       phone: 'That is not a phone number for United Kingdom. Check it and try again.',
-    });
+    };
+
+    expect(refusedPhone({ ...BLANK, country: 'GB', phone: '000 000 0000' })).toEqual(refused);
+    expect(refusedPhone({ ...BLANK, country: 'GB', phone: '07700 900877' })).toEqual(refused);
     expect(refusedPhone({ ...BLANK, country: 'GB', phone: '20 7946 0958' })).toEqual({});
+  });
+
+  it('holds only numbers the API saves, written as Edit vendor reads them back', () => {
+    const numbers = sampleVendors().filter((one) => one.phone !== '');
+
+    expect(numbers.length).toBeGreaterThan(0);
+    for (const one of numbers) {
+      expect(refusedPhone({ ...BLANK, country: one.country, phone: one.phone })).toEqual({});
+      expect(one.phone.startsWith('0')).toBe(true);
+    }
+    expect(
+      savedVendor({ ...BLANK, name: 'Bloom', country: 'GB', phone: '2079460958' }, 'v31').phone,
+    ).toBe('020 7946 0958');
   });
 
   it('saves a website typed without a scheme with https://', () => {
@@ -264,13 +285,20 @@ describe('the vendor directory’s rules (sc-82)', () => {
     });
     expect(vendorsStart('add_invalid').dialog?.problems).toEqual({
       email: 'That does not look like an email address. Check it has an @ and a domain.',
-      phone: 'That is not a phone number for United Kingdom. Check it and try again.',
       website: 'Enter a web address that starts with https:// or http://, or leave that part off.',
+    });
+    expect(vendorsStart('add_refused').dialog?.problems).toEqual({
+      phone: 'That is not a phone number for United Kingdom. Check it and try again.',
     });
     expect(vendorsStart('edit').dialog).toMatchObject({
       kind: 'edit',
       id: 'v3',
-      draft: { name: 'Bloom & Co', country: 'GB', website: 'https://bloomandco.co.uk' },
+      draft: {
+        name: 'Bloom & Co',
+        country: 'GB',
+        phone: '020 7946 0958',
+        website: 'https://bloomandco.co.uk',
+      },
     });
     expect(vendorsStart('archived_toast')).toMatchObject({
       told: 'Bloom & Co is archived. It is under Archived.',
@@ -278,6 +306,12 @@ describe('the vendor directory’s rules (sc-82)', () => {
     expect(vendorsStart('archived_toast').vendors.find((one) => one.id === 'v3')?.archivedOn).toBe(
       '2026-11-03',
     );
+    expect(vendorsStart('none_archived')).toMatchObject({
+      looking: { view: 'archived', q: '', category: 'all' },
+    });
+    expect(
+      shown(vendorsStart('none_archived').vendors, { ...NOT_LOOKING, view: 'archived' }),
+    ).toEqual([]);
     expect(vendorsViewerKey(null, 'member')).toBe('ana');
     expect(vendorsViewerKey('julien', 'populated')).toBe('julien');
   });

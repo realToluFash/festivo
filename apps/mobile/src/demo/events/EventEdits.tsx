@@ -9,12 +9,14 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
+  Linking,
   Pressable,
   StyleSheet,
   type TextInputInstance,
   View,
   type ViewInstance,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { SearchField } from '../../components/EventsSearch.tsx';
@@ -44,6 +46,8 @@ import {
 import { PhotoFill } from '../../components/EventThumb.tsx';
 import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
+import { GlyphMark } from '../../components/StatusMark.tsx';
+import { RowRule } from '../../components/SummaryRows.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -54,7 +58,22 @@ import { ASK_WIDTH, type AskProps, TextAction } from '../../components/Summary.t
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { LONG_NOTE, ARRIVAL_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './ArrivalNote.ts';
-import { type EditPart, type EventDemoState, folded, instantOf, wallOf } from './EventsModel.ts';
+import {
+  CREDIT_TYPED,
+  type CreditLanguage,
+  OSM_COPYRIGHT,
+  OSM_CREDIT,
+  STADIA_ATTRIBUTION,
+  creditLanguageOf,
+  isCreditState,
+} from './addressCredit.ts';
+import {
+  type EditPart,
+  type EventDemoState,
+  instantOf,
+  suggestionsFor,
+  wallOf,
+} from './EventsModel.ts';
 import {
   CLOSES_AT,
   datesAsk,
@@ -360,6 +379,7 @@ const REPLY_BY_TYPED: Partial<Record<EventDemoState, string>> = {
   replyByError: '2026-11-05',
   replyBySooner: '2026-11-03',
   replyByNow: '2026-11-02',
+  replyByGone: '2026-11-03',
 };
 
 /** Reply by (sc-3780): an optional day; a day on or after the start is refused, and closing replies sooner asks first. */
@@ -377,6 +397,7 @@ function ReplyByEdit(edit: EditProps) {
       : null,
   );
   const [picking, setPicking] = useState<Picking | null>(null);
+  const [gone, setGone] = useState(false);
   const box = useRef<ViewInstance>(null);
   const [aim, setAim] = useState(0);
   const next = value === '' ? null : value;
@@ -384,7 +405,8 @@ function ReplyByEdit(edit: EditProps) {
   const keep = saved == null ? W.keepEditing : say.keepDate(formatWallDay(saved, locale));
   const done = () => {
     setAsking(null);
-    edit.onReplyBy?.(next);
+    if (start === 'replyByGone') setGone(true);
+    else edit.onReplyBy?.(next);
   };
   const save = () => {
     if (wrong) {
@@ -443,6 +465,7 @@ function ReplyByEdit(edit: EditProps) {
       edit={edit}
       ask={ask}
       over={pickerOver(picking, locale, () => setPicking(null))}
+      failed={gone ? W.eventGone : null}
     >
       <EventField
         label={W.replyBy}
@@ -518,6 +541,7 @@ export function VenueFields({
   addressRef,
   autoFocus = false,
   off = false,
+  credit = 'en',
   testID,
 }: {
   name: string;
@@ -534,66 +558,103 @@ export function VenueFields({
   addressRef?: RefObject<TextInputInstance | null>;
   autoFocus?: boolean;
   off?: boolean;
+  credit?: CreditLanguage;
   testID: string;
 }) {
   const [chosen, setChosen] = useState<Suggestion | null>(offering);
   const [offer, setOffer] = useState(offering != null);
-  const looking = chosen == null && !down && folded(address).length >= 3;
-  const found = looking
-    ? SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)))
-    : [];
+  const found = chosen == null && !down ? suggestionsFor(address) : [];
 
   useReadOut(found.length > 0 ? say.suggestionsBelow(found.length) : null);
 
   return (
-    <VenueFieldsView
-      name={name}
-      address={address}
-      onName={onName}
-      onAddress={(typed) => {
-        onAddress(typed);
-        setChosen(null);
-        setOffer(false);
-      }}
-      suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
-      onSuggestion={(key) => {
-        const one = found.find((each) => each.name === key);
-        if (one == null) return;
-        onName(one.name);
-        onAddress(one.address);
-        setChosen(one);
-        setOffer(one.timeZone !== zone);
-      }}
-      down={down}
-      offer={
-        offer && chosen != null
-          ? {
-              zone: chosen.timeZone,
-              keep: zone,
-              onUse: () => {
-                onZone(chosen.timeZone);
-                setOffer(false);
-              },
-              onKeep: () => setOffer(false),
-            }
-          : null
-      }
-      nameError={nameError}
-      addressError={addressError}
-      {...(nameRef == null ? {} : { nameRef })}
-      {...(addressRef == null ? {} : { addressRef })}
-      autoFocus={autoFocus}
-      off={off}
-      testID={testID}
-    />
+    <>
+      <VenueFieldsView
+        name={name}
+        address={address}
+        onName={onName}
+        onAddress={(typed) => {
+          onAddress(typed);
+          setChosen(null);
+          setOffer(false);
+        }}
+        suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
+        onSuggestion={(key) => {
+          const one = found.find((each) => each.name === key);
+          if (one == null) return;
+          onName(one.name);
+          onAddress(one.address);
+          setChosen(one);
+          setOffer(one.timeZone !== zone);
+        }}
+        down={down}
+        offer={
+          offer && chosen != null
+            ? {
+                zone: chosen.timeZone,
+                keep: zone,
+                onUse: () => {
+                  onZone(chosen.timeZone);
+                  setOffer(false);
+                },
+                onKeep: () => setOffer(false),
+              }
+            : null
+        }
+        nameError={nameError}
+        addressError={addressError}
+        {...(nameRef == null ? {} : { nameRef })}
+        {...(addressRef == null ? {} : { addressRef })}
+        autoFocus={autoFocus}
+        off={off}
+        testID={testID}
+      />
+      {found.length > 0 && <AddressCredit language={credit} testID={`${testID}.credit`} />}
+    </>
+  );
+}
+
+/** sc-80918: under the last suggestion, past a hairline, and not one of them: each link opens in the device's browser, and each is its own 48pt target. */
+function AddressCredit({ language, testID }: { language: CreditLanguage; testID: string }) {
+  const words = OSM_CREDIT[language];
+  const link = (url: string, name: string, id: string) => (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLanguage={language}
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
+      testID={`${testID}.${id}`}
+    >
+      <Text size={13} weight="medium" style={styles.creditWords}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <>
+      <RowRule inset={40} />
+      <View style={styles.credit} testID={testID}>
+        <Text size={13} weight="medium" style={styles.secondary}>
+          ©{' '}
+        </Text>
+        {link(STADIA_ATTRIBUTION, words.stadia, 'stadia')}
+        <Text size={13} weight="medium" style={styles.secondary}>
+          {' '}
+          ©{' '}
+        </Text>
+        {link(OSM_COPYRIGHT, words.osm, 'osm')}
+      </View>
+    </>
   );
 }
 
 function VenueEdit(edit: EditProps) {
   const { event, start } = edit;
   const eko = SUGGESTIONS[0];
-  const sample =
-    start === 'venueSuggestions'
+  const sample = isCreditState(start)
+    ? { name: '', address: CREDIT_TYPED[start] }
+    : start === 'venueSuggestions'
       ? { name: '', address: 'Eko Hot' }
       : start === 'venueZone' && eko != null
         ? { name: eko.name, address: eko.address }
@@ -669,7 +730,8 @@ function VenueEdit(edit: EditProps) {
         onZone={setZone}
         down={down}
         offering={start === 'venueZone' ? (eko ?? null) : null}
-        autoFocus={start === 'venueSuggestions' || down}
+        autoFocus={start === 'venueSuggestions' || isCreditState(start) || down}
+        credit={creditLanguageOf(start)}
         testID="event.edit.venue"
       />
       <ArrivalNoteField
@@ -702,10 +764,12 @@ function HostsEdit(edit: EditProps) {
   );
   const [tried, setTried] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
+  const [first, setFirst] = useState(false);
   const names = hosts.map((host) => host.name);
   const problems = hostProblems(names);
   const kept = keepsLastHost(event, hosts.length);
-  const changed = names.join('\n') !== event.hosts.join('\n');
+  const changed =
+    names.length !== event.hosts.length || names.some((name, at) => name !== event.hosts[at]);
 
   useReadOut(said);
 
@@ -719,16 +783,50 @@ function HostsEdit(edit: EditProps) {
 
   return (
     <Shell part="hosts" changed={changed} onSave={save} edit={edit}>
-      <HostRows
-        hosts={hosts}
-        onHosts={setHosts}
-        errors={hostErrorWords(names, tried)}
-        kept={kept}
-        focusAt={start === 'hostsDuplicate' ? 2 : start === 'lastHost' ? 0 : null}
-        onSaid={setSaid}
-        testID="event.edit.hosts"
-      />
+      {hosts.length === 0 ? (
+        <NoHosts
+          onAdd={() => {
+            setFirst(true);
+            setHosts([{ key: 0, name: '' }]);
+          }}
+        />
+      ) : (
+        <HostRows
+          hosts={hosts}
+          onHosts={setHosts}
+          errors={hostErrorWords(names, tried)}
+          kept={kept}
+          focusAt={start === 'hostsDuplicate' ? 2 : start === 'lastHost' || first ? 0 : null}
+          onSaid={setSaid}
+          testID="event.edit.hosts"
+        />
+      )}
     </Shell>
+  );
+}
+
+/** sc-15497: a draft with no hosts says so in an inset line between the explainer and Add a host. */
+function NoHosts({ onAdd }: { onAdd: () => void }) {
+  const { t: translate } = useTranslation();
+
+  return (
+    <>
+      <Text size={15} weight="medium" style={[styles.secondary, styles.lines]}>
+        {translate('eventHosts.explainer')}
+      </Text>
+      <View style={[styles.inset, styles.noHosts]} testID="event.edit.hosts.none">
+        <GlyphMark mark={tokens.marks.notStarted} />
+        <Text size={tokens.typeBody.size} style={styles.grow}>
+          {translate('eventHosts.none')}
+        </Text>
+      </View>
+      <TextAction
+        label={translate('eventHosts.add')}
+        glyph="plus"
+        onPress={onAdd}
+        testID="event.edit.hosts.add"
+      />
+    </>
   );
 }
 
@@ -822,15 +920,27 @@ export function CurrencySearch({
 const NAME_MOST = 120;
 
 function NameEdit(edit: EditProps) {
-  const [name, setName] = useState(edit.start === 'nameBlank' ? '' : edit.event.name);
+  const [name, setName] = useState(
+    edit.start === 'nameBlank'
+      ? ''
+      : edit.start === 'nameGone'
+        ? `${edit.event.name}, the reception`
+        : edit.event.name,
+  );
+  const [gone, setGone] = useState(false);
   const blank = name.trim() === '';
 
   return (
     <Shell
       part="name"
       changed={name.trim() !== edit.event.name}
-      onSave={() => !blank && edit.onSaved({ ...edit.event, name: name.trim() })}
+      onSave={() => {
+        if (blank) return;
+        if (edit.start === 'nameGone') setGone(true);
+        else edit.onSaved({ ...edit.event, name: name.trim() });
+      }}
       edit={edit}
+      failed={gone ? W.eventGone : null}
     >
       <NameView
         name={name}
@@ -947,6 +1057,19 @@ const styles = StyleSheet.create({
   none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
+  credit: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    paddingLeft: 40,
+  },
+  creditLink: {
+    minWidth: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexShrink: 1,
+    justifyContent: 'center',
+  },
+  creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',
@@ -959,6 +1082,8 @@ const styles = StyleSheet.create({
   },
   lines: { lineHeight: 15 * 1.45 },
   start: { alignItems: 'flex-start' },
+  noHosts: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  grow: { flexGrow: 1, flexShrink: 1 },
   inset: {
     paddingVertical: tokens.spaceMd,
     paddingHorizontal: tokens.spaceLg,

@@ -909,8 +909,11 @@
         const here = d.roles.filter((r) => r.state !== 'refused');
         const running = here.reduce((n, r) => n + (r.running || 0), 0);
         const slots = here.reduce((n, r) => n + (r.workers || 1), 0);
-        const waitingHere = here.reduce((n, r) => n + (r.waiting || 0), 0);
-        const waitingElse = d.elsewhere.reduce((n, r) => n + r.waiting, 0);
+        const away = here.filter((r) => r.state === 'elsewhere').concat(d.elsewhere);
+        const waitingHere = here
+          .filter((r) => r.state !== 'elsewhere')
+          .reduce((n, r) => n + (r.waiting || 0), 0);
+        const waitingElse = away.reduce((n, r) => n + (r.waiting || 0), 0);
         const week = d.spend.reduce((n, s) => n + s.total, 0);
         const tiles = [
           ['Spent today', money(today.total), `${money(week)} over 7 days`],
@@ -921,7 +924,7 @@
             `${here.length} roles on this machine`,
           ],
           ['Waiting here', waitingHere, "items for this machine's roles"],
-          ['Waiting elsewhere', waitingElse, `${d.elsewhere.length} roles on other machines`],
+          ['Waiting elsewhere', waitingElse, `${away.length} roles on other machines`],
         ];
         document.getElementById('kpis').innerHTML = tiles
           .map(
@@ -941,7 +944,7 @@
               : label;
         const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
     <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
-    ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting}</div><div class="l">waiting</div></div>`}</div>`;
+    ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting ?? '?'}</div><div class="l">waiting</div></div>`}</div>`;
         if (r.state === 'refused')
           return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span></div>
       <div class="block"><div class="v">${esc(r.detail)}</div></div></div>`;
@@ -1067,8 +1070,8 @@
               (
                 r,
               ) => `<tr><td><span class="role-chip">${esc(r.role)}</span> <span class="role-title">${esc(TITLES[r.role] || '')}</span></td>
-      <td class="num">${r.waiting}</td>
-      <td class="report">${r.held ? '<b>Working on</b> ' + esc(r.held.reason) : esc((r.next[0] || {}).reason)}</td></tr>`,
+      <td class="num">${r.waiting ?? '?'}</td>
+      <td class="report">${r.held ? '<b>Working on</b> ' + esc(r.held.reason) : esc((r.next[0] || {}).reason || (r.waiting === null ? `${r.counted_on} did not answer` : ''))}</td></tr>`,
             )
             .join('');
         document.getElementById('recent').innerHTML = d.recent.length

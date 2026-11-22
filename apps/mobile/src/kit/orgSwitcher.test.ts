@@ -1,13 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { InvitationPreview, JoinOffer, Membership } from '@soirely/api-client';
+import type { InvitationPreview, JoinOffer, Membership, OutsideEvent } from '@soirely/api-client';
 import type { InvitationOutcome } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
-import { openerAfterTurn, switcherSession, tilesOf } from './orgSwitcher.ts';
+import {
+  foundBy,
+  noOrganisationEnd,
+  openerAfterTurn,
+  switcherSession,
+  tilesOf,
+} from './orgSwitcher.ts';
 
 const membership = (id: string, name: string): Membership =>
   ({ id, name, role: 'member' }) as unknown as Membership;
@@ -33,6 +39,7 @@ const noOffer: DomainOffer = {
   organisation: null,
   domain: null,
   asked: false,
+  managed: null,
   ask: () => Promise.resolve(),
   dismiss: () => Promise.resolve(),
 };
@@ -166,5 +173,72 @@ describe('openerAfterTurn', () => {
 
   it('keeps the opener when nothing is drawn in its place', () => {
     expect(openerAfterTurn(gone, [{ current: null }])).toBe(gone);
+  });
+});
+
+describe('a search across the organisations and the events from outside (sc-68438)', () => {
+  const many = Array.from({ length: 16 }, (_, n) => membership(`org-${n}`, `Studio ${n}`));
+  const held = (id: string, name: string) => ({ id, name }) as unknown as OutsideEvent;
+  const WEDDING = held('ev-1', 'Ìrè wedding');
+  const LAUNCH = held('ev-2', 'Studio launch');
+
+  it('keeps only the events whose name holds what is typed, and counts them with the tiles', () => {
+    const found = foundBy(session({ organisations: many }), [WEDDING, LAUNCH], 'ire');
+
+    expect(found.held).toEqual([WEDDING]);
+    expect(found.none).toBe(false);
+    expect(found.count).toBe(1);
+  });
+
+  it('says nothing was found only when neither an organisation nor an event matches', () => {
+    expect(foundBy(session({ organisations: many }), [WEDDING], 'zzz')).toEqual({
+      held: [],
+      none: true,
+      count: 0,
+    });
+  });
+
+  it('lists every event while the switcher has no search', () => {
+    expect(foundBy(session(), [WEDDING, LAUNCH], 'ire').held).toEqual([WEDDING, LAUNCH]);
+  });
+});
+
+describe('the switcher, for a managed account (sc-73668)', () => {
+  const refused: InvitationOutcome = {
+    kind: 'managed',
+    organisation: 'Ire Events',
+    message: 'Your ire.events address is managed by Ire Events, so you can only be a member there.',
+  };
+
+  it('lists an invitation the account cannot accept, though nothing was pressed in this opening', () => {
+    expect(kinds(session({ waiting: waiting({ [invitation.id]: refused }) }))).toEqual([
+      'Ire Events*',
+      'Casa Lumen',
+      'invitation',
+      'create',
+    ]);
+  });
+
+  it('puts the banner under the invitation opened, and under none while it is closed', () => {
+    const outcomes = { [invitation.id]: refused };
+
+    expect(session({ waiting: waiting(outcomes) }).managed).toBeUndefined();
+    expect(session({ waiting: waiting(outcomes), expanded: invitation.id }).managed).toBe(
+      invitation.id,
+    );
+  });
+});
+
+describe('You are not in an organisation, managed (sc-563)', () => {
+  it('reads the banner in place of Start your own, and neither until the API has said', () => {
+    const managed = {
+      organisation: { id: IRE.id, name: IRE.name },
+      message:
+        'Your ire.events address is managed by Ire Events, so you can only be a member there.',
+    } as unknown as NonNullable<DomainOffer['managed']>;
+
+    expect(noOrganisationEnd(undefined)).toBeNull();
+    expect(noOrganisationEnd(null)).toBe('start');
+    expect(noOrganisationEnd(managed)).toBe('managed');
   });
 });

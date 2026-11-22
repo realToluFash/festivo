@@ -234,6 +234,7 @@ def tick(db, home, platform, sq, python, now, dry_run, say, remote, config, read
         void_passes(db, now, say)
     if not dry_run and update.check(db, home, now, say):
         say("the new sq takes over from the next minute")
+        platform.restart_web()
     if not dry_run:
         platform.install(sq, machine.env_file(), python)
     remote = remote or shared.GitHubRefs()
@@ -395,8 +396,14 @@ def command(values, config_dir, allowed=(), denied=(), session=None):
 
 
 def account_env(config_dir):
-    env = dict(os.environ)
+    """The environment a folder's Claude runs in: its own token when the env file holds one,
+    and never another account's."""
     folder = machine.expand(config_dir)
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(machine.TOKEN)}
+    source = machine.token_source(folder)
+    if source:
+        env[machine.TOKEN] = os.environ[source]
     # Claude's own folder runs as Claude does by default, with nothing set.
     if machine.is_claude_default(folder):
         env.pop("CLAUDE_CONFIG_DIR", None)

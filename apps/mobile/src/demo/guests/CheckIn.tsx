@@ -27,7 +27,8 @@ import {
   doorShown,
   nameProblem,
 } from './GuestsModel.ts';
-import { Amber, Choices, GuestToast, GuestsCard, type Layout } from './GuestsParts.tsx';
+import { Amber, AmberChoices } from '../../components/Amber.tsx';
+import { GuestToast, GuestsCard, type Layout } from './GuestsParts.tsx';
 import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSample.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
@@ -467,15 +468,17 @@ export function CheckInScreen({
         overlay={told}
       >
         <View style={styles.panes}>
-          <ScrollView
-            style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}
-            contentContainerStyle={styles.paneBody}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {title}
-            {body}
-          </ScrollView>
+          <View style={[styles.doorPane, walkIn != null && styles.doorPaneNarrow]}>
+            <ScrollView
+              style={styles.grow}
+              contentContainerStyle={styles.paneBody}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {title}
+              {body}
+            </ScrollView>
+          </View>
           {walkIn != null && (
             <ScrollView
               style={styles.grow}
@@ -596,7 +599,7 @@ function WalkInForm({
       />
       {same != null ? (
         <Amber title={say.sameName(same)} testID="door.walkIn.same">
-          <Choices
+          <AmberChoices
             first={{
               label: W.markThemArrived,
               onPress: () => onArrive(same),

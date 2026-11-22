@@ -15,15 +15,19 @@ import { layoutOf } from '../../components/settingsShell.ts';
 import { settingsHref } from '../settings/Route.tsx';
 import { lookingAs } from '../settings/sample.ts';
 import { EventScreen } from './EventPage.tsx';
+import { type Opened, openerOf } from './opener.ts';
 import { backToEvents } from './EventFrame.tsx';
 import { EventsList } from './EventsList.tsx';
 import { EventGone } from './EventGone.tsx';
-import { eventStateOf, listStateOf } from './EventsModel.ts';
+import { linkStateOf } from './EventLink.ts';
+import { EventLinkPage } from './EventLinkPage.tsx';
+import { eventStateBeside, listStateOf } from './EventsModel.ts';
 import { AT_READ, refusedStartOf } from './DeleteRefusal.ts';
 import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsFromOf, guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
+import { rosterStateOf } from '../staffLink/StaffRosterModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
 import { say } from './EventsWords.ts';
@@ -169,7 +173,7 @@ function ListRoute({
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card; with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863), ?from= for what it was opened over, ?pushed=1 when that screen is under it and ?q= for Search's term, with ?lang=es and ?refreshing=1 (sc-83008); with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -179,18 +183,43 @@ export function EventRoute() {
     as?: string;
     people?: string;
     filter?: string;
+    staff?: string;
+    link?: string;
+    from?: string;
+    pushed?: string;
+    q?: string;
+    lang?: string;
+    refreshing?: string;
   }>();
+  const link = linkStateOf(params.link);
+  const opened: Opened = {
+    opener: openerOf(params.from),
+    pushed: params.pushed === '1',
+    term: params.q ?? null,
+    spanish: params.lang === 'es',
+    refreshing: params.refreshing === '1',
+  };
   const area = areaOf(params.area);
+  const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
+  // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
+  const noStaff = staff === 'noRead';
   const from = area === 'guests' ? guestsFromOf(params.filter) : null;
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
   const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;
   // Can edit has no Budget: a deep link to it opens the event page, More open without it (sc-93).
   const noBudget = area === 'budget' && (budget === 'no_budget' || params.as === 'kemi');
-  const state = noBudget ? 'more' : eventStateOf(params.state);
+  const state = noBudget || noStaff ? 'more' : eventStateBeside(params.state, messages);
   const guests = area === 'guests' ? guestsStateOf(params.state) : null;
   const people = cardStateOf(params.people);
   const origin = params.id === CREATED_ID ? originStateOf(params.state) : null;
+
+  if (link != null)
+    return (
+      <EventsShell key={link}>
+        <EventLinkPage id={params.id} state={link} opened={opened} />
+      </EventsShell>
+    );
 
   if (area === 'guests' && params.state === 'eventDeleted')
     return (
@@ -207,18 +236,20 @@ export function EventRoute() {
         : {})}
     >
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${staff ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
         id={params.id}
         state={state}
-        area={noBudget ? null : area}
+        area={noBudget || noStaff ? null : area}
         messages={messages}
         seating={seating}
         guests={guests}
         budget={budget}
+        staff={staff}
         people={people}
         guestsFrom={from}
-        without={noBudget ? 'budget' : undefined}
+        without={noBudget ? 'budget' : noStaff ? 'staff' : undefined}
         origin={origin}
+        opened={opened}
       />
     </EventsShell>
   );

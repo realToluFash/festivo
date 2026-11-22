@@ -27,7 +27,7 @@ import {
   withReply,
 } from './GuestCounts.ts';
 import { PHONE_TAB_BAR, PhoneTabBar, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop } from '../settings/Frame.tsx';
+import { Landscape, ListTopEnd, OrgPill, PortraitTop } from '../settings/Frame.tsx';
 import { EventCard } from '../../components/EventCard.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
 import {
@@ -79,6 +79,7 @@ import {
   SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
@@ -192,9 +193,7 @@ export function EventsList({
 
   useEffect(() => {
     if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
-    const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(filterRef, then), setMenuAt, MENU_AFTER_MS);
   }, [state]);
 
   const clearSearch = () => {
@@ -253,7 +252,7 @@ export function EventsList({
         kind={kindOf(shell.layout)}
         title={W.events}
         pill={<OrgPill />}
-        bell={<Bell tell={shell.tell} />}
+        bell={<ListTopEnd />}
         primary={
           asks
             ? undefined
@@ -303,6 +302,7 @@ export function EventsList({
               off
               open={false}
               onPress={() => undefined}
+              unseen
             />
           }
         />

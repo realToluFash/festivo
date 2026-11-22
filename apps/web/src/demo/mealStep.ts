@@ -91,10 +91,16 @@ export const MW = {
   again: 'Start this step again',
 } as const;
 
-export const allergenList = (codes: readonly DishAllergen[], lang: Lang): string =>
-  DISH_ALLERGENS.filter((code) => codes.includes(code))
-    .map((code) => allergenName(code, lang).toLocaleLowerCase(lang))
-    .join(', ');
+export const allergenList = (
+  codes: readonly DishAllergen[],
+  lang: Lang,
+  join = (names: readonly string[]): string => names.join(', '),
+): string =>
+  join(
+    DISH_ALLERGENS.filter((code) => codes.includes(code)).map((code) =>
+      allergenName(code, lang).toLocaleLowerCase(lang),
+    ),
+  );
 
 export function containsLine(contains: MealContains, lang: Lang): string {
   return contains === 'none' ? MW.containsNone : MW.contains(allergenList(contains, lang));
@@ -485,6 +491,13 @@ const CLOSE_STATES = {
       note: 'Today is Tuesday, Oct 20: every row read-only, no send button, and the page says to ask the hosts.',
       today: '2026-10-20',
     }),
+  paused: () =>
+    back({
+      name: 'Paused before Reply by',
+      note: 'Today is Saturday, Oct 17 and the host has paused the event: answers are closed while Main and Dessert are still open by date. Under the paused card, Your meal picks stays, every row read-only with its own close line (Starter’s padlock, the others’ clock), no Change and no send button.',
+      today: '2026-10-17',
+      paused: true,
+    }),
   refused: () =>
     back({
       name: 'Refused: Starter had a pick, Main still open',
@@ -565,6 +578,16 @@ const DEFAULT_STATES = {
       today: '2026-10-17',
       saved: UNANSWERED,
       person: SESAME,
+    }),
+  refusedExcluded: () =>
+    back({
+      name: 'Refused: Starter had no pick, and Chidi is excluded',
+      note: 'As Refused: Starter had no pick, but Chidi has a sesame allergy recorded, so was never given the default. After the 409 the row shows no dish, the needs-the-host mark and “The host will be in touch about it.” in place of the default.',
+      today: '2026-10-15',
+      saved: UNANSWERED,
+      person: SESAME,
+      changed: { starter: 'pepper', main: 'croaker' },
+      sendOn: '2026-10-17',
     }),
   defaulted: () =>
     back({

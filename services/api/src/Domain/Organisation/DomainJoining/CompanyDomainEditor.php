@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\DomainJoining;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\EmailDomains\ProvedDomains;
 use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
 use App\Entity\User;
@@ -28,6 +29,8 @@ final readonly class CompanyDomainEditor
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private DomainSuspender $domainSuspender,
+        private JoinOfferFinder $joinOfferFinder,
+        private ProvedDomains $provedDomains,
     ) {
     }
 
@@ -69,9 +72,15 @@ final readonly class CompanyDomainEditor
     public function isStopped(OrganisationDomain $listing): bool
     {
         return !Iter\any(
-            JoinOfferFinder::working($this->organisationDomainRepository->findListings($listing->getDomain())),
+            $this->joinOfferFinder->working($this->organisationDomainRepository->findListings($listing->getDomain())),
             static fn (OrganisationDomain $working): bool => $working->getId()->equals($listing->getId()),
         );
+    }
+
+    /** This organisation has proved it under Email domains too (sc-560): its joining row says Proved. */
+    public function isProvedHere(OrganisationDomain $listing): bool
+    {
+        return $this->provedDomains->isProvedBy($listing->getDomain(), $listing->getOrganisation());
     }
 
     /** sc-63's two checks first, the ones the form makes too; then the server's. */
@@ -103,12 +112,7 @@ final readonly class CompanyDomainEditor
             return DomainRefusal::Full;
         }
 
-        $provedElsewhere = Iter\any(
-            $this->organisationDomainRepository->findListings($domain),
-            static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt() && !$listing->getOrganisation()->getId()->equals($organisation->getId()),
-        );
-
-        return $provedElsewhere ? DomainRefusal::ProvedElsewhere : null;
+        return $this->provedDomains->isProvedElsewhere($domain, $organisation) ? DomainRefusal::ProvedElsewhere : null;
     }
 
     private function message(DomainRefusal $refusal, User $by, string $domain): string
@@ -123,7 +127,7 @@ final readonly class CompanyDomainEditor
             DomainRefusal::Listed => $this->translator->trans('domain_joining.domain_listed', ['{domain}' => $domain]),
             DomainRefusal::NotYours => $this->translator->trans('domain_joining.domain_not_yours'),
             DomainRefusal::Full => $this->translator->trans('domain_joining.domain_full', ['{count}' => (string) self::MOST]),
-            DomainRefusal::ProvedElsewhere => $this->translator->trans('domain_joining.domain_proved_elsewhere', ['{domain}' => $domain]),
+            DomainRefusal::ProvedElsewhere, DomainRefusal::Taken => $this->translator->trans('domain_joining.domain_proved_elsewhere', ['{domain}' => $domain]),
         };
     }
 }

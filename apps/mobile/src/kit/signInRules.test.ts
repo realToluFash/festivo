@@ -42,6 +42,7 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     contactAddress: 'hello@ire.events',
     locale: 'en',
     plan: 'free',
+    subscription: { status: 'active', periodEnd: null },
     role: { id: 'role_2', seededAs: 'administrator', name: null },
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],

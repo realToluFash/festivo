@@ -60,9 +60,10 @@ import {
 import type { TFunction } from 'i18next';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
 import {
   keepLoaded,
   keptFor,
@@ -75,13 +76,16 @@ import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { canOn, useSession } from '../../../session.ts';
 import {
   type CourseForm,
   canAddCourse,
+  closeDay,
   courseProblems,
   coursePicked,
   firstCourseProblem,
+  menuClose,
   menuCounts,
   moveTarget,
   servedTime,
@@ -196,6 +200,7 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
   });
 
   usePageTitle(pageTitle(t, [t('eventMenu.title'), event.name]));
+  const picks = useEventPicks(event.id);
 
   useEffect(() => {
     let current = true;
@@ -246,13 +251,15 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
       <div className="ev-wide mn-page">
         <Crumbs event={event} />
         {load.kind === 'loaded' ? (
-          <Courses
-            event={event}
-            menu={load.menu}
-            title={title}
-            refreshing={refreshing}
-            onMenu={(menu) => setLoad({ kind: 'loaded', menu })}
-          />
+          <MenuPicksProvider value={picks}>
+            <Courses
+              event={event}
+              menu={load.menu}
+              title={title}
+              refreshing={refreshing}
+              onMenu={(menu) => setLoad({ kind: 'loaded', menu })}
+            />
+          </MenuPicksProvider>
         ) : (
           <>
             <header className="gs-top">
@@ -362,7 +369,12 @@ function Courses({
   const [open, setOpen] = useState<Open | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [refused, setRefused] = useState<Refusal | null>(null);
-  const [said, setSaid] = useState<Told | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const backFromPreview = (location.state as { told?: string } | null)?.told === 'preview';
+  const [said, setSaid] = useState<Told | null>(() =>
+    backFromPreview ? { words: t('eventMenu.previewNothingSaved'), more: null } : null,
+  );
   const [dragging, setDragging] = useState<string | null>(null);
   const [library, setLibrary] = useState<{ dishes: Dish[]; prices: boolean } | null>(null);
   const [libraryFailed, setLibraryFailed] = useState(false);
@@ -372,9 +384,26 @@ function Courses({
   const [choiceAsk, setChoiceAsk] = useState<ChoiceAsk | null>(null);
   const [choiceRefused, setChoiceRefused] = useState<ChoiceHandlers['addRefused']>(null);
   const prices = canOn(event, 'budget.read');
-  const focusAfter = useRef<string | null>(null);
+  const focusAfter = useRef<string | null>(backFromPreview ? 'mc-preview' : null);
   const counts = menuCounts(courses);
   useShowMenuReady(event.id, counts.ready, counts.courses);
+  const headClose = menuClose(courses);
+  const closeAt = headClose?.at ?? null;
+  const closeSource = headClose?.source ?? null;
+  const [closeSeen, setCloseSeen] = useState({ at: closeAt, source: closeSource });
+  const [closeMoved, setCloseMoved] = useState<{ at: string; was: string } | null>(null);
+  if (closeSeen.at !== closeAt || closeSeen.source !== closeSource) {
+    setCloseSeen({ at: closeAt, source: closeSource });
+    setCloseMoved(
+      closeSeen.at != null &&
+        closeAt != null &&
+        closeSeen.source === 'replyBy' &&
+        closeSource === 'replyBy'
+        ? { at: closeAt, was: closeSeen.at }
+        : null,
+    );
+  }
+  const closeWords = (at: string): string => closeDay(at, event.timeZone, dateLocale());
   const openCourse =
     open == null || open.courseId == null
       ? null
@@ -400,6 +429,10 @@ function Courses({
     document.getElementById(focusAfter.current)?.focus();
     focusAfter.current = null;
   });
+
+  useEffect(() => {
+    if (backFromPreview) void navigate('.', { replace: true, state: null });
+  }, [backFromPreview, navigate]);
 
   useEffect(() => {
     if (!manage || organisation == null) return undefined;
@@ -1337,9 +1370,27 @@ function Courses({
                 {t('eventMenu.ready', { ready: counts.ready, count: counts.courses })}
               </span>
             )}
+            {headClose != null && (
+              <span className="mc-picks-head">
+                <Glyph name={headClose.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
+                {headClose.closed
+                  ? t('eventMenu.picksHeadClosed', { date: closeWords(headClose.at) })
+                  : t('eventMenu.picksHead', { date: closeWords(headClose.at) })}
+              </span>
+            )}
             {refreshing && <Refreshing />}
           </p>
         </div>
+        {courses.some((course) => course.picksClose != null) && (
+          <Link
+            id="mc-preview"
+            className="gs-pill is-secondary mc-preview"
+            to={`/preview/events/${encodeURIComponent(event.id)}/meals`}
+          >
+            <Glyph name="eye" size={16} weight={2.4} />
+            {t('eventMenu.previewAsGuest')}
+          </Link>
+        )}
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button
@@ -1367,6 +1418,17 @@ function Courses({
         </p>
       )}
       <Said said={said} />
+      <div className="mc-picks-said" role="status">
+        {closeMoved != null && (
+          <p className="mc-said-line">
+            <Glyph name="clock" size={17} weight={2.4} />
+            {t('eventMenu.picksMoved', {
+              date: closeWords(closeMoved.at),
+              was: closeWords(closeMoved.was),
+            })}
+          </p>
+        )}
+      </div>
       <div className={open == null ? 'mn-split mc-split' : 'mn-split mc-split is-open'}>
         <div className="mn-list mc-list">
           {courses.length === 0 ? (
@@ -1396,6 +1458,7 @@ function Courses({
                   index={index}
                   all={courses.length}
                   manage={manage}
+                  timeZone={event.timeZone}
                   lit={open?.courseId === course.id}
                   litDish={open?.kind === 'editDish' ? open.dishId : null}
                   asking={
@@ -1467,6 +1530,17 @@ function Courses({
             </div>
           )}
         </div>
+        {open == null && (
+          <PicksSummary
+            closeLine={
+              headClose == null
+                ? null
+                : t(headClose.closed ? 'eventMenu.picksClosed' : 'eventMenu.picksClose', {
+                    date: closeWords(headClose.at),
+                  })
+            }
+          />
+        )}
         {open != null && (
           <aside className="mn-panel mc-panel" aria-labelledby="mc-panel-title">
             <button type="button" className="desk-text mc-back" onClick={close}>

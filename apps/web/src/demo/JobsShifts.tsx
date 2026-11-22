@@ -726,7 +726,7 @@ function ShiftRow({
         )}
       </div>
       <Places plan={plan} shift={shift} manage={manage} onDrop={onDrop} />
-      {full && <p className="mn-quiet js-full">{JW.full}</p>}
+      {full && manage && <p className="mn-quiet js-full">{JW.full}</p>}
     </li>
   );
 }
@@ -994,13 +994,14 @@ function ShiftForm({
   );
 }
 
-function When({
+export function When({
   legend,
   id,
   date,
   time,
   wrong,
   line = null,
+  step = 60 * STEP,
   onDate,
   onTime,
 }: {
@@ -1010,6 +1011,7 @@ function When({
   time: string;
   wrong: string | undefined;
   line?: string | null;
+  step?: number;
   onDate: (value: string) => void;
   onTime: (value: string) => void;
 }) {
@@ -1037,7 +1039,7 @@ function When({
           <input
             id={`${id}-time`}
             type="time"
-            step={60 * STEP}
+            step={step}
             aria-label={`${legend}, ${JW.time}`}
             value={time}
             aria-invalid={wrong != null}

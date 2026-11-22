@@ -41,7 +41,19 @@ const EVENT = {
   permissions: OWNER_PERMISSIONS,
 };
 
-function person(id: string, name: string, role: string, jobLabel: string | null = null) {
+interface Row {
+  id: string;
+  membershipId: string | null;
+  user: { id: string; name: string } | null;
+  role: string;
+  jobLabel: string | null;
+  outside: boolean;
+  address: string | null;
+  addressKind: 'email' | 'mobile' | null;
+  endsAt: string | null;
+}
+
+function person(id: string, name: string, role: string, jobLabel: string | null = null): Row {
   return {
     id: `p_${id}`,
     membershipId: `m_${id}`,
@@ -49,6 +61,30 @@ function person(id: string, name: string, role: string, jobLabel: string | null 
     role,
     jobLabel,
     outside: false,
+    address: null,
+    addressKind: null,
+    endsAt: null,
+  };
+}
+
+/** Someone from outside the organisation (sc-71): with an account, or only an address until they join. */
+function outsider(
+  id: string,
+  held: { name: string } | { address: string | null },
+  role: string,
+): Row {
+  const address = 'address' in held ? held.address : null;
+
+  return {
+    id: `p_${id}`,
+    membershipId: null,
+    user: 'name' in held ? { id: `u_${id}`, name: held.name } : null,
+    role,
+    jobLabel: null,
+    outside: true,
+    address,
+    addressKind: address == null ? null : address.includes('@') ? 'email' : 'mobile',
+    endsAt: EVENT.endsAt,
   };
 }
 
@@ -107,12 +143,12 @@ function json(body: unknown, status = 200): Response {
 type Answer = (body: unknown) => Response | Promise<Response>;
 
 async function onPeople(
-  people: ReturnType<typeof person>[],
+  people: Row[],
   answers: Record<string, Answer> = {},
   userId = 'u_folake',
 ): Promise<{ line: string; body: unknown }[]> {
   const sent: { line: string; body: unknown }[] = [];
-  const role = people.find((one) => one.user.id === userId)?.role;
+  const role = people.find((one) => one.user?.id === userId)?.role;
   const holding =
     reader.role.seededAs === 'member' ? (ON_THE_EVENT[role ?? ''] ?? []) : reader.permissions;
 
@@ -141,13 +177,21 @@ async function onPeople(
       router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] })}
     />,
   );
-  await screen.findByRole('heading', { level: 2, name: 'People' });
+  await peopleShown();
 
   return sent;
 }
 
+async function peopleShown(): Promise<void> {
+  await screen.findByRole('heading', { level: 1, name: 'People' });
+  await waitFor(() => expect(people().querySelector('.people-foot')).not.toBeNull());
+}
+
 function people(): HTMLElement {
-  return screen.getByRole('region', { name: 'People' });
+  const page = document.querySelector<HTMLElement>('.event-people');
+  if (page == null) throw new Error('People is not on the page');
+
+  return page;
 }
 
 afterEach(() => {
@@ -186,7 +230,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
       expect.stringContaining('Tom BeckerCan check guests in · Bar and drinks'),
     ]);
     expect(
-      screen.getByRole('heading', { level: 2, name: 'People' }).closest('.desk'),
+      screen.getByRole('heading', { level: 1, name: 'People' }).closest('.desk'),
     ).not.toBeNull();
     expect(within(people()).getByText('3')).toBeDefined();
     expect(
@@ -206,7 +250,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
     await onPeople([]);
 
     expect(within(people()).getByText('Nobody is on this event yet.')).toBeDefined();
-    expect(await within(people()).findByRole('button', { name: 'Add by name' })).toBeDefined();
+    expect(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    ).toBeDefined();
   });
 
   it('gives somebody who only reads it no Add, nothing that opens, and who changes it', async () => {
@@ -235,7 +281,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(within(people()).getByRole('button', { name: /Ana Souza/ })).toBeDefined();
     expect(within(people()).queryByRole('button', { name: /Priya Shah/ })).toBeNull();
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
 
     expect(within(dialog).getByRole('checkbox', { name: 'Folake Adeyemi' })).toBeDefined();
@@ -339,7 +387,7 @@ describe('People on an event, at a desk (sc-29915)', () => {
     expect(within(people()).queryByText('Tom Becker')).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        within(people()).getByRole('button', { name: 'Add by name' }),
+        within(people()).getByRole('button', { name: 'Add by name, email or mobile' }),
       ),
     );
   });
@@ -461,11 +509,13 @@ describe('People on an event, at a desk (sc-29915)', () => {
       },
     });
 
-    const add = await within(people()).findByRole('button', { name: 'Add by name' });
+    const add = await within(people()).findByRole('button', {
+      name: 'Add by name, email or mobile',
+    });
     add.focus();
     fireEvent.click(add);
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
-    const find = within(dialog).getByRole('textbox', { name: 'Name' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
 
     expect(document.activeElement).toBe(find);
     expect(within(dialog).queryByRole('checkbox', { name: /Tom Becker/ })).toBeNull();
@@ -513,7 +563,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
       },
     });
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Sade Bello/ }));
@@ -552,7 +604,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
         ),
     });
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
@@ -564,7 +618,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
     signedIn();
     await onPeople([TOM]);
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
     const last = within(dialog).getByRole('checkbox', { name: /Sade Bello/ });
@@ -597,7 +653,9 @@ describe('People on an event, at a desk (sc-29915)', () => {
     signedIn();
     await onPeople([TOM]);
 
-    fireEvent.click(await within(people()).findByRole('button', { name: 'Add by name' }));
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
     fireEvent.click(within(dialog).getByRole('radio', { name: /Can edit/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -609,13 +667,18 @@ describe('People on an event, at a desk (sc-29915)', () => {
     signedIn();
     await onPeople([TOM]);
 
-    const add = await within(people()).findByRole('button', { name: 'Add by name' });
+    const add = await within(people()).findByRole('button', {
+      name: 'Add by name, email or mobile',
+    });
     add.focus();
     fireEvent.click(add);
     const dialog = screen.getByRole('dialog', { name: 'Add people' });
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
-      target: { value: 'Kofi' },
-    });
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' }),
+      {
+        target: { value: 'Kofi' },
+      },
+    );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -706,7 +769,7 @@ describe('coming back to People while offline (sc-65646)', () => {
     });
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/people'] });
     render(<RouterProvider router={router} />);
-    await screen.findByRole('heading', { level: 2, name: 'People' });
+    await peopleShown();
 
     fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
     const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
@@ -728,5 +791,331 @@ describe('coming back to People while offline (sc-65646)', () => {
         'We could not load the people on this event. Check your connection and try again.',
       ),
     ).toBeNull();
+  });
+});
+
+describe('People from outside the organisation (sc-71)', () => {
+  it('tags them, and lists someone not joined yet by the address an owner added', async () => {
+    signedIn();
+    await onPeople([
+      ANA,
+      outsider('kemi', { name: 'Kemi Okafor' }, 'can_check_in'),
+      outsider('sade', { address: 'sade@thelandmark.example' }, 'can_view'),
+    ]);
+
+    expect(within(people()).getAllByText('Outside Ìrè Events')).toHaveLength(2);
+    expect(within(people()).getByText('Kemi Okafor')).toBeDefined();
+    expect(within(people()).getByText('sade@thelandmark.example')).toBeDefined();
+  });
+
+  it('says Not joined yet to whoever is not given the address', async () => {
+    signedIn(MEMBER, 'u_ana');
+    await onPeople([ANA, outsider('sade', { address: null }, 'can_view')], {}, 'u_ana');
+
+    expect(within(people()).getByText('Not joined yet')).toBeDefined();
+  });
+
+  it('keeps Lead for members, says when their access ends, and how removal lands', async () => {
+    signedIn();
+    await onPeople([outsider('kemi', { name: 'Kemi Okafor' }, 'can_check_in')]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Kemi Okafor/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+
+    expect(within(dialog).getByText('From outside Ìrè Events')).toBeDefined();
+    expect(within(dialog).getByText('Their access ends when the event does.')).toBeDefined();
+    expect((within(dialog).getByRole('radio', { name: /Lead/ }) as HTMLInputElement).disabled).toBe(
+      true,
+    );
+    expect(within(dialog).getByText('For members of Ìrè Events only.')).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove from this event…' }));
+
+    expect(screen.getByText('Their access ends on their next request.')).toBeDefined();
+  });
+
+  it('adds someone by email address with a job label', async () => {
+    signedIn();
+    const sent = await onPeople([TOM], {
+      'POST /api/events/ev_1/people': () =>
+        json(
+          {
+            person: {
+              ...outsider('new', { address: 'kemi@example.com' }, 'can_check_in'),
+              jobLabel: 'Bar',
+            },
+          },
+          201,
+        ),
+    });
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can check guests in/ }));
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' }),
+      {
+        target: { value: 'Kemi@Example.com' },
+      },
+    );
+
+    expect(within(dialog).getByRole('region', { name: 'From outside Ìrè Events' })).toBeDefined();
+
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Job label (optional)' }), {
+      target: { value: 'Bar' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(await within(people()).findByText('kemi@example.com')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/people')?.body).toEqual({
+      address: 'kemi@example.com',
+      role: 'can_check_in',
+      jobLabel: 'Bar',
+    });
+  });
+
+  it('reads a mobile number for the organisation’s country, and says what it cannot use', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
+    fireEvent.change(find, { target: { value: '0803 123 4567' } });
+
+    expect(within(dialog).getByText('+234 803 123 4567')).toBeDefined();
+
+    fireEvent.change(find, { target: { value: 'kemi@' } });
+
+    expect(
+      within(dialog).getByText('That is not an email address or a mobile number we can use.'),
+    ).toBeDefined();
+  });
+
+  it('keeps Lead for members when an address is typed', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Lead/ }));
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Name' }), {
+      target: { value: 'kemi@example.com' },
+    });
+
+    expect(within(dialog).getByText('For members of Ìrè Events only.')).toBeDefined();
+    expect(
+      within(dialog).getByText('Pick another role to add someone from outside.'),
+    ).toBeDefined();
+    expect(within(dialog).queryByRole('region', { name: 'From outside Ìrè Events' })).toBeNull();
+  });
+
+  it('says the API’s refusal of a member’s address in its own words', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'POST /api/events/ev_1/people': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/already_a_member',
+            title: 'Kofi Mensah is a member of Ìrè Events already. Add them from In Ìrè Events.',
+            status: 409,
+          },
+          409,
+        ),
+    });
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' }),
+      {
+        target: { value: 'kofi@ire.events' },
+      },
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(
+      await within(dialog).findByText(
+        'Kofi Mensah is a member of Ìrè Events already. Add them from In Ìrè Events.',
+      ),
+    ).toBeDefined();
+  });
+});
+
+describe('People opens on its own title under the crumb, as Guests does (sc-69635)', () => {
+  it('reads Events, the event and People in the crumb, with People as the only h1 and no event top', async () => {
+    signedIn();
+    await onPeople([TOM, PRIYA]);
+
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    const parts = within(crumb).getAllByRole('listitem');
+    expect(parts.map((part) => part.textContent)).toEqual(['Events', EVENT.name, 'People']);
+    expect(within(parts[0]!).getByRole('link').getAttribute('href')).toBe('/app/events');
+    expect(within(parts[1]!).getByRole('link').getAttribute('href')).toBe('/app/events/ev_1');
+    expect(parts[1]!.getAttribute('aria-current')).toBeNull();
+    expect(parts[2]!.getAttribute('aria-current')).toBe('page');
+    expect(within(parts[2]!).queryByRole('link')).toBeNull();
+    expect(crumb.closest('.ev-crumb-row')?.querySelector('.notifications')).not.toBeNull();
+
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings.map((one) => one.textContent)).toEqual(['People']);
+    expect(headings[0]!.getAttribute('tabindex')).toBe('-1');
+    expect(screen.queryByRole('heading', { name: EVENT.name })).toBeNull();
+    expect(screen.queryByText('Live')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Make live|Duplicate/u })).toBeNull();
+    expect(people().closest('.card')).toBeNull();
+  });
+
+  it('keeps the crumb and the title while People loads and when it fails, with no event top', async () => {
+    signedIn();
+    await onPeople([TOM], { 'GET /api/events/ev_1/people': () => json({}, 500) }).catch(
+      () => undefined,
+    );
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' }).textContent).toContain('People');
+    expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
+      'People',
+    ]);
+    expect(screen.queryByRole('heading', { name: EVENT.name })).toBeNull();
+  });
+
+  it('keeps focus on the People title once the list arrives, coming from the sidebar', async () => {
+    signedIn();
+    let release = (): void => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
+      if (line === 'GET /api/events/ev_1/people') {
+        await held;
+        return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] });
+      }
+      if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
+
+      return json({});
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/guests'] })}
+      />,
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Guests' });
+
+    fireEvent.click(
+      within(document.querySelector<HTMLElement>('.shell-sidebar')!).getByRole('link', {
+        name: 'People',
+      }),
+    );
+    const title = await screen.findByRole('heading', { level: 1, name: 'People' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+
+    await act(async () => release());
+    await peopleShown();
+
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'People' }));
+    expect(title.isConnected).toBe(true);
+  });
+
+  it('starts the crumb at the event for an account with no organisation (sc-71)', async () => {
+    reader = IRE;
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Bisi Adebayo',
+        email: 'bisi@lagoslights.example',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        userId: 'u_bisi',
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: null,
+        organisations: [],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+        outsideEvents: [
+          {
+            id: 'ev_1',
+            name: EVENT.name,
+            organisationName: 'Ìrè Events',
+            role: 'can_view',
+            jobLabel: null,
+            startsAt: EVENT.startsAt,
+            endsAt: EVENT.endsAt,
+          },
+        ],
+      },
+    });
+    await onPeople([TOM], {
+      'GET /api/events/ev_1': () =>
+        json({ event: { ...EVENT, permissions: ON_THE_EVENT.can_view } }),
+    });
+
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(
+      within(crumb)
+        .getAllByRole('listitem')
+        .map((part) => part.textContent),
+    ).toEqual([EVENT.name, 'People']);
+    expect(within(crumb).queryByRole('link', { name: 'Events' })).toBeNull();
+    expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual([
+      'People',
+    ]);
+  });
+});
+
+describe('Staff links on People (sc-3912)', () => {
+  it('lists each person with a live staff link once, after the people, opening nothing, with Not signed in yet until they sign in', async () => {
+    signedIn();
+    await onPeople([TOM], {
+      'GET /api/events/ev_1/people': () =>
+        json({
+          people: [TOM],
+          owners: [],
+          admins: [],
+          staffLinks: [
+            {
+              id: 'st_grace',
+              name: 'Grace Okon',
+              job: 'Waiter',
+              access: 'view',
+              endsAt: '2030-11-15T03:00:00+01:00',
+              signedIn: false,
+            },
+            {
+              id: 'st_tolu',
+              name: 'Tolu Bello',
+              job: 'Door',
+              access: 'check_in',
+              endsAt: '2030-11-14T23:00:00+01:00',
+              signedIn: true,
+            },
+          ],
+        }),
+    });
+
+    const rows = within(people()).getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.textContent).toBe(
+      'Staff link · Grace Okon · Waiter · ends 03:00 on Friday, Nov 15Not signed in yetCan view',
+    );
+    expect(rows[2]?.textContent).toBe(
+      'Staff link · Tolu Bello · Door · ends 23:00Can check guests in',
+    );
+    expect(within(rows[1] as HTMLElement).queryByRole('button')).toBeNull();
+    expect(within(people()).getByText('3')).toBeDefined();
   });
 });

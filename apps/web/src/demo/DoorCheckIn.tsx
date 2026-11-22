@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { Link, Navigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
@@ -20,6 +20,9 @@ import {
   OPENS_AT,
   OTHER,
   SHIFT_NAME,
+  SHIFT_NOW,
+  SHIFT_SIGNED_IN_UNTIL,
+  SIGNED_OUT_HREF,
   addWalkIn,
   arrive,
   backOf,
@@ -35,6 +38,7 @@ import {
   seatingOf,
   shownName,
   shownPeople,
+  signedOutTime,
   undo,
 } from './doorCheckIn.ts';
 import { ReplyMark } from './GuestsParts.tsx';
@@ -598,7 +602,7 @@ function NotSignedIn() {
 export function ShiftPage() {
   const [params] = useSearchParams();
   const view = params.get('level') === 'view';
-  const [told, setTold] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   return (
     <Page back={null}>
@@ -620,16 +624,15 @@ export function ShiftPage() {
       )}
       <div className="ci-you">
         <p>{CW.shift.signedInAs(SHIFT_NAME)}</p>
-        <p>{CW.shift.signedOutAt}</p>
+        <p>{CW.shift.signedOutAt(signedOutTime(SHIFT_SIGNED_IN_UNTIL, SHIFT_NOW))}</p>
         <button
           type="button"
           className="ci-secondary"
-          onClick={() => setTold(CW.shift.signOutLater)}
+          onClick={() => void navigate(SIGNED_OUT_HREF)}
         >
           {CW.shift.signOut}
         </button>
       </div>
-      {told != null && <Toast key={told} words={told} onClose={() => setTold(null)} />}
     </Page>
   );
 }

@@ -11,11 +11,14 @@ use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\CostBasis;
+use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\BudgetLineRepository;
+use DateInterval;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 
 /**
  * Each write takes the event's row lock, the one Edit details takes, so a price is checked against the currency the event has when it is stored.
@@ -30,12 +33,18 @@ final readonly class BudgetEditor
 
     public const string REMOVED = 'budget_line.removed';
 
+    public const string PUT_BACK = 'budget_line.put_back';
+
+    /** Long enough for an Undo with no countdown (WCAG 2.2 SC 2.2.1's 20-hour exception), and no longer (GDPR Art. 5(1)(e)). */
+    public const string LAPSE = 'P1D';
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private BudgetLineRepository $budgetLineRepository,
         private LineRules $lineRules,
         private BudgetPublisher $budgetPublisher,
         private Auditor $auditor,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -81,10 +90,39 @@ final readonly class BudgetEditor
         $this->entityManager->wrapInTransaction(function () use ($event, $line, $by): void {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
             $this->audit(self::REMOVED, $line, $by);
-            $this->entityManager->remove($line);
+            $line->remove($this->clock->now());
             $this->entityManager->flush();
         });
         $this->budgetPublisher->publish($event);
+    }
+
+    /** The same line in its place, for Undo: refused 404 once erased, 410 once the event's currency changed, and as a second staff-time line when the budget has one again. */
+    public function putBack(Event $event, string $lineId, User $by): BudgetLine
+    {
+        $line = $this->stored($event, function () use ($event, $lineId, $by): BudgetLine {
+            $line = $this->budgetLineRepository->findRemovedInEvent($event, $lineId) ?? throw ApiException::notFound('access.not_found');
+
+            if ($line->isCurrencyChanged()) {
+                throw new ApiException(ErrorCode::BudgetLineCurrencyChanged, 'budget.currency_changed');
+            }
+
+            if (CostBasis::PerStaffHour === $line->getBasis() && null !== $this->budgetLineRepository->findStaffLine($event)) {
+                throw ApiException::validation([$this->lineRules->staffLineTaken()]);
+            }
+
+            $line->putBack();
+            $this->audit(self::PUT_BACK, $line, $by);
+
+            return $line;
+        });
+        $this->budgetPublisher->publish($event);
+
+        return $line;
+    }
+
+    public function eraseLapsed(): int
+    {
+        return $this->budgetLineRepository->eraseRemovedBefore($this->clock->now()->sub(new DateInterval(self::LAPSE)));
     }
 
     /** @param Sent $sent */

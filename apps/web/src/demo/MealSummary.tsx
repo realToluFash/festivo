@@ -44,6 +44,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
   const dates = { ...GUEST_PICKS, today };
   const closes = SUMMARY_COURSES.map((one) => summaryClose(one.id, dates));
   const allClosed = closes.every((one) => one.closed);
+  const paused = first.paused === true;
 
   useEffect(() => {
     if (focus.current == null) return;
@@ -157,7 +158,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
                   </p>
                 )}
               </div>
-              {!close.closed && (
+              {!close.closed && !paused && (
                 <button
                   id={`mx-change-${one.id}`}
                   type="button"
@@ -177,7 +178,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
         {told?.kind === 'other' && <p>{MSW.otherSaved}</p>}
         {told?.kind === 'nothing' && <p>{MSW.nothingToSend}</p>}
       </div>
-      {allClosed ? (
+      {paused ? null : allClosed ? (
         <p className="gk-text mx-ask">{MSW.askHosts}</p>
       ) : (
         <div className="gk-actions">

@@ -24,6 +24,7 @@ const PAUSED: PausedOrganisation = {
   contactAddress: 'hello@ire.events',
   locale: 'en',
   plan: 'free',
+  subscription: { status: 'active', periodEnd: null },
   suspension: {
     reason: 'domain_closed',
     domain: 'ire.events',

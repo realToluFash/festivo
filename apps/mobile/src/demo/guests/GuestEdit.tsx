@@ -39,7 +39,8 @@ import { GreetAsField } from './GuestGreetAs.tsx';
 import { Quote } from './PasteReply.tsx';
 import { PW } from './PasteReplyModel.ts';
 import { LanguageChoices, LanguageField } from './GuestLanguage.tsx';
-import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
+import { Amber, AmberChoices, AmberLine } from '../../components/Amber.tsx';
+import { DoneLine } from './GuestsParts.tsx';
 import {
   type Companion,
   type GuestLanguage,
@@ -215,9 +216,11 @@ function startCompanions(state: EditState | null, g: SampleGuest): string[] {
 
 /** Each field's companion as the guest has them, so a seat or a meal is known; a field added or prefilled here has none. */
 function startSeats(state: EditState | null, g: SampleGuest): (Companion | null)[] {
-  return state === 'editCompanions' || state === 'editMax'
-    ? startCompanions(state, g).map(() => null)
-    : [...g.companions];
+  if (state === 'editCompanions' || state === 'editMax')
+    return startCompanions(state, g).map(() => null);
+  if (state === 'editCompanionArrived')
+    return g.companions.map((c, at) => (at === 0 ? { ...c, arrived: '18:05' } : c));
+  return [...g.companions];
 }
 
 /** Edit guest (sc-3773): sc-1468's fields filled in; every refusal under its field before anything is sent. */
@@ -431,7 +434,7 @@ export function EditGuest({
             yours={joinPhone(country, number) ?? W.none}
           />
           <AmberLine text={W.conflictLine} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.useTheirs,
               onPress: () => {
@@ -452,7 +455,7 @@ export function EditGuest({
       {same && (
         <Amber title={say.sameName(name.trim())} testID="guest.edit.same">
           <AmberLine text={W.sameName} />
-          <Choices
+          <AmberChoices
             first={{
               label: W.saveAnyway,
               onPress: () => {
@@ -539,54 +542,65 @@ export function EditGuest({
           text={W.companions}
           line={companions.length === 0 ? say.noneYet(0) : say.ofTen(companions.length)}
         />
-        {shown.map((c, index) => (
-          <View key={`${index}`} style={styles.companionBlock}>
-            <View style={styles.companion}>
-              <View style={styles.grow}>
-                <BoxField
-                  value={c}
-                  onChangeText={(text) =>
-                    setCompanions(companions.map((one, i) => (i === index ? text : one)))
-                  }
-                  accessibilityLabel={W.companionName}
-                  testID={`guest.edit.companion.${index}`}
-                />
+        {shown.map((c, index) => {
+          const arrived = seats[index]?.arrived != null;
+          const stays = say.companionStays(
+            c.trim() !== '' ? c.trim() : say.guestOf(name.trim() !== '' ? name.trim() : g.name),
+          );
+
+          return (
+            <View key={`${index}`} style={styles.companionBlock}>
+              <View style={styles.companion}>
+                <View style={styles.grow}>
+                  <BoxField
+                    value={c}
+                    onChangeText={(text) =>
+                      setCompanions(companions.map((one, i) => (i === index ? text : one)))
+                    }
+                    accessibilityLabel={W.companionName}
+                    {...(arrived ? { accessibilityHint: stays } : {})}
+                    testID={`guest.edit.companion.${index}`}
+                  />
+                </View>
+                {!arrived && (
+                  <TextAction
+                    label={W.remove}
+                    plain
+                    onPress={() => {
+                      const held = seats[index];
+                      if (held != null && (held.table != null || held.meal === true)) {
+                        setRemoving(index);
+                        return;
+                      }
+                      drop(index);
+                    }}
+                    accessibilityLabel={`${W.remove} ${c}`}
+                    testID={`guest.edit.remove.${index}`}
+                  />
+                )}
               </View>
-              <TextAction
-                label={W.remove}
-                plain
-                onPress={() => {
-                  const held = seats[index];
-                  if (held != null && (held.table != null || held.meal === true)) {
-                    setRemoving(index);
-                    return;
-                  }
-                  drop(index);
-                }}
-                accessibilityLabel={`${W.remove} ${c}`}
-                testID={`guest.edit.remove.${index}`}
+              {arrived && <DoneLine text={stays} size={14} reads={false} />}
+              <NeedsSection
+                title={NW.theirNeeds}
+                needs={companionNeeds[index] ?? NO_NEEDS}
+                onChange={(next) =>
+                  setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
+                }
+                open={companionOpen.includes(index)}
+                onToggle={() =>
+                  setCompanionOpen(
+                    companionOpen.includes(index)
+                      ? companionOpen.filter((at) => at !== index)
+                      : [...companionOpen, index],
+                  )
+                }
+                lines={companionLines[index] ?? {}}
+                refs={companionRefs(index)}
+                testID={`guest.edit.companion.${index}.needs`}
               />
             </View>
-            <NeedsSection
-              title={NW.theirNeeds}
-              needs={companionNeeds[index] ?? NO_NEEDS}
-              onChange={(next) =>
-                setCompanionNeeds(companionNeeds.map((one, at) => (at === index ? next : one)))
-              }
-              open={companionOpen.includes(index)}
-              onToggle={() =>
-                setCompanionOpen(
-                  companionOpen.includes(index)
-                    ? companionOpen.filter((at) => at !== index)
-                    : [...companionOpen, index],
-                )
-              }
-              lines={companionLines[index] ?? {}}
-              refs={companionRefs(index)}
-              testID={`guest.edit.companion.${index}.needs`}
-            />
-          </View>
-        ))}
+          );
+        })}
         {shown.length < companions.length && (
           <TextAction
             label={say.moreCompanions(companions.length - shown.length)}
@@ -860,7 +874,7 @@ export function RecordReply({
           testID="guest.record.replace"
         >
           <AmberLine text={W.replaceTheirsLine} />
-          <Choices
+          <AmberChoices
             primary
             first={{
               label: W.replaceTheirs,

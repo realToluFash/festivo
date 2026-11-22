@@ -27,7 +27,7 @@ final class VendorRepository extends ServiceEntityRepository
     }
 
     /**
-     * A to Z ignoring case; a name containing the typed text, ignoring case, with accents as typed.
+     * A to Z ignoring case and accents; a name containing the typed text, ignoring case, with accents as typed.
      *
      * @return array{vendors: list<Vendor>, total: int} the total is every match, not only this page's
      */
@@ -47,7 +47,9 @@ final class VendorRepository extends ServiceEntityRepository
 
         return [
             'vendors' => Type\vec(Type\instance_of(Vendor::class))->coerce($matching
-                ->orderBy('LOWER(v.name)', 'ASC')
+                ->addSelect('FOLDED(v.name) AS HIDDEN folded')
+                ->orderBy('folded', 'ASC')
+                ->addOrderBy('LOWER(v.name)', 'ASC')
                 ->addOrderBy('v.id', 'ASC')
                 ->setFirstResult($first)
                 ->setMaxResults($most)
@@ -55,6 +57,18 @@ final class VendorRepository extends ServiceEntityRepository
                 ->getResult()),
             'total' => $total,
         ];
+    }
+
+    /** How many vendors in the view come before this one in the directory's order, so the page holding it can be opened. */
+    public function countBefore(Organisation $organisation, bool $archived, Vendor $vendor): int
+    {
+        return Type\int()->coerce($this->inView($organisation, $archived)
+            ->select('COUNT(v.id)')
+            ->andWhere('FOLDED(v.name) < FOLDED(:name) OR (FOLDED(v.name) = FOLDED(:name) AND (LOWER(v.name) < LOWER(:name) OR (LOWER(v.name) = LOWER(:name) AND v.id < :id)))')
+            ->setParameter('name', $vendor->getName())
+            ->setParameter('id', $vendor->getId(), 'uuid')
+            ->getQuery()
+            ->getSingleScalarResult());
     }
 
     /** @return array{inUse: int, archived: int, categories: array<string, int>} the categories counted within the view asked for */

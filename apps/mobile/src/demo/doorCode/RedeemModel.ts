@@ -1,4 +1,5 @@
-import { BAR, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
+import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
+import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
 
 export const REDEEM_STATES = [
@@ -10,6 +11,10 @@ export const REDEEM_STATES = [
   'checking',
   'refused',
   'too-many',
+  'name',
+  'name-blank',
+  'joining',
+  'name-used-up',
   'event',
   'event-blank',
   'event-short',
@@ -23,6 +28,8 @@ export const REDEEM_STATES = [
   'code-exhausted',
   'code-failed',
   'used-up',
+  'code-second-number',
+  'second-number',
   'in',
   'event-in',
   'event-in-view',
@@ -36,6 +43,7 @@ export type RedeemStep =
   | 'camera'
   | 'enter'
   | 'tooMany'
+  | 'named'
   | 'event'
   | 'joinAs'
   | 'member'
@@ -71,6 +79,11 @@ export interface Flow {
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
+/** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
+export const RITA = { name: 'Rita Sousa', number: '916 480 233' } as const;
+
+export const isSecondNumber = (number: string) =>
+  number.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {
   return {
@@ -120,6 +133,14 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'enter', typed: 'Q7KM 4XP3', said: W.refused, tries: 1 };
     case 'too-many':
       return { ...plain, step: 'tooMany' };
+    case 'name':
+      return { ...joao, step: 'named' };
+    case 'name-blank':
+      return { ...plain, step: 'named', nameSaid: W.nameBlank };
+    case 'joining':
+      return { ...joao, step: 'named', held: true };
+    case 'name-used-up':
+      return { ...plain, step: 'named', name: 'Hugo Faria', who: 'Hugo Faria', usedUp: true };
     case 'event':
       return { ...joao, step: 'event' };
     case 'event-blank':
@@ -159,6 +180,10 @@ export function flowAt(state: RedeemState): Flow {
         full: true,
         usedUp: true,
       };
+    case 'code-second-number':
+      return { ...plain, ...RITA, step: 'code' };
+    case 'second-number':
+      return { ...plain, ...RITA, step: 'event', numberSaid: W.secondNumber };
     case 'in':
       return { ...joao, step: 'in' };
     case 'event-in':
@@ -172,8 +197,18 @@ export function flowAt(state: RedeemState): Flow {
   }
 }
 
-/** The step a phone code ends on: the one refusal for a code that filled meanwhile, else You're in. */
+/** The step a phone code ends on: back to the number for a second number, the one refusal for a code that filled meanwhile, else You're in. */
 export function afterPhoneCode(flow: Flow): Flow {
+  if (isSecondNumber(flow.number))
+    return {
+      ...flow,
+      step: 'event',
+      numberSaid: W.secondNumber,
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
+
   return flow.full
     ? { ...flow, step: 'event', usedUp: true, digits: '', phone: 'entering', held: false }
     : { ...flow, step: 'in', who: flow.name.trim() === '' ? flow.who : flow.name.trim() };
@@ -199,17 +234,19 @@ export function refusalOf(
   }
 }
 
-export type InsideArea = 'checkIn' | 'overview' | 'guests' | 'schedule' | 'seating' | 'people';
+export type InsideArea = 'checkIn' | EventPlace;
 const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
 /** The phone's tabs; every other area the role sees is in More. */
 export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
 
-/** What a door-code joiner reaches inside the event, by role (pm, 7 Nov, sc-72): never Budget, Menu, Messages, Staff or Reports. */
-export function areasFor(role: CodeRole): InsideArea[] {
+/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order. */
+export function areasFor(role: CodeChoice): InsideArea[] {
+  if (role === 'Can edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+
   return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
 }
 
-export function moreAreas(role: CodeRole, phone: boolean): InsideArea[] {
+export function moreAreas(role: CodeChoice, phone: boolean): InsideArea[] {
   return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
 }
 
@@ -220,4 +257,9 @@ export const AREA_WORDS: Record<InsideArea, string> = {
   schedule: W.schedule,
   seating: W.seating,
   people: W.people,
+  menu: 'Menu',
+  messages: 'Messages',
+  staff: 'Staff',
+  budget: 'Budget',
+  reports: 'Reports',
 };

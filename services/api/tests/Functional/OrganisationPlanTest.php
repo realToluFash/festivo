@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Audit\Auditor;
+use App\Domain\Billing\Catalogue\Catalogue;
+use App\Domain\Billing\Entitlements;
+use App\Domain\Billing\SubscriptionChanger;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Plan\EnterpriseSettings;
 use App\Domain\Organisation\Plan\PlanChanger;
@@ -12,11 +15,15 @@ use App\Domain\Organisation\Plan\PlanDowngradeMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Organisation;
+use App\Entity\SubscriptionChange;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
+use App\Enum\SubscriptionChangeKind;
+use App\Enum\SubscriptionSource;
+use App\Repository\SubscriptionRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ConfiguredEnterpriseSetting;
 use App\Tests\Traits\OnboardsAccounts;
@@ -42,6 +49,7 @@ final class OrganisationPlanTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
     private const string SUBJECT = 'Ire Events is on the free plan';
+    private const string REASON = 'Signed the Enterprise order form';
 
     private User $owner;
     private Organisation $organisation;
@@ -59,7 +67,7 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function aNewOrganisationStartsOnFreeAndItsResourceSaysSo(): void
     {
-        self::assertSame(Plan::Free, $this->organisation->getPlan());
+        self::assertSame(Plan::Free, $this->plan());
 
         $this->client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->owner));
         $this->client->request('GET', '/api/orgs');
@@ -80,17 +88,43 @@ final class OrganisationPlanTest extends ApiTestCase
             'organisation' => $this->organisation->getId()->toRfc4122(),
             'plan' => 'enterprise',
             '--agent' => 'Ada at Soirely',
+            '--reason' => self::REASON,
         ]));
 
         $entityManager = self::service(EntityManagerInterface::class);
         $entityManager->clear();
-        $organisation = $entityManager->find(Organisation::class, $this->organisation->getId()) ?? self::fail('gone');
-        self::assertSame(Plan::Enterprise, $organisation->getPlan());
+        self::assertSame(Plan::Enterprise, $this->plan());
 
-        $entry = $entityManager->getRepository(AuditEntry::class)->findOneBy(['action' => PlanChanger::CHANGED, 'subjectId' => $organisation->getId()]) ?? self::fail('no audit entry');
+        $entry = $entityManager->getRepository(AuditEntry::class)->findOneBy(['action' => PlanChanger::CHANGED, 'subjectId' => $this->organisation->getId()]) ?? self::fail('no audit entry');
         self::assertSame(Actor::Agent, $entry->getActorType());
         self::assertSame('Ada at Soirely', $entry->getActorLabel());
-        self::assertSame(['plan' => ['free', 'enterprise']], $entry->getChanges());
+        self::assertSame(['plan' => ['free', 'enterprise'], 'reason' => [null, self::REASON]], $entry->getChanges());
+
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation->getId());
+        self::assertSame(SubscriptionSource::Manual, $subscription->getSource());
+        $change = $entityManager->getRepository(SubscriptionChange::class)->findOneBy(['subscription' => $subscription->getId()]) ?? self::fail('no subscription change');
+        self::assertSame([SubscriptionChangeKind::Plan, 'free', 'enterprise', Actor::Agent, 'Ada at Soirely', self::REASON], [
+            $change->getKind(),
+            $change->getFromValue(),
+            $change->getToValue(),
+            $change->getActorType(),
+            $change->getActorLabel(),
+            $change->getReason(),
+        ]);
+        self::assertNotNull($change->getOccurredAt());
+    }
+
+    #[Test]
+    public function aChangeWithNoReasonIsRefusedAndChangesNothing(): void
+    {
+        $tester = new CommandTester(new Application(self::$kernel ?? self::fail('no kernel'))->find('app:set-plan'));
+
+        self::assertSame(Command::FAILURE, $tester->execute([
+            'organisation' => $this->organisation->getId()->toRfc4122(),
+            'plan' => 'enterprise',
+            '--agent' => 'Ada at Soirely',
+        ]));
+        self::assertSame(Plan::Free, $this->plan());
     }
 
     #[Test]
@@ -101,8 +135,9 @@ final class OrganisationPlanTest extends ApiTestCase
         self::assertSame(Command::FAILURE, $tester->execute([
             'organisation' => $this->organisation->getId()->toRfc4122(),
             'plan' => 'enterprise',
+            '--reason' => self::REASON,
         ]));
-        self::assertSame(Plan::Free, $this->organisation->getPlan());
+        self::assertSame(Plan::Free, $this->plan());
     }
 
     #[Test]
@@ -112,14 +147,14 @@ final class OrganisationPlanTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->flush();
         $domains = new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events');
         $auditLog = new ConfiguredEnterpriseSetting(PlanFeature::AuditLog);
-        $settings = new EnterpriseSettings([$domains, $auditLog]);
+        $settings = $this->settings([$domains, $auditLog]);
         $changer = $this->changer($settings);
-        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
+        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely', self::REASON);
         self::assertTrue($settings->inForce($this->organisation, PlanFeature::EmailDomains));
         self::assertFalse($settings->inForce($this->organisation, PlanFeature::AuditLog), 'unlocked, and nothing configured to apply');
         self::assertSame([], $this->mails(), 'an upgrade emails nobody');
 
-        self::assertSame([PlanFeature::EmailDomains], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely'));
+        self::assertSame([PlanFeature::EmailDomains], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely', self::REASON));
 
         self::assertFalse($settings->inForce($this->organisation, PlanFeature::EmailDomains), 'switched off');
         self::assertSame('ire.events', $domains->value, 'and kept as it was');
@@ -135,12 +170,12 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function anUpgradeSwitchesThemBackOnAsTheyWere(): void
     {
-        $settings = new EnterpriseSettings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events')]);
+        $settings = $this->settings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains, 'ire.events')]);
         $changer = $this->changer($settings);
-        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
-        $changer->change($this->organisation, Plan::Free, 'Ada at Soirely');
+        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely', self::REASON);
+        $changer->change($this->organisation, Plan::Free, 'Ada at Soirely', self::REASON);
 
-        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
+        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely', self::REASON);
 
         self::assertTrue($settings->inForce($this->organisation, PlanFeature::EmailDomains));
     }
@@ -148,17 +183,17 @@ final class OrganisationPlanTest extends ApiTestCase
     #[Test]
     public function aDowngradeWithNothingConfiguredEmailsNobody(): void
     {
-        $changer = $this->changer(new EnterpriseSettings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains)]));
-        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely');
+        $changer = $this->changer($this->settings([new ConfiguredEnterpriseSetting(PlanFeature::EmailDomains)]));
+        $changer->change($this->organisation, Plan::Enterprise, 'Ada at Soirely', self::REASON);
 
-        self::assertSame([], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely'));
+        self::assertSame([], $changer->change($this->organisation, Plan::Free, 'Ada at Soirely', self::REASON));
         self::assertSame([], $this->mails());
     }
 
     #[Test]
     public function thePlanToItselfIsNoChangeAndNotAudited(): void
     {
-        self::assertSame([], $this->changer(new EnterpriseSettings([]))->change($this->organisation, Plan::Free, 'Ada at Soirely'));
+        self::assertSame([], $this->changer($this->settings([]))->change($this->organisation, Plan::Free, 'Ada at Soirely', self::REASON));
         self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['action' => PlanChanger::CHANGED, 'subjectId' => $this->organisation->getId()]));
     }
 
@@ -167,7 +202,7 @@ final class OrganisationPlanTest extends ApiTestCase
     {
         $this->expectException(RuntimeException::class);
 
-        $this->changer(new EnterpriseSettings([]))->change($this->organisation, Plan::Enterprise, '  ');
+        $this->changer($this->settings([]))->change($this->organisation, Plan::Enterprise, '  ', self::REASON);
     }
 
     /** Through the real directory: the organisation's plan reaches the grants the access check reads, on both of its paths. */
@@ -196,13 +231,15 @@ final class OrganisationPlanTest extends ApiTestCase
         }
     }
 
-    /** Regression: everything not on the list is open on both plans, and everything on it only on Enterprise. */
+    /** Regression (sc-3928): the catalogue answers sc-581's list as the plan did, Enterprise only. */
     #[Test]
     public function onlyEnterpriseUnlocksTheListAndFreeUnlocksNoneOfIt(): void
     {
-        foreach (PlanFeature::cases() as $feature) {
-            self::assertTrue(Plan::Enterprise->unlocks($feature), $feature->value);
-            self::assertFalse(Plan::Free->unlocks($feature), $feature->value);
+        $catalogue = self::service(Catalogue::class)->inForce();
+
+        foreach ([PlanFeature::EmailDomains, PlanFeature::AuditLog, PlanFeature::GuestDataDeletion] as $feature) {
+            self::assertTrue($catalogue->plan(Plan::Enterprise)->unlocks($feature), $feature->value);
+            self::assertFalse($catalogue->plan(Plan::Free)->unlocks($feature), $feature->value);
         }
     }
 
@@ -210,7 +247,7 @@ final class OrganisationPlanTest extends ApiTestCase
     private function moveTo(Plan $plan): void
     {
         $organisation = self::service(EntityManagerInterface::class)->find(Organisation::class, $this->organisation->getId()) ?? self::fail('gone');
-        self::service(PlanChanger::class)->change($organisation, $plan, 'Ada at Soirely');
+        self::service(PlanChanger::class)->change($organisation, $plan, 'Ada at Soirely', self::REASON);
     }
 
     private function changer(EnterpriseSettings $settings): PlanChanger
@@ -218,10 +255,23 @@ final class OrganisationPlanTest extends ApiTestCase
         return new PlanChanger(
             self::service(Auditor::class),
             self::service(PlanDowngradeMailer::class),
-            self::service(EntityManagerInterface::class),
             self::service(ClockInterface::class),
             $settings,
+            self::service(SubscriptionRepository::class),
+            self::service(SubscriptionChanger::class),
+            self::service(Catalogue::class),
         );
+    }
+
+    /** @param list<ConfiguredEnterpriseSetting> $settings */
+    private function settings(array $settings): EnterpriseSettings
+    {
+        return new EnterpriseSettings($settings, self::service(Entitlements::class));
+    }
+
+    private function plan(): Plan
+    {
+        return self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation->getId())->getPlan();
     }
 
     /** @return list<string> the bodies sent to the owner */

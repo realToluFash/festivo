@@ -129,6 +129,28 @@ describe('when picks close, on the meal step (sc-3905)', () => {
     },
   );
 
+  it(
+    'keeps the picks read-only under the paused card, with each close line and no send (#82655)',
+    SLOW,
+    async () => {
+      await meal('paused', MSW.title);
+      expect(screen.getByText(/^This event is paused\./u)).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Answers are closed while the event is paused. Anything you sent is kept.',
+        ),
+      ).toBeTruthy();
+      expect(within(row('Starter')).getByText('Picks closed on Friday, Oct 16.')).toBeTruthy();
+      expect(within(row('Main')).getByText(/^Picks close /u)).toBeTruthy();
+      expect(within(row('Main')).getByText('Jollof rice')).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: /^Change (starter|main|dessert) for / }),
+      ).toBeNull();
+      expect(screen.queryByRole('button', { name: MSW.send })).toBeNull();
+      expect(screen.queryByText(MSW.askHosts)).toBeNull();
+    },
+  );
+
   it('refuses the closed course and saves the open one in the same send', SLOW, async () => {
     await meal('refused', MSW.send);
     send();
@@ -217,5 +239,14 @@ describe('a course’s default on the meal step (sc-1362)', () => {
     expect(
       within(row('Starter')).getByText('You had not chosen by then, so this is your starter.'),
     ).toBeTruthy();
+
+    await meal('refusedExcluded', MSW.send);
+    fireEvent.click(screen.getByRole('button', { name: MSW.send }));
+    expect(
+      within(row('Starter')).getByText(
+        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+      ),
+    ).toBeTruthy();
+    expect(within(row('Starter')).queryByText('Canapé selection')).toBeNull();
   });
 });

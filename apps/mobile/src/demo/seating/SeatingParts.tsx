@@ -7,7 +7,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { Initials } from '../../components/Initials.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { ReadOut } from '../../components/ReadOut.tsx';
-import { Sheet } from '../../components/Sheet.tsx';
+import { Sheet, SheetScrollView } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { ShapeMark } from '../../components/StatusMark.tsx';
@@ -552,8 +552,14 @@ export function ChoiceSheet({
       opener={opener}
       testID="seating.choices"
     >
-      <View style={styles.choices}>
+      <View style={styles.choicesHead}>
         <SheetTitle title={title} onClose={onClose} />
+      </View>
+      <SheetScrollView
+        style={styles.choiceList}
+        contentContainerStyle={styles.choices}
+        testID="seating.choices.list"
+      >
         {choices.map((choice) => (
           <Pressable
             key={choice.label}
@@ -575,7 +581,7 @@ export function ChoiceSheet({
             </Text>
           </Pressable>
         ))}
-      </View>
+      </SheetScrollView>
     </Sheet>
   );
 }
@@ -740,10 +746,15 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusField,
     backgroundColor: tokens.colorCard,
   },
+  choicesHead: {
+    paddingHorizontal: tokens.spaceXxl,
+    paddingTop: tokens.spaceXl,
+    paddingBottom: tokens.spaceXxs,
+  },
+  choiceList: { flexGrow: 0, flexShrink: 1 },
   choices: {
     gap: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXxl,
-    paddingTop: tokens.spaceXl,
     paddingBottom: tokens.space3xl,
   },
   choice: {

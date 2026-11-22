@@ -4,12 +4,22 @@ export interface SidebarSizeBoard {
   href: string;
 }
 
-/** iPad landscape's sidebar at each size sc-68441 asks for, in English and in French. */
+/** iPad landscape's sidebar at each size sc-68441, sc-72307 and sc-79559 ask for, in English, Spanish and French. */
 export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
   {
     title: 'Sidebar · default size',
     what: 'As on main: 44 rows in the 252 column',
     href: '/demo/sidebar-size?size=default&lang=en&at=members',
+  },
+  {
+    title: 'Sidebar · eighth step (AX1), Today',
+    what: 'QA Organisation steps down in its pill to read whole on one line, where main’s size would cut it',
+    href: '/demo/sidebar-size?size=eighth&lang=en&at=today&org=qa',
+  },
+  {
+    title: 'Sidebar · eighth step (AX1), Members',
+    what: 'The same name in the pill on Settings › Members',
+    href: '/demo/sidebar-size?size=eighth&lang=en&at=members&org=qa',
   },
   {
     title: 'Barre latérale · ninth step (AX2)',
@@ -40,5 +50,25 @@ export const SIDEBAR_SIZE_BOARDS: readonly SidebarSizeBoard[] = [
     title: 'Barre latérale · twelfth step (AX5), an event',
     what: '‹ Événements, the card and the ten areas whole',
     href: '/demo/sidebar-size?size=twelfth&lang=fr&at=event',
+  },
+  {
+    title: 'Sidebar · twelfth step (AX5), an event, two invitations',
+    what: '2 invitations steps down beside its ring to read whole on one line',
+    href: '/demo/sidebar-size?size=twelfth&lang=en&at=event&waiting=two',
+  },
+  {
+    title: 'Barra lateral · twelfth step (AX5), an event, two invitations',
+    what: '2 invitaciones whole on one line under the name',
+    href: '/demo/sidebar-size?size=twelfth&lang=es&at=event&waiting=two',
+  },
+  {
+    title: 'Sidebar · twelfth step (AX5), Today, one invitation',
+    what: '1 invitation whole on one line beside its ring',
+    href: '/demo/sidebar-size?size=twelfth&lang=en&at=today&waiting=one',
+  },
+  {
+    title: 'Barra lateral · twelfth step (AX5), Today, one invitation',
+    what: '1 invitación whole on one line beside its ring',
+    href: '/demo/sidebar-size?size=twelfth&lang=es&at=today&waiting=one',
   },
 ];

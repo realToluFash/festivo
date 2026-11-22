@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\StaffLinkStatus;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -15,6 +16,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'staff_members')]
 #[ORM\Index(name: 'idx_staff_member_mobile', columns: ['event_id', 'mobile'])]
+#[ORM\UniqueConstraint(name: 'uniq_staff_floor_lead', columns: ['event_id'], options: ['where' => 'floor_lead'])]
 class StaffMember
 {
     use Timestampable;
@@ -45,9 +47,39 @@ class StaffMember
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $member;
 
+    /** One job on the event (sc-3908), and every shift of theirs is of it; kept through the erasure. */
+    #[ORM\ManyToOne(targetEntity: StaffJob::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffJob $job = null;
+
     /** Set 30 days after the event finishes, when the mobile number, email and member link go. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $contactsErasedAt = null;
+
+    /** The roster's one station (sc-3910). */
+    #[ORM\ManyToOne(targetEntity: StaffStation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffStation $station = null;
+
+    /** The one more that Team's As well adds for their shift (sc-36034 writes it). */
+    #[ORM\ManyToOne(targetEntity: StaffStation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffStation $asWellStation = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $floorLead = false;
+
+    /** Their own link (sc-3912): the person, never a token, carries how far it got. */
+    #[ORM\Column(type: Types::STRING, length: 16, enumType: StaffLinkStatus::class, options: ['default' => 'none'])]
+    private StaffLinkStatus $linkStatus = StaffLinkStatus::None;
+
+    /** Who copied or marked it as sent; never set for Opened. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $linkBy = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $linkAt = null;
 
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
@@ -89,6 +121,16 @@ class StaffMember
         return $this->member;
     }
 
+    public function getJob(): ?StaffJob
+    {
+        return $this->job;
+    }
+
+    public function setJob(?StaffJob $job): void
+    {
+        $this->job = $job;
+    }
+
     public function getContactsErasedAt(): ?DateTimeImmutable
     {
         return $this->contactsErasedAt;
@@ -112,5 +154,57 @@ class StaffMember
         $this->email = null;
         $this->member = null;
         $this->contactsErasedAt = $at;
+    }
+
+    public function getStation(): ?StaffStation
+    {
+        return $this->station;
+    }
+
+    public function setStation(?StaffStation $station): void
+    {
+        $this->station = $station;
+    }
+
+    public function getAsWellStation(): ?StaffStation
+    {
+        return $this->asWellStation;
+    }
+
+    public function setAsWellStation(?StaffStation $station): void
+    {
+        $this->asWellStation = $station;
+    }
+
+    public function isFloorLead(): bool
+    {
+        return $this->floorLead;
+    }
+
+    public function setFloorLead(bool $floorLead): void
+    {
+        $this->floorLead = $floorLead;
+    }
+
+    public function getLinkStatus(): StaffLinkStatus
+    {
+        return $this->linkStatus;
+    }
+
+    public function getLinkBy(): ?User
+    {
+        return $this->linkBy;
+    }
+
+    public function getLinkAt(): ?DateTimeImmutable
+    {
+        return $this->linkAt;
+    }
+
+    public function linkMoved(StaffLinkStatus $status, ?User $by, ?DateTimeImmutable $at): void
+    {
+        $this->linkStatus = $status;
+        $this->linkBy = $by;
+        $this->linkAt = $at;
     }
 }

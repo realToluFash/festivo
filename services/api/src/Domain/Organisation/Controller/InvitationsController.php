@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\Invitations\InvitationResponder;
@@ -35,8 +36,10 @@ final readonly class InvitationsController
         private Security $security,
         private InvitationRepository $invitationRepository,
         private InvitationResponder $invitationResponder,
+        private ManagedAccounts $managedAccounts,
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRules $signInRules,
+        private OrganisationSerialiser $organisationSerialiser,
         private TranslatorInterface $translator,
     ) {
     }
@@ -77,7 +80,7 @@ final readonly class InvitationsController
     {
         $membership = $this->invitationResponder->accept($this->invitation($invitationId), $this->user());
 
-        return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
+        return new JsonResponse(['organisation' => $this->organisationSerialiser->membership(
             $membership,
             $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
             $this->signInRules->twoFactorDue($membership),
@@ -113,6 +116,7 @@ final readonly class InvitationsController
             'refusal' => $this->invitationResponder->refusalOf($invitation)?->value,
             'forYou' => null === $user ? null : $this->invitationResponder->isFor($invitation, $user),
             'signedInAs' => $user?->getPrimaryEmailAddress()?->getAddress(),
+            'managed' => null === $user ? null : $this->managedAccounts->describeFor($user, $invitation->getOrganisation()),
         ];
     }
 

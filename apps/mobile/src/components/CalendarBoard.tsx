@@ -1,12 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  type CalendarMonth,
-  type CalendarView,
-  keptCalendarPlace,
-  monthOfDay,
-  readCalendarPlace,
-  shiftMonth,
-} from '@soirely/domain';
+import { type CalendarMonth, type CalendarView, monthOfDay, shiftMonth } from '@soirely/domain';
 import {
   type ComponentType,
   type ReactNode,
@@ -48,6 +40,7 @@ import {
   weekIndexOf,
   weeksAround,
 } from '../kit/calendar.ts';
+import { type Opening, keepPlace, openingOf } from '../kit/calendarPlace.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { motionEase } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -71,7 +64,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { SETTLED_MS } from './Screen.tsx';
 import type { CoverLayout } from './TodayCover.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { type Anchor, anchorUnder, useAnchorFollowsTurn } from './Summary.tsx';
 import { Text } from './Text.tsx';
 
@@ -151,8 +144,8 @@ export interface CalendarBoardProps<S extends string, E extends CalEvent> {
   now: Date;
   locale: string;
   firstDay: number;
-  /** The AsyncStorage key the view and month are kept under. */
-  kept: string;
+  /** The person whose view and month the board opens on and keeps. */
+  personId: string;
   start?: BoardStart;
   bottom: number;
   head?: ReactNode;
@@ -175,7 +168,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   now,
   locale,
   firstDay,
-  kept,
+  personId,
   start = NO_START,
   bottom,
   head,
@@ -213,20 +206,17 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   useEffect(() => {
     if (placed) return;
     let live = true;
-    const land = (place: ReturnType<typeof readCalendarPlace>) => {
-      setView((was) => was ?? place?.view ?? 'month');
-      setAt((was) => was ?? (place == null ? today : landingOf(place.month, today)));
+    const land = (opening: Opening) => {
+      setView((was) => was ?? opening.view);
+      setAt((was) => was ?? opening.at);
     };
 
-    AsyncStorage.getItem(kept).then(
-      (read) => live && land(readCalendarPlace(read)),
-      () => live && land(null),
-    );
+    void openingOf(personId, today).then((opening) => live && land(opening));
 
     return () => {
       live = false;
     };
-  }, [placed, kept, today]);
+  }, [placed, personId, today]);
 
   useEffect(() => {
     if (!start.menu) return;
@@ -263,11 +253,8 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
   useEffect(() => {
     if (view == null || at == null) return;
-    void AsyncStorage.setItem(
-      kept,
-      keptCalendarPlace({ view, month: monthOfDay(`${pinnedKey}-01`) }),
-    ).catch(() => undefined);
-  }, [kept, view, at, pinnedKey]);
+    void keepPlace(personId, { view, month: monthOfDay(`${pinnedKey}-01`) });
+  }, [personId, view, at, pinnedKey]);
 
   const loaded = load === 'loaded';
   const none = loaded && events.length === 0;
@@ -575,9 +562,9 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
           headingTakesFocus
           testID="calendar.daySheet"
         >
-          <ScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          <SheetScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
             {shownDay}
-          </ScrollView>
+          </SheetScrollView>
         </Sheet>
       ) : (
         !landscape && (

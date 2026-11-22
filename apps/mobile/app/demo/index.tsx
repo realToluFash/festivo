@@ -11,6 +11,7 @@ import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
 import { TABLET_TABS_BOARDS } from '../../src/demo/tabletTabs/TabletTabsBoards.ts';
 import { TEXT_SIZE_BOARDS } from '../../src/demo/textSize/TextSizeBoards.ts';
 import { DATA_BOARDS } from '../../src/demo/settings/DataBoards.ts';
+import { SSO_BOARDS } from '../../src/demo/settings/SingleSignOnBoards.ts';
 import { CONSULTATION_BOARDS } from '../../src/demo/enquiries/ConsultationsModel.ts';
 import {
   ENQUIRIES_BOARDS,
@@ -23,11 +24,22 @@ import { ENQUIRY_EVENT_BOARDS } from '../../src/demo/enquiries/EnquiryEventBoard
 import { FOCUSED_HEADER_BOARDS } from '../../src/demo/focusedHeader/FocusedHeaderBoards.ts';
 import { SIGN_OUT_SIZE_BOARDS } from '../../src/demo/signOutSize/SignOutSizeBoards.ts';
 import { SIDEBAR_SIZE_BOARDS } from '../../src/demo/sidebarSize/SidebarSizeBoards.ts';
+import { ROWS_SIZE_BOARDS } from '../../src/demo/rowsSize/RowsSizeBoards.ts';
+import {
+  FILTER_DRILLED_BOARDS,
+  FILTER_SIZE_BOARDS,
+} from '../../src/demo/filterSize/FilterSizeBoards.ts';
+import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
+import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
+import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
 import { SAMPLE } from '../../src/demo/samples.ts';
 import { SEARCH_BOARDS } from '../../src/demo/search/searchRules.ts';
 import { DOOR_CODE_BOARDS } from '../../src/demo/doorCode/DoorCodeBoards.ts';
+import { OUTSIDE_BOARDS } from '../../src/demo/outsideEvents/OutsideModel.ts';
+import { LINK_BOARDS } from '../../src/demo/events/EventLink.ts';
+import { BEHIND_BOARDS } from '../../src/demo/events/opener.ts';
 import { GUESTS_BOARDS } from '../../src/demo/guests/GuestsBoards.ts';
 import { PASS_BOARDS } from '../../src/demo/pass/PassBoards.ts';
 import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
@@ -35,6 +47,7 @@ import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowI
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
+import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
 import { isSmsState } from '../../src/demo/messages/Sms.ts';
 import { isStopState } from '../../src/demo/messages/StopWriting.ts';
@@ -42,9 +55,16 @@ import { isReasonState } from '../../src/demo/messages/TrySms.ts';
 import { SEATING_BOARDS } from '../../src/demo/seating/SeatingBoards.ts';
 import { RUN_BOARDS, RUN_READ_BOARDS } from '../../src/demo/runView/runViewModel.ts';
 import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
+import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
+import {
+  STAFF_LINK_BOARDS,
+  STAFF_ROSTER_BOARDS,
+  STAFF_TEXT_BOARDS,
+} from '../../src/demo/staffLink/StaffLinkBoards.ts';
+import { SHIFT_CLOCK_BOARDS, STAFF_HOURS_BOARDS } from '../../src/demo/shiftClock/boards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -126,6 +146,50 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Settings · Sign out at the largest text sizes (sc-66900)',
     boards: SIGN_OUT_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings · the rows’ words whole at the largest text sizes (sc-69816)',
+    boards: ROWS_SIZE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Events · the Filter menu’s values whole at the largest text sizes (sc-73933)',
+    boards: FILTER_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Events · the Filter menu’s drilled levels whole at the largest text sizes (sc-75213)',
+    boards: FILTER_DRILLED_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Calendar · the Show menu’s words whole at the largest text sizes (sc-78219)',
+    boards: SHOW_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Calendar · the iPad header’s title and Subscribe whole at the largest text sizes (sc-79265)',
+    boards: CALENDAR_HEADER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Events · the count line whole at the largest text sizes (sc-75214)',
+    boards: COUNT_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
@@ -364,6 +428,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'The way in · no organisation',
         what: 'Start organisation opens the walk',
         href: '/demo/today?orgs=none',
+      },
+      {
+        title: 'The way in · no organisation, managed',
+        what: 'Managed by Ire Events in place of Start your own',
+        href: '/demo/today?orgs=none&state=managed',
+      },
+      {
+        title: 'The way in · no organisation, invitations',
+        what: 'Two waiting under Invitations; Open moves into the one joined',
+        href: '/demo/today?orgs=none&state=invitations',
+      },
+      {
+        title: 'The way in · no organisation, Your account',
+        what: 'Settings’ own list, Back in place of the tab bar',
+        href: '/demo/settings?as=noOrg&from=none',
       },
       {
         title: 'Step 1 · nothing typed',
@@ -1110,6 +1189,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Sign-in rules · Single sign-on (sc-610) · phone, tablet portrait and landscape',
+    boards: SSO_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Data and control · B · One place',
     boards: DATA_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -1706,6 +1789,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Replies stay open until the start',
         href: '/demo/events/evt-wed-4?state=replyByRemoved',
       },
+      {
+        title: 'Reply by · the event no longer available (404)',
+        what: 'Close replies sooner: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=replyByGone',
+      },
       { title: 'Venue', what: 'Name and address', href: '/demo/events/evt-wed-4?state=venue' },
       {
         title: 'Venue · suggestions',
@@ -1721,6 +1809,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Venue · suggestions down',
         what: 'Type it in full',
         href: '/demo/events/evt-wed-4?state=venueDown',
+      },
+      {
+        title: 'Venue · one suggestion, credited',
+        what: 'OpenStreetMap at the list’s foot (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueOne',
+      },
+      {
+        title: 'Venue · two letters, no list',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueShort',
+      },
+      {
+        title: 'Venue · nothing matches',
+        what: 'No credit without suggestions (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueNoMatch',
+      },
+      {
+        title: 'Venue · the credit in French',
+        what: 'Three suggestions, the line whole (sc-80918)',
+        href: '/demo/events/evt-wed-4?state=venueFrench',
       },
       {
         title: 'Venue · arrival note',
@@ -1758,6 +1866,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=hosts',
       },
       {
+        title: 'Hosted by · no hosts yet',
+        what: 'A draft, before its first host',
+        href: '/demo/events/evt-draft-4?state=hosts',
+      },
+      {
         title: 'Hosted by · a name twice',
         what: 'The second, in red',
         href: '/demo/events/evt-wed-4?state=hostsDuplicate',
@@ -1792,6 +1905,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Event name · blank',
         what: 'The name, in red',
         href: '/demo/events/evt-wed-4?state=nameBlank',
+      },
+      {
+        title: 'Event name · the event no longer available (404)',
+        what: 'Save: nothing was changed, at the top',
+        href: '/demo/events/evt-wed-4?state=nameGone',
       },
       {
         title: 'Cover',
@@ -2214,14 +2332,33 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: DOOR_CODE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: 'An event’s link from another organisation · sc-80863',
+    boards: LINK_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'An event’s ‹ names the screen it goes back to · sc-83008 · phone and tablet portrait',
+    boards: BEHIND_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Events from outside · sc-68438',
+    boards: OUTSIDE_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Budget · A Summary first',
     boards: BUDGET_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Messages · B Conversations',
     boards: MESSAGES_BOARDS.filter(
-      ({ state }) => !isStopState(state) && !isReasonState(state) && !isSmsState(state),
+      ({ state }) =>
+        !isStopState(state) && !isReasonState(state) && !isSmsState(state) && !isBellState(state),
     ).map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: BELL_GROUP,
+    boards: MESSAGES_BOARDS.filter(({ state }) => isBellState(state)).map(
+      ({ title, what, href }) => ({ title, what, href: href as Href }),
+    ),
   },
   {
     page: 'Who it reached: every reason, Try SMS instead (sc-3966)',
@@ -2260,6 +2397,42 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Staffing · the event’s Staff, its roster in the app (sc-77903) · phone, tablet portrait and landscape',
+    boards: STAFF_ROSTER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · one person’s own link, Share link first (sc-3912, sc-77903) · phone, tablet portrait and landscape',
+    boards: [...STAFF_LINK_BOARDS, ...STAFF_TEXT_BOARDS].map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · clocking in and out, the clock card on a person’s own shift (sc-234) · phone (also the phone browser), tablet portrait and landscape',
+    boards: SHIFT_CLOCK_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the event’s hours, actual times and corrections (sc-234) · phone, tablet portrait and landscape',
+    boards: STAFF_HOURS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · a staff member’s whole night on one page (sc-3915) · phone, tablet portrait and landscape',
+    boards: MY_NIGHT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · the pass’s print controls (sc-4018) · tablet landscape',
@@ -2452,6 +2625,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/welcome?notice=byRule',
       },
       {
+        title: 'Welcome · Language sheet',
+        what: 'At the size set on the device: the title whole, Done beside it or under it',
+        href: '/demo/welcome?state=language',
+      },
+      {
+        title: 'Welcome · Language sheet in French',
+        what: 'Langue and Terminé; from the eighth step the line opens the list',
+        href: '/demo/welcome?state=languageFr',
+      },
+      {
+        title: 'Welcome · Language sheet, Terminé under the title',
+        what: 'The rule’s second row, shown whatever the row measures',
+        href: '/demo/welcome?state=languageFrUnder',
+      },
+      {
         title: 'Welcome · Terms pressed',
         what: 'Under the last button; names what the in-app browser opens',
         href: '/demo/legal-link?doc=terms',
@@ -2506,6 +2694,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Your organisation · no country',
         what: 'The device names none: Choose a country.',
         href: '/demo/organisation?region=none',
+      },
+      {
+        title: 'Your organisation · managed, nothing to join',
+        what: 'The banner where the fields were; Continue, no organisation',
+        href: '/demo/organisation?state=managed',
+      },
+      {
+        title: 'Your organisation · managed, Ire Events listed',
+        what: 'Ask to join, and the banner for Start my own',
+        href: '/demo/organisation?state=managedOffer',
       },
       {
         title: 'Your mobile number · no code',

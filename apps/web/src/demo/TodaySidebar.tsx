@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from 'react-router';
+import type { ReactNode } from 'react';
 
 import { DeskEvents } from '../components/DeskEvents.tsx';
 import { DeskPersonFace, type DeskPerson, DeskSidebar } from '../components/DeskSidebar.tsx';
@@ -10,6 +11,7 @@ import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import './narrowDesk.css';
 import './wideDesk.css';
+import './deskReflow.css';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { ShownEvent } from '../components/today.ts';
 
@@ -51,6 +53,7 @@ export function TodaySidebar({
   phone = false,
   enquiries = false,
   free = false,
+  bell,
 }: {
   events: readonly EventKey[];
   tell: Tell;
@@ -68,6 +71,8 @@ export function TodaySidebar({
   enquiries?: boolean;
   /** A Free organisation has no Enquiries; every other screen of the sample is Enterprise and lists it, and `?plan=free` shows any of them as Free (sc-31226). */
   free?: boolean;
+  /** At 40rem and under on Settings, the bell at the bar's end, after Menu, as the product's shell has it (sc-13413). */
+  bell?: ReactNode;
 }) {
   const [params] = useSearchParams();
   const listed = sideEvents(events, params.get('sidebar'));
@@ -117,6 +122,7 @@ export function TodaySidebar({
           Menu
         </button>
       )}
+      {phone && bell}
       <SearchRow />
       <ul className="today-places">
         {places

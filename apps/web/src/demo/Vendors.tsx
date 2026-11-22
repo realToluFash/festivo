@@ -13,8 +13,10 @@ import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
-import { AlertInset } from './BudgetParts.tsx';
+import { AlertInset, BudgetRow, Rows } from './BudgetParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { REMINDER_DAYS, remindersPath } from './payments.ts';
+import { PW } from './paymentsWords.ts';
 import { owedBy, usedOn } from './quotes.ts';
 import { QW } from './quotesWords.ts';
 import { COUNTRIES, codeChoice } from './rules.ts';
@@ -68,6 +70,24 @@ import '../routes/app/settings/vendors.css';
 const BUSY_MS = 900;
 const RETRY_MS = 1200;
 
+function RemindersRow() {
+  const [params] = useSearchParams();
+  const plan = params.get('plan');
+  const off = plan === 'downgraded';
+
+  return (
+    <Rows>
+      <li>
+        <BudgetRow
+          title={off ? PW.remindersOff : PW.paymentReminders}
+          lines={[off ? PW.remindersOffLine : PW.whenReminded(REMINDER_DAYS)]}
+          to={remindersPath(off ? 'reminders_plan_lost' : 'reminders', params.get('as'), plan)}
+        />
+      </li>
+    </Rows>
+  );
+}
+
 /** The old address keeps working: Vendors is a section of Settings now (A · Summary first). */
 export function VendorsMoved() {
   const { search } = useLocation();
@@ -76,7 +96,7 @@ export function VendorsMoved() {
 }
 
 /** Settings › Vendors in A · Summary first (Budget-A-Vendors, page e81): the card, the directory, its form, every state, on sample data. */
-export function Vendors({ state, tell }: { state: string; tell: Tell }) {
+export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell: boolean }) {
   const [params] = useSearchParams();
   const [locale] = useState(() => formattingLocale('en', navigator.language));
   const [start] = useState(() => vendorsStart(state, params.get('vendor')));
@@ -87,6 +107,8 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   const [menu, setMenu] = useState(start.menu);
   const [dialog, setDialog] = useState<VendorsDialog | null>(start.dialog);
   const [lit, setLit] = useState(start.lit);
+  const [unreachable, setUnreachable] = useState(start.unreachable);
+  const [rereading, setRereading] = useState(false);
   const search = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -95,6 +117,21 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
 
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (!rereading) return;
+    const timer = setTimeout(() => {
+      setRereading(false);
+      setUnreachable(false);
+      focusWhenFree(() =>
+        search.current != null && search.current.value !== ''
+          ? search.current
+          : document.querySelector<HTMLElement>('.desk-main h1'),
+      );
+    }, RETRY_MS);
+
+    return () => clearTimeout(timer);
+  }, [rereading]);
 
   useEffect(() => {
     if (start.told != null) tell(start.told);
@@ -118,7 +155,7 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   if (load !== 'loaded')
     return (
       <Page>
-        <TitleRow title={VW.title} bell={<DemoBell tell={tell} />} />
+        <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
     );
@@ -133,10 +170,11 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
   const showing = paged(rows, page);
   const searching = isLooking(looking);
   const nothingInUse = counts.inUse === 0 && looking.view === 'inUse' && !searching;
+  const counted = searching && rows.length > 0 && !unreachable;
 
   return (
     <Page>
-      <TitleRow title={VW.title} bell={<DemoBell tell={tell} />} />
+      <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
       <Card>
         {card.tags.length > 0 && (
           <ul className="desk-glass-tags">
@@ -153,6 +191,7 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
         </div>
         <CardStep label={VW.add} onClick={adding} />
       </Card>
+      <RemindersRow />
       {vendors.length > 0 && (
         <>
           <div className="vd-tools">
@@ -214,10 +253,19 @@ export function Vendors({ state, tell }: { state: string; tell: Tell }) {
               onPick={(key) => look({ ...looking, view: key as View })}
             />
           </div>
-          <p className={searching && rows.length > 0 ? 'vd-count' : 'desk-unseen'} role="status">
-            {searching && rows.length > 0 ? VW.vendors(rows.length) : ''}
+          <p className={counted ? 'vd-count' : 'desk-unseen'} role="status">
+            {counted ? VW.vendors(rows.length) : ''}
           </p>
-          {rows.length === 0 ? (
+          {unreachable ? (
+            rereading ? (
+              <div className="desk-loading" role="status" aria-label={VW.loading}>
+                <span className="desk-unseen">{VW.loading}</span>
+                <RowBones />
+              </div>
+            ) : (
+              <Failed onRetry={() => setRereading(true)} />
+            )
+          ) : rows.length === 0 ? (
             !nothingInUse && <NoMatch looking={looking} onLooking={look} />
           ) : (
             <>
@@ -290,17 +338,23 @@ function Loading() {
     <div className="desk-loading" role="status" aria-label={VW.loading}>
       <span className="desk-unseen">{VW.loading}</span>
       <span className="desk-sunk is-card" aria-hidden="true" />
-      <ul className="desk-rows" aria-hidden="true">
-        {[1, 2, 3, 4].map((bar) => (
-          <li key={bar} className="desk-row is-bones">
-            <span className="desk-row-words">
-              <span className={`desk-sunk is-title b${bar}`} />
-              <span className={`desk-sunk is-line b${bar}`} />
-            </span>
-          </li>
-        ))}
-      </ul>
+      <RowBones />
     </div>
+  );
+}
+
+function RowBones() {
+  return (
+    <ul className="desk-rows" aria-hidden="true">
+      {[1, 2, 3, 4].map((bar) => (
+        <li key={bar} className="desk-row is-bones">
+          <span className="desk-row-words">
+            <span className={`desk-sunk is-title b${bar}`} />
+            <span className={`desk-sunk is-line b${bar}`} />
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

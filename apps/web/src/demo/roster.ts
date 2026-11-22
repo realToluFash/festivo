@@ -2,25 +2,35 @@ import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soire
 
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
-import { STATIONS_EVENT } from './stations.ts';
+import { type Trail, NOW_AT, SAMPLE_LINK, YOU } from './staffLink.ts';
+import { type Texting, texting } from './staffText.ts';
+import { STATIONS_EVENT, SW, placesOf, sectionsOf, stationsStart } from './stations.ts';
 
 /** The Roster on the event's Staff page (sc-3906, Staffing.dc.html on page e34): who works the event, without making them members. */
 export const ORGANISATION = 'Ire Events';
 export const NAME_MAX = 200;
 export const BAR_MS = 10_000;
 
-export type LinkState = 'opened' | 'sent' | 'copied' | 'none' | 'noMobile' | 'erased';
+export type LinkState = 'opened' | 'sent' | 'shared' | 'copied' | 'none' | 'noMobile' | 'erased';
 
 export interface Entry {
   id: string;
   name: string;
   job: string | null;
   station: string | null;
+  /** The section the seating plan removed from under them, until they are given a station (sc-3910). */
+  gone?: string;
   shift: string | null;
   more: readonly string[];
   mobile: string | null;
   email: string | null;
-  link: 'opened' | 'sent' | 'copied' | 'none';
+  link: 'opened' | 'sent' | 'shared' | 'copied' | 'none';
+  trail?: Trail | null;
+  /** sc-77904: a text sending or waiting, the time one was not delivered, and a number that replied STOP. */
+  pending?: 'sending' | 'held' | 'waits' | undefined;
+  undelivered?: string | null;
+  before?: { link: Entry['link']; trail: Trail | null } | undefined;
+  stopped?: boolean;
 }
 
 export interface Draft {
@@ -41,7 +51,7 @@ export type Panel =
 
 export const RW = {
   title: 'Staff',
-  sub: 'Who works the event, where they work, and what each place dishes.',
+  sub: 'Who works the event, where they work, and what each station serves.',
   tabs: ['Roster', 'Jobs and shifts', 'Stations', 'Hours worked'],
   roster: 'Roster',
   add: 'Add a person',
@@ -93,15 +103,18 @@ export const RW = {
   nextSend: 'Next: send a link to everyone who has not been sent one yet.',
   nextHours: 'Next: check the hours on Hours worked before the budget closes.',
   nextCopied: 'Next: once you have sent them the copied link, mark it as sent.',
+  nextShared: '[Next: once you have sent them the link shared in the app, mark it as sent.]',
   nextErasing: 'Next: nothing. Their mobile number and email are removed 30 days after the event.',
-  linksThere: '[Copy link, Mark as sent and Replace link are on Roster links.]',
   lock: 'You can see the roster. Changing it needs permission to manage staff.',
   stationChange: 'Change station',
+  noStationNow: 'No station',
+  sectionGone: (section: string) => `${section} was removed from the seating plan.`,
 };
 
 export const LINK_WORDS: Record<LinkState, string> = {
   opened: 'Link opened',
   sent: 'Link sent',
+  shared: 'Shared',
   copied: 'Copied',
   none: 'No link yet',
   noMobile: 'Add a mobile number to send a link',
@@ -118,19 +131,13 @@ export const JOBS: readonly { job: string; station: string | null; shifts: reado
   { job: 'Door', station: 'Door', shifts: ['16:30 to 21:00'] },
 ];
 
-export const STATIONS: readonly string[] = [
-  'Pass',
-  'Door',
-  'Bar',
-  'Kitchen',
-  'Floor',
-  'Grill',
-  'Pastry',
-  'Section A',
-  'Section B',
-  'Section C',
-];
+const STATIONS_SAMPLE = stationsStart(null).state;
 
+/** sc-3910: the roster's Station picker is Stations' grouped list, Places then Seating sections. */
+export const STATION_GROUPS: readonly { label: string; stations: readonly string[] }[] = [
+  { label: SW.places, stations: placesOf(STATIONS_SAMPLE).map((one) => one.name) },
+  { label: SW.sections, stations: sectionsOf(STATIONS_SAMPLE).map((one) => one.name) },
+];
 /** Members of the organisation the roster can link to by mobile number or email. */
 export const MEMBERS: readonly { name: string; mobile: string; email: string }[] = [
   { name: 'Amara Obi', mobile: '+2348035550142', email: 'amara.obi@ireevents.com' },
@@ -189,52 +196,65 @@ export function shiftLine(entry: Entry): string {
 }
 
 /** Every shift by start, each by job and times: the details and Remove's question. */
-export function shiftLines(entry: Entry): string[] {
-  if (entry.job == null || entry.shift == null) return [RW.noShift];
+export function shiftLines(entry: Entry, rw: typeof RW = RW): string[] {
+  if (entry.job == null || entry.shift == null) return [rw.noShift];
 
   return [entry.shift, ...entry.more].map((one) => `${entry.job} · ${one}`);
 }
 
 /** A person has one job on the event: it changes only while they are on no shift (Decided, 18 Nov 2026). */
-export function jobLocked(editing: Entry | null, draft: Draft): string | null {
+export function jobLocked(editing: Entry | null, draft: Draft, rw: typeof RW = RW): string | null {
   if (editing == null || editing.shift == null) return null;
   if ((draft.job === '' ? null : draft.job) === editing.job) return null;
 
-  return RW.jobLocked(editing.name);
+  return rw.jobLocked(editing.name);
 }
 
-export function nextLine(entries: readonly Entry[], finished: boolean): string | null {
-  if (finished) return RW.nextHours;
+export function nextLine(
+  entries: readonly Entry[],
+  finished: boolean,
+  rw: typeof RW = RW,
+): string | null {
+  if (finished) return rw.nextHours;
   const unsent = entries.some(
-    (one) => one.mobile != null && (one.link === 'none' || one.link === 'copied'),
+    (one) =>
+      one.mobile != null && (one.link === 'none' || one.link === 'copied' || one.link === 'shared'),
   );
 
-  return unsent ? RW.nextSend : null;
+  return unsent ? rw.nextSend : null;
 }
 
-export function detailsNext(entry: Entry, finished: boolean, erased: boolean): string | null {
+export function detailsNext(
+  entry: Entry,
+  finished: boolean,
+  erased: boolean,
+  rw: typeof RW = RW,
+): string | null {
   if (erased) return null;
-  if (finished) return RW.nextErasing;
+  if (finished) return rw.nextErasing;
 
-  return linkOf(entry, false) === 'copied' ? RW.nextCopied : null;
+  const link = linkOf(entry, false);
+  if (link === 'copied') return rw.nextCopied;
+
+  return link === 'shared' ? rw.nextShared : null;
 }
 
 export type Problems = { name?: string; number?: string; email?: string };
 
 /** A blank name, a number the wrong length for its country, an email with no @ and domain; in the form's order. */
-export function problemsOf(draft: Draft, contact: boolean): Problems {
+export function problemsOf(draft: Draft, contact: boolean, rw: typeof RW = RW): Problems {
   const problems: Problems = {};
-  if (draft.name.trim() === '') problems.name = RW.blank;
+  if (draft.name.trim() === '') problems.name = rw.blank;
   if (!contact) return problems;
 
   const length = phoneLengthProblem(draft.number, draft.country);
   if (length === 'tooShort' || length === 'tooLong')
-    problems.number = RW.phoneLength(
+    problems.number = rw.phoneLength(
       length === 'tooShort' ? 'short' : 'long',
       countryName(draft.country),
     );
   if (draft.email.trim() !== '' && emailProblem(draft.email) === 'shape')
-    problems.email = RW.emailShape;
+    problems.email = rw.emailShape;
 
   return problems;
 }
@@ -315,7 +335,22 @@ const entry = (
   email: string | null = null,
 ): Entry => ({ id, name, job, station, shift, more: [], mobile, email, link });
 
+const TRAILS: Record<string, Trail> = {
+  bisi: { by: '', at: '18:20' },
+  tayo: { by: 'Amara Nwosu', at: '17:58' },
+  ifeoma: { by: '', at: '17:41' },
+  sade: { by: 'Amara Nwosu', at: '18:02' },
+  amina: { by: 'Amara Nwosu', at: '18:44' },
+  grace: { by: '', at: '19:05' },
+  kunle: { by: 'Amara Nwosu', at: '18:44' },
+  ronke: { by: '', at: '18:31' },
+};
+
 export function sample(): Entry[] {
+  return listed().map((one) => ({ ...one, trail: TRAILS[one.id] ?? null }));
+}
+
+function listed(): Entry[] {
   return [
     entry('bisi', 'Bisi Okon', 'Cook', 'Kitchen', '15:00 to 23:00', '+2348031110002', 'opened'),
     entry('tayo', 'Tayo Bamidele', 'Cook', 'Grill', '15:00 to 23:00', '+2348031110003', 'sent'),
@@ -416,6 +451,20 @@ export interface RosterStart {
   warning: string | null;
   bar: string[] | null;
   failed: string | null;
+  /** What the demo's Copy link gets back: a link on the clipboard, no link issued, or a link the browser would not copy. */
+  copy: 'works' | 'notIssued' | 'refused';
+  held: { id: string; url: string } | null;
+  missed: string | null;
+  replacing: string | null;
+  /** The words of a Shift cell with no shift: the product's French, to measure the longest at 400% zoom (sc-71607). */
+  noShift: string;
+  /** The language of the Roster's words; French to measure the longest from 961 to 1279 px (sc-73291). */
+  lang: 'en' | 'fr' | 'es' | 'pt';
+  /** Null until SMS (sc-3946) is merged, so the states before smsOn have no texting. */
+  sms: Texting | null;
+  /** The check before sending, for one person's id or 'all'. */
+  checking: string | null;
+  checkFailed: boolean;
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -430,14 +479,311 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     warning: null,
     bar: null,
     failed: null,
+    copy: 'works',
+    held: null,
+    missed: null,
+    replacing: null,
+    noShift: RW.noShift,
+    lang: 'en',
+    sms: null,
+    checking: null,
+    checkFailed: false,
     ...o,
   };
 }
 
+const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
+const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;
+const PORTUGUESE = { lang: 'pt', noShift: 'Ainda sem turno' } as const;
+
+/** A name and an email of 40 characters with no space, the longest single word a cell may hold (sc-75033). */
+const LONG: Entry = entry(
+  'long',
+  'Oluwatimilehinoluwadamilareoluwaseunfunmi',
+  'Runner',
+  'Pass',
+  '17:00 to 00:00',
+  '+2348031110015',
+  'none',
+  'oluwatimilehin.oluwadamilare@example.com',
+);
+
+const erasedSample = () => sample().map((one) => ({ ...one, mobile: null, email: null }));
+
 const typed = (o: Partial<Draft>): Draft => ({ ...draftOf(null), ...o });
 const byId = (id: string) => sample().find((one) => one.id === id) as Entry;
 
+function sectionRemovedEntries(): Entry[] {
+  return [
+    ...sample().map((one) => (one.id === 'emeka' ? { ...one, gone: 'Section D' } : one)),
+    {
+      ...entry('chidi', 'Chidi Okafor', 'Waiter', null, '17:00 to 00:00', '+2348031110014', 'sent'),
+      gone: 'Section D',
+    },
+  ];
+}
+
+const OWED = ['tolu', 'amina', 'kunle', 'emeka', 'chinedu'];
+const BULK_RESULT = ['Sending to 5 people.', '1 has no mobile number.'];
+
+/** Kunle shared from the app by Kemi Adeyemi, so {n} is five: Tolu, Amina, Kunle, Emeka and Chinedu. */
+function smsEntries(change: (one: Entry) => Partial<Entry> = () => ({})): Entry[] {
+  return sample().map((one) => {
+    const shared: Entry =
+      one.id === 'kunle'
+        ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '18:44' } }
+        : one;
+
+    return { ...shared, ...change(shared) };
+  });
+}
+
+const textedBy = (at: string) => ({
+  link: 'sent' as const,
+  trail: { by: YOU, at, via: 'text' as const },
+});
+const only =
+  (id: string, change: Partial<Entry>) =>
+  (one: Entry): Partial<Entry> =>
+    one.id === id ? change : {};
+const owedOnes =
+  (change: Partial<Entry>) =>
+  (one: Entry): Partial<Entry> =>
+    OWED.includes(one.id) ? change : {};
+
+function sms(
+  o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>,
+  t: Partial<Texting> = {},
+): RosterStart {
+  return start({ entries: smsEntries(), sms: texting(t), ...o });
+}
+
+const NIGHT = { clock: '22:40', quiet: true } as const;
+
+const SMS_STATES = {
+  smsOn: () =>
+    sms({
+      name: 'Texting on',
+      note: 'Once SMS (sc-3946) is merged: Text the link first in each Link cell, and Text links to 5 before Add a person.',
+    }),
+  textCheck: () =>
+    sms({
+      name: 'Text the link, the check',
+      note: 'sc-3931 for one text (pm, #77935): This text uses 62 credits. Credits after sending: 1,438. Cancel, or Text the link.',
+      checking: 'tolu',
+    }),
+  textCheckShort: () =>
+    sms(
+      {
+        name: 'Text the link, the check with no credits',
+        note: '1 SMS message will wait for credits, with Add credits (billing.manage).',
+        checking: 'tolu',
+      },
+      { credits: 0 },
+    ),
+  textCheckQuiet: () =>
+    sms(
+      {
+        name: 'Text the link, the check at 22:40 the night before',
+        note: 'The event is not Happening now and Tolu’s shift starts after 09:00, so sc-3946’s wait line shows.',
+        checking: 'tolu',
+      },
+      NIGHT,
+    ),
+  textNotSent: () =>
+    sms(
+      {
+        name: 'Text the link, not sent',
+        note: 'The press is refused: That did not work. Try again in a moment. in the check, Tolu’s status unchanged.',
+        checking: 'tolu',
+        checkFailed: true,
+      },
+      { refused: true },
+    ),
+  textSending: () =>
+    sms({
+      name: 'Sending text…',
+      note: 'Until Twilio reports sent: No link yet with Sending text… under it, no Text the link; Sending the link to Tolu Bello. said.',
+      entries: smsEntries(only('tolu', { pending: 'sending' })),
+      bar: ['Sending the link to Tolu Bello.'],
+    }),
+  textSent: () =>
+    sms({
+      name: 'Text the link, sent',
+      note: 'Twilio reported sent: Link sent, Sent by Amara Nwosu · 19:12. Nothing more is said.',
+      entries: smsEntries(only('tolu', textedBy(NOW_AT))),
+    }),
+  textOpened: () =>
+    sms({
+      name: 'Text the link, already opened',
+      note: 'Grace Udo had opened hers: a new link went, and the row stays Link opened.',
+      bar: ['Sending the link to Grace Udo.'],
+    }),
+  textHeld: () =>
+    sms(
+      {
+        name: 'Text held: no credits',
+        note: 'Tolu’s status kept, Text held: no credits under it, no Text the link; Copy link stays.',
+        entries: smsEntries(only('tolu', { pending: 'held' })),
+        bar: ['Text held: no credits.'],
+      },
+      { credits: 0 },
+    ),
+  textWaits: () =>
+    sms(
+      {
+        name: 'Text waits until 09:00',
+        note: 'Sent at 22:40 the night before: Tolu’s status kept, with the wait line and no Text the link.',
+        entries: smsEntries(only('tolu', { pending: 'waits' })),
+        bar: ['Text waits until 09:00, their time.'],
+      },
+      NIGHT,
+    ),
+  textUndelivered: () =>
+    sms({
+      name: 'Text not delivered',
+      note: 'Twilio reported undelivered: back to No link yet with Text not delivered · 19:12, and Text the link back. Text links to 5 counts Tolu again.',
+      entries: smsEntries(only('tolu', { undelivered: NOW_AT })),
+    }),
+  stopped: () =>
+    sms({
+      name: 'Stopped texts',
+      note: 'Chinedu Eze replied STOP: Stopped texts where Text the link would be; Copy link stays. Text links to 4.',
+      entries: smsEntries(only('chinedu', { stopped: true })),
+    }),
+  bulkCheck: () =>
+    sms({
+      name: 'Text links to 5, the check',
+      note: 'Texts use 310 credits. Credits after sending: 1,190. Cancel, or Text links to 5.',
+      checking: 'all',
+    }),
+  bulkCheckShort: () =>
+    sms(
+      {
+        name: 'Text links to 5, short of credits',
+        note: '150 credits: Texts use 124 credits. 3 SMS messages will wait for credits. Add credits.',
+        checking: 'all',
+      },
+      { credits: 150 },
+    ),
+  bulkCheckAsk: () =>
+    sms(
+      {
+        name: 'Short of credits, without billing.manage',
+        note: 'Ask an owner in Add credits’ place (sc-3963).',
+        checking: 'all',
+      },
+      { credits: 150, billing: false },
+    ),
+  bulkCheckQuiet: () =>
+    sms(
+      {
+        name: 'Text links to 5, at 22:40 the night before',
+        note: 'Texts to 5 people wait until 09:00, their time. (sc-3946’s wait line)',
+        checking: 'all',
+      },
+      NIGHT,
+    ),
+  bulkSending: () =>
+    sms({
+      name: 'Text links to 5, sending',
+      note: 'The result as the press returns: Sending to 5 people. 1 has no mobile number. Each row Sending text… until sent.',
+      entries: smsEntries(owedOnes({ pending: 'sending' })),
+      bar: BULK_RESULT,
+    }),
+  bulkResult: () =>
+    sms(
+      {
+        name: 'Text links to 5, sent',
+        note: 'Twilio reported each sent: five rows read Link sent.',
+        entries: smsEntries(owedOnes(textedBy(NOW_AT))),
+        bar: BULK_RESULT,
+      },
+      { credits: 1190 },
+    ),
+  bulkHeld: () =>
+    sms(
+      {
+        name: 'Text links to 5, part held',
+        note: 'Sending to 2 people. 1 has no mobile number. 3 held: no credits.',
+        entries: smsEntries((one) =>
+          one.id === 'tolu' || one.id === 'amina'
+            ? { pending: 'sending' }
+            : OWED.includes(one.id)
+              ? { pending: 'held' }
+              : {},
+        ),
+        bar: ['Sending to 2 people.', '1 has no mobile number.', '3 held: no credits.'],
+      },
+      { credits: 26 },
+    ),
+  bulkQuiet: () =>
+    sms(
+      {
+        name: 'Text links to 5, all waiting',
+        note: 'At 22:40 the night before: 1 has no mobile number. 5 wait until 09:00, their time. Sending to is left out at 0.',
+        entries: smsEntries(owedOnes({ pending: 'waits' })),
+        bar: ['1 has no mobile number.', '5 wait until 09:00, their time.'],
+      },
+      NIGHT,
+    ),
+  bulkNone: () =>
+    sms({
+      name: 'Everyone sent one',
+      note: 'Text links to {n} is not shown at 0 (AC); the line under Roster says why.',
+      entries: smsEntries(owedOnes(textedBy(NOW_AT))),
+    }),
+  noCredits: () =>
+    sms(
+      {
+        name: 'No credits',
+        note: 'Tolu’s text is held; Copy link stays and works, and Emeka Obi reads Copied.',
+        entries: smsEntries((one) =>
+          one.id === 'tolu'
+            ? { pending: 'held' }
+            : one.id === 'emeka'
+              ? { link: 'copied', trail: { by: YOU, at: NOW_AT } }
+              : {},
+        ),
+        bar: ['Link copied.'],
+      },
+      { credits: 0 },
+    ),
+  smsReadOnly: () =>
+    sms({
+      name: 'Texting, without staff.manage',
+      note: 'Neither Text the link nor Text links to {n}.',
+      manage: false,
+    }),
+  smsFrench: () =>
+    sms({
+      name: 'Texting, in French',
+      note: 'The longest words in the Link cell and the head; [bracketed] until l10n.',
+      entries: smsEntries((one) =>
+        one.id === 'tolu'
+          ? { pending: 'waits' }
+          : one.id === 'emeka'
+            ? { undelivered: NOW_AT }
+            : one.id === 'chinedu'
+              ? { stopped: true }
+              : {},
+      ),
+      ...FRENCH,
+    }),
+  bulkCheckFrench: () =>
+    sms(
+      {
+        name: 'Text links to 5, the check in French',
+        note: 'The check’s longest lines, short of credits; [bracketed] until l10n.',
+        checking: 'all',
+        ...FRENCH,
+      },
+      { credits: 150 },
+    ),
+};
+
 const STATES = {
+  ...SMS_STATES,
   populated: () =>
     start({
       name: 'Populated',
@@ -527,7 +873,7 @@ const STATES = {
   details: () =>
     start({
       name: 'Details, Amina Yusuf',
-      note: 'Copied: the next step points to Roster links.',
+      note: 'Copied: the next step says to mark it as sent; Replace link under the Link.',
       panel: { kind: 'details', id: 'amina' },
     }),
   edit: () =>
@@ -589,6 +935,34 @@ const STATES = {
       panel: { kind: 'edit', id: 'kunle' },
       draft: { ...draftOf(byId('kunle')), number: '', email: '' },
     }),
+  nobodyOnShift: () =>
+    start({
+      name: 'Nobody on a shift yet',
+      note: 'Before shifts are handed out: every Shift cell reads Not on a shift yet, on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+    }),
+  nobodyOnShiftFrench: () =>
+    start({
+      name: 'Nobody on a shift yet, the French words',
+      note: 'Each Shift cell holds the product’s French, Aucun service pour l’instant, still on one line at 400% zoom.',
+      entries: sample().map((one) => ({ ...one, shift: null, more: [] })),
+      noShift: 'Aucun service pour l’instant',
+    }),
+  sectionRemoved: () =>
+    start({
+      name: 'A section removed from the seating plan',
+      note: 'Section D’s people have no station now; their rows and details say why.',
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  sectionRemovedReadOnly: () =>
+    start({
+      name: 'A section removed, without staff.manage',
+      note: 'Emeka Obi’s details say No station and why, with no picker.',
+      manage: false,
+      entries: sectionRemovedEntries(),
+      panel: { kind: 'details', id: 'emeka' },
+    }),
   readOnly: () =>
     start({
       name: 'Without staff.manage',
@@ -611,12 +985,214 @@ const STATES = {
       entries: weddingSample(),
       panel: { kind: 'details', id: 'tolu' },
     }),
+  linkCopied: () =>
+    start({
+      name: 'Copy link, copied',
+      note: 'Emeka Obi: Copied by Amara Nwosu, Mark as sent, and Link copied. said once the clipboard has it.',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      bar: ['Link copied.'],
+    }),
+  linkShared: () =>
+    start({
+      name: 'Shared in the app',
+      note: 'Emeka Obi, shared from the app (sc-77903): Shared with Copied’s half-filled ring, Shared by Kemi Adeyemi, Mark as sent as on Copied, and the details’ next step to mark it as sent.',
+      panel: { kind: 'details', id: 'emeka' },
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'shared', trail: { by: 'Kemi Adeyemi', at: '19:12' } }
+          : one,
+      ),
+    }),
+  linkNotIssued: () =>
+    start({
+      name: 'Copy link, no link issued',
+      note: 'No connection or a server error: nothing copied or recorded, Emeka’s row keeps No link yet. Copy link fails again in Play.',
+      copy: 'notIssued',
+      missed: 'emeka',
+    }),
+  linkRefused: () =>
+    start({
+      name: 'Copy link, the browser refuses the clipboard',
+      note: 'A link issued and shown to copy by hand, labelled Link for Emeka Obi; it counts as a copy. Copy link is refused again in Play.',
+      copy: 'refused',
+      entries: sample().map((one) =>
+        one.id === 'emeka'
+          ? { ...one, link: 'copied', trail: { by: 'Amara Nwosu', at: '19:12' } }
+          : one,
+      ),
+      held: { id: 'emeka', url: SAMPLE_LINK },
+    }),
+  replaceAsk: () =>
+    start({
+      name: 'Replace link, the question',
+      note: 'Grace Udo’s details, the centred dialog over them: Replace link or Keep this link.',
+      panel: { kind: 'details', id: 'grace' },
+      replacing: 'grace',
+    }),
+  replaced: () =>
+    start({
+      name: 'Replace link, replaced',
+      note: 'Every link Grace Udo was given has stopped working; her row is back to No link yet.',
+      entries: sample().map((one) =>
+        one.id === 'grace' ? { ...one, link: 'none', trail: null } : one,
+      ),
+      panel: { kind: 'details', id: 'grace' },
+      bar: ['[Grace Udo’s link is replaced. Copy link gives them a new one to send.]'],
+    }),
   longEventRemove: () =>
     start({
       name: 'An event over 24 hours, Remove from the event',
       note: 'Tolu Bello’s three shifts, each with its day.',
       entries: weddingSample(),
       panel: { kind: 'remove', id: 'tolu' },
+    }),
+  add: () =>
+    start({
+      name: 'Add a person, the form open',
+      note: 'Open it at 1000 × 800: the form comes before the Roster, which keeps its width.',
+      panel: { kind: 'add' },
+    }),
+  addEmpty: () =>
+    start({
+      name: 'Add a person, on an empty roster',
+      note: 'Open it at 1000 × 800: the form before Nobody on the staff yet.',
+      entries: [],
+      panel: { kind: 'add' },
+    }),
+  detailsFrench: () =>
+    start({
+      name: 'Details, Amina Yusuf, in French',
+      note: 'The product’s French, [bracketed] where l10n has not written it. Open it at 1000 × 800.',
+      panel: { kind: 'details', id: 'amina' },
+      ...FRENCH,
+    }),
+  addFrench: () =>
+    start({
+      name: 'Add a person, the form open, in French',
+      note: 'Open it at 1000 × 800: the form comes before the Roster.',
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  addEmptyFrench: () =>
+    start({
+      name: 'Add a person, on an empty roster, in French',
+      note: 'Open it at 1000 × 800: the form before the empty Roster.',
+      entries: [],
+      panel: { kind: 'add' },
+      ...FRENCH,
+    }),
+  populatedFrench: () =>
+    start({
+      name: 'Populated, in French',
+      note: 'Nothing open. Pas encore de lien and the no-mobile words wrap only between words; open it at 641, 800, 960 and 1100 × 800.',
+      ...FRENCH,
+    }),
+  detailsNoLink: () =>
+    start({
+      name: 'Details, Emeka Obi, No link yet',
+      note: 'Open it at 1280 or 1440 × 800: the details docked beside the Roster, each Link word whole.',
+      panel: { kind: 'details', id: 'emeka' },
+    }),
+  detailsNoLinkFrench: () =>
+    start({
+      name: 'Details, Emeka Obi, Pas encore de lien',
+      note: 'Open it at 1280 × 800: Pas encore de lien may wrap as Pas encore / de lien, never inside a word.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...FRENCH,
+    }),
+  erasedList: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open',
+      note: 'Every Link cell reads Contact details removed after the event, in whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+    }),
+  erasedListFrench: () =>
+    start({
+      name: 'After the 30-day erasure, nothing open, in French',
+      note: 'Coordonnées effacées après l’événement, in whole words; the frame scrolls if the table is wider.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...FRENCH,
+    }),
+  erasedDetailsFrench: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in French',
+      note: 'Open it at 1280 × 800: the Roster and the details keep whole words.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...FRENCH,
+    }),
+  populatedSpanish: () =>
+    start({ name: 'Populated, in Spanish', note: 'Open it at 800 × 800.', ...SPANISH }),
+  detailsNoLinkSpanish: () =>
+    start({
+      name: 'Details, Emeka Obi, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...SPANISH,
+    }),
+  erasedListSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, in Spanish',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...SPANISH,
+    }),
+  erasedDetailsSpanish: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Spanish',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...SPANISH,
+    }),
+  populatedPortuguese: () =>
+    start({ name: 'Populated, in Portuguese', note: 'Open it at 800 × 800.', ...PORTUGUESE }),
+  detailsNoLinkPortuguese: () =>
+    start({
+      name: 'Details, Emeka Obi, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      panel: { kind: 'details', id: 'emeka' },
+      ...PORTUGUESE,
+    }),
+  erasedListPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, in Portuguese',
+      note: 'Open it at 800 × 800.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      ...PORTUGUESE,
+    }),
+  erasedDetailsPortuguese: () =>
+    start({
+      name: 'After the 30-day erasure, details open, in Portuguese',
+      note: 'Open it at 1280 × 800, the details docked.',
+      finished: true,
+      erased: true,
+      entries: erasedSample(),
+      panel: { kind: 'details', id: 'kunle' },
+      ...PORTUGUESE,
+    }),
+  longWord: () =>
+    start({
+      name: 'A 40-character word, details docked',
+      note: 'Open it at 1280 × 800: in the Roster the Name column widens and the frame scrolls; in the details the word breaks at the panel’s edge.',
+      entries: [...sample(), LONG],
+      panel: { kind: 'details', id: 'long' },
     }),
 } satisfies Record<string, () => RosterStart>;
 
@@ -646,8 +1222,12 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
       [
         'populated',
         'empty',
+        'nobodyOnShift',
+        'nobodyOnShiftFrench',
         'details',
         'detailsShifts',
+        'sectionRemoved',
+        'sectionRemovedReadOnly',
         'readOnly',
         'finishedEvent',
         'finishedErased',
@@ -678,5 +1258,50 @@ export const ROSTER_PAGES: readonly { name: string; states: readonly DemoLink[] 
   {
     name: 'An event over 24 hours',
     states: (['longEvent', 'longEventRemove'] as const).map(link),
+  },
+  {
+    name: 'A person’s own link (sc-3912)',
+    states: (
+      [
+        'linkCopied',
+        'linkShared',
+        'linkNotIssued',
+        'linkRefused',
+        'replaceAsk',
+        'replaced',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'Text the link, and Text links to {n}, once SMS is in (sc-77904)',
+    states: (Object.keys(SMS_STATES) as (keyof typeof SMS_STATES)[]).map(link),
+  },
+  {
+    name: 'A desk window from 961 to 1279 px, an open person before the Roster (sc-73291)',
+    states: (
+      ['details', 'detailsFrench', 'add', 'addFrench', 'addEmpty', 'addEmptyFrench'] as const
+    ).map(link),
+  },
+  {
+    name: 'Whole words in the Link column at every desk width (sc-75033)',
+    states: (
+      [
+        'populatedFrench',
+        'detailsNoLink',
+        'detailsNoLinkFrench',
+        'erasedList',
+        'erasedListFrench',
+        'erasedDetailsFrench',
+        'populatedSpanish',
+        'detailsNoLinkSpanish',
+        'erasedListSpanish',
+        'erasedDetailsSpanish',
+        'populatedPortuguese',
+        'detailsNoLinkPortuguese',
+        'erasedListPortuguese',
+        'erasedDetailsPortuguese',
+        'longWord',
+      ] as const
+    ).map(link),
   },
 ];

@@ -221,6 +221,32 @@ def held_by(holders):
     return "held by " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in holders)
 
 
+# A blocker in one of these is waiting for a role to pick it up; from Needs Design on, one is.
+IDLE_BLOCKER = ("Backlog", "To Do", R.WAITING)
+
+
+def idle(blocker, epics):
+    """A blocker no role will pick up: one waiting in an idle state, or one ready to build
+    whose own epic is not in progress, so no developer is offered it."""
+    return not blocker.get("archived") and (blocker["state"] in IDLE_BLOCKER
+                                            or bool(held_epic(blocker, epics)))
+
+
+def stuck_blockers(stories, epics):
+    """Each idle blocker with the stories it holds in epics in progress, most held first:
+    the holds no role will clear, because nobody is working on the story that clears them."""
+    by_id = {s["id"]: s for s in stories}
+    held = {}
+    for story in stories:
+        if story.get("archived") or held_epic(dict(story, state="Ready For Dev"), epics):
+            continue
+        for blocker in holding(story, by_id):
+            if idle(blocker, epics):
+                held.setdefault(blocker["id"], []).append(story)
+    found = [(by_id[b], sorted(h, key=lambda s: s["id"])) for b, h in held.items()]
+    return sorted(found, key=lambda pair: (-len(pair[1]), pair[0]["id"]))
+
+
 def builds(role):
     return role in R.DEVS or role == "ops"
 
@@ -239,7 +265,31 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not (role in R.TESTERS and R.kept_for_person(story, testers))
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
-            and not (builds(role) and story["id"] in only)]
+            and not (builds(role) and story["id"] in only)
+            and not (builds(role) and demo_open(story, prs or []))]
+
+
+DEMO_LINE = re.compile(r"^[\s*_>-]*demo[*_]*:", re.I)
+SHOWS_NOTHING = re.compile(r"^[\s*_>-]*demo[*_]*:[\s*_]*none(?:\s*[:.]|[\s*_]*$)", re.I)
+
+
+def demo_line(story):
+    design = T.find(story.get("description"), "Design")
+    if not design:
+        return None
+    return next((x for x in design[2].splitlines() if DEMO_LINE.match(x)), None)
+
+
+def demo_open(story, prs):
+    """The pull requests a Ready For Dev story's Demo: line names that are still open. Its demo
+    is drawn and waiting to merge, so no builder is offered it until then."""
+    if story["state"] != "Ready For Dev":
+        return []
+    line = demo_line(story)
+    if not line or SHOWS_NOTHING.match(line):
+        return []
+    open_ = {pr["number"] for pr in prs if pr.get("state") == "open"}
+    return [n for n in dict.fromkeys(int(x) for x in re.findall(r"#(\d+)", line)) if n in open_]
 
 
 def retester(story, now=None):

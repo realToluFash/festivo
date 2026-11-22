@@ -10,6 +10,7 @@ import {
   DISH_ALLERGENS,
   SAMPLE_DISHES,
   allergenName,
+  listOf,
 } from './menuLibrary.ts';
 import {
   type Variant,
@@ -94,6 +95,8 @@ export interface EvCourse {
 
 export const CW = {
   title: 'Menu',
+  previewAsGuest: 'Preview as guest',
+  nothingSaved: '[Nothing was saved.]',
   crumb: 'Breadcrumb',
   events: 'Events',
   navigation: 'Navigation',
@@ -375,9 +378,6 @@ export function newDish(form: DishForm, onlyEvent: boolean): EvDish {
 
 export const onCourse = (course: EvCourse, libraryId: string): boolean =>
   course.dishes.some((one) => one.libraryId === libraryId);
-
-const listOf = (names: readonly string[]): string =>
-  new Intl.ListFormat('en', { type: 'conjunction' }).format(names);
 
 /** The line under Edit dish's confirmation, until sc-3913: the people who picked the dish and have one of the allergens just added recorded. Each person counts once, an Other allergy is never matched, and only the added allergens somebody counted has are named. */
 export function addedAllergenLine(

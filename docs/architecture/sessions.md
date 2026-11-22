@@ -438,8 +438,12 @@ the same checks, nonce binding and account paths. What differs is what Apple sen
 - **Production values:** `OAUTH_APPLE_ISSUERS` is `https://appleid.apple.com`,
   `OAUTH_APPLE_JWKS_URIS` is `https://appleid.apple.com/auth/keys`, `OAUTH_APPLE_TOKEN_URI`
   is `https://appleid.apple.com/auth/token`, and the client ids are the Services ID (web) and
-  the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
-  team's Sign in with Apple key, which expires within six months and has to be issued again.
+  the bundle id (iOS). Apple's client secret is not a fixed string but an ES256 JWT, which
+  the API signs itself for each web redemption (`AppleClientSecret`, five minutes) from the
+  Sign in with Apple key: `OAUTH_APPLE_WEB_PRIVATE_KEY` (the `.p8`, with its newlines or as
+  `\n`), `OAUTH_APPLE_WEB_KEY_ID` and `OAUTH_APPLE_TEAM_ID`. A missing or unreadable key is
+  logged and answers web sign-in with Apple with `provider.code_not_redeemed`; Google and the
+  app are unaffected (sc-80881).
 
 - **Android.** Apple will not redirect to an app's custom scheme, and returns the name only
   by `form_post`, so on Android the app starts an attempt with the API first

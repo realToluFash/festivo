@@ -31,6 +31,7 @@ import { ArrivalNoteInset } from './ArrivalNoteInset.tsx';
 import { useDeleteEvent } from './DeleteEvent.tsx';
 import { EventCard } from './EventCard.tsx';
 import { EventGuestNumbers } from './EventGuestNumbers.tsx';
+import { EventPeopleCard } from './EventPeopleCard.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { useManageAsks } from './EventManageAsks.tsx';
 import {
@@ -47,6 +48,8 @@ import { useMakeLive } from './MakeLive.tsx';
 import { useEventMute } from './MuteEventCard.tsx';
 import { useResume } from './PauseEvent.tsx';
 import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
+import { BellRow } from './BellButton.tsx';
+import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -66,15 +69,19 @@ export function EventPage({
   onDuplicate,
   onDeleted,
   onGuests,
+  onPeople,
   tell,
   opensEndNow = false,
   onEndNowOpened,
   notice,
+  moved = null,
 }: {
   kind: LayoutKind;
   event: OrganisationEvent;
   /** Guests, on the choice a count on the Guests card opens (sc-3786). */
   onGuests: (choice: Choice) => void;
+  /** The event's People, from the People card (sc-68607). */
+  onPeople: () => void;
   /** The card's name, where it is the page's only title. */
   nameRef?: Ref<TextHandle> | undefined;
   manages: boolean;
@@ -96,6 +103,8 @@ export function EventPage({
   onEndNowOpened?: () => void;
   /** A notice about the event as it was saved, first under its card. */
   notice?: ReactNode;
+  /** Now working in, at the head of the body, once the event's link has moved the account into its organisation (sc-80863). */
+  moved?: { words: string } | null;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
@@ -191,7 +200,7 @@ export function EventPage({
             .join(' ')
         : null;
 
-  const card = (
+  const eventCard = (
     <View style={styles.card}>
       <EventCard
         event={shown}
@@ -209,6 +218,15 @@ export function EventPage({
       {resumeSays != null && <AlertLine text={resumeSays} />}
     </View>
   );
+  const card =
+    moved == null ? (
+      eventCard
+    ) : (
+      <View style={styles.headed}>
+        <SwitchedNotice said={moved} />
+        {eventCard}
+      </View>
+    );
   const details = (
     <PartsSection
       title={t('eventPage.details')}
@@ -301,6 +319,7 @@ export function EventPage({
     />
   );
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
+  const people = <EventPeopleCard event={event} onOpen={onPeople} />;
   const forYou = (
     <JustForYou
       words={{
@@ -352,7 +371,7 @@ export function EventPage({
     <View style={styles.page} testID="events.page">
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
-        card={card}
+        card={<BellRow>{card}</BellRow>}
         left={
           <>
             {notice}
@@ -365,6 +384,7 @@ export function EventPage({
         right={
           <>
             {numbers}
+            {people}
             {forYou}
             {manage}
           </>
@@ -374,6 +394,7 @@ export function EventPage({
             {notice}
             {thankYou}
             {numbers}
+            {people}
             {details}
             {comingUp}
             {nameCover}
@@ -439,6 +460,7 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
 
 const styles = StyleSheet.create({
   page: { gap: 18 },
+  headed: { gap: 18 },
   card: { gap: tokens.spaceSm },
   manage: { gap: tokens.spaceSm },
 });

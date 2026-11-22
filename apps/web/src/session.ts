@@ -6,6 +6,7 @@ import {
   type JoinRequest,
   type LinkedProvider,
   type Membership,
+  type OutsideEvent,
   type PausedOrganisation,
   type Problem,
   awaiting,
@@ -53,6 +54,8 @@ export interface Session {
   timezone: string | null;
   /** The request to join at its domain that an account in no organisation is waiting on (sc-561). */
   waitingFor: JoinRequest | null;
+  /** The events it holds from outside an organisation, the one it lands on first (sc-71). */
+  outsideEvents?: readonly OutsideEvent[];
 }
 
 export type SessionState =
@@ -60,7 +63,14 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
   | { status: 'unreachable'; retrying: boolean }
-  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut; providerOnly?: ProviderOnly };
+  | {
+      status: 'signedOut';
+      ended: boolean;
+      /** This tab never held a session, so the page it opened is where sign-in lands (sc-612). */
+      arrived?: true;
+      timedOut?: TimedOut;
+      providerOnly?: ProviderOnly;
+    };
 
 /** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
 export interface TimedOut {
@@ -113,6 +123,16 @@ export function canOn(event: { permissions: readonly string[] }, permission: str
   return event.permissions.includes(permission);
 }
 
+/** The event the account holds from outside an organisation at this id, a member's of another organisation's event as much as a no-organisation account's (sc-71, sc-68438); null for any other. */
+export function outsideOn(
+  session: Session,
+  eventId: string | null | undefined,
+): OutsideEvent | null {
+  if (session.pausedIn != null) return null;
+
+  return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
+}
+
 export async function restoreSession(): Promise<void> {
   if (state.status !== 'unknown') return;
 
@@ -139,7 +159,7 @@ async function askForAccount(): Promise<void> {
     set(
       error instanceof ApiUnreachableError
         ? { status: 'unreachable', retrying: false }
-        : { status: 'signedOut', ended: false },
+        : { status: 'signedOut', ended: false, arrived: true },
     );
   }
 }
@@ -164,6 +184,15 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** The events held from outside, read again: one whose grant ended or was revoked is gone from the list (sc-68438). */
+export async function rereadOutsideEvents(): Promise<void> {
+  const asked = generation;
+  const { outsideEvents } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return;
+
+  set({ status: 'signedIn', session: { ...state.session, outsideEvents } });
 }
 
 /** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
@@ -311,12 +340,14 @@ export function replaceOrganisation(next: Membership): void {
 export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
+  const arrived = ended && state.status !== 'signedIn';
 
   generation += 1;
   forgetKept();
   set({
     status: 'signedOut',
     ended,
+    ...(arrived ? { arrived } : {}),
     ...(timedOut == null ? {} : { timedOut }),
     ...(providerOnly == null ? {} : { providerOnly }),
   });
@@ -364,6 +395,7 @@ function sessionFrom(
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
     waitingFor: account.waitingFor,
+    outsideEvents: account.outsideEvents,
     organisation: chooseOrganisation(organisations, remembered),
     pausedIn: choosePaused(paused, remembered, organisations.length),
   };

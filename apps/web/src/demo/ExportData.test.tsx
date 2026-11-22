@@ -42,6 +42,7 @@ describe('Data and control › Export all data (sc-612)', () => {
       'Each event’s run of show',
       'Each event’s staff',
       'Each event’s cost lines',
+      'The organisation’s vendors',
     ]);
     expect(screen.getByText(/^One \.zip: a JSON file of everything/u).textContent).toContain(
       'notification deliveries; the assistant’s log; photos; each event’s change history; and the audit log, which Audit log exports.',
@@ -66,10 +67,10 @@ describe('Data and control › Export all data (sc-612)', () => {
   });
 
   it.each([
-    ['ex_ready_other', 'Ire Events’ export is ready'],
+    ['ex_ready_other', 'Ire Events’s export is ready'],
     ['ex_expired', 'Your export’s link has ended'],
     ['ex_failed', 'Your export did not finish'],
-    ['not_owner', 'Only an owner exports Ire Events’ data'],
+    ['not_owner', 'Only an owner exports Ire Events’s data'],
     ['ex_used_link', 'This download has been used. It downloads nothing now.'],
     [
       'ex_limited',

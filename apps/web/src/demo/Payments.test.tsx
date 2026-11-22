@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { forgetBudget } from './quotes.ts';
 import { budgetAt } from './budgetSample.ts';
-import { PAYMENTS_PAGES } from './payments.ts';
+import { LONGEST_REFERENCE, PAYMENTS_PAGES } from './payments.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -73,7 +73,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     async () => {
       await open(`${BLOOM}&state=schedule`);
       expect(rowOf('Deposit').textContent).toBe(
-        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake Adeyemi',
+        'DepositPaid £360.00 on Tue, Oct 6 · Marked by Folake AdeyemiUndo',
       );
       expect(rowOf('Balance').textContent).toBe(
         'BalanceOverdueDue Fri, Oct 30£840.00Mark paidCancel paymentChangeRemove',
@@ -81,6 +81,8 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(
         within(section('Schedule')).getByRole('button', { name: 'Add a payment already made' }),
       ).toBeDefined();
+      fireEvent.click(within(rowOf('Deposit')).getByRole('button', { name: 'Undo' }));
+      expect(within(rowOf('Deposit')).getByRole('button', { name: 'Mark paid' })).toBeDefined();
     },
   );
 
@@ -126,12 +128,13 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         ),
       ).toBeDefined();
       type(marking, 'Amount paid', '900.00');
+      type(marking, 'Reference', '  FP-0001 ');
       fireEvent.click(within(marking).getByRole('button', { name: 'Mark paid' }));
       await settle();
 
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(rowOf('Balance').textContent).toBe(
-        'BalancePaid £900.00 on Tue, Nov 3 · £60.00 more than scheduled · Marked by Folake AdeyemiUndo',
+        'BalancePaid £900.00 on Tue, Nov 3 · £60.00 more than scheduled · Marked by Folake AdeyemiReference: FP-0001Undo',
       );
       expect(
         within(main()).getByText('Marked paid: £900.00 on Tuesday, November 3.'),
@@ -184,7 +187,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       expect(within(marking).queryByRole('button', { name: 'Cancel' })).toBeNull();
       expect(within(marking).queryByLabelText('Amount paid')).toBeNull();
       expect(rowOf('Balance').textContent).toBe(
-        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien Moreau',
+        'BalancePaid £840.00 on Mon, Nov 2 · Marked by Julien MoreauUndo',
       );
       fireEvent.click(within(marking).getByRole('button', { name: 'Close' }));
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -265,6 +268,51 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     ).toBeDefined();
   });
 
+  it('draws a paid row’s reference as its second line, and none without one (sc-88)', async () => {
+    await open(`${BLOOM}&state=added`);
+    expect(rowOf('Buttonholes').textContent).toBe(
+      'ButtonholesPaid Monday, November 2. Added by you as already paid, so Undo deletes it.Reference: Cheque 004417£120.00Undo',
+    );
+    expect(rowOf('Extra stems').textContent).not.toContain('Reference');
+    cleanup();
+
+    await open(budgetAt('payments_read_only', { vendor: 'v3', plan: 'downgraded' }));
+    expect(rowOf('Buttonholes').textContent).toBe(
+      'ButtonholesPaid Monday, November 2. Added by you as already paid.Reference: Cheque 004417£120.00',
+    );
+    cleanup();
+
+    await open(`${BLOOM}&state=marked_long_reference`);
+    expect(within(rowOf('Balance')).getByText(`Reference: ${LONGEST_REFERENCE}`)).toBeDefined();
+  });
+
+  it(
+    'previews the vendor’s totals before and after a payment already made (sc-75579)',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_over`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£360.00 now, £480.00 with this payment')).toBeDefined();
+      expect(within(made).getByText('£1,200.00 now, £1,320.00 with this payment')).toBeDefined();
+      expect(
+        within(made).getByText('With this payment, the schedule is £120.00 over the quote.'),
+      ).toBeDefined();
+
+      fireEvent.change(within(made).getByLabelText('Vendor'), { target: { value: 'v4' } });
+      expect(within(made).getByText('Paid to Savour Kitchen')).toBeDefined();
+      expect(within(made).getByText('£7,500.00 now, £7,620.00 with this payment')).toBeDefined();
+      expect(within(made).queryByText(/over the quote/u)).toBeNull();
+
+      type(made, 'Amount paid', '');
+      expect(within(made).getByText('£7,500.00')).toBeDefined();
+      expect(within(made).queryByText(/with this payment/u)).toBeNull();
+      type(made, 'Amount paid', '1,500.01');
+      expect(
+        within(made).getByText('With this payment, the schedule is £0.01 over the quote.'),
+      ).toBeDefined();
+    },
+  );
+
   it('refuses a payment already made dated before the vendor’s first quote', SLOW, async () => {
     await open(`${BLOOM}&state=made_early`);
     const made = dialog('Add a payment already made');
@@ -307,7 +355,7 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       fireEvent.click(within(group).getByRole('radio', { name: 'In full after the event' }));
       expect(within(add).getByText('100% · 7 days after the event · Sat, Nov 14')).toBeDefined();
       fireEvent.click(within(group).getByRole('radio', { name: 'Deposit and balance' }));
-      expect(within(add).getByText('50% · on the date quoted · Tue, Oct 13')).toBeDefined();
+      expect(within(add).getByText('50% · On the date quoted · Tue, Oct 13')).toBeDefined();
       expect(within(add).getByText('50% · 14 days before the event · Thu, Oct 22')).toBeDefined();
       expect(
         within(add).getByText(
@@ -365,6 +413,21 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('refuses a row that would come to nothing, until its percentage is raised', SLOW, async () => {
+    await open(`${SAVOUR}&state=shape_too_small`);
+    const add = dialog('Add a payment');
+    const tooSmall = 'This payment would come to less than £0.01. Enter a higher percentage.';
+    const share = within(add).getAllByRole('textbox', { name: 'Percentage of the quote' });
+    expect(share.map((one) => one.getAttribute('aria-invalid'))).toEqual([
+      'false',
+      'false',
+      'true',
+    ]);
+    expect(within(add).getByText(tooSmall)).toBeDefined();
+    fireEvent.change(share[2]!, { target: { value: '20' } });
+    expect(within(add).queryByText(tooSmall)).toBeNull();
+  });
+
   it(
     'refuses a shape row at its field, then saves every row or none, and sends all again',
     SLOW,
@@ -383,7 +446,9 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
         within(add).getByText('Shorten what the payment is for to 100 characters or fewer.'),
       ).toBeDefined();
       expect(
-        within(add).getByText('Enter a percentage from 0 to 100, with up to two decimal places.'),
+        within(add).getByText(
+          'Enter a percentage above 0 and up to 100, with up to two decimal places.',
+        ),
       ).toBeDefined();
       expect(within(add).getByText('Enter a whole number of days from 0 to 730.')).toBeDefined();
       fireEvent.click(within(add).getByRole('button', { name: 'Save 3 payments' }));
@@ -482,6 +547,41 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
     },
   );
 
+  it('saves the reminder days on Enter, as Save does', SLOW, async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await open(`${REMINDERS}?state=reminders`);
+    fireEvent.click(within(main()).getByRole('button', { name: 'Change' }));
+    const change = dialog('Payment reminders');
+    const days = within(change).getByLabelText('Days before a payment is due');
+    fireEvent.change(days, { target: { value: '0' } });
+    fireEvent.submit(days.closest('form')!);
+    expect(within(change).getByText('Enter a whole number of days from 1 to 30.')).toBeDefined();
+    fireEvent.change(days, { target: { value: '7' } });
+    fireEvent.submit(days.closest('form')!);
+    await settle();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      within(main()).getByText(
+        '7 days before a payment is due, and once the day after, then silence.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('reaches the reminder setting from Settings › Vendors', SLOW, async () => {
+    await open('/demo/settings/vendors');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders/ });
+    expect(row.textContent).toContain(
+      'Payment reminders3 days before a payment is due, and once the day after, then silence.',
+    );
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders`);
+  });
+
+  it('says the reminders are off from Vendors after a downgrade', SLOW, async () => {
+    await open('/demo/settings/vendors?plan=downgraded');
+    const row = within(main()).getByRole('link', { name: /^Payment reminders are off/ });
+    expect(row.getAttribute('href')).toBe(`${REMINDERS}?state=reminders_plan_lost&plan=downgraded`);
+  });
+
   it('opens the refused change, and refuses a Member as Vendors does', SLOW, async () => {
     await open(`${REMINDERS}?state=reminders_bad`);
     const days = within(dialog('Payment reminders')).getByLabelText('Days before a payment is due');
@@ -502,4 +602,17 @@ describe('payments on a vendor’s page, shapes and the reminder setting, in A (
       cleanup();
     }
   });
+
+  it(
+    'gives the gap after a payment already made when the schedule is already over',
+    SLOW,
+    async () => {
+      await open(`${BLOOM}&state=made_over_already`);
+      const made = dialog('Add a payment already made');
+      expect(within(made).getByText('£1,260.00 now, £1,380.00 with this payment')).toBeDefined();
+      expect(
+        within(made).getByText('With this payment, the schedule is £180.00 over the quote.'),
+      ).toBeDefined();
+    },
+  );
 });

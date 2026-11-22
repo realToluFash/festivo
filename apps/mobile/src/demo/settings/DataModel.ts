@@ -2,7 +2,6 @@ import { companyDomainProblem, normaliseDomain } from '@soirely/domain';
 
 import { DOMAIN_WORDS } from './OrganisationWords.ts';
 import {
-  AT,
   type DataSay,
   DERIVED,
   type Domain,
@@ -16,7 +15,9 @@ import {
   WAITING_IRE_EVENTS,
 } from './DataSample.ts';
 import { DATA_WORDS as H, DOMAINS_WORDS as D } from './DataWords.ts';
+import type { TagWord } from '../../kit/emailDomains.ts';
 import type { Load } from './RolesSample.ts';
+import { isLockState } from './EnterpriseAsk.ts';
 
 export type DataPage = 'hub' | 'emailDomains' | 'auditLog';
 
@@ -55,7 +56,7 @@ export function dataHref(
 export type Plan = 'enterprise' | 'locked' | 'downgraded';
 
 export interface Go {
-  kind: 'record' | 'prove' | 'only' | 'contact' | 'export';
+  kind: 'record' | 'prove' | 'only' | 'export';
   domain?: string;
 }
 
@@ -64,8 +65,6 @@ export interface CardWords {
   line: string;
   step: { label: string; go: Go } | null;
 }
-
-const CONTACT = { label: H.contact, go: { kind: 'contact' } } as const;
 
 /** What asks something of the person looking: a record still to add or to put back, by its instant; a failed one after. */
 export function controlAsks(domains: readonly Domain[], say: DataSay) {
@@ -130,7 +129,11 @@ export function hubStart(state: HubState): HubStart {
     case 'locked':
       return { ...at, plan: 'locked', domains: [] };
     case 'downgraded':
-      return { ...at, plan: 'downgraded', domains: [KEPT_IRE] };
+      return {
+        ...at,
+        plan: 'downgraded',
+        domains: [KEPT_IRE, { ...WAITING_IRE_EVENTS, status: 'kept' }],
+      };
     case 'loading':
     case 'failed':
       return { ...at, load: state, domains: [PROVED_IRE, WAITING_IRE_EVENTS] };
@@ -141,9 +144,8 @@ export function hubStart(state: HubState): HubStart {
 
 /** The hub's card in the app: the soonest instant among Control's items, or where Ire Events stands. */
 export function hubCard(start: HubStart, say: DataSay): CardWords {
-  if (start.plan === 'locked') return { says: H.locked, line: H.lockedLine, step: CONTACT };
-  if (start.plan === 'downgraded')
-    return { says: H.left(say.day(AT.leftEnterprise)), line: H.leftLine, step: CONTACT };
+  if (start.plan === 'locked') return { says: H.locked, line: H.lockedLine, step: null };
+  if (start.plan === 'downgraded') return { says: H.left, line: H.leftLine, step: null };
   if (start.domains.length === 0)
     return {
       says: H.nothingSet,
@@ -240,7 +242,7 @@ export function domainsStateOf(name: string | undefined): DomainsState {
 /** A hub state to go back to: the one the link came from, or the one this page's sample belongs to. */
 export function hubFor(state: string | undefined, from: string | undefined): HubState {
   if (from != null) return hubStateOf(from);
-  if (state === 'ed_locked' || state === 'locked') return 'locked';
+  if (state === 'ed_locked' || state === 'locked' || isLockState(state)) return 'locked';
   if (state === 'ed_downgraded') return 'downgraded';
   if (state === 'oo_off') return 'quiet';
   if (state === 'ed_empty') return 'new';
@@ -337,7 +339,11 @@ export function domainsStart(state: DomainsState, owns: boolean): DomainsModel {
     case 'ed_locked':
       return { ...empty, plan: 'locked' };
     case 'ed_downgraded':
-      return { ...base, plan: 'downgraded', domains: [{ ...PROVED_IRE, status: 'kept' }] };
+      return {
+        ...base,
+        plan: 'downgraded',
+        domains: [{ ...PROVED_IRE, status: 'kept' }, WAITING_IRE_EVENTS],
+      };
     case 'oo_off':
       return alone;
     case 'oo_confirm':
@@ -361,9 +367,8 @@ export function domainsOwns(state: DomainsState, viewer: DataViewer): boolean {
 /** Proving and removing are the plan's, so the page does nothing while it is locked or kept. */
 export function domainsCard(model: DomainsModel, owns: boolean, say: DataSay): CardWords {
   const C = D.card;
-  if (model.plan === 'locked') return { says: C.locked, line: C.lockedLine, step: CONTACT };
-  if (model.plan === 'downgraded')
-    return { says: C.off(say.day(AT.leftEnterprise)), line: C.offLine, step: CONTACT };
+  if (model.plan === 'locked') return { says: C.locked, line: C.lockedLine, step: null };
+  if (model.plan === 'downgraded') return { says: C.off, line: C.offLine, step: null };
   const keep = (domain: string) =>
     owns ? { label: C.keep(domain), go: { kind: 'only', domain } as Go } : null;
   const said = model.said;
@@ -410,7 +415,7 @@ export function isProved(domain: Domain): boolean {
   return domain.status === 'proved' || domain.status === 'missing' || domain.status === 'kept';
 }
 
-export type TagWord = { kind: 'yes' | 'waiting' | 'no' | 'kept'; word: string };
+export type { TagWord } from '../../kit/emailDomains.ts';
 
 export interface DomainRow {
   name: string;
@@ -424,21 +429,26 @@ export function domainRows(model: DomainsModel, owns: boolean, say: DataSay): Do
   const kept = model.plan === 'downgraded';
 
   return model.domains.map((domain) => {
-    const tag: TagWord = {
-      proved: { kind: 'yes', word: D.proved },
-      waiting: { kind: 'waiting', word: D.waiting },
-      failed: { kind: 'no', word: D.notProved },
-      missing: { kind: 'waiting', word: D.missing },
-      kept: { kind: 'kept', word: D.kept },
-    }[domain.status] as TagWord;
+    const tag: TagWord = kept
+      ? { kind: 'kept', word: D.kept }
+      : ({
+          proved: { kind: 'yes', word: D.proved },
+          waiting: { kind: 'waiting', word: D.waiting },
+          failed: { kind: 'no', word: D.notProved },
+          missing: { kind: 'waiting', word: D.missing },
+          kept: { kind: 'kept', word: D.kept },
+        }[domain.status] as TagWord);
     const at = (iso: string | null) => say.at(iso ?? NOW);
-    const line = {
-      proved: D.provedOn(at(domain.provedAt)),
-      kept: D.provedOn(at(domain.provedAt)),
-      waiting: D.checksUntil(at(domain.deadline)),
-      failed: D.stopped(at(domain.deadline)),
-      missing: D.putBack(at(domain.deadline)),
-    }[domain.status];
+    const keptLine = domain.provedAt == null ? D.notProved : D.provedOn(at(domain.provedAt));
+    const line = kept
+      ? keptLine
+      : {
+          proved: D.provedOn(at(domain.provedAt)),
+          kept: D.provedOn(at(domain.provedAt)),
+          waiting: D.checksUntil(at(domain.deadline)),
+          failed: D.stopped(at(domain.deadline)),
+          missing: D.putBack(at(domain.deadline)),
+        }[domain.status];
 
     return {
       name: domain.name,

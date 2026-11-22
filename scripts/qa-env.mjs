@@ -439,7 +439,7 @@ export function emulatorFor(args) {
 }
 
 // An emulator's 127.0.0.1 is itself; reversed, these reach the host's, as on a simulator.
-export function reversedPorts(ports) {
+export function reversedPorts(ports, env = process.env) {
   const reached = [
     'METRO_PORT',
     'API_PORT',
@@ -448,7 +448,13 @@ export function reversedPorts(ports) {
     'STORAGE_PORT',
     'MAILPIT_UI_PORT',
   ];
-  return reached.map((key) => ports[key]);
+  return [...reached.map((key) => ports[key]), ...proxyPort(env.QA_API_URL)];
+}
+
+function proxyPort(url) {
+  if (!url) return [];
+  const { hostname, port } = new URL(url);
+  return ['127.0.0.1', 'localhost'].includes(hostname) && port ? [Number(port)] : [];
 }
 
 // `adb reverse --list` prints `<serial> tcp:<device> tcp:<host>`, or `(reverse) …` on older adb.
@@ -707,6 +713,28 @@ export function releasePlatform(args, platform = process.platform) {
   return platform === 'darwin' && !args.includes('--android') ? 'ios' : 'android';
 }
 
+// The first launch after the fresh install is this link rather than the app's icon.
+export function releaseLink(args, platform = releasePlatform(args)) {
+  const at = args.indexOf('--link');
+  if (at === -1) return null;
+  if (platform !== 'ios')
+    throw new Error('--link is iOS only: release on Android launches the app');
+  const url = args[at + 1] ?? '';
+  if (!/^[a-z][a-z0-9+.-]*:\S/i.test(url))
+    throw new Error(`--link needs a URL with a scheme, such as soirely://sign-in, not "${url}"`);
+  return url;
+}
+
+// An accessibility pass can leave a simulator at its largest text size.
+const DEFAULT_TEXT_SIZE = (udid) => ['simctl', 'ui', udid, 'content_size', 'large'];
+
+export const bootCommands = (udid) => [
+  ['simctl', 'bootstatus', udid, '-b'],
+  DEFAULT_TEXT_SIZE(udid),
+];
+// content_size needs a booted device, so the shut one is reset before it goes down.
+export const shutCommands = (udid) => [DEFAULT_TEXT_SIZE(udid), ['simctl', 'shutdown', udid]];
+
 export function simulatorArch(arch = process.arch) {
   return arch === 'arm64' ? 'arm64' : 'x86_64';
 }
@@ -959,6 +987,42 @@ export function branchForStory(id, remoteBranches) {
 // Desktop's VM keeps a directory deleted on the host as a ghost nothing can be written into,
 // and the api answers 500 or never boots.
 export const CACHE_CLEARER = 'busybox:1.36';
+
+// A running api or worker rewrites the cache while it is emptied, and rm fails on a directory
+// that filled again (sc-72307). The stack is brought up again further on.
+export function servicesMountingApi(services, root) {
+  const api = resolve(root, 'services/api');
+  return Object.entries(services ?? {})
+    .filter(([, service]) =>
+      (service.volumes ?? []).some(
+        (volume) => volume.type === 'bind' && resolve(root, volume.source ?? '') === api,
+      ),
+    )
+    .map(([name]) => name);
+}
+
+function stopApiMounts(root) {
+  let services;
+  try {
+    services = composeServices(root);
+  } catch {
+    return;
+  }
+  const names = servicesMountingApi(services, root);
+  if (names.length > 0) run('docker', ['compose', 'stop', ...names], { cwd: root, optional: true });
+  return names;
+}
+
+// A checkout that fails would leave the tester's api stopped with nothing to bring it back.
+export function withApiStopped(checkout, { stop, start }) {
+  const stopped = stop() ?? [];
+  try {
+    return checkout();
+  } catch (error) {
+    if (stopped.length > 0) start(stopped);
+    throw error;
+  }
+}
 
 export function clearApiCache(root, exec = run) {
   const cache = join(root, 'services/api/var/cache');
@@ -1412,7 +1476,13 @@ function checkout(args) {
     ref = `origin/${name}`;
     label = name;
   }
-  git(['checkout', '--quiet', '--detach', ref], root);
+  if (!capture('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: root })) {
+    throw new Error(`${label} names no commit in the QA worktree`);
+  }
+  withApiStopped(() => git(['checkout', '--quiet', '--detach', ref], root), {
+    stop: () => stopApiMounts(root),
+    start: (names) => run('docker', ['compose', 'start', ...names], { cwd: root, optional: true }),
+  });
   const head = git(['rev-parse', '--short', 'HEAD'], root);
   console.log(`  ${label} at ${head}`);
   clearApiCache(root);
@@ -1460,8 +1530,9 @@ function checkout(args) {
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists'], { cwd: root });
 
   step(keepData ? 'The database, migrated' : 'The database, from nothing');
-  const afterMigrations = servicesAfterMigrations(composeServices(root));
-  for (const args of databaseCommands(console_, afterMigrations, keepData)) {
+  const services = composeServices(root);
+  const afterMigrations = servicesAfterMigrations(services);
+  for (const args of databaseCommands(console_, afterMigrations, keepData, 'redis' in services)) {
     run('docker', args, { cwd: root });
   }
 
@@ -1488,8 +1559,9 @@ export function dependencySteps(npmUnchanged, composerUnchanged) {
 }
 
 // With no names, compose stop and up act on the whole stack, so an old commit with no
-// worker skips both.
-export function databaseCommands(console_, afterMigrations, keepData) {
+// worker skips both. Redis is emptied with the database: a cached row, such as the catalogue
+// versions, names ids the new database no longer has, and the API answers 500 (sc-46032).
+export function databaseCommands(console_, afterMigrations, keepData, redis = false) {
   const waiting = afterMigrations.length > 0;
   return [
     // From nothing: an edited unreleased migration leaves a migrated database wrong.
@@ -1500,6 +1572,7 @@ export function databaseCommands(console_, afterMigrations, keepData) {
           ...(waiting ? [['compose', 'stop', ...afterMigrations]] : []),
           [...console_, 'doctrine:database:drop', '--if-exists', '--force'],
           [...console_, 'doctrine:database:create'],
+          ...(redis ? [['compose', 'exec', '-T', 'redis', 'redis-cli', 'FLUSHALL']] : []),
         ]),
     [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration'],
     // Recreated, so a health check failed while waiting for the schema does not end --wait at once.
@@ -1716,6 +1789,8 @@ function installedIosRelease(root) {
 function shutSimulator(root, key, id) {
   const udid = simulatorId(CONFIG.simulators[key].name);
   if (!udid) return;
+  const [reset, shutdown] = shutCommands(udid);
+  run('xcrun', reset, { optional: true });
   if (iosReleaseOn(root, key)) {
     const gone = uninstallHeld({
       boot: () => bootIos(udid),
@@ -1729,7 +1804,7 @@ function shutSimulator(root, key, id) {
         `  ${id} is still on the ${key} after ${UNINSTALL_BOOTS} boots; next run retries`,
       );
   }
-  run('xcrun', ['simctl', 'shutdown', udid], { optional: true });
+  run('xcrun', shutdown, { optional: true });
 }
 
 export const UNINSTALL_BOOTS = 4;
@@ -1751,7 +1826,11 @@ export function uninstallHeld({ boot, installed, uninstall, shut }, boots = UNIN
 
 // simctl boot returns before the device is up, and an uninstall made then may not last.
 function bootIos(udid) {
-  return run('xcrun', ['simctl', 'bootstatus', udid, '-b'], { optional: true });
+  return run('xcrun', bootCommands(udid)[0], { optional: true });
+}
+
+function openSimulator(udid) {
+  for (const command of bootCommands(udid)) run('xcrun', command, { optional: true });
 }
 
 function uninstallIos(udid, id) {
@@ -1779,6 +1858,7 @@ export function clearIosRelease(root, key) {
 }
 
 async function ios(args) {
+  if (args.includes('--stop')) return stopBundler();
   const root = qaWorktree();
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
@@ -1792,7 +1872,7 @@ async function ios(args) {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     withoutPasswordAutoFill(udid);
-    bootIos(udid);
+    openSimulator(udid);
     // The record stays: only a later boot that finds the app gone says the uninstall held.
     uninstallIos(udid, id);
     if (!(await ensureExpoGo(udid, expo)))
@@ -1866,6 +1946,29 @@ async function startBundler(root, env = process.env, args = []) {
 
   await bundlerUp();
   return metro;
+}
+
+// Only this tester's: whatever listens on its own Metro port, with the group it leads.
+export function bundlerGroups(port, look = capture) {
+  const pids = (look('lsof', ['-nP', '-t', `-iTCP:${port}`, '-sTCP:LISTEN']) ?? '').split('\n');
+  const groups = pids
+    .filter(Boolean)
+    .map((pid) => Number((look('ps', ['-o', 'pgid=', '-p', pid]) ?? '').trim()))
+    .filter((group) => group > 1);
+  return [...new Set(groups)];
+}
+
+function stopBundler() {
+  const port = CONFIG.ports.METRO_PORT;
+  const groups = bundlerGroups(port);
+  for (const group of groups) {
+    try {
+      process.kill(-group, 'SIGTERM');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  }
+  console.log(groups.length ? `Stopped the bundler on ${port}.` : `No bundler on ${port}.`);
 }
 
 async function bundlerUp(seconds = 120) {
@@ -2084,11 +2187,20 @@ function announceEmulator(tools) {
   spawnSync(process.execPath, ['-e', script, adbAnnouncement(CONFIG.emulatorPort)]);
 }
 
+export function shouldAnnounce({ remote, online, unit }) {
+  return remote && !online() && unit() === 'active';
+}
+
 let SEEN = false;
-function seeRemoteEmulator(tools) {
-  if (SEEN || !remoteHost()) return;
+function seeRemoteEmulator(tools, { again = false } = {}) {
+  if (SEEN && !again) return;
   SEEN = true;
-  if (emulatorOnline(tools) || unitState(`${CONFIG.project}-emulator`) !== 'active') return;
+  const due = shouldAnnounce({
+    remote: Boolean(remoteHost()),
+    online: () => emulatorOnline(tools),
+    unit: () => unitState(`${CONFIG.project}-emulator`),
+  });
+  if (!due) return;
   announceEmulator(tools);
   for (let i = 0; i < 20 && !emulatorOnline(tools); i++) spawnSync('sleep', ['0.25']);
 }
@@ -2132,13 +2244,29 @@ function unitState(unit) {
 }
 
 // adbd can still be settling once boot completes, and a reverse made then is dropped without an error (sc-35453).
-async function reversePorts(tools) {
-  let missing = reversedPorts(CONFIG.ports);
+// The emulator dropping offline for a moment loses them too, so a batch puts them back before each run (sc-71513).
+export async function restoreReverses(adb, ports, { wait = pause } = {}) {
+  let missing = unreversed(adb(['reverse', '--list']), ports);
   for (let i = 0; i < 10 && missing.length; i++) {
-    if (i) await pause(1000);
-    for (const port of missing) adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
-    missing = unreversed(adbOut(tools, ['reverse', '--list']), reversedPorts(CONFIG.ports));
+    if (i) await wait(1000);
+    for (const port of missing) adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+    missing = unreversed(adb(['reverse', '--list']), ports);
   }
+  return missing;
+}
+
+// Another tester's command can restart the shared adb server mid-batch, which forgets ours (sc-76877).
+export async function reversePorts(
+  tools,
+  {
+    see = seeRemoteEmulator,
+    adb = (args) => adbOut(tools, args),
+    ports = reversedPorts(CONFIG.ports),
+    wait = pause,
+  } = {},
+) {
+  see(tools, { again: true });
+  const missing = await restoreReverses(adb, ports, { wait });
   if (missing.length) {
     throw new Error(
       `${emulatorSerial()} still has ${missing.join(', ')} unreversed after ten seconds`,
@@ -2754,6 +2882,7 @@ function releaseCommit(root) {
 }
 
 function release(args) {
+  releaseLink(args);
   return releasePlatform(args) === 'ios' ? releaseIos(args) : releaseAndroid(args);
 }
 
@@ -2925,6 +3054,7 @@ async function releaseIos(args) {
   const sha = releaseCommit(root);
   const { open, shut } = simulatorFor(args);
   const offline = args.includes('--offline');
+  const link = releaseLink(args, 'ios');
 
   const app = releaseApp(root, sha);
   if (existsSync(app) && !args.includes('--rebuild')) {
@@ -2939,7 +3069,7 @@ async function releaseIos(args) {
   const udid = simulatorId(CONFIG.simulators[open].name);
   if (!udid) throw new Error(`no ${CONFIG.simulators[open].name} simulator — run setup`);
   withoutPasswordAutoFill(udid);
-  bootIos(udid);
+  openSimulator(udid);
   run('open', ['-a', 'Simulator'], { optional: true });
   // A fresh install every time, so the launch below is the app's first, with no cache.
   uninstallIos(udid, id);
@@ -2952,10 +3082,11 @@ async function releaseIos(args) {
   const recording = recordSimulator(udid, video);
   await recording.started;
   await pause(1000);
-  run('xcrun', ['simctl', 'launch', udid, id]);
+  run('xcrun', link ? ['simctl', 'openurl', udid, link] : ['simctl', 'launch', udid, id]);
   await recording.stop();
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      (link ? `, opened by ${link}` : '') +
       `, ${offline ? `offline: ${APP_SERVICES.join(', ')} stopped` : 'online'}.` +
       `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`ios\` removes it and starts the stack again.` +
@@ -3220,7 +3351,7 @@ export function composeBatch(
   });
   const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
+      /^(\s*(?:-\s*runFlow:\s*\{[^\n]*?\bfile|-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$|\s*[,}])/gm,
       (line, key, quote, ref) => {
         const name = posix.relative('checks', posix.join('checks', dir, ref));
         if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))
@@ -3975,6 +4106,19 @@ export async function clearForBatch(
   await reset(onAndroid, device);
 }
 
+// A batch that reuses a name keeps the last run beside it, so a name typed twice costs no
+// re-shoot (sc-72307).
+export function freshBatchDir(root, name) {
+  const out = join(root, '.qa', name);
+  const previous = `${out}.previous`;
+  if (existsSync(out)) {
+    rmSync(previous, { recursive: true, force: true });
+    renameSync(out, previous);
+  }
+  mkdirSync(out, { recursive: true });
+  return out;
+}
+
 async function batch(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -3996,9 +4140,7 @@ async function batch(args) {
   await clearForBatch(onAndroid, device);
   if (onAndroid) warnUnauthorized(androidTools());
 
-  const out = join(root, '.qa', name);
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out, { recursive: true });
+  const out = freshBatchDir(root, name);
   const flows = join(root, '.qa/.batch', name);
   composeBatch(source, flows, {
     checks,
@@ -4010,13 +4152,6 @@ async function batch(args) {
   });
 
   const apiState = composeApi(root, onAndroid);
-  // A batch killed inside withoutReverse left the API's port unreversed.
-  if (onAndroid)
-    adbOut(androidTools(), [
-      'reverse',
-      `tcp:${CONFIG.ports.API_PORT}`,
-      `tcp:${CONFIG.ports.API_PORT}`,
-    ]);
   await apiState.move('up');
   const named = languages[0] !== 'any';
   const signedIn = named ? apiSession(email, password, secret) : null;
@@ -4071,6 +4206,8 @@ async function batch(args) {
   };
   const test = async (flow, held) => {
     await apiState.move('up');
+    // A batch killed inside withoutReverse, or an emulator that went offline, left ports unreversed.
+    if (onAndroid) await reversePorts(androidTools());
     const since = Date.now();
     let failed = true;
     try {

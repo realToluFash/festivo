@@ -9,6 +9,7 @@ import {
 } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
+import { ManagedBanner } from './Managed.tsx';
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { offButton } from '../offButton.ts';
@@ -159,6 +160,15 @@ function InvitationRow({
             </div>
           </div>
         ))}
+
+      {outcome?.kind === 'managed' && (
+        <div className="invitation-row-answer" ref={said} tabIndex={-1}>
+          <ManagedBanner
+            managed={{ organisation: { name: outcome.organisation }, message: outcome.message }}
+            level={3}
+          />
+        </div>
+      )}
 
       {outcome?.kind === 'declined' && (
         <div className="invitation-row-said" ref={said} tabIndex={-1}>

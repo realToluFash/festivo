@@ -218,6 +218,14 @@ export const CREATE_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'From no organisation',
     states: [
       { to: '/demo/today?orgs=none', name: 'You are not in an organisation' },
+      {
+        to: '/demo/today?orgs=none&state=managed',
+        name: 'You are not in an organisation, managed by Ire Events',
+      },
+      {
+        to: '/demo/today?orgs=none&state=invitations',
+        name: 'You are not in an organisation, two invitations waiting',
+      },
       createLink('typing', 'The walk over it, typing', true),
       createLink('created', 'Created: Lumen Feiras’ Today, the notice focused', true),
     ],

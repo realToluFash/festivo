@@ -36,7 +36,8 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, outsideOn, useSessionState } from '../../../session.ts';
+import { useRoutedEventId } from '../outsideRoute.ts';
 import { DeleteEvent } from './DeleteEvent.tsx';
 import { DuplicateDialog, DuplicateEvent } from './DuplicateEvent.tsx';
 import { guestsCopied, wasDuplicated } from './duplicated.ts';
@@ -69,14 +70,29 @@ import { useLeaveGuard } from './useLeaveGuard.tsx';
 
 import '../../../components/SettingsParts.css';
 import '../../../components/eventPage.css';
+import './overviewReflow.css';
 
 /** The crumb an event's page starts with at a desk: Events, then where you are, and the bell at its end. */
-export function EventCrumb({ name, children }: { name: string | null; children?: ReactNode }) {
+export function EventCrumb({
+  name,
+  area,
+  children,
+}: {
+  name: string | null;
+  area?: { label: string; event: string } | undefined;
+  children?: ReactNode;
+}) {
   const { t } = useTranslation();
   const { bell } = useDeskTop();
+  const state = useSessionState();
+  const routed = useRoutedEventId();
+  const outside =
+    state.status === 'signedIn' &&
+    state.session.pausedIn == null &&
+    (state.session.organisation == null || outsideOn(state.session, routed) != null);
 
   return (
-    <Crumb to="/app/events" back={t('events.title')} name={name}>
+    <Crumb to={outside ? null : '/app/events'} back={t('events.title')} name={name} area={area}>
       {children}
       {bell}
     </Crumb>

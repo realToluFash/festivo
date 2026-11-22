@@ -9,6 +9,6 @@ use App\Enum\ErrorCode;
 
 interface OnboardingGateInterface
 {
-    /** Null to let the account through; otherwise the code naming the gate it is behind. */
-    public function refusalFor(User $user, string $route): ?ErrorCode;
+    /** Null to let the account through; otherwise the code naming the gate it is behind. $onAnEvent is an InEvent route. */
+    public function refusalFor(User $user, string $route, bool $onAnEvent): ?ErrorCode;
 }

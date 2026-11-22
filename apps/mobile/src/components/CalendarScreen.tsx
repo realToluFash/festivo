@@ -34,8 +34,6 @@ import type { TextHandle } from './Text.tsx';
 import { useUnderTabs } from './underTabs.ts';
 import { LIST_EDGES } from './listFrame.ts';
 
-const KEPT = 'soirely.calendar';
-
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; events: ListedEvent[]; at: Date };
 
@@ -56,7 +54,7 @@ const daysOf = (events: readonly CalEvent[], show: CalendarShow) => calendarDays
 export function CalendarScreen() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { organisation } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const title = useRef<TextHandle>(null);
   const subscribeRef = useRef<ViewInstance>(null);
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
@@ -86,9 +84,10 @@ export function CalendarScreen() {
         </View>
       }
     >
-      {organisation != null && (
+      {organisation != null && account != null && (
         <CalendarOf
-          key={organisation.id}
+          key={`${account.id}/${organisation.id}`}
+          personId={account.id}
           organisationId={organisation.id}
           creates={roleHolds(organisation, 'events.create')}
           kind={kind}
@@ -113,12 +112,14 @@ export function CalendarScreen() {
 }
 
 function CalendarOf({
+  personId,
   organisationId,
   creates,
   kind,
   heading,
   onOffline,
 }: {
+  personId: string;
   organisationId: string;
   creates: boolean;
   kind: LayoutKind;
@@ -201,7 +202,7 @@ function CalendarOf({
         now={now}
         locale={locale}
         firstDay={firstDay}
-        kept={KEPT}
+        personId={personId}
         bottom={kind === 'phone' ? underTabs + tokens.space3xl : insets.bottom + tokens.space3xl}
         onOpen={openItem}
         onRetry={retry}

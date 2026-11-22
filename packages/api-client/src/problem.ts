@@ -33,11 +33,15 @@ export interface Problem {
   providerEmail?: string;
   /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
   organisation?: string;
+  /** On `domain_managed` (sc-563), with `organisation` naming the home organisation: the managed address's domain. */
+  domain?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */
   providers?: string[];
   /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
   days?: number;
   email?: string;
+  /** On a `validation_failed` shift (sc-3908): how many people are on it as the API now has them. */
+  onShift?: number;
   /** On `join_request_cooling_off`: when they may ask that organisation again (sc-562). */
   until?: string;
   /** On `provider_kept_by_rule`: the provider that must stay linked. */
@@ -50,6 +54,10 @@ export interface Problem {
   stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
+  /** On `meal_picks_closed`: the closed courses a send would have changed, none of them saved (sc-3907). */
+  courses?: string[];
+  /** On `meal_pick_ruled_out`: each person the plate's allergens rule out, nothing saved until sent again with `anyway` (sc-3909). */
+  people?: { id: string; allergens: string[] }[];
   /** On `seating_table_short`: the place's free chairs and the party's size (sc-4013). */
   free?: number;
   party?: number;
@@ -66,6 +74,9 @@ export interface Problem {
   archived?: boolean;
   /** On a schedule item's `precondition_failed`: the item as it is stored now, which `asScheduleItem` reads (sc-3893). */
   current?: unknown;
+  /** On `payer_covers_costs` (sc-91): the costs the payer covers, in the budget's order, and how many. */
+  lineIds?: string[];
+  count?: number;
   /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
   superseded_by?: { name: string; at: string };
 }

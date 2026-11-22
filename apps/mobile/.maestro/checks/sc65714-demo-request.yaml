@@ -1,0 +1,12 @@
+# sc-65714: the app demo's request to join's page (Lucía's, tapped from Members), for the side-by-side pair beside the product. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.approve'
+    timeout: 30000
+- tapOn:
+    id: 'members.approve'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-request-top

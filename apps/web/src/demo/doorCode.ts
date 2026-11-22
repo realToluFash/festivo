@@ -20,6 +20,7 @@ export const DOOR_PLACE: EventPlace = {
   organisation: DOOR_ORG,
   initials: 'LF',
   event: DOOR_EVENT,
+  eventId: DOOR_EVENT_ID,
   when: 'Live · in 7 days',
 };
 
@@ -46,7 +47,7 @@ export const W = {
   making: 'Making…',
   theirRole: 'Their role',
   canEdit: 'Can edit',
-  noEdit: 'A code can’t give edit access. Give that to a named person instead.',
+  noEdit: 'A code cannot give edit access. Give that to a named person instead.',
   jobLabel: 'Job label (optional)',
   howMany: 'How many people',
   howManyHelp: 'From 1 to 500.',
@@ -58,7 +59,7 @@ export const W = {
   earlierLine: 'A day and time before the event ends.',
   day: 'Day',
   time: 'Time',
-  past: 'Choose a time that hasn’t passed yet.',
+  past: 'Choose a time that has not passed yet.',
   failMake: 'The door code was not made. Check your connection and try again.',
   tryAgain: 'Try again',
   made: 'Door code made.',

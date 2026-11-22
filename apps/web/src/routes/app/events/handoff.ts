@@ -23,6 +23,7 @@ export const PAGE_NEEDS = {
   schedule: 'run_of_show.read',
   run: 'run_of_show.read',
   staff: 'staff.read',
+  budget: 'budget.read',
 } as const;
 
 function needsOf(page: string): string | null {
@@ -39,6 +40,9 @@ export function handoffPage(pathname: string): HandoffPage | null {
   const roster = matchPath('/app/events/:eventId/staff/roster', pathname)?.params.eventId;
   if (roster != null)
     return { kind: 'event', eventId: roster, area: 'staff', needs: PAGE_NEEDS.staff };
+
+  const picks = matchPath('/app/events/:eventId/menu/picks', pathname)?.params.eventId;
+  if (picks != null) return { kind: 'event', eventId: picks, area: 'menu', needs: PAGE_NEEDS.menu };
 
   const part = matchPath('/app/events/:eventId/:part', pathname)?.params;
   const eventId = part?.eventId;

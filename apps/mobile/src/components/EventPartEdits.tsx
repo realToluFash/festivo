@@ -62,7 +62,7 @@ import {
 import { pickedBytes } from '../kit/pickedBytes.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
-import { type SavedPart, heldRead, sendPart } from '../kit/partSave.ts';
+import { type SavedPart, answeredWithNotice, heldRead, sendPart } from '../kit/partSave.ts';
 import {
   CLOSES_AT,
   replyByAskWords,
@@ -162,6 +162,7 @@ function usePartSave(
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [fetching, setFetching] = useState(false);
+  const [noticed, setNoticed] = useState(0);
 
   useEffect(() => void read(), [read]);
 
@@ -181,6 +182,7 @@ function usePartSave(
     if (sent.kind === 'unchanged' || sent.kind === 'saved') return null;
 
     setOutcome(sent.kind === 'refused' ? null : sent.kind);
+    if (answeredWithNotice(sent)) setNoticed((count) => count + 1);
     return sent;
   }
 
@@ -208,7 +210,7 @@ function usePartSave(
         ? t('eventEdit.forbidden')
         : null;
 
-  return { busy, save, elsewhere, failed, setOutcome };
+  return { busy, save, elsewhere, failed, noticed, setOutcome };
 }
 
 function useShellProps(part: EditPart, props: PartEditProps) {
@@ -229,7 +231,7 @@ function NameEdit(props: PartEditProps) {
   const [name, setName] = useState(event.name);
   const [refused, setRefused] = useState<string | null>(null);
   const field = useRef<TextInputInstance>(null);
-  const { busy, save, elsewhere, failed } = usePartSave('name', props);
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('name', props);
   const typed = { ...typedOf(event), draft: { ...draftOf(event), name } };
   const error = only(eventFormErrors(typed, t), ['name']).name ?? refused;
 
@@ -250,6 +252,7 @@ function NameEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={() => void send()}
     >
       <NameView
@@ -270,7 +273,7 @@ function NameEdit(props: PartEditProps) {
 function TypeEdit(props: PartEditProps) {
   const { event } = props;
   const [type, setType] = useState<EventType>(event.type);
-  const { busy, save, elsewhere, failed } = usePartSave('type', props);
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('type', props);
 
   return (
     <EditShell
@@ -279,6 +282,7 @@ function TypeEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={() =>
         void save(eventChanges(event, { ...typedOf(event), draft: { ...draftOf(event), type } }))
       }
@@ -294,7 +298,7 @@ function CurrencyEdit(props: PartEditProps) {
   const locale = currentLocale();
   const [code, setCode] = useState(event.currency);
   const [inUse, setInUse] = useState(false);
-  const { busy, save, elsewhere, failed } = usePartSave('currency', props);
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('currency', props);
   const choices = useMemo(
     () => heldFirstCurrencyChoices(event.currency, locale, t('eventEdit.currencyRetired')),
     [event.currency, locale, t],
@@ -307,6 +311,7 @@ function CurrencyEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={() =>
         void save(eventChanges(event, { ...typedOf(event), currency: code })).then((refusal) =>
           setInUse(refusal?.kind === 'refused' && refusal.currencyInUse),
@@ -343,7 +348,7 @@ function DatesEdit(props: PartEditProps) {
   const endBox = useRef<ViewInstance>(null);
   const now = useServerNow();
   const counts = useHaventCounts(event);
-  const { busy, save, elsewhere, failed } = usePartSave('dates', props, (saved) =>
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('dates', props, (saved) =>
     saved.replyBy !== event.replyBy && saved.replyBy != null
       ? replyBySaved(saved.replyBy, saved.timeZone, locale, now, t)
       : undefined,
@@ -455,6 +460,7 @@ function DatesEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={ask}
       ask={closeAsk}
       over={pickerOver(picking, locale, () => setPicking(null))}
@@ -527,7 +533,7 @@ function ReplyByEdit(props: PartEditProps) {
   const [aim, setAim] = useState(0);
   const box = useRef<ViewInstance>(null);
   const counts = useHaventCounts(event);
-  const { busy, save, elsewhere, failed } = usePartSave('replyBy', props, (shown) =>
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('replyBy', props, (shown) =>
     replyBySaved(shown.replyBy ?? null, shown.timeZone, locale, now, t),
   );
   const today = todayIn(now, event.timeZone);
@@ -608,6 +614,7 @@ function ReplyByEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={ask}
       ask={closeAsk}
       over={pickerOver(picking, locale, () => setPicking(null))}
@@ -677,7 +684,7 @@ function VenueEdit(props: PartEditProps) {
   const nameInput = useRef<TextInputInstance>(null);
   const addressInput = useRef<TextInputInstance>(null);
   const noteInput = useRef<TextInputInstance>(null);
-  const { busy, save, elsewhere, failed } = usePartSave('venue', props);
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('venue', props);
   const [lookup] = useState(() =>
     addressLookup({
       suggest: (query) => api.addressSuggestions(query),
@@ -740,6 +747,7 @@ function VenueEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={() => void send()}
     >
       <VenueFieldsView
@@ -788,7 +796,7 @@ function HostsEdit(props: PartEditProps) {
   const [tried, setTried] = useState(false);
   const [refused, setRefused] = useState<Partial<Record<number, string>>>({});
   const [said, setSaid] = useState<string | null>(null);
-  const { busy, save, elsewhere, failed } = usePartSave('hosts', props);
+  const { busy, save, elsewhere, failed, noticed } = usePartSave('hosts', props);
   const names = hosts.map((host) => host.name);
   const found = hostErrorsOf(hosts, t);
   const shown = hostErrorsShownOf(hosts, t, tried);
@@ -811,6 +819,7 @@ function HostsEdit(props: PartEditProps) {
       busy={busy}
       elsewhere={elsewhere}
       failed={failed}
+      noticed={noticed}
       onSave={() => void send()}
     >
       <HostRows
@@ -822,6 +831,7 @@ function HostsEdit(props: PartEditProps) {
         errors={errors}
         kept={keepsLastHost(event, hosts.length)}
         off={busy}
+        saysNone
         onSaid={setSaid}
         testID="event.edit.hosts"
       />
@@ -848,6 +858,7 @@ function CoverEdit(props: PartEditProps) {
   const [described, setDescribed] = useState(saved?.description ?? '');
   const [refused, setRefused] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [noticed, setNoticed] = useState(0);
   const [describeError, setDescribeError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const describe = useRef<TextInputInstance>(null);
@@ -941,6 +952,7 @@ function CoverEdit(props: PartEditProps) {
     } catch (error) {
       setBusy(false);
       setFailed(coverSaveRefusalOf(error, t));
+      setNoticed((count) => count + 1);
     }
   }
 
@@ -963,6 +975,7 @@ function CoverEdit(props: PartEditProps) {
       changed={changed && photo.kind !== 'uploading'}
       busy={busy}
       failed={failed}
+      noticed={noticed}
       onSave={() => void use()}
     >
       <CoverPreview

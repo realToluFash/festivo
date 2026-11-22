@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { exportFileName, exportNarrowing, formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +26,7 @@ import type { Shown } from '../events/EventsModel.ts';
 import type { AreaKey } from '../events/EventsSample.ts';
 import { useShell } from '../../components/settingsShell.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
+import { useSideListWidth } from '../../layout/useLayout.ts';
 import { Ask } from '../../components/Summary.tsx';
 import { AddGuest, ChoosePeople, ReviewList } from './GuestAdd.tsx';
 import { EditGuest, MarkInvited, RecordReply } from './GuestEdit.tsx';
@@ -57,11 +58,23 @@ import {
   filterCount,
   filterWord,
   inViewOf,
+  refreshingAt,
   titleRowOf,
+  chooseChanged,
 } from './GuestsModel.ts';
+import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
 import { ExportButton, ExportPanel, ExportSheet, ShareStandIn } from './GuestExport.tsx';
-import { exportDay, exportStart, exportWordsIn, fileName, narrowing } from './GuestExportModel.ts';
+import {
+  ENGLISH_SHEET,
+  exportDay,
+  exportStart,
+  exportWordsIn,
+  exportedName,
+  fileName,
+  narrowing,
+  sheetWordsIn,
+} from './GuestExportModel.ts';
 import { GuestsFailed, GuestsLoading, GuestsRows } from './GuestsList.tsx';
 import { GuestToast, GuestsCard, GuestsTitle, type Layout } from './GuestsParts.tsx';
 import { type SampleGuest, TODAY, WEDDING } from './GuestsSample.ts';
@@ -82,8 +95,21 @@ import {
   whoseRows,
 } from './PasteReplyModel.ts';
 
+/** The Portuguese catalogue's word for a filter, for the Export sheet's Filtro line (sc-72136). */
+const PT_FILTER: Partial<Record<string, string>> = {
+  all: 'guestList.all',
+  invited: 'guestList.invited',
+  coming: 'guestList.reply.coming',
+  maybe: 'guestList.reply.maybe',
+  notcoming: 'guestList.reply.notComing',
+  held: 'guestList.reply.held',
+  noreply: 'guestList.reply.noReply',
+  notyet: 'guestList.reply.notYetInvited',
+};
 const SEARCH_PAUSE_MS = 300;
 const FOCUS_AFTER_MS = 450;
+// As the product's Guests list on a tablet on its side, widened at the accessibility sizes (sc-67659).
+const LIST_WIDTH = 400;
 
 /** Where the door opens from each day state: before 16:00 it says when it opens; from then it checks in. */
 function doorFrom(state: GuestsState | null): string {
@@ -122,6 +148,7 @@ export function GuestsScreen({
 }) {
   const shell = useShell();
   const layout: Layout = shell.layout;
+  const listWidth = useSideListWidth(LIST_WIDTH);
   const insets = useSafeAreaInsets();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const opening = useMemo(() => guestsOpening(given, event.id, locale), [given, event.id, locale]);
@@ -132,11 +159,21 @@ export function GuestsScreen({
   const titleRow = titleRowOf(state);
   const inPortuguese = titleRow.locale === 'pt';
   const portuguese = useMemo(() => i18n.getFixedT('pt'), [i18n]);
+  // sc-71821: on the phone Refreshing… keeps main's place beside Back where the pill stays whole, else it takes its own line under the heading.
+  const [besideBack, setBesideBack] = useState(false);
+  const refreshing = refreshingAt(state) ? (
+    <RefreshingWords
+      words={inPortuguese ? portuguese('eventsScreen.refreshing') : t('eventsScreen.refreshing')}
+      testID="guests.refreshing"
+    />
+  ) : null;
   const [guests, setGuests] = useState(opening.guests);
   const [added, setAdded] = useState(opening.added);
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
   const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
   const [looked, setLooked] = useState(lastLooked);
+  const changeFails = useRef(start.changeFails !== null);
+  const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -169,7 +206,10 @@ export function GuestsScreen({
   const [exporting, setExporting] = useState(exported.open);
   const [exportRound, setExportRound] = useState(0);
   const day = exportDay(now, event.timeZone);
-  const fileFor = (format: 'xlsx' | 'csv') => fileName(event.name, day, format);
+  const fileFor = (format: 'xlsx' | 'csv') =>
+    inPortuguese
+      ? exportFileName(portuguese, { ...event, name: exportedName(state, event.name) }, now, format)
+      : fileName(exportedName(state, event.name), day, format);
   const [sharing, setSharing] = useState<string | null>(exported.share ? fileFor('xlsx') : null);
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
   const from = useRef<string>(start.focus ?? 'card');
@@ -270,6 +310,9 @@ export function GuestsScreen({
   };
   const chooseFilter = (key: ListFilter) => {
     if (key === filter) return;
+    const choice = chooseChanged(key, changeFails.current);
+    setChangeFailed(choice.failed);
+    if (!choice.applies) return;
     if (key === 'changed') {
       setSince(takeLook(now));
       setLooked(lastLooked());
@@ -326,11 +369,20 @@ export function GuestsScreen({
     setExportRound((count) => count + 1);
     setExporting(true);
   };
+  const choicePt = PT_FILTER[filter];
   const exportProps = {
+    words: inPortuguese ? sheetWordsIn(portuguese) : ENGLISH_SHEET,
     file: fileFor,
     inView,
     everyone: total,
-    narrowed: narrowing(filterWord(filter), searched),
+    narrowed: inPortuguese
+      ? exportNarrowing(
+          portuguese,
+          choicePt == null ? filterWord(filter) : portuguese(choicePt),
+          searched,
+          [],
+        )
+      : narrowing(filterWord(filter), searched),
     needs: exported.needs,
     offline,
     format: exported.format,
@@ -386,6 +438,7 @@ export function GuestsScreen({
       />
     );
 
+  const exportShown = owner && phase === 'ok' && !empty && titleRow.export;
   const list = (
     <>
       <GuestsTitle
@@ -395,7 +448,7 @@ export function GuestsScreen({
         plus={owner && phase !== 'loading' && !empty}
         onPlus={() => show('add', 'plus')}
         extra={
-          owner && phase === 'ok' && !empty && titleRow.export ? (
+          exportShown ? (
             <ExportButton
               ref={refFor('export')}
               layout={layout}
@@ -404,6 +457,22 @@ export function GuestsScreen({
               onPress={openExport}
             />
           ) : null
+        }
+        extraWidest={
+          exportShown ? (
+            <ExportButton
+              layout={layout}
+              offline={offline}
+              words={inPortuguese ? exportWordsIn(portuguese) : undefined}
+              onPress={openExport}
+              measured
+            />
+          ) : null
+        }
+        refreshing={
+          refreshing == null || (layout === 'phone' && besideBack)
+            ? null
+            : { node: refreshing, row: layout !== 'phone' }
         }
       />
       {phase === 'loading' ? (
@@ -430,6 +499,11 @@ export function GuestsScreen({
               filter={filter}
               changed={filter === 'changed' ? listed.length : unseen}
               onFilter={chooseFilter}
+              changeFailed={changeFailed}
+              onRetryChanged={() => {
+                changeFails.current = false;
+                chooseFilter('changed');
+              }}
               typed={typed}
               onTyped={(text) => {
                 setTyped(text);
@@ -706,7 +780,7 @@ export function GuestsScreen({
         <View style={styles.panes}>
           <ScrollView
             ref={scroll}
-            style={styles.listPane}
+            style={[styles.listPane, { width: listWidth }]}
             contentContainerStyle={styles.listBody}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -745,6 +819,16 @@ export function GuestsScreen({
             ? { label: W.guests, onPress: closeGuest }
             : null
       }
+      phoneBack={
+        refreshing != null && inPortuguese
+          ? { label: portuguese('eventNav.overview'), onPress: () => onArea('overview') }
+          : undefined
+      }
+      besideBack={
+        refreshing != null && layout === 'phone' && whose == null && page == null
+          ? { node: refreshing, onPlaced: setBesideBack }
+          : undefined
+      }
       overlay={overlays}
     >
       {whose != null ? (
@@ -782,7 +866,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
   panes: { flex: 1, flexDirection: 'row' },
-  listPane: { width: 400, flexGrow: 0, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
+  listPane: { flexGrow: 0, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   listBody: { paddingTop: 22, paddingHorizontal: 20, paddingBottom: tokens.space6xl * 2, gap: 18 },
   guestBody: { paddingTop: 22, paddingHorizontal: 32, paddingBottom: tokens.space6xl * 2, gap: 18 },
   bandPhone: { marginHorizontal: -tokens.spaceXxl },

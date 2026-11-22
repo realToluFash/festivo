@@ -3,10 +3,24 @@ import { writtenTime } from './clock.ts';
 import { type ReaderZone, zoneWord } from './dataSettings.ts';
 import { SAMPLE } from './rules.ts';
 import { VIEWERS } from './settings.ts';
+import { areaPath } from './handoff.ts';
+import { guestsAt } from './guests.ts';
+import { LIBRARY_PATH } from './menuLibrary.ts';
+import en from '../i18n/locales/en.json';
+import es from '../i18n/locales/es.json';
+import fr from '../i18n/locales/fr.json';
+import pt from '../i18n/locales/pt.json';
 
+/** sc-611's six with sc-71986's six between them, in the AC's order. */
 export const TYPES = [
   'Events',
   'Event access',
+  'Guests',
+  'Menu',
+  'Seating',
+  'Schedule',
+  'Staff',
+  'Budget',
   'Members and invitations',
   'Sign-in and security',
   'Organisation',
@@ -14,6 +28,56 @@ export const TYPES = [
 ] as const;
 
 export type EntryType = (typeof TYPES)[number];
+
+export const TYPE_LANGS = ['en', 'es', 'fr', 'pt'] as const;
+export type TypeLang = (typeof TYPE_LANGS)[number];
+
+const SECTIONS = {
+  Guests: 'guests',
+  Menu: 'menu',
+  Seating: 'seating',
+  Schedule: 'schedule',
+  Staff: 'staff',
+  Budget: 'budget',
+} as const satisfies Partial<Record<EntryType, keyof typeof en.eventNav>>;
+
+const sectionWords = (nav: Record<(typeof SECTIONS)[keyof typeof SECTIONS], string>) =>
+  Object.fromEntries(Object.entries(SECTIONS).map(([type, key]) => [type, nav[key]])) as Record<
+    keyof typeof SECTIONS,
+    string
+  >;
+
+/** The six new types are the event's sections' own words (eventNav); sc-611's six outside English are proposals for the linguist. */
+export const TYPE_WORDS: Record<TypeLang, Record<EntryType, string>> = {
+  en: Object.fromEntries(TYPES.map((type) => [type, type])) as Record<EntryType, string>,
+  es: {
+    Events: 'Eventos',
+    'Event access': 'Acceso a eventos',
+    ...sectionWords(es.eventNav),
+    'Members and invitations': 'Miembros e invitaciones',
+    'Sign-in and security': 'Inicio de sesión y seguridad',
+    Organisation: 'Organización',
+    'Audit log': 'Registro de auditoría',
+  },
+  fr: {
+    Events: 'Événements',
+    'Event access': 'Accès aux événements',
+    ...sectionWords(fr.eventNav),
+    'Members and invitations': 'Membres et invitations',
+    'Sign-in and security': 'Connexion et sécurité',
+    Organisation: 'Organisation',
+    'Audit log': 'Journal d’audit',
+  },
+  pt: {
+    Events: 'Eventos',
+    'Event access': 'Acesso a eventos',
+    ...sectionWords(pt.eventNav),
+    'Members and invitations': 'Membros e convites',
+    'Sign-in and security': 'Início de sessão e segurança',
+    Organisation: 'Organização',
+    'Audit log': 'Registo de auditoria',
+  },
+};
 
 export interface Entry {
   id: string;
@@ -23,13 +87,19 @@ export interface Entry {
   type: EntryType;
   action: string;
   reference: string;
-  on?: { name: string; event?: string; gone?: boolean };
+  /** What it was done to: a link to where it is seen while it exists. */
+  on?: { name: string; link?: string; gone?: boolean };
+  /** The event it belongs to, for the Event filter; an organisation's dish has none. */
+  event?: string;
   changes?: string;
+  /** What an entry recorded beside any change, each a row of its own: an export's format, filters and count, or a plan change's reason. */
+  recorded?: readonly { label: string; value: string }[];
   address?: string;
   device?: string;
 }
 
 export const SYSTEM = 'System';
+export const SUPPORT = 'Soirely support';
 export const PEOPLE = [
   { name: VIEWERS.folake.name, email: VIEWERS.folake.id, left: false },
   { name: VIEWERS.julien.name, email: VIEWERS.julien.id, left: false },
@@ -45,28 +115,55 @@ export const EVENTS = [
   { name: 'Tola & Seun’s wedding', id: null },
 ] as const;
 
+const WEDDING = 'Adaeze & Tunde’s wedding';
+const WEDDING_ID = 'evt-wed-4';
+const section = (
+  type: EntryType,
+  area: 'guests' | 'menu' | 'seating' | 'schedule' | 'staff' | 'budget',
+) => ({
+  name: `${WEDDING} · ${type}`,
+  link: areaPath(WEDDING_ID, area),
+});
 const FOLAKE = VIEWERS.folake.name;
 const JULIEN = VIEWERS.julien.name;
 const ADDRESS = '203.0.113.17';
+const ON_ORG = { name: ORG };
 
 /** Newest first, as the boards list them; the seconds, codes and references the spec leaves out are the sample's. */
 export const ENTRIES: readonly Entry[] = [
   {
+    id: 'exported',
+    at: '2026-10-19T11:42:09+01:00',
+    what: 'Exported the audit log',
+    who: FOLAKE,
+    type: 'Audit log',
+    action: 'audit_log.exported',
+    on: ON_ORG,
+    reference: '7c3e9a14-2b6d-4f81-9e05-d8a1f62b3c47',
+    recorded: [
+      { label: 'Format', value: 'CSV' },
+      { label: 'Filters', value: 'Person: Priya Shah · Type: Event access' },
+      { label: 'Entries', value: '3' },
+    ],
+  },
+  {
     id: 'download',
     at: '2026-10-19T10:05:31+01:00',
-    what: `Downloaded ${ORG}’ data`,
+    what: `Downloaded ${ORG}’s data`,
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_downloaded',
+    on: ON_ORG,
     reference: '5b0e2d71-8c4a-4f3e-b1d9-2e6a7c90f413',
   },
   {
     id: 'asked',
     at: '2026-10-19T09:30:08+01:00',
-    what: `Asked for an export of ${ORG}’ data`,
+    what: `Asked for an export of ${ORG}’s data`,
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.export_requested',
+    on: ON_ORG,
     reference: '9e47c1a2-3d5f-4b80-a6e2-71c9f0d84b26',
   },
   {
@@ -77,7 +174,86 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Event access',
     action: 'event_access.granted',
     reference: '2f8a6c03-71e4-4d9b-8c5a-0b3e9f6d1a72',
-    on: { name: 'Adaeze & Tunde’s wedding', event: 'evt-wed-4' },
+    on: { name: WEDDING, link: `/demo/events/${WEDDING_ID}` },
+    event: WEDDING,
+  },
+  {
+    id: 'skipped',
+    at: '2026-10-18T19:42:09+01:00',
+    what: 'Skipped Toasts during the event',
+    who: 'Priya Shah',
+    type: 'Schedule',
+    action: 'run_of_show.item_skipped',
+    reference: '8c2e5f17-4a9b-4d36-b0e8-1f7a3c6d92e5',
+    on: section('Schedule', 'schedule'),
+    event: WEDDING,
+  },
+  {
+    id: 'floorLead',
+    at: '2026-10-18T16:10:31+01:00',
+    what: 'Made Ifeoma Nduka the floor lead',
+    who: 'Priya Shah',
+    type: 'Staff',
+    action: 'stations.floor_lead_set',
+    reference: '3f9d1b6e-7c24-4a85-9e0b-5d8c2a7f1e43',
+    on: section('Staff', 'staff'),
+    event: WEDDING,
+    changes: 'Floor lead: None → Ifeoma Nduka',
+  },
+  {
+    id: 'budgetLine',
+    at: '2026-10-18T14:25:12+01:00',
+    what: 'Added Lighting to the budget',
+    who: JULIEN,
+    type: 'Budget',
+    action: 'budget_line.added',
+    reference: 'b7a40e2c-1d68-4f93-a5c1-8e2f6b9d0a74',
+    on: section('Budget', 'budget'),
+    event: WEDDING,
+  },
+  {
+    id: 'seatMoved',
+    at: '2026-10-18T12:03:47+01:00',
+    what: 'Moved Dr Emeka Nwosu to Table 4',
+    who: FOLAKE,
+    type: 'Seating',
+    action: 'seating.guest_moved',
+    reference: '0e6b9c3a-5f12-4d7e-8a49-c3d1f7b2e586',
+    on: { name: 'Dr Emeka Nwosu', link: guestsAt(WEDDING_ID, { guest: 'emeka' }) },
+    event: WEDDING,
+    changes: 'Table: Table 2 → Table 4',
+  },
+  {
+    id: 'guestRemoved',
+    at: '2026-10-18T11:20:05+01:00',
+    what: 'Removed a guest',
+    who: JULIEN,
+    type: 'Guests',
+    action: 'guest.removed',
+    reference: '6d3a8f05-2b71-4e9c-b4d6-7a0e1c5f3b28',
+    on: section('Guests', 'guests'),
+    event: WEDDING,
+  },
+  {
+    id: 'guestGone',
+    at: '2026-10-18T09:48:55+01:00',
+    what: 'Changed a guest’s needs',
+    who: JULIEN,
+    type: 'Guests',
+    action: 'guest.needs_changed',
+    reference: 'f1c7e4a9-8d35-4b02-9f6e-2a5b8d1c7e30',
+    on: { name: 'A guest', gone: true },
+    event: WEDDING,
+  },
+  {
+    id: 'dish',
+    at: '2026-10-18T08:30:22+01:00',
+    what: `Added Jollof rice to ${ORG}’s dishes`,
+    who: FOLAKE,
+    type: 'Menu',
+    action: 'dish.added',
+    reference: '9b5f2d8e-6a13-4c7f-a0d4-e8c3b1f6a952',
+    on: { name: 'Jollof rice', link: LIBRARY_PATH },
   },
   {
     id: 'retention',
@@ -86,6 +262,7 @@ export const ENTRIES: readonly Entry[] = [
     who: FOLAKE,
     type: 'Organisation',
     action: 'organisation.retention_changed',
+    on: ON_ORG,
     reference: 'd61b9e4f-0a27-4c83-9f15-6e8d2b7a3c50',
     changes: 'Delete guest data after an event: Off → 90 days',
   },
@@ -97,7 +274,8 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Events',
     action: 'event.made_live',
     reference: 'c41e9a7b-2f6d-4b1e-9a53-7d0e6c2b8f14',
-    on: { name: 'Ireti at 40', event: 'evt-ireti-2' },
+    on: { name: 'Ireti at 40', link: '/demo/events/evt-ireti-2' },
+    event: 'Ireti at 40',
     changes: 'Live: Off → On',
   },
   {
@@ -107,6 +285,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Members and invitations',
     action: 'invitation.created',
+    on: ON_ORG,
     reference: '7a3d5e90-b6c1-4f28-8d47-c0e2a19f6b35',
   },
   {
@@ -117,7 +296,7 @@ export const ENTRIES: readonly Entry[] = [
     type: 'Sign-in and security',
     action: 'sign_in_rules.changed',
     reference: '0c9f2b18-4e6a-4d73-b25e-8a1f7d3c6e09',
-    on: { name: `${ORG}’ sign-in rules` },
+    on: { name: `${ORG}’s sign-in rules` },
     changes: 'Everyone needs two-factor: Off → On',
     address: ADDRESS,
     device: 'Safari on macOS',
@@ -129,6 +308,7 @@ export const ENTRIES: readonly Entry[] = [
     who: JULIEN,
     type: 'Sign-in and security',
     action: 'email_domain.added',
+    on: { name: 'ireevents.com' },
     reference: 'e83a7f25-6b9d-4c10-a4e8-3f5b2d0c9a61',
     address: ADDRESS,
   },
@@ -141,6 +321,19 @@ export const ENTRIES: readonly Entry[] = [
     action: 'organisation.retention_held',
     reference: '4d2c8e6a-9f17-4b35-8e0d-a7b1c3f59e28',
     on: { name: 'Tola & Seun’s wedding' },
+    event: 'Tola & Seun’s wedding',
+  },
+  {
+    id: 'planChanged',
+    at: '2026-10-16T09:20:14+01:00',
+    what: `Changed the plan of ${ORG}`,
+    who: SUPPORT,
+    type: 'Organisation',
+    action: 'organisation.plan_changed',
+    on: ON_ORG,
+    reference: '3b8e1f6a-0c4d-4a92-b7e5-6d2f9a1c8e07',
+    changes: 'Plan: Free → Enterprise',
+    recorded: [{ label: 'Reason', value: 'QA retest' }],
   },
   {
     id: 'proved',
@@ -149,6 +342,7 @@ export const ENTRIES: readonly Entry[] = [
     who: SYSTEM,
     type: 'Sign-in and security',
     action: 'email_domain.proved',
+    on: { name: 'ire.events' },
     reference: 'a95f0c3e-2d81-4e6b-9c7a-1b8e4d2f0c37',
   },
   {
@@ -160,6 +354,7 @@ export const ENTRIES: readonly Entry[] = [
     action: 'event.deleted',
     reference: '6f1e3b9d-c4a7-4082-b6f5-9d2a0e7c8b14',
     on: { name: 'Bisi & Kola’s engagement', gone: true },
+    event: 'Bisi & Kola’s engagement',
   },
 ];
 
@@ -210,7 +405,7 @@ export const AUDIT_WORDS = {
   export: 'Export',
   exportLine: 'Up to 10,000 entries download at once. More are prepared, and we email you a link.',
   preparing: 'Preparing your export',
-  preparingLine: `We’ll email ${SAMPLE.email} a link when it’s ready. It works once, for 24 hours.`,
+  preparingLine: `We’ll email ${SAMPLE.email} a link when it’s ready. It downloads only for you, signed in, for 24 hours.`,
   tooMany: 'More than 1,000,000 entries match. Narrow the filters, then export again.',
   locked: 'Available on Enterprise',
   lockedLine: `See who did what in ${ORG}, for 365 days, and export it.`,
@@ -253,7 +448,7 @@ export function matching(
     (entry) =>
       (filters.person == null || entry.who === filters.person) &&
       (filters.type == null || entry.type === filters.type) &&
-      (filters.event == null || entry.on?.name === filters.event) &&
+      (filters.event == null || entry.event === filters.event) &&
       (filters.from === '' || dayIn(entry.at, zone) >= filters.from) &&
       (filters.to === '' || dayIn(entry.at, zone) <= filters.to),
   );
@@ -322,7 +517,12 @@ export interface Fact {
 }
 
 /** An entry's detail: what it records, and only what it records. */
-export function factsOf(entry: Entry, locale: string, zone: ReaderZone): Fact[] {
+export function factsOf(
+  entry: Entry,
+  locale: string,
+  zone: ReaderZone,
+  lang: TypeLang = 'en',
+): Fact[] {
   const seconds = String(new Date(entry.at).getUTCSeconds()).padStart(2, '0');
   const stamp = `${dayOf(entry.at, locale, zone, true)} at ${timeOf(entry, locale, zone)}:${seconds} ${zoneWord(entry.at, zone)}`;
   const person = PEOPLE.find((one) => one.name === entry.who);
@@ -339,10 +539,14 @@ export function factsOf(entry: Entry, locale: string, zone: ReaderZone): Fact[] 
     facts.push({
       label: AUDIT_WORDS.on,
       value: entry.on.gone === true ? `${entry.on.name} · ${AUDIT_WORDS.gone}` : entry.on.name,
-      ...(entry.on.event == null ? {} : { link: `/demo/events/${entry.on.event}` }),
+      ...(entry.on.link == null || entry.on.gone === true ? {} : { link: entry.on.link }),
     });
   if (entry.changes != null) facts.push({ label: AUDIT_WORDS.changes, value: entry.changes });
-  facts.push({ label: AUDIT_WORDS.typeAndAction, value: `${entry.type} · ${entry.action}` });
+  for (const row of entry.recorded ?? []) facts.push(row);
+  facts.push({
+    label: AUDIT_WORDS.typeAndAction,
+    value: `${TYPE_WORDS[lang][entry.type]} · ${entry.action}`,
+  });
   if (entry.address != null)
     facts.push({ label: AUDIT_WORDS.address, value: entry.address, code: true });
   if (entry.device != null) facts.push({ label: AUDIT_WORDS.device, value: entry.device });
@@ -363,12 +567,16 @@ export interface AuditStart {
   exporting: 'asking' | 'tooMany' | null;
   preparing: boolean;
   told: string | null;
+  lang: TypeLang;
 }
 
 export const AUDIT_STATES = [
   'list',
   'filter_person',
   'filter_type',
+  'filter_type_es',
+  'filter_type_fr',
+  'filter_type_pt',
   'filter_event',
   'dates',
   'date_invalid',
@@ -379,6 +587,13 @@ export const AUDIT_STATES = [
   'detail_signin',
   'detail_old',
   'detail_system',
+  'detail_guest_removed',
+  'detail_guest_gone',
+  'detail_skipped',
+  'detail_section',
+  'detail_dish',
+  'detail_export',
+  'detail_plan',
   'export',
   'export_small',
   'export_preparing',
@@ -394,6 +609,13 @@ const DETAILS: Record<string, string> = {
   detail_signin: 'signIn',
   detail_old: 'domainAdded',
   detail_system: 'proved',
+  detail_guest_removed: 'guestRemoved',
+  detail_guest_gone: 'guestGone',
+  detail_skipped: 'skipped',
+  detail_section: 'floorLead',
+  detail_dish: 'dish',
+  detail_export: 'exported',
+  detail_plan: 'planChanged',
 };
 
 export function auditStart(state: string): AuditStart {
@@ -407,6 +629,7 @@ export function auditStart(state: string): AuditStart {
     exporting: null,
     preparing: false,
     told: null,
+    lang: 'en',
   };
 
   switch (state) {
@@ -414,6 +637,10 @@ export function auditStart(state: string): AuditStart {
       return { ...start, menu: 'person' };
     case 'filter_type':
       return { ...start, menu: 'type' };
+    case 'filter_type_es':
+    case 'filter_type_fr':
+    case 'filter_type_pt':
+      return { ...start, menu: 'type', lang: state.slice(-2) as TypeLang };
     case 'filter_event':
       return { ...start, menu: 'event' };
     case 'dates':

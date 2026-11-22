@@ -59,6 +59,7 @@ import {
 import { ReplyByPart } from './EventReplyBy.tsx';
 import { withNote } from './arrivalNote.ts';
 import './arrivalNote.css';
+import './overviewReflow.css';
 import {
   REPLY_BY_WORDS,
   datesSaveSays,
@@ -129,7 +130,8 @@ import { MessagesPage } from './Messages.tsx';
 import { DOOR_EVENT_ID } from './doorCode.ts';
 import { repliesOpen } from './replyClose.ts';
 import { noOrgStateOf } from './noOrg.ts';
-import { NoOrgEvent } from './NoOrgEvent.tsx';
+import { NoOrgEvent, OutsideEventPage } from './NoOrgEvent.tsx';
+import { isOutsideId, outsidePageOf } from './outsideEvents.ts';
 import { TellDialog, UntoldCard } from './MessagesTell.tsx';
 import { Ask, Head, RowWords, TextAction } from '../components/SettingsParts.tsx';
 import {
@@ -143,7 +145,18 @@ import {
 import { JustForYou } from '../components/JustForYou.tsx';
 import { GuestsCanWrite } from './GuestsCanWrite.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
-import { useSwitcherStart } from './switcher.ts';
+import { linkStart, switchTo, useSwitcherStart, useWhere } from './switcher.ts';
+import { Switched } from './OrgSwitcher.tsx';
+import { EventLoading, EventUnavailable } from './EventLinkStates.tsx';
+import {
+  type LinkState,
+  type Load,
+  LOAD_MS,
+  answerOf,
+  eventOrgOf,
+  linkStateOf,
+  moveOf,
+} from './eventLink.ts';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 import { MakeLiveAsk } from './EventMakeLive.tsx';
 import { FromEnquiryRow } from './EventFromEnquiry.tsx';
@@ -252,6 +265,21 @@ export function EventPage({
   const tabStart = params.get('tab');
   useSwitcherStart();
   const noOrg = noOrgStateOf(raw);
+  const outside = outsidePageOf(raw);
+  const link = dates || messages ? null : linkStateOf(params.get('link'));
+
+  if (link != null && id != null) return <EventLink key={`${id}|${link}`} id={id} state={link} />;
+
+  if (outside != null && id != null && isOutsideId(id))
+    return (
+      <OutsideEventPage
+        key={`${id}|${raw ?? ''}`}
+        id={id}
+        page={outside}
+        from={params.get('from')}
+        menu={params.get('menu') === 'open'}
+      />
+    );
 
   if (noOrg != null && id === DOOR_EVENT_ID) return <NoOrgEvent key={noOrg} state={noOrg} />;
 
@@ -268,6 +296,53 @@ export function EventPage({
   );
 }
 
+/** /demo/events/:id?link= for an event's link opened while working in Ire Events: the account moves only once the event has loaded (sc-80863). */
+function EventLink({ id, state }: { id: string; state: LinkState }) {
+  const { pathname } = useLocation();
+  useState(linkStart);
+  const where = useWhere();
+  const [attempt, setAttempt] = useState(0);
+  const [load, setLoad] = useState<Load>('loading');
+  const to = moveOf(load, eventOrgOf(state), where.current);
+
+  useEffect(() => {
+    if (load !== 'loading') return undefined;
+    const later = window.setTimeout(() => setLoad(answerOf(state, attempt)), LOAD_MS);
+
+    return () => window.clearTimeout(later);
+  }, [load, state, attempt]);
+
+  useEffect(() => {
+    const place = where.places.find((one) => one.id === to);
+    if (place != null) switchTo(place, pathname);
+  }, [to, where.places, pathname]);
+
+  if (load === 'loading') return <EventLoading id={id} />;
+  if (load === 'unavailable') return <EventUnavailable id={id} />;
+  if (load === 'failed')
+    return (
+      <EventNotLoaded
+        id={id}
+        onRetry={() => {
+          setAttempt((count) => count + 1);
+          setLoad('loading');
+        }}
+      />
+    );
+
+  return (
+    <EventAt
+      id={id}
+      raw={null}
+      keptStart={tabStartOf(null, null)}
+      area="overview"
+      dates={false}
+      messages={false}
+      linked
+    />
+  );
+}
+
 function EventAt({
   id,
   raw,
@@ -275,6 +350,7 @@ function EventAt({
   area,
   dates,
   messages,
+  linked = false,
 }: {
   id: string | undefined;
   raw: string | null;
@@ -282,6 +358,8 @@ function EventAt({
   area: string;
   dates: boolean;
   messages: boolean;
+  /** Opened from its link (sc-80863): a move is said under the crumb. */
+  linked?: boolean;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -377,6 +455,7 @@ function EventAt({
       clock={seed == null ? null : clockOfPage(seed.page)}
       said={seed?.said ?? null}
       tab={kept}
+      linked={linked}
     />
   );
 }
@@ -411,6 +490,7 @@ function EventView({
   clock = null,
   said = null,
   tab,
+  linked = false,
 }: {
   initial: SampleEvent;
   state: EventStateName | null;
@@ -422,6 +502,7 @@ function EventView({
   clock?: Date | null;
   said?: string | null;
   tab: Kept;
+  linked?: boolean;
 }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -520,12 +601,17 @@ function EventView({
       )}
     >
       {(tell, show) => (
-        <div className="desk-page ev-page">
+        <div
+          className={
+            !dates && area === 'overview' ? 'desk-page ev-page ev-overview' : 'desk-page ev-page'
+          }
+        >
           <div className="ev-wide">
             <KeptBox kept={tab} />
             <Crumb to="/demo/events" back={W.back} name={event.name}>
               <DemoBell tell={tell} />
             </Crumb>
+            {linked && !dates && area === 'overview' && <Switched />}
             {dates ? (
               <AllDates event={event} now={now} />
             ) : area === 'overview' ? (

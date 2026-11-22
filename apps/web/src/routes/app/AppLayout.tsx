@@ -1,3 +1,4 @@
+import type { OutsideEvent } from '@soirely/api-client';
 import { initials, roleName } from '@soirely/domain';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,7 @@ import {
   joinOrganisation,
   landingFor,
   onMovedOn,
+  outsideOn,
   rereadOrganisations,
   restoreSession,
   switchOrganisation,
@@ -35,16 +37,20 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useSidebarEvents } from '../../sidebarEvents.ts';
-import { useWaitingInvitations } from '../../invitations.ts';
+import { useInvitationAnswers, useWaitingInvitations } from '../../invitations.ts';
 import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { AloneHeader } from '../../components/NoOrganisationParts.tsx';
+import { OutsideShell } from './OutsideShell.tsx';
+import { useRoutedEventId } from './outsideRoute.ts';
 import { heldRegistration } from '../../pendingRegistration.ts';
+import { holdReturn } from '../../heldReturn.ts';
 import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 import { useDialogKeys } from '../../dialogFocus.ts';
 import { PHONE_WIDTH, usePhoneWidth } from '../../phoneWidth.ts';
 import { DeskTopContext, fitsPhone, placesItsNotices } from '../../deskTop.ts';
-import { EventNav, type InsideEvent, useInsideEvent } from './events/EventNav.tsx';
+import { EventNav, type InsideEvent, eventAreaPath, useInsideEvent } from './events/EventNav.tsx';
 import { EventHandoff } from './events/EventHandoff.tsx';
 import { type Handoff, useHandoff } from './events/handoff.ts';
 import { Skeleton } from '../../components/Skeleton.tsx';
@@ -64,9 +70,13 @@ import './wideDesk.css';
  * The error boundary wraps the OUTLET, not the shell: a screen that throws
  * should leave the navigation and the organisation switcher usable, because
  * the way out of a broken screen is the navigation.
+ *
+ * Bare, it is the same gate around a page that is not the desk: Preview as
+ * guest shows the guest's page as a guest sees it.
  */
-export function AppLayout() {
+export function AppLayout({ bare = false }: { bare?: boolean }) {
   const state = useSessionState();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
     void restoreSession();
@@ -75,6 +85,8 @@ export function AppLayout() {
   if (state.status === 'signedOut') {
     // A sign-up waiting on its code has no session yet: it goes back to its code, not to sign-in.
     if (heldRegistration() != null) return <Navigate to="/verify-email" replace />;
+    // A link opened signed out comes back after sign-in; a session left or ended here does not.
+    if (state.arrived) holdReturn(`${pathname}${search}`);
 
     return (
       <Navigate
@@ -97,6 +109,8 @@ export function AppLayout() {
   // The product is behind the onboarding gate: verified, then complete.
   const landing = landingFor(state.session.awaiting);
   if (landing !== '/app') return <Navigate to={landing} replace />;
+
+  if (bare) return <Outlet />;
 
   const { organisation, pausedIn } = state.session;
 
@@ -136,7 +150,9 @@ function Shell() {
   }, []);
   const menuId = useId();
   const organisation = session.organisation;
-  const waiting = useWaitingInvitations();
+  const routedEvent = useRoutedEventId();
+  const answers = useInvitationAnswers();
+  const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
@@ -238,15 +254,49 @@ function Shell() {
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
   );
 
+  const [landing, ...others] = session.outsideEvents ?? [];
+  const [lastHeld, setLastHeld] = useState<readonly OutsideEvent[]>([]);
+  if (session.outsideEvents != null && landing != null && session.outsideEvents !== lastHeld)
+    setLastHeld(session.outsideEvents);
+  if (organisation == null && session.pausedIn == null && landing != null) {
+    return <OutsideShell events={[landing, ...others]} />;
+  }
+
+  // The last grant gone while its event was open: the not-found page still stands in the shell it was opened from, its way on Continue (sc-68438).
+  if (
+    organisation == null &&
+    session.pausedIn == null &&
+    routedEvent != null &&
+    !atAccount &&
+    lastHeld.length > 0
+  ) {
+    return <OutsideShell events={[]} shown={lastHeld} />;
+  }
+
+  // A member inside another organisation's event they hold from outside sees none of either organisation's places beside it (sc-68438).
+  if (organisation != null && session.pausedIn == null && outsideOn(session, routedEvent) != null) {
+    return (
+      <OutsideShell
+        events={session.outsideEvents ?? []}
+        member={{
+          organisations: session.organisations,
+          onOpen: (next) => {
+            switchOrganisation(next.id);
+            void navigate('/app');
+          },
+        }}
+      />
+    );
+  }
+
   // Every product page would open this page again, so it stands alone: only what works without an organisation, the account pages under the same header.
   if (organisation == null && session.pausedIn == null) {
     return (
-      <div className="no-organisation-page">
+      <div className={atAccount ? 'no-organisation-page' : 'cw-alone desk'}>
         <SkipLink />
-        <header className="public-header">
-          <Brand />
-          <LanguagePicker automatic={false} />
-        </header>
+        <AloneHeader>
+          <LanguagePicker automatic={false} desk />
+        </AloneHeader>
         {atAccount ? (
           <main id="content" className="shell-content no-organisation-account">
             <LinkedNotice />
@@ -263,7 +313,7 @@ function Shell() {
             <LinkedNotice />
             <ErrorBoundary>
               <NoOrganisation
-                waiting={waiting}
+                waiting={answers}
                 onOpen={(id) => {
                   const joined = session.organisations.find((membership) => membership.id === id);
 
@@ -310,7 +360,9 @@ function Shell() {
                   email={session.email}
                   paused={session.pausedIn != null}
                   opened={choosing}
+                  outside={session.outsideEvents ?? []}
                   onSwitch={switchInto}
+                  onOutside={(id) => void navigate(eventAreaPath(id, 'overview'))}
                   onCreate={() => setCreating(true)}
                 />
               )

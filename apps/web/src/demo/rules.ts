@@ -335,6 +335,10 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Withdrawn', to: way('invitation', 'withdrawn') },
       { name: 'Already declined', to: way('invitation', 'declined') },
       { name: 'Not yours', to: way('invitation', 'not-yours') },
+      {
+        name: 'A phone-only account: Add your email address first',
+        to: way('invitation', 'no-email'),
+      },
       { name: 'Deleted', to: way('invitation', 'deleted') },
     ],
   },
@@ -345,6 +349,7 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'An invitation waiting', to: way('details', 'invitation') },
       { name: 'Waiting for Ire Events', to: way('waiting') },
       { name: 'Managed by Ire Events: no Start my own', to: way('details', 'managed') },
+      { name: 'Managed by Ire Events: nothing to join', to: way('details', 'managedNone') },
     ],
   },
   {

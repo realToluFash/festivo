@@ -35,6 +35,7 @@ import {
   foundedPlace,
   walkFor,
 } from './createOrg/CreateWalk.ts';
+import { linkMoved } from './events/EventLink.ts';
 import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
@@ -94,6 +95,12 @@ interface Switcher {
   openedBy: OpenerRef | null;
   startWalk: (opener: OpenerRef) => void;
   registerStart: (opener: OpenerRef) => () => void;
+  /** Accept and join or Decline, from the switcher or from no organisation's Invitations. */
+  answerInvite: (id: string, yes: boolean) => void;
+  /** Open, once joined from no organisation: into it, the notice focused. */
+  openJoined: (id: string) => void;
+  /** An event's link from another organisation, once the event has loaded: into it, the notice read where it lands (sc-80863). */
+  linkMove: (id: string) => void;
 }
 
 const SwitcherContext = createContext<Switcher | null>(null);
@@ -116,6 +123,7 @@ export function OrgSwitcherProvider({
   state,
   create = null,
   none = false,
+  invited = false,
   statusBar = 'dark',
   tell,
   children,
@@ -125,6 +133,8 @@ export function OrgSwitcherProvider({
   create?: CreateState | null;
   /** ?orgs=none: Folake in no organisation. */
   none?: boolean;
+  /** With none, ?state=invitations: her two invitations waiting. */
+  invited?: boolean;
   statusBar?: 'light' | 'dark';
   tell: Tell;
   children: ReactNode;
@@ -158,10 +168,10 @@ export function OrgSwitcherProvider({
   useLayoutEffect(() => {
     if (state == null && create == null && !none) return;
     const base = sessionFor(state ?? 'one');
-    const start = none ? withoutPlaces(base) : base;
+    const start = none ? withoutPlaces(base, invited) : base;
     if (create === 'created') arrive(SAMPLE_FOUNDED.id);
     setSession(create === 'created' ? founded(start, SAMPLE_FOUNDED) : start);
-  }, [state, create, none]);
+  }, [state, create, none, invited]);
 
   useEffect(() => {
     landing.words = null;
@@ -312,9 +322,44 @@ export function OrgSwitcherProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [create, none]);
 
+  const answerInvite = useCallback((id: string, yes: boolean) => {
+    setSession(sending(store.session, id, yes));
+    setTimeout(() => {
+      if (store.session.outcomes[id]?.kind !== 'busy') return;
+      setSession(answer(store.session, id, yes));
+    }, SENDING_MS);
+  }, []);
+  const openJoined = useCallback(
+    (id: string) => {
+      const next = pick(store.session, id);
+      setSession(next);
+      setSwitched({
+        words: t('switcher.switched', { name: currentPlace(next).name }),
+        focus: true,
+      });
+    },
+    [t],
+  );
+  const linkMove = useCallback(
+    (id: string) => {
+      const next = linkMoved(store.session, id);
+      setSession(next);
+      setSwitched({ words: t('switcher.switched', { name: currentPlace(next).name }) });
+    },
+    [t],
+  );
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, startWalk, registerStart }),
-    [register, show, openedBy, startWalk, registerStart],
+    () => ({
+      register,
+      show,
+      openedBy,
+      startWalk,
+      registerStart,
+      answerInvite,
+      openJoined,
+      linkMove,
+    }),
+    [register, show, openedBy, startWalk, registerStart, answerInvite, openJoined, linkMove],
   );
 
   return (
@@ -343,13 +388,7 @@ export function OrgSwitcherProvider({
           onPick={onPick}
           onCreate={onCreate}
           onExpand={(id) => setSession(expand(store.session, id))}
-          onAnswer={(invite, yes) => {
-            setSession(sending(store.session, invite.id, yes));
-            setTimeout(() => {
-              if (store.session.outcomes[invite.id]?.kind !== 'busy') return;
-              setSession(answer(store.session, invite.id, yes));
-            }, SENDING_MS);
-          }}
+          onAnswer={(invite, yes) => answerInvite(invite.id, yes)}
           onAsk={() => setSession(ask(store.session))}
           onNotNow={() => setSession(notNow(store.session))}
         />
@@ -409,7 +448,30 @@ export function useStartWalk(opener: OpenerRef): () => void {
   return () => startWalk(opener);
 }
 
+/** An event's link (sc-80863): `start` puts the account in Ire Events, as it was before the link; `move` moves it once the event has loaded. */
+export function useLinkMove(): { start: () => void; move: (id: string) => void } {
+  const { linkMove } = useSwitcher();
+
+  return useMemo(
+    () => ({ start: () => setSession(sessionFor('populated')), move: linkMove }),
+    [linkMove],
+  );
+}
+
 /** The organisation being worked in, or null for someone in none. */
 export function useCurrentPlace(): Place | null {
   return placeOf(useSession());
+}
+
+/** No organisation's Invitations: the ones waiting, what came of each answer, and the switcher's own Accept and join, Decline and Open (sc-75471). */
+export function useNoOrgInvitations() {
+  const { answerInvite, openJoined } = useSwitcher();
+  const session = useSession();
+
+  return {
+    invitations: session.invitations,
+    outcomes: session.outcomes,
+    answer: answerInvite,
+    open: openJoined,
+  };
 }

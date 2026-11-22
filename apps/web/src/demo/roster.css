@@ -7,6 +7,11 @@ a.sn-tab {
   overflow-x: auto;
 }
 
+.rs-frame:focus-visible {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: 2px;
+}
+
 .rs-table {
   width: 100%;
   border-collapse: collapse;
@@ -44,8 +49,36 @@ a.sn-tab {
   white-space: nowrap;
 }
 
+/* A cell breaks only between words at every width (sc-70540, sc-75033): the global overflow-wrap: anywhere on span and button would let a column shrink to one letter. Where the table is then wider than its frame, the frame scrolls, never the page. */
+.rs-frame > .rs-table :is(th, td),
+.rs-frame > .rs-table :is(th, td) * {
+  overflow-wrap: normal;
+}
+
+/* Link is the column whose words run longest in every language, so it keeps 168 px at every width and reads in at most four lines; Name keeps its 120, and Job, Station and Shift narrow only to their longest word. */
+.rs-frame > .rs-table thead th:nth-child(5) {
+  min-width: 168px;
+}
+
 .rs-table tbody td.rs-quiet {
   color: var(--colorInkSecondary);
+}
+
+/* With the person's panel open at 1280 × 800 the roster had about 470 px and cut its Link column (sc-3912, #78267): here the panel docks at 360 px, a shift breaks only after its day and before its end time, and the cells close up to 8 px with none after the last. */
+.rs .mn-panel {
+  width: 360px;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(thead th, tbody th, tbody td) {
+  padding-right: var(--spaceSm);
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-frame > .rs-table :is(th, td):last-child {
+  padding-right: 0;
+}
+
+.rs .mn-split:has(> .mn-panel) .rs-table td.rs-shift {
+  white-space: normal;
 }
 
 .rs-name {
@@ -85,7 +118,8 @@ a.sn-tab {
   background: var(--optionGreen);
 }
 
-.rs-mark.is-copied {
+.rs-mark.is-copied,
+.rs-mark.is-shared {
   background: linear-gradient(90deg, var(--colorAccent) 50%, transparent 50%);
 }
 
@@ -258,31 +292,8 @@ a.sn-tab {
   }
 }
 
+/* At 720 px and under the page beside the sidebar is narrower than a phone's, as for Jobs and shifts, Budget, Quotes and Schedule; at 400% zoom (deskReflow.css) the same rules hold the full-width page. */
 @media (width <= 720px) {
-  .today.desk:has(.rs) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.rs) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.rs) .desk-main {
-    min-width: 0;
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .rs.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .rs .ev-crumb ol,
   .rs .gs-top,
   .rs .sn-card-top,
   .rs .mn-panel-acts {
@@ -292,16 +303,188 @@ a.sn-tab {
   .rs .sn-card-names {
     flex-basis: 12rem;
   }
+
+  /* A cell breaks only between words and the frame scrolls further (sc-70540); here the rule also holds Jobs and shifts' coverage table, an .rs-table outside the Roster's frame. */
+  .rs-table :is(th, td),
+  .rs-table :is(th, td) * {
+    overflow-wrap: normal;
+  }
+
+  .rs-table thead th:nth-child(2),
+  .rs-table thead th:nth-child(3) {
+    min-width: 128px;
+  }
+
+  .rs-table thead th:nth-child(5) {
+    min-width: 168px;
+  }
+
+  /* Only here: at a desk an empty Shift cell wraps between words rather than push the frame further (sc-71607, sc-75033). */
+  .rs-table td.rs-no-shift {
+    white-space: nowrap;
+  }
 }
 
 .rs-more {
   margin-left: var(--spaceXs);
   color: var(--colorInkSecondary);
   font: var(--typeSmallStrong);
+  white-space: nowrap;
 }
 
 .rs-shifts {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* sc-3910: Section D removed from the seating plan. The words carry it; the mark is beside them, never alone. */
+.rs-gone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.rs-gone-now {
+  color: var(--colorInkSecondary);
+}
+
+.rs-gone-why {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: var(--typeSmallStrong);
+}
+
+.rs-gone-why > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rs-facts dd > .rs-gone-why {
+  margin-top: var(--spaceXs);
+}
+
+/* A person's own link (sc-3912): the word, who and when, Copy link and Mark as sent in the row, and the link to copy by hand under it. */
+.rs-link-cell,
+.rs-link-fact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+}
+
+.rs-trail {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+}
+
+.rs-link-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceMd);
+}
+
+.rs-missed,
+.rs-held-says {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.rs-table tbody tr.rs-held-row td {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.rs-held {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+}
+
+.rs-held-label {
+  color: var(--colorInk);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.rs-held-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeBody);
+}
+
+.rs-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 13px/1.45 var(--fontFamily);
+}
+
+.rs-note.is-stopped {
+  color: var(--colorInkSecondary);
+}
+
+.rs-note.is-broken {
+  color: var(--colorBrokenText);
+}
+
+.rs-check-short {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.rs-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.rs-check p {
+  margin: 0;
+}
+
+.rs-check-hint {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.rs-check-cost {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.rs-check-credits {
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.rs-check-wait {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.45 var(--fontFamily);
 }

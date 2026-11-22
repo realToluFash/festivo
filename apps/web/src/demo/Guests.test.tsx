@@ -137,6 +137,42 @@ describe('Guests, the list (sc-31781)', () => {
     },
   );
 
+  it(
+    'keeps the list and the read mark when Changed since you looked fails, and Try again chooses it (sc-4331)',
+    SLOW,
+    async () => {
+      const router = await guests('changedFails');
+      fireEvent.click(
+        within(screen.getByRole('menu')).getByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+        }),
+      );
+
+      expect(screen.getByRole('alert').textContent).toContain('We could not load what changed.');
+      expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+      expect(router.state.location.search).not.toContain('filter=changed');
+      fireEvent.click(screen.getByRole('button', { name: 'All · 156' }));
+      expect(
+        within(screen.getByRole('menu')).getByRole('menuitemradio', {
+          name: /^Changed since you looked/u,
+        }).textContent,
+      ).toBe('Changed since you looked5');
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+
+      fireEvent.click(within(main()).getByRole('button', { name: 'Try again' }));
+      expect(screen.queryByText('We could not load what changed.')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Changed since you looked · 5' })).toBeDefined();
+      expect(router.state.location.search).toContain('filter=changed');
+    },
+  );
+
+  it('opens with the failed line showing (sc-4331)', SLOW, async () => {
+    await guests('changedFailed');
+
+    expect(screen.getByRole('alert').textContent).toContain('We could not load what changed.');
+    expect(screen.getByRole('button', { name: 'All · 156' })).toBeDefined();
+  });
+
   it('counts no changes on an event other than the wedding (sc-4331)', SLOW, async () => {
     await guests('changedRow');
     cleanup();
@@ -565,6 +601,20 @@ describe('Guests, Edit in place (sc-3773)', () => {
 
     expect(screen.getByText('Rui Duarte removed. Save to keep the change.')).toBeDefined();
     expect(companions()).toHaveLength(0);
+  });
+
+  it('asks before removing a companion with a meal chosen (sc-3907)', SLOW, async () => {
+    await guests('editMeal');
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Marc Laurent?' });
+
+    expect(
+      within(ask).getByText(
+        'Marc Laurent has a meal chosen. Removing this companion drops the meal.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove' }));
+
+    expect(screen.getByText('Marc Laurent removed. Save to keep the change.')).toBeDefined();
   });
 
   it('asks before throwing a change away', SLOW, async () => {
@@ -1352,6 +1402,20 @@ describe('Guests, places for companions (sc-3779)', () => {
     ).toBeDefined();
     expect(places.getAttribute('aria-invalid')).toBe('true');
     await waitFor(() => expect(document.activeElement).toBe(places));
+  });
+
+  it('refuses fewer places when the place left has arrived, unnamed (sc-1454)', SLOW, async () => {
+    await guests('placesRefusedArrived');
+
+    const places = screen.getByRole('spinbutton', { name: 'Places for companions' });
+
+    expect(
+      screen.getByText(
+        'Alhaji Musa Bello already has 1 named or arrived. Arrived companions stay on the list.',
+      ),
+    ).toBeDefined();
+    expect(places.getAttribute('aria-invalid')).toBe('true');
+    expect((places as HTMLInputElement).value).toBe('1');
   });
 
   it('opens the refusal and the most as the boards draw them', SLOW, async () => {

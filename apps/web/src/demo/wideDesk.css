@@ -55,8 +55,8 @@
   }
 }
 
-/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each still at its 520 or 380. */
-@media (40rem < width <= 77.5rem) {
+/* Up to 1240 px, until the list and the guest fit at their 520 and 380, an open guest or form comes before the list, each still at its 520 or 380; at 320 too (sc-32279). */
+@media (width <= 77.5rem) {
   .today.desk .gs-cols {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -77,5 +77,24 @@
 
   .today.desk .gs-column:has(> .gs-pick) {
     display: none;
+  }
+}
+
+/* From 961 to 1279 px, until the docked Roster keeps whole words at 1280 (sc-71607), an open person or form comes before the Roster (sc-73291); up to 960 narrowDesk.css already does. */
+@media (60rem < width < 80rem) {
+  .today.desk .rs .mn-split:has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .rs .mn-split > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .rs .mn-split > .mn-panel .mn-panel-body {
+    overflow: visible;
   }
 }

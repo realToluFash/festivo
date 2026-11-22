@@ -15,6 +15,7 @@ use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\PlaceChoice;
 use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Guest;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -47,6 +48,7 @@ final readonly class GuestAnswers
         private GuestNeedsRecord $guestNeedsRecord,
         private ClockInterface $clock,
         private GuestInvitations $guestInvitations,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -62,6 +64,16 @@ final readonly class GuestAnswers
     public function closedOn(Guest $guest): ?string
     {
         return null === $guest->getRepliesReopenedAt() ? ReplyDeadline::closedOn($guest->getEvent(), $this->clock->now()) : null;
+    }
+
+    /** Refused 409 `event_paused` or `event_concluded` while the event's phase takes no answers. */
+    public function refuseByPhase(Guest $guest): void
+    {
+        $refusal = $this->phase($guest)->refusal();
+
+        if (null !== $refusal) {
+            throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
+        }
     }
 
     public function phase(Guest $guest): GuestPagePhase
@@ -83,11 +95,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if (null !== $recorded && !$guest->isInvited()) {
                 $this->guestInvitations->assertInvitable($guest->getEvent());
@@ -148,6 +156,10 @@ final readonly class GuestAnswers
 
             $this->entityManager->flush();
 
+            if ($replied || $chose) {
+                $this->guestReplyRecorder->replied($guest, $previous);
+            }
+
             return true;
         });
 
@@ -168,11 +180,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $own, $companions, $unnamed): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if ($this->started($guest)) {
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');

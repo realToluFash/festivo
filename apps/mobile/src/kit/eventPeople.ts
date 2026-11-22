@@ -5,7 +5,13 @@ import {
   type EventPerson,
   type EventRole,
 } from '@soirely/api-client';
-import { listFormat } from '@soirely/domain';
+import {
+  emailProblem,
+  formatPhone,
+  listFormat,
+  phoneE164,
+  phoneLengthProblem,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { refusalSaid } from './refusal.ts';
@@ -29,9 +35,24 @@ export function inListOrder(people: readonly EventPerson[], locale: string): Eve
   return inRoleOrder(
     people,
     EVENT_ROLES,
-    (one) => ({ role: one.role, name: one.user.name }),
+    (one) => ({ role: one.role, name: one.user?.name ?? one.address ?? '' }),
     locale,
   );
+}
+
+export type PersonShown =
+  | { kind: 'named'; name: string; userId: string }
+  | { kind: 'address'; name: string; mark: 'mail' | 'phone' }
+  | { kind: 'notJoined' };
+
+/** Added by an address with no account yet: the address only to those the API sends it, "Not joined yet" to everyone else. */
+export function personShown(person: EventPerson): PersonShown {
+  if (person.user != null) return { kind: 'named', name: person.user.name, userId: person.user.id };
+  if (person.address == null) return { kind: 'notJoined' };
+
+  return person.addressKind === 'mobile'
+    ? { kind: 'address', name: formatPhone(person.address), mark: 'phone' }
+    : { kind: 'address', name: person.address, mark: 'mail' };
 }
 
 /** Owners, Admins and the Lead change People: the API says so in the event's own permissions. */
@@ -40,8 +61,12 @@ export function managesPeople(event: { permissions: readonly string[] }): boolea
 }
 
 /** Nobody opens their own row. */
-export function opensRow(userId: string, manages: boolean, viewerId: string | null): boolean {
-  return manages && userId !== viewerId;
+export function opensRow(
+  userId: string | null,
+  manages: boolean,
+  viewerId: string | null,
+): boolean {
+  return manages && (userId == null || userId !== viewerId);
 }
 
 /** The parts of a row's line that are there, a middle dot between them. */
@@ -53,7 +78,7 @@ export function rowLine(t: TFunction, person: EventPerson, userId: string | null
   return joinedLine([
     t(`eventPeople.role.${person.role}`),
     person.jobLabel,
-    person.user.id === userId ? t('eventPeople.you') : null,
+    person.user != null && person.user.id === userId ? t('eventPeople.you') : null,
   ]);
 }
 
@@ -100,11 +125,26 @@ function plain(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 }
 
-/** Active members not on the event yet, by name only (sc-71 adds an address). */
+/** Active members not on the event yet, by name: members before the owners and admins, who see it already. */
 export function offered(addable: readonly AddableMember[], typed: string): AddableMember[] {
   const wanted = plain(typed);
+  const found =
+    wanted === '' ? [...addable] : addable.filter((one) => plain(one.name).includes(wanted));
 
-  return wanted === '' ? [...addable] : addable.filter((one) => plain(one.name).includes(wanted));
+  return [...found.filter((one) => !seesEvery(one)), ...found.filter((one) => seesEvery(one))];
+}
+
+function seesEvery(member: AddableMember): boolean {
+  return member.role === 'owner' || member.role === 'administrator';
+}
+
+/** The line under a name on Add people: Member, or Owner or Admin with "sees every event". */
+export function offerLine(t: TFunction, member: AddableMember): string | undefined {
+  if (member.role !== 'owner' && member.role !== 'administrator' && member.role !== 'member')
+    return undefined;
+  const role = t(`roles.${member.role}`);
+
+  return seesEvery(member) ? t('eventPeople.offerSeesEvery', { role }) : role;
 }
 
 /** Add people's one line: who went in, if anyone did, then why the rest did not. */
@@ -126,3 +166,110 @@ export function addRefused(
     ? refused
     : t('eventPeople.addedThenRefused', { added: nowCan(t, role, went), refused });
 }
+
+export const JOB_LABEL_MOST = 60;
+
+export interface Address {
+  kind: 'email' | 'mobile';
+  /** As sent and compared: an email as typed, a mobile number in E.164. */
+  address: string;
+  shown: string;
+}
+
+export type Typed = { kind: 'name' } | { kind: 'address'; address: Address } | { kind: 'unusable' };
+
+/** sc-71: with an @, an email address; digits, a mobile number by sc-62's lengths for `country` unless it starts with its own + code; letters alone, a name to find. */
+export function readTyped(typed: string, country: string): Typed {
+  const text = typed.trim();
+  if (text === '') return { kind: 'name' };
+  if (text.includes('@'))
+    return emailProblem(text) == null
+      ? { kind: 'address', address: { kind: 'email', address: text, shown: text } }
+      : { kind: 'unusable' };
+  if (/\p{L}/u.test(text) || !/\d/u.test(text)) return { kind: 'name' };
+  const e164 = phoneLengthProblem(text, country) == null ? phoneE164(text, country) : null;
+
+  return e164 == null
+    ? { kind: 'unusable' }
+    : { kind: 'address', address: { kind: 'mobile', address: e164, shown: formatPhone(e164) } };
+}
+
+export type OutsideView =
+  | { kind: 'none' }
+  | { kind: 'offer'; address: Address }
+  | { kind: 'unusable' }
+  | { kind: 'leadOff' }
+  | { kind: 'onEvent'; name: string };
+
+/** What Add shows for someone from outside; `onEvent` names whoever already holds the address. */
+export function outsideView(
+  typed: string,
+  country: string,
+  leadPicked: boolean,
+  onEvent: (address: Address) => string | null,
+): OutsideView {
+  const read = readTyped(typed, country);
+  if (read.kind === 'name') return { kind: 'none' };
+  if (read.kind === 'unusable') return { kind: 'unusable' };
+  const there = onEvent(read.address);
+  if (there != null) return { kind: 'onEvent', name: there };
+
+  return leadPicked ? { kind: 'leadOff' } : { kind: 'offer', address: read.address };
+}
+
+/** Emails ignoring case, numbers in E.164, against the addresses the API sent. */
+export function holderOf(
+  people: readonly EventPerson[],
+  address: Address,
+  notJoined: string,
+): string | null {
+  const wanted = address.address.toLowerCase();
+  const there = people.find((one) => one.address != null && one.address.toLowerCase() === wanted);
+  if (there == null) return null;
+  const shown = personShown(there);
+
+  return shown.kind === 'notJoined' ? notJoined : shown.name;
+}
+
+/** Overview's People card (sc-68607): how many People lists under On this event, and who holds Lead, `you` when it is the viewer. */
+export function cardFacts(
+  people: readonly EventPerson[],
+  viewerId: string | null,
+): { count: number; lead: { name: string; you: boolean } | null } {
+  const lead = people.find((one) => one.role === 'lead');
+
+  return {
+    count: people.length,
+    lead: lead?.user == null ? null : { name: lead.user.name, you: lead.user.id === viewerId },
+  };
+}
+
+/** The card's row: its count, its Lead line, and the one sentence VoiceOver reads for the row. */
+export function cardWords(
+  t: TFunction,
+  facts: ReturnType<typeof cardFacts>,
+): { title: string; line: string | undefined; label: string } {
+  const opens = t('eventPeople.card.opens');
+
+  if (facts.count === 0) {
+    const title = t('eventPeople.nobody');
+
+    return { title, line: undefined, label: `${title} ${opens}` };
+  }
+
+  const title = t('eventPeople.card.count', { count: facts.count });
+  const name = facts.lead == null ? null : facts.lead.you ? t('eventPeople.you') : facts.lead.name;
+
+  return {
+    title,
+    line: name == null ? undefined : t('eventPeople.card.lead', { name }),
+    label: joinedSaid([
+      `${title}.`,
+      name == null ? null : t('eventPeople.card.leadSaid', { name }),
+      opens,
+    ]),
+  };
+}
+
+const joinedSaid = (parts: readonly (string | null)[]) =>
+  parts.filter((part) => part != null).join(' ');

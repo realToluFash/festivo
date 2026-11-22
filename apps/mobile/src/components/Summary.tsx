@@ -281,14 +281,19 @@ export function CardSays({
   text,
   size = 24,
   heading = false,
+  besideGlyph = false,
   accessible,
   ref,
+  testID,
 }: {
   text: string;
   size?: number;
   heading?: boolean;
+  /** Beside a card's glyph, where the words' column already bounds the line. */
+  besideGlyph?: boolean;
   accessible?: boolean | undefined;
   ref?: Ref<TextHandle> | undefined;
+  testID?: string | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
 
@@ -300,9 +305,10 @@ export function CardSays({
       start={size * fontScale}
       weight="bold"
       accessibilityRole={heading ? 'header' : undefined}
+      testID={testID}
       style={[
         styles.white,
-        styles.says,
+        !besideGlyph && styles.says,
         { lineHeight: Math.round(size * 1.15), letterSpacing: size * -0.015 },
       ]}
     >

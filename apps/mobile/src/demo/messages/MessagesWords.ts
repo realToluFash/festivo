@@ -305,10 +305,13 @@ export const say = {
       ? 'Sending to 1 person cannot be undone.'
       : `Sending to ${count} people cannot be undone.`,
   cantTell: (count: number) => `${count} can’t be told · it is on their page if they open it`,
+  creditsUse: (count: number, whatsApp: boolean) => {
+    const credits = `${count.toLocaleString('en-US')} ${count === 1 ? 'credit' : 'credits'}`;
+    return whatsApp ? `Texts and WhatsApp messages use ${credits}.` : `Texts use ${credits}.`;
+  },
+  creditsAfter: (after: string) => `Credits after sending: ${after}.`,
   credits: (count: number, after: string, whatsApp: boolean) =>
-    whatsApp
-      ? `Texts and WhatsApp messages use ${count} credits. Credits after sending: ${after}.`
-      : `Texts use ${count} credits. Credits after sending: ${after}.`,
+    `${say.creditsUse(count, whatsApp)} ${say.creditsAfter(after)}`,
   sendTo: (count: number) => (count === 1 ? 'Send to 1 person' : `Send to ${count} people`),
   sendingIn: (seconds: number) => `Sending in ${seconds}…`,
   soFar: (reached: number, of: number) => `Reached ${reached} of ${of} so far`,

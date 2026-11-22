@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   chooseOrganisation,
+  eventMovesInto,
   choosePaused,
   pausedSwitch,
   pausedReasonKey,
@@ -32,6 +33,26 @@ describe('chooseOrganisation', () => {
 
   it('is in no organisation when the account has none', () => {
     expect(chooseOrganisation([], 'org_ire')).toBeNull();
+  });
+});
+
+describe('eventMovesInto', () => {
+  const memberships = [{ id: 'org_a' }, { id: 'org_b' }];
+
+  it("moves into the event's organisation when the account is a member of it", () => {
+    expect(eventMovesInto({ organisationId: 'org_b' }, 'org_a', memberships)).toBe('org_b');
+  });
+
+  it('stays for an event of the organisation already worked in', () => {
+    expect(eventMovesInto({ organisationId: 'org_a' }, 'org_a', memberships)).toBeNull();
+  });
+
+  it('stays for an organisation the account is not a member of', () => {
+    expect(eventMovesInto({ organisationId: 'org_c' }, 'org_a', memberships)).toBeNull();
+  });
+
+  it('stays when working in none, as an event held from outside opens', () => {
+    expect(eventMovesInto({ organisationId: 'org_b' }, null, memberships)).toBeNull();
   });
 });
 

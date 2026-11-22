@@ -290,7 +290,7 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
-    public function aLeadFindsWhomToAddByNameAloneAndNeverThemselves(): void
+    public function aLeadFindsWhomToAddWithTheirOrganisationRoleAndNeverThemselves(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member, 'Priya Shah');
         $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
@@ -305,8 +305,8 @@ final class EventRolesTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($listed));
         self::assertEqualsCanonicalizing([
-            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person'],
-            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello'],
+            ['membershipId' => $this->membershipOf($this->owner), 'name' => 'Person', 'role' => 'owner'],
+            ['membershipId' => $this->membershipOf($tunde), 'name' => 'Tunde Bello', 'role' => 'member'],
         ], $listed['members'] ?? null);
     }
 

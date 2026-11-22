@@ -5,25 +5,29 @@ declare(strict_types=1);
 namespace App\Domain\Menu\Http;
 
 use App\Domain\Menu\ChoiceRules;
-use App\Domain\Menu\DishRules;
+use App\Domain\Menu\CourseItemLister;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
+use App\Domain\Menu\Model\PicksClose;
 use App\Entity\Event;
 use App\Entity\MenuChoiceOption;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
 use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
-use App\Locale\NameNormaliser;
+use App\Locale\Money;
 use App\Repository\MenuChoiceOptionRepository;
 use App\Repository\MenuCourseRepository;
 use App\Repository\MenuDishChoiceRepository;
 use App\Repository\MenuDishRepository;
 use App\Repository\MenuDishVariantRepository;
+use DateTimeZone;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
-/** An event's menu as the clients read it (sc-3902): every course in order, each with its dishes, a dish's variants inside it (sc-3903), and its choices (sc-3904). Costs only `$withPrice`, for a reader who holds budget.read. */
+/** An event's menu as the clients read it (sc-3902): every course in order, each with its dishes, a dish's variants inside it (sc-3903), its choices (sc-3904), and when its picks close if it asks guests anything (sc-3905). Costs only `$withPrice`, for a reader who holds budget.read. */
 final readonly class MenuSerialiser
 {
     public function __construct(
@@ -33,6 +37,7 @@ final readonly class MenuSerialiser
         private MenuDishChoiceRepository $menuDishChoiceRepository,
         private MenuChoiceOptionRepository $menuChoiceOptionRepository,
         private MenuPicksInterface $menuPicks,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -44,24 +49,56 @@ final readonly class MenuSerialiser
         $choices = Dict\group_by($this->menuDishChoiceRepository->findOnEvent($event), static fn (MenuDishChoice $choice): string => $choice->getDish()->getId()->toRfc4122());
         $options = Dict\group_by($this->menuChoiceOptionRepository->findOnEvent($event), static fn (MenuChoiceOption $option): string => $option->getChoice()->getId()->toRfc4122());
         $currency = $event->getCurrency();
+        $close = $this->close($event);
 
         return [
-            'courses' => Vec\map($this->menuCourseRepository->findOnEvent($event), fn (MenuCourse $course): array => [
+            'courses' => Vec\map($this->menuCourseRepository->findOnEvent($event), fn (MenuCourse $course): array => self::withClose([
                 'id' => $course->getId()->toRfc4122(),
                 'name' => $course->getName(),
                 'servedAt' => $course->getServedAt(),
                 'answer' => $course->guestsChoose() ? 'choose' : 'same',
                 'skippable' => $course->isSkippable(),
                 'ownItems' => $course->getOwnItems(),
-                'items' => self::courseItems($course, $dishes[$course->getId()->toRfc4122()] ?? [], $variants, $options),
+                'items' => CourseItemLister::items($course, $dishes[$course->getId()->toRfc4122()] ?? [], $variants, $options),
                 'dishes' => Vec\map($dishes[$course->getId()->toRfc4122()] ?? [], fn (MenuDish $dish): array => $this->dish(
                     $dish,
                     $variants[$dish->getId()->toRfc4122()] ?? [],
                     Vec\map($choices[$dish->getId()->toRfc4122()] ?? [], fn (MenuDishChoice $choice): array => $this->choice($choice, $options[$choice->getId()->toRfc4122()] ?? [])),
                     $withPrice ? $currency : null,
                 )),
-            ]),
+            ], $close)),
         ];
+    }
+
+    /** @return array{at: string, source: string, closed: bool} in the event's zone */
+    private function close(Event $event): array
+    {
+        $close = PicksClose::of($event);
+
+        return [
+            'at' => $close->at->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
+            'source' => $close->source->value,
+            'closed' => $close->passedAt($this->clock->now()),
+        ];
+    }
+
+    /**
+     * A course asks guests something when it is shown to them and they choose, or its one dish asks the way (two or more Everyone variants) or a choice. Only such a course closes.
+     *
+     * @param array{answer: string, dishes: list<array<string, mixed>>, ...} $course
+     * @param array{at: string, source: string, closed: bool}                $close
+     *
+     * @return array<string, mixed>
+     */
+    private static function withClose(array $course, array $close): array
+    {
+        $dishes = Type\vec(Type\shape(['offered' => Type\bool(), 'choices' => Type\vec(Type\mixed()), 'variants' => Type\vec(Type\shape(['for' => Type\string()], true))], true))->coerce($course['dishes']);
+        $shown = Iter\any($dishes, static fn (array $dish): bool => $dish['offered']);
+        $one = 1 === Iter\count($dishes) ? $dishes[0] : null;
+        $asks = 'choose' === $course['answer']
+            || (null !== $one && ([] !== $one['choices'] || Iter\count(Vec\filter($one['variants'], static fn (array $variant): bool => 'everyone' === $variant['for'])) >= 2));
+
+        return [...$course, 'picksClose' => $shown && $asks ? $close : null];
     }
 
     /**
@@ -125,55 +162,9 @@ final readonly class MenuSerialiser
         ];
     }
 
-    /**
-     * One name is one item on a course, whichever dish or option it comes from: each once, in the order it first appears, the dishes' then the course's own.
-     *
-     * @param list<MenuDish>                        $dishes   in the menu's order
-     * @param array<string, list<MenuDishVariant>>  $variants by dish id
-     * @param array<string, list<MenuChoiceOption>> $options  by choice id
-     *
-     * @return list<string>
-     */
-    private static function courseItems(MenuCourse $course, array $dishes, array $variants, array $options): array
-    {
-        $names = [];
-
-        foreach ($dishes as $dish) {
-            $items = $dish->getItems();
-
-            if ([] === $items) {
-                $names[] = $dish->getName();
-
-                continue;
-            }
-
-            foreach ($items as $item) {
-                $names = [...$names, ...match ($item['kind']) {
-                    'fixed' => [$item['name']],
-                    'variants' => Vec\map($variants[$dish->getId()->toRfc4122()] ?? [], static fn (MenuDishVariant $one): string => $one->getName()),
-                    'choice' => Vec\map($options[$item['choiceId']] ?? [], static fn (MenuChoiceOption $one): string => $one->getName()),
-                }];
-            }
-        }
-
-        $seen = [];
-        $items = [];
-
-        foreach ([...$names, ...$course->getOwnItems()] as $name) {
-            $key = NameNormaliser::key($name);
-
-            if (!Iter\contains($seen, $key)) {
-                $seen[] = $key;
-                $items[] = NameNormaliser::name($name);
-            }
-        }
-
-        return $items;
-    }
-
     /** @return ?array{amount: string, currency: string} */
     private static function money(?int $minor, string $currency): ?array
     {
-        return null === $minor ? null : ['amount' => DishRules::written($minor, $currency), 'currency' => $currency];
+        return null === $minor ? null : ['amount' => Money::written($minor, $currency), 'currency' => $currency];
     }
 }

@@ -1,4 +1,5 @@
 # sc-48600 keyboard bullet, after PR #2734: the Arrival note with the address suggestions open, filling its 10 lines, then past 500 and Save. Needs ${METRO_URL}, ${EVENT_ID}.
+# The address is cleared twice, as a tap can leave the cursor mid-text; the Address label puts the keys away (sc-82567).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=venue
@@ -6,10 +7,22 @@ appId: host.exp.Exponent
     visible:
       id: 'event.edit.venue.save'
     timeout: 30000
-- tapOn:
-    id: 'event.edit.venue.address'
-- eraseText: 60
+- repeat:
+    times: 2
+    commands:
+      - tapOn:
+          id: 'event.edit.venue.address'
+      - eraseText: 200
 - inputText: '12 Hox'
+- assertVisible:
+    id: 'event.edit.venue.address'
+    text: '12 Hox'
+- extendedWaitUntil:
+    visible:
+      id: 'event\.edit\.venue\.suggestion\..*'
+      index: 0
+    timeout: 20000
+- tapOn: '(Address|Dirección|Adresse|Morada), (Optional|Opcional|Facultatif)'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: note-suggestions-open
@@ -19,10 +32,6 @@ appId: host.exp.Exponent
     direction: DOWN
     timeout: 10000
     centerElement: true
-- swipe:
-    start: 50%, 40%
-    end: 50%, 20%
-    duration: 600
 - tapOn:
     id: 'event.edit.venue.note'
 - waitForAnimationToEnd:

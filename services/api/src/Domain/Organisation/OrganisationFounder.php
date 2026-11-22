@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation;
 
+use App\Domain\Billing\SubscriptionStarter;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Entity\Organisation;
@@ -17,20 +19,24 @@ use LogicException;
 use Psl\Str;
 use Psl\Vec;
 
-/** The step sc-57's details screen calls: a new organisation, its seeded roles, and its founder as Owner. */
+/** The step sc-57's details screen calls: a new organisation, its seeded roles, its founder as Owner and billing contact, and its Free subscription (sc-3927). */
 final readonly class OrganisationFounder
 {
     public function __construct(
+        private ManagedAccounts $managedAccounts,
         private OrganisationRules $organisationRules,
         private MembershipMachine $membershipMachine,
         private AccountLanguage $accountLanguage,
         private EntityManagerInterface $entityManager,
+        private SubscriptionStarter $subscriptionStarter,
     ) {
     }
 
     /** Currency follows the country, the timezone is the device's, the contact address is the owner's. */
     public function found(User $owner, string $name, string $countryCode, string $timezone): Organisation
     {
+        $this->managedAccounts->refuseUnlessHome($owner, null, 'create');
+
         $contact = $owner->getPrimaryEmailAddress()?->getAddress()
             ?? throw new LogicException('An account with no primary address cannot found an organisation.');
 
@@ -60,6 +66,7 @@ final readonly class OrganisationFounder
             $this->entityManager->persist($role);
         }
 
+        $this->subscriptionStarter->startFree($organisation, $contact);
         $this->membershipMachine->join($organisation, $owner, $roles[0], MembershipStatus::Active, MembershipChannel::SelfCreated, $owner);
 
         return $organisation;

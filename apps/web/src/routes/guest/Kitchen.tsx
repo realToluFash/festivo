@@ -372,7 +372,8 @@ export function KitchenStep({
   hostCount: number;
   timeZone: string;
   onChange: Change;
-  onBack: () => void;
+  /** Null in Preview as guest, whose note opens from the first meal screen with nothing before it. */
+  onBack: (() => void) | null;
   onNext: () => void;
   onSkip: () => void;
   /** After Reply by (sc-3780): the step on its own, whose Save sends only the needs. */
@@ -383,14 +384,16 @@ export function KitchenStep({
 
   return (
     <section className="gk" aria-labelledby="gk-h" aria-busy={busy}>
-      <TextAction
-        ink
-        off={busy}
-        icon={<Glyph name="back" size={18} weight={2.2} />}
-        onClick={onBack}
-      >
-        {t('guest.back')}
-      </TextAction>
+      {onBack != null && (
+        <TextAction
+          ink
+          off={busy}
+          icon={<Glyph name="back" size={18} weight={2.2} />}
+          onClick={onBack}
+        >
+          {t('guest.back')}
+        </TextAction>
+      )}
       <div className="gk-head">
         {after != null && <p className="gk-label">{t('guestKitchen.row')}</p>}
         <h2
@@ -497,6 +500,54 @@ function RowChange({
   );
 }
 
+/** For the kitchen, with its Change: on Check and send, and above the picks on coming back (sc-3907), where an unsent change reads Not sent yet. Read-only, with no Change, when nothing on the page could send it. */
+export function KitchenRow({
+  kitchen,
+  busy,
+  pending,
+  onKitchen,
+}: {
+  kitchen: Kitchen;
+  busy: boolean;
+  pending: boolean;
+  onKitchen: (() => void) | null;
+}) {
+  const { t, words } = useWords();
+
+  return (
+    <div className="gk-row">
+      <div className="gk-row-words">
+        <p className="gk-label">{t('guestKitchen.row')}</p>
+        {pending && <p className="mx-pending">{t('guestMeal.notSent')}</p>}
+        {kitchenLines(kitchen, (one) => who(one, t), words).map(({ who, lines }) => (
+          <div key={who ?? 'nobody'} className="gk-person">
+            {who != null && <p className="gk-value">{who}</p>}
+            {lines.map((line, at) => (
+              <p
+                key={`${String(at)}-${line.text}`}
+                className={`gk-said${line.allergy ? ' is-allergy' : ''}${line.quiet ? ' is-quiet' : ''}`}
+              >
+                {line.allergy && <Ring kind="allergy" />}
+                <span>{line.text}</span>
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+      {onKitchen != null && (
+        <RowChange
+          label={t('guestKitchen.changeKitchen')}
+          off={busy}
+          focus="kitchenRow"
+          onClick={onKitchen}
+        >
+          {t('guest.changeShort')}
+        </RowChange>
+      )}
+    </div>
+  );
+}
+
 /** Check and send with For the kitchen after Your answer and Who's coming. Nothing is saved until Send. */
 export function KitchenCheck({
   kitchen,
@@ -508,6 +559,8 @@ export function KitchenCheck({
   onParty,
   onKitchen,
   onSend,
+  preview = false,
+  children,
 }: {
   kitchen: Kitchen;
   busy: boolean;
@@ -518,8 +571,11 @@ export function KitchenCheck({
   onParty: () => void;
   onKitchen: () => void;
   onSend: () => void;
+  /** Preview as guest: the answer is not the host's to change, and Close preview takes Send's place. */
+  preview?: boolean;
+  children?: ReactNode;
 }) {
-  const { t, words } = useWords();
+  const { t } = useTranslation();
 
   return (
     <section className="gk gk-check" aria-labelledby="gp-check-h" aria-busy={busy}>
@@ -540,9 +596,11 @@ export function KitchenCheck({
             <p className="gk-label">{t('guest.yourAnswer')}</p>
             <p className="gk-value">{t('guest.coming')}</p>
           </div>
-          <RowChange label={t('guestKitchen.changeAnswer')} off={busy} onClick={onAnswer}>
-            {t('guest.changeShort')}
-          </RowChange>
+          {!preview && (
+            <RowChange label={t('guestKitchen.changeAnswer')} off={busy} onClick={onAnswer}>
+              {t('guest.changeShort')}
+            </RowChange>
+          )}
         </div>
         {party != null && (
           <div className="gk-row">
@@ -555,39 +613,14 @@ export function KitchenCheck({
             </RowChange>
           </div>
         )}
-        <div className="gk-row">
-          <div className="gk-row-words">
-            <p className="gk-label">{t('guestKitchen.row')}</p>
-            {kitchenLines(kitchen, (one) => who(one, t), words).map(({ who, lines }) => (
-              <div key={who ?? 'nobody'} className="gk-person">
-                {who != null && <p className="gk-value">{who}</p>}
-                {lines.map((line, at) => (
-                  <p
-                    key={`${String(at)}-${line.text}`}
-                    className={`gk-said${line.allergy ? ' is-allergy' : ''}${line.quiet ? ' is-quiet' : ''}`}
-                  >
-                    {line.allergy && <Ring kind="allergy" />}
-                    <span>{line.text}</span>
-                  </p>
-                ))}
-              </div>
-            ))}
-          </div>
-          <RowChange
-            label={t('guestKitchen.changeKitchen')}
-            off={busy}
-            focus="kitchenRow"
-            onClick={onKitchen}
-          >
-            {t('guest.changeShort')}
-          </RowChange>
-        </div>
+        <KitchenRow kitchen={kitchen} busy={busy} pending={false} onKitchen={onKitchen} />
       </div>
+      {children}
       {alert != null && <Notice kind="broken">{alert}</Notice>}
       <Filled busy={busy} focus="send" onClick={onSend}>
-        {t('guest.send')}
+        {preview ? t('guestMeal.closePreview') : t('guest.send')}
       </Filled>
-      <p className="gk-text is-quiet">{t('guest.nothingSent')}</p>
+      {!preview && <p className="gk-text is-quiet">{t('guest.nothingSent')}</p>}
     </section>
   );
 }

@@ -292,7 +292,8 @@ class ClaudeDaemon(unittest.TestCase):
             spawned.append((argv, kwargs))
 
         launchd.Mac("/tmp/home").claude_daemon(
-            {"CLAUDE_CONFIG_DIR": "/Users/x/.claude-2", "SOIRELY_WORKER": "dev"}, run, spawn,
+            {"CLAUDE_CONFIG_DIR": "/Users/x/.claude-2", "SOIRELY_WORKER": "dev",
+             "CLAUDE_CODE_OAUTH_TOKEN": "secret"}, run, spawn,
             sleep=lambda _: None)
         return spawned
 
@@ -305,4 +306,5 @@ class ClaudeDaemon(unittest.TestCase):
         self.assertTrue(kwargs["start_new_session"])
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], "/Users/x/.claude-2")
         self.assertNotIn("SOIRELY_WORKER", kwargs["env"])
+        self.assertEqual(kwargs["env"]["CLAUDE_CODE_OAUTH_TOKEN"], "secret")
 

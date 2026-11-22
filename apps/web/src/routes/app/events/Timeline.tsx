@@ -17,7 +17,9 @@ import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { distanceWords } from './distanceWords.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
+import '../../../components/SettingsParts.css';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
@@ -262,6 +264,12 @@ function MilestoneRow({
         )}
         {nextUp && <span className="pill-quiet timeline-next-up">{t('timeline.nextUp')}</span>}
       </div>
+      {milestone.action != null && (
+        <Link className="desk-text timeline-action" to={milestone.action.link}>
+          {milestone.action.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
     </li>
   );
 }

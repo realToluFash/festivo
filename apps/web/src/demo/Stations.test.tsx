@@ -32,12 +32,12 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(screen.getByText('Section A · 6 tables')).toBeTruthy();
     expect(screen.getByText('Section B · 1 table')).toBeTruthy();
     expect(screen.getByText('Section C · No tables yet')).toBeTruthy();
-    expect(screen.getByText('2 people · Dishes 3 items')).toBeTruthy();
+    expect(screen.getByText('2 people · Serves 3 items')).toBeTruthy();
   });
 
-  it('offers places only for Dished at, the Pass first, and joins the walking order', async () => {
+  it('offers places only for Served from, the Pass first, and joins the walking order', async () => {
     await open('populated');
-    const select = screen.getByRole('combobox', { name: 'Dished at, Salad, Main' });
+    const select = screen.getByRole('combobox', { name: 'Served from, Salad, Main' });
     const options = within(select)
       .getAllByRole('option')
       .map((one) => one.textContent);
@@ -45,7 +45,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(options.some((one) => one?.startsWith('Section'))).toBe(false);
     fireEvent.change(select, { target: { value: 'stage' } });
     expect(status()?.textContent).toBe(
-      'Salad is dished at Stage. Stage joins the walking order at stop 5.',
+      'Salad is served from Stage. Stage joins the walking order at stop 5.',
     );
     const walk = screen.getByRole('list', { name: 'Walking order' });
     expect(within(walk).getAllByRole('listitem').at(-1)?.textContent).toContain('Stage');
@@ -56,7 +56,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(button('Move up, Kitchen')).toBeNull();
     expect(button('Move down, Pastry')).toBeNull();
     fireEvent.click(button('Move up, Grill') as HTMLElement);
-    expect(status()?.textContent).toBe('Grill moved to stop 2 of 4');
+    expect(status()?.textContent).toBe('Grill moved to stop 2 of 4.');
     expect(document.activeElement).toBe(button('Move down, Grill'));
   });
 
@@ -68,7 +68,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
   it('reads a menu with no courses and a walking order of the Pass alone', async () => {
     await open('noCourses');
     expect(screen.getByText('This event’s menu has no courses yet.')).toBeTruthy();
-    expect(screen.getByText('Every item is dished at the Pass.')).toBeTruthy();
+    expect(screen.getByText('Every item is served from the Pass.')).toBeTruthy();
   });
 
   it('asks before removing a place and sends its items to the Pass', async () => {
@@ -81,7 +81,7 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     fireEvent.click(button('Remove Grill') as HTMLElement);
     expect(status()?.textContent).toBe('Grill removed. 2 people have no station now.');
     expect(
-      (screen.getByRole('combobox', { name: 'Dished at, Chicken, Main' }) as HTMLSelectElement)
+      (screen.getByRole('combobox', { name: 'Served from, Chicken, Main' }) as HTMLSelectElement)
         .value,
     ).toBe('pass');
   });
@@ -105,5 +105,43 @@ describe('/demo/events/evt-wed-4/staff/stations (sc-3910)', () => {
     expect(button('Move up, Grill')).toBeNull();
     expect(button('People and lead for Grill')).toBeNull();
     expect(button('Add a place')).toBeNull();
+  });
+
+  it('has no Stations tonight while planning', async () => {
+    await open('populated');
+    expect(screen.queryByRole('region', { name: 'Stations tonight' })).toBeNull();
+  });
+
+  it('shows who is on each station during service, and Nobody on one with nobody on shift', async () => {
+    await open('tonight');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Who is on shift at each station now, 21:30.')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    expect(within(tonight).getByText('Nobody on Section C')).toBeTruthy();
+    const bar = within(tonight).getByRole('list', { name: 'On Bar now' });
+    expect(within(bar).getByText('Sade Lawal')).toBeTruthy();
+    expect(within(bar).getAllByText('16:00 to 01:00')).toHaveLength(2);
+    expect(within(bar).getByText('Lead')).toBeTruthy();
+    const places = screen.getByRole('region', { name: 'Places' });
+    expect(within(places).queryByText('Nobody on Door')).toBeNull();
+  });
+
+  it('shows a person put on a station at once', async () => {
+    await open('tonightPeople');
+    const tonight = screen.getByRole('region', { name: 'Stations tonight' });
+    expect(within(tonight).getByText('Nobody on Door')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Put Emeka Obi on Door' }));
+    expect(within(tonight).queryByText('Nobody on Door')).toBeNull();
+    const door = within(tonight).getByRole('list', { name: 'On Door now' });
+    expect(within(door).getByText('Emeka Obi')).toBeTruthy();
+  });
+
+  it('keeps a section’s table count on its heading and names it plainly in a sentence', async () => {
+    await open('populated');
+    fireEvent.click(button('People and lead for Section A') as HTMLElement);
+    expect(screen.getAllByText('Section A · 6 tables').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Waiter · 17:00 to 00:00 · On Section A').length).toBeGreaterThan(0);
+    fireEvent.click(button('Move Tolu Bello from Door to Section A') as HTMLElement);
+    expect(status()?.textContent).toBe('Tolu Bello moved from Door to Section A.');
   });
 });

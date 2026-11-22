@@ -159,7 +159,24 @@ domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
-domain_budget = ["App\\Domain\\Budget\\**"]
+domain_budget = [
+    "App\\Domain\\Budget\\*",
+    "App\\Domain\\Budget\\Command\\**",
+    "App\\Domain\\Budget\\Controller\\**",
+    "App\\Domain\\Budget\\Model\\**",
+    "App\\Domain\\Budget\\Reminder\\**",
+    "App\\Domain\\Budget\\Http\\BudgetSerialiser",
+    "App\\Domain\\Budget\\Http\\PayersSerialiser",
+    "App\\Domain\\Budget\\Http\\QuoteSerialiser",
+    "App\\Domain\\Budget\\Http\\StaffRatesSerialiser",
+    "App\\Domain\\Budget\\Http\\VendorDirectory",
+    "App\\Domain\\Budget\\Http\\VendorDirectoryProvider",
+    "App\\Domain\\Budget\\Http\\VendorSerialiser",
+]
+# Internal cost and margin leave the server only through MarginSerialiser (sc-92), so it is a
+# layer of its own that no other scope gets with domain_budget.
+budget_margin = ["App\\Domain\\Budget\\Http\\MarginSerialiser"]
+domain_billing = ["App\\Domain\\Billing\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -263,7 +280,9 @@ permit = [
 # the seeded labels in every one of SupportedLocales (sc-2301). Its deletion uses the
 # shared restore window and typed-name check (sc-3592). Members reads
 # whether an invitation's email could not be delivered from its delivery record and the
-# suppression list (sc-46109); messaging does not reach back.
+# suppression list (sc-46109); messaging does not reach back. Export all data keeps
+# its archive in the private bucket, and writes its CSV files as the guest export
+# does (CsvFile, sc-612); neither reaches back.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -273,11 +292,24 @@ permit = [
     "@layer:domain_organisation",
     "@layer:domain_user",
     "@layer:domain_messaging",
+    "@layer:domain_guest",
+    "@layer:domain_billing",
     "@layer:repository",
     "@layer:audit",
     "@layer:deletion",
     "@layer:locale",
+    "@layer:storage",
 ]
+
+# Plans & billing (sc-3927): the subscription, who pays for it, and the one
+# entitlement answer. The organisation scope founds a subscription and asks for
+# the answer; billing never reaches back. Staff actions on the plan catalogue
+# are audited (sc-3928), and its unit-cost countries are checked against the one
+# country list (Regions), not the scope around it. A purge takes a billing account
+# nothing is paid for by any more.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Billing\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -285,7 +317,8 @@ permit = [
 # shared window and typed name (sc-3592). A new date, time or zone re-schedules
 # what the one clock counts from it (sc-104). A duplicate brings the guest list
 # through the guests' scope when asked (sc-3656). Search folds a member's name by the
-# shared rule (NameNormaliser) to match and rank it (sc-39534).
+# shared rule (NameNormaliser) to match and rank it (sc-39534). A new event, and a
+# duplicate, starts with the suggested jobs through the staff scope (sc-3908).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Event\\"
 permit = [
@@ -303,6 +336,7 @@ permit = [
     "@layer:deletion",
     "@layer:domain_seating",
     "@layer:domain_guest",
+    "@layer:domain_staff",
     "@layer:locale",
 ]
 
@@ -328,7 +362,9 @@ permit = [
 # account's parser, a name folded by the shared rule; each add is audited and published.
 # A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
 # and the items the hosts show to guests as the running order works them out (sc-3899),
-# and their table once the hosts share the tables (sc-4022).
+# and their table once the hosts share the tables (sc-4022), and the meal picks for
+# each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
+# event's members through messaging's Guest replies (sc-4331).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -337,6 +373,8 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_run_of_show",
     "@layer:domain_seating",
     "@layer:domain_user",
@@ -348,12 +386,16 @@ permit = [
 
 # Staffing: an event's roster, the people working it without being members (sc-3906). A
 # mobile number is checked by the account's parser; each change is audited and published.
+# A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
+# Stations give each course's items, as the menu lists them, the place that dishes them (sc-3910).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
     "@layer:native",
     "@layer:external",
     "@layer:shared",
+    "@layer:domain_event",
+    "@layer:domain_menu",
     "@layer:domain_staff",
     "@layer:domain_user",
     "@layer:repository",
@@ -366,7 +408,8 @@ permit = [
 # last price's currency is one of the organisation's offered currencies; each change is
 # audited. An event's menu is published whole on its topic, and an allergen added to a
 # picked dish is counted against the allergies its pickers have recorded (sc-3777).
-# A variant's or a folded dish's cost holds the event's currency (sc-3903).
+# A variant's or a folded dish's cost holds the event's currency (sc-3903). Who has not
+# chosen a meal is told to the guest summary through Messaging's port (sc-80901).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Menu\\"
 permit = [
@@ -374,6 +417,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_event",
     "@layer:domain_organisation",
     "@layer:domain_guest",
@@ -388,8 +432,12 @@ permit = [
 # Budget & costs: an event's cost lines (sc-83). A line's quantity is read from what the
 # event already knows, accepted guests (sc-99), tables in the seating plan and the event's
 # days, so it reads the guest headcount and the event's day count; a price is parsed and
-# written at the currency's minor unit as the menu's costs are. A line holds the event's
-# currency (sc-98); each change is audited and published.
+# written at the currency's minor unit by Locale's Money, as the menu's costs are
+# (sc-68066). A line holds the event's currency (sc-98); each change is audited and
+# published. The margin is published only to an organisation whose plan unlocks it,
+# asked of billing's one entitlement answer (sc-92). A payment falling due is a message
+# scheduled and sent through messaging (sc-95). Staff rates price the scheduled hours
+# of Staffing's shifts, read on the event's clock through Staff's ShiftClock (sc-101).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Budget\\"
 permit = [
@@ -397,9 +445,65 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_budget",
+    "@layer:budget_margin",
+    "@layer:domain_billing",
     "@layer:domain_event",
     "@layer:domain_guest",
-    "@layer:domain_menu",
+    "@layer:domain_messaging",
+    "@layer:domain_staff",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Only Budget's controllers and its top-level classes (MarginController, BudgetPublisher)
+# reach MarginSerialiser; its commands, models and other serialisers do not.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Command\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Http\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Budget\\Model\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_budget",
+    "@layer:domain_billing",
+    "@layer:domain_event",
+    "@layer:domain_guest",
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
@@ -464,10 +568,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
-# WhatsApp, for phone codes (sc-750). It sees the port it implements and nothing else of ours.
+# WhatsApp, for phone codes (sc-750). It sees the port it implements, and messaging's
+# payment refusal that every WhatsApp sender raises (sc-45470), and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Meta\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:domain_messaging"]
 
 # Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]

@@ -1,9 +1,17 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SearchField } from '../../components/EventsSearch.tsx';
 import { TextField } from '../../components/Field.tsx';
-import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { ReadOut, readOut } from '../../components/ReadOut.tsx';
 import {
@@ -16,13 +24,12 @@ import { Toast } from '../../components/Toast.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine, EventField } from '../events/EventEdits.tsx';
 import { MomentBox, type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx';
-import { Back, Pill } from '../../components/SettingsParts.tsx';
+import { Pill } from '../../components/SettingsParts.tsx';
 import {
   type Anchor,
   AnchoredMenu,
   FocusedScreen,
   Row,
-  RowList,
   TextAction,
 } from '../../components/Summary.tsx';
 import { ChannelPill } from './CheckCard.tsx';
@@ -37,10 +44,6 @@ import {
 import { STANDARD, type TellRun, UNREACHABLE, figuresArrive, tellTitle } from './TellKinds.ts';
 import type { FilterOption } from './Reach.ts';
 import {
-  BELL,
-  EVENT,
-  PARKING,
-  PARKING_REACH,
   TO_ORDER,
   TO_WORD,
   type ToGroup,
@@ -49,7 +52,6 @@ import {
   MATCHES,
 } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
-import { repliesUnread } from '../guests/ChangedSince.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -249,235 +251,6 @@ export function FilterPicker({
       {body}
     </AnchoredMenu>
   );
-}
-
-interface BellItem {
-  key: 'replies' | 'missed' | 'change';
-  title: string;
-  line: string;
-  glyph: GlyphName;
-}
-
-const BELL_ITEMS: readonly BellItem[] = [
-  {
-    key: 'replies',
-    title: W.bellReplies,
-    line: say.whereWhen(EVENT, say.atTime('09:31')),
-    glyph: 'users',
-  },
-  {
-    key: 'missed',
-    title: say.bellMissed(PARKING, PARKING_REACH.notReached),
-    line: say.whereWhen(EVENT, 'Mon, Nov 2'),
-    glyph: 'chat',
-  },
-  { key: 'change', title: BELL.change, line: say.whereWhen(EVENT, 'Mon, Nov 2'), glyph: 'events' },
-];
-
-function unreadOf(key: BellItem['key'], allRead: boolean): boolean {
-  if (key === 'replies') return repliesUnread();
-
-  return key === 'missed' && !allRead;
-}
-
-function BellItems({
-  allRead,
-  onItem,
-}: {
-  allRead: boolean;
-  onItem: (key: BellItem['key']) => void;
-}) {
-  return (
-    <RowList
-      items={BELL_ITEMS.map((item) => {
-        const unread = unreadOf(item.key, allRead);
-
-        return {
-          key: item.key,
-          inset: 52,
-          row: (
-            <Pressable
-              onPress={() => onItem(item.key)}
-              style={({ pressed }) => [styles.bellItem, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel={[item.title, item.line, unread ? W.unread : null]
-                .filter(Boolean)
-                .join(', ')}
-              testID={`messages.bell.${item.key}`}
-            >
-              <View style={styles.bellTile}>
-                <Glyph name={item.glyph} size={20} ink={tokens.colorInkSecondary} />
-              </View>
-              <View style={styles.grow}>
-                <Text
-                  size={16}
-                  weight={unread ? 'bold' : 'medium'}
-                  accessible={false}
-                  style={styles.bellTitle}
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  size={13.5}
-                  weight="medium"
-                  accessible={false}
-                  style={[styles.secondary, styles.bellLine]}
-                >
-                  {item.line}
-                </Text>
-                {unread && (
-                  <View style={styles.unread}>
-                    <View style={styles.dot} />
-                    <Text size={12.5} weight="semibold" accessible={false} style={styles.accent}>
-                      {W.unread}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </Pressable>
-          ),
-        };
-      })}
-    />
-  );
-}
-
-/** The bell with the batched replies item (sc-4331): its own screen on the phone with the push above, a 380 popover on the iPad. */
-export function BellPlace({
-  open,
-  phone,
-  at,
-  opener,
-  push,
-  allRead,
-  onAllRead,
-  onItem,
-  onSettings,
-  onClose,
-}: {
-  open: boolean;
-  phone: boolean;
-  at: Anchor | null;
-  opener: Opener;
-  push: boolean;
-  /** Mark all read, kept with the event so it outlives Messages; the replies item reads the look instead (sc-4331). */
-  allRead: boolean;
-  onAllRead: () => void;
-  onItem: (key: BellItem['key']) => void;
-  onSettings: () => void;
-  onClose: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-  const [pushing, setPushing] = useState(push);
-  const read = BELL_ITEMS.every((item) => !unreadOf(item.key, allRead));
-  const markAll = () => {
-    onAllRead();
-    readOut(W.allRead);
-  };
-  const markAllRead = (
-    <TextAction label={W.markAllRead} off={read} onPress={markAll} testID="messages.bell.markAll" />
-  );
-
-  if (!phone)
-    return (
-      <AnchoredMenu
-        at={open ? at : null}
-        onClose={onClose}
-        opener={opener}
-        width={380}
-        align="end"
-        testID="messages.bellPopover"
-      >
-        <View style={styles.popover}>
-          <View style={styles.bellHead}>
-            <Text size={18} weight="bold" accessibilityRole="header" style={styles.grow}>
-              {W.notifications}
-            </Text>
-            {markAllRead}
-          </View>
-          <BellItems allRead={allRead} onItem={onItem} />
-          <TextAction
-            label={W.notificationSettings}
-            onPress={onSettings}
-            testID="messages.bell.settings"
-          />
-        </View>
-      </AnchoredMenu>
-    );
-  if (!open) return null;
-
-  return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.bellTop}>
-        <Back label={W.back} onPress={onClose} />
-        <View style={styles.grow} />
-        {markAllRead}
-      </View>
-      <ScrollView
-        contentContainerStyle={[
-          styles.bellPage,
-          { paddingBottom: insets.bottom + tokens.space6xl },
-        ]}
-      >
-        <Text size={30} weight="bold" accessibilityRole="header" style={styles.pageTitle}>
-          {W.notifications}
-        </Text>
-        <BellItems allRead={allRead} onItem={onItem} />
-        <TextAction
-          label={W.notificationSettings}
-          onPress={onSettings}
-          testID="messages.bell.settings"
-        />
-      </ScrollView>
-      {pushing && (
-        <View style={[styles.pushAt, { top: insets.top + tokens.spaceXxs }]}>
-          <Pressable
-            onPress={() => {
-              setPushing(false);
-              onItem('replies');
-            }}
-            style={styles.push}
-            accessibilityRole="button"
-            accessibilityLabel={BELL.push}
-            testID="messages.push"
-          >
-            <View style={styles.pushTile}>
-              <Glyph name="bell" size={18} ink={tokens.colorInkOnDark} weight={2.2} />
-            </View>
-            <View style={styles.grow}>
-              <View style={styles.pushHead}>
-                <Text
-                  size={13}
-                  weight="semibold"
-                  accessible={false}
-                  style={[styles.grow, styles.secondary]}
-                >
-                  SOIRELY
-                </Text>
-                <Text size={13} weight="semibold" accessible={false} style={styles.secondary}>
-                  now
-                </Text>
-              </View>
-              <Text size={15} weight="semibold" accessible={false}>
-                {BELL.push}
-              </Text>
-            </View>
-          </Pressable>
-          <PushTimer onGone={() => setPushing(false)} />
-        </View>
-      )}
-    </View>
-  );
-}
-
-function PushTimer({ onGone }: { onGone: () => void }) {
-  useEffect(() => {
-    const gone = setTimeout(onGone, 6000);
-
-    return () => clearTimeout(gone);
-  }, [onGone]);
-
-  return null;
 }
 
 /** Tell guests (sc-4330): Soirely's prepared message goes by every channel, a note goes on their page only, and Send never sends before the figures show. */
@@ -953,16 +726,25 @@ export function MatchPicker({
 }) {
   const [search, setSearch] = useState(first.search);
   const [picked, setPicked] = useState(first.picked);
+  const searchRef = useRef<TextInputInstance>(null);
+  useEffect(() => {
+    if (!open) return;
+    const later = setTimeout(() => searchRef.current?.focus(), 350);
+
+    return () => clearTimeout(later);
+  }, [open]);
   const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
-      <TextField
-        value={search}
-        onChangeText={setSearch}
-        autoFocus
-        autoCapitalize="words"
-        placeholder={W.searchGuests}
-        accessibilityLabel={W.searchGuests}
+      <SearchField
+        ref={searchRef}
+        typed={search}
+        off={false}
+        width={null}
+        onTyped={setSearch}
+        onSearch={() => undefined}
+        onClear={() => setSearch('')}
+        label={W.searchGuests}
         testID="messages.match.search"
       />
       <View accessibilityRole="radiogroup">

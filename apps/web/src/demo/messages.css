@@ -1147,6 +1147,11 @@
   box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
 }
 
+.mg-composer.is-wrong,
+.mg-to-chip.is-wrong {
+  box-shadow: inset 0 0 0 2px var(--colorBroken);
+}
+
 .mg-composer:focus-within {
   box-shadow: inset 0 0 0 2px var(--colorAccent);
 }
@@ -1817,7 +1822,10 @@
   position: absolute;
   top: calc(100% + var(--spaceSm));
   right: 0;
+  display: flex;
+  flex-direction: column;
   width: 380px;
+  max-height: calc(100vh - 96px);
   padding: var(--spaceMd) var(--spaceXl) var(--spaceXs);
   border-radius: var(--radiusCardLarge);
 }
@@ -2379,4 +2387,208 @@
   color: var(--colorInk);
   font-weight: 600;
   font-size: 15px;
+}
+
+/* The head, the band, the ask and the foot stay; only the items scroll at 800 tall. */
+.mg-bell-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-inline: calc(-1 * var(--spaceXl));
+  padding-inline: var(--spaceXl);
+}
+
+.mg-bell-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceMd);
+  font: 500 13.5px/1.2 var(--fontFamily);
+}
+
+.mg-bell-heading .mg-bell-title-h:focus {
+  outline: none;
+}
+
+.mg-bell-band.offline-band {
+  margin: var(--spaceXs) 0;
+  padding: var(--spaceXxs) var(--spaceMd);
+  border: 1px solid var(--colorAttentionBorder);
+  border-radius: var(--radiusRow);
+}
+
+.mg-bell-band .offline-band-retry {
+  padding: 0 var(--spaceLg);
+}
+
+.mg-bell-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: var(--spaceXs) 0 var(--spaceSm);
+  padding: var(--spaceLg);
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+}
+
+.mg-bell-ask h4 {
+  font: 700 16px/1.3 var(--fontFamily);
+}
+
+.mg-bell-why {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mg-bell-ask-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  margin-top: var(--spaceXs);
+}
+
+.mg-bell-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.mg-bell-row > .mg-bell-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.mg-bell-more-button {
+  flex: none;
+  margin-top: var(--spaceSm);
+  margin-right: calc(-1 * var(--spaceSm));
+}
+
+.mg-bell-mute {
+  position: absolute;
+  top: calc(var(--spaceSm) + var(--sizeHit) + var(--spaceXxs));
+  right: 0;
+  z-index: 32;
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  padding: var(--spaceXs) var(--spaceXs) var(--spaceXs) var(--spaceLg);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: var(--mgPop);
+}
+
+.mg-bell-mute:focus {
+  outline: none;
+}
+
+.mg-bell-mute-name {
+  font: 600 15px/1.3 var(--fontFamily);
+  white-space: nowrap;
+}
+
+.mg-bell-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceLg);
+}
+
+.mg-bell-muted {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin-top: 3px;
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.2 var(--fontFamily);
+}
+
+.mg-bell-gone {
+  flex-basis: 100%;
+  margin: calc(-1 * var(--spaceSm)) 0 var(--spaceLg) 56px;
+  color: var(--colorInk);
+  font: 500 14px/1.4 var(--fontFamily);
+}
+
+.mg-bell-bones {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+  padding: var(--spaceLg) 0;
+}
+
+.mg-bell-bone-mark {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radiusRow);
+}
+
+.mg-bell-bone-title,
+.mg-bell-bone-line {
+  height: 14px;
+  border-radius: var(--radiusPill);
+}
+
+.mg-bell-bone-title {
+  width: 220px;
+}
+
+.mg-bell-bone-title.b2 {
+  width: 180px;
+}
+
+.mg-bell-bone-title.b3 {
+  width: 240px;
+}
+
+.mg-bell-bone-line {
+  width: 140px;
+  height: 12px;
+  margin-top: var(--spaceXs);
+}
+
+.mg-bell-failed,
+.mg-bell-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceLg) 0 var(--spaceMd);
+}
+
+.mg-bell-empty {
+  flex-direction: row;
+  gap: var(--spaceLg);
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.mg-bell-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding-bottom: var(--spaceXs);
+  border-top: 1px solid var(--colorBorder);
+}
+
+.mg-bell-attention {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorAttentionText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-bell-attention svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.mg-bell-settings {
+  flex: none;
+  align-self: flex-start;
 }

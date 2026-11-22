@@ -8,6 +8,7 @@ const LIBRARY = stylesheet(`${import.meta.dirname}/menu`, 'menuLibrary.css');
 const SCHEDULE = stylesheet(`${import.meta.dirname}/events`, 'schedule.css');
 const SEATING = stylesheet(`${import.meta.dirname}/events`, 'seating.css');
 const MENU = stylesheet(`${import.meta.dirname}/events`, 'menu.css');
+const BUDGET = stylesheet(`${import.meta.dirname}/events`, 'budget.css');
 
 describe('a desk window from 641 to 960 px (sc-60699)', () => {
   it('fits the pages beside the sidebar there and nowhere else', () => {
@@ -89,5 +90,13 @@ describe('a desk window from 641 px up (sc-61150)', () => {
     expect(cssRule('.shell :is(.gs-list, .gs-column)', guests)).not.toContain('max-width');
     expect(cssRule('.shell .gs-column', guests)).toContain('order: -1;');
     expect(cssRule('.shell .gs-column:has(> .gs-pick)', guests)).toContain('display: none;');
+  });
+});
+
+describe('the Budget at a phone (sc-85)', () => {
+  it('keeps only the shell’s 16 px gutter, as Budget A’s narrow frames do', () => {
+    expect(cssRule('.bt.desk-page', BUDGET.slice(BUDGET.indexOf('(width <= 40rem)')))).toContain(
+      'padding: 0;',
+    );
   });
 });

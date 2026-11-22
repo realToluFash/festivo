@@ -46,6 +46,11 @@
   max-width: var(--evWide);
 }
 
+/* The crumb row stands as far above People's title as above Guests' (sc-69635). */
+.event-page.is-people {
+  gap: 18px;
+}
+
 .ev-column,
 .ev-wide {
   display: flex;

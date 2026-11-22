@@ -617,7 +617,10 @@ function useLiveGuestFigures(
   };
 
   useHubTopics(
-    eventIds.map((id) => realtimeTopic('EventHeadcount', id)),
+    eventIds.flatMap((id) => [
+      realtimeTopic('EventHeadcount', id),
+      realtimeTopic('EventCheckIn', id),
+    ]),
     () => api.headcountsSubscription(organisationId, eventIds),
     recount,
     recount,

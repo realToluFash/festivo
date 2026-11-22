@@ -3,15 +3,12 @@ const ORG = 'Ire Events';
 
 export const DATA_WORDS = {
   title: 'Data and control',
-  settingsLine: 'Email domains and the audit log',
   control: 'Control',
   onTheWeb:
     'Export all data, deleting guest data after an event and a guest’s request are on the web.',
   loading: 'Loading Data and control…',
   failed: 'We could not load Data and control.',
   tryLine: 'Check your connection and try again.',
-  contact: 'Contact Soirely about Enterprise',
-  contacting: 'Contacting Soirely has its own design.',
   enterprise: 'Enterprise',
   nothing: 'Nothing needs your attention',
   nothingLine: 'ire.events is proved.',
@@ -19,7 +16,7 @@ export const DATA_WORDS = {
   nothingSetLine: `Start by proving the email domain of ${ORG}.`,
   locked: 'These come with Enterprise',
   lockedLine: 'Email domains and the audit log.',
-  left: (day: string) => `${ORG} left Enterprise on ${day}`,
+  left: `${ORG} left Enterprise`,
   leftLine:
     'Email domains, the audit log and deleting guest data are switched off and kept as they were. They come back on with Enterprise.',
   rows: {
@@ -99,7 +96,7 @@ export const DOMAINS_WORDS = {
     removedLine: 'It is no longer proved.',
     locked: 'Available on Enterprise',
     lockedLine: `Prove that ${ORG} owns its domain, then limit the accounts at it to ${ORG}.`,
-    off: (day: string) => `Switched off on ${day}`,
+    off: 'Switched off',
     offLine: `${ORG} left Enterprise. Its domains are kept as they were, and come back on with Enterprise.`,
     onlyProved: (domain: string) => `${domain} is proved`,
     scheduled: (at: string) => `Only our organisation starts on ${at}`,
@@ -177,7 +174,7 @@ export const AUDIT_WORDS = {
   downloading: (format: string) => `Downloading the audit log as ${format}.`,
   preparing: 'Preparing your export',
   preparingLine: (email: string) =>
-    `We’ll email ${email} a link when it’s ready. It works once, for 24 hours.`,
+    `We’ll email ${email} a link when it’s ready. It downloads only for you, signed in, for 24 hours.`,
   tooMany: 'More than 1,000,000 entries match. Narrow the filters, then export again.',
   locked: 'Available on Enterprise',
   lockedLine: `See who did what in ${ORG}, for 365 days, and export it.`,
@@ -190,4 +187,19 @@ export const MANAGED_WORDS = {
   change: 'Change your main email address',
   alsoMember: (count: number) =>
     `Also a member of ${count} other ${count === 1 ? 'organisation' : 'organisations'}`,
+} as const;
+
+/** The step on a locked Enterprise card (sc-72241). The app says nothing of the web, a website or upgrading. */
+export const ASK_WORDS = {
+  appLine: 'The plan cannot be changed in the app.',
+  ask: 'Ask an owner',
+  sent: {
+    one: 'The owner has been sent the link to Compare plans.',
+    several: 'The owners have been sent the link to Compare plans.',
+  },
+  asked: {
+    one: 'The owner was asked about Enterprise in the last 24 hours.',
+    several: 'The owners were asked about Enterprise in the last 24 hours.',
+  },
+  notSent: 'Not sent. Try again in a moment.',
 } as const;

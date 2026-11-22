@@ -995,6 +995,35 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test("an organisation carries its subscription's status and period end (sc-3927)", async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            id: 'org_1',
+            name: 'Ìrè Events',
+            countryCode: 'NG',
+            currency: 'NGN',
+            timezone: 'Africa/Lagos',
+            contactAddress: 'hello@ire.events',
+            locale: 'en',
+            plan: 'enterprise',
+            subscription: { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+          }),
+          { status: 200 },
+        ),
+    });
+
+    const saved = await client.updateOrganisation('org_1', { name: 'Ìrè Events' });
+
+    expect([saved.plan, saved.subscription]).toEqual([
+      'enterprise',
+      { status: 'past_due', periodEnd: '2026-12-18T00:00:00+00:00' },
+    ]);
+  });
+
   test('an organisation is created with its name, country and the device timezone', async () => {
     let sent: { method: string | undefined; path: string; body: unknown } | null = null;
 
@@ -1592,18 +1621,31 @@ describe('company domain joining (sc-561)', () => {
       domain: 'ire.events',
       offers: [{ id: 'org_1', name: 'Ìrè Events' }],
       request: null,
+      managed: null,
     });
+  });
+
+  test('reads a managed account’s home organisation and the sentence to show (sc-563)', async () => {
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    const { client } = answering({ domain: 'ire.events', offers: [], request: null, managed });
+
+    expect((await client.joinOffers()).managed).toEqual(managed);
   });
 
   test('reads the list of domains, and escapes the one removed', async () => {
     const { client, sent } = answering({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });
 
     expect(await client.removeCompanyDomain('org_1', 'ire.events')).toEqual({
-      domains: [{ domain: 'ire.events', stopped: true }],
+      domains: [{ domain: 'ire.events', stopped: true, proved: true }],
       most: 5,
       ownAddress: 'folake@ire.events',
     });
@@ -1686,6 +1728,7 @@ describe('requests to join (sc-562)', () => {
       organisation: { name: 'Ìrè Events' },
       standing: 'cooling_off',
       askAgainFrom: '2026-11-20T09:00:00+00:00',
+      managed: null,
     });
     expect(sent).toEqual([
       { url: 'http://api.test/api/request-links/link', method: 'POST', body: { token: 'ab12' } },
@@ -1891,6 +1934,7 @@ const ACCOUNT = {
   twoFactorSetupPrompt: false,
   colourScheme: null,
   waitingFor: null,
+  outsideEvents: [],
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
@@ -1914,6 +1958,50 @@ describe('who is signed in', () => {
     expect(account.name).toBe('Folake Ire');
     expect(account.businessName).toBe('Ire Events');
     expect(account.emailAddresses).toHaveLength(2);
+  });
+
+  test('reads the events the account is on from outside its organisations (sc-71)', async () => {
+    const outside = {
+      id: 'e1',
+      name: 'Owambe',
+      organisationName: 'Ìrè Events',
+      role: 'can_view',
+      jobLabel: 'Kitchen',
+      startsAt: '2030-11-14T16:00:00+01:00',
+      endsAt: '2030-11-14T15:00:00+00:00',
+    };
+    const account = await client(
+      json({ ...ACCOUNT, outsideEvents: [outside, { id: 'e2', role: 'lead' }] }),
+    ).me();
+
+    expect(account.outsideEvents).toEqual([outside]);
+  });
+
+  test('reads someone not joined yet on People, with or without their address (sc-71)', async () => {
+    const pending = {
+      id: 'p1',
+      membershipId: null,
+      user: null,
+      role: 'can_view',
+      jobLabel: null,
+      outside: true,
+      endsAt: '2030-11-14T15:00:00+00:00',
+    };
+    const people = await client(
+      json({
+        people: [
+          { ...pending, address: '+2348035550142', addressKind: 'mobile' },
+          { ...pending, id: 'p2', address: null, addressKind: null },
+        ],
+        owners: [],
+        admins: [],
+      }),
+    ).eventPeople('e1');
+
+    expect(people.people.map((one) => [one.user, one.address, one.addressKind])).toEqual([
+      [null, '+2348035550142', 'mobile'],
+      [null, null, null],
+    ]);
   });
 
   test('the primary address is the one identified by its flag', () => {
@@ -2575,6 +2663,7 @@ describe('invitations and members', () => {
     refusal: null,
     forYou: null,
     signedInAs: null,
+    managed: null,
   };
 
   test('a link opens on who invited whom, to what, until when', async () => {
@@ -2979,7 +3068,7 @@ describe('events (sc-1486)', () => {
       action: null,
       done: false,
     };
-    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25 };
+    const WEDDING_GUESTS = { invited: 142, coming: 96, notReplied: 25, attended: 87, expected: 99 };
     const later = { ...EVENT, id: 'e2', name: 'Later', milestones: [] };
     const { api, sent } = client(() =>
       json({

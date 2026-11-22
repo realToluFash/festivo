@@ -6,13 +6,17 @@ import {
   asksNothing,
   chooseFor,
   courseFigures,
+  defaultedOn,
   giveVariant,
+  givenDefault,
   goesBackTo,
   header,
   isPicksState,
   menuFigures,
   needsHost,
+  neverGiven,
   openFor,
+  openWords,
   percentOf,
   picksStart,
   samplePicks,
@@ -288,5 +292,74 @@ describe('who sees what', () => {
   it('refuses on the states that show a 403', () => {
     expect(picksStart('chooseForRefused').opened).toMatchObject({ refuses: true });
     expect(picksStart('chooseWhoRefused').opened).toMatchObject({ refuses: true });
+  });
+});
+
+describe('a course’s default (sc-1362)', () => {
+  const names = (list: readonly { person: { name: string } }[]) =>
+    list.map((one) => one.person.name);
+
+  it('defaults nobody before the date, and lists those it never will first', () => {
+    const world = picksStart('picksDefaultBefore').world;
+    const k2 = courseFigures(world, course(world, 'k2'));
+    expect(k2.rows.every((one) => one.defaulted === 0)).toBe(true);
+    expect(k2.defaultLine).toBe(
+      '[Default: Jollof rice, Chicken. Given on Friday, Oct 16 to anyone coming who hasn’t answered.]',
+    );
+    expect(names(neverGiven(world))).toEqual(['Bea Mensah', 'Kojo Asante', 'Nadia Petrova']);
+    expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
+      'Not chosen: Main · Vegetarian and Dessert',
+      'Not chosen: Main · allergy',
+      'Not chosen: Main · Other diet and Dessert',
+    ]);
+    const listed = whoHasnt(world).flatMap((one) => one.people.map((each) => each.person.name));
+    expect(listed).not.toContain('Bea Mensah');
+    expect(givenDefault(world)).toEqual([]);
+  });
+
+  it('works out the defaulted after the date, counts them in, and stores nothing', () => {
+    const world = picksStart('picksDefaultAfter').world;
+    expect(world.picks.k2?.['kofi-mensah']).toBeUndefined();
+    expect(row(world, 'k2', 'k2-jollof')?.defaulted).toBe(2);
+    expect(row(world, 'k2', 'v-chicken')?.defaulted).toBe(2);
+    expect(courseFigures(world, course(world, 'k2')).defaultLine).toBe(
+      '[Default: Jollof rice, Chicken. Given on Friday, Oct 16 to 2 guests who hadn’t answered.]',
+    );
+    expect(header(world).answered).toBe(header(samplePicks()).answered + 1);
+    expect(
+      givenDefault(world).flatMap((one) => one.people.map((each) => each.person.name)),
+    ).toEqual(['Kofi Mensah', 'Ivan Petrov']);
+    expect(names(neverGiven(world))).toEqual(['Bea Mensah', 'Kojo Asante', 'Nadia Petrova']);
+  });
+
+  it('moves a defaulted person to chosen once the host chooses for them, even the default itself', () => {
+    const world = picksStart('picksDefaultAfter').world;
+    const kept = chooseFor(world, 'k2', 'kofi-mensah', {
+      kind: 'dish',
+      dishId: 'k2-jollof',
+      variantId: 'v-chicken',
+      optionIds: [],
+      how: 'host',
+    });
+    expect(row(kept, 'k2', 'v-chicken')?.defaulted).toBe(1);
+    expect(row(kept, 'k2', 'v-chicken')?.chosen).toBe(
+      (row(world, 'k2', 'v-chicken')?.chosen ?? 0) + 1,
+    );
+    expect(defaultedOn(kept, person(kept, 'kofi-mensah'))).toEqual([]);
+    expect(sumOf(courseFigures(kept, course(kept, 'k2')))).toBe(48);
+  });
+
+  it('leaves only the never given in Who hasn’t picked once every course is defaulted', () => {
+    const world = picksStart('picksDefaultExcluded').world;
+    expect(whoHasnt(world)).toEqual([]);
+    expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
+      'Not chosen: Main · Vegetarian',
+      'Not chosen: Main · allergy',
+      'Not chosen: Main · Other diet and Dessert · Other diet',
+    ]);
+  });
+
+  it('opens Choose for them on the courses the person was defaulted on', () => {
+    expect(picksStart('chooseForDefaulted').opened).toMatchObject({ given: true });
   });
 });

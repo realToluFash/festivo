@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, type Ref, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   type StyleProp,
   StyleSheet,
@@ -12,14 +13,16 @@ import {
 
 import { Text, TitleCap } from './Text.tsx';
 import {
+  type BackSizing,
   PILL_ABOVE,
   PILL_GAP,
-  PILL_GLYPH,
   PILL_LEFT,
   PILL_RIGHT,
-  PILL_TEXT,
-  backLeast,
+  backRoomIsLaid,
+  backRoomStands,
   backScale,
+  backWordSize,
+  pillBack,
 } from '../layout/focusedHeader.ts';
 import { tokens } from '../theme/tokens.ts';
 import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
@@ -283,53 +286,94 @@ export function Pair({
   );
 }
 
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
+export function useBackWord(word: string, back: BackSizing, besideShown = false) {
+  const { width: windowWidth } = useWindowDimensions();
+  const key = `${back.full}|${word}`;
+  const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
+  const roomKey = `${key}|${windowWidth}|${besideShown}`;
+  const [room, setRoom] = useState<{
+    key: string;
+    width: number;
+    size: number;
+    word: number | null;
+  } | null>(null);
+  const measured = width?.key === key ? width.width : null;
+  const known = room?.key === roomKey && backRoomStands(back, room, measured) ? room.width : null;
+  const size = measured == null || known == null ? back.full : backWordSize(back, measured, known);
+
+  return {
+    size,
+    measure: (
+      <MeasuredWords
+        words={[word]}
+        size={back.full}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(_, drawn) => setWidth({ key, width: drawn })}
+      />
+    ),
+    onLayout: (event: LayoutChangeEvent) => {
+      const laid = event.nativeEvent.layout.width;
+
+      if (size === back.full || (measured != null && backRoomIsLaid(back, measured, size, laid)))
+        setRoom({ key: roomKey, width: laid, size, word: measured });
+    },
+  };
+}
+
 /** At least 44, a capsule as tall as its word, the ‹ growing with it; a word wider than its room steps down to fit, never below 15 (sc-37903). */
 export function Back({
   label,
   onPress,
   off = false,
+  besideShown = false,
   testID,
 }: {
   label?: string;
   onPress: () => void;
   off?: boolean | undefined;
+  besideShown?: boolean;
   testID?: string;
 }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const scale = backScale(fontScale, useContext(TitleCap));
   const place = label ?? t('settings.title');
-  const size = PILL_TEXT * scale;
+  const back = pillBack(scale);
+  const word = useBackWord(place, back, besideShown);
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={t('frame.backTo', { place })}
-      accessibilityState={{ disabled: off }}
-      testID={testID}
-    >
-      <Glyph
-        name="back"
-        size={PILL_GLYPH * scale}
-        ink={off ? tokens.colorInkSecondary : tokens.colorInk}
-        weight={2.4}
-      />
-      <Text
-        size={size}
-        weight="semibold"
-        muted={off}
-        allowFontScaling={false}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={backLeast(scale)}
-        accessible={false}
+    <>
+      {word.measure}
+      <Pressable
+        onPress={onPress}
+        onLayout={word.onLayout}
+        disabled={off}
+        style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('frame.backTo', { place })}
+        accessibilityState={{ disabled: off }}
+        testID={testID}
       >
-        {place}
-      </Text>
-    </Pressable>
+        <Glyph
+          name="back"
+          size={(back.glyph / back.least) * word.size}
+          ink={off ? tokens.colorInkSecondary : tokens.colorInk}
+          weight={2.4}
+        />
+        <Text
+          size={word.size}
+          weight="semibold"
+          muted={off}
+          allowFontScaling={false}
+          numberOfLines={1}
+          accessible={false}
+        >
+          {place}
+        </Text>
+      </Pressable>
+    </>
   );
 }
 

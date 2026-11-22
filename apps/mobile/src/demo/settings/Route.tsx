@@ -29,8 +29,11 @@ import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } fro
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
 import { heldOf } from './Held.tsx';
+import { WayBackToNone } from '../../components/wayBackToNone.ts';
+import { boardFrom, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
 import { SignInRulesSection } from './SignInRules.tsx';
+import { SingleSignOnSection } from './SingleSignOn.tsx';
 import {
   layoutOf,
   type Shell,
@@ -68,8 +71,17 @@ export function sectionOfSlug(slug: string | undefined): ShellSection | null {
   return SECTIONS.find((section) => slugOf(section) === slug) ?? null;
 }
 
-export function settingsHref(viewer: Viewer, section: ShellSection | null, state?: string): Href {
-  const query = [state == null ? '' : `state=${state}`, viewer === 'owner' ? '' : `as=${viewer}`]
+export function settingsHref(
+  viewer: Viewer,
+  section: ShellSection | null,
+  state?: string,
+  from?: string,
+): Href {
+  const query = [
+    state == null ? '' : `state=${state}`,
+    viewer === 'owner' ? '' : `as=${viewer}`,
+    from == null ? '' : `from=${from}`,
+  ]
     .filter((part) => part !== '')
     .join('&');
   const path = section == null ? '/demo/settings' : `/demo/settings/${slugOf(section)}`;
@@ -81,21 +93,27 @@ export function settingsHref(viewer: Viewer, section: ShellSection | null, state
 export function SettingsRoute({
   section,
   data = null,
+  sso = false,
 }: {
   section: ShellSection | null;
   data?: DataPage | null;
+  sso?: boolean;
 }) {
   const params = useLocalSearchParams<{
     as?: string;
     switcher?: string;
     scheme?: string;
     held?: string;
+    from?: string;
   }>();
+  const board = boardFrom(params.from);
+  const fromNone = board !== undefined;
+  const from = fromNone ? fromNoneOf(board) : undefined;
   const layout = layoutOf(useLayout().kind);
   const [told, setTold] = useState<string>();
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const member = data != null && dataViewerOf(params.as) === 'ana';
-  const viewer = member ? 'member' : viewerOf(params.as);
+  const viewer = member ? 'member' : fromNone ? 'noOrg' : viewerOf(params.as);
   const shown = section != null && sectionsFor(viewer).includes(section) ? section : null;
   const dataShown = data != null && managesOrganisation(viewer) ? data : null;
   const seed = schemeOf(params.scheme);
@@ -112,15 +130,16 @@ export function SettingsRoute({
     (next: ShellSection, state?: string) => {
       if (next === shown && state == null) return;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
-      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state));
-      else router.push(settingsHref(viewer, next, state));
+      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state, from));
+      else router.push(settingsHref(viewer, next, state, from));
     },
-    [layout, shown, viewer],
+    [layout, shown, viewer, from],
   );
   const toSettings = useCallback(() => {
-    if (layout === 'landscape') router.replace(settingsHref(viewer, null));
-    else router.dismissTo(settingsHref(viewer, null));
-  }, [layout, viewer]);
+    if (layout === 'landscape') router.replace(settingsHref(viewer, null, undefined, from));
+    else router.dismissTo(settingsHref(viewer, null, undefined, from));
+  }, [layout, viewer, from]);
+  const toNone = useCallback(() => router.dismissTo(noOrgHome(board ?? null) as Href), [board]);
   const onTab = useCallback(
     (tab: Tab) => {
       if (tab === 'Today') router.replace('/demo/today');
@@ -154,27 +173,36 @@ export function SettingsRoute({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layout, viewer, shown, openSection, toSettings, tell, onTab, handlers, bold, saved],
   );
-  const Page = dataShown != null ? DATA_PAGES[dataShown] : shown == null ? null : PAGES[shown];
+  const Page =
+    dataShown != null
+      ? DATA_PAGES[dataShown]
+      : shown == null
+        ? null
+        : sso && shown === 'signInRules'
+          ? SingleSignOnSection
+          : PAGES[shown];
   const home = <SettingsHome {...handlers} held={heldOf(params.held)} />;
 
   return (
     <ShellContext.Provider value={shell}>
-      <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
-        <View style={styles.fill}>
-          <DataOpenContext.Provider value={dataShown}>
-            {Page != null ? (
-              <Page />
-            ) : member ? (
-              <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
-            ) : (
-              home
+      <WayBackToNone.Provider value={fromNone ? toNone : null}>
+        <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
+          <View style={styles.fill}>
+            <DataOpenContext.Provider value={dataShown}>
+              {Page != null ? (
+                <Page />
+              ) : member ? (
+                <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
+              ) : (
+                home
+              )}
+            </DataOpenContext.Provider>
+            {told != null && (
+              <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
             )}
-          </DataOpenContext.Provider>
-          {told != null && (
-            <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
-          )}
-        </View>
-      </OrgSwitcherProvider>
+          </View>
+        </OrgSwitcherProvider>
+      </WayBackToNone.Provider>
     </ShellContext.Provider>
   );
 }

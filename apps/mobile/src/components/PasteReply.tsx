@@ -250,9 +250,15 @@ function Nobody({ typed, onClear }: { typed: string; onClear: () => void }) {
 /** A group's head, as Guests draws it: "No reply · 12". */
 export function GroupHead({ word, count }: { word: string; count: number }) {
   const { t } = useTranslation();
+  const figure = t('guestList.figure', { count });
 
   return (
-    <View style={styles.groupHead} accessible accessibilityRole="header">
+    <View
+      style={styles.groupHead}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={`${word}, ${figure}`}
+    >
       <Text size={18} weight="bold" accessible={false} style={styles.headTitle}>
         {word}
       </Text>
@@ -262,7 +268,7 @@ export function GroupHead({ word, count }: { word: string; count: number }) {
         accessible={false}
         style={[styles.secondary, styles.figures, styles.headTitle]}
       >
-        {` · ${t('guestList.figure', { count })}`}
+        {` · ${figure}`}
       </Text>
     </View>
   );

@@ -1,6 +1,6 @@
 import { ApiError, type InvitationPreview, type Membership } from '@soirely/api-client';
-import { type InvitationOutcome, invitationRefusal } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type InvitationOutcome, invitationRefusal, withManaged } from '@soirely/domain';
+import { useEffect, useMemo, useState } from 'react';
 
 import { api } from './api.ts';
 import { joinOrganisation, settleInvitation, useSignedIn } from './signedIn.ts';
@@ -15,8 +15,8 @@ export interface WaitingInvitations {
   ) => Promise<InvitationOutcome>;
 }
 
-/** The invitations to any verified address of this account, read with the account, so every frame on the stack shows the same ones. */
-export function useWaitingInvitations(): WaitingInvitations {
+/** The invitations to any verified address of this account, read with the account, so every frame on the stack shows the same ones. A managed one reads as managed only once its Join is refused, as sc-563's You are not in an organisation has it. */
+export function useInvitationAnswers(): WaitingInvitations {
   const { invitations, invitationOutcomes } = useSignedIn();
 
   return {
@@ -25,6 +25,15 @@ export function useWaitingInvitations(): WaitingInvitations {
     answer: (invitation, choice) =>
       answerInvitation(invitation, choice, settleInvitation, joinOrganisation),
   };
+}
+
+/** For the switcher and its openers: one the account cannot accept reads as managed from the moment it is listed, so it is never counted (sc-73668). */
+export function useWaitingInvitations(): WaitingInvitations {
+  const answers = useInvitationAnswers();
+  const { invitations, outcomes } = answers;
+  const known = useMemo(() => withManaged(invitations, outcomes), [invitations, outcomes]);
+
+  return { ...answers, outcomes: known };
 }
 
 /** Behind the onboarding gate, where the account's organisations cannot be read: the list read once, when `load` is on at first render. */
@@ -88,7 +97,16 @@ async function answerInvitation(
   } catch (error) {
     const refusal = error instanceof ApiError ? invitationRefusal((code) => error.is(code)) : null;
 
-    outcome = refusal == null ? { kind: 'failed' } : { kind: 'refused', refusal };
+    outcome =
+      error instanceof ApiError && error.is('domain_managed')
+        ? {
+            kind: 'managed',
+            organisation: error.problem.organisation ?? '',
+            message: error.problem.detail ?? '',
+          }
+        : refusal == null
+          ? { kind: 'failed' }
+          : { kind: 'refused', refusal };
   }
 
   settle(invitation.id, outcome);

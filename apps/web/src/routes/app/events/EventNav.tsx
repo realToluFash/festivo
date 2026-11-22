@@ -1,6 +1,6 @@
 import type { OrganisationEvent } from '@soirely/api-client';
 import { isPlaceholderEventArea, shownPhase } from '@soirely/domain';
-import { type MouseEvent, useEffect, useSyncExternalStore } from 'react';
+import { type MouseEvent, type ReactNode, useEffect, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useMatch, useNavigate } from 'react-router';
 
@@ -9,6 +9,8 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { SIDE_AREAS, SIDE_AREA_GLYPHS, type SideArea } from '../../../components/eventSideAreas.ts';
 import { cardTags, listEventOf, shownEvent } from '../../../eventsList.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
+import { canOn } from '../../../session.ts';
+import { PAGE_NEEDS } from './handoff.ts';
 
 export interface InsideEvent {
   eventId: string;
@@ -91,7 +93,7 @@ function useMenuReady(eventId: string): { ready: number; courses: number } | nul
 
 let gone: string | null = null;
 
-/** An event its page found deleted or never there (sc-1468), or never loaded in this tab and opened offline (sc-65646): the shell shows the organisation's sidebar instead of the event's. */
+/** An event its page found deleted or never there (sc-1468), never loaded in this tab and opened offline (sc-65646), or Overview's not loaded yet (sc-80863): the shell shows the organisation's sidebar instead of the event's. */
 export function useGoneEvent(eventId: string, isGone: boolean): void {
   useEffect(() => {
     if (!isGone) return;
@@ -149,9 +151,17 @@ function useRoutedEvent(): InsideEvent | null {
 export function EventNav({
   inside,
   onFollow,
+  areas = SIDE_AREAS,
+  back = true,
+  card = null,
 }: {
   inside: Omit<InsideEvent, 'area'> & { area: SideArea | null };
   onFollow: (() => void) | undefined;
+  /** An account with no organisation sees its level's areas and has no Events to go back to (sc-71). */
+  areas?: readonly SideArea[];
+  back?: boolean;
+  /** Drawn at the head instead of the event its page loaded: a not-found has none (sc-68438). */
+  card?: ReactNode;
 }) {
   const { t } = useTranslation();
   const location = useLocation();
@@ -171,48 +181,62 @@ export function EventNav({
   return (
     <nav className="ev-side-nav" aria-label={t('eventNav.label')}>
       <div className="ev-side-event">
-        <Link className="today-place ev-side-back" to="/app/events" onClick={onFollow}>
-          <Glyph name="back" size={17} weight={2.4} />
-          {t('nav.events')}
-        </Link>
-        {event != null && <SideCard event={event} />}
+        {back && (
+          <Link className="today-place ev-side-back" to="/app/events" onClick={onFollow}>
+            <Glyph name="back" size={17} weight={2.4} />
+            {t('nav.events')}
+          </Link>
+        )}
+        {card ?? (event != null && <SideCard event={event} />)}
       </div>
       <ul className="today-places">
-        {SIDE_AREAS.map((area) => {
-          const current = area === inside.area;
-          const sub =
-            area === 'menu' && menuLine != null
-              ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
-              : null;
+        {areas
+          .filter((area) => area !== 'budget' || seesBudget(event))
+          .map((area) => {
+            const current = area === litArea(inside.area, event);
+            const sub =
+              area === 'menu' && menuLine != null
+                ? t('eventNav.menuReady', { ready: menuLine.ready, count: menuLine.courses })
+                : null;
 
-          return (
-            <li key={area}>
-              <Link
-                to={eventAreaPath(inside.eventId, area)}
-                className={['today-place', current && 'is-on', sub != null && 'has-line']
-                  .filter(Boolean)
-                  .join(' ')}
-                aria-current={current ? 'page' : undefined}
-                replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
-                state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
-                onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
-              >
-                <Glyph name={SIDE_AREA_GLYPHS[area]} />
-                {sub != null ? (
-                  <span className="ev-side-two">
-                    <span>{t(`eventNav.${area}`)}</span>
-                    <span className="ev-side-sub">{sub}</span>
-                  </span>
-                ) : (
-                  t(`eventNav.${area}`)
-                )}
-              </Link>
-            </li>
-          );
-        })}
+            return (
+              <li key={area}>
+                <Link
+                  to={eventAreaPath(inside.eventId, area)}
+                  className={['today-place', current && 'is-on', sub != null && 'has-line']
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-current={current ? 'page' : undefined}
+                  replace={current || (!inside.onPage && !(area === 'overview' && cameFromPage))}
+                  state={inside.onPage || cameFromPage ? { fromEventPage: true } : undefined}
+                  onClick={area === 'overview' && !inside.onPage ? backToPage : onFollow}
+                >
+                  <Glyph name={SIDE_AREA_GLYPHS[area]} />
+                  {sub != null ? (
+                    <span className="ev-side-two">
+                      <span>{t(`eventNav.${area}`)}</span>
+                      <span className="ev-side-sub">{sub}</span>
+                    </span>
+                  ) : (
+                    t(`eventNav.${area}`)
+                  )}
+                </Link>
+              </li>
+            );
+          })}
       </ul>
     </nav>
   );
+}
+
+/** The Budget withheld from a loaded event is drawn on Overview, as the demo's not-available page has it (sc-101). */
+function litArea(area: SideArea | null, event: OrganisationEvent | undefined): SideArea | null {
+  return area === 'budget' && event != null && !seesBudget(event) ? 'overview' : area;
+}
+
+/** Without budget.read the event's Budget is not in its navigation (sc-85); until the event has loaded, nobody is known to hold it. */
+function seesBudget(event: OrganisationEvent | undefined): boolean {
+  return event != null && canOn(event, PAGE_NEEDS.budget);
 }
 
 /** Its phase and how soon, in the words of its card on Events. */

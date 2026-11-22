@@ -32,7 +32,7 @@ import { DUPLICATING } from '../kit/eventDuplicate.ts';
 import { takeDeleted } from '../kit/eventSaved.ts';
 import { hasNoEvents } from '../kit/eventsOpen.ts';
 import { useServerNow } from '../kit/serverNow.ts';
-import { useOffline } from '../offline.ts';
+import { useOffline, usePullToRefresh } from '../offline.ts';
 import { afterFailedLoad } from '../offlineLoad.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -169,6 +169,7 @@ export function EventsScreen({
     reload,
     focusTitle: () => moveScreenReaderFocus(title.current),
   });
+  const pull = usePullToRefresh(load.kind === 'loaded' && load.refreshing, stale?.retry ?? freshen);
 
   const searchOff = stale != null;
   const search = searchOff
@@ -323,7 +324,7 @@ export function EventsScreen({
         () => undefined,
       );
     const stop = followReadingAgain(
-      ids.map((id) => realtimeTopic('EventHeadcount', id)),
+      ids.flatMap((id) => [realtimeTopic('EventHeadcount', id), realtimeTopic('EventCheckIn', id)]),
       () => api.headcountsSubscription(organisationId, ids),
       () => void readFigures(),
       FIGURES_AGAIN_MS,
@@ -386,7 +387,7 @@ export function EventsScreen({
     router.push(guestsHref(id, filter));
   };
 
-  const searchRow = (off: boolean) => (
+  const searchRow = (off: boolean, filterUnseen = false) => (
     <SearchRow
       offline={searchOff}
       field={
@@ -407,6 +408,7 @@ export function EventsScreen({
           off={off}
           open={menuAt != null}
           onPress={() => anchorUnder(filterRef, setMenuAt)}
+          unseen={filterUnseen}
         />
       }
     />
@@ -439,7 +441,7 @@ export function EventsScreen({
 
   const list = !reads ? null : load.kind === 'loading' ? (
     <View style={styles.loading}>
-      {searchRow(true)}
+      {searchRow(true, true)}
       <SunkTabs />
       <LoadingBlock words={t('eventsScreen.loading')} />
     </View>
@@ -537,11 +539,7 @@ export function EventsScreen({
       <ListAndPage
         kind={kind}
         list={list}
-        listRefresh={
-          reads && load.kind === 'loaded' ? (
-            <RefreshControl refreshing={load.refreshing} onRefresh={stale?.retry ?? freshen} />
-          ) : undefined
-        }
+        listRefresh={reads && load.kind === 'loaded' ? <RefreshControl {...pull} /> : undefined}
         page={null}
         pageInFront={false}
         pageless

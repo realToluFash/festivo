@@ -7,7 +7,6 @@ namespace App\Entity;
 use App\Doctrine\Interfaces\SoftDeletableInterface;
 use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
-use App\Enum\Plan;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,6 +22,12 @@ class Organisation implements SoftDeletableInterface
 {
     use SoftDeletable;
     use Timestampable;
+
+    public const int PAYMENT_REMINDER_DAYS = 3;
+
+    public const int PAYMENT_REMINDER_DAYS_MINIMUM = 1;
+
+    public const int PAYMENT_REMINDER_DAYS_MAXIMUM = 30;
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -74,9 +79,9 @@ class Organisation implements SoftDeletableInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $joinRequestsNoticedAt = null;
 
-    /** Set only by Soirely staff (sc-581); a lower plan switches its settings off and keeps them, so nothing here is cleared on a change. */
-    #[ORM\Column(type: Types::STRING, length: 20, enumType: Plan::class, options: ['default' => 'free'])]
-    private Plan $plan = Plan::Free;
+    /** How many days before a scheduled payment falls due its reminder goes (sc-95). */
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => self::PAYMENT_REMINDER_DAYS])]
+    private int $paymentReminderDays = self::PAYMENT_REMINDER_DAYS;
 
     public function __construct(
         string $name,
@@ -170,6 +175,16 @@ class Organisation implements SoftDeletableInterface
         $this->providerSignInOnly = $providerSignInOnly;
     }
 
+    public function getPaymentReminderDays(): int
+    {
+        return $this->paymentReminderDays;
+    }
+
+    public function setPaymentReminderDays(int $paymentReminderDays): void
+    {
+        $this->paymentReminderDays = $paymentReminderDays;
+    }
+
     public function getInactivityTimeoutDays(): ?int
     {
         return $this->inactivityTimeoutDays;
@@ -233,15 +248,5 @@ class Organisation implements SoftDeletableInterface
     public function setJoinRequestsNoticedAt(?DateTimeImmutable $joinRequestsNoticedAt): void
     {
         $this->joinRequestsNoticedAt = $joinRequestsNoticedAt;
-    }
-
-    public function getPlan(): Plan
-    {
-        return $this->plan;
-    }
-
-    public function setPlan(Plan $plan): void
-    {
-        $this->plan = $plan;
     }
 }

@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Members;
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\DomainJoining\RemovalClock;
+use App\Domain\Organisation\EmailDomains\ManagedAccounts;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -38,12 +39,16 @@ final readonly class MembershipMachine
         private RemovalClock $removalClock,
         private EventPersonRepository $eventPersonRepository,
         private Auditor $auditor,
+        private ManagedAccounts $managedAccounts,
     ) {
     }
 
     /** A new row, or the account's old one when it left or was removed: one per account and organisation. */
     public function join(Organisation $organisation, User $user, Role $role, MembershipStatus $entry, MembershipChannel $channel, ?User $actor): Membership
     {
+        // Every way in goes through here, so none is left open to a managed account (sc-563); each path also refuses first, outside its transaction, so the refusal's record stays.
+        $this->managedAccounts->refuseUnlessHome($user, $organisation, $channel->value);
+
         $existing = $this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user]);
 
         if (null === $existing) {

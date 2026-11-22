@@ -13,7 +13,7 @@ import type { SampleEvent } from './events.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockOfKitchen } from './kitchen.ts';
 import { allergenList } from './mealStep.ts';
-import type { DishAllergen } from './menuLibrary.ts';
+import { type DishAllergen, listOf } from './menuLibrary.ts';
 import { type EvCourse, type EvDish, CW, coursesAt } from './menuCourses.ts';
 import { MENU_EVENT } from './menuServed.ts';
 import { keptInbox, waitingLine } from './messages.ts';
@@ -32,14 +32,17 @@ import {
   codesOf,
   containsOf,
   courseFigures,
-  firstName,
+  defaultedOn,
   giveVariant,
+  givenDefault,
   goesBackTo,
   hasVariant,
   header,
   needsHost,
+  neverGiven,
   numberIn,
   openFor,
+  openWords,
   pickName,
   ruledOut,
   shownCourses,
@@ -170,6 +173,8 @@ function Picks({ first }: { first: PicksStart }) {
   };
   const host = needsHost(world);
   const waiting = whoHasnt(world);
+  const never = neverGiven(world);
+  const given = givenDefault(world);
   const all = header(world);
 
   return (
@@ -225,7 +230,7 @@ function Picks({ first }: { first: PicksStart }) {
                         : SW.allergyFor(
                             one.course.name,
                             one.reason.dish,
-                            allergenList(one.reason.allergens, 'en'),
+                            allergensOf(one.reason.allergens),
                           )}
                     </span>
                   </div>
@@ -270,35 +275,79 @@ function Picks({ first }: { first: PicksStart }) {
           <h2 id="pk-waiting-title" className="pk-card-title">
             {SW.whoHasnt}
           </h2>
-          {waiting.length === 0 ? (
+          {waiting.length === 0 && never.length === 0 && (
             <p className="mn-quiet">{SW.whoHasntNone}</p>
-          ) : (
-            waiting.map((group) => (
-              <div key={group.party.id} className="pk-party">
-                <h3>{SW.replied(group.party.replier, group.people.length)}</h3>
-                <ul className="pk-people">
-                  {group.people.map(({ person, courses }) => (
-                    <li key={person.id} className="pk-person">
-                      <div className="pk-person-words">
-                        <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {SW.notChosenOn(courses.map((one) => one.name).join(', '))}
-                        </span>
-                      </div>
-                      {manage && (
-                        <ChooseForButton
-                          id={`pk-wait-${person.id}`}
-                          person={person}
-                          onOpen={(from) => open({ kind: 'chooseFor', personId: person.id }, from)}
-                        />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
           )}
+          {never.length > 0 && (
+            <div className="pk-party">
+              <h3>{SW.neverGiven(never.length)}</h3>
+              <ul className="pk-people">
+                {never.map(({ person, open: courses }) => (
+                  <WaitingLine
+                    key={person.id}
+                    id={`pk-never-${person.id}`}
+                    person={person}
+                    words={openWords(courses)}
+                    manage={manage}
+                    onOpen={(from) => open({ kind: 'chooseFor', personId: person.id }, from)}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
+          {waiting.map((group) => (
+            <div key={group.party.id} className="pk-party">
+              <h3>{SW.replied(group.party.replier, group.people.length)}</h3>
+              <ul className="pk-people">
+                {group.people.map(({ person, open: courses }) => (
+                  <WaitingLine
+                    key={person.id}
+                    id={`pk-wait-${person.id}`}
+                    person={person}
+                    words={openWords(courses)}
+                    manage={manage}
+                    onOpen={(from) => open({ kind: 'chooseFor', personId: person.id }, from)}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+      {first.access !== 'counts' && given.length > 0 && (
+        <section className="desk-card pk-waiting" aria-labelledby="pk-given-title">
+          <h2 id="pk-given-title" className="pk-card-title">
+            {SW.given(given.reduce((sum, group) => sum + group.people.length, 0))}
+          </h2>
+          {given.map((group) => (
+            <div key={group.party.id} className="pk-party">
+              <h3>{SW.replied(group.party.replier, group.people.length)}</h3>
+              <ul className="pk-people">
+                {group.people.map(({ person, courses }) => (
+                  <li key={person.id} className="pk-person">
+                    <div className="pk-person-words">
+                      <strong>{person.name}</strong>
+                      {courses.map(({ course, pick }) => (
+                        <span key={course.id}>
+                          {SW.givenOn(course.name, pick)}{' '}
+                          <span className="pk-default-mark">{SW.defaultMark}</span>
+                        </span>
+                      ))}
+                    </div>
+                    {manage && (
+                      <ChooseForButton
+                        id={`pk-given-${person.id}`}
+                        person={person}
+                        onOpen={(from) =>
+                          open({ kind: 'chooseFor', personId: person.id, given: true }, from)
+                        }
+                      />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       )}
       {first.demo && <DemoOnly world={world} onWorld={setWorld} />}
@@ -381,6 +430,33 @@ function Lock({ words }: { words: string }) {
   );
 }
 
+function WaitingLine({
+  id,
+  person,
+  words,
+  manage,
+  onOpen,
+}: {
+  id: string;
+  person: Person;
+  words: string;
+  manage: boolean;
+  onOpen: (from: string) => void;
+}) {
+  return (
+    <li className="pk-person">
+      <div className="pk-person-words">
+        <strong>{person.name}</strong>
+        <span className="pk-state">
+          <DashedCircle />
+          {words}
+        </span>
+      </div>
+      {manage && <ChooseForButton id={id} person={person} onOpen={onOpen} />}
+    </li>
+  );
+}
+
 function ChooseForButton({
   id,
   person,
@@ -415,7 +491,7 @@ function CourseCard({
   const { course } = figures;
   const titleId = `pk-course-${course.id}`;
   const options = figures.rows.some((row) => row.kind === 'option');
-  const defaults = figures.rows.some((row) => row.defaulted > 0);
+  const defaults = figures.defaultLine != null || figures.rows.some((row) => row.defaulted > 0);
   const dish = course.dishes[0] as EvDish;
 
   return (
@@ -428,6 +504,7 @@ function CourseCard({
           {SW.answered(numberIn(figures.answered), numberIn(figures.room))}
         </p>
       </div>
+      {figures.defaultLine != null && <p className="mn-quiet">{figures.defaultLine}</p>}
       {figures.asksNothing && <p className="mn-quiet">{SW.asksNothing(dish.name)}</p>}
       <div className="pk-scroll">
         <table className="pk-table">
@@ -503,6 +580,8 @@ function CourseCard({
   );
 }
 
+const allergensOf = (codes: readonly DishAllergen[]): string => allergenList(codes, 'en', listOf);
+
 function goesBack(course: EvCourse, person: Person): string {
   const back = goesBackTo(course, person);
 
@@ -553,19 +632,19 @@ function outcomeFor(
   confirmed: boolean,
   refuses: boolean,
 ): ForOutcome {
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
   if (choice.dishId == null)
-    return { kind: 'error', words: SW.blank(course.name, first), focus: 'pk-for-dish' };
+    return { kind: 'error', words: SW.blank(course.name, who), focus: 'pk-for-dish' };
   if (dish != null && hasVariants(dish) && choice.variantId == null)
-    return { kind: 'error', words: SW.blankWay(dish.name, first), focus: 'pk-for-way' };
+    return { kind: 'error', words: SW.blankWay(dish.name, who), focus: 'pk-for-way' };
   const unanswered = (dish?.choices ?? []).find(
     (one) => one.required && !one.options.some((option) => choice.optionIds.includes(option.id)),
   );
   if (unanswered != null)
     return {
       kind: 'error',
-      words: SW.blankOption(unanswered.question, first),
+      words: SW.blankOption(unanswered.question, who),
       focus: 'pk-for-option',
     };
   const allergens =
@@ -588,21 +667,26 @@ function outcomeFor(
   return {
     kind: 'saved',
     pick,
-    line: SW.savedFor(course.name, first, what),
-    overridden:
-      allergens.length > 0 ? SW.savedOverride(first, what, allergenList(allergens, 'en')) : null,
+    line: SW.savedFor(course.name, who, what),
+    overridden: allergens.length > 0 ? SW.savedOverride(who, what, allergensOf(allergens)) : null,
   };
 }
 
 function coursesFor(world: PicksWorld, opened: ForOpened): EvCourse[] {
   const person = world.people.find((one) => one.id === opened.personId) as Person;
 
-  return openFor(world, person, opened.courseId);
+  return opened.given === true
+    ? defaultedOn(world, person, opened.courseId)
+    : openFor(world, person, opened.courseId);
 }
 
-const choiceOf = (opened: ForOpened): Choice =>
+/** From Given the default, each course starts at its default, so Save keeps it as the host's pick. */
+const startOf = (course: EvCourse | undefined, given: boolean): Choice =>
+  given && course?.pick != null ? { ...course.pick } : blankChoice;
+
+const choiceOf = (opened: ForOpened, course?: EvCourse): Choice =>
   opened.dishId == null
-    ? blankChoice
+    ? startOf(course, opened.given === true)
     : {
         dishId: opened.dishId,
         variantId: opened.variantId ?? null,
@@ -622,7 +706,7 @@ function begun(first: PicksStart): { world: PicksWorld; opened: Opened | null; s
     const out = outcomeFor(
       person,
       course,
-      choiceOf(opened),
+      choiceOf(opened, course),
       opened.confirm === true,
       opened.refuses === true,
     );
@@ -664,14 +748,14 @@ function ChooseFor({
       ? outcomeFor(
           person,
           courses[0] as EvCourse,
-          choiceOf(opened),
+          choiceOf(opened, courses[0]),
           opened.confirm === true,
           opened.refuses === true,
         )
       : null,
   );
   const [at, setAt] = useState(0);
-  const [choice, setChoice] = useState<Choice>(() => choiceOf(opened));
+  const [choice, setChoice] = useState<Choice>(() => choiceOf(opened, courses[0]));
   const [error, setError] = useState<string | null>(shown?.kind === 'error' ? shown.words : null);
   const [asking, setAsking] = useState<DishAllergen[] | null>(
     shown?.kind === 'ask' ? shown.allergens : null,
@@ -686,7 +770,7 @@ function ChooseFor({
   }, [shown]);
 
   const course = courses[at] as EvCourse;
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
 
   const save = (confirmed: boolean) => {
@@ -708,7 +792,7 @@ function ChooseFor({
     onSave(course.id, person.id, out.pick, out.line, out.overridden);
     if (at + 1 < courses.length) {
       setAt(at + 1);
-      setChoice(blankChoice);
+      setChoice(startOf(courses[at + 1], opened.given === true));
       setError(null);
     } else onClose();
   };
@@ -754,7 +838,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     allergens={dishAllergens(one, person)}
-                    first={first}
+                    who={who}
                     onPick={() => pickDish(one.id)}
                   />
                 ))}
@@ -764,7 +848,7 @@ function ChooseFor({
                   label={SW.kitchenChoose}
                   checked={choice.dishId === 'kitchen'}
                   allergens={[]}
-                  first={first}
+                  who={who}
                   onPick={() => pickDish('kitchen')}
                 />
               </div>
@@ -782,7 +866,7 @@ function ChooseFor({
                       childrenOnly={!isForEveryone(variant)}
                       checked={choice.variantId === variant.id}
                       allergens={ruledOut(person, containsOf(dish, variant.id, []))}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({ ...choice, variantId: variant.id });
                         setError(null);
@@ -805,7 +889,7 @@ function ChooseFor({
                         label={option.name}
                         checked={choice.optionIds.includes(option.id)}
                         allergens={ruledOut(person, codesOf(option.contains))}
-                        first={first}
+                        who={who}
                         onPick={() => {
                           setChoice({
                             ...choice,
@@ -852,11 +936,11 @@ function ChooseFor({
       </div>
       {asking != null && dish != null && (
         <Override
-          title={SW.overrideTitle(first, allergenList(asking, 'en'))}
+          title={SW.overrideTitle(who, allergensOf(asking))}
           body={SW.overrideBody(
             pickName(dish, { kind: 'dish', ...choice, dishId: dish.id, how: 'host' }),
-            allergenList(asking, 'en'),
-            first,
+            allergensOf(asking),
+            who,
           )}
           keep={SW.chooseAnother}
           go={SW.pickAnyway}
@@ -887,7 +971,7 @@ function DishOption({
   label,
   checked,
   allergens,
-  first,
+  who,
   childrenOnly = false,
   onPick,
 }: {
@@ -896,7 +980,7 @@ function DishOption({
   label: string;
   checked: boolean;
   allergens: readonly DishAllergen[];
-  first: string;
+  who: string;
   childrenOnly?: boolean;
   onPick: () => void;
 }) {
@@ -923,7 +1007,7 @@ function DishOption({
               <Triangle />
               {SW.allergyMark}
             </span>
-            {SW.ruledOut(allergenList(allergens, 'en'), first)}
+            {SW.ruledOut(allergensOf(allergens), who)}
           </span>
         )}
       </span>
@@ -1034,7 +1118,7 @@ function outcomeWho(
       ruled.length > 0 ? { by: HOST, at: CONFIRMED_AT } : null,
     ),
     line: SW.whoSaved(variant.name, dish.name, ticked.size),
-    overridden: ruled.length > 0 ? SW.whoOverride(ruled.map((one) => one.name).join(', ')) : null,
+    overridden: ruled.length > 0 ? SW.whoOverride(listOf(ruled.map((one) => one.name))) : null,
   };
 }
 
@@ -1146,7 +1230,7 @@ function ChooseWho({
                                   <Triangle />
                                   {SW.allergyMark}
                                 </span>
-                                {SW.ruledOutWho(allergenList(ruled, 'en'), firstName(person.name))}
+                                {SW.ruledOutWho(allergensOf(ruled), person.name)}
                               </span>
                             )}
                             {leaving && (
@@ -1181,15 +1265,12 @@ function ChooseWho({
       </div>
       {asking != null && (
         <Override
-          title={SW.overrideWhoTitle(
-            asking.map((one) => firstName(one.name)).join(', '),
-            variant.name,
-          )}
+          title={SW.overrideWhoTitle(listOf(asking.map((one) => one.name)), variant.name)}
           body={SW.overrideWhoBody(
             asking
               .map(
                 (one) =>
-                  `${variant.name} contains ${allergenList(ruledOut(one, contains), 'en')}, which ${firstName(one.name)} is allergic to.`,
+                  `${variant.name} contains ${allergensOf(ruledOut(one, contains))}, which ${one.name} is allergic to.`,
               )
               .join(' '),
           )}

@@ -153,6 +153,32 @@ final class VendorsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aVendorAskedForOpensThePageHoldingIt(): void
+    {
+        $ids = Vec\map(Vec\range(1, 28), fn (int $n): string => Type\string()->coerce($this->add(['name' => Str\format('Vendor %02d', $n), 'category' => 'other'])['id']));
+        $vendor = static fn (int $n): string => $ids[$n - 1] ?? self::fail(Str\format('no vendor %d', $n));
+
+        $holding = $this->list('?vendor=' . $vendor(27));
+
+        self::assertSame(2, $holding['page']);
+        self::assertSame(['Vendor 26', 'Vendor 27', 'Vendor 28'], $this->names($holding));
+        self::assertSame(1, $this->list('?vendor=' . $vendor(25))['page']);
+        self::assertSame(1, $this->list('?q=Vendor&vendor=' . $vendor(27))['page'], 'a search keeps its own first page');
+        self::assertSame(1, $this->list('?view=archived&vendor=' . $vendor(27))['page'], 'a vendor outside the view is not landed on');
+        self::assertSame(1, $this->list('?vendor=not-a-vendor')['page']);
+    }
+
+    #[Test]
+    public function anAccentedNameSortsWithItsPlainLetter(): void
+    {
+        foreach (['zeta Hire', 'Ómega Music', 'Marquee Masters', 'Éclat Catering', 'Àbẹ̀ní Flowers', 'bloom & Co'] as $name) {
+            $this->add(['name' => $name, 'category' => 'other']);
+        }
+
+        self::assertSame(['Àbẹ̀ní Flowers', 'bloom & Co', 'Éclat Catering', 'Marquee Masters', 'Ómega Music', 'zeta Hire'], $this->names($this->list()));
+    }
+
+    #[Test]
     public function searchMatchesANameContainingItIgnoringCaseWithAccentsAsTyped(): void
     {
         $this->add(['name' => 'Éclat Catering', 'category' => 'catering']);
@@ -199,6 +225,26 @@ final class VendorsTest extends ApiTestCase
         $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", ['name' => 'Bloom and Co', 'category' => 'hire', 'contactName' => '', 'website' => 'http://bloom.co'])['vendor']);
 
         self::assertSame(['Bloom and Co', 'hire', null, 'http://bloom.co'], [$edited['name'], $edited['category'], $edited['contactName'], $edited['website']]);
+    }
+
+    #[Test]
+    public function anArchivedVendorIsReadOnlyUntilItIsRestored(): void
+    {
+        $bloom = $this->add(['name' => 'Bloom & Co', 'category' => 'flowers', 'contactName' => 'Ngozi Eze']);
+        $id = Type\string()->coerce($bloom['id']);
+        $archived = Type\dict(Type\string(), Type\mixed())->coerce($this->send('POST', "/{$id}/archive")['vendor']);
+        $change = ['name' => 'Bloom and Co', 'category' => 'hire', 'contactName' => ''];
+
+        $refused = $this->send('PUT', "/{$id}", $change, 409);
+
+        self::assertSame('https://soirely.com/errors/conflict', $refused['type']);
+        self::assertSame('This vendor is archived, so your changes were not saved. To edit it, restore it under Archived.', $refused['detail']);
+        self::assertSame([[...$archived, 'events' => 0]], Type\vec(Type\mixed())->coerce($this->list('?view=archived')['vendors']));
+
+        $this->send('POST', "/{$id}/restore");
+        $edited = Type\dict(Type\string(), Type\mixed())->coerce($this->send('PUT', "/{$id}", $change)['vendor']);
+
+        self::assertSame(['Bloom and Co', 'hire', null], [$edited['name'], $edited['category'], $edited['contactName']]);
     }
 
     #[Test]

@@ -16,7 +16,9 @@ import { PAGE_TITLE } from './topTitle.ts';
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const rows = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
 const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8');
+const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
+const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
@@ -70,7 +72,8 @@ describe('nothing under a page title draws larger than the title (sc-67338)', ()
   });
 
   it('caps an event area under the title its body draws', () => {
-    expect(event.match(/<BodyTitle\b/gu)).toHaveLength(2);
+    expect(event.match(/<BodyTitle\b/gu)).toHaveLength(1);
+    expect(guests.match(/<BodyTitle\b/gu)).toHaveLength(1);
   });
 });
 
@@ -88,10 +91,14 @@ describe('the Back pill over a page title draws no larger than the title (sc-674
 
   it('puts every Back the frame draws under the title’s cap', () => {
     expect(frame).toMatch(
-      /<TitleCap\.Provider value=\{cap\}>\s+<Back label=\{back\.label\} onPress=\{back\.onPress\} off=\{back\.off\} testID="frame\.back" \/>/u,
+      /<TitleCap\.Provider value=\{cap\}>\s+<Back\s+label=\{back\.label\}\s+onPress=\{back\.onPress\}\s+off=\{back\.off\}\s+besideShown=\{besideShown\}\s+testID="frame\.back"\s+\/>/u,
     );
     expect(frame.match(/<Back\b/gu)).toHaveLength(1);
-    expect(frame.match(/<FrameBack back=\{back\} cap=\{cap\} \/>/gu)).toHaveLength(4);
+    expect(
+      frame.match(
+        /<FrameBack back=\{back\} cap=\{cap\} besideShown=\{shownBeside\(besideBack\)\} \/>/gu,
+      ),
+    ).toHaveLength(4);
   });
 });
 
@@ -135,6 +142,25 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
   it('steps the account card’s role down by whole words, so a long organisation is never broken', () => {
     expect(settings).toMatch(
       /<CappedWholeWords[^>]*>\s+\{t\('settings\.personRole', role\)\}\s+<\/CappedWholeWords>/u,
+    );
+  });
+
+  it('starts a Settings row’s line no larger than its title draws, both split after a hyphen (sc-69816)', () => {
+    expect(settings).toMatch(
+      /<CappedWholeWords[^>]*\bonDrawn=\{setTitle\}[^>]*\bbreakAfterHyphens\s*>\s+\{row\.title\}/u,
+    );
+    expect(settings).toMatch(
+      /<CappedWholeWords[^>]*\bunder=\{title\}[^>]*\bbreakAfterHyphens\s*>\s+\{row\.line\}/u,
+    );
+  });
+
+  it('draws a label that changes size as a new text, so a moved cap never leaves the old size drawn (sc-69816)', () => {
+    expect(title).toMatch(/<Text\s+\{\.\.\.rest\}\s+(?:\/\/[^\n]*\s+)?key=\{drawnSize\}/u);
+  });
+
+  it('measures a word afresh at each size and start, so a reading at the last one never sizes this one (sc-69816, sc-74113)', () => {
+    expect(title).toMatch(
+      /key=\{`\$\{look\.size \?\? ''\}\|\$\{look\.maxFontSizeMultiplier \?\? 1\}\|\$\{word\}`\}/u,
     );
   });
 

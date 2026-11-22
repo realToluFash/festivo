@@ -30,6 +30,7 @@ import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
 import { Security } from './Security.tsx';
 import { SignInRules } from './SignInRules.tsx';
+import { SingleSignOn } from './SingleSignOn.tsx';
 import { Vendors } from './Vendors.tsx';
 import { vendorsViewerKey } from './vendors.ts';
 import { SectionTile, SettingsSections } from '../components/SettingsList.tsx';
@@ -38,9 +39,11 @@ import { DemoBell } from './DemoBell.tsx';
 import { DemoOffline } from './DemoOffline.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
+import { usePhoneWidth } from '../phoneWidth.ts';
 import { reachOfRole } from './search.ts';
 import { usePaused, useSwitcherStart } from './switcher.ts';
 import './today.css';
+import './phone.css';
 import '../components/SettingsParts.css';
 
 const TILES: Record<
@@ -58,10 +61,12 @@ export function Settings({
   open = 'members',
   reminders = false,
   page = 'hub',
+  sso = false,
 }: {
   open?: Drawn;
   reminders?: boolean;
   page?: DataControlPage;
+  sso?: boolean;
 }) {
   const [params] = useSearchParams();
   const state = params.get('state') ?? '';
@@ -88,10 +93,13 @@ export function Settings({
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const layers = useMemo(() => ({ stack, push, pop, host }), [stack, push, pop, host]);
   const covered = stack.length > 0;
+  const fit = open === 'vendors' && !reminders;
+  const atPhone = usePhoneWidth();
+  const barBell = fit && atPhone;
 
   return (
     <LayersContext value={layers}>
-      <div className="today desk">
+      <div className={fit ? 'today desk dp-fit' : 'today desk'}>
         <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
           <TodaySidebar
             events={SIDEBAR_EVENTS}
@@ -99,6 +107,8 @@ export function Settings({
             settings
             person={seen}
             inert={covered}
+            phone={fit}
+            bell={barBell && <DemoBell tell={tell} />}
           />
           <main id="content" className="desk-main" inert={covered}>
             <>
@@ -130,6 +140,14 @@ export function Settings({
                 <Personalisation key={`${viewer.key}:${state}`} state={state} tell={tell} />
               ) : open === 'general' ? (
                 <General key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
+              ) : open === 'signInRules' && sso ? (
+                <SingleSignOn
+                  key={`sso:${viewer.key}:${state}:${params.get('plan') ?? ''}`}
+                  viewer={viewer}
+                  state={state}
+                  plan={params.get('plan') === 'free' ? 'free' : 'enterprise'}
+                  tell={tell}
+                />
               ) : open === 'signInRules' ? (
                 <SignInRules
                   key={`${viewer.key}:${state}`}
@@ -152,6 +170,7 @@ export function Settings({
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   state={state}
                   tell={tell}
+                  bell={!barBell}
                 />
               ) : viewer.manages ? (
                 <Members

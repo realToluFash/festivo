@@ -1,6 +1,7 @@
 import {
   type InputHTMLAttributes,
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
   useEffect,
@@ -19,16 +20,19 @@ import './eventsDesk.css';
 import './eventPage.css';
 import './arrivalNote.css';
 
-/** The page's way back: Events, then the event's name as where you are once it has loaded. */
+/** The page's way back: Events, then the event's name as where you are once it has loaded; under an area, the name opens the event and the area is where you are. */
 export function Crumb({
   to,
   back,
   name,
+  area,
   children,
 }: {
-  to: string;
+  /** None for an account with no organisation, which has no list to go back to (sc-71). */
+  to: string | null;
   back: string;
   name: string | null;
+  area?: { label: string; event: string } | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -37,13 +41,31 @@ export function Crumb({
     <div className="ev-crumb-row">
       <nav className="ev-crumb" aria-label={t('eventPage.crumb')}>
         <ol>
-          <li className="ev-crumb-part">
-            <Link to={to}>{back}</Link>
-          </li>
+          {to != null && (
+            <li className="ev-crumb-part">
+              <Link to={to}>{back}</Link>
+            </li>
+          )}
           {name != null && (
+            <li className="ev-crumb-part" aria-current={area == null ? 'page' : undefined}>
+              {to != null && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
+              {area == null ? (
+                <span className="ev-crumb-name">{name}</span>
+              ) : (
+                <Link className="ev-crumb-name" to={area.event}>
+                  {name}
+                </Link>
+              )}
+            </li>
+          )}
+          {area != null && (
             <li className="ev-crumb-part" aria-current="page">
-              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-              <span className="ev-crumb-name">{name}</span>
+              {(to != null || name != null) && (
+                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              )}
+              <span className="ev-crumb-name">{area.label}</span>
             </li>
           )}
         </ol>
@@ -129,9 +151,7 @@ export function Opened({
   unsaved = changed,
   verb,
   asking: first = null,
-  refused = false,
   busy = false,
-  onLatest,
   onCancel,
   onSave,
   children,
@@ -141,10 +161,8 @@ export function Opened({
   /** What Cancel asks about, when it is more than what Save would save: a photo still uploading. */
   unsaved?: boolean;
   verb?: string;
-  asking?: 'discard' | 'latest' | null;
-  refused?: boolean;
+  asking?: 'discard' | null;
   busy?: boolean;
-  onLatest?: () => void;
   onCancel: () => void;
   onSave: () => void;
   children: ReactNode;
@@ -180,15 +198,6 @@ export function Opened({
 
   return (
     <div className="ev-opened" role="group" aria-label={label} ref={box}>
-      {refused && (
-        <Broken
-          action={
-            <TextAction label={t('eventEdit.showLatest')} onClick={() => setAsking('latest')} />
-          }
-        >
-          {t('eventEdit.changedElsewhere')}
-        </Broken>
-      )}
       {children}
       <div className="ev-opened-actions">
         <TextAction label={t('eventEdit.cancel')} onClick={cancel} />
@@ -214,19 +223,6 @@ export function Opened({
           onGo={() => {
             setAsking(null);
             onCancel();
-          }}
-        />
-      )}
-      {asking === 'latest' && (
-        <Ask
-          title={t('eventEdit.showLatestTitle')}
-          line={t('eventEdit.showLatestBody')}
-          keep={t('eventEdit.keepEditing')}
-          go={t('eventEdit.showLatest')}
-          onKeep={() => setAsking(null)}
-          onGo={() => {
-            setAsking(null);
-            onLatest?.();
           }}
         />
       )}
@@ -450,10 +446,23 @@ export function Alert({ children }: { children: ReactNode }) {
   );
 }
 
-/** The broken notice, with what to do about it under its words. */
-export function Broken({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** The broken notice and what to do about it; with `landing`, focus reads it instead of an announcement. */
+export function Broken({
+  children,
+  action,
+  landing,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  landing?: Ref<HTMLDivElement> | undefined;
+}) {
   return (
-    <div className="notice notice-broken ev-notice" role="alert">
+    <div
+      className="notice notice-broken ev-notice"
+      role={landing == null ? 'alert' : undefined}
+      ref={landing}
+      tabIndex={landing == null ? undefined : -1}
+    >
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

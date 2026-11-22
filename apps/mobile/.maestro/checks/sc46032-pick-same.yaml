@@ -7,12 +7,12 @@ appId: host.exp.Exponent
       ASK: /membership?change=join&org=Beta
 - openLink: ${METRO_URL}/--/
 - tapOn:
-    id: 'frame.home'
+    id: 'tab-today|frame.home'
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
-    id: 'frame.organisation'
+    id: 'frame.organisation|home.switchOrganisation'
 - extendedWaitUntil:
     visible:
       id: 'switcher.heading'
@@ -30,7 +30,7 @@ appId: host.exp.Exponent
 - assertNotVisible: '{{t:switcher.switched}}'
 - takeScreenshot: same-picked
 - tapOn:
-    id: 'frame.organisation'
+    id: 'frame.organisation|home.switchOrganisation'
 - extendedWaitUntil:
     visible:
       id: 'switcher.heading'
@@ -38,7 +38,7 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 5000
 - tapOn:
-    id: 'switcher.close'
+    point: '50%,80%'
 - extendedWaitUntil:
     notVisible:
       id: 'switcher.heading'

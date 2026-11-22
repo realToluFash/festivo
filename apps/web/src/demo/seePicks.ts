@@ -1,9 +1,11 @@
-import type { Allergen } from './guestKitchenWords.ts';
+import { type CourseDefault, DFW, pickWords, suitableFor } from './courseDefault.ts';
+import { type Allergen, type Diet, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
 import { type Choice, type ChoiceOption, hasChoices } from './dishChoices.ts';
 import { type Variant, hasVariants, isForEveryone, variantsOf } from './dishVariants.ts';
 import { type EvCourse, type EvDish, coursesAt, picksCourses } from './menuCourses.ts';
-import { type Contains, type DishAllergen, DISH_ALLERGENS } from './menuLibrary.ts';
+import { type Contains, type DishAllergen, DISH_ALLERGENS, listOf } from './menuLibrary.ts';
 import { MENU_EVENT } from './menuServed.ts';
+import { dayWords } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
 
 /** sc-3909's See picks (board SeePicks, drawn into page 32's Menu): every person coming in exactly one state per course, the figures adding up to the room, and the host choosing for a guest. */
@@ -14,6 +16,7 @@ export interface Person {
   name: string;
   party: string;
   allergies: readonly Allergen[];
+  diets: readonly (Diet | 'other')[];
 }
 
 export interface Party {
@@ -26,7 +29,8 @@ export interface Override {
   at: string;
 }
 
-export type How = 'guest' | 'defaulted' | 'host';
+/** Being defaulted is never stored (sc-1362): a person with no pick is worked out as defaulted once the course's choose-by date has passed. */
+export type How = 'guest' | 'host';
 
 export interface DishPick {
   kind: 'dish';
@@ -46,7 +50,11 @@ export interface PicksWorld {
   parties: readonly Party[];
   picks: Readonly<Record<string, Readonly<Record<string, Pick>>>>;
   held: number;
+  today: string;
+  chooseBy: Readonly<Record<string, string>>;
 }
+
+export type Excluded = { kind: 'allergy' } | { kind: 'diet'; diet: Diet | 'other' };
 
 export type HostReason =
   { kind: 'nothing' } | { kind: 'allergy'; dish: string; allergens: readonly DishAllergen[] };
@@ -62,7 +70,7 @@ export type Spot =
   | { kind: 'kitchen' }
   | { kind: 'skipped' }
   | { kind: 'changed' }
-  | { kind: 'none' }
+  | { kind: 'none'; excluded: Excluded | null }
   | { kind: 'host'; reason: HostReason };
 
 export const HOST = 'Kemi Adebayo';
@@ -105,7 +113,7 @@ export const SW = {
   none: 'Not chosen',
   changed: 'Menu changed',
   theRoom: 'The room',
-  noSkip: 'This course can’t be skipped.',
+  noSkip: 'This course cannot be skipped.',
   perPick: 'Options are counted per pick, so they add up to the dish, not to the room.',
   asksNothing: (dish: string) =>
     `Guests are asked nothing on this course. Everyone coming gets ${dish}, except the people you give a children’s variant and anyone it rules out, who wait under Needs the host.`,
@@ -115,6 +123,13 @@ export const SW = {
   whoHasntNone: 'Everyone coming has picked every course, or is with the host above.',
   replied: (name: string, n: number) => `Replied by ${name} · ${people(n)}`,
   notChosenOn: (courses: string) => `Not chosen: ${courses}`,
+  neverGiven: (n: number) => `[Never given the default · ${people(n)}]`,
+  excludedOn: (course: string, why: string) => `${course} · ${why}`,
+  allergy: 'allergy',
+  otherDiet: 'Other diet',
+  given: (n: number) => `[Given the default · ${people(n)}]`,
+  givenOn: (course: string, pick: string) => `${course}: ${pick}`,
+  defaultMark: '[(default)]',
   chooseFor: 'Choose for them',
   chooseForAria: (name: string) => `Choose for ${name}`,
   needsManage: 'Choosing for a guest needs Guests manage.',
@@ -125,22 +140,22 @@ export const SW = {
   kitchenChoose: 'Let the kitchen choose',
   whichWay: (dish: string) => `How should ${dish} come?`,
   allergyMark: 'Allergy',
-  ruledOut: (allergens: string, first: string) =>
-    `Contains ${allergens}, which ${first} is allergic to. You can still pick it.`,
-  ruledOutWho: (allergens: string, first: string) =>
-    `Contains ${allergens}, which ${first} is allergic to.`,
-  blank: (course: string, first: string) =>
-    `Choose ${course.toLocaleLowerCase('en')} for ${first}, or let the kitchen choose.`,
-  blankWay: (dish: string, first: string) => `Choose how ${first} has the ${dish}.`,
-  blankOption: (question: string, first: string) => `Answer “${question}” for ${first}.`,
+  ruledOut: (allergens: string, who: string) =>
+    `Contains ${allergens}, which ${who} is allergic to. You can still pick it.`,
+  ruledOutWho: (allergens: string, who: string) =>
+    `Contains ${allergens}, which ${who} is allergic to.`,
+  blank: (course: string, who: string) =>
+    `Choose ${course.toLocaleLowerCase('en')} for ${who}, or let the kitchen choose.`,
+  blankWay: (dish: string, who: string) => `Choose how ${who} has the ${dish}.`,
+  blankOption: (question: string, who: string) => `Answer “${question}” for ${who}.`,
   save: 'Save',
   saveNext: 'Save and go on',
   cancel: 'Cancel',
   close: 'Close',
-  overrideTitle: (first: string, allergens: string) =>
-    `${first}’s record says ${allergens}. Pick it anyway?`,
-  overrideBody: (dish: string, allergens: string, first: string) =>
-    `${dish} contains ${allergens}. If ${first}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
+  overrideTitle: (who: string, allergens: string) =>
+    `${who}’s record says ${allergens}. Pick it anyway?`,
+  overrideBody: (dish: string, allergens: string, who: string) =>
+    `${dish} contains ${allergens}. If ${who}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
   chooseAnother: 'Choose another dish',
   pickAnyway: 'Pick it anyway',
   overrideWhoTitle: (names: string, variant: string) => `${names}: give ${variant} anyway?`,
@@ -149,11 +164,10 @@ export const SW = {
   leaveOut: 'Leave them out',
   giveAnyway: 'Give it anyway',
   refused:
-    'You can’t choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.',
-  savedFor: (course: string, first: string, what: string) =>
-    `${course} chosen for ${first}: ${what}.`,
-  savedOverride: (first: string, dish: string, allergens: string) =>
-    `Recorded as your pick for ${first}, despite the record: ${dish} contains ${allergens}.`,
+    'You cannot choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.',
+  savedFor: (course: string, who: string, what: string) => `${course} chosen for ${who}: ${what}.`,
+  savedOverride: (who: string, dish: string, allergens: string) =>
+    `Recorded as your pick for ${who}, despite the record: ${dish} contains ${allergens}.`,
   whoTitle: (variant: string) => `Choose who gets ${variant}`,
   whoSub: (dish: string, course: string) => `${dish} · ${course}`,
   whoHelp:
@@ -181,9 +195,6 @@ export const numberIn = (n: number, locale = 'en'): string => n.toLocaleString(l
 /** Rounds down, so 100% shows only when everyone is in. */
 export const percentOf = (n: number, room: number): number =>
   room === 0 ? 0 : Math.floor((n * 100) / room);
-
-const first = (name: string): string => name.split(' ')[0] ?? name;
-export const firstName = first;
 
 export const shownCourses = (world: PicksWorld): readonly EvCourse[] =>
   world.courses.filter((course) => course.dishes.length > 0);
@@ -239,6 +250,45 @@ export function nothingFor(course: EvCourse, person: Person): boolean {
 export const pickOf = (world: PicksWorld, courseId: string, personId: string): Pick | undefined =>
   world.picks[courseId]?.[personId];
 
+export function defaultOf(
+  world: PicksWorld,
+  course: EvCourse,
+): { pick: CourseDefault; chooseBy: string; passed: boolean } | null {
+  const chooseBy = world.chooseBy[course.id];
+  if (course.pick == null || chooseBy == null) return null;
+
+  return { pick: course.pick, chooseBy, passed: world.today > chooseBy };
+}
+
+/** Never given the default: any recorded allergy, then the first diet the default doesn't meet; a recorded Other diet is never met. */
+export function excludedFrom(
+  pick: CourseDefault,
+  course: EvCourse,
+  person: Person,
+): Excluded | null {
+  if (person.allergies.length > 0) return { kind: 'allergy' };
+  const suitable = suitableFor(course, pick);
+  const diet = person.diets.find((one) => one === 'other' || !suitable.includes(one));
+
+  return diet == null ? null : { kind: 'diet', diet };
+}
+
+export function excludedWords(excluded: Excluded): string {
+  if (excluded.kind === 'allergy') return SW.allergy;
+
+  return excluded.diet === 'other' ? SW.otherDiet : GUEST_KITCHEN_NAMES.en.diets[excluded.diet];
+}
+
+function noPick(world: PicksWorld, course: EvCourse, person: Person): Spot {
+  if (nothingFor(course, person)) return { kind: 'host', reason: { kind: 'nothing' } };
+  const given = defaultOf(world, course);
+  if (given == null) return { kind: 'none', excluded: null };
+  const excluded = excludedFrom(given.pick, course, person);
+  if (excluded != null || !given.passed) return { kind: 'none', excluded };
+
+  return { kind: 'dish', ...given.pick, defaulted: true };
+}
+
 export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spot {
   const pick = pickOf(world, course.id, person.id);
 
@@ -251,10 +301,7 @@ export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spo
       : { kind: 'dish', dishId: dish.id, variantId, optionIds: [], defaulted: false };
   }
 
-  if (pick == null)
-    return nothingFor(course, person)
-      ? { kind: 'host', reason: { kind: 'nothing' } }
-      : { kind: 'none' };
+  if (pick == null) return noPick(world, course, person);
   if (pick.kind !== 'dish') return pick;
 
   const dish = course.dishes.find((one) => one.id === pick.dishId);
@@ -269,7 +316,7 @@ export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spo
     dishId: pick.dishId,
     variantId: pick.variantId,
     optionIds: pick.optionIds,
-    defaulted: pick.how === 'defaulted',
+    defaulted: false,
   };
 }
 
@@ -296,6 +343,7 @@ export interface Row {
 export interface CourseFigures {
   course: EvCourse;
   asksNothing: boolean;
+  defaultLine: string | null;
   rows: Row[];
   kitchen: number;
   skipped: number;
@@ -354,9 +402,21 @@ export function courseFigures(world: PicksWorld, course: EvCourse): CourseFigure
   const host = count((spot) => spot.kind === 'host');
   const none = count((spot) => spot.kind === 'none');
 
+  const given = defaultOf(world, course);
+
   return {
     course,
     asksNothing: asksNothing(course),
+    defaultLine:
+      given == null
+        ? null
+        : given.passed
+          ? DFW.lineGiven(
+              pickWords(course, given.pick),
+              dayWords(given.chooseBy, 'en'),
+              count((spot) => spot.kind === 'dish' && spot.defaulted),
+            )
+          : DFW.line(pickWords(course, given.pick), dayWords(given.chooseBy, 'en')),
     rows,
     kitchen: count((spot) => spot.kind === 'kitchen'),
     skipped: count((spot) => spot.kind === 'skipped'),
@@ -411,24 +471,88 @@ export function needsHost(world: PicksWorld): HostLine[] {
   );
 }
 
-export interface Waiting {
-  party: Party;
-  people: { person: Person; courses: readonly EvCourse[] }[];
+export interface OpenCourse {
+  course: EvCourse;
+  excluded: Excluded | null;
 }
 
+export interface WaitingPerson {
+  person: Person;
+  courses: readonly EvCourse[];
+  open: readonly OpenCourse[];
+}
+
+export interface Waiting {
+  party: Party;
+  people: WaitingPerson[];
+}
+
+function waitingOf(world: PicksWorld, person: Person): WaitingPerson {
+  const open = shownCourses(world).flatMap((course): OpenCourse[] => {
+    const spot = spotOf(world, course, person);
+
+    return spot.kind === 'none' ? [{ course, excluded: spot.excluded }] : [];
+  });
+
+  return { person, courses: open.map((one) => one.course), open };
+}
+
+const isExcluded = (one: WaitingPerson): boolean =>
+  one.open.some((course) => course.excluded != null);
+
+export function neverGiven(world: PicksWorld): WaitingPerson[] {
+  return world.people.map((person) => waitingOf(world, person)).filter(isExcluded);
+}
+
+/** Who hasn't picked, by who replied; a person never given a default is in `neverGiven` instead. */
 export function whoHasnt(world: PicksWorld): Waiting[] {
   return world.parties.flatMap((party) => {
     const open = world.people
       .filter((person) => person.party === party.id)
+      .map((person) => waitingOf(world, person))
+      .filter((one) => one.courses.length > 0 && !isExcluded(one));
+
+    return open.length === 0 ? [] : [{ party, people: open }];
+  });
+}
+
+export function openWords(open: readonly OpenCourse[]): string {
+  return SW.notChosenOn(
+    listOf(
+      open.map(({ course, excluded }) =>
+        excluded == null ? course.name : SW.excludedOn(course.name, excludedWords(excluded)),
+      ),
+    ),
+  );
+}
+
+export interface GivenPerson {
+  person: Person;
+  courses: readonly { course: EvCourse; pick: string }[];
+}
+
+export function givenDefault(world: PicksWorld): { party: Party; people: GivenPerson[] }[] {
+  return world.parties.flatMap((party) => {
+    const given = world.people
+      .filter((person) => person.party === party.id)
       .map((person) => ({
         person,
-        courses: shownCourses(world).filter(
-          (course) => spotOf(world, course, person).kind === 'none',
-        ),
+        courses: defaultedOn(world, person).map((course) => ({
+          course,
+          pick: pickWords(course, course.pick as CourseDefault),
+        })),
       }))
       .filter((one) => one.courses.length > 0);
 
-    return open.length === 0 ? [] : [{ party, people: open }];
+    return given.length === 0 ? [] : [{ party, people: given }];
+  });
+}
+
+export function defaultedOn(world: PicksWorld, person: Person, courseId?: string): EvCourse[] {
+  return shownCourses(world).filter((course) => {
+    const spot = spotOf(world, course, person);
+
+    return (courseId == null || course.id === courseId) && spot.kind === 'dish' && spot.defaulted;
   });
 }
 
@@ -629,6 +753,12 @@ const dishPick = (
   how: How = 'guest',
 ): DishPick => ({ kind: 'dish', dishId, variantId, optionIds, how });
 
+/** sc-1362's recorded diets, which only a default reads: Bea is Vegetarian and Nadia has an Other diet. */
+const DIETS_OF: Readonly<Record<string, readonly (Diet | 'other')[]>> = {
+  'bea-mensah': ['vegetarian'],
+  'nadia-petrova': ['other'],
+};
+
 const MAIN: Record<Code, Pick | null> = {
   '-': null,
   jc: dishPick('k2-jollof', 'v-chicken'),
@@ -668,7 +798,7 @@ export function samplePicks(): PicksWorld {
     parties.push({ id, replier: (party[0] as Row48)[0] });
     for (const [name, allergies, main, dessert, starter] of party) {
       const personId = slug(name);
-      people.push({ id: personId, name, party: id, allergies });
+      people.push({ id: personId, name, party: id, allergies, diets: DIETS_OF[personId] ?? [] });
       const mainPick = MAIN[main] ?? null;
       const dessertPick = DESSERT[dessert] ?? null;
       if (mainPick != null) (picks.k2 as Record<string, Pick>)[personId] = mainPick;
@@ -678,11 +808,41 @@ export function samplePicks(): PicksWorld {
     }
   }
 
-  return { courses: picksCourses(), people, parties, picks, held: 0 };
+  return {
+    courses: picksCourses(),
+    people,
+    parties,
+    picks,
+    held: 0,
+    today: BEFORE_DATE,
+    chooseBy: {},
+  };
+}
+
+const CHOOSE_BY = '2026-10-16';
+const BEFORE_DATE = '2026-10-14';
+const AFTER_DATE = '2026-10-17';
+
+const MAIN_DEFAULT: CourseDefault = { dishId: 'k2-jollof', variantId: 'v-chicken', optionIds: [] };
+const DESSERT_DEFAULT: CourseDefault = { dishId: 'k3-zobo', variantId: null, optionIds: [] };
+
+/** sc-1362's sample: Main's default is Jollof rice, Chicken, chosen by Friday, Oct 16; with `dessert`, Zobo sorbet on Dessert by the same date. */
+function withDefaults(world: PicksWorld, today: string, dessert = false): PicksWorld {
+  const set = { k2: MAIN_DEFAULT, ...(dessert ? { k3: DESSERT_DEFAULT } : {}) };
+
+  return {
+    ...world,
+    today,
+    courses: world.courses.map((course) => {
+      const pick = (set as Record<string, CourseDefault>)[course.id];
+      return pick == null ? course : { ...course, pick };
+    }),
+    chooseBy: Object.fromEntries(Object.keys(set).map((id) => [id, CHOOSE_BY])),
+  };
 }
 
 function allInPicks(): PicksWorld {
-  const world = samplePicks();
+  const world = withDefaults(samplePicks(), AFTER_DATE, true);
   const at = '18 Oct, 17:05';
   let next = world;
   for (const person of world.people)
@@ -693,11 +853,9 @@ function allInPicks(): PicksWorld {
           next,
           course.id,
           person.id,
-          course.id === 'k3'
-            ? dishPick('k3-zobo', null, [], 'defaulted')
-            : person.allergies.includes('celery')
-              ? dishPick('ev-wrap', 'v-beef', [], 'defaulted')
-              : dishPick('k2-jollof', 'v-chicken', [], 'defaulted'),
+          person.allergies.includes('celery') && course.id === 'k2'
+            ? dishPick('ev-wrap', 'v-beef', [], 'host')
+            : { kind: 'kitchen' },
         );
     }
   next = chooseFor(next, 'k2', 'kwame-asante', dishPick('k2-jollof', 'v-plain', [], 'host'));
@@ -739,6 +897,8 @@ export type Opened =
       press?: boolean;
       confirm?: boolean;
       refuses?: boolean;
+      /** Opened from Given the default (sc-1362): the courses the person was defaulted on, each starting at its default. */
+      given?: boolean;
     }
   | {
       kind: 'chooseWho';
@@ -805,7 +965,7 @@ const STATES = {
   picksAllIn: () =>
     start({
       name: 'All in, after the close',
-      note: 'Not chosen defaulted (sc-1362), the host settled Kwame, Elena and Ada, and let the kitchen choose the starter for Kwame, Kojo and Elena.',
+      note: 'Main and Dessert have defaults whose date has passed (sc-1362), so everyone without an answer was defaulted. The host settled those never given the default, Kwame, Elena and Ada, and let the kitchen choose the starter for Kwame, Kojo and Elena.',
       world: allInPicks(),
     }),
   picksHeld: () =>
@@ -938,6 +1098,53 @@ const STATES = {
       note: 'Nothing was saved.',
       opened: { ...KOJO_KIDS, toggle: ['ife-adeyemi'], press: true, refuses: true },
     }),
+  picksDefaultBefore: () =>
+    start({
+      name: 'A default, before its date (sc-1362)',
+      note: 'Main’s default is Jollof rice, Chicken, by Friday, Oct 16. Defaulted shows with 0 already, the line under Main names the default, and Who hasn’t picked opens with those never given it: Kojo for an allergy, Bea for Vegetarian, Nadia for an Other diet.',
+      world: withDefaults(samplePicks(), BEFORE_DATE),
+    }),
+  picksDefaultAfter: () =>
+    start({
+      name: 'A default, after its date (sc-1362)',
+      note: 'Saturday, Oct 17: Kofi and Ivan, coming with no Main and nothing to exclude them, are defaulted, worked out and never stored. They count as picks in, show under Defaulted, and are listed in Given the default.',
+      world: withDefaults(samplePicks(), AFTER_DATE),
+      demo: true,
+    }),
+  picksDefaultExcluded: () =>
+    start({
+      name: 'Never given the default, listed first (sc-1362)',
+      note: 'Main and Dessert both defaulted: Who hasn’t picked holds only the people never given a default, each once, with the reason on each course.',
+      world: withDefaults(samplePicks(), AFTER_DATE, true),
+    }),
+  picksDefaultReadOnly: () =>
+    start({
+      name: 'A default, after its date, Guests read only (sc-1362)',
+      note: 'Given the default lists names without Choose for them. Without Guests read it is hidden, as Who hasn’t picked is.',
+      world: withDefaults(samplePicks(), AFTER_DATE),
+      access: 'read',
+    }),
+  chooseForDefaulted: () =>
+    start({
+      name: 'Choose for a defaulted person (sc-1362)',
+      note: 'Kofi Mensah, from Given the default: Main opens at its default, Jollof rice, Chicken.',
+      world: withDefaults(samplePicks(), AFTER_DATE),
+      opened: { kind: 'chooseFor', personId: 'kofi-mensah', given: true },
+    }),
+  chooseForDefaultedSaved: () =>
+    start({
+      name: 'Chosen for them (sc-1362)',
+      note: 'Suya wrap, Beef, saved for Kofi: he moves from Defaulted to Chosen and off Given the default. Saving the default itself would do the same.',
+      world: withDefaults(samplePicks(), AFTER_DATE),
+      opened: {
+        kind: 'chooseFor',
+        personId: 'kofi-mensah',
+        given: true,
+        dishId: 'ev-wrap',
+        variantId: 'v-beef',
+        press: true,
+      },
+    }),
 } satisfies Record<string, () => PicksStart>;
 
 export type PicksStateName = keyof typeof STATES;
@@ -992,6 +1199,19 @@ export const PICKS_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'chooseForOverride',
         'chooseForOverridden',
         'chooseForRefused',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'A course’s default (sc-1362)',
+    states: (
+      [
+        'picksDefaultBefore',
+        'picksDefaultAfter',
+        'picksDefaultExcluded',
+        'picksDefaultReadOnly',
+        'chooseForDefaulted',
+        'chooseForDefaultedSaved',
       ] as const
     ).map(link),
   },

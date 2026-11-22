@@ -70,6 +70,7 @@ import {
   problemsOf,
   replyDate,
   shownReply,
+  staysBecause,
   violationProblems,
   NO_NEEDS,
   type NeedsProblems,
@@ -94,6 +95,7 @@ const MARK: Record<ReplyWord, string> = {
   noReply: 'is-no-reply',
   held: 'is-held',
   notYetInvited: 'is-not-yet',
+  walkIn: 'is-walk-in',
 };
 
 export function ReplyMark({
@@ -113,7 +115,30 @@ export function ReplyMark({
       {reply === 'coming' && <Glyph name="tick" size={Math.round(size * 0.68)} weight={3.2} />}
       {reply === 'notComing' && <span className="gs-bar" />}
       {reply === 'maybe' && <Glyph name="question" size={Math.round(size * 0.8)} weight={2.8} />}
+      {reply === 'walkIn' && <Door size={Math.round(size * 0.7)} />}
     </span>
+  );
+}
+
+/** The door the Walk-in mark carries (spec §18.8): the shared glyphs have none. */
+function Door({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 21h16" />
+      <path d="M6 21V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21" />
+      <path d="M14.5 12.5h.01" />
+    </svg>
   );
 }
 
@@ -471,6 +496,13 @@ export function GuestColumn({
       backOnList={backOnList}
       onRemove={onRemove}
       onRemovedAlready={onRemovedAlready}
+      onReadAgain={() =>
+        api.guest(eventId, guestId).then((tagged) => {
+          setPane({ kind: 'guest', tagged });
+          onChanged(tagged.guest);
+          return tagged.guest;
+        })
+      }
       gone={pane.gone === true}
       onNotFound={() => {
         setPane({ kind: 'notFound' });
@@ -506,6 +538,7 @@ function GuestView({
   backOnList,
   onRemove,
   onRemovedAlready,
+  onReadAgain,
   gone,
   onNotFound,
 }: {
@@ -536,6 +569,7 @@ function GuestView({
   backOnList: boolean;
   onRemove: (guest: GuestDetails) => Promise<void>;
   onRemovedAlready: () => void;
+  onReadAgain: () => Promise<GuestDetails>;
   /** Read again as not found, from another host's change: an open "Remove {full name}?" turns into the 404's refusal. */
   gone: boolean;
   onNotFound: () => void;
@@ -658,7 +692,9 @@ function GuestView({
         setRemoving(
           error instanceof ApiError && error.status === 404
             ? { kind: 'gone' }
-            : { kind: 'asking', busy: false, failed: true },
+            : error instanceof ApiError && error.code === 'guest_arrived'
+              ? { kind: 'stays', why: arrivedWhy(error) }
+              : { kind: 'asking', busy: false, failed: true },
         ),
     );
   }
@@ -672,6 +708,7 @@ function GuestView({
   const replied =
     guest.repliedAt == null ? null : replyDate(guest.repliedAt, timeZone, dateLocale());
   const reply = shownReply(guest);
+  const stays = staysBecause(guest);
   const notYet = reply === 'notYetInvited';
   const closed = notYet ? null : closedLine(t, guest, replies, manages, timeZone, dateLocale());
   const reopens = manages && !notYet && replies.closedOn != null && guest.repliesReopened == null;
@@ -895,7 +932,13 @@ function GuestView({
               </li>
             )}
             {guest.companions.map((companion, at) => (
-              <li key={companion.id} className="desk-row">
+              <li
+                key={companion.id}
+                className="desk-row"
+                {...(companion.arrival != null && guest.arrival == null
+                  ? { tabIndex: -1, 'data-focus': `arrival-${companion.id}` }
+                  : {})}
+              >
                 <MarkLead reply={companion.state} />
                 <div className="gs-row-words">
                   <RowWords
@@ -904,6 +947,7 @@ function GuestView({
                       companion.state === 'held'
                         ? t('guestList.heldCompanion')
                         : t('guestList.companionLine', { reply: t(REPLY_KEY[companion.state]) }),
+                      ...(companion.arrival == null ? [] : [t('guestList.arrived')]),
                     ]}
                   />
                   {companion.namedByGuest && (
@@ -912,6 +956,12 @@ function GuestView({
                 </div>
               </li>
             ))}
+            {guest.arrival != null && (
+              <li className="desk-row">
+                <IconLead name="tick" />
+                <RowWords title={t('guestList.arrived')} lines={[t('guestList.arrival')]} />
+              </li>
+            )}
             {manages && (
               <li className="desk-row">
                 <IconLead name="user" />
@@ -928,14 +978,24 @@ function GuestView({
           </ul>
           {manages && (
             <div className="gr-foot">
-              <button
-                type="button"
-                className="gs-pill is-secondary"
-                data-focus="remove"
-                onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
-              >
-                {t('guestList.removeFromList')}
-              </button>
+              {stays == null ? (
+                <button
+                  type="button"
+                  className="gs-pill is-secondary"
+                  data-focus="remove"
+                  onClick={() => setRemoving({ kind: 'asking', busy: false, failed: false })}
+                >
+                  {t('guestList.removeFromList')}
+                </button>
+              ) : (
+                <p className="gr-stays">
+                  {t(
+                    stays === 'arrived'
+                      ? 'guestList.staysArrived'
+                      : 'guestList.staysCompanionArrived',
+                  )}
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -997,6 +1057,19 @@ function GuestView({
           }}
           onRemove={removed}
           onGone={onRemovedAlready}
+          onBack={() => {
+            const back = (details: GuestDetails) => {
+              const arrived = details.companions.find((one) => one.arrival != null);
+
+              setRemoving(null);
+              if (details.arrival == null && arrived != null)
+                focus(`arrival-${arrived.id}`, 'guest-heading');
+              else focus('guest-heading');
+            };
+
+            // The details were read before the arrival that refused the removal.
+            onReadAgain().then(back, () => back(guest));
+          }}
         />
       )}
       {replace.kind === 'asking' && (
@@ -1279,7 +1352,7 @@ function EditForm({
     sent: Values;
     changed: readonly Field[];
   } | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<boolean | string>(false);
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const form = useRef<HTMLDivElement>(null);
@@ -1460,6 +1533,8 @@ function EditForm({
           if (again instanceof ApiError && again.status === 404) onGone();
           else setFailed(true);
         }
+      } else if (error instanceof ApiError && error.code === 'guest_arrived') {
+        setFailed(error.problem.detail ?? true);
       } else if (error instanceof ApiError && error.code === 'guest_already_listed') {
         setDuplicate('asked');
         focus('duplicate');
@@ -1546,7 +1621,7 @@ function EditForm({
       {failed && (
         <p className="desk-error gs-refused" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
-          {t('guestList.notSaved')}
+          {typeof failed === 'string' ? failed : t('guestList.notSaved')}
         </p>
       )}
       <NeedsRefused count={needsFailingCount(needsProblems)} />
@@ -1694,7 +1769,14 @@ function EditForm({
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
-          seatOf={(id) => host.companions.find((one) => one.id === id)?.seat ?? null}
+          goesWith={(id) => {
+            const one = host.companions.find((each) => each.id === id);
+            const seat = one?.seat ?? null;
+            const meal = one?.meal === true;
+
+            return seat == null && !meal ? null : { seat, meal };
+          }}
+          arrivedOf={(id) => host.companions.some((one) => one.id === id && one.arrival != null)}
           said={said}
           words={words}
           needs={{ problems: needsProblems, open: opened.open, toggle: opened.toggle }}
@@ -1727,11 +1809,12 @@ export function Amber({
   );
 }
 
-/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat is asked about first, and the seat is freed only when the edit is saved (sc-4013). */
+/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat or a meal is asked about first, and the seat is freed and the meal dropped only when the edit is saved (sc-4013, sc-3907). */
 function EditCompanions({
   host,
   companions,
-  seatOf,
+  goesWith,
+  arrivedOf,
   said,
   words,
   needs,
@@ -1741,7 +1824,8 @@ function EditCompanions({
 }: {
   host: string;
   companions: Values['companions'];
-  seatOf: (id: string | null) => CompanionSeat | null;
+  goesWith: (id: string | null) => GoesWith | null;
+  arrivedOf: (id: string | null) => boolean;
   said: string | null;
   words: (key: string) => string | undefined;
   needs: CompanionNeeds;
@@ -1752,7 +1836,7 @@ function EditCompanions({
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const [asking, setAsking] = useState<{
-    asks: { name: string; seat: CompanionSeat }[];
+    asks: ({ name: string } & GoesWith)[];
     after: Values['companions'];
     at: number | null;
   } | null>(null);
@@ -1774,15 +1858,16 @@ function EditCompanions({
       <PlacesStepper
         host={host}
         names={companions.map((one) => one.name)}
+        arrived={companions.map((one) => arrivedOf(one.id))}
         onStep={(kept, added) => {
           const after = [
             ...kept.flatMap((at) => companions[at] ?? []),
             ...Array.from({ length: added }, () => ({ id: null, name: '', needs: NO_NEEDS })),
           ];
           const asks = companions.flatMap((one, at) => {
-            const seat = kept.includes(at) ? null : seatOf(one.id);
+            const goes = kept.includes(at) ? null : goesWith(one.id);
 
-            return seat == null ? [] : [{ name: shownAt(at), seat }];
+            return goes == null ? [] : [{ name: shownAt(at), ...goes }];
           });
 
           if (asks.length > 0) setAsking({ asks, after, at: null });
@@ -1803,15 +1888,16 @@ function EditCompanions({
               label={label}
               placeholder={placeholder(at)}
               error={words(`companion-${at}`)}
+              arrived={arrivedOf(companion.id)}
               onChange={(name) =>
                 onChange(companions.map((each, index) => (index === at ? { ...each, name } : each)))
               }
               onRemove={() => {
                 const after = companions.filter((_, index) => index !== at);
-                const seat = seatOf(companion.id);
+                const goes = goesWith(companion.id);
 
-                if (seat != null) {
-                  setAsking({ asks: [{ name: shown, seat }], after, at });
+                if (goes != null) {
+                  setAsking({ asks: [{ name: shown, ...goes }], after, at });
                   return;
                 }
                 onChange(after);
@@ -1850,13 +1936,7 @@ function EditCompanions({
         <Ask
           key={asking.asks.length}
           title={t('guestList.removeTitle', { name: asked.name })}
-          line={t('guestList.seatedLine', {
-            name: asked.name,
-            table:
-              asked.seat.kind === 'row'
-                ? t('seating.rowName', { label: asked.seat.name })
-                : asked.seat.name,
-          })}
+          line={goesLine(t, asked)}
           keep={t('guestList.cancel')}
           go={t('guestList.remove')}
           onKeep={() => setAsking(null)}
@@ -1889,4 +1969,21 @@ function EditCompanions({
       )}
     </fieldset>
   );
+}
+
+/** What leaves with a companion removed in Edit: a seat (sc-4013), a meal chosen (sc-3907), or both. */
+type GoesWith = { seat: CompanionSeat | null; meal: boolean };
+
+function goesLine(t: TFunction, { name, seat, meal }: { name: string } & GoesWith): string {
+  if (seat == null) return t('guestList.mealLine', { name });
+  const table = seat.kind === 'row' ? t('seating.rowName', { label: seat.name }) : seat.name;
+
+  return t(meal ? 'guestList.seatedMealLine' : 'guestList.seatedLine', { name, table });
+}
+
+/** Which arrival a 409 `guest_arrived` names; the guest's own wins over a companion's (sc-1454). */
+function arrivedWhy(error: ApiError): 'arrived' | 'companionArrived' {
+  return (error.problem as { why?: unknown }).why === 'companionArrived'
+    ? 'companionArrived'
+    : 'arrived';
 }

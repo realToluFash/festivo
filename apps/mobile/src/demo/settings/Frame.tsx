@@ -31,6 +31,7 @@ import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { useSideFrame } from '../../components/listFrame.ts';
 import { usePillFit } from '../../components/usePillFit.tsx';
+import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 
 /** A page whose sample someone else sees: the Settings card, its rows and the sidebar's foot follow them. */
 export function SeenBy({ looking, children }: { looking: Looking; children: ReactNode }) {
@@ -56,6 +57,7 @@ export function Landscape({
   at = 'Settings',
   sidebar,
   band,
+  search = true,
 }: {
   column: ReactNode;
   children: ReactNode;
@@ -64,9 +66,12 @@ export function Landscape({
   sidebar?: ReactNode;
   /** The offline band, across the column and the pane beside it. */
   band?: ReactNode;
+  /** False drops the sidebar's Search row, as a member paused in the organisation in use has none (sc-82858). */
+  search?: boolean;
 }) {
   const shell = useShell();
   const side = useSideFrame();
+  const fromNone = useWayBackToNone();
   const { fontScale } = useWindowDimensions();
   const columnWidth = useSideListWidth(SETTINGS_LIST_WIDTH);
   // The product's frame caps its Settings column under the page title's size, as everything under it (sc-67338).
@@ -83,26 +88,28 @@ export function Landscape({
 
   return (
     <View style={[styles.grow, side.chrome]}>
-      {sidebar ?? (
-        <TodayShellProvider
-          value={{
-            ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
-            person: shell.looking,
-          }}
-        >
-          <DemoSidebar
-            events={SIDEBAR_EVENTS}
-            onTab={shell.onTab}
-            at={at}
-            onPerson={() => shell.openSection('account')}
-            org={shell.viewer !== 'noOrg'}
-          />
-        </TodayShellProvider>
-      )}
+      {sidebar ??
+        (fromNone == null && (
+          <TodayShellProvider
+            value={{
+              ...demoShell(shell.tell, { search: () => openSearch(shell.looking.role) }),
+              search,
+              person: shell.looking,
+            }}
+          >
+            <DemoSidebar
+              events={SIDEBAR_EVENTS}
+              onTab={shell.onTab}
+              at={at}
+              onPerson={() => shell.openSection('account')}
+              org={shell.viewer !== 'noOrg'}
+            />
+          </TodayShellProvider>
+        ))}
       {band == null ? (
-        <View style={[styles.main, side.card]}>{columns}</View>
+        <View style={[styles.main, side.card, fromNone != null && side.alone]}>{columns}</View>
       ) : (
-        <View style={[styles.grow, side.card]}>
+        <View style={[styles.grow, side.card, fromNone != null && side.alone]}>
           {band}
           <View style={styles.main}>{columns}</View>
         </View>
@@ -178,6 +185,10 @@ export function Bell({
   onPress?: (() => void) | undefined;
   ref?: Ref<ViewInstance> | undefined;
 }) {
+  const fromNone = useWayBackToNone();
+
+  if (fromNone != null) return null;
+
   return (
     <ProductBell
       ref={ref}
@@ -188,12 +199,22 @@ export function Bell({
 }
 
 /** Search left of the bell, as the product's upright top has it (sc-39534); a phone page with a Back has the bell alone. */
-function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
+export function SearchAndBell({ tell, role }: { tell: Tell; role: string | null }) {
   return (
     <View style={styles.ends}>
       <SearchButton role={role} />
       <Bell tell={tell} />
     </View>
+  );
+}
+
+/** A list's own top: Search before the bell on a phone, as the product has it (sc-39534); on its side the sidebar's row opens Search, so the bell is alone. */
+export function ListTopEnd() {
+  const shell = useShell();
+  return shell.layout === 'landscape' ? (
+    <Bell tell={shell.tell} />
+  ) : (
+    <SearchAndBell tell={shell.tell} role={shell.looking.role} />
   );
 }
 
@@ -246,6 +267,9 @@ export function tabsFor(viewer: Viewer): readonly (typeof TABS)[number][] {
 export function SettingsTabBar({ bottom }: { bottom: number }) {
   const { t } = useTranslation();
   const shell = useShell();
+  const fromNone = useWayBackToNone();
+
+  if (fromNone != null) return null;
 
   return (
     <TabBar
@@ -259,17 +283,27 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
   );
 }
 
-/** The product's upright row: the pill, the tabs and the bell. */
-export function PortraitTop({ at = 'Settings' }: { at?: Tab }) {
+/** The product's upright row: the pill, the tabs and the bell, with Search before it unless `search` is false (sc-82858). */
+export function PortraitTop({ at = 'Settings', search = true }: { at?: Tab; search?: boolean }) {
   const { t } = useTranslation();
   const shell = useShell();
   const tabs = tabsFor(shell.viewer);
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
+  const insets = useSafeAreaInsets();
+  const fromNone = useWayBackToNone();
+
+  if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 
   return (
     <ProductPortraitTop
       renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={<SearchAndBell tell={shell.tell} role={shell.looking.role} />}
+      bell={
+        search ? (
+          <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+        ) : (
+          <Bell tell={shell.tell} />
+        )
+      }
       tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
       renderTabs={(labelSize) => (
         <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />

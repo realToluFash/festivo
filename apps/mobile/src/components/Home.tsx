@@ -1,11 +1,13 @@
 import { type Account, type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { type Ref, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { eventHref } from '../kit/eventNav.ts';
+import { outsideLanding } from '../kit/outsideEvent.ts';
 import { stepOpeners } from '../kit/stepOpeners.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { NOT_OFFLINE, type ScreenOffline } from '../offline.ts';
@@ -29,21 +31,30 @@ import { TodayLanding } from './TodayLanding.tsx';
 /** The signed-in home, `AppSettings-*` state `home`: where the app opens once somebody is in. */
 export function Home() {
   const { t } = useTranslation();
-  const { account, organisation } = useSignedIn();
+  const signedIn = useSignedIn();
+  const { account, organisation } = signedIn;
   const today = account != null && organisation != null ? { account, organisation } : null;
   const [offline, setOffline] = useState<ScreenOffline>(NOT_OFFLINE);
+  const landing = outsideLanding(signedIn);
+  // An account in no organisation stands alone, under no title, bell or tab bar, as its demo draws it (sc-75471).
+  const alone = account != null && organisation == null && signedIn.pausedIn == null;
 
   useEffect(homeShown, []);
+
+  // An account in no organisation that holds an event from outside has no home of its own: it lands inside the event (sc-71).
+  if (landing != null) return <Redirect href={eventHref(landing.id)} />;
 
   return (
     <AppFrame
       current="home"
       title={t('frame.home')}
       bodyTakesSwitch
-      ownChrome={today != null}
+      ownChrome={today != null || alone}
       offline={offline.stale}
     >
-      {today == null ? (
+      {alone ? (
+        <AloneBody />
+      ) : today == null ? (
         <HomeBody />
       ) : (
         <TodayBody key={today.organisation.id} {...today} onOffline={setOffline} />
@@ -86,6 +97,17 @@ function TodayBody({
   );
 }
 
+function AloneBody() {
+  const { place, heading, onClosed } = useNextAfterClosed();
+
+  return (
+    <NoOrganisation
+      titleRef={heading}
+      notices={<LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />}
+    />
+  );
+}
+
 function HomeBody() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -105,7 +127,6 @@ function HomeBody() {
           onClosed={onClosed}
         />
       )}
-      {account != null && organisation == null && <NoOrganisation titleRef={heading} />}
       {account != null && organisation != null && (
         <View style={cardFrame(kind)}>
           <SignedInHeading organisation={organisation} headingRef={heading} />

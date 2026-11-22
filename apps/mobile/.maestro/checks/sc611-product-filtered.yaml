@@ -1,0 +1,25 @@
+# sc-611: filtered to Sign-in and security.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: audit.filter.type
+- tapOn:
+    id: audit.menu.type.security
+- extendedWaitUntil:
+    notVisible:
+      id: audit.menu.type
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: audit-filtered-product

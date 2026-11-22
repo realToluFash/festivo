@@ -30,6 +30,10 @@ appId: host.exp.Exponent
 - takeScreenshot: create-org-2
 - scroll
 - takeScreenshot: create-org-3
+- scrollUntilVisible:
+    element:
+      id: 'createWalk.search'
+    direction: UP
 - tapOn:
     id: 'createWalk.search'
 - inputText: 'Portugal'

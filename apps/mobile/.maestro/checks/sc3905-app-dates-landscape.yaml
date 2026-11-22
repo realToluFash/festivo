@@ -1,0 +1,9 @@
+# sc-3905: sc3905-app-dates on a tablet turned to landscape. Needs ${METRO_URL} and ${EVENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- runFlow: sc3905-app-dates.yaml
