@@ -624,7 +624,7 @@ describe('the gaps of 8 Nov: refusals, ceilings and the reminder on the Budget t
   });
 });
 
-describe('the reminder’s rows (sc-95, #76776)', () => {
+describe('the reminder’s rows (sc-95, #76776, #83486)', () => {
   it('names the event on every row of the mixed reminder', () => {
     const rows = reminderRows('mixed', 'en-GB');
 
@@ -638,12 +638,12 @@ describe('the reminder’s rows (sc-95, #76776)', () => {
     expect(rows[0]?.words).toMatch(/^Bloom & Co · /);
   });
 
-  it('leaves the event to the title when the reminder is about one event', () => {
+  it('names the event on every row of a one-event push too, since iOS cuts its title before it', () => {
     for (const kind of ['overdue', 'due'] as const) {
       const rows = reminderRows(kind, 'en-GB');
 
       expect(rows.length).toBeGreaterThan(0);
-      for (const row of rows) expect(row.words).not.toContain(EVENT_NAME);
+      for (const row of rows) expect(row.words).toContain(` · ${EVENT_NAME} · `);
     }
   });
 });
