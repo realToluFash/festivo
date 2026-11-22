@@ -181,7 +181,16 @@ export function SettingsRoute({
         : sso && shown === 'signInRules'
           ? SingleSignOnSection
           : PAGES[shown];
-  const home = <SettingsHome {...handlers} held={heldOf(params.held)} />;
+  const held = heldOf(params.held);
+  const home = <SettingsHome {...handlers} held={held} />;
+  // A section pushed while paused: the paused page stands in for it under ‹ Settings, which goes back to the paused Settings (sc-83881).
+  const pausedOver = held === 'paused' && Page != null && (
+    <SettingsHome
+      {...handlers}
+      held={held}
+      back={layout === 'landscape' ? undefined : () => router.replace('/demo/settings?held=paused')}
+    />
+  );
 
   return (
     <ShellContext.Provider value={shell}>
@@ -189,7 +198,9 @@ export function SettingsRoute({
         <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
           <View style={styles.fill}>
             <DataOpenContext.Provider value={dataShown}>
-              {Page != null ? (
+              {pausedOver !== false ? (
+                pausedOver
+              ) : Page != null ? (
                 <Page />
               ) : member ? (
                 <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
