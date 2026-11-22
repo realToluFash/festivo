@@ -1,11 +1,13 @@
-import type { Membership, PausedOrganisation } from '@soirely/api-client';
+import type { Membership } from '@soirely/api-client';
 import { useRef } from 'react';
 import type { ViewInstance } from 'react-native';
 
 import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { useShell } from '../../components/settingsShell.ts';
+import { useShownLanguage } from '../../i18n/index.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
+import { pausedIn } from './PausedSample.ts';
 import { YOU } from './sample.ts';
 
 /** What stands in place of Settings while the organisation holds the account: paused access (sc-564) or two-factor overdue (sc-609). */
@@ -14,26 +16,6 @@ export type Held = 'paused' | 'overdue';
 export function heldOf(value: string | undefined): Held | null {
   return value === 'paused' || value === 'overdue' ? value : null;
 }
-
-const PAUSED: PausedOrganisation = {
-  id: 'org-ire-events',
-  name: YOU.organisation,
-  countryCode: 'NG',
-  currency: 'NGN',
-  timezone: 'Africa/Lagos',
-  contactAddress: 'hello@ire.events',
-  locale: 'en',
-  plan: 'free',
-  subscription: { status: 'active', periodEnd: null },
-  suspension: {
-    reason: 'domain_closed',
-    domain: 'ire.events',
-    since: { at: '2026-11-02T09:00:00Z', written: 'Monday, Nov 2 at 10:00 WAT' },
-    removesAt: { at: '2026-12-02T09:00:00Z', written: 'Wednesday, Dec 2 at 10:00 WAT' },
-    onlyOwner: false,
-  },
-  ownerClaim: null,
-};
 
 // AccessPaused reads only how many others there are, to choose between switching and the switcher.
 const OTHERS = [
@@ -45,10 +27,11 @@ const OTHERS = [
 function Paused() {
   const opener = useRef<ViewInstance>(null);
   const org = useOrgOpener(opener, false);
+  const language = useShownLanguage();
 
   return (
     <AccessPaused
-      paused={PAUSED}
+      paused={pausedIn(language)}
       others={OTHERS}
       onSwitch={() => org.onPress()}
       onChoose={() => org.onPress()}
