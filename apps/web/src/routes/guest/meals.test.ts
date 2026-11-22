@@ -165,6 +165,14 @@ describe('the dish card once picked', () => {
     expect(cardParts(rice, { ...plate, kind: 'chefsChoice' })).toBeNull();
   });
 
+  it('draws no card for a picked dish with no ways and no choices', () => {
+    const soup = dish({ id: 'soup', allergens: ['celery'], variants: [], choices: [] });
+    const plate = { kind: 'chosen', dish: 'soup', variant: null, options: {} } as const;
+
+    expect(cardParts(soup, plate)).toBeNull();
+    expect(cardParts({ ...soup, variants: [WAYS[1]!] }, plate)).toBeNull();
+  });
+
   it('adds up a one-way dish with no way stored as its card does', () => {
     const fish = dish({ allergens: null, variants: [WAYS[1]!], choices: [SIDE] });
     const plate = {
