@@ -1,10 +1,12 @@
 """The Claude logins this machine's roles run under, and a new one started from `sq web`.
 
-`claude auth status` says when each login runs out. A login started from the page is
+`claude auth status` says when each login runs out, and `claude -p /usage` how much of
+each of the account's limits is used. A login started from the page is
 `claude auth login` held open here: the page's own machine opens the sign-in in the Chrome
 profile of the account, and the code comes back through Claude's own callback, through a
 bridge on the page's machine when the login is held by the other one, or pasted."""
 
+import concurrent.futures
 import datetime
 import http.client
 import http.server
@@ -23,9 +25,17 @@ import threading
 import time
 import urllib.parse
 
-from . import machine
+from . import machine, store
 
 WARN_SECONDS = 3 * 86400
+USAGE_SECONDS = 5 * 60
+USAGE_WARN = 90
+USAGE_AT_ONCE = 3
+USAGE_TIMEOUT = 60
+USAGE_KEY = "claude_usage"
+NO_HOOKS = '{"disableAllHooks": true}'
+LIMIT = re.compile(r"^Current (?P<name>.+?):\s*(?P<used>\d+(?:\.\d+)?)% used"
+                   r"(?:\s*·\s*resets (?P<resets>.+))?$")
 FRESH_SECONDS = 60
 LINK_SECONDS = 20
 OPEN_SECONDS = 15 * 60
@@ -43,13 +53,29 @@ ESCAPES = re.compile(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]"
 _kept, _lock = {}, threading.Lock()
 
 
-def folders(config):
-    """`{folder: [roles]}` for each Claude config folder this machine's roles run under."""
+def home_folders(home=None):
+    """`~/.claude` and each `~/.claude-*` holding a Claude account file or settings."""
+    home = pathlib.Path.home() if home is None else home
+    found = []
+    for folder in [home / ".claude"] + sorted(home.glob(".claude-*")):
+        account = home / ".claude.json" if folder.name == ".claude" else folder / ".claude.json"
+        if folder.is_dir() and (account.is_file() or (folder / "settings.json").is_file()):
+            found.append(folder)
+    return found
+
+
+def folders(config, home=None):
+    """`{folder: [roles]}` for each Claude config folder this machine's roles run under,
+    then each other one in the home folder, which no role uses."""
     found = {}
     for role in config.get("roles") or {}:
         folder = machine.claude_dir(config, role)
         if folder:
             found.setdefault(folder, []).append(role)
+    used = {folder.resolve() for folder in found}
+    for folder in home_folders(home):
+        if folder.resolve() not in used:
+            found[folder] = []
     return found
 
 
@@ -114,8 +140,60 @@ def forget(folder=None):
             _kept.pop(pathlib.Path(folder), None)
 
 
-def read(config, run=subprocess.run, clock=time.monotonic):
-    """One row per folder, each read again at most every `FRESH_SECONDS`."""
+def limits(text):
+    """Each limit `/usage` reports: its name, the percent used and when it resets."""
+    found = []
+    for line in (text or "").splitlines():
+        match = LIMIT.match(line.strip())
+        if match:
+            found.append({"name": match["name"], "used": float(match["used"]),
+                          "resets": (match["resets"] or "").strip() or None})
+    return found
+
+
+def usage(folder, run=subprocess.run):
+    """What `/usage` says of the folder's account: no model call, none of its hooks, no
+    session kept, and its own login rather than a token."""
+    with tempfile.TemporaryDirectory(prefix="sq-usage-") as workdir:
+        try:
+            answer = run(["claude", "-p", "/usage", "--output-format", "json",
+                          "--no-session-persistence", "--settings", NO_HOOKS],
+                         capture_output=True, text=True, timeout=USAGE_TIMEOUT, cwd=workdir,
+                         stdin=subprocess.DEVNULL, env=login_env(folder))
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return {"error": f"claude -p /usage failed ({error})"}
+    said = json_object(answer.stdout)
+    if said is None:
+        return {"error": first_line(answer.stderr or answer.stdout)
+                or f"claude -p /usage exited {answer.returncode}"}
+    found = limits(said.get("result"))
+    if said.get("is_error") or not found:
+        return {"error": first_line(said.get("result")) if said.get("is_error")
+                else "Claude reported no plan limits for this account"}
+    return {"limits": found}
+
+
+def refresh_usage(db, config, now, read_usage=None):
+    """Reads `/usage` again for each folder last read `USAGE_SECONDS` ago or more, a few at
+    a time, into the database the page and `sq status` read."""
+    read_usage = read_usage or usage
+    kept = store.get_meta(db, USAGE_KEY) or {}
+    stale = [folder for folder in folders(config)
+             if now - (kept.get(str(folder)) or {}).get("at", 0) >= USAGE_SECONDS]
+    if not stale:
+        return kept
+    with concurrent.futures.ThreadPoolExecutor(USAGE_AT_ONCE) as pool:
+        for folder, said in zip(stale, pool.map(read_usage, stale)):
+            kept[str(folder)] = dict(said, at=now)
+    known = {str(folder) for folder in folders(config)}
+    kept = {folder: said for folder, said in kept.items() if folder in known}
+    store.set_meta(db, USAGE_KEY, kept)
+    return kept
+
+
+def read(config, run=subprocess.run, clock=time.monotonic, used=None):
+    """One row per folder, each read again at most every `FRESH_SECONDS`, with the usage
+    last read into `used`."""
     rows = []
     for folder, names in folders(config).items():
         with _lock:
@@ -125,7 +203,8 @@ def read(config, run=subprocess.run, clock=time.monotonic):
             with _lock:
                 _kept[folder] = (clock(), said)
         token = machine.token_source(folder)
-        rows.append(dict(said, folder=shown(folder), roles=names, token=token))
+        rows.append(dict(said, folder=shown(folder), roles=names, token=token,
+                         usage=(used or {}).get(str(folder))))
     return rows
 
 
@@ -138,9 +217,18 @@ def left(seconds):
 
 
 def warnings(rows, now):
-    """A line for each login that has run out or runs out within `WARN_SECONDS`."""
+    """A line for each login a role uses that has run out or runs out within
+    `WARN_SECONDS`, and for each of its limits used `USAGE_WARN` percent or more."""
     found = []
     for row in rows:
+        if not row["roles"]:
+            continue
+        who = f"{row.get('email') or row['folder']} ({', '.join(row['roles'])})"
+        for limit in (row.get("usage") or {}).get("limits") or []:
+            if limit["used"] >= USAGE_WARN:
+                found.append(f"the Claude account {who} has used {limit['used']:g}% of its "
+                             f"{limit['name']} limit"
+                             + (f": it resets {limit['resets']}" if limit["resets"] else ""))
         if row.get("token"):
             continue
         who = f"{row.get('email') or row['folder']} ({', '.join(row['roles'])})"

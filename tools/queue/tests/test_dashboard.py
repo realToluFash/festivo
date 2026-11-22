@@ -39,6 +39,7 @@ class Snapshot(unittest.TestCase):
         for patch in (mock.patch("soirely_queue.machine.free_gb", return_value=40),
                       mock.patch("soirely_queue.permissions.pending", return_value=[]),
                       mock.patch("soirely_queue.dashboard.peer_views", return_value={}),
+                      mock.patch("soirely_queue.logins.home_folders", return_value=[]),
                       mock.patch("soirely_queue.logins.status",
                                  side_effect=lambda folder, run=None: dict(self.login))):
             patch.start()

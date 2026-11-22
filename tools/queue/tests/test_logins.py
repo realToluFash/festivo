@@ -12,7 +12,7 @@ import threading
 import unittest
 from unittest import mock
 
-from soirely_queue import logins, machine
+from soirely_queue import cli, logins, machine, store
 
 NOW = 1_800_000_000
 DIRECT = ("https://claude.com/cai/oauth/authorize?code=true&client_id=c&response_type=code"
@@ -20,6 +20,19 @@ DIRECT = ("https://claude.com/cai/oauth/authorize?code=true&client_id=c&response
 SHORT = "https://claude.ai/oauth/authorize?z-abc"
 PRINTED = ("Opening browser to sign in…\nIf the browser didn't open, visit:\n"
            f"\x1b]8;;{SHORT}\x07{SHORT}\x1b]8;;\x07\nPaste code here if prompted > ")
+
+
+USAGE = ("You are currently using your subscription to power your Claude Code usage\n\n"
+         "Current session: 12% used · resets 3pm (Africa/Lagos)\n"
+         "Current week (all models): 91% used · resets Nov 29, 5am (Africa/Lagos)\n"
+         "Current week (Fable): 0% used\n\n"
+         "What's contributing to your usage?\nLast 24h · 687 requests · 83 sessions\n")
+
+
+def usage_said(result=USAGE, is_error=False):
+    return subprocess.CompletedProcess([], 0, json.dumps(
+        {"type": "result", "is_error": is_error, "num_turns": 0, "total_cost_usd": 0,
+         "result": result}), "")
 
 
 def said(**fields):
@@ -52,6 +65,9 @@ class Rows(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.root = pathlib.Path(self.folder.name)
         self.addCleanup(self.folder.cleanup)
+        patch = mock.patch("soirely_queue.logins.home_folders", return_value=[])
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def config(self):
         return {"claudeConfigDir": str(self.root / "a"),
@@ -129,6 +145,18 @@ class Rows(unittest.TestCase):
             "on sq web",
             "~/.c has no Claude login for bm: log in from Claude logins on sq web",
             "the Claude login of ~/.f (lead) could not be read: claude auth status failed"])
+
+    def test_status_names_an_unused_folder_and_lists_each_limit_with_when_it_was_read(self):
+        row = {"folder": "~/.claude", "roles": [], "email": "o@x", "logged_in": True,
+               "expires_at": NOW + 20 * 86400,
+               "usage": {"at": NOW - 120, "limits": [
+                   {"name": "session", "used": 12.0, "resets": "3pm"},
+                   {"name": "week (Fable)", "used": 0.0, "resets": None}]}}
+        self.assertEqual(cli.login_usage(row, NOW),
+                         "session 12% (resets 3pm), week (Fable) 0% · read 2m ago")
+        self.assertEqual(cli.login_usage(dict(row, usage={"at": NOW, "error": "logged out"}),
+                                         NOW), "usage unread: logged out · read 0s ago")
+        self.assertEqual(cli.login_usage(dict(row, usage=None), NOW), "")
 
     def test_time_left_reads_in_minutes_hours_then_days(self):
         self.assertEqual([logins.left(s) for s in (59, 3599, 3600, 2 * 86400 - 1, 2 * 86400)],
@@ -365,3 +393,109 @@ class Bridges(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Usage(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.folder.name)
+        self.addCleanup(self.folder.cleanup)
+
+    def make(self, name, *files):
+        folder = self.root / name
+        folder.mkdir()
+        for file in files:
+            (folder / file).write_text("{}")
+        return folder
+
+    def test_every_claude_folder_in_home_with_an_account_or_settings_is_found(self):
+        self.make(".claude", "settings.json")
+        self.make(".claude-a", ".claude.json")
+        self.make(".claude-b", "settings.json")
+        self.make(".claude-empty")
+        (self.root / ".claude-file").write_text("")
+        self.make("claude-x", ".claude.json")
+        self.assertEqual([f.name for f in logins.home_folders(self.root)],
+                         [".claude", ".claude-a", ".claude-b"])
+
+    def test_the_default_folder_counts_its_account_file_beside_it(self):
+        self.make(".claude")
+        self.assertEqual(logins.home_folders(self.root), [])
+        (self.root / ".claude.json").write_text("{}")
+        self.assertEqual(logins.home_folders(self.root), [self.root / ".claude"])
+
+    def test_a_folder_no_role_uses_is_listed_after_the_roles_folders_with_no_roles(self):
+        used = self.make(".claude-a", ".claude.json")
+        spare = self.make(".claude-b", ".claude.json")
+        config = {"claudeConfigDir": str(used), "roles": {"qa": {}}}
+        self.assertEqual(logins.folders(config, self.root), {used: ["qa"], spare: []})
+
+    def test_usage_lists_each_limit_with_its_percent_and_when_it_resets(self):
+        self.assertEqual(logins.limits(USAGE), [
+            {"name": "session", "used": 12.0, "resets": "3pm (Africa/Lagos)"},
+            {"name": "week (all models)", "used": 91.0, "resets": "Nov 29, 5am (Africa/Lagos)"},
+            {"name": "week (Fable)", "used": 0.0, "resets": None}])
+
+    def test_usage_runs_without_hooks_a_session_or_a_token_on_the_folders_login(self):
+        seen = []
+        environ = {machine.TOKEN: "t", "CLAUDE_CONFIG_DIR": "/x", "HOME": "/h"}
+        with mock.patch.dict(logins.os.environ, environ, clear=True):
+            out = logins.usage(self.root / "a", run=lambda argv, **k: seen.append((argv, k))
+                               or usage_said())
+        argv, kwargs = seen[0]
+        self.assertEqual(argv, ["claude", "-p", "/usage", "--output-format", "json",
+                                "--no-session-persistence", "--settings",
+                                '{"disableAllHooks": true}'])
+        self.assertEqual(kwargs["env"], {"HOME": "/h", "CLAUDE_CONFIG_DIR": str(self.root / "a")})
+        self.assertEqual(kwargs["stdin"], subprocess.DEVNULL)
+        self.assertNotEqual(kwargs["cwd"], str(pathlib.Path.cwd()))
+        self.assertEqual(len(out["limits"]), 3)
+
+    def test_usage_that_cannot_be_read_says_why(self):
+        logged_out = usage_said("Estimated cost:        $0.0000\nUsage: 0 input")
+        self.assertEqual(logins.usage(self.root, run=lambda *a, **k: logged_out),
+                         {"error": "Claude reported no plan limits for this account"})
+        failed = usage_said("Not logged in · Please run /login", is_error=True)
+        self.assertEqual(logins.usage(self.root, run=lambda *a, **k: failed),
+                         {"error": "Not logged in · Please run /login"})
+        broken = subprocess.CompletedProcess([], 1, "", "error: unknown option\n")
+        self.assertEqual(logins.usage(self.root, run=lambda *a, **k: broken),
+                         {"error": "error: unknown option"})
+
+        def slow(*a, **k):
+            raise subprocess.TimeoutExpired("claude", 60)
+
+        self.assertIn("claude -p /usage failed", logins.usage(self.root, run=slow)["error"])
+
+    def test_each_folder_is_read_again_only_after_five_minutes_and_a_gone_one_is_dropped(self):
+        db = store.connect(":memory:")
+        a, b = self.root / "a", self.root / "b"
+        config = {"roles": {"qa": {"claudeConfigDir": str(a)}, "pm": {"claudeConfigDir": str(b)}}}
+        asked = []
+        read = lambda folder: asked.append(folder) or {"limits": []}
+        with mock.patch("soirely_queue.logins.home_folders", return_value=[]):
+            logins.refresh_usage(db, config, NOW, read)
+            logins.refresh_usage(db, config, NOW + logins.USAGE_SECONDS - 1, read)
+            self.assertEqual(sorted(asked), [a, b])
+            del config["roles"]["pm"]
+            kept = logins.refresh_usage(db, config, NOW + logins.USAGE_SECONDS, read)
+        self.assertEqual(asked[2:], [a])
+        self.assertEqual(kept, {str(a): {"limits": [], "at": NOW + logins.USAGE_SECONDS}})
+        self.assertEqual(store.get_meta(db, logins.USAGE_KEY), kept)
+        with mock.patch("soirely_queue.logins.home_folders", return_value=[]):
+            rows = logins.read(config, run=lambda *a, **k: said(), used=kept)
+        self.assertEqual(rows[0]["usage"], kept[str(a)])
+
+    def test_a_limit_nine_tenths_used_is_a_warning_only_for_an_account_a_role_uses(self):
+        full = {"limits": [{"name": "week (all models)", "used": 90.0, "resets": "Nov 29, 5am"},
+                           {"name": "session", "used": 89.0, "resets": "3pm"}]}
+        rows = [{"folder": "~/.a", "roles": ["qa", "pm"], "email": "a@x", "logged_in": True,
+                 "expires_at": NOW + 20 * 86400, "usage": full},
+                {"folder": "~/.claude", "roles": [], "email": "o@x", "logged_in": False,
+                 "usage": full},
+                {"folder": "~/.t", "roles": ["dev"], "token": "T", "usage": full}]
+        self.assertEqual(logins.warnings(rows, NOW), [
+            "the Claude account a@x (qa, pm) has used 90% of its week (all models) limit: "
+            "it resets Nov 29, 5am",
+            "the Claude account ~/.t (dev) has used 90% of its week (all models) limit: "
+            "it resets Nov 29, 5am"])

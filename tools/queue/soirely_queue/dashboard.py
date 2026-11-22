@@ -119,7 +119,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                                     "machine has not applied: just agents permissions apply")
         view["machines"] = [{"name": name, "seen": seen["seen"], "started": seen["started"]}
                             for name, seen in sorted((agreed.get("machines") or {}).items())]
-        view["logins"] = logins.read(config)
+        view["logins"] = logins.read(config, used=store.get_meta(db, logins.USAGE_KEY))
         view["warnings"] += logins.warnings(view["logins"], now)
         accounts = {role: machine.account(machine.claude_dir(config, role)) for role in ready}
         if "ux" in ready:

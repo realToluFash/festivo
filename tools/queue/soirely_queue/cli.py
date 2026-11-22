@@ -726,6 +726,19 @@ def login_left(row, now):
     return f"{logins.left(row['expires_at'] - now)} left"
 
 
+def login_usage(row, now):
+    """How much of each limit the account has used, as `sq status` lists it."""
+    said = row.get("usage")
+    if not said:
+        return ""
+    read = f" · read {ago(int(now - said['at']))}" if said.get("at") else ""
+    if said.get("error"):
+        return f"usage unread: {said['error']}{read}"
+    return ", ".join(f"{limit['name']} {limit['used']:g}%"
+                     + (f" (resets {limit['resets']})" if limit.get("resets") else "")
+                     for limit in said.get("limits") or []) + read
+
+
 def status(db, platform, now):
     width = max(shutil.get_terminal_size((120, 20)).columns, 60)
     view = dashboard.settle(dashboard.snapshot(db, platform, now, home()),
@@ -763,8 +776,9 @@ def status(db, platform, now):
         say()
         say("claude logins")
         for name, row in sorted(held, key=lambda found: login_order(found[1])):
+            used = login_usage(row, now)
             say(f"  {name}  {login_left(row, now)}  {row.get('email') or row['folder']}  "
-                f"{', '.join(row['roles'])}")
+                f"{', '.join(row['roles']) or 'no role'}" + (f"  {used}" if used else ""))
     rows = []
     for role in view["roles"]:
         if role["state"] == "refused":

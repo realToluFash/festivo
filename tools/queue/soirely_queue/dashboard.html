@@ -297,6 +297,31 @@
         padding: 2px 8px;
         border-radius: 6px;
       }
+      .limit {
+        display: grid;
+        grid-template-columns: 9em 80px auto;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .limit .meter {
+        height: 6px;
+        background: var(--surface-2);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .limit .meter span {
+        display: block;
+        height: 100%;
+        background: var(--good);
+      }
+      .limit .meter span.warning {
+        background: var(--warning);
+      }
+      .limit .meter span.critical {
+        background: var(--critical);
+      }
       .block {
         border-top: 1px solid var(--line);
         padding-top: 10px;
@@ -979,7 +1004,28 @@
       }
 
       const loginOrder = (r) =>
-        r.token ? Infinity : r.error || !r.logged_in ? -Infinity : (r.expires_at ?? Infinity);
+        !r.roles.length
+          ? Number.MAX_VALUE
+          : r.token
+            ? Infinity
+            : r.error || !r.logged_in
+              ? -Infinity
+              : (r.expires_at ?? Infinity);
+
+      function usageCell(u) {
+        if (!u) return '<div class="role-title">Usage not read yet</div>';
+        const read = u.at ? `<div class="role-title">read ${esc(since(u.at))}</div>` : '';
+        if (u.error) return `<div class="role-title">Usage unread: ${esc(u.error)}</div>${read}`;
+        return (
+          (u.limits || [])
+            .map((l) => {
+              const tone = l.used >= 90 ? 'critical' : l.used >= 70 ? 'warning' : '';
+              const width = Math.min(Math.max(l.used, 0), 100);
+              return `<div class="limit"><span>${esc(l.name)}</span><span class="meter"><span class="${tone}" style="width:${width}%"></span></span><span>${esc(l.used)}%${l.resets ? ' · resets ' + esc(l.resets) : ''}</span></div>`;
+            })
+            .join('') + read
+        );
+      }
 
       function loginsTable(d) {
         const rows = (d.logins || [])
@@ -991,13 +1037,15 @@
           )
           .sort((a, b) => loginOrder(a) - loginOrder(b));
         document.getElementById('logins-section').hidden = !rows.length;
-        const due = rows.filter((r) => ['critical', 'warning'].includes(loginLeft(r)[0])).length;
+        const due = rows.filter(
+          (r) => r.roles.length && ['critical', 'warning'].includes(loginLeft(r)[0]),
+        ).length;
         document.getElementById('logins-count').textContent = rows.length
           ? `${rows.length} ${rows.length === 1 ? 'account' : 'accounts'}` +
             (due ? `, ${due} to log in again soon` : '')
           : '';
         document.getElementById('logins').innerHTML =
-          `<tr><th>Account</th><th>Machine</th><th>Roles</th><th>Runs out</th><th>Left</th><th></th></tr>` +
+          `<tr><th>Account</th><th>Machine</th><th>Roles</th><th>Usage</th><th>Runs out</th><th>Left</th><th></th></tr>` +
           rows
             .map((r) => {
               const [tone, left] = loginLeft(r);
@@ -1011,7 +1059,8 @@
                 : `<button class="copy" type="button" data-login-machine="${esc(r.machine)}" data-login-folder="${esc(r.folder)}" data-login-email="${esc(r.email || '')}" data-login-roles="${esc(r.roles.join(', '))}"${busy ? ' disabled' : ''}>${r.logged_in ? 'Log in again' : 'Log in'}</button>`;
               return `<tr><td><b>${esc(r.email || 'No account')}</b><div class="role-title">${esc(r.folder)}${r.error ? ' · ' + esc(r.error) : ''}</div></td>
         <td class="role-chip">${esc(r.machine)}</td>
-        <td><div class="tags">${r.roles.map((role) => `<span class="tag">${esc(role)}</span>`).join('')}</div></td>
+        <td><div class="tags">${r.roles.length ? r.roles.map((role) => `<span class="tag">${esc(role)}</span>`).join('') : '<span class="tag">No role</span>'}</div></td>
+        <td>${usageCell(r.usage)}</td>
         <td class="when">${r.expires_at && !r.token ? esc(clock(r.expires_at)) : ''}</td>
         <td><span class="pill ${tone}">${esc(left)}</span></td>
         <td class="num">${button}</td></tr>`;

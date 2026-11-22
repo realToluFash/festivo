@@ -13,7 +13,8 @@ import sys
 import threading
 import time
 
-from . import (background, checkout, drawing, harness, leftovers, local, machine, permissions,
+from . import (background, checkout, drawing, harness, leftovers, local, logins, machine,
+               permissions,
                review,
                roles, runlog, sessions, shared, store, sync, update)
 
@@ -180,7 +181,8 @@ class Phases:
 
 
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
-        load=machine.load, probe=installed_claude, remote=None, clock=time.monotonic):
+        load=machine.load, probe=installed_claude, remote=None, clock=time.monotonic,
+        usage=None):
     now = now or time.time()
     try:
         config = load()
@@ -195,6 +197,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         return say(f"error: SHORTCUT_API_TOKEN is not set in {machine.env_file()}; "
                    "nothing synced, no role ticked")
     version = claude_version(db, now, probe)
+    logins.refresh_usage(db, config, now, usage)
     late = drift(config, version)
     if late:
         say(f"warning: {late}")
