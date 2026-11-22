@@ -1,7 +1,15 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SearchField } from '../../components/EventsSearch.tsx';
 import { TextField } from '../../components/Field.tsx';
 import { Glyph, type GlyphName } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
@@ -953,16 +961,25 @@ export function MatchPicker({
 }) {
   const [search, setSearch] = useState(first.search);
   const [picked, setPicked] = useState(first.picked);
+  const searchRef = useRef<TextInputInstance>(null);
+  useEffect(() => {
+    if (!open) return;
+    const later = setTimeout(() => searchRef.current?.focus(), 350);
+
+    return () => clearTimeout(later);
+  }, [open]);
   const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
-      <TextField
-        value={search}
-        onChangeText={setSearch}
-        autoFocus
-        autoCapitalize="words"
-        placeholder={W.searchGuests}
-        accessibilityLabel={W.searchGuests}
+      <SearchField
+        ref={searchRef}
+        typed={search}
+        off={false}
+        width={null}
+        onTyped={setSearch}
+        onSearch={() => undefined}
+        onClear={() => setSearch('')}
+        label={W.searchGuests}
         testID="messages.match.search"
       />
       <View accessibilityRole="radiogroup">

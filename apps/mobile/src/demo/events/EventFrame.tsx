@@ -537,13 +537,22 @@ function AreaPills({
   without: AreaKey | undefined;
 }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const ends = useRef<Partial<Record<AreaKey, number>>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
   const reveal = (one: AreaKey) => {
-    const x = starts.current[one];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = ends.current[one];
+    if (end != null && shown.current > 0 && content.current > 0)
+      strip.current?.scrollTo({
+        x: Math.max(
+          0,
+          Math.min(content.current - shown.current, end + tokens.space3xl - shown.current),
+        ),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge, and the strip
+  // moves no further than that, so it opens at Overview wherever the chosen pill fits (sc-31370).
   useEffect(() => reveal(area), [area]);
 
   return (
@@ -555,6 +564,14 @@ function AreaPills({
         style={styles.pillsBar}
         contentContainerStyle={styles.pills}
         accessibilityRole="tablist"
+        onLayout={(event: LayoutChangeEvent) => {
+          shown.current = event.nativeEvent.layout.width;
+          reveal(area);
+        }}
+        onContentSizeChange={(width: number) => {
+          content.current = width;
+          reveal(area);
+        }}
       >
         {AREAS.filter((one) => one !== without).map((one) => {
           const on = one === area;
@@ -566,7 +583,7 @@ function AreaPills({
               key={one}
               onPress={() => onArea(one)}
               onLayout={(event: LayoutChangeEvent) => {
-                starts.current[one] = event.nativeEvent.layout.x;
+                ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
               style={[styles.pill, on && styles.pillOn]}
