@@ -185,7 +185,7 @@ final class AppleClientSecretTest extends TestCase
         return new AppleClientSecret($privateKey, 'KEY123', 'TEAM123', 'soirely-web.test', $clock ?? new MockClock(self::NOW), $logger ?? new NullLogger());
     }
 
-    private static function redeemer(MockHttpClient $client, AppleClientSecret $secret): HttpCodeRedeemer
+    private static function redeemer(MockHttpClient $client, #[SensitiveParameter] AppleClientSecret $secret): HttpCodeRedeemer
     {
         return new HttpCodeRedeemer($client, 'https://google.test/token', 'google-web', self::GOOGLE_WEB_CLIENT_CREDENTIAL, 'https://appleid.apple.test/token', 'soirely-web.test', $secret);
     }
