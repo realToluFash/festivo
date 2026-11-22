@@ -417,13 +417,15 @@ def named_here(host):
 
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch, config=dict,
-          desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge):
+          desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge,
+          usage=None):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
     for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
     reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
     settled with the peers unless one of them is asking, `session` one session's view or
     None, and `peers` the names and addresses of the other machines. `/login/…` starts and
-    follows a Claude login, here or on a peer, through `LoginDoor`. Loopback needs no
+    follows a Claude login, here or on a peer, through `LoginDoor`, and `usage`, when given,
+    keeps each account's plan usage read behind the page. Loopback needs no
     token; anyone else does. Each request has a thread of its own, so a peer that is slow to
     answer, or a connection left idle, holds only itself; the queue is read by one request
     at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
@@ -552,6 +554,8 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             pass
 
     server = http.server.ThreadingHTTPServer((host, port), Page)
+    if usage:
+        usage.start()
     url = f"http://127.0.0.1:{server.server_port}/"
     elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
     say(f"sq web: {url} (ctrl-c stops it){elsewhere}")

@@ -40,7 +40,8 @@ class Snapshot(unittest.TestCase):
                       mock.patch("soirely_queue.permissions.pending", return_value=[]),
                       mock.patch("soirely_queue.dashboard.peer_views", return_value={}),
                       mock.patch("soirely_queue.logins.status",
-                                 side_effect=lambda folder, run=None: dict(self.login))):
+                                 side_effect=lambda folder, run=None: dict(self.login)),
+                      mock.patch("soirely_queue.logins.found", return_value=[])):
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -371,9 +372,16 @@ class Snapshot(unittest.TestCase):
         from soirely_queue import cli
         view = dict(self.snap(), peer_logins={"tolu-linux": [
             {"folder": "~/.claude-b", "roles": ["dev"], "email": "dev@example.com",
-             "logged_in": True, "expires_at": NOW + 7200},
+             "logged_in": True, "expires_at": NOW + 7200, "usage": {
+                 "read_at": NOW - 120, "limits": [
+                     {"name": "Week", "percent": 96, "resets_at": NOW + 3600},
+                     {"name": "Week · Fable", "percent": 3, "resets_at": None},
+                     {"name": "Session", "percent": 100, "resets_at": NOW - 1}]}},
             {"folder": "~/.claude-c", "roles": ["lead"], "email": None, "logged_in": False},
-            {"folder": "~/.claude-d", "roles": ["l10n"], "token": "T"}]})
+            {"folder": "~/.claude-d", "roles": ["l10n"], "token": "T",
+             "usage_error": "Not logged in"},
+            {"folder": "~/.claude", "roles": [], "email": "me@example.com", "logged_in": True,
+             "expires_at": NOW + 86400 * 9}]})
         out = io.StringIO()
         with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
                 mock.patch.object(cli.dashboard, "settle", side_effect=lambda v, o: v), \
@@ -384,11 +392,12 @@ class Snapshot(unittest.TestCase):
             cli.status(self.db, self.platform, NOW)
         lines = out.getvalue().splitlines()
         start = lines.index("claude logins")
-        self.assertEqual(lines[start + 1:start + 5], [
+        self.assertEqual(lines[start + 1:start + 6], [
             "  tolu-linux  logged out  ~/.claude-c  lead",
-            "  tolu-linux  2 h left  dev@example.com  dev",
+            "  tolu-linux  2 h left  dev@example.com  dev  week 96%, week · fable 3%, read 2m ago",
             "  here  20 days left  ops@example.com  ops, dev2",
-            "  tolu-linux  setup-token  ~/.claude-d  l10n"])
+            "  tolu-linux  setup-token  ~/.claude-d  l10n  usage unread: Not logged in",
+            "  tolu-linux  9 days left  me@example.com  no role"])
 
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
@@ -602,6 +611,11 @@ class ServeElsewhere(unittest.TestCase):
             here = {"Content-Type": "application/json", "Host": f"{name}:{port}",
                     "Origin": f"http://{name}:{port}"}
             self.assertEqual(self.post_login(said, "/login/start", body, here)[0], 200)
+
+    def test_the_page_keeps_the_accounts_usage_read_once_it_listens(self):
+        usage = mock.Mock()
+        self.start(usage=usage)
+        usage.start.assert_called_once_with()
 
     def test_without_a_token_it_will_not_listen_beyond_this_machine(self):
         said = []
