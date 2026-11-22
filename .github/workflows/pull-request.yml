@@ -92,9 +92,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # One worker per core: on one core this step took four and a half minutes,
-      # most of it in import/no-cycle and react-hooks/static-components.
-      - run: npm run lint:js -- --concurrency=4
+      - run: npm run lint:js
       # The web client's CSS, and the rule that keeps colour literals in the
       # generated token file rather than spreading through the stylesheet.
       - run: npm run lint:css
