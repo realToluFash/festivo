@@ -1,4 +1,4 @@
-import { formattingLocale } from '@soirely/domain';
+import { formattingLocale, roleHolds, takesCardStep } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -165,6 +165,9 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
 };
 
 /** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
+const HOST = ['events.read', 'events.create', 'events.manage'];
+const VIEWER = ['events.read'];
+
 const TELL_IN_MESSAGES: readonly string[] = [
   'untoldMerged',
   'untoldDismissed',
@@ -488,13 +491,14 @@ export function EventScreen({
     setMuted(!muted);
   };
 
+  const member = { permissions: thanks.canEnd ? HOST : VIEWER };
   const card = (
     <EventCard
       event={shown}
       now={now}
       locale={locale}
       wide={shell.layout !== 'phone'}
-      takes={() => true}
+      takes={(action) => takesCardStep(member, action)}
       onStep={onStep}
       stepRef={cardStep}
       testID="event.card"
@@ -584,18 +588,18 @@ export function EventScreen({
       testIDs={{ row: 'event.mute', retry: 'event.mute.retry', settings: 'event.notifications' }}
     />
   );
-  const manage = (
-    <Manage
-      title={W.manage}
-      items={usableManage(manageOf(shown, now), canChange).map((key) => ({
-        key,
-        ...MANAGE[key],
-        testID: `event.manage.${key}`,
-      }))}
-      refFor={refFor}
-      onManage={onManage}
-    />
+  const offered = usableManage(manageOf(shown, now), canChange).filter((key) =>
+    roleHolds(member, key === 'duplicate' ? 'events.create' : 'events.manage'),
   );
+  const manage =
+    offered.length === 0 ? null : (
+      <Manage
+        title={W.manage}
+        items={offered.map((key) => ({ key, ...MANAGE[key], testID: `event.manage.${key}` }))}
+        refFor={refFor}
+        onManage={onManage}
+      />
+    );
   const tellHere = (words: string) => {
     if (at === 'messages') dispatch({ type: 'told', words });
     else setTold(words);
