@@ -4003,6 +4003,7 @@
     "changesSaved": "Sus cambios se han guardado.",
     "notSaved": "No se ha enviado. Compruebe su conexión e inténtelo de nuevo.",
     "refusedClosed": "La elección en «{{course}}» se cerró el {{date}}, así que su cambio no se ha guardado.",
+    "askHosts": "To change a pick now, ask {{hosts}}.",
     "preview": "Vista previa. No se guarda nada.",
     "closePreview": "Cerrar la vista previa"
   },

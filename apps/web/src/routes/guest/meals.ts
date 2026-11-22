@@ -352,3 +352,16 @@ export function picksOf(
     });
   });
 }
+
+/** The day every course's picks close on, while all are open, so one line says it in place of a close line on each row. */
+export function oneCloseDay(
+  courses: readonly MealCourse[],
+  dayOf: (at: string) => string,
+): string | null {
+  const days = new Set(courses.map((one) => dayOf(one.picksClose.at)));
+  const [day] = days;
+
+  return days.size === 1 && day != null && courses.every((one) => !one.picksClose.closed)
+    ? day
+    : null;
+}

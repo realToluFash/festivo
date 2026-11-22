@@ -20,6 +20,7 @@ import {
   keyOf,
   markOf,
   nothingSafe,
+  oneCloseDay,
   plateDish,
   against,
   changeFocus,
@@ -599,9 +600,8 @@ export function MealCards({
   onChange: (key: string) => void;
 }) {
   const { t } = useTranslation();
-  const days = new Set(courses.map((one) => dayOf(one.picksClose.at, timeZone)));
-  const single = days.size === 1 && courses.every((one) => !one.picksClose.closed);
-  const day = [...days][0] ?? '';
+  const day = oneCloseDay(courses, (at) => dayOf(at, timeZone));
+  const single = day != null;
 
   return (
     <div className="pc-meals">
@@ -611,12 +611,6 @@ export function MealCards({
           <p className="gk-text">{t('guestMeal.hostsGet', { hosts })}</p>
           {single && <p className="gk-text is-quiet">{t('guestMeal.picksClose', { date: day })}</p>}
         </div>
-      )}
-      {head === 'back' && single && (
-        <p className="pc-saved">
-          <Glyph name="tick" size={16} weight={2.6} />
-          <span>{t('guestMeal.savedUntil', { date: day })}</span>
-        </p>
       )}
       {eaters.map((eater) => (
         <section key={eater.key} className="pc-card" aria-labelledby={`pc-card-${eater.key}`}>
@@ -639,7 +633,12 @@ export function MealCards({
                       <p className="mx-pending">{t('guestMeal.notSent')}</p>
                     )}
                     {refused.has(course.id) && (
-                      <p className="desk-error" role="alert">
+                      <p
+                        className="desk-error"
+                        role="alert"
+                        tabIndex={-1}
+                        data-focus={`refused-${course.id}`}
+                      >
                         <Glyph name="alert" size={15} weight={2.2} />
                         {t('guestMeal.refusedClosed', { course: course.name, date })}
                       </p>
@@ -711,12 +710,23 @@ export function MealsSaved({
   told,
   marked,
   busy,
+  savedUntil,
+  kitchen,
+  closed,
+  hosts,
   onSend,
   children,
 }: {
   told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
   marked: number;
   busy: boolean;
+  /** The one day every course closes on, while all are open. */
+  savedUntil: string | null;
+  /** For the kitchen, above the picks, while answers are open. */
+  kitchen: ReactNode;
+  /** Every course closed: the rows are read-only and there is nothing to send. */
+  closed: boolean;
+  hosts: string;
   onSend: () => void;
   children: ReactNode;
 }) {
@@ -727,6 +737,13 @@ export function MealsSaved({
       <h2 id="pc-h" className="gp-h2 gk-h2" tabIndex={-1} data-focus="mealsSaved">
         {t('guestMeal.yourPicks')}
       </h2>
+      {savedUntil != null && (
+        <p className="pc-saved">
+          <Glyph name="tick" size={16} weight={2.6} />
+          <span>{t('guestMeal.savedUntil', { date: savedUntil })}</span>
+        </p>
+      )}
+      {kitchen != null && <div className="gk-rows">{kitchen}</div>}
       {children}
       {told === 'marked' && marked > 0 && <MarkedLine count={marked} />}
       {told === 'failed' && <Notice kind="broken">{t('guestMeal.notSaved')}</Notice>}
@@ -734,11 +751,15 @@ export function MealsSaved({
         {told === 'nothing' && <p>{t('guestMeal.nothingToSend')}</p>}
         {told === 'saved' && <p>{t('guestMeal.changesSaved')}</p>}
       </div>
-      <div className="gk-actions">
-        <Filled busy={busy} focus="mealsSend" onClick={onSend}>
-          {t('guestMeal.sendChanges')}
-        </Filled>
-      </div>
+      {closed ? (
+        <p className="gk-text">{t('guestMeal.askHosts', { hosts })}</p>
+      ) : (
+        <div className="gk-actions">
+          <Filled busy={busy} focus="mealsSend" onClick={onSend}>
+            {t('guestMeal.sendChanges')}
+          </Filled>
+        </div>
+      )}
     </section>
   );
 }
