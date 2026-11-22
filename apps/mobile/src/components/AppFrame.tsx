@@ -93,7 +93,7 @@ import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
 import { SEARCH_HREF } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -1597,7 +1597,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+        <View style={styles.moreSheet}>
           <View style={styles.moreHead}>
             <Text
               size={22}
@@ -1617,43 +1617,52 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
             </Pressable>
           </View>
-          <View accessibilityRole="tablist">
-            <RowList
-              items={[
-                ...doorRows(t, inEvent, () => setMore(false)),
-                ...inMore.map((area) => {
-                  const on = area === inEvent.area;
+          <SheetScrollView
+            style={styles.moreBody}
+            contentContainerStyle={[
+              styles.moreRows,
+              { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) },
+            ]}
+            testID="event.nav.moreSheet.rows"
+          >
+            <View accessibilityRole="tablist">
+              <RowList
+                items={[
+                  ...doorRows(t, inEvent, () => setMore(false)),
+                  ...inMore.map((area) => {
+                    const on = area === inEvent.area;
 
-                  return {
-                    key: area,
-                    inset: 40,
-                    selected: on,
-                    row: (
-                      <Row
-                        title={t(`eventNav.${area}`)}
-                        lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
-                        opens
-                        selected={on}
-                        onPress={() => {
-                          setMore(false);
-                          inEvent.onArea(area);
-                        }}
-                        accessibilityRole="tab"
-                        testID={`event.nav.more.${area}`}
-                      />
-                    ),
-                  };
-                }),
-              ]}
-            />
-          </View>
-          {outside != null && (
-            <OutsideYou
-              here={outside.id}
-              onLeave={() => setMore(false)}
-              idPrefix="event.nav.more"
-            />
-          )}
+                    return {
+                      key: area,
+                      inset: 40,
+                      selected: on,
+                      row: (
+                        <Row
+                          title={t(`eventNav.${area}`)}
+                          lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                          opens
+                          selected={on}
+                          onPress={() => {
+                            setMore(false);
+                            inEvent.onArea(area);
+                          }}
+                          accessibilityRole="tab"
+                          testID={`event.nav.more.${area}`}
+                        />
+                      ),
+                    };
+                  }),
+                ]}
+              />
+            </View>
+            {outside != null && (
+              <OutsideYou
+                here={outside.id}
+                onLeave={() => setMore(false)}
+                idPrefix="event.nav.more"
+              />
+            )}
+          </SheetScrollView>
         </View>
       </Sheet>
     </>
@@ -1807,7 +1816,9 @@ function OutsideYouSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        <SheetScrollView style={styles.moreBody} contentContainerStyle={styles.moreRows}>
+          <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        </SheetScrollView>
       </View>
     </Sheet>
   );
@@ -2133,9 +2144,16 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreSheet: { flexShrink: 1, gap: tokens.spaceXl, paddingTop: 31 },
+  moreBody: { flexGrow: 0, flexShrink: 1 },
+  moreRows: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
-  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreHead: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: tokens.spaceXxl,
+  },
   moreClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,
