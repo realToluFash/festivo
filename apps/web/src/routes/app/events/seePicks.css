@@ -464,3 +464,8 @@
     padding-left: var(--spaceXl);
   }
 }
+
+.mc-who-hasnt {
+  flex: none;
+  min-height: var(--sizeHit);
+}

@@ -155,7 +155,10 @@ function picksOf(more: Record<string, unknown> = {}) {
 
 type Answer = (body: unknown) => Response;
 
-function onPicks(answers: Record<string, Answer>): { line: string; body: unknown }[] {
+function onPicks(
+  answers: Record<string, Answer>,
+  at = '/app/events/ev_1/menu/picks',
+): { line: string; body: unknown }[] {
   const sent: { line: string; body: unknown }[] = [];
   signedIn();
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -169,11 +172,7 @@ function onPicks(answers: Record<string, Answer>): { line: string; body: unknown
 
     return json({});
   });
-  render(
-    <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/menu/picks'] })}
-    />,
-  );
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [at] })} />);
 
   return sent;
 }
@@ -286,5 +285,55 @@ describe('See picks (sc-3909)', () => {
     expect(within(dialog).getByText(/Nothing was saved/)).toBeDefined();
     expect(within(dialog).queryByRole('button', { name: 'Save' })).toBeNull();
     expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDefined();
+  });
+});
+
+describe('The picks on the event’s Menu (sc-3909)', () => {
+  const closedMenu = {
+    menu: {
+      courses: [
+        {
+          ...MENU.menu.courses[0],
+          picksClose: { at: '2030-11-14T18:00:00+01:00', source: 'start', closed: true },
+        },
+      ],
+    },
+  };
+
+  it('shows each dish row’s picks, See picks on the course and the Picks card', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () => json(picksOf()),
+        ['GET /api/events/ev_1/menu']: () => json(closedMenu),
+      },
+      '/app/events/ev_1/menu',
+    );
+
+    expect(await screen.findByText('1 pick · 25% of the room')).toBeDefined();
+    expect(screen.getByText('0 picks · 0% of the room')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'See picks · Main' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/menu/picks#pk-c_main',
+    );
+    const card = screen.getByRole('complementary', { name: 'Picks' });
+    expect(within(card).getByText('2 of 4 picks in · 50% of the room')).toBeDefined();
+    expect(within(card).getByText('Who hasn’t picked · 2')).toBeDefined();
+    expect(screen.getByText(/You still can choose for any guest\./)).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Who hasn’t picked Main' }).getAttribute('href')).toBe(
+      '/app/events/ev_1/menu/picks?course=c_main',
+    );
+  });
+
+  it('keeps a closed course’s line as it was without Guests manage', async () => {
+    onPicks(
+      {
+        [`GET ${PICKS}`]: () => json(picksOf({ canChoose: false })),
+        ['GET /api/events/ev_1/menu']: () => json(closedMenu),
+      },
+      '/app/events/ev_1/menu',
+    );
+
+    expect(await screen.findByText('1 pick · 25% of the room')).toBeDefined();
+    expect(screen.queryByText(/You still can choose/)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Who hasn’t picked Main' })).toBeNull();
   });
 });

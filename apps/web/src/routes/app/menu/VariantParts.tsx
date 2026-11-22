@@ -34,6 +34,7 @@ import {
 } from './MenuFields.tsx';
 import { moneyLine, refusalWords } from './variants.ts';
 import './variants.css';
+import { VariantPicks } from '../events/menuPicks.tsx';
 
 /** sc-3903's variants of a dish, on the event's Menu and in the Menu library, as the demo's DishVariants draws them. */
 
@@ -198,6 +199,7 @@ export function VariantInsets({
                   </h4>
                   <ContainsMark dish={{ allergens: [...variant.allergens] }} />
                   <Tags diets={variant.diets} name={variant.name} />
+                  {where === 'event' && <VariantPicks id={variant.id} />}
                 </div>
                 {manage && (
                   <div

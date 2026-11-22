@@ -6222,6 +6222,8 @@
     "menuPicks_many": "{{count, number}} picks · {{share, number}}% of the room",
     "summaryHost": "Needs the host · {{count, number}}",
     "summaryWaiting": "Who hasn’t picked · {{count, number}}",
-    "stillChoose": "You still can choose for any guest."
+    "stillChoose": "You still can choose for any guest.",
+    "percent": "{{n, number}}%",
+    "whoHasntAria": "Who hasn’t picked {{course}}"
   }
 }
