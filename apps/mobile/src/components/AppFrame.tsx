@@ -372,12 +372,18 @@ export function AppFrame({
     [],
   );
   const currencies = useCountryCurrencies(creating);
-  const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
+  const [created, setCreated] = useState<{
+    id: string;
+    name: string;
+    takesFocus: boolean;
+  } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   useEffect(
     () =>
-      inFront ? onMovedOn((next) => setCreated({ name: next.name, takesFocus: false })) : undefined,
+      inFront
+        ? onMovedOn((next) => setCreated({ id: next.id, name: next.name, takesFocus: false }))
+        : undefined,
     [inFront],
   );
   const [backHidden, setBackHidden] = useState(false);
@@ -528,7 +534,7 @@ export function AppFrame({
     (id: string) => {
       const name = signedIn.organisations.find((known) => known.id === id)?.name;
       switchOrganisation(id, () => {
-        if (name != null) setCreated({ name, takesFocus: true });
+        if (name != null) setCreated({ id, name, takesFocus: true });
       });
     },
     [signedIn.organisations],
@@ -552,6 +558,13 @@ export function AppFrame({
   if (standingSeen.id !== signedIn.organisation?.id || standingSeen.overdue !== overdue) {
     setStandingSeen({ id: signedIn.organisation?.id, overdue });
     setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
+  }
+  // A move made elsewhere, as an event's link does, leaves this screen's notice naming an organisation no longer worked in (sc-80863).
+  const workingIn = signedIn.organisation?.id;
+  const [seenIn, setSeenIn] = useState(workingIn);
+  if (seenIn !== workingIn) {
+    setSeenIn(workingIn);
+    if (created != null && created.id !== workingIn) setCreated(null);
   }
   const switchAnswer = useFrameSwitch();
   useEffect(() => {
@@ -786,7 +799,7 @@ export function AppFrame({
                   if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
                     const name = signedIn.organisations.find((known) => known.id === id)?.name;
                     switchOrganisation(id, () => {
-                      if (name != null) setCreated({ name, takesFocus: false });
+                      if (name != null) setCreated({ id, name, takesFocus: false });
                     });
                   }
                 }}
@@ -847,7 +860,11 @@ export function AppFrame({
                   setCreating(false);
                   joinOrganisation(organisation);
                   switchOrganisation(organisation.id);
-                  setCreated({ name: organisation.name, takesFocus: fromNone });
+                  setCreated({
+                    id: organisation.id,
+                    name: organisation.name,
+                    takesFocus: fromNone,
+                  });
                 }}
               />
             )}
