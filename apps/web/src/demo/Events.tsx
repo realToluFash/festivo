@@ -65,10 +65,10 @@ import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { isLong, nameSample } from './longName.ts';
-import { AccessPaused, Switched } from './OrgSwitcher.tsx';
+import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
-import { isFresh, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
+import { isFresh, useHeld, useSwitcherStart, useWhere } from './switcher.ts';
 
 /** Events at a desk in A · Summary first (Events-A-Desk, page 29): the list from the Today sidebar, on sample data. */
 export function Events() {
@@ -77,7 +77,7 @@ export function Events() {
   const navigate = useNavigate();
   const state = listStateOf(params.get('state'));
   useSwitcherStart();
-  const paused = usePaused();
+  const held = useHeld();
   const fresh = isFresh(useWhere());
   const [told] = useState(() => (location.state as { told?: string } | null)?.told ?? null);
   const [start] = useState(() => {
@@ -109,7 +109,7 @@ export function Events() {
       )}
     >
       {(tell) =>
-        paused ? (
+        held ? (
           <PausedPage />
         ) : (
           <EventsList
@@ -492,7 +492,7 @@ function PausedPage() {
   return (
     <div className="desk-page">
       <Switched />
-      <AccessPaused />
+      <HeldStandIn />
     </div>
   );
 }

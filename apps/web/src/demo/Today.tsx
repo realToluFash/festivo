@@ -7,7 +7,7 @@ import { Toast } from '../components/Toast.tsx';
 import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { VIEWERS } from './settings.ts';
-import { AccessPaused, Switched } from './OrgSwitcher.tsx';
+import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
 import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
 import {
   EVENTS,
@@ -147,8 +147,8 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
           />
           <main id="content" ref={page} className="today-main" inert={covered}>
             <Switched />
-            {where.paused ? (
-              <AccessPaused />
+            {where.paused || where.overdue ? (
+              <HeldStandIn />
             ) : (
               <>
                 {moment.now != null && moment.full && !reads.built ? (

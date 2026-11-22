@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 
 import { leaveMenu } from '../leaving.ts';
 import { CreateWalk } from './CreateOrg.tsx';
@@ -432,17 +432,65 @@ const PAUSED_SAMPLE: PausedOrganisation = {
   ownerClaim: null,
 };
 
+const ALONE_SAYS = {
+  paused: 'Your access to single events is not affected.',
+  overdue: 'Your single-event access is not affected.',
+} as const;
+
+/** Until sc-85006 is built, the product's paused card still names other organisations; this says what it reads instead. */
+function AloneSays({ held }: { held: keyof typeof ALONE_SAYS }) {
+  return (
+    <div className="held-demo-only">
+      <p>{`sc-85006: with no other organisation in the switcher, the card says “${ALONE_SAYS[held]}” in place of the sentence naming other organisations.`}</p>
+    </div>
+  );
+}
+
 /** The product's AccessPaused, standing in for the page while access to the organisation is paused. */
-export function AccessPaused() {
+function AccessPaused() {
   const where = useWhere();
+  const others = where.places.filter((place) => place.id !== PAUSED.id);
 
   return (
-    <ProductAccessPaused
-      paused={PAUSED_SAMPLE}
-      others={where.places.filter((place) => place.id !== PAUSED.id)}
-      account="/demo/settings/account"
-      onSwitch={askToOpen}
-      onChoose={askToOpen}
-    />
+    <>
+      <ProductAccessPaused
+        paused={PAUSED_SAMPLE}
+        others={others}
+        account="/demo/settings/account"
+        onSwitch={askToOpen}
+        onChoose={askToOpen}
+      />
+      {others.length === 0 && <AloneSays held="paused" />}
+    </>
   );
+}
+
+/** The product's TwoFactorOverdue card, its links the demo's: the product's signs out against the API (sc-609). With no other organisation it carries sc-85006's sentence. */
+function TwoFactorOverdue() {
+  const { t } = useTranslation();
+  const where = useWhere();
+  const alone = where.places.every((place) => place.id === where.current);
+
+  return (
+    <section className="card two-factor-overdue" aria-labelledby="overdue-title">
+      <h1 id="overdue-title">{t('signInRules.overdueTitle')}</h1>
+      <p className="two-factor-overdue-reason">
+        {t('signInRules.overdueBody', { organisation: currentPlace(where).name })}
+      </p>
+      <p className="muted">{alone ? ALONE_SAYS.overdue : t('signInRules.overdueElsewhere')}</p>
+      <div className="two-factor-overdue-actions">
+        <Link className="button button-primary" to="/demo/settings/security">
+          {t('signInRules.overdueTurnOn')}
+        </Link>
+        <Link className="button" to="/demo/sign-in">
+          {t('signInRules.overdueSignOut')}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/** What stands in for the organisation's pages while it holds the account: paused access or two-factor overdue. */
+export function HeldStandIn() {
+  return useWhere().overdue ? <TwoFactorOverdue /> : <AccessPaused />;
 }

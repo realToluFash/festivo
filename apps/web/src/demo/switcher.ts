@@ -26,6 +26,8 @@ export interface Where {
   places: readonly Place[];
   current: string;
   paused: boolean;
+  /** The organisation in use asks for two-factor and its deadline has passed (sc-609). */
+  overdue: boolean;
   invitations: readonly Invitation[];
   answers: Readonly<Record<string, Answer>>;
   offer: OfferStanding | null;
@@ -58,6 +60,9 @@ export const SWITCHER_STATES = [
   'managed-closed',
   'managed-listed',
   'paused',
+  'paused-alone',
+  'overdue',
+  'overdue-alone',
   'outside',
   'outside-one-org',
 ] as const;
@@ -75,9 +80,13 @@ export const PAUSED = {
 const IRE: Place = { id: 'org-ire-events', name: 'Ire Events', role: 'Owner' };
 export const NEW_PLACE: Place = { ...NEW_ORG, role: 'Owner' };
 
+const PAUSED_PLACE: Place = { id: PAUSED.id, name: PAUSED.name, role: 'Admin' };
+/** The states where Ire Events is the only organisation the switcher lists. */
+const ONE_ORG: readonly (SwitcherState | null)[] = ['outside-one-org', 'overdue-alone'];
+
 const POPULATED: readonly Place[] = [
   IRE,
-  { id: PAUSED.id, name: PAUSED.name, role: 'Admin' },
+  PAUSED_PLACE,
   {
     id: 'org-atelier-celeste-receptions',
     name: 'Atelier Céleste Réceptions et Mariages',
@@ -144,18 +153,22 @@ export function whereOf(state: SwitcherState | null): Where {
               ? { [CELEBRACIONES]: 'managed', [BLUEBIRD]: 'managed' }
               : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
-  const alone = state === 'one' || many || state === 'paused' || state === 'outside-one-org';
+  const held = state === 'paused' || state === 'paused-alone' || state === 'overdue';
+  const alone = state === 'one' || many || held || ONE_ORG.includes(state);
 
   return {
     places: many
       ? MANY
-      : state === 'one' || state === 'outside-one-org'
-        ? [IRE]
-        : state === 'joined'
-          ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
-          : POPULATED,
+      : state === 'paused-alone'
+        ? [PAUSED_PLACE]
+        : state === 'one' || ONE_ORG.includes(state)
+          ? [IRE]
+          : state === 'joined'
+            ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
+            : POPULATED,
     current: IRE.id,
-    paused: state === 'paused',
+    paused: state === 'paused' || state === 'paused-alone',
+    overdue: state === 'overdue' || state === 'overdue-alone',
     invitations: alone ? [] : INVITATIONS,
     answers,
     offer:
@@ -189,6 +202,7 @@ function madeIn(now: Where, place: Place, at: string, takesFocus: boolean): Wher
     places: known ? now.places : [...now.places, place],
     current: place.id,
     paused: false,
+    overdue: false,
     switched: { name: place.name, at, takesFocus },
     fresh: known ? now.fresh : [...now.fresh, place.id],
     arrived: place.id,
@@ -268,8 +282,11 @@ export function useWhere(): Where {
   );
 }
 
-export function usePaused(): boolean {
-  return useWhere().paused;
+/** The organisation in use holds the account, paused or two-factor overdue, so a stand-in takes its pages. */
+export function useHeld(): boolean {
+  const where = useWhere();
+
+  return where.paused || where.overdue;
 }
 
 export function isFresh(where: Where): boolean {
@@ -322,6 +339,7 @@ export function switchTo(place: Place, at: string): void {
     ...now,
     current: place.id,
     paused: false,
+    overdue: false,
     switched: { name: place.name, at },
   }));
 }
@@ -392,7 +410,20 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       ),
     ],
   },
-  { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },
+  {
+    name: 'Access paused',
+    states: [
+      switcherLink('paused', 'Access paused, none current'),
+      switcherLink('paused-alone', 'Access paused, no other organisation (sc-85006)'),
+    ],
+  },
+  {
+    name: 'Two-factor overdue',
+    states: [
+      switcherLink('overdue', 'Two-factor overdue, two other organisations'),
+      switcherLink('overdue-alone', 'Two-factor overdue, no other organisation (sc-85006)'),
+    ],
+  },
   {
     name: 'Events from outside (sc-68438)',
     states: [

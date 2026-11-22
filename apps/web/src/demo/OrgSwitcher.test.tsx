@@ -371,4 +371,40 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
       screen.getByText('Now working in Atelier Céleste Réceptions et Mariages.'),
     ).toBeDefined();
   });
+
+  it(
+    'draws no Switch organisation for a member paused with no other organisation, and says single events stay',
+    SLOW,
+    async () => {
+      open('/demo/today?switcher=paused-alone');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: /^Your access to Casa Lumen Eventos is paused/,
+        }),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+      expect(screen.getByText(/“Your access to single events is not affected\.”/u)).toBeDefined();
+    },
+  );
+
+  it.each([
+    ['overdue', 'Your other organisations and single-event access are not affected.'],
+    ['overdue-alone', 'Your single-event access is not affected.'],
+  ])('stands the overdue page in for Events with ?switcher=%s', SLOW, async (state, says) => {
+    open(`/demo/events?switcher=${state}`);
+    await opener();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Turn on two-factor to carry on' }),
+    ).toBeDefined();
+    expect(screen.getByText(says)).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href')).toBe(
+      '/demo/settings/security',
+    );
+  });
 });
