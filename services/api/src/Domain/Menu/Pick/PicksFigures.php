@@ -41,7 +41,7 @@ final readonly class PicksFigures
         return Vec\filter($this->headcountCalculator->coming($event), static fn (Guest $person): bool => null !== $person->getFullName());
     }
 
-    /** @return array<string, mixed> `names` is false without guests.read: no one is named, and Who hasn't picked is left out */
+    /** @return array<string, mixed> `names` is false without guests.read: Needs the host and Who hasn't picked are left out, and each course keeps its counts */
     public function of(Event $event, bool $names): array
     {
         $coming = $this->headcountCalculator->coming($event);
@@ -99,7 +99,7 @@ final readonly class PicksFigures
             'percent' => 0 === $roomSize ? 0 : Math\div($answered * 100, $roomSize),
             'allIn' => [] === $needsHost && $answered === $roomSize,
             'courses' => Vec\map($courses, fn (array $course): array => $this->course($course, $spots[$course['id']], $roomSize, $names)),
-            'needsHost' => $needsHost,
+            'needsHost' => $names ? $needsHost : null,
             'waiting' => $names ? Vec\map(
                 Vec\filter($parties, static fn (array $party): bool => isset($waiting[$party['id']])),
                 static fn (array $party): array => [...$party, 'people' => $waiting[$party['id']]],

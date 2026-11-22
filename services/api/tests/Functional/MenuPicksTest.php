@@ -266,6 +266,7 @@ final class MenuPicksTest extends ApiTestCase
         self::assertSame(2, $picks['room']);
         self::assertNull($picks['waiting']);
         self::assertNull($picks['people']);
+        self::assertNull($picks['needsHost']);
         self::assertSame(2, self::course($picks, 'Main')['notChosen']);
     }
 
