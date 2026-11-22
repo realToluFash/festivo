@@ -63,6 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
 import {
   keepLoaded,
   keptFor,
@@ -91,6 +92,7 @@ import {
   zoneCity,
 } from './menuArea.ts';
 import { type ChoiceAsk, ChoiceFields, ChoiceIntro } from './ChoiceParts.tsx';
+import { allergensInSentence } from './allergenWords.ts';
 import { choiceName } from './choiceWords.ts';
 import { firstItemProblem, ownRowsOf, rowsOf, useOrList, withoutRow } from './menuItems.ts';
 import { useShowMenuReady } from './EventNav.tsx';
@@ -199,6 +201,7 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
   });
 
   usePageTitle(pageTitle(t, [t('eventMenu.title'), event.name]));
+  const picks = useEventPicks(event.id);
 
   useEffect(() => {
     let current = true;
@@ -249,13 +252,15 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
       <div className="ev-wide mn-page">
         <Crumbs event={event} />
         {load.kind === 'loaded' ? (
-          <Courses
-            event={event}
-            menu={load.menu}
-            title={title}
-            refreshing={refreshing}
-            onMenu={(menu) => setLoad({ kind: 'loaded', menu })}
-          />
+          <MenuPicksProvider value={picks}>
+            <Courses
+              event={event}
+              menu={load.menu}
+              title={title}
+              refreshing={refreshing}
+              onMenu={(menu) => setLoad({ kind: 'loaded', menu })}
+            />
+          </MenuPicksProvider>
         ) : (
           <>
             <header className="gs-top">
@@ -1167,10 +1172,10 @@ function Courses({
       t('dishChoices.unwarned', {
         count: line.count,
         option: line.option,
-        allergens: listFormat(i18n.language, { type: 'conjunction' }).format(
-          DISH_ALLERGENS.filter((code) => line.allergens.includes(code)).map((code) =>
-            t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(i18n.language),
-          ),
+        allergens: allergensInSentence(
+          t,
+          i18n.language,
+          DISH_ALLERGENS.filter((code) => line.allergens.includes(code)),
         ),
       }),
     );
@@ -1526,6 +1531,17 @@ function Courses({
             </div>
           )}
         </div>
+        {open == null && (
+          <PicksSummary
+            closeLine={
+              headClose == null
+                ? null
+                : t(headClose.closed ? 'eventMenu.picksClosed' : 'eventMenu.picksClose', {
+                    date: closeWords(headClose.at),
+                  })
+            }
+          />
+        )}
         {open != null && (
           <aside className="mn-panel mc-panel" aria-labelledby="mc-panel-title">
             <button type="button" className="desk-text mc-back" onClick={close}>

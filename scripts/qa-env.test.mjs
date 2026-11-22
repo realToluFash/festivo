@@ -63,6 +63,7 @@ import {
   leftDriverSay,
   clearForBatch,
   bundlerArgs,
+  bundlerGroups,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -517,6 +518,23 @@ describe('the bundler command', () => {
       '18081',
       '--clear',
     ]);
+  });
+});
+
+describe('ios --stop', () => {
+  it("stops only the group listening on this tester's own port", () => {
+    const asked = [];
+    const look = (command, args) => {
+      asked.push([command, ...args].join(' '));
+      if (command === 'lsof') return '4101\n4102';
+      return { 4101: ' 4100', 4102: '4100' }[args.at(-1)];
+    };
+    expect(bundlerGroups(38081, look)).toEqual([4100]);
+    expect(asked[0]).toBe('lsof -nP -t -iTCP:38081 -sTCP:LISTEN');
+  });
+
+  it('stops nothing when no bundler listens', () => {
+    expect(bundlerGroups(38081, () => null)).toEqual([]);
   });
 });
 
@@ -3747,6 +3765,46 @@ describe('a check that runs a sibling check', () => {
       expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
         "'Hello'",
       );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('rewrites the file of an inline runFlow map', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks', 'part'), { recursive: true });
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      'appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: \'part/state.yaml\'}\n- runFlow: { env: { STATE: first }, file: part/state.yaml }\n- runFlow: { when: { platform: iOS }, file: "part/state.yaml" }\n',
+    );
+    writeFileSync(
+      join(source, 'checks', 'part', 'state.yaml'),
+      'appId: x\n---\n- takeScreenshot: shot\n',
+    );
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en'],
+        cold: false,
+        catalogues: { en: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      const outer = readFileSync(join(checks, 'outer.en.yaml'), 'utf8');
+      expect(outer).toContain(
+        '- runFlow: { file: part/outer.en.part.state.flow.yaml, env: { STATE: first } }\n',
+      );
+      expect(outer).toContain('- runFlow: {file: part/outer.en.part.state.flow.yaml}\n');
+      expect(outer).toContain(
+        '- runFlow: { env: { STATE: first }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(outer).toContain(
+        '- runFlow: { when: { platform: iOS }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(readdirSync(join(checks, 'part'))).toEqual(['outer.en.part.state.flow.yaml']);
     } finally {
       rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });

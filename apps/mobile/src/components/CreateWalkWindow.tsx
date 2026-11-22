@@ -73,6 +73,7 @@ import {
   WideCard,
 } from './CreateWalkSteps.tsx';
 import { AskLayer } from './AskLayer.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 const GROW_FROM = 0.96;
 const KEYS_AWAITED_MS = 5000;
@@ -187,6 +188,11 @@ export function CreateWalkWindow<Made>({
   const holding = useRef<TextInputInstance | null>(null);
   const creating = walk.sent === 'creating';
   const searching = walk.query.trim() !== '';
+  const leaves = useLeaveAsk(
+    open && !creating && newOrganisationEntered(walk),
+    () => setWalk((now) => ({ ...now, asking: true })),
+    onCancel,
+  );
 
   useFocusBack(open || landed, opening.opener ?? nobody);
   useSendingWords(creating ? t('createOrganisation.creating') : undefined);
@@ -372,13 +378,15 @@ export function CreateWalkWindow<Made>({
   }, [creating]);
   const cancel = () => {
     if (creating) return;
-    if (newOrganisationEntered(walk)) setWalk((now) => ({ ...now, asking: true }));
-    else onCancel();
+    leaves.leave();
   };
-  const keep = () => setWalk((now) => ({ ...now, asking: false }));
+  const keep = () => {
+    setWalk((now) => ({ ...now, asking: false }));
+    leaves.keep();
+  };
   const discard = () => {
-    keep();
-    onCancel();
+    setWalk((now) => ({ ...now, asking: false }));
+    leaves.discard();
   };
   const goBack = () => {
     if (!creating) goTo(back(walk));

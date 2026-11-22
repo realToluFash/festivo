@@ -10,6 +10,7 @@ import {
   type Allergies,
   type Answers,
   type ClearedPick,
+  type CopyMade,
   type MealScreen,
   type CourseKey,
   type PartyAnswer,
@@ -23,8 +24,10 @@ import {
   PW,
   allergyList,
   clearRuledOut,
+  copyAnswers,
   courseOf,
   dishOf,
+  mapWho,
   markOf,
   markedOpen,
   nothingSafe,
@@ -45,10 +48,11 @@ import { type DishAllergen, type Lang, allergenName, dietName } from './menuLibr
 import { PCW, closeOf, dayWords } from './picksClose.ts';
 import './mealParty.css';
 
-type From = 'flow' | 'check';
+type From = 'flow' | 'check' | 'card' | 'copy';
 type View =
   | { kind: 'kitchen'; from: From }
   | { kind: 'course'; at: number; from: From }
+  | { kind: 'card' }
   | { kind: 'check' }
   | { kind: 'sent' };
 type Told = 'marked' | 'nothing' | 'saved' | null;
@@ -57,12 +61,10 @@ const changeId = (key: RowKey | 'kitchen') => `pc-change-${key.replace('|', '-')
 const reasonId = (key: RowKey) => `pc-reason-${key.replace('|', '-')}`;
 
 function unite(recorded: Allergies, added: Allergies): Allergies {
-  const both = (who: Who): Allergen[] => [
+  return mapWho((who) => [
     ...recorded[who],
     ...added[who].filter((one) => !recorded[who].includes(one)),
-  ];
-
-  return { me: both('me'), chidi: both('chidi') };
+  ]);
 }
 
 /** A pick that a later allergy rules out opens with nothing chosen; anything else opens as it was. */
@@ -100,10 +102,11 @@ export function MealParty({
   const [saved, setSaved] = useState<Answers>(first.saved);
   const [savedAdded, setSavedAdded] = useState<Allergies>(first.savedAdded);
   const [view, setView] = useState<View>(
-    first.view.kind === 'check'
-      ? { kind: 'check' }
-      : { kind: 'course', at: first.view.at, from: 'flow' },
+    first.view.kind === 'course'
+      ? { kind: 'course', at: first.view.at, from: first.copy == null ? 'flow' : 'copy' }
+      : first.view,
   );
+  const [copy, setCopy] = useState<CopyMade | null>(first.copy ?? null);
   const [draft, setDraft] = useState<PartyAnswer | null>(
     opening == null
       ? null
@@ -116,7 +119,9 @@ export function MealParty({
   const [pressed, setPressed] = useState(first.pressed);
   const [cleared, setCleared] = useState(first.cleared);
   const [told, setTold] = useState<Told>(null);
-  const focus = useRef<string | null>(first.pressed ? 'first' : null);
+  const focus = useRef<string | null>(
+    first.pressed ? 'first' : first.view.kind === 'card' ? 'pc-for-h' : null,
+  );
   const allergies = unite(first.recorded, added);
 
   useEffect(() => {
@@ -140,6 +145,33 @@ export function MealParty({
     setTold(null);
     setView({ kind: 'course', at, from });
     focus.current = 'ms-h';
+  }
+
+  function toCard(target: string) {
+    setTold(null);
+    setView({ kind: 'card' });
+    focus.current = target;
+  }
+
+  function sameAs(from: Who, to: Who) {
+    const result = copyAnswers(
+      answers,
+      from,
+      to,
+      allergies[to],
+      (course) => closeOf(course, first.dates).closed,
+    );
+    setAnswers(result.answers);
+    setCleared((was) =>
+      Object.fromEntries(Object.entries(was).filter(([one]) => !one.startsWith(`${to}|`))),
+    );
+    setCopy({ who: to, from, asked: result.asked });
+    const asked = result.asked[0];
+    if (asked == null) {
+      toCard('pc-for-h');
+      return;
+    }
+    openCourse(screenAt(to, asked, SCREENS), 'copy', result.answers);
   }
 
   function toCheck(target: string) {
@@ -191,6 +223,14 @@ export function MealParty({
     const course = courseOf(screen.course);
     const person = personOf(screen.who);
     const safe = !nothingSafe(course, allergies[screen.who]);
+    const earlier =
+      view.from === 'flow' && screen.n === 1
+        ? PARTY.slice(
+            0,
+            PARTY.findIndex((one) => one.key === screen.who),
+          )
+        : [];
+    const asking = view.from === 'copy' && copy?.who === screen.who ? copy : null;
 
     return (
       <CourseScreen
@@ -199,6 +239,13 @@ export function MealParty({
         course={course}
         allergies={allergies[screen.who]}
         other={screen.n === 1 ? (first.other[screen.who] ?? null) : null}
+        earlier={earlier}
+        onSameAs={(from) => sameAs(from, screen.who)}
+        asked={
+          asking?.asked.includes(screen.course) === true
+            ? PW.cantCopy(personOf(asking.from), course.name, person)
+            : null
+        }
         cleared={cleared[key] ?? null}
         draft={draft}
         refusal={pressed && draft == null && safe ? PW.chooseFor(course.name, person) : null}
@@ -211,6 +258,10 @@ export function MealParty({
         onBack={() => {
           if (view.from === 'check') {
             toCheck(changeId(key));
+            return;
+          }
+          if (view.from === 'card') {
+            toCard(changeId(key));
             return;
           }
           const kept = store(key, draft);
@@ -233,8 +284,37 @@ export function MealParty({
             Object.fromEntries(Object.entries(was).filter(([one]) => one !== key)),
           );
           if (view.from === 'check') toCheck(changeId(key));
-          else if (view.at === SCREENS.length - 1) toCheck('pc-h');
+          else if (view.from === 'card') toCard(changeId(key));
+          else if (view.from === 'copy' && asking != null) {
+            const after = asking.asked.find((one) => screenAt(screen.who, one, SCREENS) > view.at);
+            if (after == null) toCard('pc-for-h');
+            else openCourse(screenAt(screen.who, after, SCREENS), 'copy', kept);
+          } else if (view.at === SCREENS.length - 1) toCheck('pc-h');
           else openCourse(view.at + 1, 'flow', kept);
+        }}
+      />
+    );
+  }
+
+  if (view.kind === 'card' && copy != null) {
+    const who = copy.who;
+    const last = PARTY.at(-1)?.key === who;
+
+    return (
+      <CopiedCard
+        person={personOf(who)}
+        from={personOf(copy.from)}
+        answers={answers}
+        onChange={(course) => openCourse(screenAt(who, course, SCREENS), 'card')}
+        onBack={() => openCourse(screenAt(who, COURSES[0]?.key ?? 'starter', SCREENS), 'flow')}
+        onContinue={() => {
+          if (last) {
+            toCheck('pc-h');
+            return;
+          }
+          const next = PARTY[PARTY.findIndex((one) => one.key === who) + 1];
+          if (next != null)
+            openCourse(screenAt(next.key, COURSES[0]?.key ?? 'starter', SCREENS), 'flow');
         }}
       />
     );
@@ -393,6 +473,9 @@ function CourseScreen({
   course,
   allergies,
   other,
+  earlier,
+  onSameAs,
+  asked,
   cleared,
   draft,
   refusal,
@@ -407,6 +490,9 @@ function CourseScreen({
   course: PartyCourse;
   allergies: readonly Allergen[];
   other: string | null;
+  earlier: readonly PartyPerson[];
+  onSameAs: (from: Who) => void;
+  asked: string | null;
   cleared: ClearedPick | null;
   draft: PartyAnswer | null;
   refusal: string | null;
@@ -421,6 +507,7 @@ function CourseScreen({
   const anyOut = safe && ruled.some((one) => one != null);
   const clearedDish = cleared == null ? null : dishOf(course.key, cleared.dishId);
   const describedBy = [
+    asked != null && 'pc-asked',
     refusal != null && 'ms-refused',
     other != null && 'pc-other',
     clearedDish != null && 'pc-cleared',
@@ -445,6 +532,21 @@ function CourseScreen({
           {PCW.line(close)}
         </p>
       </div>
+      {earlier.length > 0 && (
+        <div className="pc-same">
+          {earlier.map((one) => (
+            <button
+              key={one.key}
+              type="button"
+              className="gp-outlined pc-same-button"
+              aria-label={PW.sameAsName(one, person)}
+              onClick={() => onSameAs(one.key)}
+            >
+              {PW.sameAs(one)}
+            </button>
+          ))}
+        </div>
+      )}
       <fieldset className="ms-set" aria-describedby={describedBy}>
         <legend className="ms-legend">
           <h2 id="ms-h" className="gp-h2 gk-h2" tabIndex={-1}>
@@ -454,6 +556,14 @@ function CourseScreen({
             {PW.which(course.name)}
           </h2>
         </legend>
+        {asked != null && (
+          <p id="pc-asked" className="pc-inset pc-asked">
+            <span className="pc-info" aria-hidden="true">
+              <Glyph name="info" size={14} weight={2.4} />
+            </span>
+            <span>{asked}</span>
+          </p>
+        )}
         {other != null && (
           <p id="pc-other" className="pc-inset">
             <AllergyMark />
@@ -590,6 +700,63 @@ function Pick({ answer, course }: { answer: PartyAnswer | undefined; course: Par
       </span>
       <span>{shape.words}</span>
     </p>
+  );
+}
+
+function CopiedCard({
+  person,
+  from,
+  answers,
+  onChange,
+  onBack,
+  onContinue,
+}: {
+  person: PartyPerson;
+  from: PartyPerson;
+  answers: Answers;
+  onChange: (course: CourseKey) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <section className="gk ms pc-check" aria-labelledby="pc-for-h" aria-describedby="pc-copied">
+      <h2 id="pc-for-h" className="gp-h2 gk-h2" tabIndex={-1}>
+        {PW.forWho(person)}
+      </h2>
+      <p id="pc-copied" className="pc-saved">
+        <Glyph name="copy" size={16} weight={2.2} />
+        <span>{PW.copiedFrom(from)}</span>
+      </p>
+      <ul className="mx-rows">
+        {COURSES.map((course) => {
+          const key = rowKey(person.key, course.key);
+
+          return (
+            <li key={key} className="mx-row pc-row">
+              <div className="mx-words">
+                <p className="mx-course">{course.name}</p>
+                <Pick answer={answers[key]} course={course} />
+              </div>
+              <button
+                id={changeId(key)}
+                type="button"
+                className="gp-text is-ink"
+                aria-label={PW.changeAria(course.name, person)}
+                onClick={() => onChange(course.key)}
+              >
+                <span>{PW.change}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="pc-footer">
+        <button type="button" className="gp-outlined" onClick={onBack}>
+          {PW.back}
+        </button>
+        <Filled onClick={onContinue}>{PW.continue}</Filled>
+      </div>
+    </section>
   );
 }
 

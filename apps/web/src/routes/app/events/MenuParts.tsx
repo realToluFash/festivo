@@ -41,6 +41,7 @@ import {
 import { shownVariants } from '../menu/variants.ts';
 import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
 import { describedBy } from './eventFieldOrder.ts';
+import { DishPicks, SeePicksLink, WhoHasntLink, useCanChoose, useMenuPicks } from './menuPicks.tsx';
 import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
 import {
   type CourseForm,
@@ -288,6 +289,9 @@ export function CourseCard({
   const sameOk = canSame(course);
   const name = course.name;
   const close = course.picksClose;
+  const shown = useMenuPicks();
+  const picked = shown != null;
+  const canChoose = useCanChoose();
   const line =
     course.servedAt == null
       ? t('eventMenu.courseOf', { n: index + 1, count: all })
@@ -394,8 +398,10 @@ export function CourseCard({
               {t('eventMenu.picksClosedCourse', {
                 course: name,
               })}
+              {canChoose && ` ${t('seePicks.stillChoose')}`}
             </span>
           </p>
+          <WhoHasntLink courseId={course.id} course={name} />
         </div>
       )}
       <OwnItemsFacts course={course} />
@@ -512,17 +518,20 @@ export function CourseCard({
           {course.skippable && <li>{t('eventMenu.skip')}</li>}
         </ul>
       )}
-      {manage && (
+      {(manage || picked) && (
         <div className="mn-course-foot">
-          <button
-            id={`mc-add-dish-${course.id}`}
-            type="button"
-            className="mn-add-dish"
-            onClick={onAddDish}
-          >
-            <Glyph name="plus" size={16} weight={2.4} />
-            {t('eventMenu.addDish')}
-          </button>
+          {manage && (
+            <button
+              id={`mc-add-dish-${course.id}`}
+              type="button"
+              className="mn-add-dish"
+              onClick={onAddDish}
+            >
+              <Glyph name="plus" size={16} weight={2.4} />
+              {t('eventMenu.addDish')}
+            </button>
+          )}
+          <SeePicksLink courseId={course.id} course={name} />
         </div>
       )}
     </li>
@@ -581,6 +590,7 @@ function DishRow({
               {ways ? t('dishChoices.plusVariantOptions') : t('dishChoices.plusOptions')}
             </p>
           )}
+          <DishPicks id={dish.id} />
         </div>
         {manage && (
           <div className="lib-acts" role="group" aria-label={t('eventMenu.actionsFor', { name })}>

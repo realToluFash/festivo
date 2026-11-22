@@ -23,6 +23,7 @@ import { FieldError } from './Field.tsx';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type AskProps, FocusedScreen, Line } from './Summary.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 /** Change role on its own screen: only the roles the viewer may give, and an owner made here asks for proof first (sc-18930). */
 export function RoleScreen({
@@ -61,6 +62,14 @@ export function RoleScreen({
   const [failed, setFailed] = useState<string | null>(null);
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== current && role != null;
+  const leaves = useLeaveAsk(
+    open && changed && !busy,
+    () => {
+      setProving(null);
+      setDiscarding(true);
+    },
+    onClose,
+  );
   const toOwner = role?.seededAs === 'owner';
   const first = firstName(member.user.name);
   const callerOwns = organisation.role.seededAs === 'owner';
@@ -100,6 +109,7 @@ export function RoleScreen({
       return;
     }
     const list_ = await membersAfterWrite(() => reread(member.id), list, withRole(member.id, role));
+    leaves.release();
     onChanged(
       list_,
       t('membersScreen.roleNow', { name: member.user.name, role: roleName(t, role) }),
@@ -119,8 +129,14 @@ export function RoleScreen({
           testID: 'members.role.discard',
           removes: true,
         },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
 
@@ -152,7 +168,7 @@ export function RoleScreen({
         testID: 'members.role.save',
       }}
       waits={busy}
-      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      onCancel={() => leaves.leave()}
       cancelLabel={t('membersScreen.awaiting.cancel')}
       cancelTestID="members.role.cancel"
       opener={opener}

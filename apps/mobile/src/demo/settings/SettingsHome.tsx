@@ -8,7 +8,7 @@ import { Text, TitleCap } from '../../components/Text.tsx';
 import { Title, useTitleCap } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop, SettingsTabBar } from './Frame.tsx';
+import { Bell, Landscape, OrgPill, PortraitTop, SearchAndBell, SettingsTabBar } from './Frame.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
 import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { type Held, HeldStandIn } from './Held.tsx';
@@ -28,6 +28,7 @@ import {
 import { SettingsListBody } from '../../components/SettingsList.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { LegalLinks } from '../LegalLinks.tsx';
+import { PausedHere } from '../OrgSwitcher.tsx';
 import { PAGE_TITLE, TOP_TITLE, topTitle } from '../../components/topTitle.ts';
 
 type Listed = Exclude<ShellSection, 'account'>;
@@ -173,7 +174,12 @@ export function SettingsHome({
     </Title>
   );
 
-  if (held != null) return <HeldSettings held={held} onSignOut={onSignOut} />;
+  if (held != null)
+    return (
+      <PausedHere.Provider value={held === 'paused'}>
+        <HeldSettings held={held} onSignOut={onSignOut} />
+      </PausedHere.Provider>
+    );
 
   if (shell.layout === 'landscape')
     return (
@@ -240,23 +246,31 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. */
+/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). */
 function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
   const shell = useShell();
+  const search = held !== 'paused';
   const insets = useSafeAreaInsets();
   const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null}>
-        <View style={styles.heldSide}>{standIn}</View>
+      <Landscape column={null} search={search}>
+        <View style={styles.heldSide}>
+          {held === 'paused' && (
+            <View style={styles.heldSideTop}>
+              <Bell tell={shell.tell} />
+            </View>
+          )}
+          {standIn}
+        </View>
       </Landscape>
     );
 
   if (shell.layout === 'portrait')
     return (
       <View style={styles.page}>
-        <PortraitTop at="Settings" />
+        <PortraitTop at="Settings" search={search} />
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
@@ -274,7 +288,11 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
         <View style={styles.orgRow}>
           <OrgPill />
           <View style={styles.grow} />
-          <Bell tell={shell.tell} />
+          {search ? (
+            <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+          ) : (
+            <Bell tell={shell.tell} />
+          )}
         </View>
         {standIn}
       </View>
@@ -340,6 +358,13 @@ const styles = StyleSheet.create({
   heldPhone: { flex: 1, paddingHorizontal: tokens.spaceXxl },
   heldUpright: { flex: 1, paddingHorizontal: tokens.space5xl },
   heldSide: { flex: 1, paddingHorizontal: 30 },
+  // The product's side header with no title: the bell alone at the content's top right (sc-83881).
+  heldSideTop: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 26,
+    paddingBottom: tokens.spaceLg,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',

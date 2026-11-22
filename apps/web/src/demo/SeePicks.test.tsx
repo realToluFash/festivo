@@ -84,18 +84,20 @@ describe('See picks (sc-3909)', () => {
 
   it('refuses Save with nothing picked, in place', SLOW, async () => {
     await picks('chooseForBlank');
-    expect(screen.getByText('Choose main for Bea, or let the kitchen choose.')).toBeTruthy();
+    expect(screen.getByText('Choose main for Bea Mensah, or let the kitchen choose.')).toBeTruthy();
   });
 
   it('asks the override question, and records the pick as the host’s', SLOW, async () => {
     await picks('chooseForOverride');
     const ask = screen.getByRole('alertdialog');
-    expect(within(ask).getByText('Kwame’s record says celery. Pick it anyway?')).toBeTruthy();
+    expect(
+      within(ask).getByText('Kwame Asante’s record says celery. Pick it anyway?'),
+    ).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.textContent).toBe(SW.chooseAnother));
 
     fireEvent.click(within(ask).getByRole('button', { name: SW.pickAnyway }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(said()).toContain('Recorded as your pick for Kwame, despite the record');
+    expect(said()).toContain('Recorded as your pick for Kwame Asante, despite the record');
     expect(screen.getByText('40 of 48 picks in · 83% of the room')).toBeTruthy();
   });
 
@@ -134,7 +136,9 @@ describe('See picks (sc-3909)', () => {
   it('asks before giving a variant to someone it rules out', SLOW, async () => {
     await picks('chooseWhoOverride');
     expect(
-      within(screen.getByRole('alertdialog')).getByText('Kojo: give Children’s portion anyway?'),
+      within(screen.getByRole('alertdialog')).getByText(
+        'Kojo Asante: give Children’s portion anyway?',
+      ),
     ).toBeTruthy();
   });
 });
@@ -175,7 +179,7 @@ describe('a course’s default on See picks (sc-1362)', () => {
 
   it('moves Kofi from Given the default to chosen once chosen for', SLOW, async () => {
     await picks('chooseForDefaultedSaved');
-    expect(said()).toContain('Main chosen for Kofi: Suya wrap, Beef.');
+    expect(said()).toContain('Main chosen for Kofi Mensah: Suya wrap, Beef.');
     expect(within(region(SW.given(1))).queryByText('Kofi Mensah')).toBeNull();
   });
 

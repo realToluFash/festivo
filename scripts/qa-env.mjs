@@ -1858,6 +1858,7 @@ export function clearIosRelease(root, key) {
 }
 
 async function ios(args) {
+  if (args.includes('--stop')) return stopBundler();
   const root = qaWorktree();
   assertQaStack(root);
   const { open, shut } = simulatorFor(args);
@@ -1945,6 +1946,29 @@ async function startBundler(root, env = process.env, args = []) {
 
   await bundlerUp();
   return metro;
+}
+
+// Only this tester's: whatever listens on its own Metro port, with the group it leads.
+export function bundlerGroups(port, look = capture) {
+  const pids = (look('lsof', ['-nP', '-t', `-iTCP:${port}`, '-sTCP:LISTEN']) ?? '').split('\n');
+  const groups = pids
+    .filter(Boolean)
+    .map((pid) => Number((look('ps', ['-o', 'pgid=', '-p', pid]) ?? '').trim()))
+    .filter((group) => group > 1);
+  return [...new Set(groups)];
+}
+
+function stopBundler() {
+  const port = CONFIG.ports.METRO_PORT;
+  const groups = bundlerGroups(port);
+  for (const group of groups) {
+    try {
+      process.kill(-group, 'SIGTERM');
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  }
+  console.log(groups.length ? `Stopped the bundler on ${port}.` : `No bundler on ${port}.`);
 }
 
 async function bundlerUp(seconds = 120) {
@@ -3327,7 +3351,7 @@ export function composeBatch(
   });
   const subFlows = (flow, language, caller, chain, dir = '') =>
     flow.replace(
-      /^(\s*(?:-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$)/gm,
+      /^(\s*(?:-\s*runFlow:\s*\{[^\n]*?\bfile|-\s*runFlow|file):\s*)(['"]?)([\w./-]+)\.ya?ml\2(?=\s*$|\s*[,}])/gm,
       (line, key, quote, ref) => {
         const name = posix.relative('checks', posix.join('checks', dir, ref));
         if (name.startsWith('../') || !existsSync(join(source, 'checks', `${name}.yaml`)))

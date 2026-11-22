@@ -50,6 +50,7 @@
 }
 
 .unsub-words .unsub-body {
+  margin: 0;
   font: 400 16px/1.5 var(--fontFamily);
   color: var(--colorInkSecondary);
 }
@@ -100,6 +101,11 @@
   text-decoration: none;
 }
 
+/* The demo's 44, over the signed-out column's 24 for its links. */
+.unsub-actions .link-button:is(.unsub-link, .unsub-retry) {
+  min-height: var(--sizeHit);
+}
+
 .unsub-failed {
   display: flex;
   flex-basis: 100%;
@@ -127,6 +133,7 @@
 }
 
 .unsub-failed .unsub-failed-line {
+  margin: 0;
   font: var(--typeBody);
   color: var(--colorInk);
 }

@@ -91,9 +91,9 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { BellButton, BellInPane } from './BellButton.tsx';
 import { SearchAndBell } from './SearchButton.tsx';
-import { SEARCH_HREF } from '../kit/searchLinks.ts';
+import { SEARCH_HREF, searchOffered } from '../kit/searchLinks.ts';
 import { CreateWalkWindow, type WalkOpening, deviceNow } from './CreateWalkWindow.tsx';
-import { Sheet } from './Sheet.tsx';
+import { Sheet, SheetScrollView } from './Sheet.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import {
@@ -288,6 +288,7 @@ export function AppFrame({
   ownChrome = false,
   inEvent,
   untitled = false,
+  bareList = false,
   primary,
   underTitle,
   besideTitle,
@@ -310,6 +311,8 @@ export function AppFrame({
   inEvent?: InsideEvent | undefined;
   /** The body names the page itself (an event's Overview card, a member's own card in front of the list), so the frame draws no title (sc-30413, sc-37693). */
   untitled?: boolean;
+  /** The body alone in the Events frame, as the demo's ListFrame draws it: on a phone nothing above it, upright the pill, tabs and bell with no title (sc-1468, sc-80863). */
+  bareList?: boolean;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
@@ -372,12 +375,18 @@ export function AppFrame({
     [],
   );
   const currencies = useCountryCurrencies(creating);
-  const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
+  const [created, setCreated] = useState<{
+    id: string;
+    name: string;
+    takesFocus: boolean;
+  } | null>(null);
   const createdWords = useRef<ViewInstance>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created.name });
   useEffect(
     () =>
-      inFront ? onMovedOn((next) => setCreated({ name: next.name, takesFocus: false })) : undefined,
+      inFront
+        ? onMovedOn((next) => setCreated({ id: next.id, name: next.name, takesFocus: false }))
+        : undefined,
     [inFront],
   );
   const [backHidden, setBackHidden] = useState(false);
@@ -528,7 +537,7 @@ export function AppFrame({
     (id: string) => {
       const name = signedIn.organisations.find((known) => known.id === id)?.name;
       switchOrganisation(id, () => {
-        if (name != null) setCreated({ name, takesFocus: true });
+        if (name != null) setCreated({ id, name, takesFocus: true });
       });
     },
     [signedIn.organisations],
@@ -552,6 +561,13 @@ export function AppFrame({
   if (standingSeen.id !== signedIn.organisation?.id || standingSeen.overdue !== overdue) {
     setStandingSeen({ id: signedIn.organisation?.id, overdue });
     setLapsed(standingSeen.id === signedIn.organisation?.id && overdue ? {} : undefined);
+  }
+  // A move made elsewhere, as an event's link does, leaves this screen's notice naming an organisation no longer worked in (sc-80863).
+  const workingIn = signedIn.organisation?.id;
+  const [seenIn, setSeenIn] = useState(workingIn);
+  if (seenIn !== workingIn) {
+    setSeenIn(workingIn);
+    if (created != null && created.id !== workingIn) setCreated(null);
   }
   const switchAnswer = useFrameSwitch();
   useEffect(() => {
@@ -633,6 +649,7 @@ export function AppFrame({
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
+    bareList,
     cap,
     onTitleDrawn: titleCap.onDrawn,
   };
@@ -716,7 +733,9 @@ export function AppFrame({
                                   >
                                     <BodySwitched.Provider value={bodySwitched}>
                                       <UnderTabsProvider value={underTabs}>
-                                        <BellInPane.Provider value={sidebar && untitled}>
+                                        <BellInPane.Provider
+                                          value={sidebar && untitled && !bareList}
+                                        >
                                           {children}
                                         </BellInPane.Provider>
                                       </UnderTabsProvider>
@@ -786,7 +805,7 @@ export function AppFrame({
                   if (id !== signedIn.organisation?.id || signedIn.pausedIn != null) {
                     const name = signedIn.organisations.find((known) => known.id === id)?.name;
                     switchOrganisation(id, () => {
-                      if (name != null) setCreated({ name, takesFocus: false });
+                      if (name != null) setCreated({ id, name, takesFocus: false });
                     });
                   }
                 }}
@@ -847,7 +866,11 @@ export function AppFrame({
                   setCreating(false);
                   joinOrganisation(organisation);
                   switchOrganisation(organisation.id);
-                  setCreated({ name: organisation.name, takesFocus: fromNone });
+                  setCreated({
+                    id: organisation.id,
+                    name: organisation.name,
+                    takesFocus: fromNone,
+                  });
                 }}
               />
             )}
@@ -887,6 +910,7 @@ interface FrameHeaderProps {
   switched: ReactNode;
   /** A page whose body names it (an event's Overview card, a member's own card in front of the list), so the frame draws no title. */
   untitled: boolean;
+  bareList: boolean;
   /** No title, back or bell above the body; upright, the area pills alone. */
   bare: boolean;
   /** The size the title drew at, which nothing under it outgrows; null where nothing caps (sc-67338). */
@@ -1109,6 +1133,7 @@ function FrameHeader({
   besideTitle,
   besideBack,
   untitled,
+  bareList,
   cap,
   onTitleDrawn,
 }: FrameHeaderProps) {
@@ -1202,7 +1227,7 @@ function FrameHeader({
           tabsCentred
         />
         {backView}
-        {titleRow()}
+        {!bareList && titleRow()}
       </View>
     );
   }
@@ -1236,6 +1261,7 @@ function FrameHeader({
   }
 
   if (bare) return <View style={{ paddingTop: insets.top + tokens.spaceLg }} />;
+  if (bareList) return <View style={{ height: insets.top }} />;
 
   // Inside an event, ‹ in its pill and the bell head the page; on Overview the event's card under them names it (sc-30413).
   if (inEvent && back != null) {
@@ -1580,7 +1606,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
         opener={moreTab}
         testID="event.nav.moreSheet"
       >
-        <View style={[styles.moreSheet, { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) }]}>
+        <View style={styles.moreSheet}>
           <View style={styles.moreHead}>
             <Text
               size={22}
@@ -1600,43 +1626,52 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
               <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
             </Pressable>
           </View>
-          <View accessibilityRole="tablist">
-            <RowList
-              items={[
-                ...doorRows(t, inEvent, () => setMore(false)),
-                ...inMore.map((area) => {
-                  const on = area === inEvent.area;
+          <SheetScrollView
+            style={styles.moreBody}
+            contentContainerStyle={[
+              styles.moreRows,
+              { paddingBottom: Math.max(MORE_FOOT - insets.bottom, 0) },
+            ]}
+            testID="event.nav.moreSheet.rows"
+          >
+            <View accessibilityRole="tablist">
+              <RowList
+                items={[
+                  ...doorRows(t, inEvent, () => setMore(false)),
+                  ...inMore.map((area) => {
+                    const on = area === inEvent.area;
 
-                  return {
-                    key: area,
-                    inset: 40,
-                    selected: on,
-                    row: (
-                      <Row
-                        title={t(`eventNav.${area}`)}
-                        lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
-                        opens
-                        selected={on}
-                        onPress={() => {
-                          setMore(false);
-                          inEvent.onArea(area);
-                        }}
-                        accessibilityRole="tab"
-                        testID={`event.nav.more.${area}`}
-                      />
-                    ),
-                  };
-                }),
-              ]}
-            />
-          </View>
-          {outside != null && (
-            <OutsideYou
-              here={outside.id}
-              onLeave={() => setMore(false)}
-              idPrefix="event.nav.more"
-            />
-          )}
+                    return {
+                      key: area,
+                      inset: 40,
+                      selected: on,
+                      row: (
+                        <Row
+                          title={t(`eventNav.${area}`)}
+                          lead={<MoreGlyph name={AREA_GLYPH[area]} on={on} />}
+                          opens
+                          selected={on}
+                          onPress={() => {
+                            setMore(false);
+                            inEvent.onArea(area);
+                          }}
+                          accessibilityRole="tab"
+                          testID={`event.nav.more.${area}`}
+                        />
+                      ),
+                    };
+                  }),
+                ]}
+              />
+            </View>
+            {outside != null && (
+              <OutsideYou
+                here={outside.id}
+                onLeave={() => setMore(false)}
+                idPrefix="event.nav.more"
+              />
+            )}
+          </SheetScrollView>
         </View>
       </Sheet>
     </>
@@ -1790,7 +1825,9 @@ function OutsideYouSheet({
             <Glyph name="x" size={18} ink={tokens.colorInk} weight={2.4} />
           </Pressable>
         </View>
-        <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        <SheetScrollView style={styles.moreBody} contentContainerStyle={styles.moreRows}>
+          <OutsideYou here={here} onLeave={onClose} idPrefix="frame.side.you" />
+        </SheetScrollView>
       </View>
     </Sheet>
   );
@@ -1898,7 +1935,7 @@ function FrameSidebar({
 }) {
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
-  const { account } = useSignedIn();
+  const { account, pausedIn } = useSignedIn();
   const events = useSidebarEvents(account?.id, inEvent ? undefined : organisation?.id);
   const tabs = useFrameTabs(current, organisation);
   const [you, setYou] = useState(false);
@@ -1912,7 +1949,7 @@ function FrameSidebar({
       person,
       unread: 0,
       creates: organisation != null && roleHolds(organisation, 'events.create'),
-      search: organisation != null && !inEvent,
+      search: searchOffered({ organisation, pausedIn }) && !inEvent,
       open: (opens) => {
         if (opens.to === 'account') router.navigate(SECTION_HREF.account);
         if (opens.to === 'event') router.push(`/events/${opens.id}`);
@@ -1920,7 +1957,7 @@ function FrameSidebar({
       },
       useOrgOpener: useFrameOrgOpener,
     }),
-    [organisation, person, inEvent],
+    [organisation, pausedIn, person, inEvent],
   );
   const places = inEvent
     ? entries.map((entry) => (
@@ -2116,9 +2153,16 @@ const styles = StyleSheet.create({
     borderRadius: tokens.sizeHit / 2,
   },
   pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
-  moreSheet: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl, paddingTop: 31 },
+  moreSheet: { flexShrink: 1, gap: tokens.spaceXl, paddingTop: 31 },
+  moreBody: { flexGrow: 0, flexShrink: 1 },
+  moreRows: { gap: tokens.spaceXl, paddingHorizontal: tokens.spaceXxl },
   moreTitle: { letterSpacing: 22 * -0.015, lineHeight: 22 * 1.2 },
-  moreHead: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center' },
+  moreHead: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: tokens.spaceXxl,
+  },
   moreClose: {
     width: tokens.sizeHit,
     height: tokens.sizeHit,

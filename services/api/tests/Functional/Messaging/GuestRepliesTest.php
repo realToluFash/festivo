@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Guest\Model\CompanionChoice;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\RecordedReply;
@@ -26,6 +27,9 @@ use App\Entity\Membership;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
 use App\Entity\NotificationItem;
+use App\Entity\SeatAssignment;
+use App\Entity\SeatingPlan;
+use App\Entity\SeatingTable;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\EventType;
@@ -37,9 +41,12 @@ use App\Enum\MealAnswerKind;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
+use App\Enum\TableShape;
+use App\Repository\GuestRepository;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\Types\Types;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -86,9 +93,54 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->reply($changed, GuestReply::NotComing);
         $this->reply($this->guest('Bisi Oke'), GuestReply::Coming);
 
-        self::assertSame(['1 coming, 1 changed their reply', '2 coming, 1 not coming'], $this->titles($this->ada));
-        self::assertSame(['2 coming, 2 not coming'], Vec\take($this->titles($this->owner), 1), 'A first reply changed before the member looked counts as the answer it is now.');
+        self::assertSame(['1 coming, 1 changed their reply'], $this->titles($this->ada));
+        self::assertSame(['2 coming, 2 not coming'], $this->titles($this->owner), 'A first reply changed before the member looked counts as the answer it is now.');
         self::assertSame(1, self::rowCount('SELECT COUNT(*) FROM notification_items WHERE user_id = :user AND read_at IS NULL', ['user' => $this->ada->getId()->toRfc4122()]));
+    }
+
+    #[Test]
+    public function aChangeAfterTheItemWasReadTurnsThatSameItemUnreadAtTheTopCountingOnlyWhatCameSince(): void
+    {
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        $first = $this->itemIds($this->ada);
+        self::at('2026-11-02 10:01');
+        $this->open($this->ada);
+        self::at('2026-11-02 10:02');
+        self::connection()->executeStatement(
+            "INSERT INTO notification_items (id, user_id, category, title, lines, muted, created_at) VALUES (:id, :user, 'event_changes', 'Another item', '[]', false, :at)",
+            ['id' => Uuid::v7()->toRfc4122(), 'user' => $this->ada->getId()->toRfc4122(), 'at' => self::now()],
+            ['at' => Types::DATETIME_IMMUTABLE],
+        );
+        self::at('2026-11-02 10:05');
+        $this->reply($this->guest('Kemi Ade'), GuestReply::NotComing);
+        self::at('2026-11-02 10:06');
+        $this->readAll($this->ada);
+        self::at('2026-11-02 10:07');
+        $this->reply($this->guest('Femi Ojo'), GuestReply::Coming);
+
+        self::assertSame(['1 coming'], $this->titles($this->ada));
+        self::assertSame($first, $this->itemIds($this->ada), 'The event keeps the item it had, read or unread.');
+        self::assertSame(GuestReplyLog::thread($this->eventId()), self::scalar('SELECT thread FROM notification_items WHERE user_id = :user ORDER BY created_at DESC LIMIT 1', ['user' => $this->ada->getId()->toRfc4122()]));
+        self::assertSame(1, self::rowCount("SELECT COUNT(*) FROM notification_items WHERE user_id = :user AND category = 'guest_replies' AND read_at IS NULL", ['user' => $this->ada->getId()->toRfc4122()]));
+    }
+
+    #[Test]
+    public function anEventsEarlierReadItemsGoWhenItsItemTurnsUnreadAgain(): void
+    {
+        $this->reply($this->guest('Tomi Bello'), GuestReply::Coming);
+        self::at('2026-11-02 10:01');
+        $this->open($this->ada);
+        $kept = Type\string()->coerce(self::scalar("SELECT id FROM notification_items WHERE user_id = :user AND category = 'guest_replies'", ['user' => $this->ada->getId()->toRfc4122()]));
+        self::connection()->executeStatement(
+            "INSERT INTO notification_items (id, user_id, category, title, lines, event_id, event_name, place, muted, read_at, thread, thread_from, created_at)
+             SELECT :id, user_id, category, '3 coming', lines, event_id, event_name, place, muted, read_at - INTERVAL '1 hour', thread, thread_from, created_at - INTERVAL '1 hour' FROM notification_items WHERE id = :kept",
+            ['id' => Uuid::v7()->toRfc4122(), 'kept' => $kept],
+        );
+        self::at('2026-11-02 10:05');
+        $this->reply($this->guest('Kemi Ade'), GuestReply::Coming);
+
+        self::assertSame([$kept], $this->itemIds($this->ada));
+        self::assertSame(['1 coming'], $this->titles($this->ada));
     }
 
     #[Test]
@@ -111,7 +163,7 @@ final class GuestRepliesTest extends MessagingTestCase
         self::at('2026-11-02 10:05');
         $this->reply($this->guest('Kemi Ade'), GuestReply::Maybe);
 
-        self::assertSame(['1 not sure yet', '1 coming'], $this->titles($this->ada));
+        self::assertSame(['1 not sure yet'], $this->titles($this->ada));
         self::assertSame('/app/events/' . $this->eventId() . '/guests?filter=changed&since=' . \rawurlencode('2026-11-02T09:01:00+00:00'), $this->place($this->ada));
         self::assertSame(['Kemi Ade'], Vec\map($this->log()->unseen($this->ada->getId(), $this->eventId())->rows, static fn ($row): string => $row->name));
     }
@@ -308,6 +360,79 @@ final class GuestRepliesTest extends MessagingTestCase
     }
 
     #[Test]
+    public function notSeatedLeavesOutACompanionTheirGuestMarkedNotComingAsNoMealChosenDoes(): void
+    {
+        $this->seatingPlan();
+        $this->course('Main');
+        self::at('2026-11-05 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->companion($tomi, 'Chidi Eze');
+        $this->companion($tomi, 'Ngozi Eze');
+        $this->reply($tomi, GuestReply::Coming);
+
+        self::at('2026-11-06 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 3\nNo meal chosen: 3\n", ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body);
+
+        self::at('2026-11-06 10:00');
+        $this->companionsComing($tomi, ['Chidi Eze' => false, 'Ngozi Eze' => true]);
+        $this->reply($this->guest('Femi Ojo'), GuestReply::NotComing);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 2\nNo meal chosen: 2\n", ($this->emails($this->ada)[1] ?? self::fail('No second summary.'))->body, 'Chidi is out of both lines.');
+
+        self::at('2026-11-07 10:00');
+        $this->companionsComing($tomi, ['Chidi Eze' => true, 'Ngozi Eze' => true]);
+        $this->reply($this->guest('Sade Ola'), GuestReply::NotComing);
+
+        self::at('2026-11-08 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 3\nNo meal chosen: 3\n", ($this->emails($this->ada)[2] ?? self::fail('No third summary.'))->body, 'Chidi is back in both.');
+    }
+
+    #[Test]
+    public function notSeatedNeverCountsAWalkInAndFallsAsPeopleAreSeatedUntilItHasNoLine(): void
+    {
+        $table = $this->seatingPlan();
+        self::at('2026-11-05 10:00');
+        $tomi = $this->guest('Tomi Bello');
+        $this->companion($tomi, 'Chidi Eze');
+        $this->reply($tomi, GuestReply::Coming);
+        $walkIn = Guest::walkedIn($this->event, 'Bayo Ige', 'bayo ige', $this->owner, self::now());
+        self::em()->persist($walkIn);
+        self::em()->flush();
+
+        self::at('2026-11-06 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 2\n", ($this->emails($this->ada)[0] ?? self::fail('No summary.'))->body, 'Bayo walked in unseated and is not counted.');
+
+        self::at('2026-11-06 10:00');
+        $this->seat($walkIn, $table, 1);
+        $this->seat($tomi, $table, 2);
+        $this->reply($this->guest('Femi Ojo'), GuestReply::NotComing);
+
+        self::at('2026-11-07 08:00');
+        self::runUntilIdle();
+
+        self::assertStringContainsString("Not seated: 1\n", ($this->emails($this->ada)[1] ?? self::fail('No second summary.'))->body, 'Seating Tomi lowers it by one; seating Bayo changes nothing.');
+
+        self::at('2026-11-07 10:00');
+        $companions = self::service(GuestRepository::class)->findCompanionsOf($tomi);
+        $this->seat($companions[0] ?? self::fail('No companion.'), $table, 3);
+        $this->reply($this->guest('Sade Ola'), GuestReply::NotComing);
+
+        self::at('2026-11-08 08:00');
+        self::runUntilIdle();
+
+        self::assertStringNotContainsString('Not seated', ($this->emails($this->ada)[2] ?? self::fail('No third summary.'))->body, 'A count of 0 is never shown.');
+    }
+
+    #[Test]
     public function noMealLineIsShownWithoutACourseThatAsksOrWhenEveryoneComingHasAnswered(): void
     {
         $same = $this->course('Dessert', false);
@@ -434,7 +559,7 @@ final class GuestRepliesTest extends MessagingTestCase
         $this->transaction(fn () => self::service(GuestNeedsRecord::class)->write($kemi, self::diet(['halal']), $this->owner));
         self::runUntilIdle();
 
-        self::assertSame(['1 updated dietary needs', '1 coming'], $this->titles($this->ada), 'The same reply with new needs is a needs change, not a changed reply.');
+        self::assertSame(['1 updated dietary needs'], $this->titles($this->ada), 'The same reply with new needs is a needs change, not a changed reply.');
         self::assertSame([[GuestChangeKind::Needs, 'Tomi Bello']], Vec\map($this->log()->unseen($this->ada->getId(), $this->eventId())->rows, static fn ($row): array => [$row->kind, $row->name]));
     }
 
@@ -516,6 +641,38 @@ final class GuestRepliesTest extends MessagingTestCase
         $dish = MealAnswerKind::Chosen === $kind ? self::em()->getRepository(MenuDish::class)->findOneBy(['course' => $course]) : null;
         self::em()->persist(new MealAnswer($person, $course, $kind, $dish, null, [], []));
         self::em()->flush();
+    }
+
+    private function seatingPlan(): SeatingTable
+    {
+        $plan = new SeatingPlan($this->event, null, 1000, 1000, null);
+        $table = new SeatingTable($plan, 'Table 1', 'table 1', TableShape::Round, 100, 100, null);
+        self::em()->persist($plan);
+        self::em()->persist($table);
+        self::em()->flush();
+
+        return $table;
+    }
+
+    private function seat(Guest $person, SeatingTable $table, int $seat): void
+    {
+        self::em()->persist(new SeatAssignment($person, $table, $seat));
+        self::em()->flush();
+    }
+
+    /**
+     * From the guest's own page: Coming again, each named companion Coming or Not coming.
+     *
+     * @param array<string, bool> $coming by companion name
+     */
+    private function companionsComing(Guest $guest, array $coming): void
+    {
+        $choices = Vec\map(
+            self::service(GuestRepository::class)->findCompanionsOf($guest),
+            static fn (Guest $companion): CompanionChoice => new CompanionChoice($companion->getId()->toRfc4122(), $companion->getFullName() ?? '', Str\lowercase($companion->getFullName() ?? ''), $coming[$companion->getFullName() ?? ''] ?? true),
+        );
+        self::service(GuestAnswers::class)->answer($guest, GuestReply::Coming, new PageReply($choices, null));
+        self::runUntilIdle();
     }
 
     private function onEvent(User $user, Event $event): EventPerson
@@ -602,6 +759,15 @@ final class GuestRepliesTest extends MessagingTestCase
         return Vec\map(
             self::connection()->fetchFirstColumn("SELECT title FROM notification_items WHERE user_id = :user AND category = 'guest_replies' ORDER BY created_at DESC, id DESC", ['user' => $user->getId()->toRfc4122()]),
             static fn (mixed $title): string => Type\string()->coerce($title),
+        );
+    }
+
+    /** @return list<string> the member's Guest replies items, newest first */
+    private function itemIds(User $user): array
+    {
+        return Vec\map(
+            self::connection()->fetchFirstColumn("SELECT id FROM notification_items WHERE user_id = :user AND category = 'guest_replies' ORDER BY created_at DESC, id DESC", ['user' => $user->getId()->toRfc4122()]),
+            static fn (mixed $id): string => Type\string()->coerce($id),
         );
     }
 

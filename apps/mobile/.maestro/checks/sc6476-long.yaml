@@ -1,0 +1,17 @@
+# sc-6476: a Finished event's card with a 280-character line, top and the line. Needs ${METRO_URL}, ${EV_LONG}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_LONG}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: top
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: thankYouLong

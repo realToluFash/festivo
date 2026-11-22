@@ -13,6 +13,15 @@ describe('Back keeps its row while Refreshing… comes and goes (sc-71821)', () 
     expect(backRow({ phone: true, guestsList: true, cardNamed: false })).toBe('givingWay');
   });
 
+  it('gives way beside Overview’s ‹, refreshing or not (sc-83008)', () => {
+    expect(backRow({ phone: true, guestsList: false, cardNamed: true, overview: true })).toBe(
+      'givingWay',
+    );
+    expect(backRow({ phone: false, guestsList: false, cardNamed: true, overview: true })).toBe(
+      'givingWay',
+    );
+  });
+
   it('keeps Refreshing… beside Back elsewhere on a phone and on a named card', () => {
     expect(backRow({ phone: true, guestsList: false, cardNamed: false })).toBe('beside');
     expect(backRow({ phone: false, guestsList: false, cardNamed: true })).toBe('beside');
@@ -26,7 +35,7 @@ describe('Back keeps its row while Refreshing… comes and goes (sc-71821)', () 
 describe('EventScreen builds Back’s row from backRow alone (sc-71821)', () => {
   it('asks backRow without Refreshing…, so the row is the same whether it shows', () => {
     expect(event).toMatch(
-      /const besideBackRow = backRow\(\{ phone, guestsList: guests && guestBack == null, cardNamed \}\);/u,
+      /const besideBackRow = backRow\(\{\s+phone,\s+guestsList: guests && guestBack == null,\s+cardNamed,\s+overview: overviewGivesWay\(kind, overviewBack\),\s+\}\);/u,
     );
   });
 

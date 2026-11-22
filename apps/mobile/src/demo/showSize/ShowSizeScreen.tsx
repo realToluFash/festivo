@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShowButton, type ShowChoice } from '../../components/CalendarControls.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { isTablet } from '../../layout/classify.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
@@ -68,9 +69,7 @@ export function ShowSizeScreen({ start }: { start: ShowSizeStart }) {
   const cap = frameTitleCap(isTablet(layout.kind), Math.min(layout.width, layout.height), scale);
 
   useEffect(() => {
-    const wait = setTimeout(() => anchorUnder(showRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(showRef, then), setMenuAt, MENU_AFTER_MS);
   }, []);
 
   return (

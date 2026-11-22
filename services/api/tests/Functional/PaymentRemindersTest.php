@@ -227,6 +227,23 @@ final class PaymentRemindersTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPushNamesTheEventOnEveryRowWhereTheBellLeavesItToTheTitle(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        $owner = new Recipient(NotificationAudienceKind::Member, $this->owner->getId(), 'Harriet Cole', 'en', null);
+        $payload = [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]];
+
+        $push = self::service(PaymentReminder::class)->render(NotificationChannel::Push, $owner, $payload);
+        $bell = self::service(PaymentReminder::class)->render(NotificationChannel::InApp, $owner, $payload);
+
+        self::assertSame('1 payment due in the next 3 days on Summer wedding', $push->subject);
+        self::assertSame(['Bloom & Co · Summer wedding · £1,000.00 · due Wed 10 Mar'], $push->lines);
+        self::assertSame(['Bloom & Co · £1,000.00 · due Wed 10 Mar'], $bell->lines);
+        self::assertSame($bell->place, $push->place);
+    }
+
+    #[Test]
     public function theEmailLinksToThePaymentAndSaysHowToStopIt(): void
     {
         $deposit = $this->payment('Deposit', '2027-03-10');

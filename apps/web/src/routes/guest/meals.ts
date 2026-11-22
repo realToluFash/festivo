@@ -133,15 +133,55 @@ export function stepsOf(course: MealCourse, plate: Plate | null): Step[] {
   return dish == null ? [first] : [first, ...asked(dish)];
 }
 
-export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
-  const way = dish.variants.find((one) => one.id === plate.variant);
-  const base = dish.variants.length === 0 ? dish.allergens : (way?.allergens ?? null);
-  if (base == null) return null;
-  const options = dish.choices.flatMap((choice) =>
-    choice.options.filter((one) => (plate.options[choice.id] ?? []).includes(one.id)),
-  );
+/** What a dish contains before a way is picked: its only way's allergens, or the dish's own. */
+export function dishContains(dish: MealDish): readonly string[] | null {
+  if (dish.variants.length === 1) return dish.variants[0]?.allergens ?? null;
 
-  return [...new Set([...base, ...options.flatMap((one) => one.allergens)])];
+  return dish.allergens;
+}
+
+type CardPart = { way: string | null; name: string; allergens: readonly string[] | null };
+
+function plateParts(dish: MealDish, plate: Plate): CardPart[] {
+  const ways = dish.variants.length >= 2;
+  const way = ways ? dish.variants.find((one) => one.id === plate.variant) : undefined;
+  const head: CardPart =
+    way != null
+      ? { way: way.name, name: dish.name, allergens: way.allergens }
+      : { way: null, name: dish.name, allergens: dishContains(dish) };
+
+  return [
+    head,
+    ...dish.choices.flatMap((choice) =>
+      choice.options
+        .filter((one) => (plate.options[choice.id] ?? []).includes(one.id))
+        .map((one) => ({ way: null, name: one.name, allergens: one.allergens })),
+    ),
+  ];
+}
+
+/** What the plate holds, for its mark: not stated while a dish of two ways has no way picked, whatever the dish itself states. */
+export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
+  if (dish.variants.length >= 2 && !dish.variants.some((one) => one.id === plate.variant))
+    return null;
+
+  return partsAllergens(plateParts(dish, plate));
+}
+
+/** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. */
+export function cardParts(dish: MealDish, plate: Plate | null): CardPart[] | null {
+  if (plate?.kind !== 'chosen' || plate.dish !== dish.id) return null;
+
+  return plateParts(dish, plate);
+}
+
+/** Every part's allergens together; not stated when any part never stated them. */
+export function partsAllergens(
+  parts: readonly { allergens: readonly string[] | null }[],
+): string[] | null {
+  if (parts.some((one) => one.allergens == null)) return null;
+
+  return [...new Set(parts.flatMap((one) => one.allergens ?? []))];
 }
 
 export function markOf(
@@ -351,4 +391,17 @@ export function picksOf(
       ];
     });
   });
+}
+
+/** The day every course's picks close on, while all are open, so one line says it in place of a close line on each row. */
+export function oneCloseDay(
+  courses: readonly MealCourse[],
+  dayOf: (at: string) => string,
+): string | null {
+  const days = new Set(courses.map((one) => dayOf(one.picksClose.at)));
+  const [day] = days;
+
+  return days.size === 1 && day != null && courses.every((one) => !one.picksClose.closed)
+    ? day
+    : null;
 }

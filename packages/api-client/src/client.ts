@@ -137,6 +137,7 @@ import {
   asUnwarnedOptions,
   asUnwarnedPickers,
 } from './menu.ts';
+import { type EventPicks, type HostPick, asEventPicks } from './picks.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
@@ -3437,6 +3438,52 @@ export class ApiClient {
 
   private menuChoicePath(eventId: string, choiceId: string): string {
     return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
+  }
+
+  /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
+  async menuPicks(eventId: string): Promise<EventPicks> {
+    return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** Refused 403 without guests.manage, and 409 `meal_pick_ruled_out` with `people` until sent with `anyway`. */
+  async chooseForGuest(
+    eventId: string,
+    guestId: string,
+    courseId: string,
+    pick: HostPick,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/people/${encodeURIComponent(guestId)}/courses/${encodeURIComponent(courseId)}`,
+        pick,
+      ),
+    );
+  }
+
+  /** Gives a Children only variant to exactly `people` on its course; refused as `chooseForGuest`. */
+  async giveVariant(
+    eventId: string,
+    variantId: string,
+    people: readonly string[],
+    anyway = false,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/variants/${encodeURIComponent(variantId)}`,
+        { people, anyway },
+      ),
+    );
+  }
+
+  private picksOf(body: unknown): EventPicks {
+    const picks = asEventPicks((body as Record<string, unknown> | null)?.picks);
+
+    if (picks == null)
+      throw new Error(
+        'The API answered the picks in a shape this client does not know. Check PicksFigures in services/api.',
+      );
+
+    return picks;
   }
 
   /** A hub token for this event's menu topic alone. */

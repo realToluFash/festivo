@@ -4,13 +4,20 @@ import { request as httpsRequest } from 'node:https';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-export function holds(method, url, pattern) {
-  if (method !== 'GET') return false;
+export function holds(method, url, pattern, held = 'GET') {
+  if (method !== held) return false;
   const path = new URL(url, 'http://proxy').pathname;
   return pattern.test(path);
 }
 
-export function startProxy({ target, delay, pattern, port = 0, host = '127.0.0.1' }) {
+export function startProxy({
+  target,
+  delay,
+  pattern,
+  method = 'GET',
+  port = 0,
+  host = '127.0.0.1',
+}) {
   const upstream = new URL(target);
   const send = upstream.protocol === 'https:' ? httpsRequest : httpRequest;
 
@@ -37,7 +44,7 @@ export function startProxy({ target, delay, pattern, port = 0, host = '127.0.0.1
       req.pipe(out);
     };
 
-    if (holds(req.method, req.url, pattern)) {
+    if (holds(req.method, req.url, pattern, method)) {
       req.pause();
       const held = setTimeout(() => {
         req.resume();
@@ -59,6 +66,7 @@ async function main() {
     options: {
       target: { type: 'string' },
       delay: { type: 'string', default: '5000' },
+      method: { type: 'string', default: 'GET' },
       path: { type: 'string', default: '^/api/events/[^/]+/guests$' },
       port: { type: 'string', default: '0' },
       host: { type: 'string', default: '127.0.0.1' },
@@ -66,7 +74,7 @@ async function main() {
   });
   if (!values.target) {
     console.error(
-      'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--path regex] [--port n] [--host addr]',
+      'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--method GET|POST|…] [--path regex] [--port n] [--host addr]',
     );
     process.exit(2);
   }
@@ -74,12 +82,13 @@ async function main() {
     target: values.target,
     delay: Number(values.delay),
     pattern: new RegExp(values.path),
+    method: values.method.toUpperCase(),
     port: Number(values.port),
     host: values.host,
   });
   const { port } = server.address();
   console.log(
-    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, GET ${values.path} held ${values.delay} ms`,
+    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, ${values.method.toUpperCase()} ${values.path} held ${values.delay} ms`,
   );
 }
 

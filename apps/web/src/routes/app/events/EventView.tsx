@@ -32,6 +32,7 @@ import { GuestsArea, GuestsGone } from './GuestsArea.tsx';
 import { RunArea } from './RunArea.tsx';
 import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
+import { SeePicksArea } from './SeePicksArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
@@ -64,6 +65,7 @@ type Page =
   | 'run'
   | 'staffJobs'
   | 'staffStations'
+  | 'menuPicks'
   | PlaceholderEventArea;
 
 export function EventView() {
@@ -99,6 +101,10 @@ export function EventStations() {
   return <ForEvent page="staffStations" />;
 }
 
+export function EventMenuPicks() {
+  return <ForEvent page="menuPicks" />;
+}
+
 /** Staff opens its first tab, the Roster (sc-3906). */
 export function EventStaff() {
   const { eventId = '' } = useParams();
@@ -132,19 +138,25 @@ function ForEvent({ page }: { page: Page }) {
   const outside = outsideOn(session, eventId);
   const organisationId = outside == null ? (session.organisation?.id ?? null) : OUTSIDE;
   const [moved, setMoved] = useState<Moved | null>(null);
+  // The link moves the account once, from the organisation it was opened in: a pick in the switcher after that is the person's, and stays (sc-46032).
+  const [link, setLink] = useState({ eventId, openIn: organisationId });
 
   if (moved != null && (moved.organisationId !== organisationId || moved.event.id !== eventId))
     setMoved(null);
+  if (link.eventId !== eventId) setLink({ eventId, openIn: organisationId });
+  else if (link.openIn != null && link.openIn !== organisationId)
+    setLink({ eventId, openIn: null });
 
   if (organisationId == null) return null;
 
   const movesInto =
-    page === 'event' && outside == null
+    page === 'event' && outside == null && link.openIn === organisationId
       ? (event: OrganisationEvent, tag: string): boolean => {
           const into = eventMovesInto(event, organisationId, session.organisations);
           const membership = session.organisations.find(({ id }) => id === into);
 
           if (membership == null) return false;
+          setLink({ eventId, openIn: null });
           setMoved({ organisationId: membership.id, name: membership.name, event, tag });
           switchOrganisation(membership.id);
 
@@ -304,9 +316,11 @@ function EventOf({
   const budgetUnseen =
     page === 'budget' && load.kind === 'loaded' && !canOn(load.event, PAGE_NEEDS.budget);
   useShowEvent(eventId, load.kind === 'loaded' ? load.event : undefined);
+  // Until Overview has the event, it stands under the organisation's sidebar, the switcher still naming the one worked in (sc-80863).
   useGoneEvent(
     eventId,
-    (page === 'guests' && load.kind === 'notFound') ||
+    (page === 'event' && outside == null && load.kind !== 'loaded') ||
+      (page === 'guests' && load.kind === 'notFound') ||
       (load.kind === 'failed' && load.offline === true),
   );
 
@@ -328,6 +342,9 @@ function EventOf({
 
   if (page === 'menu' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <MenuArea event={load.event} /> : <Withheld />;
+
+  if (page === 'menuPicks' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? <SeePicksArea event={load.event} /> : <Withheld />;
 
   if (page === 'budget' && load.kind === 'loaded')
     return budgetUnseen ? <BudgetWithheld event={load.event} /> : <BudgetArea event={load.event} />;

@@ -1,0 +1,41 @@
+# sc-80438: the walk-in sheet, its blank and too-long refusals, and the duplicate question.
+# On an Android phone the keyboard covers the sheet (sc-1454), so each step types into the focused field and hides the keyboard before looking.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'Qqq Nobody'
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn' }, timeout: 10000 }
+- tapOn: { id: 'checkIn.walkIn' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: sheet-keyboard
+- eraseText: 30
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn.add' }, timeout: 10000 }
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: blank-keyboard
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: blank
+- tapOn: { id: 'checkIn.walkIn.name' }
+- inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- hideKeyboard
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: too-long
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 260
+- inputText: 'Bisi Adewale'
+- hideKeyboard
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- hideKeyboard
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn.same' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: duplicate
+- tapOn: { id: 'checkIn.walkIn.close' }

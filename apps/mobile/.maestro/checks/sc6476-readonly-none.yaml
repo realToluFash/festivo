@@ -1,0 +1,13 @@
+# sc-6476: a member who cannot end the event sees no card on a Finished event with no line (${EV_RNONE}). Needs ${METRO_URL}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_RNONE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- waitForAnimationToEnd
+- takeScreenshot: thankYouReadOnlyNone
+- assertNotVisible:
+    id: 'event.thankYou'

@@ -5,12 +5,15 @@ export function backRow({
   phone,
   guestsList,
   cardNamed,
+  overview = false,
 }: {
   phone: boolean;
   guestsList: boolean;
   cardNamed: boolean;
+  /** Overview's ‹ on a phone or upright, whose Refreshing… takes its own line above the card where both do not fit (sc-83008). */
+  overview?: boolean;
 }): BackRow {
-  if (phone && guestsList) return 'givingWay';
+  if ((phone && guestsList) || overview) return 'givingWay';
 
   return phone || cardNamed ? 'beside' : 'alone';
 }

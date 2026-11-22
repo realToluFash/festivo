@@ -58,11 +58,26 @@ final readonly class ServedMeals
      */
     public function served(MealAnswer $answer, array $allergens, array $options): MealAnswerKind
     {
+        if (MealAnswerKind::Chosen !== $answer->getKind() || null === $answer->getDish()) {
+            return $answer->getKind();
+        }
+
+        return [] === $this->recordedSince($answer, $allergens, $options) ? MealAnswerKind::Chosen : MealAnswerKind::NeedsHost;
+    }
+
+    /**
+     * @param list<string>                    $allergens the person's now
+     * @param array<string, MenuChoiceOption> $options   the event's, by id
+     *
+     * @return list<string> the allergens on the chosen plate recorded since it was picked (sc-3909 names them)
+     */
+    public function recordedSince(MealAnswer $answer, array $allergens, array $options): array
+    {
         $dish = $answer->getDish();
         $variant = $answer->getVariant();
 
-        if (MealAnswerKind::Chosen !== $answer->getKind() || null === $dish) {
-            return $answer->getKind();
+        if (null === $dish) {
+            return [];
         }
 
         $plate = MealAllergens::onPlate(
@@ -71,6 +86,6 @@ final readonly class ServedMeals
         );
         $since = Vec\filter($allergens, static fn (string $code): bool => !Iter\contains($answer->getAllergensAtPick(), $code));
 
-        return [] === MealAllergens::against($plate, $since) ? MealAnswerKind::Chosen : MealAnswerKind::NeedsHost;
+        return MealAllergens::against($plate, $since);
     }
 }

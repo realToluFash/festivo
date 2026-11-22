@@ -1501,6 +1501,7 @@
     "firstRunCreate": "Create an event",
     "firstRunAskOwner": "Events your organisation creates will show here. Ask an owner if you need to create one.",
     "loadingEvent": "Loading the event…",
+    "failedLoadEvent": "The event did not load. Check your connection and try again.",
     "when": "{{range}} · {{timeZone}}",
     "notFound": "This event is not available",
     "backToEvents": "Back to Events",

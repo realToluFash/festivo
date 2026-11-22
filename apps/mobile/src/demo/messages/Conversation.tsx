@@ -841,13 +841,16 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
   else if (draft.outcome === 'sent') rest = null;
   else if (draft.was != null) {
+    const editingLine = (
+      <Text size={13.5} weight="medium" style={[styles.goes, !talk.wide && styles.goesOverFoot]}>
+        {paused ? SW.editingPaused : say.editing(day, at.time)}
+      </Text>
+    );
     rest =
       refused == null ? (
         <>
           {paused && talk.wide && <PausedLine text={pausedWaits()} />}
-          <Text size={13.5} weight="medium" style={styles.goes}>
-            {paused ? SW.editingPaused : say.editing(day, at.time)}
-          </Text>
+          {talk.wide && editingLine}
         </>
       ) : (
         <RefusedSave
@@ -859,18 +862,22 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
           }}
         />
       );
+    // Above the phone's keys the stream can be too short to show the line, so it sits on the composer.
     foot = (
-      <NewComposer
-        draft={draft}
-        bodyRef={talk.bodyRef}
-        insertRef={talk.refFor('insert')}
-        onSubject={(text) => dispatch({ type: 'subject', text })}
-        onBody={(text) => dispatch({ type: 'body', text })}
-        onCaret={talk.onCaret}
-        onInsert={talk.onInsert}
-        onPreview={() => dispatch({ type: 'preview' })}
-        editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
-      />
+      <>
+        {refused == null && !talk.wide && editingLine}
+        <NewComposer
+          draft={draft}
+          bodyRef={talk.bodyRef}
+          insertRef={talk.refFor('insert')}
+          onSubject={(text) => dispatch({ type: 'subject', text })}
+          onBody={(text) => dispatch({ type: 'body', text })}
+          onCaret={talk.onCaret}
+          onInsert={talk.onInsert}
+          onPreview={() => dispatch({ type: 'preview' })}
+          editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
+        />
+      </>
     );
   } else if (draft.step === 'check')
     rest = (
@@ -1144,6 +1151,7 @@ export function partsOf(talk: Talk, open: Exclude<Open, null | { kind: 'reached'
 }
 
 const styles = StyleSheet.create({
+  goesOverFoot: { marginBottom: tokens.spaceSm },
   goes: {
     alignSelf: 'flex-end',
     maxWidth: '86%',

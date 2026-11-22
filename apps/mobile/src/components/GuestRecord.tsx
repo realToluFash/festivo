@@ -26,7 +26,7 @@ import { ReplyMark } from './ReplyMark.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Quote } from './PasteReply.tsx';
 import { FocusedScreen } from './SummaryOverlays.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Refusal = 'offline' | 'notSaved' | null;
 
@@ -65,12 +65,12 @@ export function GuestRecord({
   const [sending, setSending] = useState(false);
   const firstAnswer = useRef<ViewInstance>(null);
   const firstHow = useRef<ViewInstance>(null);
-  const replace = useRef<ViewInstance>(null);
+  const replace = useRef<TextHandle>(null);
   const names = guest.companions.map((one) => one.fullName);
   const noAnswer = tried && answer == null;
   const noHow = tried && how == null;
 
-  const focus = (ref: RefObject<ViewInstance | null>) =>
+  const focus = (ref: RefObject<ScreenReaderTarget | null>) =>
     setTimeout(() => moveScreenReaderFocus(ref.current), 300);
 
   async function send(chosen: GuestAnswer, told: GuestReplyHow, confirmed: boolean) {

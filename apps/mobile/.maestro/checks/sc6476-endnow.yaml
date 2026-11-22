@@ -1,0 +1,36 @@
+# sc-6476: End now's sheet with the thank-you field, ending with a line. Needs ${METRO_URL}, ${EV_ENDT}, ${ORIENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_ENDT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    timeout: 30000
+- tapOn:
+    id: 'events.end'
+- waitForAnimationToEnd
+- takeScreenshot: endNow
+- tapOn:
+    id: 'events.endThankYou'
+- waitForAnimationToEnd
+- takeScreenshot: endNowFocused
+- inputText: 'Thank you for dancing with us and for every kind word. We felt so loved, and we will remember this day for a long time.'
+- takeScreenshot: endNowThankYouKeys
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: endNowThankYou
+- tapOn:
+    id: 'events.endYes'
+- waitForAnimationToEnd
+- takeScreenshot: ended
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou'
+    direction: UP
+    timeout: 20000
+- takeScreenshot: endedCard
