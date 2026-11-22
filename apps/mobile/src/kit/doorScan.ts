@@ -84,12 +84,11 @@ export function unwait(waiting: readonly WaitingArrival[], guestId: string): Wai
 
 const FOR_GOOD = new Set(['not_found', 'check_in_closed']);
 
-/** Only the API saying this arrival can never be recorded: the guest gone, or the door shut at that time. A 5xx, 408, 429 or 401 may pass on a later try. */
 export function refusedForGood(error: unknown): boolean {
   return error instanceof ApiError && FOR_GOOD.has(error.code);
 }
 
-/** Sends each waiting arrival in the order recorded. One refused for good is dropped; anything else stops, keeping it and the rest. */
+/** Sends each waiting arrival in the order recorded. One the API can never record (the guest gone, the door shut at that time) is dropped; anything else, a 5xx or 429 included, stops, keeping it and the rest. */
 export async function sendWaiting(
   waiting: readonly WaitingArrival[],
   send: (arrival: WaitingArrival) => Promise<CheckIn>,
