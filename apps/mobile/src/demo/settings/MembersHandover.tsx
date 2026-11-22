@@ -106,7 +106,10 @@ export function HandoverAsk({
   const [keys, setKeys] = useState<number | null>(null);
   const origin = useWindowOrigin();
   const [centred, setCentred] = useState<number | null>(null);
+  const [inAsk, setInAsk] = useState<Anchor | null>(null);
+  const placedAt = useRef<number | null>(null);
   const button = useRef<ViewInstance>(null);
+  const layer = useRef<ViewInstance>(null);
   const field = useRef<TextInputInstance>(null);
   const pickedRow = useRef<ViewInstance>(null);
   const answer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -124,7 +127,7 @@ export function HandoverAsk({
   const menuOpen = menuAt != null;
   const lifts = menuOpen && keys != null && shell.layout !== 'portrait';
   const liftTop = insets.top + tokens.spaceLg;
-  const shift = lifts && centred != null ? liftTop - centred : 0;
+  const askTop = lifts ? liftTop : centred;
 
   useReadOut(typed === '' ? null : none ? W.noMatch(typed) : W.matches(found.length), {
     afterTyping: query,
@@ -216,9 +219,21 @@ export function HandoverAsk({
   function closeMenu(): void {
     if (lifts && !reduced && curve.current != null) followKeys(curve.current);
     setMenuAt(null);
+    setInAsk(null);
     setQuery('');
     setKeys(null);
     setTimeout(() => moveScreenReaderFocus(button.current), SETTLED_MS);
+  }
+
+  // Measured against the Ask's own window at one moment, and then carried with the Ask, so the menu stays under the button wherever the Ask moves (sc-31310).
+  function placeMenu(): void {
+    if (inAsk != null) return;
+    layer.current?.measureInWindow((_lx, layerTop) =>
+      button.current?.measureInWindow((x, y, width, height) => {
+        const top = y - layerTop - (placedAt.current ?? 0);
+        setInAsk({ x, width, top, y: top + height });
+      }),
+    );
   }
 
   function pick(id: string): void {
@@ -256,62 +271,79 @@ export function HandoverAsk({
       ? null
       : {
           layer: (
-            <MenuLayer
-              at={{ ...menuAt, y: menuAt.y + shift, top: menuAt.top + shift }}
-              onClose={closeMenu}
-              width={menuAt.width}
-              align="start"
-              below={tokens.spaceXs}
-              floor={keys == null ? null : keyboardInWindow(keys, origin) - tokens.spaceSm}
-              head={
-                searching ? (
-                  <View style={styles.searchHead}>
-                    <Search
-                      key={cleared}
-                      start={query}
-                      typed={query}
-                      field={field}
-                      onTyped={setQuery}
-                      onClear={() => {
-                        setQuery('');
-                        setCleared((times) => times + 1);
-                      }}
-                      words={{ search: W.search, clear: W.clearSearch }}
-                      testID={`${testID}.search`}
-                    />
-                  </View>
-                ) : undefined
-              }
-              testID={`${testID}.menu`}
+            <View
+              ref={layer}
+              style={[StyleSheet.absoluteFill, inAsk == null && styles.unplaced]}
+              pointerEvents="box-none"
+              onLayout={placeMenu}
             >
-              {none && (
-                <View style={styles.none}>
-                  <Text size={15} weight="medium" style={styles.noneWords}>
-                    {W.noMatch(typed)}
-                  </Text>
-                  <TextAction
-                    label={W.clearSearch}
-                    onPress={() => {
-                      setQuery('');
-                      setCleared((times) => times + 1);
-                    }}
-                    testID={`${testID}.search.clearAll`}
+              <MenuLayer
+                at={
+                  inAsk == null || askTop == null
+                    ? menuAt
+                    : {
+                        ...inAsk,
+                        y: askTop + inAsk.y + origin,
+                        top: askTop + inAsk.top + origin,
+                      }
+                }
+                onClose={closeMenu}
+                width={menuAt.width}
+                align="start"
+                below={tokens.spaceXs}
+                floor={keys == null ? null : keyboardInWindow(keys, origin) - tokens.spaceSm}
+                head={
+                  searching ? (
+                    <View style={styles.searchHead}>
+                      <Search
+                        key={cleared}
+                        start={query}
+                        typed={query}
+                        field={field}
+                        onTyped={setQuery}
+                        onClear={() => {
+                          setQuery('');
+                          setCleared((times) => times + 1);
+                        }}
+                        words={{ search: W.search, clear: W.clearSearch }}
+                        testID={`${testID}.search`}
+                      />
+                    </View>
+                  ) : undefined
+                }
+                testID={`${testID}.menu`}
+              >
+                {none && (
+                  <View style={styles.none}>
+                    <Text size={15} weight="medium" style={styles.noneWords}>
+                      {W.noMatch(typed)}
+                    </Text>
+                    <View style={styles.noneClear}>
+                      <TextAction
+                        label={W.clearSearch}
+                        onPress={() => {
+                          setQuery('');
+                          setCleared((times) => times + 1);
+                        }}
+                        testID={`${testID}.search.clearAll`}
+                      />
+                    </View>
+                  </View>
+                )}
+                {choices.map((id) => (
+                  <Choice
+                    key={id}
+                    ref={id === taker ? pickedRow : undefined}
+                    words={id === you ? W.yours(takerName(id)) : takerName(id)}
+                    said={id === you ? W.yoursSaid(takerName(id)) : takerName(id)}
+                    face={<Face id={id} person={person(id)} />}
+                    on={id === taker}
+                    onPress={() => pick(id)}
+                    testID={`${testID}.menu.${id === NOBODY ? NOBODY : (person(id)?.initials ?? id)}`}
                   />
-                </View>
-              )}
-              {choices.map((id) => (
-                <Choice
-                  key={id}
-                  ref={id === taker ? pickedRow : undefined}
-                  words={id === you ? W.yours(takerName(id)) : takerName(id)}
-                  said={id === you ? W.yoursSaid(takerName(id)) : takerName(id)}
-                  face={<Face id={id} person={person(id)} />}
-                  on={id === taker}
-                  onPress={() => pick(id)}
-                  testID={`${testID}.menu.${id === NOBODY ? NOBODY : (person(id)?.initials ?? id)}`}
-                />
-              ))}
-            </MenuLayer>
+                ))}
+              </MenuLayer>
+            </View>
           ),
           onClose: closeMenu,
         };
@@ -356,6 +388,7 @@ export function HandoverAsk({
       onConfirm={confirm}
       top={lifts ? liftTop : null}
       onPlaced={(top) => {
+        placedAt.current = top;
         if (!lifts) setCentred(top);
       }}
       over={menu}
@@ -657,6 +690,8 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceXxs,
   },
   noneWords: { textAlign: 'center', lineHeight: 15 * 1.4 },
+  noneClear: { alignItems: 'center' },
+  unplaced: { opacity: 0 },
   choice: {
     minHeight: 48,
     flexDirection: 'row',
