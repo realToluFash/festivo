@@ -4003,7 +4003,7 @@
     "changesSaved": "Vos modifications sont enregistrées.",
     "notSaved": "Non envoyé. Vérifiez votre connexion et réessayez.",
     "refusedClosed": "Le choix pour le service « {{course}} » a été clos le {{date}}, votre modification n’a donc pas été enregistrée.",
-    "askHosts": "To change a pick now, ask {{hosts}}.",
+    "askHosts": "Pour modifier un choix maintenant, adressez-vous à {{hosts}}.",
     "preview": "Aperçu. Rien n’est enregistré.",
     "closePreview": "Fermer l’aperçu"
   },
