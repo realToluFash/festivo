@@ -1,0 +1,49 @@
+# sc-3784: This view narrowed by a search, then emptied by one, beside the demo's exportNarrowed and exportEmpty.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: 'okonkwo'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'guests.export'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: exportNarrowed
+- tapOn:
+    id: 'guests.export.close'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'guests.search'
+- eraseText: 30
+- inputText: 'zzzz'
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: emptyList
+- runFlow:
+    when:
+      visible:
+        id: 'guests.export'
+    commands:
+      - tapOn:
+          id: 'guests.export'
+      - waitForAnimationToEnd:
+          timeout: 4000
+      - takeScreenshot: exportEmpty
+- openLink: ${METRO_URL}/--/demo/guests?state=exportNarrowed
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-exportNarrowed
+- openLink: ${METRO_URL}/--/demo/guests?state=exportEmpty
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-exportEmpty
