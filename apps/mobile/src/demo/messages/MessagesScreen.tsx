@@ -43,7 +43,7 @@ import { Bell } from '../settings/Frame.tsx';
 import { BellPlace } from './BellPlace.tsx';
 import type { BellState } from './BellStates.ts';
 import { Back } from '../../components/SettingsParts.tsx';
-import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
+import type { Anchor } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
 import { KeysClear } from './KeysClear.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
@@ -108,11 +108,15 @@ import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
 import { HoldTop } from './HoldTop.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
+import { measuredUnder } from '../measuredUnder.ts';
+import { openOnceSettled } from '../menuSettles.ts';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
 /** The confirm opens once the actions' window has gone, since iOS shows one window at a time. */
 const ASK_AFTER_MS = 800;
+
+const MENU_AFTER_MS = 300;
 
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
   const told = channelsWords(m.sample === 'reasons' ? ['email'] : SAMPLE_CHANNELS, locale);
@@ -188,6 +192,11 @@ export function MessagesScreen({
   const wide = !phone;
   const insets = useSafeAreaInsets();
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const liveRef = (key: string): RefObject<ViewInstance | null> => ({
+    get current() {
+      return refs.current[key] ?? null;
+    },
+  });
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
   const reachedHeadRef = useRef<TextHandle>(null);
@@ -324,40 +333,23 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.picking || phone) return undefined;
-    const later = setTimeout(() => {
-      const chip = refs.current.to;
-      if (chip != null) anchorUnder({ current: chip }, setToAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('to')), setToAt, MENU_AFTER_MS);
   }, [m.picking, phone]);
 
   useEffect(() => {
     if (!m.filtering || phone) return undefined;
-    const later = setTimeout(() => {
-      const button = refs.current.filter;
-      if (button != null) anchorUnder({ current: button }, setFilterAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('filter')), setFilterAt, MENU_AFTER_MS);
   }, [m.filtering, phone]);
 
   useEffect(() => {
     if (!m.inserting || phone) return undefined;
-    const later = setTimeout(
-      () => anchorUnder({ current: refs.current.insert ?? null }, setInsertAt),
-      300,
-    );
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('insert')), setInsertAt, MENU_AFTER_MS);
   }, [m.inserting, phone]);
 
   const stop = stoppingOf(m);
   useEffect(() => {
     if (!stop.menu || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(moreRef, setActionsAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(moreRef), setActionsAt, MENU_AFTER_MS);
   }, [stop.menu, phone]);
   useEffect(
     () => () => {
@@ -369,9 +361,7 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.bell || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(bellRef, setBellAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(bellRef), setBellAt, MENU_AFTER_MS);
   }, [m.bell, phone]);
 
   const open = (id: RowId) => {

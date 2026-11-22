@@ -39,6 +39,7 @@ import { type Picking, PickerLayer, pick } from '../../components/MomentPick.tsx
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { type Anchor, AnchoredMenu, anchorUnder } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { Text } from '../../components/Text.tsx';
 import { isTablet } from '../../layout/classify.ts';
 import { useLayout } from '../../layout/useLayout.ts';
@@ -116,9 +117,7 @@ export function FilterSizeScreen({ start }: { start: FilterSizeStart }) {
   const cap = frameTitleCap(isTablet(layout.kind), Math.min(layout.width, layout.height), scale);
 
   useEffect(() => {
-    const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(filterRef, then), setMenuAt, MENU_AFTER_MS);
   }, []);
 
   return (
