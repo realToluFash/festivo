@@ -1,5 +1,6 @@
 import type { SearchRow } from '@soirely/domain';
 
+import type { SignedIn } from '../signedIn.ts';
 import { EVENT_AREA, eventHref } from './eventNav.ts';
 
 /** The route param Guests opens a guest's details from, as a match in Search opens them (sc-39534). */
@@ -18,8 +19,8 @@ export function searchOffered({
   organisation,
   pausedIn,
 }: {
-  organisation: unknown;
-  pausedIn?: unknown;
+  organisation: SignedIn['organisation'];
+  pausedIn?: SignedIn['pausedIn'] | undefined;
 }): boolean {
   return organisation != null && pausedIn == null;
 }
