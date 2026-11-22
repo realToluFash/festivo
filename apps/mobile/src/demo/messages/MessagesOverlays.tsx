@@ -18,6 +18,7 @@ import {
   type ScreenReaderTarget,
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Toast } from '../../components/Toast.tsx';
@@ -727,12 +728,15 @@ export function MatchPicker({
   const [search, setSearch] = useState(first.search);
   const [picked, setPicked] = useState(first.picked);
   const searchRef = useRef<TextInputInstance>(null);
+  const [laidOut, setLaidOut] = useState(false);
+  if (!open && laidOut) setLaidOut(false);
+  // Focus waits for the sheet's first layout, then SETTLED_MS, not a fixed delay from open (qa3 #83800).
   useEffect(() => {
-    if (!open) return;
-    const later = setTimeout(() => searchRef.current?.focus(), 350);
+    if (!open || !laidOut) return;
+    const later = setTimeout(() => searchRef.current?.focus(), SETTLED_MS);
 
     return () => clearTimeout(later);
-  }, [open]);
+  }, [open, laidOut]);
   const shown = picks.filter((one) => one.name.toLowerCase().includes(search.trim().toLowerCase()));
   const body = (
     <>
@@ -747,7 +751,11 @@ export function MatchPicker({
         label={W.searchGuests}
         testID="messages.match.search"
       />
-      <View accessibilityRole="radiogroup">
+      <View
+        key={open ? 'open' : 'shut'}
+        accessibilityRole="radiogroup"
+        onLayout={() => setLaidOut(true)}
+      >
         {shown.map((one) => (
           <Row
             key={one.name}
