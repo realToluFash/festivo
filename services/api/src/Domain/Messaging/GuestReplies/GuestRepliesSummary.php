@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\GuestReplies;
 
 use App\Domain\Messaging\Audience\MemberAudienceResolver;
 use App\Domain\Messaging\Interfaces\MealsNotChosenInterface;
+use App\Domain\Messaging\Interfaces\NotSeatedInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
@@ -51,6 +52,7 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
         private Closure $memberAudienceResolver,
         private EventMuteRepository $eventMuteRepository,
         private MealsNotChosenInterface $mealsNotChosen,
+        private NotSeatedInterface $notSeated,
         private ClockInterface $clock,
         #[Autowire(env: 'CORS_WEB_ORIGIN')]
         private string $webOrigin,
@@ -185,7 +187,7 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
         }
 
         $eventWeek = $this->inEventWeek($event);
-        $unseated = $eventWeek ? $this->notSeated($eventId) : 0;
+        $unseated = $eventWeek ? Iter\count($this->notSeated->people($event)) : 0;
         $unchosen = $eventWeek ? Iter\count($this->mealsNotChosen->people($event)) : 0;
 
         if ($unseated > 0) {
@@ -263,22 +265,6 @@ final readonly class GuestRepliesSummary extends GuestRepliesType
             <<<'SQL'
                 SELECT COUNT(*) FROM guests
                 WHERE event_id = :event AND host_id IS NULL AND removed_at IS NULL AND invited_at IS NOT NULL AND (reply IS NULL OR reply = 'noReply')
-                SQL,
-            ['event' => $eventId],
-        ));
-    }
-
-    /** Coming guests and their companions with no seat, once the event has a seating plan. */
-    private function notSeated(string $eventId): int
-    {
-        return Type\int()->coerce($this->connection->fetchOne(
-            <<<'SQL'
-                SELECT COUNT(*) FROM guests g
-                LEFT JOIN guests h ON h.id = g.host_id
-                WHERE g.event_id = :event AND g.removed_at IS NULL
-                  AND COALESCE(h.reply, g.reply) = 'coming'
-                  AND EXISTS (SELECT 1 FROM seating_plans p WHERE p.event_id = :event)
-                  AND NOT EXISTS (SELECT 1 FROM seat_assignments a WHERE a.event_id = :event AND a.guest_id = g.id)
                 SQL,
             ['event' => $eventId],
         ));

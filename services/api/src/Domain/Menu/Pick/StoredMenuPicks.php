@@ -12,7 +12,6 @@ use App\Entity\MenuChoiceOption;
 use App\Entity\MenuDish;
 use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
-use App\Enum\GuestStanding;
 use App\Enum\MealAnswerKind;
 use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
@@ -72,13 +71,7 @@ final readonly class StoredMenuPicks implements MenuPicksInterface
     {
         return Vec\filter(
             $this->mealAnswerRepository->findNaming($dish),
-            static function (MealAnswer $answer): bool {
-                $person = $answer->getPerson();
-
-                return !$person->isRemoved()
-                    && !($person->getHost()?->isRemoved() ?? false)
-                    && GuestStanding::Accepted === HeadcountCalculator::standing($person);
-            },
+            static fn (MealAnswer $answer): bool => HeadcountCalculator::isComing($answer->getPerson()),
         );
     }
 
