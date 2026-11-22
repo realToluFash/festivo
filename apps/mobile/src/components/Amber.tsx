@@ -1,15 +1,15 @@
 import type { ReactNode, Ref } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Pill } from './SettingsParts.tsx';
-import { Text } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Choice = { label: string; onPress: () => void; testID: string };
 
-/** The amber panel: duplicates, the 412, the plan limit, replacing a guest's own reply. Pass `readsTitle={false}` where the screen reader's focus is moved onto the panel instead. */
+/** The amber panel: duplicates, the 412, the plan limit, replacing a guest's own reply. Pass `readsTitle={false}` where the screen reader's focus is moved onto its title, the `ref`, instead: the panel itself is no stop TalkBack can take (sc-82665). */
 export function Amber({
   title,
   children,
@@ -20,19 +20,19 @@ export function Amber({
   title: string | null;
   children?: ReactNode;
   testID?: string;
-  ref?: Ref<ViewInstance>;
+  ref?: Ref<TextHandle>;
   readsTitle?: boolean;
 }) {
   useReadOut(readsTitle ? title : null);
 
   return (
-    <View ref={ref} style={styles.amber} accessibilityRole="alert" testID={testID}>
+    <View style={styles.amber} accessibilityRole="alert" testID={testID}>
       {title != null && (
         <View style={styles.head}>
           <View style={styles.mark}>
             <Glyph name="alert" size={17} ink={tokens.colorAttentionText} weight={2.2} />
           </View>
-          <Text size={15.5} weight="bold" accessibilityRole="header" style={styles.title}>
+          <Text ref={ref} size={15.5} weight="bold" accessibilityRole="header" style={styles.title}>
             {title}
           </Text>
         </View>
