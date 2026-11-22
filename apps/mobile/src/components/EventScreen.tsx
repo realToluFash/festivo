@@ -2,7 +2,6 @@ import type { Membership, OrganisationEvent } from '@soirely/api-client';
 import {
   type Choice,
   type EventArea,
-  eventMovesInto,
   rememberTabHolding,
   roleHolds,
   takesCardStep,
@@ -46,7 +45,7 @@ import {
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
 import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
-import { type Opened, openedOf, openedWithoutAsking } from '../kit/eventsOpen.ts';
+import { type Opened, openedOf, openedOrMoved, openedWithoutAsking } from '../kit/eventsOpen.ts';
 import { ASKS_END, SHOWN_EVENT, goUpToEvent } from '../kit/upToEvent.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import { backRow } from '../layout/backRow.ts';
@@ -197,6 +196,7 @@ export function EventScreen({
     organisation,
     outside != null,
     () => moveScreenReaderFocus(cardName.current ?? title.current),
+    area === 'overview',
     (into) => {
       const name = signedIn.organisations.find(({ id }) => id === into)?.name;
 
@@ -720,6 +720,7 @@ function useOpened(
   organisation: Membership | null,
   outside: boolean,
   focusTitle: () => void,
+  overview: boolean,
   moveInto: (organisationId: string) => void,
   memberships: readonly Membership[],
 ): Opened & {
@@ -739,9 +740,9 @@ function useOpened(
   });
   const [attempt, setAttempt] = useState(0);
   const key = `${organisationId ?? ''}/${eventId}`;
-  const moves = useRef({ moveInto, memberships });
+  const moves = useRef({ moveInto, memberships, overview });
   useEffect(() => {
-    moves.current = { moveInto, memberships };
+    moves.current = { moveInto, memberships, overview };
   });
   const retry = useCallback(() => {
     setHeld({ for: null, opened: { kind: 'loading' } });
@@ -768,14 +769,15 @@ function useOpened(
     watch(api.event(eventId)).then(
       (event) => {
         if (!live) return;
-        const into = eventMovesInto(event, holder, moves.current.memberships);
+        const { memberships: all, overview: onOverview, moveInto: move } = moves.current;
+        const next = openedOrMoved(event, holder, all, onOverview);
 
-        if (into == null) {
-          setHeld({ for: key, opened: openedOf({ event }, holder) });
+        if ('opened' in next) {
+          setHeld({ for: key, opened: next.opened });
           return;
         }
-        setHeld({ for: `${into}/${eventId}`, opened: { kind: 'loaded', event } });
-        moves.current.moveInto(into);
+        setHeld({ for: `${next.moves}/${eventId}`, opened: { kind: 'loaded', event } });
+        move(next.moves);
       },
       (error: unknown) =>
         live &&
