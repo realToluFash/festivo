@@ -22,7 +22,13 @@ describe('the sidebar on an iPad on its side (sc-68052)', () => {
 describe('the bell on an iPad on its side (sc-68052)', () => {
   it('moves into the pane exactly where the frame draws no title, and so no bell', () => {
     expect(frame).toMatch(/if \(kind === 'tabletLandscape'\) \{\n\s*if \(untitled\) return null;/u);
-    expect(frame).toMatch(/<BellInPane\.Provider value=\{sidebar && untitled\}>/u);
+    expect(frame).toMatch(
+      /<BellInPane\.Provider\s+value=\{sidebar && untitled && !bareList\}\s*>/u,
+    );
+  });
+
+  it('draws none in the pane of a missing event, which stands in the bare Events frame (sc-80863)', () => {
+    expect(screen).toMatch(/bareList=\{!top\.inEvent\}/u);
   });
 
   it('ends the title row of every area the event leaves untitled', () => {

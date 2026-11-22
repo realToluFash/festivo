@@ -45,7 +45,7 @@ import {
 } from './messages.ts';
 import { useInbox } from './messagesContext.ts';
 import { DeliveryMark, Legend, ReachBar, WhyNot } from './MessagesParts.tsx';
-import { MessagesBell } from './MessagesTell.tsx';
+import { MessagesBell } from './MessagesBell.tsx';
 import { Field } from '../components/SettingsParts.tsx';
 
 interface Fixing {
