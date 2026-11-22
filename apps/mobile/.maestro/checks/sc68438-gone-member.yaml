@@ -2,23 +2,39 @@
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EV}
-- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
-- waitForAnimationToEnd
-- tapOn: { id: event.nav.more }
-- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
-- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: event.nav.more
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: event.nav.more
+- waitForAnimationToEnd:
+    timeout: 4000
 - runScript: sc68438-revoke.js
-- repeat:
-    while: { notVisible: { id: 'event.nav.more.events.${TO}' } }
-    times: 4
-    commands:
-      - swipe: { start: '50%, 85%', end: '50%, 35%', duration: 600 }
+- scrollUntilVisible:
+    element:
+      id: event.nav.more.events.${TO}
+    direction: DOWN
+    timeout: 20000
 - takeScreenshot: more-scrolled
-- tapOn: { id: 'event.nav.more.events.${TO}' }
-- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
-- waitForAnimationToEnd
+- tapOn:
+    id: event.nav.more.events.${TO}
+- extendedWaitUntil:
+    visible:
+      text: 'This event is not available'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
 - takeScreenshot: gone
-- tapOn: { text: '(Back to|Continue).*' }
-- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
-- waitForAnimationToEnd
+- tapOn:
+    text: '(Back to|Continue).*'
+- extendedWaitUntil:
+    visible:
+      id: never.there
+    timeout: 6000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
 - takeScreenshot: back
