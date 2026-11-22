@@ -200,7 +200,7 @@ export interface ListProps {
   paste?: ReactNode;
 }
 
-/** Find a guest and the filter as one row, then the groups by reply, or the rows a filter or search leaves. */
+/** Find a guest and the filter as one row, the filter under the field when it does not fit beside it (Events' rule), then the groups by reply, or the rows a filter or search leaves. */
 export function GuestsRows({
   layout,
   counts,
@@ -433,7 +433,13 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   lines: { lineHeight: 15 * 1.45 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: tokens.spaceXxs,
+  },
   indent: { paddingLeft: 40 },
   reach: { marginHorizontal: -10 },
   menuRow: {
