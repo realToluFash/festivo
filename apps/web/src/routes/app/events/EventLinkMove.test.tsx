@@ -64,7 +64,7 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ETag: '"1"' } });
 }
 
-function answering(event: () => Response) {
+function answering(event: () => Response | Promise<Response>) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
 
@@ -165,11 +165,16 @@ describe("an event's link from another of the account's organisations (sc-80863)
   });
 
   it("stands under the organisation's sidebar until the event has loaded", async () => {
-    signedIn([IRE]);
-    answering(() => json({ event: event('org_2') }));
+    signedIn();
+    let settle: (answer: Response) => void = () => {};
+    answering(() => new Promise<Response>((resolve) => (settle = resolve)));
     openLink();
 
-    expect(await screen.findByText('This event is not available')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Guests' })).toBeNull();
+    expect(await screen.findByRole('link', { name: 'Settings' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Guests/u })).toBeNull();
+
+    await act(async () => settle(json({ event: event('org_1') })));
+
+    expect(await screen.findByRole('link', { name: /Guests/u })).toBeTruthy();
   });
 });
