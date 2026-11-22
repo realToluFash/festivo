@@ -1,4 +1,4 @@
-# sc-82892: ${EV}'s Hosted by screen with Tayo Adeyemi, Funmi Adeyemi, Kemi Olatunji and an empty Host 4 added, keyboard down, left at rest for a TalkBack pass on Move and Remove.
+# sc-82892 (no hideKeyboard, which presses Back on Android): ${EV}'s Hosted by screen with Tayo Adeyemi, Funmi Adeyemi, Kemi Olatunji and an empty Host 4 added, left at rest for a TalkBack pass on Move and Remove.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -9,6 +9,5 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     id: 'event.edit.hosts.add'
-- hideKeyboard
 - waitForAnimationToEnd
 - takeScreenshot: held
