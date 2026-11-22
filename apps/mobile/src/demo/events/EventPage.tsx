@@ -1,4 +1,4 @@
-import { formattingLocale, roleHolds, takesCardStep } from '@soirely/domain';
+import { formattingLocale, takesCardStep } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -164,10 +164,10 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   deleteDraft: 'deleteDraft',
 };
 
-/** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
 const HOST = ['events.read', 'events.create', 'events.manage'];
 const VIEWER = ['events.read'];
 
+/** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
 const TELL_IN_MESSAGES: readonly string[] = [
   'untoldMerged',
   'untoldDismissed',
@@ -492,6 +492,8 @@ export function EventScreen({
   };
 
   const member = { permissions: thanks.canEnd ? HOST : VIEWER };
+  const creates = takesCardStep(member, 'duplicate');
+  const manages = takesCardStep(member, 'resume');
   const card = (
     <EventCard
       event={shown}
@@ -589,7 +591,7 @@ export function EventScreen({
     />
   );
   const offered = usableManage(manageOf(shown, now), canChange).filter((key) =>
-    roleHolds(member, key === 'duplicate' ? 'events.create' : 'events.manage'),
+    key === 'duplicate' ? creates : manages,
   );
   const manage =
     offered.length === 0 ? null : (
