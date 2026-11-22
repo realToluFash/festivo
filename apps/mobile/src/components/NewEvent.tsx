@@ -184,7 +184,7 @@ export function NewEventScreen({
   const { draft, venue, timeZone, currency, hosts } = typed;
   const quietAfter = quietOn?.field ?? null;
   const dirty = isDirty(typed, from) || photo.kind !== 'none';
-  const leaves = useLeaveAsk(dirty && status !== 'created', () => setLeaving(true));
+  const leaves = useLeaveAsk(dirty && status !== 'created', () => setLeaving(true), onClose);
 
   const [lookup] = useState(() =>
     addressLookup({
@@ -464,7 +464,7 @@ export function NewEventScreen({
 
   function cancel(): void {
     if (busy) return;
-    leaves.leave(onClose);
+    leaves.leave();
   }
 
   const leave: AskProps | null = leaving

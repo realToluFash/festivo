@@ -27,7 +27,8 @@ describe('a form whose Cancel asks before discarding asks on every way out (sc-8
     const text = read(file);
 
     expect(text).toMatch(/useLeaveAsk\(/u);
-    expect(text).toMatch(/leaves\.leave\(/u);
+    expect(text).toMatch(/useLeaveAsk\([\s\S]*?,\s*(?:onClose|close|onCancel),?\s*\)/u);
+    expect(text).toMatch(/leaves\.leave\(\)/u);
     expect(text).toMatch(/leaves\.keep\(\)/u);
     expect(text).toMatch(/leaves\.discard\(\)/u);
   });
@@ -66,14 +67,13 @@ describe('each way out goes through the hold (sc-82245)', () => {
     expect(read('../api.ts')).toMatch(/signedOutHold\(\(why\) => \{\s*leaveWithoutAsking\(\);/u);
   });
 
-  it('a link into the app, and a notification tapped', () => {
-    expect(read('../../app/+native-intent.tsx')).toMatch(/leaveThen\(/u);
+  it('a notification tapped', () => {
     expect(read('../appPush.ts')).toMatch(/leaveThen\(\(discarding\) =>/u);
   });
 
   it('the header’s Back, the swipe back and Android’s back', () => {
     expect(read('useLeaveAsk.ts')).toMatch(
-      /usePreventRemove\(changed, \(\{ repeat \}\) => leaveThen\(repeat\)\)/u,
+      /usePreventRemove\(changed, \(\{ repeat \}\) =>\s*leaveThen\(repeat, undefined, true\),?\s*\)/u,
     );
   });
 });

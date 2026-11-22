@@ -119,7 +119,7 @@ export function EditShell({
   const { t } = useTranslation();
   const [question, setQuestion] = useState<'discard' | 'latest' | null>(asking);
   const gap = useEditGap();
-  const leaves = useLeaveAsk(open && changed, () => setQuestion('discard'));
+  const leaves = useLeaveAsk(open && changed, () => setQuestion('discard'), onClose);
   const discard: AskProps | null =
     question === 'discard'
       ? {
@@ -172,7 +172,7 @@ export function EditShell({
         testID: `${testID}.save`,
       }}
       waits={busy}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelTestID={`${testID}.cancel`}
       opener={opener}
       ask={asked && { ...asked, width: ASK_WIDTH }}

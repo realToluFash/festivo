@@ -61,8 +61,10 @@ export function RequestScreen({
   const face = faceOf(member);
   const role = offered.find((one) => one.id === picked);
   const asked = member.since == null ? '' : formatDay(member.since, dateLocale());
-  const leaves = useLeaveAsk(open && picked !== firstRole && busy == null, () =>
-    setAsking('discarding'),
+  const leaves = useLeaveAsk(
+    open && picked !== firstRole && busy == null,
+    () => setAsking('discarding'),
+    onClose,
   );
 
   async function approve(): Promise<void> {
@@ -167,7 +169,7 @@ export function RequestScreen({
         testID: 'members.approve.confirm',
       }}
       waits={busy != null}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelLabel={t('membersScreen.awaiting.cancel')}
       cancelTestID="members.approve.cancel"
       opener={opener}

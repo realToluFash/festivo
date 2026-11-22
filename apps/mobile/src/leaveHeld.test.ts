@@ -123,6 +123,34 @@ describe('one ask at a time (sc-82245)', () => {
     release();
   });
 
+  it('shuts the form before the way out, which may leave its screen mounted', () => {
+    const order: string[] = [];
+    const release = holdLeaving(
+      (go) => go(),
+      () => order.push('dropped'),
+      () => order.push('closed'),
+    );
+
+    leaveThen(() => order.push('went to the screen already open'));
+
+    expect(order).toEqual(['dropped', 'closed', 'went to the screen already open']);
+    release();
+  });
+
+  it('leaves the form to go with its screen when the way out removes that screen', () => {
+    const order: string[] = [];
+    const release = holdLeaving(
+      (go) => go(),
+      () => order.push('dropped'),
+      () => order.push('closed'),
+    );
+
+    leaveThen(() => order.push('removed'), undefined, true);
+
+    expect(order).toEqual(['dropped', 'removed']);
+    release();
+  });
+
   it('does not ask when the session ended without the reader choosing it', () => {
     const went: string[] = [];
     const dropped: string[] = [];

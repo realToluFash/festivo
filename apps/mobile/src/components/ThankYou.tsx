@@ -201,11 +201,11 @@ export function ThankYouScreen({
   }
 
   const changed = draft !== line;
-  const leaves = useLeaveAsk(open && changed, () => setDiscarding(true));
   const close = () => {
     setDiscarding(false);
     onClose();
   };
+  const leaves = useLeaveAsk(open && changed, () => setDiscarding(true), close);
   const discard: AskProps | null = discarding
     ? {
         title: t('thankYou.discardTitle'),
@@ -261,7 +261,7 @@ export function ThankYouScreen({
         testID: 'event.thankYou.save',
       }}
       waits={busy}
-      onCancel={() => leaves.leave(close)}
+      onCancel={() => leaves.leave()}
       cancelTestID="event.thankYou.cancel"
       opener={opener}
       ask={discard}

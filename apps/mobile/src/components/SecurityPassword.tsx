@@ -109,6 +109,7 @@ export function ChangePasswordScreen({
   const leaves = useLeaveAsk(
     open && changed && !busy && stage !== 'forgot' && stage !== 'sent',
     () => setDiscarding(true),
+    onClose,
   );
 
   async function save(): Promise<void> {
@@ -251,7 +252,7 @@ export function ChangePasswordScreen({
         testID: 'security.change.save',
       }}
       waits={busy}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelTestID="security.change.cancel"
       opener={opener}
       ask={discardAsk(
@@ -372,8 +373,10 @@ export function SetPasswordScreen({
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(0);
   const first = useRef(false);
-  const leaves = useLeaveAsk(open && typed && !busy && stage === 'choose', () =>
-    setDiscarding(true),
+  const leaves = useLeaveAsk(
+    open && typed && !busy && stage === 'choose',
+    () => setDiscarding(true),
+    onClose,
   );
 
   async function sendCode(): Promise<void> {
@@ -466,7 +469,7 @@ export function SetPasswordScreen({
           testID: 'security.choose.save',
         }}
         waits={busy}
-        onCancel={() => leaves.leave(onClose)}
+        onCancel={() => leaves.leave()}
         cancelTestID="security.choose.cancel"
         opener={opener}
         ask={discardAsk(

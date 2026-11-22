@@ -1,12 +1,16 @@
 type Ask = (go: () => void) => void;
-type Hold = { ask: Ask; drop: () => void };
+type Hold = { ask: Ask; drop: () => void; close: () => void };
 
 let held: Hold | null = null;
 let asking: { stay: (() => void) | undefined } | null = null;
 
 /** A form with unsaved work asks before any way out (sc-82245); `drop` lets its screen go without asking twice. */
-export function holdLeaving(ask: Ask, drop: () => void = () => {}): () => void {
-  const hold = { ask, drop };
+export function holdLeaving(
+  ask: Ask,
+  drop: () => void = () => {},
+  close: () => void = () => {},
+): () => void {
+  const hold = { ask, drop, close };
   held = hold;
 
   return () => {
@@ -16,8 +20,12 @@ export function holdLeaving(ask: Ask, drop: () => void = () => {}): () => void {
   };
 }
 
-/** `go` hears whether work was discarded, so that screen comes off the stack; `stay`, that the way out does nothing. */
-export function leaveThen(go: (discarding: boolean) => void, stay?: () => void): void {
+/** `go` hears whether work was discarded; it can leave the form's screen mounted, so a discard shuts the form first. */
+export function leaveThen(
+  go: (discarding: boolean) => void,
+  stay?: () => void,
+  removesHolder = false,
+): void {
   if (asking != null) {
     stay?.();
     return;
@@ -33,6 +41,7 @@ export function leaveThen(go: (discarding: boolean) => void, stay?: () => void):
     if (held === hold) held = null;
     asking = null;
     hold.drop();
+    if (!removesHolder) hold.close();
     go(true);
   });
 }

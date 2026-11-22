@@ -62,10 +62,14 @@ export function RoleScreen({
   const [failed, setFailed] = useState<string | null>(null);
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== current && role != null;
-  const leaves = useLeaveAsk(open && changed, () => {
-    setProving(null);
-    setDiscarding(true);
-  });
+  const leaves = useLeaveAsk(
+    open && changed,
+    () => {
+      setProving(null);
+      setDiscarding(true);
+    },
+    onClose,
+  );
   const toOwner = role?.seededAs === 'owner';
   const first = firstName(member.user.name);
   const callerOwns = organisation.role.seededAs === 'owner';
@@ -164,7 +168,7 @@ export function RoleScreen({
         testID: 'members.role.save',
       }}
       waits={busy}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelLabel={t('membersScreen.awaiting.cancel')}
       cancelTestID="members.role.cancel"
       opener={opener}

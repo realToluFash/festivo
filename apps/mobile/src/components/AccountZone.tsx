@@ -46,7 +46,7 @@ export function ZoneScreen<Zone extends ZoneRow>({
   const noneMatch = wanted !== '' && !showingPicked && matches.length === 0;
   const changed = wanted !== '';
   const nothing = t('timeZone.noneMatch', { typed: wanted });
-  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true));
+  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true), onClose);
 
   useReadOut(noneMatch && error == null ? nothing : null, { afterTyping: typed });
 
@@ -92,7 +92,7 @@ export function ZoneScreen<Zone extends ZoneRow>({
         testID: 'account.zone.save',
       }}
       waits={saving}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelTestID="account.zone.cancel"
       opener={opener}
       ask={discardAsk(

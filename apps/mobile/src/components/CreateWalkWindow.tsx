@@ -188,8 +188,10 @@ export function CreateWalkWindow<Made>({
   const holding = useRef<TextInputInstance | null>(null);
   const creating = walk.sent === 'creating';
   const searching = walk.query.trim() !== '';
-  const leaves = useLeaveAsk(open && !creating && newOrganisationEntered(walk), () =>
-    setWalk((now) => ({ ...now, asking: true })),
+  const leaves = useLeaveAsk(
+    open && !creating && newOrganisationEntered(walk),
+    () => setWalk((now) => ({ ...now, asking: true })),
+    onCancel,
   );
 
   useFocusBack(open || landed, opening.opener ?? nobody);
@@ -376,7 +378,7 @@ export function CreateWalkWindow<Made>({
   }, [creating]);
   const cancel = () => {
     if (creating) return;
-    leaves.leave(onCancel);
+    leaves.leave();
   };
   const keep = () => {
     setWalk((now) => ({ ...now, asking: false }));

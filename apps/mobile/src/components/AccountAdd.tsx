@@ -49,7 +49,7 @@ export function AddScreen({
   const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const [discarding, setDiscarding] = useState(false);
   const [sending, setSending] = useState(false);
-  const leaves = useLeaveAsk(open && changed && !sending, () => setDiscarding(true));
+  const leaves = useLeaveAsk(open && changed && !sending, () => setDiscarding(true), onClose);
 
   useEffect(() => {
     if (!open || email) return;
@@ -105,7 +105,7 @@ export function AddScreen({
         testID: `account.${kind}.add.submit`,
       }}
       waits={sending}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelTestID={`account.${kind}.add.cancel`}
       opener={opener}
       ask={discardAsk(

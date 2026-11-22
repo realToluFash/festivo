@@ -112,7 +112,7 @@ export function GuestForm({
   const picker = useRef<ViewInstance>(null);
   const companionFields = useRef(new Map<number, TextInputInstance>());
   const changed = JSON.stringify(values) !== JSON.stringify(first);
-  const leaves = useLeaveAsk(open && changed, () => setAsk('discard'));
+  const leaves = useLeaveAsk(open && changed, () => setAsk('discard'), onClose);
   const chose = editing?.guest.chosenLanguage ?? null;
   const count = values.companions.length;
 
@@ -311,7 +311,7 @@ export function GuestForm({
   const clash = groupRefusal?.made == null ? null : sameGroup(groups, groupRefusal.made);
   const madeProblem =
     groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
-  const cancel = () => leaves.leave(onClose);
+  const cancel = () => leaves.leave();
   const adding = editing == null;
 
   return (

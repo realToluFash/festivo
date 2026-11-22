@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { holdLeaving, keptEditing, leaveThen, leaveWithoutAsking } from '../leaveHeld.ts';
 
 export type LeaveAsk = {
-  leave: (go: () => void) => void;
+  leave: () => void;
   keep: () => void;
   discard: () => void;
   /** Saved: the form leaves without asking. */
@@ -12,27 +12,39 @@ export type LeaveAsk = {
 };
 
 /** Every way out of a form holding a change, Back and the swipe back among them, shows its Cancel's ask (sc-82245). */
-export function useLeaveAsk(changed: boolean, openAsk: () => void): LeaveAsk {
+export function useLeaveAsk(changed: boolean, openAsk: () => void, close: () => void): LeaveAsk {
   const pending = useRef<(() => void) | null>(null);
   const opening = useRef(openAsk);
+  const closing = useRef(close);
   useEffect(() => {
     opening.current = openAsk;
+    closing.current = close;
   });
 
-  const drop = usePreventRemove(changed, ({ repeat }) => leaveThen(repeat));
+  const drop = usePreventRemove(changed, ({ repeat }) => leaveThen(repeat, undefined, true));
 
   useEffect(
     () =>
       changed
-        ? holdLeaving((go) => {
-            pending.current = go;
-            opening.current();
-          }, drop)
+        ? holdLeaving(
+            (go) => {
+              pending.current = go;
+              opening.current();
+            },
+            drop,
+            () => closing.current(),
+          )
         : undefined,
     [changed, drop],
   );
 
-  const leave = useCallback((go: () => void) => leaveThen(go), []);
+  const leave = useCallback(
+    () =>
+      leaveThen((discarding) => {
+        if (!discarding) closing.current();
+      }),
+    [],
+  );
   const keep = useCallback(() => {
     pending.current = null;
     keptEditing();

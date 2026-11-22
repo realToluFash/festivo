@@ -538,8 +538,10 @@ export function AddScreen<R extends string, T>({
         : outside.words.find;
   const roleName = words.name(role);
   const roleMeans = words.means(role);
-  const leaves = useLeaveAsk((typed.trim() !== '' || ticked.length > 0) && !busy, () =>
-    setDiscarding(true),
+  const leaves = useLeaveAsk(
+    (typed.trim() !== '' || ticked.length > 0) && !busy,
+    () => setDiscarding(true),
+    onClose,
   );
 
   async function send(): Promise<void> {
@@ -575,7 +577,7 @@ export function AddScreen<R extends string, T>({
   }
 
   function cancel(): void {
-    leaves.leave(onClose);
+    leaves.leave();
   }
 
   function type(text: string): void {

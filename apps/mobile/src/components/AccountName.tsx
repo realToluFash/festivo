@@ -52,7 +52,7 @@ export function NameScreen({
   const [error, setError] = useState<string | null>(null);
   const [discarding, setDiscarding] = useState(false);
   const [saving, setSaving] = useState(false);
-  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true));
+  const leaves = useLeaveAsk(open && changed && !saving, () => setDiscarding(true), onClose);
 
   async function save(): Promise<void> {
     if (saving) return;
@@ -87,7 +87,7 @@ export function NameScreen({
         testID: 'account.name.save',
       }}
       waits={saving}
-      onCancel={() => leaves.leave(onClose)}
+      onCancel={() => leaves.leave()}
       cancelTestID="account.name.cancel"
       opener={opener}
       ask={discardAsk(
