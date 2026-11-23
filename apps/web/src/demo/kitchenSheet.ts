@@ -40,6 +40,7 @@ export const KSW = {
   noAllergies: 'No allergies recorded for anyone coming.',
   name: 'Name',
   allergicTo: 'Allergic to',
+  noAllergy: 'No allergy · {{diets}}',
   allergen: 'Allergen',
   people: 'People',
   perAllergen: '{{allergen}} {{count}}',
@@ -81,7 +82,14 @@ const { filled, many } = demoWords(KSW);
 export { filled as ksw, many as kswMany };
 
 export type SheetState =
-  'open' | 'closed' | 'noAllergies' | 'loading' | 'making' | 'failed' | 'refused';
+  | 'open'
+  | 'closed'
+  | 'noAllergies'
+  | 'closedNoAllergies'
+  | 'loading'
+  | 'making'
+  | 'failed'
+  | 'refused';
 export type SheetAccess = 'manage' | 'counts';
 export type Paper = 'a4' | 'letter';
 
@@ -95,6 +103,8 @@ const STATES: Readonly<Record<SheetState, string>> = {
   open: 'Open, before picks close',
   closed: 'After the close: defaults given, the rest never given the default',
   noAllergies: 'No allergies recorded',
+  closedNoAllergies:
+    'After the close, no allergies recorded: only diets kept people from the default',
   loading: 'Loading',
   making: 'Making the PDF',
   failed: 'The PDF could not be made',
@@ -141,13 +151,18 @@ const withOther = (world: PicksWorld): PicksWorld => ({
   ),
 });
 
-/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded. */
+const noAllergies = (world: PicksWorld): PicksWorld => ({
+  ...world,
+  people: world.people.map((person) => ({ ...person, allergies: [] })),
+});
+
+/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. */
 export function worldOf(state: SheetState): PicksWorld {
   if (state === 'closed') return withOther(picksAfterClose());
-  const world = samplePicks();
-  if (state !== 'noAllergies') return withOther(world);
+  if (state === 'closedNoAllergies') return noAllergies(picksAfterClose());
+  if (state === 'noAllergies') return noAllergies(samplePicks());
 
-  return { ...world, people: world.people.map((person) => ({ ...person, allergies: [] })) };
+  return withOther(samplePicks());
 }
 
 const allergenWords = (code: Allergen, person: Person): string => {
@@ -156,6 +171,28 @@ const allergenWords = (code: Allergen, person: Person): string => {
   return what == null ? NAMES.allergens[code] : filled(KSW.otherAllergy, { what });
 };
 
+const dietWords = (code: Person['diets'][number]): string =>
+  code === 'other' ? KSW.otherDiet : NAMES.diets[code];
+
+/** What an Other diet says, as the guest typed it (sc-3777 keeps `otherDiet`); a named row reads it as an Other allergy does (Decided, 23 Nov: an Other diet). Counts keep "Other diet". */
+const OTHER_DIET: Readonly<Record<string, string>> = { 'nadia-petrova': 'No garlic' };
+
+const namedDietWords = (code: Person['diets'][number], person: Person): string => {
+  const what = code === 'other' ? OTHER_DIET[person.id] : undefined;
+
+  return what == null ? dietWords(code) : filled(KSW.otherAllergy, { what });
+};
+
+/** "Peanuts, Celery", or for someone never given the default for a diet alone (Decided, 23 Nov), "No allergy · Vegetarian" or "No allergy · No garlic (other)". */
+const allergicTo = (person: Person): string =>
+  person.allergies.length > 0
+    ? ALLERGENS.filter((code) => person.allergies.includes(code))
+        .map((code) => allergenWords(code, person))
+        .join(', ')
+    : filled(KSW.noAllergy, {
+        diets: person.diets.map((code) => namedDietWords(code, person)).join(', '),
+      });
+
 export type Cell =
   | { kind: 'dish'; text: string }
   | { kind: 'kitchen' | 'skipped' | 'host' | 'changed' | 'notYet' | 'never' };
@@ -163,6 +200,8 @@ export type Cell =
 export interface AllergicRow {
   id: string;
   name: string;
+  /** False for someone listed only because a diet kept them from the default; they are not in the allergy counts. */
+  allergy: boolean;
   allergens: string;
   cells: readonly Cell[];
 }
@@ -184,7 +223,10 @@ export interface SheetCourse {
 
 export interface Sheet {
   coming: number;
+  /** Everyone with an allergy, and after the close everyone a diet alone kept from the default, by name. */
   allergic: readonly AllergicRow[];
+  /** The people with allergies, for "{n} people with allergies". */
+  withAllergies: number;
   allergyCounts: readonly (readonly [string, number])[];
   dietCounts: readonly (readonly [string, number])[];
   courses: readonly SheetCourse[];
@@ -254,20 +296,20 @@ function courseOf(world: PicksWorld, course: EvCourse): SheetCourse {
 export function sheetOf(world: PicksWorld): Sheet {
   const courses = shownCourses(world);
   const people = world.people;
+  const rows = people.map((person) => ({
+    id: person.id,
+    name: person.name,
+    allergy: person.allergies.length > 0,
+    allergens: allergicTo(person),
+    cells: courses.map((course) => cellOf(world, course, spotOf(world, course, person))),
+  }));
 
   return {
     coming: people.length,
-    allergic: [...people]
-      .filter((person) => person.allergies.length > 0)
-      .sort((a, b) => a.name.localeCompare(b.name, 'en'))
-      .map((person) => ({
-        id: person.id,
-        name: person.name,
-        allergens: ALLERGENS.filter((code) => person.allergies.includes(code))
-          .map((code) => allergenWords(code, person))
-          .join(', '),
-        cells: courses.map((course) => cellOf(world, course, spotOf(world, course, person))),
-      })),
+    allergic: rows
+      .filter((row) => row.allergy || row.cells.some((cell) => cell.kind === 'never'))
+      .sort((a, b) => a.name.localeCompare(b.name, 'en')),
+    withAllergies: rows.filter((row) => row.allergy).length,
     allergyCounts: ALLERGENS.map(
       (code) =>
         [
@@ -278,10 +320,7 @@ export function sheetOf(world: PicksWorld): Sheet {
     dietCounts: [...DIETS, 'other' as const]
       .map(
         (code) =>
-          [
-            code === 'other' ? KSW.otherDiet : NAMES.diets[code],
-            people.filter((one) => one.diets.includes(code)).length,
-          ] as const,
+          [dietWords(code), people.filter((one) => one.diets.includes(code)).length] as const,
       )
       .filter(([, count]) => count > 0),
     courses: courses.map((course) => courseOf(world, course)),
@@ -291,7 +330,7 @@ export function sheetOf(world: PicksWorld): Sheet {
 export function summaryLine(sheet: Sheet): string {
   return [
     filled(KSW.coming, { count: sheet.coming }),
-    many('allergic', sheet.allergic.length),
+    many('allergic', sheet.withAllergies),
     many('courses', sheet.courses.length),
   ].join(' · ');
 }
@@ -330,13 +369,22 @@ export const SHEET_PAGES: readonly { name: string; states: readonly DemoLink[] }
   {
     name: 'With Guests manage: names in Allergies',
     states: (
-      ['open', 'closed', 'noAllergies', 'loading', 'making', 'failed', 'refused'] as const
+      [
+        'open',
+        'closed',
+        'noAllergies',
+        'closedNoAllergies',
+        'loading',
+        'making',
+        'failed',
+        'refused',
+      ] as const
     ).map((state) => link(state)),
   },
   {
     name: 'Counts only: Guests read, or neither',
-    states: (['open', 'closed', 'noAllergies', 'failed'] as const).map((state) =>
-      link(state, 'counts'),
+    states: (['open', 'closed', 'noAllergies', 'closedNoAllergies', 'failed'] as const).map(
+      (state) => link(state, 'counts'),
     ),
   },
   {
@@ -345,6 +393,7 @@ export const SHEET_PAGES: readonly { name: string; states: readonly DemoLink[] }
       link('open', 'manage', 'a4'),
       link('closed', 'manage', 'a4'),
       link('noAllergies', 'manage', 'a4'),
+      link('closedNoAllergies', 'manage', 'a4'),
       link('open', 'counts', 'a4'),
       link('closed', 'counts', 'a4'),
       link('open', 'manage', 'letter'),

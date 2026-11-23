@@ -55,8 +55,10 @@ appId: host.exp.Exponent
         id: 'event\.nav\..*'
     file: to-settings.yaml
 # Today names no account, so whose session it is is read in Settings. sc-30091.
+# The paused page shows Today too, and has no Settings. sc-86367.
 - runFlow:
     when:
+      notVisible: '{{t:any:accessPaused.badge}}'
       visible: '{{t:any:todayScreen.tab.today}}'
     file: to-settings.yaml
 # Settings by a section's id, not its title: the signed-out sign-in screen also holds a
