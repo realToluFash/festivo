@@ -181,6 +181,9 @@ services:
     environment: *api-environment
     volumes: *api-volumes
     command: ['supercronic', '-json', '/app/config/crontab']
+    # The FrankenPHP image's own check probes :2019, which supercronic never opens.
+    healthcheck:
+      disable: true
     depends_on:
       postgres:
         condition: service_healthy
@@ -220,6 +223,8 @@ networks:
     ipam:
       config:
         - subnet: 172.30.0.0/24
+          # Containers given no address draw from here, so none can take the proxy's.
+          ip_range: 172.30.0.128/25
 
 volumes:
   postgres-data:
