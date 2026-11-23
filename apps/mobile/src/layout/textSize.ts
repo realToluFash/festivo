@@ -213,7 +213,6 @@ export function besideGlyphInPill({
 }): number {
   const fits = (at: number): boolean => {
     const straight = width - beside - glyph * at;
-    // Broken in the straight room, as the Text breaks them; each line then has to clear the curve at that many lines.
     const lines = wrappedLines(straight - 2 * sides, wrap, at / start);
     const cut = pillCut(lines.length * Math.ceil(at * LABEL_LINE), pad, ring);
 
