@@ -139,7 +139,6 @@ export function besideGlyph(
 
 export const LABEL_LINE = 1.22;
 
-/** A text's words in order, as the pieces a line may break between, and the space between two words, all at its start size. */
 export interface Wrap {
   pieces: readonly (readonly number[])[];
   space: number;
