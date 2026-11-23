@@ -121,6 +121,35 @@ describe('AccessPaused', () => {
     expect(screen.queryByText(/Your other organisations/)).toBeNull();
   });
 
+  it('names no other organisation when the member is past the deadline for two-factor in the only other', () => {
+    const onSwitch = vi.fn();
+    const overdue = membership({
+      id: 'org_3',
+      name: 'Adeyemi Weddings',
+      twoFactorDue: {
+        at: '2026-10-24T13:20:00+00:00',
+        written: 'Saturday, Oct 24 at 14:20 WAT',
+        overdue: true,
+      },
+    });
+    render(
+      <MemoryRouter>
+        <AccessPaused
+          paused={paused('domain_closed')}
+          others={[overdue]}
+          onSwitch={onSwitch}
+          onChoose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+    expect(onSwitch).toHaveBeenCalledWith(overdue);
+  });
+
   it('tells the only owner they are still the owner and are not removed', () => {
     const owner = paused('address_gone');
     render(

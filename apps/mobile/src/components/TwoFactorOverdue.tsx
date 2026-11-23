@@ -1,9 +1,11 @@
+import type { Membership } from '@soirely/api-client';
 import type { RefObject } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useAnyNotOverdue } from '../twoFactorStanding.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { bodyEdges } from './bodyEdges.ts';
@@ -14,7 +16,7 @@ import { Text, type TextHandle } from './Text.tsx';
 /** `PolicySignIn-*` state `everyone_blocked`: in place of every screen of the organisation (sc-609). */
 export function TwoFactorOverdue({
   organisation,
-  othersListed,
+  others,
   answer,
   headingRef,
   onTurnOn,
@@ -22,8 +24,8 @@ export function TwoFactorOverdue({
 }: {
   /** The organisation's name. */
   organisation: string;
-  /** Whether the switcher lists an organisation besides this one (sc-85006). */
-  othersListed: boolean;
+  /** The organisations the switcher lists besides this one; those past their deadline do not count (sc-85645). */
+  others: readonly Pick<Membership, 'twoFactorDue'>[];
   /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
   answer: unknown;
   headingRef?: RefObject<TextHandle | null>;
@@ -32,6 +34,7 @@ export function TwoFactorOverdue({
   onSignOut: () => void;
 }) {
   const { t } = useTranslation();
+  const othersUnaffected = useAnyNotOverdue(others);
   const { kind } = useLayout();
 
   return (
@@ -49,7 +52,7 @@ export function TwoFactorOverdue({
           {t('signInRules.overdueBody', { organisation })}
         </Text>
         <Text size={tokens.typeBodyPhone.size} muted>
-          {t(othersListed ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
+          {t(othersUnaffected ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
         </Text>
         <View style={[styles.actions, kind !== 'phone' && styles.actionsTablet]}>
           <PrimaryButton

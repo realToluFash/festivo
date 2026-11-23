@@ -34,7 +34,7 @@ function Overdue({ alone, onSignOut }: { alone: boolean; onSignOut: () => void }
   return (
     <TwoFactorOverdue
       organisation={YOU.organisation}
-      othersListed={!alone}
+      others={othersOf(alone)}
       answer={null}
       onTurnOn={() => shell.openSection('security', 'setup')}
       onSignOut={onSignOut}
