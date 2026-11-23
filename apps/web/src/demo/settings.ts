@@ -109,13 +109,15 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. */
-export function groupsFor(viewer: Pick<Viewer, 'manages'>): SectionGroup[] {
+/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. A paused membership holds no role, so it lists those two whatever the role elsewhere (sc-86077). */
+export function groupsFor(viewer: Pick<Viewer, 'manages'>, paused = false): SectionGroup[] {
+  const manages = viewer.manages && !paused;
+
   return GROUPS.map((group) => ({
     ...group,
     sections: group.sections.filter(
       (section) =>
-        viewer.manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
+        manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
     ),
   }));
 }

@@ -344,6 +344,61 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     },
   );
 
+  it(
+    'lists the paused organisation’s General and Sign-in rules, and names the person with no role, while paused (sc-86077)',
+    SLOW,
+    async () => {
+      open('/demo/settings/general?as=julien&switcher=paused');
+      await opener(/^Organisation: Casa Lumen Eventos/);
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      const list = within(screen.getByRole('navigation', { name: 'Settings' }));
+
+      expect(list.getAllByRole('link').map((link) => link.textContent)).toEqual([
+        expect.stringContaining('Account'),
+        expect.stringContaining('Security'),
+        expect.stringContaining('Notifications'),
+        expect.stringContaining('Personalisation'),
+        expect.stringContaining('General'),
+        expect.stringContaining('Sign-in rules'),
+      ]);
+      expect(list.getByRole('link', { name: 'General' }).textContent).toContain('CL');
+      expect(screen.getByRole('button', { name: 'Julien Moreau' })).toBeDefined();
+
+      cleanup();
+      open('/demo/settings/members?switcher=paused-alone');
+      await opener(/^Organisation: Casa Lumen Eventos/);
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(
+        within(screen.getByRole('navigation', { name: 'Settings' }))
+          .getAllByRole('link')
+          .map((link) => link.textContent)
+          .slice(4),
+      ).toEqual([expect.stringContaining('General'), expect.stringContaining('Sign-in rules')]);
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: /^Your access to Casa Lumen Eventos is paused/,
+        }),
+      ).toBeDefined();
+    },
+  );
+
+  it(
+    'keeps the role’s list and the role on the person while two-factor is overdue (sc-86077)',
+    SLOW,
+    async () => {
+      open('/demo/settings/general?as=julien&switcher=overdue');
+      await opener();
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+      const list = within(screen.getByRole('navigation', { name: 'Settings' }));
+
+      expect(list.getByRole('link', { name: 'Members' })).toBeDefined();
+      expect(list.getByRole('link', { name: 'General' }).textContent).toContain('IE');
+      expect(screen.getByRole('button', { name: 'Julien Moreau, Admin' })).toBeDefined();
+    },
+  );
+
   it('marks nothing current while access is paused, and switches away from it', SLOW, async () => {
     open('/demo/events?switcher=paused');
     await opener(/^Organisation: Casa Lumen Eventos/);

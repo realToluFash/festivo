@@ -8,7 +8,7 @@ import { SECTION_HREF } from '../../kit/appNav.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useBoldTextSwitch } from '../boldText/boldTextStore.ts';
-import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
+import { OrgSwitcherProvider, PausedHere } from '../OrgSwitcher.tsx';
 import { switcherStateOf } from '../OrgSwitcherModel.ts';
 import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
@@ -28,7 +28,7 @@ import { holdChoice, schemeOf } from './PersonalisationModel.ts';
 import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
-import { heldOf } from './HeldModel.ts';
+import { heldOf, pausedStandsIn } from './HeldModel.ts';
 import { WayBackToNone } from '../../components/wayBackToNone.ts';
 import { boardFrom, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
@@ -36,6 +36,7 @@ import { SignInRulesSection } from './SignInRules.tsx';
 import { SingleSignOnSection } from './SingleSignOn.tsx';
 import {
   layoutOf,
+  type Looking,
   type Shell,
   ShellContext,
   type ShellSection,
@@ -129,6 +130,7 @@ export function SettingsRoute({
   const seed = schemeOf(params.scheme);
   const bold = useBoldTextSwitch();
   const saved = useSavedName();
+  const held = heldOf(params.held);
 
   useCoverStatusBar('dark', false);
 
@@ -139,13 +141,17 @@ export function SettingsRoute({
   const openSection = useCallback(
     (next: ShellSection, state?: string) => {
       if (next === shown && state == null) return;
+      const href = settingsHref(viewer, next, state, from);
+      const to =
+        held === 'paused'
+          ? withQuery(href, { held, switcher: params.switcher, scheme: params.scheme })
+          : href;
       // On its side the list stays put, so a row changes the page beside it rather than stacking one.
-      if (layout === 'landscape') router.replace(settingsHref(viewer, next, state, from));
-      else router.push(settingsHref(viewer, next, state, from));
+      if (layout === 'landscape') router.replace(to);
+      else router.push(to);
     },
-    [layout, shown, viewer, from],
+    [layout, shown, viewer, from, held, params.switcher, params.scheme],
   );
-  const held = heldOf(params.held);
   // Paused is the session's state in the product, so Settings reached from a paused screen is the same paused session.
   const settingsHome = useMemo(
     () =>
@@ -184,7 +190,7 @@ export function SettingsRoute({
     () => ({
       layout,
       viewer,
-      looking: underSavedName(lookingAs(viewer), saved),
+      looking: withoutRoleWhile(held === 'paused', underSavedName(lookingAs(viewer), saved)),
       open: shown,
       openSection,
       toSettings,
@@ -205,12 +211,13 @@ export function SettingsRoute({
           ? SingleSignOnSection
           : PAGES[shown];
   const home = <SettingsHome {...handlers} held={held} />;
-  // A section pushed while paused: the paused page stands in for it under ‹ Settings, which goes back to the paused Settings (sc-83881).
-  const pausedOver = held === 'paused' && Page != null && (
+  // An organisation's row opened while paused: the paused page stands in for it, under ‹ Settings back to the list, or beside the list on its side (sc-86077).
+  const pausedOver = Page != null && pausedStandsIn(held, shown, dataShown != null) && (
     <SettingsHome
       {...handlers}
       held={held}
-      back={layout === 'landscape' ? undefined : () => router.replace(settingsHome)}
+      over
+      back={layout === 'landscape' ? undefined : toSettings}
     />
   );
 
@@ -218,26 +225,33 @@ export function SettingsRoute({
     <ShellContext.Provider value={shell}>
       <WayBackToNone.Provider value={fromNone ? toNone : null}>
         <OrgSwitcherProvider state={switcherStateOf(params.switcher)} tell={tell}>
-          <View style={styles.fill}>
-            <DataOpenContext.Provider value={dataShown}>
-              {pausedOver !== false ? (
-                pausedOver
-              ) : Page != null ? (
-                <Page />
-              ) : member ? (
-                <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
-              ) : (
-                home
+          <PausedHere.Provider value={held === 'paused'}>
+            <View style={styles.fill}>
+              <DataOpenContext.Provider value={dataShown}>
+                {pausedOver !== false ? (
+                  pausedOver
+                ) : Page != null ? (
+                  <Page />
+                ) : member ? (
+                  <SeenBy looking={memberLooking(ANA)}>{home}</SeenBy>
+                ) : (
+                  home
+                )}
+              </DataOpenContext.Provider>
+              {told != null && (
+                <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
               )}
-            </DataOpenContext.Provider>
-            {told != null && (
-              <Told words={told} phone={layout === 'phone'} onClose={() => setTold(undefined)} />
-            )}
-          </View>
+            </View>
+          </PausedHere.Provider>
         </OrgSwitcherProvider>
       </WayBackToNone.Provider>
     </ShellContext.Provider>
   );
+}
+
+/** A paused membership holds no role, so the person is named alone while it is paused (sc-86077). */
+function withoutRoleWhile(paused: boolean, looking: Looking): Looking {
+  return paused ? { ...looking, role: null } : looking;
 }
 
 function Told({ words, phone, onClose }: { words: string; phone: boolean; onClose: () => void }) {
