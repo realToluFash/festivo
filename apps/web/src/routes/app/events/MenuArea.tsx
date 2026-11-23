@@ -43,6 +43,7 @@ import {
   removeVariantOutcome,
   variantDetailsOf,
   variantFormOf,
+  variantPrefix,
   variantProblems,
   dishDetailsOf,
   dishProblems,
@@ -113,6 +114,7 @@ import {
   type DefaultDates,
   type DefaultForm,
   checkDefault,
+  choiceLeavesDefault,
   dayIn,
   dayWords,
   defaultForm,
@@ -125,6 +127,7 @@ import {
   moveWords,
   pickWords,
   sentDefault,
+  variantLeavesDefault,
 } from './courseDefault.ts';
 import { DefaultFields, MoveDialog } from './MenuDefault.tsx';
 import '../../../components/SettingsParts.css';
@@ -1027,10 +1030,10 @@ function Courses({
 
   function addVariant(course: MenuCourse, dish: MenuDish) {
     const outcome = addVariantOutcome(dish.variants, dish.picked);
-    if (outcome !== 'open') {
+    if (outcome !== 'open' || variantLeavesDefault(course, dish.id, null, false)) {
       settle();
       setSaid(null);
-      setAddRefused({ dishId: dish.id, outcome });
+      setAddRefused({ dishId: dish.id, outcome: outcome === 'open' ? 'default' : outcome });
       return;
     }
     openVariant(course, dish, dish.variants.length === 0 ? 'addFirst' : 'add', null);
@@ -1054,6 +1057,19 @@ function Courses({
     if (hasProblem(problems)) {
       setOpen({ ...open, pressed: true, failed: null });
       focusAfter.current = firstVariantProblem(problems, open.forms);
+      return;
+    }
+    if (
+      open.variantId != null &&
+      variantLeavesDefault(
+        openCourse,
+        open.dishId,
+        open.variantId,
+        open.forms[0]?.for === 'children',
+      )
+    ) {
+      setOpen({ ...open, pressed: true, failed: null });
+      focusAfter.current = `${variantPrefix(0)}for-children`;
       return;
     }
     const details = open.forms.map((form) => variantDetailsOf(form, 'event', language, prices));
@@ -1107,6 +1123,17 @@ function Courses({
       if (error instanceof ApiError && error.is('variant_limit')) {
         setOpen(null);
         setAddRefused({ dishId: open.dishId, outcome: 'limit' });
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        api.menu(event.id).then(onMenu, () => undefined);
+        if (open.variantId == null) {
+          setOpen(null);
+          setAddRefused({ dishId: open.dishId, outcome: 'default' });
+          return;
+        }
+        setOpen((then) => (then?.kind === 'variant' ? { ...then, busy: false } : then));
+        focusAfter.current = `${variantPrefix(0)}for-children`;
         return;
       }
       setOpen((then) =>
@@ -1317,6 +1344,12 @@ function Courses({
         openKey: problem?.open ?? open.openKey,
       });
       focusAfter.current = problem?.id ?? null;
+      return;
+    }
+    const leaves = choiceLeavesDefault(openCourse, open.dishId, open.form, was, problems);
+    if (leaves != null) {
+      setOpen({ ...open, pressed: true, failed: null, binRefused: null });
+      focusAfter.current = defaultControl(leaves, open.form, was);
       return;
     }
     const details = choiceDetailsOf(open.form, was);
@@ -1814,6 +1847,11 @@ function Courses({
                   openKey={open.openKey}
                   binRefused={open.binRefused}
                   binWords={binDefaultWords(t, open, openCourse, openChoice)}
+                  defaultLine={
+                    open.pressed
+                      ? choiceDefaultLine(t, open, openCourse, openDish, openChoice)
+                      : null
+                  }
                   optionsFull={open.optionsFull}
                   intro={
                     <ChoiceIntro
@@ -1962,6 +2000,37 @@ function binDefaultWords(
   return t('courseDefault.refuseOption', { option: option.name, course: course.name });
 }
 
+/** The Edit choice panel's line for an edit that would leave the course's default unfinished (sc-1362). */
+function choiceDefaultLine(
+  t: TFunction,
+  open: ChoiceOpen,
+  course: MenuCourse | null,
+  dish: MenuDish,
+  choice: MenuDishChoice | null,
+): { at: 'pick' | 'required' | 'draft'; words: string } | null {
+  const at = choiceLeavesDefault(
+    course,
+    open.dishId,
+    open.form,
+    choice,
+    choiceProblems(open.form, choice),
+  );
+  if (at == null || course == null) return null;
+
+  return { at, words: t('courseDefault.refuseDish', { dish: dish.name, course: course.name }) };
+}
+
+function defaultControl(
+  at: 'pick' | 'required' | 'draft',
+  form: ChoiceForm,
+  was: MenuDishChoice | null,
+): string {
+  if (at === 'pick') return was != null && form.pick > was.pick ? 'ch-fewer' : 'ch-more';
+  if (at === 'required') return 'ch-required';
+
+  return form.question.trim() === '' ? 'ch-question' : 'ch-add-option';
+}
+
 function sharedLine(t: TFunction, name: string, archivedOnly: boolean): string {
   return t(archivedOnly ? 'menuLibrary.duplicateArchived' : 'menuLibrary.duplicate', { name });
 }
@@ -2000,6 +2069,13 @@ function VariantPanel({
       dish={dish}
       forms={open.forms}
       problems={open.pressed ? variantProblems(open.forms, others(dish), language, prices) : null}
+      forRefused={
+        open.pressed &&
+        variant != null &&
+        variantLeavesDefault(course, dish.id, variant.id, open.forms[0]?.for === 'children')
+          ? t('courseDefault.refuseDish', { dish: dish.name, course: course.name })
+          : null
+      }
       where="event"
       prices={prices}
       language={language}

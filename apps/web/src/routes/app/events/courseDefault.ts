@@ -6,6 +6,12 @@ import type {
   MenuDishVariant,
   SentCourseDefault,
 } from '@soirely/api-client';
+import {
+  type ChoiceForm,
+  type ChoiceProblems,
+  formDraftReasons,
+  keptOptions,
+} from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 export interface DefaultForm {
@@ -214,6 +220,39 @@ export const isDefaultVariant = (course: MenuCourse, dishId: string, variantId: 
 
 export const isDefaultOption = (course: MenuCourse, dishId: string, optionId: string): boolean =>
   isDefaultDish(course, dishId) && (course.default?.options ?? []).includes(optionId);
+
+/** Where an edit to the default's dish would leave the default no longer a whole pick (Decided, 23 Nov): the control sc-3904 refuses it at, or null. Their own refusal, for answers, shows first. */
+export function choiceLeavesDefault(
+  course: MenuCourse | null,
+  dishId: string,
+  form: ChoiceForm,
+  was: MenuDishChoice | null,
+  problems: ChoiceProblems,
+): 'pick' | 'required' | 'draft' | null {
+  if (course == null || !isDefaultDish(course, dishId)) return null;
+  if (formDraftReasons(form, was).length > 0)
+    return problems.staysFinished == null ? 'draft' : null;
+  if (!form.required) return null;
+  const given = course.default?.options ?? [];
+  const answered = keptOptions(form, was).filter((one) => one.id != null && given.includes(one.id));
+  if (answered.length === form.pick) return null;
+  if (was == null || !was.required) return problems.required ? null : 'required';
+
+  return problems.pick ? null : 'pick';
+}
+
+/** The default variant's For turned to Children only, or variants added to a default dish that has none (Decided, 23 Nov). */
+export const variantLeavesDefault = (
+  course: MenuCourse | null,
+  dishId: string,
+  variantId: string | null,
+  forChildren: boolean,
+): boolean =>
+  course != null &&
+  (variantId == null
+    ? isDefaultDish(course, dishId) &&
+      (course.dishes.find((one) => one.id === dishId)?.variants.length ?? 0) === 0
+    : forChildren && isDefaultVariant(course, dishId, variantId));
 
 /** The defaulted people See picks counts on a course: each person once, on the default's dish row. */
 export function givenOn(

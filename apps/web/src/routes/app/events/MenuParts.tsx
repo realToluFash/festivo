@@ -63,7 +63,7 @@ export interface VariantHandlers {
   prices: boolean;
   language: MoneyLanguage;
   ask: VariantAsk | null;
-  addRefused: { dishId: string; outcome: 'limit' | 'picked' } | null;
+  addRefused: { dishId: string; outcome: 'limit' | 'picked' | 'default' } | null;
   lit: string | null;
   onAdd: (dish: MenuDish) => void;
   onEdit: (dish: MenuDish, variant: ShownVariant) => void;
@@ -683,7 +683,9 @@ function DishRow({
           words={[
             addRefused === 'limit'
               ? t('dishVariants.limit', { most: VARIANTS_PER_DISH_MAXIMUM })
-              : t('dishVariants.dishPicked'),
+              : addRefused === 'default'
+                ? t('courseDefault.refuseDish', { dish: name, course: course.name })
+                : t('dishVariants.dishPicked'),
           ]}
         />
       )}

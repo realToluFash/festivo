@@ -548,6 +548,7 @@ export function ChoiceFields({
   openKey,
   binRefused,
   binWords = null,
+  defaultLine = null,
   optionsFull,
   intro,
   onPatch,
@@ -564,6 +565,8 @@ export function ChoiceFields({
   binRefused: string | null;
   /** The words for a refused bin when it is not "Guests have picked this option." (sc-1362). */
   binWords?: string | null;
+  /** An edit that would leave the course's default unfinished, refused at the control it changes (sc-1362). */
+  defaultLine?: { at: 'pick' | 'required' | 'draft'; words: string } | null;
   optionsFull: boolean;
   intro: ReactNode;
   onPatch: (next: Partial<ChoiceForm>) => void;
@@ -656,7 +659,10 @@ export function ChoiceFields({
       </div>
       <fieldset
         className="lib-set ch-pick"
-        aria-describedby={described('ch-pick-hint', problems?.pick === true && 'ch-pick-error')}
+        aria-describedby={described(
+          'ch-pick-hint',
+          (problems?.pick === true || defaultLine?.at === 'pick') && 'ch-pick-error',
+        )}
       >
         <legend className="desk-label gs-label">{t('dishChoices.pickExactly')}</legend>
         <div className="ch-stepper">
@@ -690,6 +696,9 @@ export function ChoiceFields({
           {stepperHint(t, form)}
         </p>
         {problems?.pick === true && <Warn id="ch-pick-error" words={t('dishChoices.answered')} />}
+        {defaultLine?.at === 'pick' && problems?.pick !== true && (
+          <Warn id="ch-pick-error" words={defaultLine.words} />
+        )}
       </fieldset>
       <div className="desk-field">
         <label className="gs-tick lib-tick ch-required">
@@ -698,10 +707,13 @@ export function ChoiceFields({
             type="checkbox"
             className="gs-box"
             checked={form.required}
-            aria-invalid={problems?.required === true || undefined}
+            aria-invalid={
+              problems?.required === true || defaultLine?.at === 'required' || undefined
+            }
             aria-describedby={described(
               !form.required && 'ch-required-help',
-              problems?.required === true && 'ch-required-error',
+              (problems?.required === true || defaultLine?.at === 'required') &&
+                'ch-required-error',
             )}
             onChange={() => onPatch({ required: !form.required })}
           />
@@ -715,9 +727,19 @@ export function ChoiceFields({
         {problems?.required === true && (
           <Warn id="ch-required-error" words={t('dishChoices.answered')} />
         )}
+        {defaultLine?.at === 'required' && problems?.required !== true && (
+          <Warn id="ch-required-error" words={defaultLine.words} />
+        )}
       </div>
       <div role="status" className="ch-status">
-        {staysFinished != null ? (
+        {defaultLine?.at === 'draft' ? (
+          <div id="ch-stays" className="ch-stays">
+            <p className="ch-stays-head">
+              <Glyph name="alert" size={16} weight={2.2} />
+              {defaultLine.words}
+            </p>
+          </div>
+        ) : staysFinished != null ? (
           <div id="ch-stays" className="ch-stays">
             <p className="ch-stays-head">
               <Glyph name="alert" size={16} weight={2.2} />

@@ -369,6 +369,7 @@ function VariantBlock({
   eventCurrency,
   heldCurrency,
   pricedIn,
+  forRefused,
   onPatch,
 }: {
   at: number;
@@ -381,11 +382,12 @@ function VariantBlock({
   eventCurrency: string;
   heldCurrency: string;
   pricedIn: string | null;
+  forRefused: string | null;
   onPatch: (next: Partial<VariantForm>) => void;
 }) {
   const { t } = useTranslation();
   const p = variantPrefix(at);
-  const forWrong = problems?.for != null;
+  const forWrong = problems?.for != null || forRefused != null;
   const optional = <span className="gs-optional">{t('menuLibrary.optional')}</span>;
   const example = amountExample(language, eventCurrency);
   const showPricedIn = pricedIn != null && form.amount.trim() === '';
@@ -422,7 +424,11 @@ function VariantBlock({
             </label>
           ))}
         </div>
-        {forWrong && <Wrong id={`${p}for-error`}>{t('dishVariants.needsEveryone')}</Wrong>}
+        {forWrong && (
+          <Wrong id={`${p}for-error`}>
+            {problems?.for != null ? t('dishVariants.needsEveryone') : forRefused}
+          </Wrong>
+        )}
         <p id={`${p}for-help`} className="desk-help">
           {t('dishVariants.childrenHelp')}
         </p>
@@ -523,6 +529,7 @@ export function VariantFields({
   heldCurrency = '',
   pricedIn = null,
   after = null,
+  forRefused = null,
   onPatch,
 }: {
   mode: VariantMode;
@@ -536,6 +543,8 @@ export function VariantFields({
   heldCurrency?: string;
   pricedIn?: string | null;
   after?: ReactNode;
+  /** The first block's For refused for another reason than Everyone, in these words (sc-1362). */
+  forRefused?: string | null;
   onPatch: (at: number, next: Partial<VariantForm>) => void;
 }) {
   const { t } = useTranslation();
@@ -564,6 +573,7 @@ export function VariantFields({
           eventCurrency={eventCurrency}
           heldCurrency={heldCurrency}
           pricedIn={mode === 'edit' ? pricedIn : null}
+          forRefused={at === 0 ? forRefused : null}
           onPatch={(next) => onPatch(at, next)}
         />
       ))}
