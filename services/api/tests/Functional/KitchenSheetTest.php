@@ -117,6 +117,17 @@ final class KitchenSheetTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNameThatStartsWithAnAccentedLetterSortsWithItsLetter(): void
+    {
+        $this->coming([['fullName' => 'Oluwatoyin Bello'], ['fullName' => 'Émile Durand'], ['fullName' => 'Zainab Musa']]);
+        foreach (['Oluwatoyin Bello', 'Émile Durand', 'Zainab Musa'] as $name) {
+            $this->records($this->personId($name), ['celery']);
+        }
+
+        self::assertSame(['Émile Durand', 'Oluwatoyin Bello', 'Zainab Musa'], Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($this->sheet()['allergic']), static fn (array $row): string => $row['name']));
+    }
+
+    #[Test]
     public function withoutGuestsManageTheSheetCountsAllergiesAndNamesNobody(): void
     {
         $this->coming([['fullName' => 'Chidi Okonkwo']]);
