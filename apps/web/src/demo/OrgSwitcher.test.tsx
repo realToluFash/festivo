@@ -324,7 +324,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     SLOW,
     async () => {
       open('/demo/settings/sign-in-rules?switcher=paused');
-      await opener();
+      await opener(/^Organisation: Casa Lumen Eventos/);
       fireEvent.keyDown(document.body, { key: 'Escape' });
 
       expect(screen.getByRole('link', { name: /Security/ })).toBeDefined();
@@ -337,7 +337,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
 
       cleanup();
       open('/demo/settings/security?switcher=paused');
-      await opener();
+      await opener(/^Organisation: Casa Lumen Eventos/);
       fireEvent.keyDown(document.body, { key: 'Escape' });
 
       expect(screen.getByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
@@ -346,7 +346,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
 
   it('marks nothing current while access is paused, and switches away from it', SLOW, async () => {
     open('/demo/events?switcher=paused');
-    await opener();
+    await opener(/^Organisation: Casa Lumen Eventos/);
 
     expect(
       screen.getByRole('heading', {
@@ -373,7 +373,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
   });
 
   it(
-    'draws no pill and no Switch organisation for a member paused with no other organisation, and says single events stay',
+    'names the paused organisation on the pill, draws no Switch organisation on the card, and says single events stay, for a member paused with no other organisation (sc-85006, sc-85513)',
     SLOW,
     async () => {
       open('/demo/today?switcher=paused-alone');
@@ -385,9 +385,111 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
           WAIT,
         ),
       ).toBeDefined();
-      expect(screen.queryByRole('button', { name: /^Organisation:/ })).toBeNull();
+      expect(
+        screen.getByRole('button', {
+          name: /^Organisation: Casa Lumen Eventos, access paused\. Switch organisation$/,
+        }),
+      ).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
       expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
+    },
+  );
+
+  it.each([
+    '/demo/today',
+    '/demo/events',
+    '/demo/calendar',
+    '/demo/settings/sign-in-rules',
+    '/demo/settings/account',
+  ])(
+    'names the paused organisation on the pill at %s, never the one fallen back on (sc-85513)',
+    SLOW,
+    async (page) => {
+      open(`${page}?switcher=paused`);
+      const pill = await opener(
+        /^Organisation: Casa Lumen Eventos, access paused\. Switch organisation$/,
+      );
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      expect(pill.textContent).toContain('Casa Lumen Eventos');
+      expect(screen.queryByRole('button', { name: /^Organisation: Ire Events/ })).toBeNull();
+    },
+  );
+
+  it(
+    'opens a switcher that lists everywhere but the paused organisation (sc-85513)',
+    SLOW,
+    async () => {
+      open('/demo/events?switcher=paused');
+      await opener(/^Organisation: Casa Lumen Eventos, access paused/);
+
+      expect(names()).toEqual([
+        'Ire Events, Your role · Owner',
+        'Atelier Céleste Réceptions et Mariages, Your role · Member',
+      ]);
+
+      fireEvent.click(screen.getByRole('option', { name: /^Ire Events/ }));
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Events' })).toBeDefined();
+      expect(
+        screen.getByRole('button', { name: /^Organisation: Ire Events, your role Owner/ }),
+      ).toBeDefined();
+    },
+  );
+
+  it.each([
+    ['paused-invitation', '1 invitation'],
+    ['paused-invitations', '2 invitations'],
+  ])(
+    'counts the invitations waiting on the paused pill, ?switcher=%s',
+    SLOW,
+    async (state, count) => {
+      open(`/demo/today?switcher=${state}`);
+      const pill = await opener(
+        new RegExp(
+          `^Organisation: Casa Lumen Eventos, access paused\\. Switch organisation\\. ${count} waiting$`,
+        ),
+      );
+
+      expect(pill.textContent).toContain(count);
+    },
+  );
+
+  it(
+    'offers Create an organisation to a member paused with nowhere else to go (sc-85513)',
+    SLOW,
+    async () => {
+      open('/demo/today?switcher=paused-alone');
+      const pill = await opener(
+        /^Organisation: Casa Lumen Eventos, access paused\. Switch organisation$/,
+      );
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+
+      fireEvent.keyDown(pill, { key: 'ArrowDown' });
+
+      expect(menu()).not.toBeNull();
+      expect(screen.queryByRole('listbox', { name: 'Your organisations' })).toBeNull();
+      const create = screen.getByRole('button', { name: 'Create an organisation' });
+      expect(document.activeElement).toBe(create);
+
+      fireEvent.click(create);
+
+      const dialog = await screen.findByRole('dialog', { name: 'Create an organisation' }, WAIT);
+      fireEvent.change(screen.getByLabelText('Organisation name'), {
+        target: { value: 'Lumen Feiras' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Create organisation' }));
+
+      expect(await screen.findByText('Now working in Lumen Feiras.', {}, WAIT)).toBeDefined();
+      expect(screen.queryByRole('heading', { level: 1, name: /is paused/ })).toBeNull();
+      expect(
+        screen.getByRole('button', { name: /^Organisation: Lumen Feiras, your role Owner/ }),
+      ).toBeDefined();
+      expect(
+        screen.queryByRole('button', { name: /^Organisation: Casa Lumen Eventos/ }),
+      ).toBeNull();
     },
   );
 
