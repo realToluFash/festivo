@@ -2765,6 +2765,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'bellGone':
     case 'bellOffline':
     case 'bellRefreshing':
+    case 'bellUnknown':
     case 'stopAction':
     case 'stopAsk':
     case 'stopFailed':

@@ -64,10 +64,10 @@ import { BELL_STATES } from './bellFeed.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-3966’s 7 more, sc-45251’s 14, sc-3978’s 6, sc-4330’s 39, sc-46343’s 19, sc-3942’s 5 refusals, its 10 Choose guests and sc-83081’s bell with its 11, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-3966’s 7 more, sc-45251’s 14, sc-3978’s 6, sc-4330’s 39, sc-46343’s 19, sc-3942’s 5 refusals, its 10 Choose guests and sc-83081’s bell with its 11 and sc-84143’s one, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(269);
+    expect(keys).toHaveLength(270);
     expect(keys.slice(242, 247)).toEqual(REFUSAL_STATES.map((one) => one.key));
     expect(keys.slice(247, 257)).toEqual(CHOOSE_STATES.map((one) => one.key));
     expect(keys.slice(257)).toEqual(['bell', ...BELL_STATES.map((one) => one.key)]);
@@ -119,7 +119,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(269);
+    expect(new Set(keys).size).toBe(270);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Menu\Pick;
 
 use App\Domain\Guest\GuestNeedsRecord;
+use App\Domain\Guest\Model\GuestNeeds;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\MealAnswer;
@@ -14,7 +15,6 @@ use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Str;
 use Psl\Vec;
 
 /**
@@ -41,7 +41,8 @@ final readonly class PickSpots
      */
     public function of(Event $event, array $room, array $courses): array
     {
-        $allergens = Dict\map($this->guestNeedsRecord->of($room), MealAllergens::of(...));
+        $needs = $this->guestNeedsRecord->of($room);
+        $allergens = Dict\map($needs, MealAllergens::of(...));
         $answers = Dict\from_entries(Vec\map(
             $this->mealAnswerRepository->findFor($room),
             static fn (MealAnswer $answer): array => [$answer->getCourse()->getId()->toRfc4122() . '/' . $answer->getPerson()->getId()->toRfc4122(), $answer],
@@ -60,7 +61,7 @@ final readonly class PickSpots
                 $id = $person->getId()->toRfc4122();
                 $answer = $answers[$course['id'] . '/' . $id] ?? null;
                 $theirs = $allergens[$id] ?? [];
-                $spots[$course['id']][$id] = $this->spotOf($answer, $course, $offered[$course['id']]['dishes'] ?? [], $theirs, $options);
+                $spots[$course['id']][$id] = $this->spotOf($answer, $course, $offered[$course['id']]['dishes'] ?? [], $theirs, $options, $needs[$id] ?? GuestNeeds::none());
             }
         }
 
@@ -73,9 +74,9 @@ final readonly class PickSpots
      * @param list<string>                    $allergens
      * @param array<string, MenuChoiceOption> $options
      *
-     * @return Spot
+     * @return Spot `excluded` on a person with no answer the course's default is never given to, with why
      */
-    private function spotOf(?MealAnswer $answer, array $course, array $guestDishes, array $allergens, array $options): array
+    private function spotOf(?MealAnswer $answer, array $course, array $guestDishes, array $allergens, array $options, GuestNeeds $needs): array
     {
         if (null === $answer && PicksMenu::asksNothing($course)) {
             $plate = PicksMenu::setPlate($course, $allergens);
@@ -84,8 +85,24 @@ final readonly class PickSpots
         }
 
         if (null === $answer) {
-            return Iter\all($guestDishes, static fn (array $dish): bool => GuestMenu::ruledOut($dish, $allergens))
-                ? ['state' => 'host', 'reason' => 'nothing']
+            if (Iter\all($guestDishes, static fn (array $dish): bool => GuestMenu::ruledOut($dish, $allergens))) {
+                return ['state' => 'host', 'reason' => 'nothing'];
+            }
+
+            $default = $course['default'];
+
+            if (null === $default) {
+                return ['state' => 'none'];
+            }
+
+            $excluded = MealDefault::exclusion($needs, MealDefault::suitableFor($course));
+
+            if (null !== $excluded) {
+                return ['state' => 'none', 'excluded' => $excluded];
+            }
+
+            return ($course['picksClose']['closed'] ?? false)
+                ? ['state' => 'defaulted', 'dish' => $default['dish'], 'variant' => $default['variant'], 'options' => $default['options']]
                 : ['state' => 'none'];
         }
 
@@ -106,15 +123,8 @@ final readonly class PickSpots
     /** @param Course $course */
     private static function pickName(MealAnswer $answer, array $course): string
     {
-        $dish = Iter\search($course['dishes'], static fn (array $one): bool => $one['id'] === $answer->getDish()?->getId()->toRfc4122());
+        $dish = $answer->getDish()?->getId()->toRfc4122();
 
-        if (null === $dish) {
-            return '';
-        }
-
-        $variant = Iter\search($dish['variants'], static fn (array $one): bool => $one['id'] === $answer->getVariant()?->getId()->toRfc4122());
-        $picked = Vec\filter(Vec\flat_map(PicksMenu::choices($dish), static fn (array $choice): array => $choice['options']), static fn (array $option): bool => Iter\contains($answer->getOptions(), $option['id']));
-
-        return Str\join(Vec\filter_nulls([$dish['name'], $variant['name'] ?? null, ...Vec\map($picked, static fn (array $option): string => $option['name'])]), ', ');
+        return null === $dish ? '' : PicksMenu::plateName($course, $dish, $answer->getVariant()?->getId()->toRfc4122(), $answer->getOptions());
     }
 }

@@ -25,6 +25,7 @@ import {
 import { TitleRow } from '../../../components/SettingsParts.tsx';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { offButton } from '../../../offButton.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { usePhoneWidth } from '../../../phoneWidth.ts';
 import { PAGE_ART, PREVIEW_ART, SWATCH_ART, isLightGround } from '../../../schemeArt.ts';
 import { type Scheme, confetti, defaultScheme, schemeNames } from '../../../scheme.ts';
@@ -40,31 +41,40 @@ export function Personalisation() {
     chosen === undefined ? 'loading' : 'loaded',
   );
   const [attempt, setAttempt] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const [pick, setPick] = useState<Scheme | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [unsaved, setUnsaved] = useState<Refusal | null>(null);
   const [said, setSaid] = useState('');
   const step = useRef<HTMLButtonElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const savesMade = useRef(0);
+  const { watch } = useOffline({
+    loaded: load === 'loaded',
+    reload: () => setRefresh((n) => n + 1),
+    title,
+  });
 
   useEffect(() => {
-    if (load !== 'loading') return;
     let current = true;
+    const savesBefore = savesMade.current;
 
-    api.request<unknown>('/api/auth/me').then(
+    watch(api.request<unknown>('/api/auth/me')).then(
       (answer) => {
-        followAccountScheme(schemeIn(answer));
+        if (savesMade.current === savesBefore) followAccountScheme(schemeIn(answer));
         if (current) setLoad('loaded');
       },
-      () => {
-        if (current) setLoad('failed');
+      (error: unknown) => {
+        if (current)
+          setLoad((was) => (was === 'loaded' && keepsWhatLoaded(error) ? was : 'failed'));
       },
     );
 
     return () => {
       current = false;
     };
-  }, [load, attempt]);
+  }, [attempt, refresh, watch]);
 
   function open(): void {
     setSaved(false);
@@ -84,6 +94,7 @@ export function Personalisation() {
 
     setUnsaved(null);
     setSaving(true);
+    savesMade.current += 1;
     setSaid('');
     try {
       savedScheme(
@@ -111,7 +122,7 @@ export function Personalisation() {
       {phone ? (
         <AccountHeader title={t('personalisation.title')} />
       ) : (
-        <TitleRow title={t('personalisation.title')} />
+        <TitleRow title={t('personalisation.title')} titleRef={title} />
       )}
 
       <div className="visually-hidden" aria-live="polite">

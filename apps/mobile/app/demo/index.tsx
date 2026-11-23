@@ -46,6 +46,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
@@ -58,6 +59,7 @@ import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
+import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
   STAFF_LINK_BOARDS,
@@ -245,6 +247,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Today · more than it holds',
         what: 'The same scroll on Today',
         href: '/demo/today?sidebar=many',
+      },
+    ],
+  },
+  {
+    page: 'Today · its events loading or not loaded (sc-87600)',
+    boards: [
+      {
+        title: 'Today failed',
+        what: 'The cover and the tabs stay; Try again loads',
+        href: '/demo/today?load=failed',
+      },
+      {
+        title: 'Today failed · fails again',
+        what: 'Try again shows loading, then the failed box again',
+        href: '/demo/today?load=failed&retry=fails',
+      },
+      {
+        title: 'Today loading',
+        what: 'Empty for a second, then Loading, and it stays',
+        href: '/demo/today?load=loading',
+      },
+      {
+        title: 'Today failed · sidebar keeps its list',
+        what: 'On its side: the four its own read listed before',
+        href: '/demo/today?load=failed&sidebar=kept',
+      },
+      {
+        title: 'Today loading · sidebar keeps its list',
+        what: 'On its side: the same four while Today loads',
+        href: '/demo/today?load=loading&sidebar=kept',
       },
     ],
   },
@@ -570,6 +602,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings?as=noOrg',
       },
       {
+        title: 'Settings · access paused',
+        what: 'The list: Organisation and Sign-in rules, no role (sc-86077)',
+        href: '/demo/settings?held=paused',
+      },
+      {
+        title: 'Settings · access paused, no other organisation',
+        what: 'The same list for a member of it alone (sc-86077)',
+        href: '/demo/settings?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · access paused, Organisation',
+        what: 'The paused page: Switch organisation (sc-86077)',
+        href: '/demo/settings/organisation?held=paused',
+      },
+      {
+        title: 'Settings · access paused, Organisation, no other organisation',
+        what: 'No Switch organisation; single events only (sc-85006)',
+        href: '/demo/settings/organisation?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · two-factor overdue',
+        what: 'Turn on two-factor, Sign out',
+        href: '/demo/settings?held=overdue',
+      },
+      {
+        title: 'Settings · two-factor overdue, no other organisation',
+        what: 'Single-event access only (sc-85006)',
+        href: '/demo/settings?held=overdue&switcher=one',
+      },
+      {
         title: 'Your account',
         what: 'You on the card, what is left to verify',
         href: '/demo/settings/account',
@@ -771,6 +833,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=everywhere',
       },
       {
+        title: "Security · confirm it's you, Google",
+        what: 'No password: Google’s own button, no header verb',
+        href: '/demo/settings/security?state=proveGoogle',
+      },
+      {
+        title: "Security · confirm it's you, Apple",
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/security?state=proveApple',
+      },
+      {
+        title: 'Security · everywhere else, Google',
+        what: 'After Sign them out: Google’s button',
+        href: '/demo/settings/security?state=everywhereGoogle',
+      },
+      {
+        title: 'Security · everywhere else, Apple',
+        what: 'After Sign them out: Apple’s button',
+        href: '/demo/settings/security?state=everywhereApple',
+      },
+      {
+        title: 'Security · everywhere else, two-factor',
+        what: 'Google, then the code and Continue',
+        href: '/demo/settings/security?state=everywhereGoogleCode',
+      },
+      {
+        title: 'Security · everywhere else, too many tries',
+        what: 'Google’s button off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimited',
+      },
+      {
+        title: 'Security · too many tries at the code',
+        what: 'Continue off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimitedCode',
+      },
+      {
         title: 'Security · reset your password',
         what: 'From Forgot it?',
         href: '/demo/settings/security?state=forgot',
@@ -794,6 +891,81 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Security · signed out, still loading',
         what: 'The line alone, then back in the card',
         href: '/demo/settings/security?state=factorLoadingSignedOut',
+      },
+      {
+        title: 'Passkeys · Turn on two-factor',
+        what: 'How: this device’s wording',
+        href: '/demo/settings/security?state=choose',
+      },
+      {
+        title: 'Passkeys · the choice, Face ID',
+        what: 'Use Face ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseFaceId',
+      },
+      {
+        title: 'Passkeys · the choice, Touch ID',
+        what: 'Use Touch ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseTouchId',
+      },
+      {
+        title: 'Passkeys · the choice, a passkey',
+        what: 'Android, or no Face ID or Touch ID',
+        href: '/demo/settings/security?state=choosePasskey',
+      },
+      {
+        title: 'Passkeys · the sheet open',
+        what: 'Over the choice; cancel goes back',
+        href: '/demo/settings/security?state=chooseSheet',
+      },
+      {
+        title: 'Passkeys · card, the app only',
+        what: 'Add a passkey under it',
+        href: '/demo/settings/security?state=cardApp',
+      },
+      {
+        title: 'Passkeys · card, passkeys only',
+        what: 'Add an authenticator app',
+        href: '/demo/settings/security?state=cardPasskeys',
+      },
+      {
+        title: 'Passkeys · Add an authenticator app',
+        what: 'Today’s step, titled for adding: Add the app, the passkeys keep working',
+        href: '/demo/settings/security?state=addApp',
+      },
+      {
+        title: 'Passkeys · card, both',
+        what: 'Remove… on each, Turn off at the end',
+        href: '/demo/settings/security?state=cardBoth',
+      },
+      {
+        title: 'Passkeys · card at 10',
+        what: 'No Add a passkey',
+        href: '/demo/settings/security?state=cardTen',
+      },
+      {
+        title: 'Passkeys · remove a passkey?',
+        what: 'Stays in the password manager',
+        href: '/demo/settings/security?state=removePasskey',
+      },
+      {
+        title: 'Passkeys · remove the app?',
+        what: 'The Ask over Authenticator app',
+        href: '/demo/settings/security?state=removeApp',
+      },
+      {
+        title: 'Passkeys · removing, the sheet',
+        what: 'The current factor, a passkey',
+        href: '/demo/settings/security?state=removeProof',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you',
+        what: 'After the password, the sheet',
+        href: '/demo/settings/security?state=confirmPasskey',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you, refused',
+        what: 'The server refused the passkey',
+        href: '/demo/settings/security?state=confirmRefused',
       },
       {
         title: 'Notifications',
@@ -919,6 +1091,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Organisation · the only owner',
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
+      },
+      {
+        title: 'Organisation · transfer, Google',
+        what: 'No password: Google’s own button, Transfer off until then',
+        href: '/demo/settings/organisation?state=transferGoogle',
+      },
+      {
+        title: 'Organisation · transfer, Apple',
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/organisation?state=transferApple',
+      },
+      {
+        title: 'Organisation · transfer, two-factor',
+        what: 'Google, then the code and Transfer',
+        href: '/demo/settings/organisation?state=transferGoogleCode',
       },
       { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
       {
@@ -2467,8 +2654,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     })),
   },
   {
+    page: 'Service · Floor, every table and what each one needs (sc-4021) · phone, tablet portrait and landscape',
+    boards: FLOOR_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
     boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Menu and dietary · the event’s Menu and its picks (sc-3914) · phone, tablet portrait and landscape',
+    boards: MENU_PICKS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
@@ -2742,6 +2937,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     page: 'Onboarding · two-factor',
     boards: [
       { title: 'Enter your code', what: 'The authenticator’s code', href: '/demo/two-factor' },
+      {
+        title: 'Use your passkey',
+        what: 'The sheet over the waiting state',
+        href: '/demo/passkey',
+      },
+      {
+        title: 'Use your passkey · sheet cancelled',
+        what: 'Back to waiting, no error',
+        href: '/demo/passkey?sheet=closed',
+      },
+      {
+        title: 'Use your passkey · refused',
+        what: 'The server refused it',
+        href: '/demo/passkey?refused=1',
+      },
+      {
+        title: 'Use your passkey · passkeys only',
+        what: 'A code instead is a recovery code',
+        href: '/demo/passkey?only=1',
+      },
+      {
+        title: 'Use your passkey · from sign-in',
+        what: 'The password, then the passkey',
+        href: '/demo/sign-in?after=passkey',
+      },
+      {
+        title: 'Reset · use your passkey',
+        what: 'The reset link’s code step',
+        href: '/demo/passkey?step=reset',
+      },
       {
         title: 'Enter a recovery code',
         what: 'The dash goes in by itself',

@@ -492,7 +492,6 @@
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
     "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30.",
     "staff.link_needs_mobile": "Ajoutez un numéro de portable pour envoyer un lien.",
-    "access.plan_required": "Disponible avec le forfait Enterprise. Pour modifier ce réglage, contactez Soirely au sujet du forfait Enterprise.",
     "door_codes.role": "Un code d’accès permet seulement de consulter l’événement ou d’accueillir les invités, jamais de le modifier.",
     "door_codes.use_cap_required": "Indiquez combien de personnes peuvent utiliser ce code.",
     "door_codes.use_cap_range": "Saisissez un nombre entier de 1 à 500.",
@@ -500,5 +499,19 @@
     "door_codes.not_made": "Le code d’accès n’a pas été créé. Vérifiez votre connexion, puis réessayez.",
     "door_codes.invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné.",
     "door_codes.too_many": "Trop de tentatives. Réessayez à partir du {when}.",
-    "door_codes.member": "Vous êtes déjà membre de {organisation}. Les membres accèdent à un événement depuis la page Personnes de l’événement. Demandez à la personne responsable de l’événement ou à un administrateur d’ajouter votre compte."
+    "door_codes.member": "Vous êtes déjà membre de {organisation}. Les membres accèdent à un événement depuis la page Personnes de l’événement. Demandez à la personne responsable de l’événement ou à un administrateur d’ajouter votre compte.",
+    "validation.course_default_not_asked": "Seul un service qui pose une question aux invités peut avoir un plat par défaut.",
+    "validation.course_default_dish_needed": "Choisissez un plat par défaut, ou retirez la date limite.",
+    "validation.course_choose_by_needed": "Saisissez une date limite de choix, ou choisissez « Aucun plat par défaut ».",
+    "validation.course_choose_by_invalid": "Saisissez une date, par exemple 2026-10-16.",
+    "validation.course_choose_by_after_event": "Choisissez une date antérieure à l’événement.",
+    "validation.course_choose_by_past": "Cette date est passée. Choisissez aujourd’hui ou une date ultérieure.",
+    "validation.course_choose_by_locked": "La date limite de choix est passée : elle ne peut plus être modifiée.",
+    "validation.course_default_variant": "Choisissez la variante du plat par défaut.",
+    "validation.course_default_answer": "Répondez à « {question} » pour le plat par défaut.",
+    "validation.course_default_choose": "Choisissez-en {pick} pour « {question} ».",
+    "menu.default_dish": "{dish} est le plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
+    "menu.default_variant": "{variant} est la variante du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
+    "menu.default_option": "{option} fait partie du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
+    "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer."
 }

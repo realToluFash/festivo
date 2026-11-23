@@ -74,11 +74,12 @@ import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
 import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
+import { EventMenu } from './EventMenu.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { StepScreen } from '../steps/StepScreen.tsx';
-import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
+import { LoadingBlock, PageToast, TextAction, type ToastAt } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -90,8 +91,19 @@ import { useSidebarCard } from './sidebarCard.ts';
 import { backToEvents, eventTop } from '../kit/eventTop.ts';
 import { BACK_KEY, eventBack, overviewGivesWay } from '../kit/eventBack.ts';
 import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
+import { toastOverPage } from '../kit/savedRowFocus.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+
+interface Editing {
+  part: EditPart;
+  count: number;
+  open: boolean;
+  leaves: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
+  /** Closed by Save, which shows the saved toast. */
+  saved?: boolean;
+}
 
 /** An event's page, a screen of its own pushed over Events, Happening now or Calendar (sc-22103). */
 export function EventScreen({
@@ -153,13 +165,7 @@ export function EventScreen({
     getState():
       { routes: readonly { name?: string; params?: unknown }[]; index: number } | undefined;
   }>();
-  const [editing, setEditing] = useState<{
-    part: EditPart;
-    count: number;
-    open: boolean;
-    leaves: boolean;
-    opener: RefObject<ScreenReaderTarget | null>;
-  } | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [partRows] = useState(
     () =>
       Object.fromEntries(EDIT_PARTS.map((part) => [part, createRef<ViewInstance>()])) as Record<
@@ -181,8 +187,18 @@ export function EventScreen({
     eventId: string;
     area: EventPlace;
     words: string;
+    id?: string | undefined;
     action?: ToastAction | null | undefined;
+    /** The Save it says, whose row rests above it with a screen reader on (sc-86228). */
+    over?: Editing | undefined;
   } | null>(null);
+  const [toastAt, setToastAt] = useState<ToastAt | null>(null);
+  const [toastClosed, setToastClosed] = useState<{ of: Editing } | null>(null);
+  const saves = useRef(0);
+  const closeToast = () => {
+    if (toast?.over != null) setToastClosed({ of: toast.over });
+    setToast(null);
+  };
   const withdrawToastAction = useCallback(
     () => setToast((was) => (was == null ? null : { ...was, action: null })),
     [],
@@ -297,6 +313,7 @@ export function EventScreen({
   useSystemBack(backs, back);
 
   const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
+  const nobody = useRef<ScreenReaderTarget>(null);
   const openEdit = (
     part: EditPart,
     opener: RefObject<ScreenReaderTarget | null>,
@@ -306,7 +323,9 @@ export function EventScreen({
   };
   const closeEdit = (opener?: RefObject<ScreenReaderTarget | null>) =>
     setEditing((was) =>
-      was == null ? was : { ...was, open: false, ...(opener == null ? {} : { opener }) },
+      was == null
+        ? was
+        : { ...was, open: false, saved: false, ...(opener == null ? {} : { opener }) },
     );
   const onEdit = manages ? openEdit : undefined;
   const [linked, setLinked] = useState<EditPart | undefined>();
@@ -372,6 +391,13 @@ export function EventScreen({
             onChange={change}
             onEdit={onEdit}
             partRef={partRef}
+            closedOnto={editing?.open === false ? editing : null}
+            toast={
+              toast?.eventId === eventId && toast.area === area
+                ? toastOverPage(toast, toastAt)
+                : null
+            }
+            toastClosed={toastClosed}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
@@ -441,6 +467,7 @@ export function EventScreen({
     );
 
   const guests = area === 'guests' && event != null;
+  const menu = area === 'menu' && event != null;
   const refreshing =
     opened.refreshing || (guests && guestsOffline.refreshing) ? (
       <Refreshing testID="events.page.refreshing" wraps={guests || area === 'overview'} />
@@ -482,7 +509,7 @@ export function EventScreen({
     besideBackRow === 'givingWay' && area === 'overview' && !refreshingBesideBack
       ? refreshing
       : null;
-  const titledInList = areaTitled || guests;
+  const titledInList = areaTitled || guests || menu;
   const frameBack = !backs
     ? undefined
     : guestBack != null
@@ -582,6 +609,14 @@ export function EventScreen({
           }
           onOffline={setGuestsOffline}
         />
+      ) : menu && event != null ? (
+        <EventMenu
+          key={event.id}
+          event={event}
+          kind={kind}
+          titleRef={title}
+          onGuests={() => chooseArea('guests')}
+        />
       ) : (
         <Screen
           edges={bodyEdges(kind)}
@@ -637,7 +672,7 @@ export function EventScreen({
           part={editing.part}
           open={editing.open}
           event={event}
-          opener={editing.opener}
+          opener={editing.saved === true ? nobody : editing.opener}
           onClose={() => {
             if (editing.leaves && router.canGoBack()) router.back();
             else closeEdit();
@@ -645,8 +680,16 @@ export function EventScreen({
           onSaved={(saved, said) => {
             change(saved);
             if (editing.part === 'cover') setCoverRefused(null);
-            closeEdit(partRef(editing.part));
-            setToast({ eventId, area, words: said ?? t('eventEdit.saved') });
+            const closed = { ...editing, open: false, opener: partRef(editing.part), saved: true };
+            setEditing(closed);
+            saves.current += 1;
+            setToast({
+              eventId,
+              area,
+              words: said ?? t('eventEdit.saved'),
+              id: `saved-${saves.current}`,
+              over: closed,
+            });
           }}
           onLatest={(latest) => {
             change(latest);
@@ -658,8 +701,10 @@ export function EventScreen({
       {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
+          id={toast.id}
           action={toast.action}
-          onClose={() => setToast(null)}
+          onClose={closeToast}
+          onAt={setToastAt}
           bottom={
             phone
               ? phoneTabBarClearance(insets.bottom) + tokens.spaceXl + tokens.spaceHair

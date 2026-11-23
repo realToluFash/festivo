@@ -77,6 +77,7 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
+import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -133,6 +134,7 @@ import {
   type MenuChange,
   type MenuCourseDetails,
   type MenuItem,
+  type SentCourseDefault,
   asEventMenu,
   asUnwarnedOptions,
   asUnwarnedPickers,
@@ -274,10 +276,10 @@ export type PushTarget =
   | { kind: 'web'; address: string; keys: { p256dh: string; auth: string } }
   | { kind: 'expo'; address: string };
 
-/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
+/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. `category` is kept as sent, so an item of a category this build does not know still shows (sc-84143). */
 export interface NotificationItem {
   id: string;
-  category: NotificationCategory;
+  category: string;
   title: string;
   lines: string[];
   eventId: string | null;
@@ -3337,11 +3339,17 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
+    details: MenuCourseDetails & {
+      answer: MenuAnswer;
+      skippable: boolean;
+      ownItems?: string[];
+      default?: SentCourseDefault;
+      confirmMove?: boolean;
+    },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -3443,6 +3451,33 @@ export class ApiClient {
   /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
   async menuPicks(eventId: string): Promise<EventPicks> {
     return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
+  async kitchenSheet(eventId: string): Promise<KitchenSheet> {
+    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
+    const sheet = asKitchenSheet(body?.sheet);
+
+    if (sheet == null)
+      throw new Error(
+        'The API answered the kitchen sheet in a shape this client does not know. Check KitchenSheet in services/api.',
+      );
+
+    return sheet;
+  }
+
+  /** The sheet as a tagged PDF, made when asked, in the request's language; 503 when it cannot be made. */
+  async kitchenSheetPdf(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
+      method: 'POST',
+    });
+
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Refused 403 without guests.manage, and 409 `meal_pick_ruled_out` with `people` until sent with `anyway`. */
@@ -6234,6 +6269,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     event,
     phase,
     started,
+    onTheDay,
     answersOpen,
     answersClosedOn,
     language,
@@ -6326,6 +6362,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
     answersClosedOn: typeof answersClosedOn === 'string' ? answersClosedOn : null,
     phase: shown,
     started,
+    onTheDay: onTheDay === true,
     answersOpen,
     calendar: null,
     programme: items.filter((one) => one != null),
@@ -6337,7 +6374,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
 
 /** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
 function asGuestMeals(raw: unknown): GuestMeals {
-  const { you, courses, answers } = (raw ?? {}) as Record<string, unknown>;
+  const { you, courses, answers, excluded } = (raw ?? {}) as Record<string, unknown>;
   const strings = (list: unknown): string[] =>
     Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
   const known = Array.isArray(courses)
@@ -6366,7 +6403,22 @@ function asGuestMeals(raw: unknown): GuestMeals {
       }));
   }
 
-  return { you: typeof you === 'string' ? you : '', courses: known, answers: byPerson };
+  const never: Record<string, { course: string; reason: string }[]> = {};
+
+  for (const [person, list] of Object.entries((excluded ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    never[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.reason === 'string')
+      .map((one) => ({ course: one.course as string, reason: one.reason as string }));
+  }
+
+  return {
+    you: typeof you === 'string' ? you : '',
+    courses: known.map((course) => ({ ...course, default: course.default ?? null })),
+    answers: byPerson,
+    excluded: never,
+  };
 }
 
 /** Undefined when the shape is not one this client knows. */
@@ -7296,20 +7348,19 @@ export function asNotificationItem(raw: unknown): NotificationItem | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const category = notificationCategory(candidate.category);
 
   if (
     typeof candidate.id !== 'string' ||
     typeof candidate.title !== 'string' ||
     typeof candidate.createdAt !== 'string' ||
-    category == null
+    typeof candidate.category !== 'string'
   ) {
     return null;
   }
 
   return {
     id: candidate.id,
-    category,
+    category: candidate.category,
     title: candidate.title,
     lines: strings(candidate.lines),
     eventId: optionalString(candidate.eventId),

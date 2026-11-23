@@ -292,6 +292,7 @@ OWN_LABELS = {**{d: {label} for d, label in DEVELOPERS.items()}, "cd": {"idea"},
 CATALOGUES = [
     "apps/web/src/i18n/locales/{locale}.json",
     "apps/mobile/src/i18n/locales/{locale}.json",
+    "apps/mobile/locales/{locale}.json",
     "services/api/translations/messages.{locale}.json",
     "services/api/translations/messages+intl-icu.{locale}.json",
     "services/api/translations/errors.{locale}.json",

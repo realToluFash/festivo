@@ -1,0 +1,19 @@
+# sc-83881 set-up: makes ORG the organisation in use, through the pill's switcher.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: switcher.tile.${ORG}
+    timeout: 15000
+- tapOn:
+    id: switcher.tile.${ORG}
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher\..+'
+    timeout: 20000
+- takeScreenshot: in-use

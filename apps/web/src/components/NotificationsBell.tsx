@@ -13,7 +13,15 @@ import {
   whenShown,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type MouseEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 
@@ -23,6 +31,7 @@ import { useLiveNotifications } from '../liveNotifications.ts';
 import { type Stale, keepsWhatLoaded, useStaleWatch } from '../offline.ts';
 import { markPushAsked, pushAskDue } from '../pushAsk.ts';
 import { subscribeWebPush } from '../webPush.ts';
+import { placeUnder } from './bellPlace.ts';
 import { type BellRow, BellPanel } from './BellPanel.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { StaleBand } from './OfflineBand.tsx';
@@ -209,6 +218,34 @@ export function NotificationsBell({
       ?.focus();
     firstAdded.current = null;
   }, [feed]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const placeIt = (): void => {
+      const pop = container.current?.querySelector<HTMLElement>('.bell-pop');
+      if (button.current != null && pop != null) placeUnder(button.current, pop);
+    };
+    const afterScroll = (event: Event): void => {
+      if (!container.current?.contains(event.target as Node)) placeIt();
+    };
+    const pageChanges = new MutationObserver(placeIt);
+    placeIt();
+    window.addEventListener('resize', placeIt);
+    window.addEventListener('scroll', afterScroll, true);
+    pageChanges.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => {
+      window.removeEventListener('resize', placeIt);
+      window.removeEventListener('scroll', afterScroll, true);
+      pageChanges.disconnect();
+    };
+  }, [open, stale]);
 
   useEffect(() => {
     if (!open) return;

@@ -14,7 +14,7 @@ import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, remote, runlog, runner, sessions, store
+from soirely_queue import dashboard, logins, remote, runlog, runner, sessions, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -32,9 +32,16 @@ class Snapshot(unittest.TestCase):
         self.platform = FakePlatform()
         self.platform.timer_active = lambda: True
         self.settings = config(self.root, roles={"ops": {}, "dev2": {"wakeEvery": "1m"}})
+        self.login = {"email": "ops@example.com", "logged_in": True,
+                      "expires_at": NOW + 20 * 86400, "plan": "max_5x"}
+        logins.forget()
+        self.addCleanup(logins.forget)
         for patch in (mock.patch("soirely_queue.machine.free_gb", return_value=40),
                       mock.patch("soirely_queue.permissions.pending", return_value=[]),
-                      mock.patch("soirely_queue.dashboard.peer_views", return_value={})):
+                      mock.patch("soirely_queue.dashboard.peer_views", return_value={}),
+                      mock.patch("soirely_queue.logins.status",
+                                 side_effect=lambda folder, run=None: dict(self.login)),
+                      mock.patch("soirely_queue.logins.found", return_value=[])):
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -345,6 +352,53 @@ class Snapshot(unittest.TestCase):
         self.assertIn(f"peers are listed but {remote.TOKEN} is not set, so they cannot be read",
                       view["warnings"])
 
+    def test_each_claude_login_is_listed_and_one_running_out_is_a_warning(self):
+        view = self.snap()
+        self.assertEqual([(row["folder"], row["roles"], row["email"]) for row in view["logins"]],
+                         [(str(self.root / "claude"), ["ops", "dev2"], "ops@example.com")])
+        self.assertFalse([w for w in view["warnings"] if "Claude login" in w])
+        logins.forget()
+        self.login["expires_at"] = NOW + 3600
+        self.assertIn("the Claude login of ops@example.com (ops, dev2) runs out in 1 h: log in "
+                      "again from Claude logins on sq web", self.snap()["warnings"])
+
+    def test_the_peers_logins_are_listed_beside_this_machines(self):
+        view = dashboard.settle({"logins": [{"folder": "~/.a"}], "roles": []},
+                                {"tolu-linux": {"logins": [{"folder": "~/.b"}]}})
+        self.assertEqual(view["peer_logins"], {"tolu-linux": [{"folder": "~/.b"}]})
+        self.assertNotIn("peer_logins", dashboard.settle({"roles": []}, {}))
+
+    def test_status_lists_every_machines_logins_soonest_first(self):
+        from soirely_queue import cli
+        view = dict(self.snap(), peer_logins={"tolu-linux": [
+            {"folder": "~/.claude-b", "roles": ["dev"], "email": "dev@example.com",
+             "logged_in": True, "expires_at": NOW + 7200, "usage": {
+                 "read_at": NOW - 120, "limits": [
+                     {"name": "Week", "percent": 96, "resets_at": NOW + 3600},
+                     {"name": "Week · Fable", "percent": 3, "resets_at": None},
+                     {"name": "Session", "percent": 100, "resets_at": NOW - 1}]}},
+            {"folder": "~/.claude-c", "roles": ["lead"], "email": None, "logged_in": False},
+            {"folder": "~/.claude-d", "roles": ["l10n"], "token": "T",
+             "usage_error": "Not logged in"},
+            {"folder": "~/.claude", "roles": [], "email": "me@example.com", "logged_in": True,
+             "expires_at": NOW + 86400 * 9}]})
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli.dashboard, "settle", side_effect=lambda v, o: v), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        lines = out.getvalue().splitlines()
+        start = lines.index("claude logins")
+        self.assertEqual(lines[start + 1:start + 6], [
+            "  tolu-linux  logged out  ~/.claude-c  lead",
+            "  tolu-linux  2 h left  dev@example.com  dev  week 96%, week · fable 3%, read 2m ago",
+            "  here  20 days left  ops@example.com  ops, dev2",
+            "  tolu-linux  setup-token  ~/.claude-d  l10n  usage unread: Not logged in",
+            "  tolu-linux  9 days left  me@example.com  no role"])
+
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
                                          "stopped": "exit-code", "report": "ended"})
@@ -493,14 +547,14 @@ class Serve(unittest.TestCase):
 class ServeElsewhere(unittest.TestCase):
     """As another machine on the network sees it: every client is treated as remote."""
 
-    def start(self, **kwargs):
+    def start(self, near=False, **kwargs):
         said, ready = [], threading.Event()
 
         def say(line):
             said.append(line)
             ready.set()
 
-        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch = mock.patch.object(remote, "loopback", return_value=near)
         patch.start()
         self.addCleanup(patch.stop)
         threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: {"m": 1}, 0),
@@ -515,6 +569,53 @@ class ServeElsewhere(unittest.TestCase):
         self.addCleanup(connection.close)
         connection.request("GET", path, headers=headers or {})
         return connection.getresponse()
+
+    def post_login(self, said, path, body, headers):
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("POST", path, body=body, headers=headers)
+        answer = connection.getresponse()
+        return answer.status, answer.read()
+
+    def test_a_login_step_is_taken_only_as_json_from_this_pages_own_address(self):
+        desk = FakeDesk()
+        said = self.start(desk=desk, opener=lambda *a: False)
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        body = json.dumps({"folder": "~/.claude-qa"})
+        self.assertEqual(self.post_login(said, "/login/start", body,
+                                         {"Content-Type": "application/json"})[0], 401)
+        self.assertEqual(self.post_login(said, "/login/start", body,
+                                         dict(bearer, **{"Content-Type": "text/plain"}))[0], 415)
+        json_bearer = dict(bearer, **{"Content-Type": "application/json"})
+        self.assertEqual(self.post_login(said, "/login/start", body, dict(
+            json_bearer, Origin="https://elsewhere.example"))[0], 403)
+        self.assertEqual(self.post_login(said, "/login/start", "[1]", json_bearer)[0], 400)
+        status, answer = self.post_login(said, "/login/start", body, json_bearer)
+        self.assertEqual((status, json.loads(answer)["id"]), (200, "L1"))
+        self.assertEqual(desk.steps[0], ("start", pathlib.Path("/home/q/.claude-qa")))
+        answer = self.get(said, "/login/state?id=L1", bearer)
+        self.assertEqual((answer.status, json.loads(answer.read())["id"]), (200, "L1"))
+        self.assertEqual(self.get(said, "/login/state?id=gone", bearer).status, 404)
+
+    def test_a_login_step_from_this_machine_must_name_loopback_as_its_host(self):
+        desk = FakeDesk()
+        said = self.start(near=True, desk=desk, opener=lambda *a: False)
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        body = json.dumps({"folder": "~/.claude-qa"})
+        rebound = {"Content-Type": "application/json", "Host": f"evil.example:{port}",
+                   "Origin": f"http://evil.example:{port}"}
+        self.assertEqual(self.post_login(said, "/login/start", body, rebound)[0], 403)
+        self.assertEqual(desk.steps, [])
+        for name in ("localhost", "127.0.0.1", "[::1]"):
+            here = {"Content-Type": "application/json", "Host": f"{name}:{port}",
+                    "Origin": f"http://{name}:{port}"}
+            self.assertEqual(self.post_login(said, "/login/start", body, here)[0], 200)
+
+    def test_the_page_keeps_the_accounts_usage_read_once_it_listens(self):
+        usage = mock.Mock()
+        self.start(usage=usage)
+        usage.start.assert_called_once_with()
 
     def test_without_a_token_it_will_not_listen_beyond_this_machine(self):
         said = []
@@ -624,3 +725,139 @@ class ServeElsewhere(unittest.TestCase):
         answering.set()
         slow.join(5)
         self.assertEqual(self.get(said, "/m/tolu-linux/../status.json", bearer).status, 404)
+
+
+DIRECT = "https://claude.com/x?redirect_uri=http%3A%2F%2Flocalhost%3A5%2Fcallback"
+
+
+class FakeLogin:
+    def __init__(self, login_id="L1", direct=DIRECT):
+        self.id = login_id
+        self.said = {"id": login_id, "folder": "~/.claude-qa", "email": "qa@example.com",
+                     "link": "https://claude.ai/oauth/authorize?z-1", "direct": direct,
+                     "said": "", "ended": None}
+
+    def answer(self):
+        return dict(self.said)
+
+
+class FakeDesk:
+    def __init__(self):
+        self.logins, self.steps = {"L1": FakeLogin()}, []
+
+    def folder(self, asked):
+        return pathlib.Path("/home/q/.claude-qa") if asked == "~/.claude-qa" else None
+
+    def start(self, folder):
+        self.steps.append(("start", folder))
+        return self.logins["L1"]
+
+    def get(self, login_id):
+        return self.logins.get(login_id)
+
+    def check(self, login):
+        self.steps.append(("check", login.id))
+
+    def paste(self, login, code):
+        self.steps.append(("paste", code))
+
+    def cancel(self, login):
+        self.steps.append(("cancel", login.id))
+        login.said["ended"] = {"state": "cancelled"}
+
+    def callback(self, login, query):
+        self.steps.append(("callback", query))
+        return 302, "https://done", b"ok"
+
+
+class Door(unittest.TestCase):
+    """`LoginDoor`: a login here, or on a peer, and where its sign-in is opened."""
+
+    def setUp(self):
+        self.desk, self.opened, self.posted, self.bridges = FakeDesk(), [], [], []
+        self.opens, self.peer_answer = True, (200, json.dumps(FakeLogin("P1").said).encode())
+
+    def door(self):
+        def post(base, path, secret, body, timeout=5):
+            self.posted.append((base, path, json.loads(body), timeout))
+            return self.peer_answer
+
+        def bridge(link, forward):
+            made = mock.Mock(link=link, forward=forward)
+            self.bridges.append(made)
+            return made if self.bridge_works else None
+
+        self.bridge_works = getattr(self, "bridge_works", True)
+        return dashboard.LoginDoor(
+            self.desk, lambda: {"machine": "here"}, lambda: {"tolu-linux": "http://10.0.0.5:8765"},
+            SECRET, fetch=lambda base, path, secret: (200, b'{"id": "P1", "ended": null}'),
+            post=post, opener=lambda email, url, config: self.opened.append((email, url))
+            or self.opens, bridge=bridge)
+
+    def test_a_login_here_opens_claudes_own_link_for_a_page_on_this_machine(self):
+        status, said = self.door().act("/login/start", {"folder": "~/.claude-qa"}, True)
+        self.assertEqual((status, said["opened"]), (200, "direct"))
+        self.assertEqual(self.opened, [("qa@example.com", FakeLogin().said["direct"])])
+
+    def test_a_page_elsewhere_or_a_peer_asking_opens_nothing_here(self):
+        for asked, here in (({"folder": "~/.claude-qa"}, False),
+                            ({"folder": "~/.claude-qa", "for_peer": True}, True)):
+            status, said = self.door().act("/login/start", asked, here)
+            self.assertEqual((status, "opened" in said), (200, False))
+        self.assertEqual(self.opened, [])
+
+    def test_a_folder_no_role_here_runs_under_is_refused(self):
+        self.assertEqual(self.door().act("/login/start", {"folder": "/etc"}, True)[0], 404)
+
+    def test_a_peers_login_is_bridged_here_and_opened_in_this_machines_chrome(self):
+        door = self.door()
+        status, said = door.act("/login/start",
+                                {"machine": "tolu-linux", "folder": "~/.claude-qa"}, True)
+        self.assertEqual((status, said["opened"]), (200, "direct"))
+        self.assertEqual(self.posted, [("http://10.0.0.5:8765", "login/start",
+                                        {"folder": "~/.claude-qa", "for_peer": True},
+                                        logins.LINK_SECONDS + 10)])
+        self.assertEqual(self.bridges[0].link, FakeLogin().said["direct"])
+        self.peer_answer = (200, b'{"status": 302, "location": "https://done", "body": "ok"}')
+        self.assertEqual(self.bridges[0].forward("code=c&state=s"), (302, "https://done", b"ok"))
+        self.assertEqual(self.posted[-1][1:3], ("login/callback", {"id": "P1",
+                                                                   "query": "code=c&state=s"}))
+        self.peer_answer = (502, b'{"error": "it did not answer (timed out)"}')
+        self.assertEqual(self.bridges[0].forward("code=c")[0], 502)
+        door.act("/login/cancel", {"machine": "tolu-linux", "id": "P1"}, True)
+        self.bridges[0].close.assert_called_once()
+
+    def test_without_a_bridge_the_peers_login_opens_the_link_that_shows_a_code(self):
+        self.bridge_works = False
+        said = self.door().act("/login/start", {"machine": "tolu-linux",
+                                                "folder": "~/.claude-qa"}, True)[1]
+        self.assertEqual((said["opened"], self.opened[0][1]),
+                         ("link", "https://claude.ai/oauth/authorize?z-1"))
+
+    def test_a_bridge_is_closed_when_chrome_could_not_be_opened(self):
+        self.opens = False
+        said = self.door().act("/login/start", {"machine": "tolu-linux",
+                                                "folder": "~/.claude-qa"}, True)[1]
+        self.assertIsNone(said["opened"])
+        self.bridges[0].close.assert_called_once()
+
+    def test_a_code_a_cancel_and_a_callback_reach_the_login_they_name(self):
+        door = self.door()
+        self.assertEqual(door.act("/login/code", {"id": "L1", "code": "a#b"}, True)[0], 200)
+        door.act("/login/cancel", {"id": "L1"}, True)
+        status, said = door.act("/login/callback", {"id": "L1", "query": "code=c"}, False)
+        self.assertEqual(said, {"status": 302, "location": "https://done", "body": "ok"})
+        self.assertEqual([step for step in self.desk.steps if step[0] != "check"],
+                         [("paste", "a#b"), ("cancel", "L1"), ("callback", "code=c")])
+        self.assertEqual(door.act("/login/code", {"id": "other"}, True)[0], 404)
+        self.assertEqual(door.act("/login/other", {"id": "L1"}, True)[0], 404)
+
+    def test_a_peers_code_and_state_are_asked_of_it(self):
+        door = self.door()
+        door.act("/login/code", {"machine": "tolu-linux", "id": "P1", "code": "a#b"}, True)
+        self.assertEqual(self.posted[-1][1:3], ("login/code", {"id": "P1", "code": "a#b"}))
+        self.assertEqual(door.state("tolu-linux", "P1"), (200, {"id": "P1", "ended": None}))
+        self.assertEqual(door.state("nowhere", "P1")[0], 404)
+        self.assertEqual(door.state("", "L1")[1]["id"], "L1")
+        self.assertEqual(door.state("", "gone")[0], 404)
+

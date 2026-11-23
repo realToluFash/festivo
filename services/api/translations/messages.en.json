@@ -492,7 +492,6 @@
     "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved.",
     "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30.",
     "staff.link_needs_mobile": "Add a mobile number to send a link.",
-    "access.plan_required": "Available on Enterprise. Contact Soirely about Enterprise to change this.",
     "door_codes.role": "A door code lets people view or check guests in, never edit.",
     "door_codes.use_cap_required": "Enter how many people can use this code.",
     "door_codes.use_cap_range": "Use a whole number from 1 to 500.",
@@ -500,5 +499,19 @@
     "door_codes.not_made": "The door code was not made. Check your connection and try again.",
     "door_codes.invalid": "That code doesn’t work. Check it with whoever gave it to you.",
     "door_codes.too_many": "Too many tries. Try again at {when}.",
-    "door_codes.member": "You are already a member of {organisation}. Members open an event from its People page. Ask its lead or an admin to add you."
+    "door_codes.member": "You are already a member of {organisation}. Members open an event from its People page. Ask its lead or an admin to add you.",
+    "validation.course_default_not_asked": "Only a course that asks guests something can have a default.",
+    "validation.course_default_dish_needed": "Choose a default dish, or clear the choose-by date.",
+    "validation.course_choose_by_needed": "Enter a choose-by date, or set the default to No default.",
+    "validation.course_choose_by_invalid": "Enter a date, like 2026-10-16.",
+    "validation.course_choose_by_after_event": "Choose a date before the event.",
+    "validation.course_choose_by_past": "That date has passed. Choose today or later.",
+    "validation.course_choose_by_locked": "The choose-by date has passed, so the date is locked.",
+    "validation.course_default_variant": "Choose the default’s variant.",
+    "validation.course_default_answer": "Answer “{question}” for the default.",
+    "validation.course_default_choose": "Choose {pick} for “{question}”.",
+    "menu.default_dish": "{dish} is {course}’s default. Choose another default first, in Edit course.",
+    "menu.default_variant": "{variant} is {course}’s default variant. Choose another default first, in Edit course.",
+    "menu.default_option": "{option} is part of {course}’s default. Choose another default first, in Edit course.",
+    "menu.default_move": "Changing the default moves the guests given it. Confirm to change it."
 }

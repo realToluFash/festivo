@@ -31,6 +31,7 @@ import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { ManagedBanner } from '../src/components/ManagedBanner.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OrgTile } from '../src/components/OrgTile.tsx';
+import { Pending } from '../src/components/Pending.tsx';
 import {
   type StepClosed,
   stepClosed,
@@ -521,7 +522,7 @@ function Details({
       });
 
       const landsIn = joined ?? firstJoined;
-      if (landsIn != null) await rememberOrganisation(landsIn);
+      if (landsIn != null) await rememberOrganisation(saved.account.id, landsIn);
       // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
       if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
         router.replace('/phone?from=onboarding');
@@ -589,7 +590,13 @@ function Details({
   } else if (invited || showOffers) foot = undefined;
 
   // Organisation name focuses as it mounts, so a step that turns out to list invitations must not mount it first: Android's keys stay bound to it once gone, and swallow Tab (sc-41296).
-  if (!loaded.read || !offersRead) return null;
+  if (!loaded.read || !offersRead) {
+    return (
+      <StepScreen nav={nav} waiting>
+        <Pending />
+      </StepScreen>
+    );
+  }
 
   return (
     <StepScreen nav={nav} foot={foot}>

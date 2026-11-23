@@ -393,6 +393,153 @@ describe('See picks (sc-3909)', () => {
   });
 });
 
+describe('A course’s default on See picks (sc-1362)', () => {
+  const DEFAULT = { dish: 'd_egusi', variant: null, options: [], chooseBy: '2030-11-10' };
+  const MENU_DEFAULT = {
+    menu: { courses: [{ ...MENU.menu.courses[0], default: DEFAULT }] },
+  };
+  const withDefault = (closed: boolean, defaulted: number, more: Record<string, unknown> = {}) => {
+    const base = picksOf().picks;
+
+    return picksOf({
+      courses: [
+        {
+          ...base.courses[0],
+          closed,
+          default: DEFAULT,
+          rows: [row('d_jollof', 'Jollof rice', 1), { ...row('d_egusi', 'Egusi', 0), defaulted }],
+        },
+      ],
+      ...more,
+    });
+  };
+  const ADA_GIVEN = [
+    {
+      id: 'g_bisi',
+      replier: 'Bisi Adewale',
+      people: [
+        {
+          id: 'g_ada',
+          name: 'Ada Obi',
+          courses: [{ course: 'c_main', dish: 'd_egusi', variant: null, options: [] }],
+        },
+      ],
+    },
+  ];
+  const KWAME_WAITING = [
+    {
+      id: 'g_bisi',
+      replier: 'Bisi Adewale',
+      people: [
+        {
+          id: 'g_kwame',
+          name: 'Kwame Mensah',
+          courses: ['c_main'],
+          excluded: [{ course: 'c_main', reason: 'allergy' }],
+        },
+      ],
+    },
+  ];
+
+  it('shows Defaulted and names the default before its date', async () => {
+    onPicks({
+      [`GET ${PICKS}`]: () => json(withDefault(false, 0)),
+      'GET /api/events/ev_1/menu': () => json(MENU_DEFAULT),
+    });
+
+    const card = await screen.findByRole('region', { name: 'Main' });
+    const table = within(card).getAllByRole('table')[0] as HTMLElement;
+    expect(within(table).getByRole('columnheader', { name: 'Defaulted' })).toBeDefined();
+    expect(
+      within(card).getByText(
+        /^Default: Egusi\. Given on .+ to anyone coming who hasn’t answered\.$/,
+      ),
+    ).toBeDefined();
+  });
+
+  it('lists the people never given the default first, with why', async () => {
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          withDefault(false, 0, {
+            waiting: [
+              {
+                id: 'g_bisi',
+                replier: 'Bisi Adewale',
+                people: [
+                  {
+                    id: 'g_kwame',
+                    name: 'Kwame Mensah',
+                    courses: ['c_main'],
+                    excluded: [{ course: 'c_main', reason: 'allergy' }],
+                  },
+                  {
+                    id: 'g_ada',
+                    name: 'Ada Obi',
+                    courses: ['c_main'],
+                    excluded: [{ course: 'c_main', reason: 'vegetarian' }],
+                  },
+                  { id: 'g_tolu', name: 'Tolu Bello', courses: ['c_main'], excluded: [] },
+                ],
+              },
+            ],
+          }),
+        ),
+      'GET /api/events/ev_1/menu': () => json(MENU_DEFAULT),
+    });
+
+    expect(await screen.findByText('Never given the default · 2 people')).toBeDefined();
+    expect(screen.getByText('Not chosen: Main · allergy')).toBeDefined();
+    expect(screen.getByText('Not chosen: Main · Vegetarian')).toBeDefined();
+    expect(screen.getByText('Replied by Bisi Adewale · 1 person')).toBeDefined();
+  });
+
+  it('lists who was given the default, and Choose for them starts at it', async () => {
+    const sent = onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(withDefault(true, 1, { waiting: KWAME_WAITING, given: ADA_GIVEN })),
+      'GET /api/events/ev_1/menu': () => json(MENU_DEFAULT),
+      'PUT /api/events/ev_1/menu/picks/people/g_ada/courses/c_main': () =>
+        json(withDefault(true, 0, { waiting: KWAME_WAITING, given: [] })),
+    });
+
+    const given = await screen.findByRole('region', { name: 'Given the default · 1 person' });
+    expect(within(given).getByText('Main: Egusi')).toBeDefined();
+    expect(within(given).getByText('(default)')).toBeDefined();
+    expect(
+      screen.getByText(/^Default: Egusi\. Given on .+ to 1 guest who hadn’t answered\.$/),
+    ).toBeDefined();
+
+    fireEvent.click(within(given).getByRole('button', { name: 'Choose for Ada Obi' }));
+    const dialog = screen.getByRole('dialog', { name: 'Choosing for Ada Obi' });
+    expect((within(dialog).getByRole('radio', { name: /Egusi/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        sent.find(
+          (one) => one.line === 'PUT /api/events/ev_1/menu/picks/people/g_ada/courses/c_main',
+        )?.body,
+      ).toEqual({ answer: 'chosen', dish: 'd_egusi', variant: null, options: [], anyway: false }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Given the default · 1 person' })).toBeNull(),
+    );
+  });
+
+  it('hides Given the default without Guests read', async () => {
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(withDefault(true, 1, { waiting: null, people: null, parties: null, given: null })),
+      'GET /api/events/ev_1/menu': () => json(MENU_DEFAULT),
+    });
+
+    expect(await screen.findByRole('region', { name: 'Main' })).toBeDefined();
+    expect(screen.queryByText(/Given the default/)).toBeNull();
+  });
+});
+
 describe('See picks narrowed to one course (sc-3909)', () => {
   const NARROWED = '/app/events/ev_1/menu/picks?course=c_main';
   const twoCourses = {

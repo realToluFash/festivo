@@ -13,8 +13,10 @@ use App\Domain\Menu\Model\DishDetails;
 use App\Domain\Menu\Model\DishItems;
 use App\Domain\Menu\Model\OptionDetails;
 use App\Domain\Menu\Model\OwnItems;
+use App\Domain\Menu\Model\PicksClose;
 use App\Domain\Menu\Model\UnwarnedOption;
 use App\Domain\Menu\Model\UnwarnedPickers;
+use App\Domain\Menu\Pick\DefaultMoves;
 use App\Entity\Dish;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -41,9 +43,14 @@ use Psl\Iter;
 use Psl\Math;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Each change runs under a lock on the event's row, so two pages adding together cannot both pass the limit, and is published whole to the event's menu topic (sc-3902). */
+/**
+ * Each change runs under a lock on the event's row, so two pages adding together cannot both pass the limit, and is published whole to the event's menu topic (sc-3902).
+ *
+ * @phpstan-import-type SentDefault from DefaultRules
+ */
 final readonly class MenuEditor
 {
     public const string COURSE_ADDED = 'menu.course_added';
@@ -87,6 +94,9 @@ final readonly class MenuEditor
         private MenuPublisher $menuPublisher,
         private GuestNeedsRecord $guestNeedsRecord,
         private DishLibrary $dishLibrary,
+        private DefaultRules $defaultRules,
+        private DefaultMoves $defaultMoves,
+        private ClockInterface $clock,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
     ) {
@@ -113,10 +123,14 @@ final readonly class MenuEditor
         return $course;
     }
 
-    /** Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish. */
-    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, ?OwnItems $ownItems, User $by): void
+    /**
+     * Everyone gets the same (`$guestsChoose` false) is refused 409 `menu_same_one_dish` unless the course has exactly one dish.
+     *
+     * @param ?SentDefault $default null keeps the default and its date (sc-1362); a change after the date that moves anyone is refused 409 `menu_default_move` with `move` and `back` until sent with `$confirmMove`
+     */
+    public function changeCourse(Event $event, MenuCourse $course, CourseDetails $details, bool $guestsChoose, bool $skippable, ?OwnItems $ownItems, User $by, ?array $default = null, bool $confirmMove = false): void
     {
-        $this->locked($event, function () use ($course, $details, $guestsChoose, $skippable, $ownItems, $by): void {
+        $this->locked($event, function () use ($event, $course, $details, $guestsChoose, $skippable, $ownItems, $by, $default, $confirmMove): void {
             $this->entityManager->refresh($course);
 
             if (!$guestsChoose && 1 !== Iter\count($this->menuDishRepository->findOnCourse($course))) {
@@ -132,6 +146,10 @@ final readonly class MenuEditor
                 $course->listOwnItems($ownItems->names);
             }
 
+            if (null !== $default) {
+                $this->setDefault($event, $course, $default, $confirmMove);
+            }
+
             $changes = Auditor::diff($before, self::recordedCourse($course));
 
             if ([] !== $changes) {
@@ -140,6 +158,66 @@ final readonly class MenuEditor
         });
 
         $this->menuPublisher->published($event);
+    }
+
+    /** @param SentDefault $sent */
+    private function setDefault(Event $event, MenuCourse $course, array $sent, bool $confirmMove): void
+    {
+        $next = $this->defaultRules->details($event, $course, $sent);
+        $was = $course->getDefaultDish();
+        $samePick = null !== $next && $was === $next->dish && $course->getDefaultVariant() === $next->variant && Vec\sort($course->getDefaultOptions()) === Vec\sort($next->options);
+
+        if (null !== $next && null !== $was && !$samePick && !$confirmMove && PicksClose::of($event, $course)->passedAt($this->clock->now())) {
+            $moves = $this->defaultMoves->of($event, $course->getId()->toRfc4122(), $next->suitableFor());
+
+            if ($moves['move'] + $moves['back'] > 0) {
+                throw new ApiException(ErrorCode::MenuDefaultMove, 'menu.default_move', members: $moves);
+            }
+        }
+
+        if (null === $next) {
+            $course->clearDefault();
+
+            return;
+        }
+
+        $course->giveByDefault($next->dish, $next->variant, $next->options, $next->chooseBy);
+    }
+
+    private static function refuseDefault(MenuDish $dish, ?MenuDishVariant $variant = null, ?MenuChoiceOption $option = null): void
+    {
+        $course = $dish->getCourse();
+
+        if ($course->getDefaultDish() !== $dish) {
+            return;
+        }
+
+        if (null === $variant && null === $option) {
+            throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_dish', parameters: ['{dish}' => $dish->getName(), '{course}' => $course->getName()]);
+        }
+
+        if (null !== $variant && $course->getDefaultVariant() === $variant) {
+            throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_variant', parameters: ['{variant}' => $variant->getName(), '{course}' => $course->getName()]);
+        }
+
+        if (null !== $option && Iter\contains($course->getDefaultOptions(), $option->getId()->toRfc4122())) {
+            throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_option', parameters: ['{option}' => $option->getName(), '{course}' => $course->getName()]);
+        }
+    }
+
+    private function refuseUnfinishedDefault(Event $event, MenuDish $dish): void
+    {
+        $course = $dish->getCourse();
+
+        if ($course->getDefaultDish() !== $dish) {
+            return;
+        }
+
+        $this->entityManager->flush();
+
+        if (!$this->defaultRules->whole($event, $course)) {
+            throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_dish', parameters: ['{dish}' => $dish->getName(), '{course}' => $course->getName()]);
+        }
     }
 
     public function moveCourse(Event $event, MenuCourse $course, int $to, User $by): void
@@ -258,6 +336,8 @@ final readonly class MenuEditor
     public function removeDish(Event $event, MenuDish $dish, User $by): void
     {
         $this->locked($event, function () use ($dish, $by): void {
+            self::refuseDefault($dish);
+
             if ($this->dishPicked($dish)) {
                 throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
             }
@@ -298,6 +378,8 @@ final readonly class MenuEditor
                 $this->entityManager->persist($variant);
                 $this->audit(self::VARIANT_ADDED, 'MenuDishVariant', $variant->getId(), $by, Auditor::diff([], self::recordedVariant($variant)));
             }
+
+            $this->refuseUnfinishedDefault($event, $dish);
         });
 
         $this->menuPublisher->published($event);
@@ -324,6 +406,8 @@ final readonly class MenuEditor
                 $this->audit(self::VARIANT_CHANGED, 'MenuDishVariant', $variant->getId(), $by, $changes);
             }
 
+            $this->refuseUnfinishedDefault($event, $variant->getDish());
+
             return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOfVariant($variant), $added);
         });
 
@@ -339,6 +423,7 @@ final readonly class MenuEditor
             $dish = $variant->getDish();
             $left = Vec\filter($this->menuDishVariantRepository->findOnDish($dish), static fn (MenuDishVariant $one): bool => $one !== $variant);
 
+            self::refuseDefault($dish, $variant);
             $folding = 1 === Iter\count($left);
             $picked = $folding ? [$variant, ...$left] : [$variant];
 
@@ -355,6 +440,13 @@ final readonly class MenuEditor
 
             if ($folding) {
                 $staying = Vec\values($left)[0];
+                $course = $dish->getCourse();
+                $chooseBy = $course->getChooseBy();
+
+                if ($course->getDefaultVariant() === $staying && null !== $chooseBy) {
+                    $course->giveByDefault($dish, null, $course->getDefaultOptions(), $chooseBy);
+                }
+
                 $before = self::recordedDish($dish);
                 $dish->foldFrom($staying);
                 $dish->dropItem(null);
@@ -369,7 +461,7 @@ final readonly class MenuEditor
     /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913 */
     public function addChoice(Event $event, MenuDish $dish, array $sent, User $by): MenuDishChoice
     {
-        $choice = $this->locked($event, function () use ($dish, $sent, $by): MenuDishChoice {
+        $choice = $this->locked($event, function () use ($event, $dish, $sent, $by): MenuDishChoice {
             $this->entityManager->refresh($dish);
             $choices = $this->menuDishChoiceRepository->findOnDish($dish);
 
@@ -392,6 +484,8 @@ final readonly class MenuEditor
 
             $this->audit(self::CHOICE_ADDED, 'MenuDishChoice', $choice->getId(), $by, Auditor::diff([], self::recordedChoice($choice, $details->options)));
 
+            $this->refuseUnfinishedDefault($event, $dish);
+
             return $choice;
         });
 
@@ -407,7 +501,7 @@ final readonly class MenuEditor
      */
     public function changeChoice(Event $event, MenuDishChoice $choice, array $sent, User $by): array
     {
-        $unwarned = $this->locked($event, function () use ($choice, $sent, $by): array {
+        $unwarned = $this->locked($event, function () use ($event, $choice, $sent, $by): array {
             $this->entityManager->refresh($choice);
             $options = $this->menuChoiceOptionRepository->findOnChoice($choice);
             $details = $this->choiceRules->details($sent, $choice, $options, $this->answersTo($choice, $options));
@@ -418,6 +512,7 @@ final readonly class MenuEditor
 
             foreach ($options as $one) {
                 if (!Iter\contains($kept, $one->getId()->toRfc4122())) {
+                    self::refuseDefault($choice->getDish(), option: $one);
                     $this->entityManager->remove($one);
                 }
             }
@@ -448,6 +543,8 @@ final readonly class MenuEditor
                 $this->audit(self::CHOICE_CHANGED, 'MenuDishChoice', $choice->getId(), $by, $changes);
             }
 
+            $this->refuseUnfinishedDefault($event, $choice->getDish());
+
             return $lines;
         });
 
@@ -460,6 +557,10 @@ final readonly class MenuEditor
     {
         $this->locked($event, function () use ($choice, $by): void {
             $options = $this->menuChoiceOptionRepository->findOnChoice($choice);
+
+            foreach ($options as $one) {
+                self::refuseDefault($choice->getDish(), option: $one);
+            }
 
             if ($this->answersTo($choice, $options)->answered()) {
                 throw new ApiException(ErrorCode::ChoiceAnswered, 'menu.choice_answered');
@@ -610,6 +711,8 @@ final readonly class MenuEditor
             'answer' => $course->guestsChoose() ? 'choose' : 'same',
             'skippable' => $course->isSkippable(),
             'ownItems' => $course->getOwnItems(),
+            'default' => null === ($dish = $course->getDefaultDish()) ? null : [$dish->getName(), $course->getDefaultVariant()?->getName(), $course->getDefaultOptions()],
+            'chooseBy' => $course->getChooseBy()?->format('Y-m-d'),
         ];
     }
 

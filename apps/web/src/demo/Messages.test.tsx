@@ -1267,20 +1267,46 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     ).toBeDefined();
   });
 
-  it('mutes the event from an item’s More, and marks its items Muted', SLOW, async () => {
+  it('mutes the event from an item’s More, and marks no item already shown', SLOW, async () => {
     await messages('bellMute');
-    const bell = screen.getByRole('dialog', { name: 'Notifications' });
+    let bell = screen.getByRole('dialog', { name: 'Notifications' });
 
     expect(within(bell).queryByText('Muted')).toBeNull();
     const mute = within(bell).getByRole('switch', { name: 'Mute this event' });
     mute.focus();
     fireEvent.click(mute);
-    expect(within(bell).getAllByText('Muted').length).toBe(5);
-    expect(document.activeElement).toBe(mute);
-    fireEvent.click(mute);
+    expect(mute.getAttribute('aria-checked')).toBe('true');
     expect(within(bell).queryByText('Muted')).toBeNull();
     expect(document.activeElement).toBe(mute);
+
+    cleanup();
+    await messages('bellMuted');
+    bell = screen.getByRole('dialog', { name: 'Notifications' });
+    expect(within(bell).getAllByText('Muted').length).toBe(1);
   });
+
+  it(
+    'shows an item of a category it does not know, with Unread and Muted (sc-84143)',
+    SLOW,
+    async () => {
+      await messages('bellUnknown');
+      const bell = screen.getByRole('dialog', { name: 'Notifications' });
+      const item = within(bell).getByRole('button', {
+        name: /^Ana Souza added a note to the event/u,
+      });
+
+      expect(item.querySelector('.bell-glyph svg')).not.toBeNull();
+      expect(within(item).getByText('Unread')).toBeDefined();
+      expect(within(item).getByText('Muted')).toBeDefined();
+      expect(
+        within(bell).getByRole('button', {
+          name: /^More for Ana Souza added a note to the event/u,
+        }),
+      ).toBeDefined();
+      fireEvent.click(within(bell).getByRole('button', { name: 'Mark all read' }));
+      expect(within(item).queryByText('Unread')).toBeNull();
+    },
+  );
 
   it('says an event has gone, and keeps the offline band with Refreshing…', SLOW, async () => {
     await messages('bellGone');

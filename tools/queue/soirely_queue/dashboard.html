@@ -379,6 +379,94 @@
         outline: 2px solid var(--accent);
         outline-offset: 2px;
       }
+      .copy.quiet {
+        color: var(--text-2);
+        background: transparent;
+        border: 1px solid var(--line);
+      }
+      .copy:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .login-flow {
+        margin-top: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .login-flow[hidden] {
+        display: none;
+      }
+      #login-said:empty {
+        display: none;
+      }
+      .login-flow p {
+        margin: 0;
+      }
+      .login-flow.good {
+        background: var(--good-soft);
+      }
+      .login-flow.critical {
+        background: var(--critical-soft);
+      }
+      .login-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .login-row input {
+        font: inherit;
+        font-size: 13px;
+        flex: 1 1 220px;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .login-row a {
+        color: var(--accent);
+        font-size: 13px;
+      }
+      .usage {
+        display: grid;
+        grid-template-columns: minmax(64px, auto) minmax(72px, 1fr) auto;
+        gap: 4px 8px;
+        align-items: center;
+        min-width: 240px;
+        font-size: 12px;
+        color: var(--text-2);
+      }
+      .usage .role-title {
+        grid-column: 1 / -1;
+      }
+      .meter {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-2);
+        box-shadow: inset 0 0 0 1px var(--line);
+        overflow: hidden;
+      }
+      .meter i {
+        display: block;
+        height: 100%;
+        background: var(--good);
+      }
+      .meter.warning i {
+        background: var(--warning);
+      }
+      .meter.critical i {
+        background: var(--critical);
+      }
+      .usage > span:not(.role-title) {
+        white-space: nowrap;
+      }
+      .usage b {
+        font-weight: 600;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+      }
       .owner {
         background: var(--warning-soft);
         border-radius: 8px;
@@ -762,6 +850,11 @@
       </header>
       <div class="alerts" id="alerts"></div>
       <div class="kpis" id="kpis"></div>
+      <section id="logins-section" hidden>
+        <h2>Claude logins <span class="count" id="logins-count"></span></h2>
+        <div class="panel table-wrap"><table id="logins"></table></div>
+        <div class="panel login-flow" id="login-flow" aria-live="polite" hidden></div>
+      </section>
       <section id="draw-section" hidden>
         <h2>To draw <span class="count" id="draw-count"></span></h2>
         <div class="draws" id="draws"></div>
@@ -903,6 +996,274 @@
             .map((w) => `<div class="alert warning"><b>Warning</b><span>${esc(w)}</span></div>`)
             .join('');
       }
+
+      const DAY = 86400;
+      const loginMachine = (name) => (name === localName ? '' : name);
+
+      function loginLeft(r) {
+        if (r.token) return ['', 'Setup-token'];
+        if (r.error) return ['critical', 'Unread'];
+        if (!r.logged_in) return ['critical', 'Logged out'];
+        if (r.expires_at == null) return ['', 'No end given'];
+        const s = r.expires_at - Date.now() / 1000;
+        if (s <= 0) return ['critical', 'Ran out'];
+        const text =
+          s < 3600
+            ? `${Math.floor(s / 60)} min`
+            : s < 2 * DAY
+              ? `${Math.floor(s / 3600)} h`
+              : `${Math.floor(s / DAY)} days`;
+        return [s < DAY ? 'critical' : s < 3 * DAY ? 'warning' : 'good', text];
+      }
+
+      const loginOrder = (r) =>
+        r.token ? Infinity : r.error || !r.logged_in ? -Infinity : (r.expires_at ?? Infinity);
+
+      function resets(at) {
+        const s = at - Date.now() / 1000;
+        if (s < DAY)
+          return `in ${s < 3600 ? Math.max(Math.floor(s / 60), 1) + ' min' : Math.floor(s / 3600) + ' h'}`;
+        return new Date(at * 1000).toLocaleString(undefined, {
+          weekday: 'short',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      }
+
+      function loginUsage(r) {
+        // A peer on an older sq sends no usage at all, which is not the same as none read yet.
+        if (!('usage' in r)) return '';
+        const now = Date.now() / 1000;
+        const u = r.usage || {};
+        const lines = (u.limits || [])
+          .filter((l) => l.percent != null)
+          .map((l) => {
+            const reset = l.resets_at != null && l.resets_at <= now;
+            const width = reset ? 0 : Math.min(Math.max(l.percent, 0), 100);
+            const used = reset ? 'reset since it was read' : `${l.percent}% used`;
+            const left = l.resets_at != null ? `resets ${resets(l.resets_at)}` : '';
+            const when = reset ? 'reset since' : left;
+            return `<span>${esc(l.name)}</span><span class="meter ${reset ? '' : esc(l.tone || '')}" role="img" aria-label="${esc(l.name)}: ${esc(used)}"><i style="width:${width}%"></i></span><span><b>${reset ? '–' : esc(l.percent + '%')}</b> ${esc(when)}</span>`;
+          });
+        const read = [
+          u.read_at ? `Read ${since(u.read_at)}` : '',
+          r.usage_error ? `not read again: ${r.usage_error}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        if (lines.length)
+          return `<div class="usage">${lines.join('')}<span class="role-title">${esc(read)}</span></div>`;
+        if (r.usage_error) return `<span class="role-title">${esc(r.usage_error)}</span>`;
+        return r.logged_in || r.token ? '<span class="role-title">Not read yet</span>' : '';
+      }
+
+      function loginsTable(d) {
+        const rows = (d.logins || [])
+          .map((r) => ({ ...r, machine: d.machine }))
+          .concat(
+            Object.entries(d.peer_logins || {}).flatMap(([name, list]) =>
+              list.map((r) => ({ ...r, machine: name })),
+            ),
+          )
+          .sort((a, b) => !a.roles.length - !b.roles.length || loginOrder(a) - loginOrder(b));
+        document.getElementById('logins-section').hidden = !rows.length;
+        const due = rows.filter(
+          (r) => r.roles.length && ['critical', 'warning'].includes(loginLeft(r)[0]),
+        ).length;
+        document.getElementById('logins-count').textContent = rows.length
+          ? `${rows.length} ${rows.length === 1 ? 'account' : 'accounts'}` +
+            (due ? `, ${due} to log in again soon` : '')
+          : '';
+        document.getElementById('logins').innerHTML =
+          `<tr><th>Account</th><th>Machine</th><th>Roles</th><th>Runs out</th><th>Left</th><th>Usage</th><th></th></tr>` +
+          rows
+            .map((r) => {
+              const [tone, left] = loginLeft(r);
+              const busy =
+                loginFlow &&
+                loginFlow.phase !== 'ended' &&
+                loginFlow.name === r.machine &&
+                loginFlow.folder === r.folder;
+              const button = r.token
+                ? ''
+                : `<button class="copy" type="button" data-login-machine="${esc(r.machine)}" data-login-folder="${esc(r.folder)}" data-login-email="${esc(r.email || '')}" data-login-roles="${esc(r.roles.join(', '))}"${busy ? ' disabled' : ''}>${r.logged_in ? 'Log in again' : 'Log in'}</button>`;
+              return `<tr><td><b>${esc(r.email || 'No account')}</b><div class="role-title">${esc(r.folder)}${r.error ? ' · ' + esc(r.error) : ''}</div></td>
+        <td class="role-chip">${esc(r.machine)}</td>
+        <td><div class="tags">${r.roles.length ? r.roles.map((role) => `<span class="tag">${esc(role)}</span>`).join('') : '<span class="role-title">No role</span>'}</div></td>
+        <td class="when">${r.expires_at && !r.token ? esc(clock(r.expires_at)) : ''}</td>
+        <td><span class="pill ${tone}">${esc(left)}</span></td>
+        <td>${loginUsage(r)}</td>
+        <td class="num">${button}</td></tr>`;
+            })
+            .join('');
+      }
+
+      let loginFlow = null;
+
+      async function postJSON(path, body) {
+        const response = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const said = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(said.error || `sq web answered ${response.status}`);
+        return said;
+      }
+
+      function loginLead(f) {
+        const a = f.answer || {};
+        const who = `<b>${esc(f.email || a.email || f.folder)}</b>`;
+        if (f.phase === 'starting') return `Starting a login for ${who} on ${esc(f.name)}…`;
+        if (f.phase === 'ended') {
+          const end = a.ended || {};
+          if (end.state === 'done')
+            return `<b>${esc(end.email || f.email)}</b> is logged in on ${esc(f.name)}${end.expires_at ? '. The login runs out ' + esc(clock(end.expires_at)) : ''}.`;
+          if (end.state === 'wrong account')
+            return `<b>${esc(end.email)}</b> signed in, not ${who}, so ${esc(f.roles || f.folder)} now run as ${esc(end.email)}. Log in again and sign in as ${who}.`;
+          if (end.state === 'cancelled') return `The login for ${who} was cancelled.`;
+          return `The login for ${who} stopped: ${esc(end.message || 'no reason given')}.`;
+        }
+        if (a.opened === 'direct')
+          return `Chrome opened the sign-in for ${who} in its profile. Sign in there and this finishes by itself.`;
+        if (a.opened === 'link')
+          return `Chrome opened the sign-in for ${who} in its profile. Sign in, then paste the code the page shows.`;
+        return `sq could not open Chrome in the profile for ${who} from here. Open the link in that profile, sign in, then paste the code the page shows.`;
+      }
+
+      function drawLogin() {
+        const panel = document.getElementById('login-flow');
+        const f = loginFlow;
+        panel.hidden = !f;
+        if (!f) return;
+        const end = (f.answer || {}).ended;
+        const tone = end ? ({ done: ' good', cancelled: '' }[end.state] ?? ' critical') : '';
+        panel.className = 'panel login-flow' + tone;
+        const link = (f.answer || {}).link;
+        const waiting = f.phase === 'waiting';
+        panel.innerHTML = `<div class="login-row"><b>Log in</b><span class="role-title">${esc(f.folder)} on ${esc(f.name)}</span></div>
+      <p>${loginLead(f)}</p>
+      <p class="role-title" id="login-said">${waiting ? esc(f.said || '') : ''}</p>
+      ${
+        waiting && link
+          ? `<div class="login-row"><a href="${esc(link)}" target="_blank" rel="noopener">Open the link in this browser</a>
+      <button class="copy quiet" type="button" data-copy="login-link">Copy link</button><span id="prompt-login-link" hidden>${esc(link)}</span></div>`
+          : ''
+      }
+      ${
+        waiting
+          ? `<form class="login-row" id="login-code"><input name="code" aria-label="Code from the sign-in page" placeholder="If the page shows a code, paste it here" autocomplete="off" spellcheck="false" />
+      <button class="copy" type="submit">Send code</button><button class="copy quiet" type="button" data-login-act="cancel">Cancel</button></form>`
+          : f.phase === 'ended'
+            ? `<div class="login-row"><button class="copy quiet" type="button" data-login-act="close">Close</button></div>`
+            : ''
+      }`;
+      }
+
+      function saidLogin(text) {
+        loginFlow.said = text;
+        const said = document.getElementById('login-said');
+        if (said) said.textContent = text;
+      }
+
+      async function startLogin(button) {
+        if (loginFlow && loginFlow.phase === 'waiting')
+          postJSON('login/cancel', { machine: loginFlow.m, id: loginFlow.id }).catch(() => null);
+        const flow = (loginFlow = {
+          name: button.dataset.loginMachine,
+          m: loginMachine(button.dataset.loginMachine),
+          folder: button.dataset.loginFolder,
+          email: button.dataset.loginEmail,
+          roles: button.dataset.loginRoles,
+          phase: 'starting',
+        });
+        drawLogin();
+        if (data) loginsTable(data);
+        try {
+          const said = await postJSON('login/start', { machine: flow.m, folder: flow.folder });
+          if (flow !== loginFlow) return;
+          Object.assign(flow, { id: said.id, answer: said, said: said.said || '' });
+          flow.phase = said.ended ? 'ended' : 'waiting';
+        } catch (error) {
+          if (flow !== loginFlow) return;
+          flow.answer = { ended: { state: 'failed', message: error.message } };
+          flow.phase = 'ended';
+        }
+        drawLogin();
+        document.getElementById('login-flow').scrollIntoView({ block: 'nearest' });
+      }
+
+      async function followLogin() {
+        const flow = loginFlow;
+        if (!flow || flow.phase !== 'waiting') return;
+        try {
+          const response = await fetch(
+            `login/state?machine=${encodeURIComponent(flow.m)}&id=${encodeURIComponent(flow.id)}`,
+            { cache: 'no-store' },
+          );
+          const said = await response.json();
+          if (flow !== loginFlow || flow.phase !== 'waiting') return;
+          if (!response.ok) return saidLogin(said.error || `sq web answered ${response.status}`);
+          flow.answer = { ...flow.answer, ...said };
+          if (said.ended) {
+            flow.phase = 'ended';
+            flow.said = '';
+            drawLogin();
+            refresh();
+          } else if (said.said !== flow.said) saidLogin(said.said || '');
+        } catch (error) {
+          return;
+        }
+      }
+
+      document.addEventListener('click', (event) => {
+        const start = event.target.closest('[data-login-folder]');
+        if (start) return startLogin(start);
+        const act = event.target.closest('[data-login-act]');
+        if (!act || !loginFlow) return;
+        if (act.dataset.loginAct === 'cancel' && loginFlow.id) {
+          const flow = loginFlow;
+          postJSON('login/cancel', { machine: flow.m, id: flow.id })
+            .then((said) => {
+              flow.answer = { ...flow.answer, ...said };
+            })
+            .catch(() => {
+              flow.answer = { ...flow.answer, ended: { state: 'cancelled' } };
+            })
+            .finally(() => {
+              flow.phase = 'ended';
+              if (flow === loginFlow) drawLogin();
+              if (data) loginsTable(data);
+            });
+        }
+        if (act.dataset.loginAct === 'close') {
+          loginFlow = null;
+          drawLogin();
+          if (data) loginsTable(data);
+        }
+      });
+
+      document.addEventListener('submit', async (event) => {
+        if (event.target.id !== 'login-code') return;
+        event.preventDefault();
+        const flow = loginFlow;
+        const code = event.target.code.value.trim();
+        if (!code || !flow || !flow.id) return;
+        event.target.code.value = '';
+        saidLogin('Sending the code…');
+        try {
+          const said = await postJSON('login/code', { machine: flow.m, id: flow.id, code });
+          if (flow !== loginFlow) return;
+          flow.answer = { ...flow.answer, ...said };
+          if (said.ended) {
+            flow.phase = 'ended';
+            drawLogin();
+            refresh();
+          }
+        } catch (error) {
+          if (flow === loginFlow) saidLogin(error.message);
+        }
+      });
 
       function kpis(d) {
         const today = d.spend[d.spend.length - 1] || { total: 0 };
@@ -1388,6 +1749,7 @@
         drawings(data);
         header(data);
         kpis(data);
+        loginsTable(data);
         const here = data.roles;
         document.getElementById('roles-count').textContent = here.length
           ? `${here.length} roles`
@@ -1455,6 +1817,7 @@
       if (machine) findPeers();
       else refresh();
       setInterval(refresh, 5000);
+      setInterval(followLogin, 2000);
       setInterval(() => {
         if (sessionId && (!session || session.live)) refreshSession();
       }, 3000);

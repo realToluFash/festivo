@@ -492,7 +492,6 @@
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
     "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace.",
-    "access.plan_required": "Disponible con Enterprise. Para cambiar esto, consulte a Soirely sobre Enterprise.",
     "door_codes.role": "Un código de acceso solo permite ver el evento o registrar la llegada de los invitados, nunca editar.",
     "door_codes.use_cap_required": "Indique cuántas personas pueden usar este código.",
     "door_codes.use_cap_range": "Escriba un número entero del 1 al 500.",
@@ -500,5 +499,19 @@
     "door_codes.not_made": "No se ha creado el código de acceso. Compruebe la conexión e inténtelo de nuevo.",
     "door_codes.invalid": "Ese código no funciona. Compruébelo con quien se lo dio.",
     "door_codes.too_many": "Demasiados intentos. Inténtelo de nuevo a partir del {when}.",
-    "door_codes.member": "Ya es miembro de {organisation}. Los miembros acceden a un evento desde la página Personas del evento. Pida a la persona responsable del evento o a un administrador que añada su cuenta."
+    "door_codes.member": "Ya es miembro de {organisation}. Los miembros acceden a un evento desde la página Personas del evento. Pida a la persona responsable del evento o a un administrador que añada su cuenta.",
+    "validation.course_default_not_asked": "Solo un pase que pregunta algo a los invitados puede tener plato por defecto.",
+    "validation.course_default_dish_needed": "Elija un plato por defecto o quite la fecha límite.",
+    "validation.course_choose_by_needed": "Indique una fecha límite o elija «Sin plato por defecto».",
+    "validation.course_choose_by_invalid": "Escriba una fecha, como 2026-10-16.",
+    "validation.course_choose_by_after_event": "Elija una fecha anterior al evento.",
+    "validation.course_choose_by_past": "Esa fecha ya ha pasado. Elija hoy o una fecha posterior.",
+    "validation.course_choose_by_locked": "La fecha límite ya ha pasado, así que no se puede cambiar.",
+    "validation.course_default_variant": "Elija la variante del plato por defecto.",
+    "validation.course_default_answer": "Responda a «{question}» para el plato por defecto.",
+    "validation.course_default_choose": "Elija {pick} en «{question}».",
+    "menu.default_dish": "{dish} es el plato por defecto del pase «{course}». Elija antes otro plato por defecto, en «Editar pase».",
+    "menu.default_variant": "{variant} es la variante del plato por defecto del pase «{course}». Elija antes otro plato por defecto, en «Editar pase».",
+    "menu.default_option": "{option} forma parte del plato por defecto del pase «{course}». Elija antes otro plato por defecto, en «Editar pase».",
+    "menu.default_move": "Cambiar el plato por defecto cambia también el de los invitados que lo recibieron. Confírmelo para continuar."
 }

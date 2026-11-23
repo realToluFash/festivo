@@ -24,7 +24,9 @@ import {
   BW,
   GONE_EVENT,
   OLDER_COUNT,
+  UNKNOWN_CATEGORY,
   bellStartOf,
+  mutedOf,
 } from './BellStates.ts';
 import { BELL, EVENT, PARKING, PARKING_REACH } from './MessagesSample.ts';
 import { W, say } from './MessagesWords.ts';
@@ -34,7 +36,7 @@ type Opener = RefObject<ScreenReaderTarget | null>;
 
 interface BellItem {
   key: string;
-  category: NotificationCategory;
+  category: NotificationCategory | typeof UNKNOWN_CATEGORY;
   title: string;
   line: string;
   unread: boolean;
@@ -57,6 +59,18 @@ function itemsOf(start: BellStart, allRead: boolean, older: boolean): BellItem[]
       unread: repliesUnread(),
       event: EVENT,
     },
+    ...(start.unknown
+      ? [
+          {
+            key: 'unknown',
+            category: UNKNOWN_CATEGORY,
+            title: BW.unknown,
+            line: where(EVENT, say.atTime('08:40')),
+            unread: !allRead,
+            event: EVENT,
+          },
+        ]
+      : []),
     {
       key: 'day',
       category: 'event_day',
@@ -218,7 +232,7 @@ export function BellPlace({
         lines: [],
         where: item.line,
         unread: item.unread,
-        muted: muted && item.event === EVENT,
+        muted: mutedOf(start, item),
         more:
           item.event == null
             ? null

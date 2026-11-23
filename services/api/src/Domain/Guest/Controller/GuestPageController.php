@@ -215,6 +215,7 @@ final readonly class GuestPageController
             'event' => $this->guestPageEvent->of($event, $phase),
             'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
+            'onTheDay' => $this->guestAnswers->onTheDay($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
@@ -223,7 +224,7 @@ final readonly class GuestPageController
             'meals' => [
                 'you' => $guest->getId()->toRfc4122(),
                 'courses' => $this->guestMenu->menu($event),
-                'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
+                ...$this->servedMeals->of([$guest, ...$named]),
             ],
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],

@@ -6,6 +6,7 @@ import {
   type GuestCalendarLink,
   type GuestPage,
   type GuestPagePhase,
+  type MealCourse,
   realtimeTopic,
 } from '@soirely/api-client';
 import { formatEventClock, hostsLine, listFormat, wallDay } from '@soirely/domain';
@@ -27,9 +28,10 @@ import { Thanks } from '../../components/Thanks.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { offButton } from '../../offButton.ts';
-import { useWideWidth } from '../../phoneWidth.ts';
+import { usePhoneWidth, useWideWidth } from '../../phoneWidth.ts';
 import { useServerNow } from '../../serverNow.ts';
 import { Filled, Notice, TextAction, dayOf, format, readerZone, wallDayOf } from './GuestParts.tsx';
+import { WhereBlock, YourCode, hasWhere, leadsOnTheDay, placeOf } from './GuestDay.tsx';
 import { InvalidInvitation } from './InvalidInvitation.tsx';
 import { Programme } from './Programme.tsx';
 import { YourTable } from './YourTable.tsx';
@@ -65,9 +67,10 @@ import {
   skipped,
 } from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
-import { MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
+import { CopiedCard, MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
 import {
   type Cleared,
+  type Eater,
   type Plate,
   type Plates,
   allergiesOf,
@@ -75,6 +78,7 @@ import {
   changeFocus,
   clearRuledOut,
   eatersOf,
+  defaultLine,
   keyOf,
   markOf,
   markedOpen,
@@ -83,6 +87,7 @@ import {
   otherOf,
   picksOf,
   refusalOf,
+  copyPlates,
   samePlate,
   savedPlates,
   stepsOf,
@@ -107,12 +112,15 @@ type View =
   | {
       kind: 'meal';
       from: 'answer' | 'changing';
-      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, or the picks saved. */
-      to: 'flow' | 'check' | 'saved';
+      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, the picks saved, or the copied card. */
+      to: 'flow' | 'check' | 'saved' | 'card';
       eater: number;
       course: number;
       step: number;
+      /** A course a Same as press couldn't copy (sc-17283), asked straight after it. */
+      asked?: boolean;
     }
+  | { kind: 'copied'; from: 'answer' | 'changing'; eater: number }
   | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
   | {
       kind: 'check';
@@ -132,11 +140,13 @@ interface Meal {
   cleared: Readonly<Record<string, Cleared>>;
   draft: Plate | null;
   pressed: boolean;
-  told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
+  told: 'marked' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
   refused: ReadonlySet<string>;
   /** The rows of a refused course whose answer the send changed, which carry its alert. */
   unsaved: ReadonlySet<string>;
   busy: boolean;
+  /** The last Same as press (sc-17283): whose picks were copied to whom, and the courses it left to ask. */
+  copy: { to: string; from: string; asked: readonly string[] } | null;
 }
 
 const NO_MEAL: Meal = {
@@ -148,6 +158,7 @@ const NO_MEAL: Meal = {
   refused: new Set(),
   unsaved: new Set(),
   busy: false,
+  copy: null,
 };
 
 type Tell =
@@ -418,7 +429,10 @@ export function Card({
   const [held, setHeld] = useState<ReturnType<typeof focused>>(null);
   const seen = useRef(standing(first));
   const sends = useRef(0);
+  const [leads] = useState(() => preview == null && leadsOnTheDay(first));
+  const phone = usePhoneWidth();
   const { guest, event } = page;
+  const when = useWhen(event);
   const hosts = hostsLine(event.hosts, currentLocale());
   const count = Math.max(event.hosts.length, 1);
   const courses = askedCourses(page.meals);
@@ -662,6 +676,15 @@ export function Card({
                 .filter((key) => !samePlate(plates[key], before[key])),
             ),
           );
+          const savedSome = people.some((eater) =>
+            askedCourses(at.meals)
+              .filter((course) => !refused.has(course.id) && !course.picksClose.closed)
+              .some((course) => {
+                const key = keyOf(eater.key, course.id);
+                return !samePlate(plates[key], before[key]);
+              }),
+          );
+          const said = told === 'saved' && savedSome ? 'otherSaved' : null;
           const first = [...unsaved][0];
           const shown = () => {
             if (first != null) focus(`refused-${first}`);
@@ -671,11 +694,11 @@ export function Card({
               seen.current = standing(after);
               setPage(after);
               if (!after.answersOpen) setView(opening(after, token));
-              setMeal({ ...savedMeal(after), refused, unsaved });
+              setMeal({ ...savedMeal(after), refused, unsaved, told: said });
               shown();
             },
             () => {
-              setMeal((was) => ({ ...was, busy: false, refused, unsaved }));
+              setMeal((was) => ({ ...was, busy: false, refused, unsaved, told: said }));
               shown();
             },
           );
@@ -702,9 +725,10 @@ export function Card({
     eater: number,
     course: number,
     from: 'answer' | 'changing',
-    to: 'flow' | 'check' | 'saved',
+    to: 'flow' | 'check' | 'saved' | 'card',
     plates: Plates = meal.plates,
     mine = allergies,
+    asked = false,
   ): void {
     setMeal((was) => ({
       ...was,
@@ -713,8 +737,36 @@ export function Card({
       pressed: false,
       told: null,
     }));
-    setView({ kind: 'meal', from, to, eater, course, step: 0 });
+    setView({ kind: 'meal', from, to, eater, course, step: 0, ...(asked ? { asked } : {}) });
     focus('mealHead');
+  }
+
+  function toCopied(from: 'answer' | 'changing', eater: number, on = 'copiedHead'): void {
+    setView({ kind: 'copied', from, eater });
+    focus(on);
+  }
+
+  /** Same as {name} (sc-17283): copies what can be picked for this person, then asks the rest in course order, then shows their card. */
+  function sameAs(source: Eater): void {
+    if (view.kind !== 'meal') return;
+    const to = eaters[view.eater];
+    if (to == null) return;
+    const result = copyPlates(meal.plates, source.key, to.key, courses, allergies(to.key));
+    setMeal((was) => ({
+      ...was,
+      plates: result.plates,
+      cleared: Object.fromEntries(
+        Object.entries(was.cleared).filter(([one]) => !one.startsWith(`${to.key}|`)),
+      ),
+      copy: { to: to.key, from: source.key, asked: result.asked },
+    }));
+    const first = courses.findIndex((one) => result.asked.includes(one.id));
+    if (first < 0) {
+      setMeal((was) => ({ ...was, draft: null, pressed: false, told: null }));
+      toCopied(view.from, view.eater);
+      return;
+    }
+    openMeal(view.eater, first, view.from, 'flow', result.plates, allergies, true);
   }
 
   /** Next or Nothing to add on the kitchen note: on to the first meal screen, clearing a pick an allergy given there rules out, or back to Check and send. */
@@ -737,7 +789,16 @@ export function Card({
     openMeal(0, 0, from, 'flow', result.plates, mine);
   }
 
-  function leaveMeal(to: 'check' | 'saved', key: string, from: 'answer' | 'changing'): void {
+  function leaveMeal(
+    to: 'check' | 'saved' | 'card',
+    key: string,
+    from: 'answer' | 'changing',
+    eater: number,
+  ): void {
+    if (to === 'card') {
+      toCopied(from, eater, changeFocus(key));
+      return;
+    }
     setView(
       to === 'check'
         ? { kind: 'check', busy: false, failed: false, from }
@@ -779,7 +840,14 @@ export function Card({
     const cleared = Object.fromEntries(Object.entries(meal.cleared).filter(([one]) => one !== key));
     setMeal((was) => ({ ...was, plates, cleared, draft: null, pressed: false }));
     if (view.to !== 'flow') {
-      leaveMeal(view.to, key, view.from);
+      leaveMeal(view.to, key, view.from, view.eater);
+      return;
+    }
+    if (view.asked === true) {
+      const asked = meal.copy?.asked ?? [];
+      const after = courses.findIndex((one, at) => at > view.course && asked.includes(one.id));
+      if (after < 0) toCopied(view.from, view.eater);
+      else openMeal(view.eater, after, view.from, 'flow', plates, allergies, true);
       return;
     }
     if (view.course < courses.length - 1)
@@ -802,7 +870,7 @@ export function Card({
     }
     if (view.to !== 'flow') {
       setMeal((was) => ({ ...was, draft: null, pressed: false }));
-      leaveMeal(view.to, key, view.from);
+      leaveMeal(view.to, key, view.from, view.eater);
       return;
     }
     const { draft } = meal;
@@ -811,7 +879,8 @@ export function Card({
       (draft.kind !== 'chosen' ||
         stepsOf(course, draft).every((step, at) => refusalOf(step, draft, at === 0) == null));
     const plates = done ? { ...meal.plates, [key]: draft } : meal.plates;
-    if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
+    if (view.asked === true) openMeal(view.eater, 0, view.from, 'flow', plates);
+    else if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
     else if (view.eater > 0)
       openMeal(view.eater - 1, courses.length - 1, view.from, 'flow', plates);
     else {
@@ -1041,14 +1110,18 @@ export function Card({
 
   const stepping =
     view.kind === 'meal' ||
+    view.kind === 'copied' ||
     view.kind === 'check' ||
     view.kind === 'withYou' ||
     view.kind === 'kitchen' ||
     view.kind === 'kitchenAfter';
   const alone = tell.kind !== 'card' || stepping;
+  const dayOrder = leads && tell.kind === 'card' && forTheDay(page, view);
   const saved = savedPlates(page.meals, eaters);
   const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
+  const lineOf = (eater: Eater, course: MealCourse, shut: boolean) =>
+    defaultLine(page.meals, course, eater, meal.plates[keyOf(eater.key, course.id)], shut);
   const cards = (head: 'check' | 'back') => (
     <MealCards
       eaters={eaters}
@@ -1063,6 +1136,7 @@ export function Card({
       refused={meal.refused}
       unsaved={meal.unsaved}
       locked={head === 'back' && paused}
+      lineOf={lineOf}
       onChange={changeMeal}
     />
   );
@@ -1089,9 +1163,56 @@ export function Card({
         cleared={meal.cleared[keyOf(eater.key, course.id)] ?? null}
         refusal={meal.pressed ? refusalOf(step, meal.draft, view.step === 0) : null}
         timeZone={event.timeZone}
+        line={defaultLine(
+          page.meals,
+          course,
+          eater,
+          meal.draft ?? meal.plates[keyOf(eater.key, course.id)],
+          course.picksClose.closed,
+        )}
+        earlier={
+          view.to === 'flow' && view.asked !== true && view.course === 0 && view.step === 0
+            ? eaters.slice(0, view.eater)
+            : []
+        }
+        copiedFrom={
+          view.asked === true && view.step === 0
+            ? (eaters.find((one) => one.key === meal.copy?.from) ?? null)
+            : null
+        }
+        onSameAs={sameAs}
         onPlate={(plate) => setMeal((was) => ({ ...was, draft: plate, pressed: false }))}
         onBack={mealBack}
         onNext={mealNext}
+      />
+    );
+  })();
+  const copiedCard = (() => {
+    if (view.kind !== 'copied') return null;
+    const eater = eaters[view.eater];
+    const source = eaters.find((one) => one.key === meal.copy?.from);
+    if (eater == null || source == null) return null;
+    const at = view.eater;
+    const from = view.from;
+
+    return (
+      <CopiedCard
+        eater={eater}
+        from={source}
+        courses={courses}
+        plates={meal.plates}
+        allergies={allergies(eater.key)}
+        timeZone={event.timeZone}
+        lineOf={lineOf}
+        onChange={(key) => {
+          const course = courses.findIndex((one) => key.endsWith(`|${one.id}`));
+          if (course >= 0) openMeal(at, course, from, 'card');
+        }}
+        onBack={() => openMeal(at, 0, from, 'flow')}
+        onContinue={() => {
+          if (at < eaters.length - 1) openMeal(at + 1, 0, from, 'flow');
+          else toCheck(from);
+        }}
       />
     );
   })();
@@ -1135,96 +1256,127 @@ export function Card({
     <div ref={columns} className="gp-columns">
       <PhaseNotice phase={page.phase} />
       {preview == null && <LanguageUnsaved token={token} />}
-      <Cover page={page} tagged={tagged && !ended(page.phase)} />
-      <div className="gp-under">
-        {tell.kind === 'card' && (
-          <Shown
+      <Cover
+        page={page}
+        tagged={tagged && !ended(page.phase)}
+        dayOrder={dayOrder}
+        band={dayOrder && phone}
+      />
+      {dayOrder && (
+        <div className="gp-under is-day">
+          {page.checkInCode != null && (
+            <YourCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
+          )}
+          <WhereBlock page={page} when={when} />
+          <YourTable page={page} onTheDay />
+          <Programme page={page} onTheDay />
+          <DayAnswer
             view={view}
             page={page}
             party={party}
-            kitchen={kitchen}
-            preview={preview != null}
-            onCard={card}
-            onKitchenBack={kitchenBack}
-            onKitchenNext={kitchenNext}
-            onKitchenSkip={kitchenSkip}
             kitchenSaved={kitchenSaved}
-            onKitchenAfter={kitchenAfter}
-            onKitchenAfterLeave={kitchenAfterLeave}
-            onKitchenAfterSave={kitchenAfterSave}
-            onParty={(change, on) => {
-              setParty(change);
-              if (on != null) focus(on);
-            }}
-            onPartyNext={partyNext}
-            onPartyChange={withYou}
-            onCheckBack={checkBack}
-            onCheckKitchen={checkKitchen}
-            mealScreen={mealScreen}
-            checkMeals={checkMeals}
-            comingBack={comingBack}
-            onChoose={choose}
-            onSend={sendComing}
-            onBack={back}
             onChange={() => {
               setView({ kind: 'changing', busy: null, failed: false });
               focus('newHead');
             }}
-            onKeep={() => {
-              setKitchen(null);
-              setView({ kind: 'recorded', same: false });
-              focus('change');
-            }}
+            onKitchenAfter={kitchenAfter}
           />
-        )}
-        {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
-          <YourTable page={page} />
-        )}
-        {tell.kind === 'card' && forTheDay(page, view) && page.checkInCode != null && (
-          <DoorCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
-        )}
-        {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
-          <AddToCalendar calendar={page.calendar} />
-        )}
-        {tell.kind === 'asking' && (
-          <section className="gp-tell" aria-labelledby="gp-tell-h">
-            <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
-              {t('guest.tellQuestion', { hosts })}
-            </h2>
-            <p className="gp-sub">{t('guest.tellLine', { name: guest.fullName, count })}</p>
-            {tell.result === 'failed' && <Notice kind="broken">{t('guest.tellFailed')}</Notice>}
-            {tell.result === 'limited' && (
-              <Notice kind="attention" alert>
-                {t('guest.tellLimited')}
-              </Notice>
-            )}
-            <Filled busy={tell.busy} onClick={tellThem}>
-              {t('guest.tellThem')}
-            </Filled>
-            <button
-              className="gp-outlined"
-              type="button"
-              onClick={() => {
-                setTell({ kind: 'card' });
-                focus('tell');
+          {comingBack}
+          {page.calendar != null && <AddToCalendar calendar={page.calendar} />}
+        </div>
+      )}
+      {!dayOrder && (
+        <div className="gp-under">
+          {tell.kind === 'card' && (
+            <Shown
+              view={view}
+              page={page}
+              party={party}
+              kitchen={kitchen}
+              preview={preview != null}
+              onCard={card}
+              onKitchenBack={kitchenBack}
+              onKitchenNext={kitchenNext}
+              onKitchenSkip={kitchenSkip}
+              kitchenSaved={kitchenSaved}
+              onKitchenAfter={kitchenAfter}
+              onKitchenAfterLeave={kitchenAfterLeave}
+              onKitchenAfterSave={kitchenAfterSave}
+              onParty={(change, on) => {
+                setParty(change);
+                if (on != null) focus(on);
               }}
-            >
-              {t('guest.goBack')}
-            </button>
-          </section>
-        )}
-        {tell.kind === 'told' && (
-          <div className="gp-told" role="status" aria-live="polite">
-            <span className="gp-mark is-coming" aria-hidden="true">
-              <Glyph name="tick" size={17} weight={3} />
-            </span>
-            <p tabIndex={-1} data-focus="thanks">
-              {t('guest.tellThanks', { hosts, count })}
-            </p>
-          </div>
-        )}
-      </div>
-      {!alone && <Details page={page} hosts={hosts} />}
+              onPartyNext={partyNext}
+              onPartyChange={withYou}
+              onCheckBack={checkBack}
+              onCheckKitchen={checkKitchen}
+              mealScreen={mealScreen}
+              copiedCard={copiedCard}
+              checkMeals={checkMeals}
+              comingBack={comingBack}
+              onChoose={choose}
+              onSend={sendComing}
+              onBack={back}
+              onChange={() => {
+                setView({ kind: 'changing', busy: null, failed: false });
+                focus('newHead');
+              }}
+              onKeep={() => {
+                setKitchen(null);
+                setView({ kind: 'recorded', same: false });
+                focus('change');
+              }}
+            />
+          )}
+          {tell.kind === 'card' && (view.kind === 'recorded' || view.kind === 'closed') && (
+            <YourTable page={page} />
+          )}
+          {tell.kind === 'card' && forTheDay(page, view) && page.checkInCode != null && (
+            <DoorCode qrSvg={page.checkInCode.qrSvg} withCompanions={companionsComing(page)} />
+          )}
+          {tell.kind === 'card' && forTheDay(page, view) && page.calendar != null && (
+            <AddToCalendar calendar={page.calendar} />
+          )}
+          {tell.kind === 'asking' && (
+            <section className="gp-tell" aria-labelledby="gp-tell-h">
+              <h2 id="gp-tell-h" className="gp-h2" tabIndex={-1} data-focus="tellHead">
+                {t('guest.tellQuestion', { hosts })}
+              </h2>
+              <p className="gp-sub">{t('guest.tellLine', { name: guest.fullName, count })}</p>
+              {tell.result === 'failed' && <Notice kind="broken">{t('guest.tellFailed')}</Notice>}
+              {tell.result === 'limited' && (
+                <Notice kind="attention" alert>
+                  {t('guest.tellLimited')}
+                </Notice>
+              )}
+              <Filled busy={tell.busy} onClick={tellThem}>
+                {t('guest.tellThem')}
+              </Filled>
+              <button
+                className="gp-outlined"
+                type="button"
+                onClick={() => {
+                  setTell({ kind: 'card' });
+                  focus('tell');
+                }}
+              >
+                {t('guest.goBack')}
+              </button>
+            </section>
+          )}
+          {tell.kind === 'told' && (
+            <div className="gp-told" role="status" aria-live="polite">
+              <span className="gp-mark is-coming" aria-hidden="true">
+                <Glyph name="tick" size={17} weight={3} />
+              </span>
+              <p tabIndex={-1} data-focus="thanks">
+                {t('guest.tellThanks', { hosts, count })}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      {!alone && <Details page={page} hosts={hosts} dayOrder={dayOrder} />}
       {!alone && (
         <div className="gp-foot">
           {page.answersOpen && (
@@ -1257,6 +1409,85 @@ function forTheDay(page: GuestPage, view: View): boolean {
     page.guest.reply?.answer === 'coming' &&
     page.phase === 'live' &&
     (view.kind === 'recorded' || view.kind === 'closed')
+  );
+}
+
+/** sc-1439's recorded and closed views under Your answer on the day, without the place, which shows once, in Where (sc-24381). */
+function DayAnswer({
+  view,
+  page,
+  party,
+  kitchenSaved,
+  onChange,
+  onKitchenAfter,
+}: {
+  view: View;
+  page: GuestPage;
+  party: Party;
+  kitchenSaved: boolean;
+  onChange: () => void;
+  onKitchenAfter: () => void;
+}) {
+  const { t } = useTranslation();
+  const { reply } = page.guest;
+
+  if (reply == null) return null;
+  const day = dayOf(reply.at, page.event.timeZone);
+  const closed = view.kind === 'closed';
+  const closedOn = page.started ? null : (page.answersClosedOn ?? null);
+
+  return (
+    <section className="gp-day-block" aria-labelledby="gp-day-answer-h">
+      <h2 id="gp-day-answer-h" className="gp-h2">
+        {t('guest.yourAnswer')}
+      </h2>
+      <p className="gp-day-answered" tabIndex={-1} data-focus={closed ? 'closedHead' : 'greeting'}>
+        {reply.recordedBy == null
+          ? t(ANSWERED[reply.answer], { date: day })
+          : t('guest.recordedFor', { name: reply.recordedBy, date: day })}
+      </p>
+      {view.kind === 'recorded' && view.same && (
+        <p className="gp-sub is-ink">{t('guest.same', { answer: t(WORD[reply.answer]) })}</p>
+      )}
+      {view.kind === 'recorded' && hasStep(party) && (
+        <p className="gp-sub">{partyLine(partyOf(page), t)}</p>
+      )}
+      {closed && kitchenSaved && !page.started && <KitchenSaved />}
+      {closed && (
+        <p className="gp-sub">
+          {closedOn == null
+            ? t('guest.closed')
+            : t('guest.closedBy', { date: wallDayOf(closedOn) })}
+        </p>
+      )}
+      {!closed && (
+        <TextAction focus="change" onClick={onChange}>
+          {t('guest.change')}
+        </TextAction>
+      )}
+      {closed && !page.started && (
+        <TextAction
+          focus="kitchen"
+          {...(kitchenSaved ? { describedBy: KITCHEN_SAVED_ID } : {})}
+          icon={
+            <svg
+              className="gp-line"
+              width={18}
+              height={18}
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+              strokeWidth={2.2}
+            >
+              <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+            </svg>
+          }
+          onClick={onKitchenAfter}
+        >
+          {t('guest.kitchen')}
+        </TextAction>
+      )}
+    </section>
   );
 }
 
@@ -1355,6 +1586,7 @@ function Shown({
   onCheckBack,
   onCheckKitchen,
   mealScreen,
+  copiedCard,
   checkMeals,
   comingBack,
   onChoose,
@@ -1382,6 +1614,7 @@ function Shown({
   onCheckBack: () => void;
   onCheckKitchen: () => void;
   mealScreen: ReactNode;
+  copiedCard: ReactNode;
   checkMeals: ReactNode;
   comingBack: ReactNode;
   onChoose: (answer: GuestAnswer) => void;
@@ -1446,6 +1679,8 @@ function Shown({
       );
     case 'meal':
       return mealScreen;
+    case 'copied':
+      return copiedCard;
     case 'kitchenAfter':
       if (kitchen == null) return null;
 
@@ -2009,7 +2244,7 @@ function useWhen(event: GuestPage['event']): string {
 }
 
 /** When, where and who, as Events A writes them, and the host's arrival note under the Where line, never translated. */
-function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
+function Details({ page, hosts, dayOrder }: { page: GuestPage; hosts: string; dayOrder: boolean }) {
   const { t } = useTranslation();
   const { event } = page;
   const when = useWhen(event);
@@ -2023,6 +2258,12 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
       {note}
     </p>
   );
+  const hostsRow = named && (
+    <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
+  );
+
+  if (dayOrder)
+    return hostsRow === false ? null : <div className="gp-details gp-left-after">{hostsRow}</div>;
 
   return (
     <div className="gp-details gp-left-after">
@@ -2060,9 +2301,7 @@ function Details({ page, hosts }: { page: GuestPage; hosts: string }) {
       {!where && noteLine !== false && (
         <div className={named ? 'gp-where has-rule' : 'gp-where'}>{noteLine}</div>
       )}
-      {named && (
-        <Row lead={<Glyph name="users" size={22} />} title={hosts} line={t('eventHosts.heading')} />
-      )}
+      {hostsRow}
       <Programme page={page} />
     </div>
   );
@@ -2081,7 +2320,17 @@ function Row({ lead, title, line }: { lead: ReactNode; title: ReactNode; line?: 
 }
 
 /** The cover the event's page shows: the organiser's photo, or its colour from meshFor, under the scrim; the answer as a tag once given. */
-function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
+function Cover({
+  page,
+  tagged,
+  dayOrder,
+  band,
+}: {
+  page: GuestPage;
+  tagged: boolean;
+  dayOrder: boolean;
+  band: boolean;
+}) {
   const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   const { event, guest } = page;
@@ -2090,15 +2339,44 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
   const when = useWhen(event);
   const line = [
     format(event.startsAt, event.timeZone, { weekday: 'short', month: 'short', day: 'numeric' }),
-    when,
-    event.venue?.name,
+    dayOrder && hasWhere(placeOf(page)) ? null : when,
+    dayOrder ? null : event.venue?.name,
   ]
     .filter((part) => part != null)
     .join(' · ');
+  const look = `today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}`;
+  const head = over ? (
+    <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
+      {event.name}
+    </h1>
+  ) : (
+    <>
+      <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
+        {t('guest.invitationTitle')}
+      </h1>
+      <p className="gp-cover-guest">{guest.fullName}</p>
+      <p className="gp-cover-name">{event.name}</p>
+    </>
+  );
+
+  if (band) {
+    return (
+      <>
+        <span className={`gp-band gp-left ev-card ${look}`} aria-hidden="true">
+          {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
+          <span className="ev-scrim" />
+        </span>
+        <section className="gp-head" aria-labelledby="gp-h1">
+          {head}
+          <p className="gp-cover-line">{line}</p>
+        </section>
+      </>
+    );
+  }
 
   return (
     <section
-      className={`gp-cover gp-left ev-card today-cover ${photo == null ? `is-${meshFor(event.id)}` : 'is-photo'}${page.phase === 'calledOff' ? ' is-grey' : ''}`}
+      className={`gp-cover gp-left ev-card ${look}${page.phase === 'calledOff' ? ' is-grey' : ''}`}
       aria-labelledby="gp-h1"
     >
       {photo != null && <Photo cover={photo} onFail={() => setFailed(true)} />}
@@ -2114,19 +2392,7 @@ function Cover({ page, tagged }: { page: GuestPage; tagged: boolean }) {
             {t(WORD[guest.reply.answer])}
           </p>
         )}
-        {over ? (
-          <h1 id="gp-h1" className="gp-cover-name" tabIndex={-1} data-focus="h1">
-            {event.name}
-          </h1>
-        ) : (
-          <>
-            <h1 id="gp-h1" className="gp-cover-h1" tabIndex={-1} data-focus="h1">
-              {t('guest.invitationTitle')}
-            </h1>
-            <p className="gp-cover-guest">{guest.fullName}</p>
-            <p className="gp-cover-name">{event.name}</p>
-          </>
-        )}
+        {head}
         <p className="gp-cover-line">{line}</p>
       </div>
     </section>

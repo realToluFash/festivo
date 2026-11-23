@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Budget\Reminder;
 
 use App\Domain\Messaging\Model\Audience;
+use App\Domain\Messaging\Model\EventAnchor;
+use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Trigger;
 use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\Event;
@@ -12,10 +14,15 @@ use App\Entity\Organisation;
 use App\Entity\ScheduledPayment;
 use App\Enum\NotificationDeliveryStatus;
 use App\Enum\Permission;
+use App\Enum\ScheduledNotificationStatus;
 use App\Repository\ScheduledPaymentRepository;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Types;
+use Psl\Json;
+use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -27,6 +34,9 @@ final readonly class PaymentReminders
     public const string OVERDUE = 'overdue';
 
     public const string TIME_OF_DAY = '09:00';
+
+    /** How long a late reminder waits for the rest added with it (sc-83852). */
+    public const string HOLD = 'PT15M';
 
     public function __construct(
         private NotificationScheduler $notificationScheduler,
@@ -47,7 +57,7 @@ final readonly class PaymentReminders
         return $now->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d');
     }
 
-    /** After any change to a payment, in the transaction that made it. A payment already past due when it becomes owed has only the overdue one. */
+    /** After any change to a payment, in the transaction that made it. A payment already past due when it becomes owed has only the overdue one, and a reminder whose day has passed is held (sc-83852). */
     public function follow(ScheduledPayment $payment): void
     {
         if ($payment->isPaid() || $payment->isCancelled()) {
@@ -82,7 +92,7 @@ final readonly class PaymentReminders
                 PaymentReminder::NAME,
                 $key,
                 $key,
-                Trigger::relativeTo($dueOn, $offset, self::TIME_OF_DAY),
+                $this->trigger($key, Trigger::relativeTo($dueOn, $offset, self::TIME_OF_DAY), $event),
                 Audience::membersOfEvent($organisation->getId(), $event->getId(), Permission::BudgetManage),
                 ['paymentId' => $payment->getId()->toRfc4122(), 'kind' => $kind],
                 $event,
@@ -102,6 +112,54 @@ final readonly class PaymentReminders
         foreach ($this->scheduledPaymentRepository->findOwedInOrganisation($organisation) as $payment) {
             $this->follow($payment);
         }
+    }
+
+    /** A late one goes when the organisation's open hold ends, else after HOLD; one already held, or unchanged, keeps its time. */
+    private function trigger(string $key, Trigger $onTheDay, Event $event): Trigger
+    {
+        $now = $this->clock->now();
+
+        if ($onTheDay->dueAt(EventTimes::of($event)) > $now) {
+            return $onTheDay;
+        }
+
+        $organisationId = $event->getOrganisation()->getId()->toRfc4122();
+        $this->connection->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:hold, 0))', ['hold' => self::HOLD . ':' . $organisationId]);
+
+        $pending = $this->connection->fetchOne(
+            'SELECT trigger FROM scheduled_notifications WHERE cancellation_key = :key AND status = :pending',
+            ['key' => $key, 'pending' => ScheduledNotificationStatus::Pending->value],
+        );
+
+        if (false !== $pending) {
+            $kept = Trigger::fromArray(Json\typed(Type\string()->coerce($pending), Type\dict(Type\string(), Type\mixed())));
+
+            if (EventAnchor::Moment === $kept->anchor || $kept->toArray() === $onTheDay->toArray()) {
+                return $kept;
+            }
+        }
+
+        $open = $this->connection->fetchOne(
+            <<<'SQL'
+                SELECT MIN(due_at)
+                FROM scheduled_notifications
+                WHERE type = :type
+                  AND organisation_id = :organisation
+                  AND status = :pending
+                  AND trigger->>'anchor' = :moment
+                  AND due_at > :now
+                SQL,
+            [
+                'type' => PaymentReminder::NAME,
+                'organisation' => $organisationId,
+                'pending' => ScheduledNotificationStatus::Pending->value,
+                'moment' => EventAnchor::Moment->value,
+                'now' => $now,
+            ],
+            ['now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        return Trigger::at(null === $open || false === $open ? $now->add(new DateInterval(self::HOLD)) : new DateTimeImmutable(Type\string()->coerce($open), new DateTimeZone('UTC')));
     }
 
     private function sent(string $key): bool

@@ -124,3 +124,19 @@ describe('the request link', () => {
     expect(requestLink(1)).not.toBe(requestLink(0));
   });
 });
+
+describe('Transfer ownership with Google or Apple (sc-22601)', () => {
+  it('opens on the provider the owner signs in with, two-factor only where the code is drawn', () => {
+    expect(organisationStart('transferGoogle', 'Owner')).toMatchObject({
+      transferVia: 'google',
+      transferTwoFactor: false,
+      screen: null,
+    });
+    expect(organisationStart('transferApple', 'Owner').transferVia).toBe('apple');
+    expect(organisationStart('transferGoogleCode', 'Owner').transferTwoFactor).toBe(true);
+  });
+
+  it('opens nothing for a member, who has no way to it', () => {
+    expect(organisationStart('transferGoogle', 'Member').transferVia).toBeNull();
+  });
+});

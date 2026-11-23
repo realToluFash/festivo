@@ -217,11 +217,12 @@ describe('a course’s default on the meal step (sc-1362)', () => {
     expect(within(row('Starter')).queryByText(/Canapé selection/)).toBeNull();
 
     await meal('excludedAfter', MSW.send);
-    expect(
-      within(row('Starter')).getByText(
-        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
-      ),
-    ).toBeTruthy();
+    const inTouch = within(row('Starter')).getByText(
+      '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+    );
+    expect(inTouch.closest('.mx-pick')?.querySelector('.pc-ring.is-host')).toBeTruthy();
+    const closed = within(row('Starter')).getByText('Picks closed on Friday, Oct 16.');
+    expect(inTouch.compareDocumentPosition(closed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(row('Starter')).queryByText(MSW.notChosen)).toBeNull();
     expect(screen.queryByRole('button', { name: `Change starter for ${PERSON}` })).toBeNull();
   });
@@ -242,11 +243,12 @@ describe('a course’s default on the meal step (sc-1362)', () => {
 
     await meal('refusedExcluded', MSW.send);
     fireEvent.click(screen.getByRole('button', { name: MSW.send }));
-    expect(
-      within(row('Starter')).getByText(
-        '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
-      ),
-    ).toBeTruthy();
+    const inTouch = within(row('Starter')).getByText(
+      '[You hadn’t chosen a starter by then. The host will be in touch about it.]',
+    );
+    expect(inTouch.closest('.mx-pick')?.querySelector('.pc-ring.is-host')).toBeTruthy();
+    const closed = within(row('Starter')).getByText('Picks closed on Friday, Oct 16.');
+    expect(inTouch.compareDocumentPosition(closed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(row('Starter')).queryByText('Canapé selection')).toBeNull();
   });
 });

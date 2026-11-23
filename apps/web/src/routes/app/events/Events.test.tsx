@@ -2515,6 +2515,103 @@ describe("An event's venue in New event (sc-3589)", () => {
     });
   });
 
+  it('credits Stadia Maps and OpenStreetMap under the suggestions, outside the listbox (sc-80918)', async () => {
+    signedIn();
+    serving({
+      'GET /api/addresses/suggest': () =>
+        json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+    });
+    await creating();
+
+    expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull();
+    fireEvent.change(address(), { target: { value: 'Civic' } });
+    const list = await screen.findByRole('listbox');
+    const links = [
+      screen.getByRole('link', { name: 'Stadia Maps' }),
+      screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
+    ];
+
+    expect(links[0]?.closest('p')?.textContent).toBe('© Stadia Maps © OpenStreetMap contributors');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      'https://stadiamaps.com/attribution/',
+      'https://www.openstreetmap.org/copyright',
+    ]);
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(list.contains(link)).toBe(false);
+    }
+    expect(within(list).getAllByRole('option')).toHaveLength(1);
+
+    fireEvent.change(address(), { target: { value: 'Ci' } });
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull());
+  });
+
+  describe('the credit keeps the suggestions open while focus is on it (sc-80918)', () => {
+    async function listed(): Promise<{ stadia: HTMLElement; osm: HTMLElement }> {
+      signedIn();
+      serving({
+        'GET /api/addresses/suggest': () =>
+          json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+      });
+      await creating();
+      address().focus();
+      fireEvent.change(address(), { target: { value: 'Civic' } });
+      await screen.findByRole('listbox');
+
+      return {
+        stadia: screen.getByRole('link', { name: 'Stadia Maps' }),
+        osm: screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
+      };
+    }
+
+    async function settled(): Promise<void> {
+      await act(() => new Promise((done) => window.setTimeout(done)));
+    }
+
+    it('keeps the list when Tab moves from Address to the links', async () => {
+      const { stadia, osm } = await listed();
+
+      stadia.focus();
+      await settled();
+      osm.focus();
+      await settled();
+
+      expect(screen.getByRole('listbox')).toBeDefined();
+    });
+
+    it('closes the list when focus leaves past OpenStreetMap contributors', async () => {
+      const { osm } = await listed();
+
+      osm.focus();
+      await settled();
+      screen.getByRole('button', { name: 'Create event' }).focus();
+
+      await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    });
+
+    it('closes the list on Escape on a link, with focus back in Address', async () => {
+      const { stadia } = await listed();
+
+      stadia.focus();
+      fireEvent.keyDown(stadia, { key: 'Escape' });
+
+      await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+      expect(document.activeElement).toBe(address());
+    });
+
+    it('keeps the list when the window loses focus to a link opened in a new tab', async () => {
+      await listed();
+      const away = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+
+      fireEvent.blur(address());
+      await settled();
+      away.mockRestore();
+
+      expect(screen.getByRole('listbox')).toBeDefined();
+      expect(address().value).toBe('Civic');
+    });
+  });
+
   it('saves a typed address as typed, with a name', async () => {
     signedIn();
     const sent = serving({ 'GET /api/addresses/suggest': () => json({ success: true, data: [] }) });

@@ -1796,13 +1796,33 @@ describe('the bell (sc-3980)', () => {
 
   test('reads the feed and leaves out an item it cannot read', async () => {
     const { client, sent } = answering({
-      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
+      items: [item, { id: 'n2', category: 'event_changes', createdAt: 'y' }],
       unreadCount: 1,
       next: 'n1',
     });
 
     expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
     expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
+  });
+
+  test('keeps an item of a category it does not know, with the category as sent', async () => {
+    const news = { ...item, id: 'n2', category: 'venue_news' };
+    const { client } = answering({ items: [news, item], unreadCount: 2, next: null });
+
+    expect(await client.notifications()).toEqual({
+      items: [news, item],
+      unreadCount: 2,
+      next: null,
+    });
+    expect(asNotificationArrival({ ...news, unreadCount: 3 })).toEqual({
+      item: news,
+      unreadCount: 3,
+    });
+    expect(asNotificationRead({ updated: news, unreadCount: 1 })).toEqual({
+      id: 'n2',
+      unreadCount: 1,
+      updated: news,
+    });
   });
 
   test('one switch is sent as category, channel and on', async () => {
@@ -4022,6 +4042,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     },
     phase: 'live',
     started: false,
+    onTheDay: false,
     answersOpen: true,
   };
 
@@ -4048,6 +4069,13 @@ describe("the guest's calendar on their page (sc-3627)", () => {
 
   test('has none when the API gives none', async () => {
     expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test("reads the event's day as the API sends it, and an older API's silence as not the day", async () => {
+    const { onTheDay: _omitted, ...older } = PAGE;
+
+    expect((await answering({ ...PAGE, onTheDay: true }).guestPage('tok')).onTheDay).toBe(true);
+    expect((await answering(older).guestPage('tok')).onTheDay).toBe(false);
   });
 
   test('refuses a feed that is not a path', async () => {

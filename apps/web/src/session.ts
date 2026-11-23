@@ -17,6 +17,8 @@ import {
   choosePaused,
   forgetEventsTab,
   holdsAnywhere,
+  rememberedEntry,
+  rememberedFor,
   roleHolds,
 } from '@soirely/domain';
 import i18next from 'i18next';
@@ -86,7 +88,7 @@ export interface ProviderOnly {
   email: string;
 }
 
-/** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
+/** Per device and for the account that left it, as the switcher promises: "Soirely remembers your choice on this device" (sc-86373). */
 const ACTIVE_ORGANISATION = 'soirely.organisation';
 
 let state: SessionState = { status: 'unknown' };
@@ -176,7 +178,9 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 
   // A sign-in's answer carries the colours as /me does, so a new browser opens in them without a reload.
   followAccountScheme(schemeIn(account));
-  set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
+  const session = sessionFrom(account, organisations, paused);
+  set({ status: 'signedIn', session });
+  rememberWorkingIn(session);
   // The account's language, followed after this read and before the session was set (sc-9267).
   if (currentLocale() !== askedIn) void rereadOrganisations();
 }
@@ -256,15 +260,14 @@ export async function rereadOrganisations(): Promise<void> {
   const kept = read.organisations.find((membership) => membership.id === current.organisation?.id);
 
   if (kept == null && current.organisation != null && current.pausedIn == null) {
-    const organisation = chooseOrganisation(read.organisations, recalled());
-    const pausedIn = choosePaused(read.paused, recalled(), read.organisations.length);
+    const organisation = chooseOrganisation(read.organisations, recalled(current.userId));
+    const pausedIn = choosePaused(read.paused, current.organisation.id, read.organisations.length);
+    const session = { ...current, organisations: read.organisations, organisation, pausedIn };
 
     forgetEventsTab();
     forgetKept();
-    set({
-      status: 'signedIn',
-      session: { ...current, organisations: read.organisations, organisation, pausedIn },
-    });
+    set({ status: 'signedIn', session });
+    rememberWorkingIn(session);
     if (organisation != null && pausedIn == null)
       for (const listener of movedOn) listener(organisation);
 
@@ -292,8 +295,8 @@ export function landingFor(gate: Awaiting | null): string {
 }
 
 /** Before the organisations are read, so the next read opens in this one: an invitation accepted while onboarding. */
-export function rememberOrganisation(id: string): void {
-  remember(id);
+export function rememberOrganisation(account: string, id: string): void {
+  remember(account, id);
 }
 
 /** Remembered on this device, so the next visit opens where this one left off. */
@@ -304,7 +307,7 @@ export function switchOrganisation(id: string): void {
 
   if (organisation == null) return;
 
-  remember(id);
+  remember(state.session.userId, id);
   forgetEventsTab();
   forgetKept();
   set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
@@ -379,7 +382,7 @@ function sessionFrom(
   organisations: readonly Membership[],
   paused: readonly PausedOrganisation[],
 ): Session {
-  const remembered = recalled();
+  const remembered = recalled(account.id);
 
   return {
     userId: account.id,
@@ -401,19 +404,34 @@ function sessionFrom(
   };
 }
 
-function recalled(): string | null {
+function recalled(account: string): string | null {
   try {
-    return window.localStorage.getItem(ACTIVE_ORGANISATION);
+    return rememberedFor(window.localStorage.getItem(ACTIVE_ORGANISATION), account);
   } catch {
     return null;
   }
 }
 
-function remember(id: string): void {
+/** Opened by default as much as by choice, so a pause there shows its page at the next open rather than another organisation (sc-86056); another account's is let go, so it does not come back after this one (sc-86373). */
+function rememberWorkingIn(session: Session): void {
+  if (session.organisation != null && session.pausedIn == null)
+    remember(session.userId, session.organisation.id);
+  else if (recalled(session.userId) == null) forgetRemembered();
+}
+
+function remember(account: string, id: string): void {
   try {
-    window.localStorage.setItem(ACTIVE_ORGANISATION, id);
+    window.localStorage.setItem(ACTIVE_ORGANISATION, rememberedEntry(account, id));
   } catch {
     // Private windows refuse storage; the choice then lasts as long as the page.
+  }
+}
+
+function forgetRemembered(): void {
+  try {
+    window.localStorage.removeItem(ACTIVE_ORGANISATION);
+  } catch {
+    // Nothing was kept where storage is refused.
   }
 }
 

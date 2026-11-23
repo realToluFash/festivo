@@ -13,9 +13,13 @@ export const BELL_STATES = [
   { key: 'bellGone', name: 'The bell: an event that has gone' },
   { key: 'bellOffline', name: 'The bell: offline' },
   { key: 'bellRefreshing', name: 'The bell: offline, Refreshing…' },
+  { key: 'bellUnknown', name: 'The bell: a category this app does not know (sc-84143)' },
 ] as const;
 
 export type BellState = 'bell' | (typeof BELL_STATES)[number]['key'];
+
+/** The sample's category from a server newer than the app (sc-84143). */
+export const UNKNOWN_CATEGORY = 'venue_news' as const;
 
 export type Feed = 'loading' | 'failed' | 'loaded';
 export type More = 'none' | 'idle' | 'loading' | 'failed' | 'shown';
@@ -26,10 +30,15 @@ export interface BellStart {
   more: More;
   asking: boolean;
   menu: string | null;
+  /** Mute this event's switch as it opens; flipping it marks no item already shown. */
   muted: boolean;
+  /** The items delivered after the event was muted, each marked Muted when it arrived (sc-3980). */
+  marked: readonly string[];
   /** The item whose event has gone is listed, its line showing as after a press. */
   gone: boolean;
   offline: 'none' | 'band' | 'refreshing';
+  /** An unread item of a category the client does not know, on the muted event. */
+  unknown: boolean;
 }
 
 const REST: BellStart = {
@@ -39,8 +48,10 @@ const REST: BellStart = {
   asking: false,
   menu: null,
   muted: false,
+  marked: [],
   gone: false,
   offline: 'none',
+  unknown: false,
 };
 
 export function bellStartOf(state: BellState): BellStart {
@@ -60,13 +71,15 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellMute':
       return { ...REST, menu: 'missed' };
     case 'bellMuted':
-      return { ...REST, muted: true };
+      return { ...REST, muted: true, marked: ['replies'] };
     case 'bellGone':
       return { ...REST, gone: true };
     case 'bellOffline':
       return { ...REST, offline: 'band' };
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
+    case 'bellUnknown':
+      return { ...REST, unknown: true, muted: true, marked: ['replies', 'unknown'] };
     case 'bell':
       return REST;
   }

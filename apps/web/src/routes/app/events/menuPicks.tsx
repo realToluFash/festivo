@@ -1,10 +1,11 @@
 import type { EventPicks } from '@soirely/api-client';
+import { hostCount, shareOf } from '@soirely/domain';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { hostCount, shareOf } from './seePicks.ts';
+import { Glyph } from '../../../components/Glyph.tsx';
 import './seePicks.css';
 
 const POLL_MS = 8000;
@@ -95,6 +96,23 @@ export function SeePicksLink({ courseId, course }: { courseId: string; course: s
       aria-label={`${t('seePicks.title')} · ${course}`}
     >
       {t('seePicks.title')}
+    </Link>
+  );
+}
+
+/** Kitchen sheet beside Preview as guest (sc-3911), once the menu has picks to count. */
+export function KitchenSheetLink() {
+  const { t } = useTranslation();
+  const shown = useMenuPicks();
+  if (shown == null || shown.picks.courses.length === 0) return null;
+
+  return (
+    <Link
+      className="gs-pill is-secondary mc-preview"
+      to={`/app/events/${encodeURIComponent(shown.eventId)}/menu/kitchen`}
+    >
+      <Glyph name="page" size={16} weight={2.4} />
+      {t('kitchenSheet.title')}
     </Link>
   );
 }

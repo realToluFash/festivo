@@ -81,6 +81,9 @@ services:
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
+    # The first thing that makes PDFs (sc-3911); WeasyPrint is on the image's PATH (sc-5821).
+    App\Pdf\Interfaces\PdfMakerInterface: '@App\Pdf\WeasyPrint'
+
     # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
     App\Integrations\Dns\DnsOverHttpsTxtLookup:
         arguments:
@@ -262,6 +265,7 @@ services:
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 
     App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\Pick\StoredMenuPicks'
+    App\Domain\Menu\Interfaces\ServingStationsInterface: '@App\Domain\Staff\Station\ServingStations'
 
     App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
 
@@ -486,6 +490,12 @@ when@test:
         App\Tests\Double\ScriptedAddressProvider:
             public: true
         App\Address\Interfaces\AddressProviderInterface: '@App\Tests\Double\ScriptedAddressProvider'
+
+        # WeasyPrint itself, unless a test takes it down or answers for it (sc-3911).
+        App\Tests\Double\ScriptedPdfMaker:
+            public: true
+            arguments: ['@App\Pdf\WeasyPrint']
+        App\Pdf\Interfaces\PdfMakerInterface: '@App\Tests\Double\ScriptedPdfMaker'
 
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is

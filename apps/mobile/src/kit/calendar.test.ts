@@ -12,8 +12,13 @@ import {
   calEventOf,
   landingIn,
   offRule,
+  offsetsOf,
   piecesOf,
+  pinnedOf,
+  placeAfter,
   shownIn,
+  topIndex,
+  WIDE_WEEK,
   weekIndexOf,
   weeksAround,
 } from './calendar.ts';
@@ -156,5 +161,49 @@ describe('Agenda', () => {
     expect(agendaMonth(entries, { year: 2026, month: 9 }, 1)).toEqual(NOVEMBER);
     expect(agendaMonth(entries, NOVEMBER, 1)).toBeNull();
     expect(landingIn(entries, '2026-10-01', '2026-11-03')).toBe('month-2026-11');
+  });
+});
+
+describe('‹ Calendar returns to the month it showed (sc-83008)', () => {
+  const weeks = weeksAround(NOVEMBER, 1, new Map());
+  const offsets = offsetsOf(weeks, WIDE_WEEK);
+  const at = (day: string) => offsets[weekIndexOf(weeks, day)] ?? 0;
+  const shown = at('2026-11-23');
+  const monthAt = (y: number) => pinnedOf(weeks[topIndex(offsets, y)], NOVEMBER);
+  const asked = { from: shown, to: shown };
+
+  it('keeps the month when the grid jumps to its first week by itself', () => {
+    const y = placeAfter(shown, { y: 0, byHand: false }, asked);
+
+    expect(monthAt(0)).toEqual({ year: 2024, month: 11 });
+    expect(monthAt(y)).toEqual(NOVEMBER);
+  });
+
+  it('keeps the month wherever else the grid lands by itself, inside the first week or months away', () => {
+    const firstWeek = (offsets[1] ?? 0) / 2;
+    const february = at('2027-02-10');
+
+    expect(monthAt(firstWeek)).toEqual({ year: 2024, month: 11 });
+    expect(placeAfter(shown, { y: firstWeek, byHand: false }, asked)).toBe(shown);
+    expect(placeAfter(shown, { y: february, byHand: false }, null)).toBe(shown);
+    expect(placeAfter(0, { y: february, byHand: false }, null)).toBe(0);
+  });
+
+  it('follows the reader’s hand anywhere, to the first week too', () => {
+    expect(placeAfter(shown, { y: 0, byHand: true }, null)).toBe(0);
+    expect(placeAfter(shown, { y: at('2027-02-10'), byHand: true }, asked)).toBe(at('2027-02-10'));
+  });
+
+  it('follows a glide we asked for along its way, and nothing past it', () => {
+    const to = at('2026-12-01');
+    const glide = { from: shown, to };
+
+    expect(placeAfter(shown, { y: (shown + to) / 2, byHand: false }, glide)).toBe((shown + to) / 2);
+    expect(placeAfter(shown, { y: to, byHand: false }, glide)).toBe(to);
+    expect(placeAfter(shown, { y: 0, byHand: false }, glide)).toBe(shown);
+  });
+
+  it('takes a report within a point of the place as the place', () => {
+    expect(placeAfter(shown, { y: shown + 0.5, byHand: false }, null)).toBe(shown + 0.5);
   });
 });

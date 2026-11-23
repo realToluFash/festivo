@@ -2,10 +2,11 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
-import { BellPanel } from './BellPanel.tsx';
+import { Glyph } from './Glyph.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
+import { placeUnder } from './bellPlace.ts';
 
 const BELL_CSS = stylesheet(import.meta.dirname, 'BellPanel.css');
 
@@ -650,6 +651,92 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop).toMatch(/max-height: calc\(100vh - 96px\);/u);
   });
 
+  function bellAt(bottom: number, right: number): HTMLElement {
+    const bell = document.createElement('button');
+    bell.getBoundingClientRect = () =>
+      ({ top: bottom - 44, bottom, left: right - 44, right, width: 44, height: 44 }) as DOMRect;
+    return bell;
+  }
+
+  it('is fixed under the bell, so a hero that clips its overflow cannot cut it off (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+
+    const pop = document.createElement('div');
+    placeUnder(bellAt(78, 1240), pop);
+
+    expect(pop.style.position).toBe('fixed');
+    expect(pop.style.top).toBe('86px');
+    expect(pop.style.right).toBe('40px');
+    expect(pop.style.maxHeight).toBe('704px');
+  });
+
+  it('keeps its foot in the window when a band above moves the bell down (#84360)', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+
+    const pop = document.createElement('div');
+
+    placeUnder(bellAt(144, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 152 - 10}px`);
+    placeUnder(bellAt(40, 1240), pop);
+    expect(pop.style.maxHeight).toBe(`${800 - 96}px`);
+  });
+
+  it('places the open popover under the bell, and again on a scroll outside it but not inside it (#84360)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+
+    expect(pop?.style.position).toBe('fixed');
+    expect(pop?.style.top).toBe('86px');
+    expect(pop?.style.right).toBe('40px');
+
+    bottom = 144;
+    fireEvent.scroll(container.querySelector('.bell-body') ?? document);
+    expect(pop?.style.top).toBe('86px');
+
+    fireEvent.scroll(document);
+    expect(pop?.style.top).toBe('152px');
+  });
+
+  it('follows the bell when the offline band of the page arrives above it and leaves (#84630)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+    expect(pop?.style.top).toBe('86px');
+
+    const band = document.createElement('div');
+    bottom = 144;
+    document.body.prepend(band);
+    await waitFor(() => expect(pop?.style.top).toBe('152px'));
+
+    bottom = 78;
+    band.remove();
+    await waitFor(() => expect(pop?.style.top).toBe('86px'));
+  });
+
   it('scrolls only the items', () => {
     expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
     expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
@@ -660,6 +747,14 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(glyph).toMatch(/width: 40px;/u);
     expect(glyph).toMatch(/height: 40px;/u);
     expect(glyph).toMatch(/background: var\(--colorInset\);/u);
+  });
+
+  it('keeps the gone line inset under its item, over the popover reset of p margins', () => {
+    expect(cssRule('.bell-pop p', BELL_CSS)).toMatch(/margin: 0;/u);
+    expect(cssRule('.bell-gone', BELL_CSS)).toBe('');
+    expect(cssRule('.bell-row > .bell-gone', BELL_CSS)).toMatch(
+      /margin: calc\(-1 \* var\(--spaceSm\)\) 0 var\(--spaceLg\) 56px;/u,
+    );
   });
 
   it('holds the popover still under Reduce Motion', () => {
@@ -691,43 +786,42 @@ describe('the marks (sc-83081)', () => {
     expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('draws no mark for a category it does not know, and keeps its words', () => {
-    render(
-      <BellPanel
-        titleId="t"
-        heading={null}
-        refreshing={false}
-        unread={0}
-        onReadAll={() => undefined}
-        band={null}
-        notice={null}
-        ask={null}
-        feed="loaded"
-        rows={[
-          {
-            id: 'n1',
-            category: 'something_new',
-            title: 'A new kind',
-            lines: [],
-            where: 'at 09:00',
-            unread: false,
-            muted: false,
-            more: null,
-            goneShown: false,
-          },
-        ]}
-        onPick={() => undefined}
-        onTryAgain={() => undefined}
-        more={null}
-        menu={null}
-        onMenu={() => undefined}
-        settings={null}
-      />,
-    );
-    const shown = screen.getByRole('button', { name: /^A new kind/ });
+  it('keeps an item of a category it does not know, with the plain bell for its mark, and counts it (sc-84143)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [
+            item({
+              id: 'n9',
+              category: 'venue_news',
+              title: 'Ana Souza added a note to the event',
+              lines: [],
+            }),
+          ],
+          unreadCount: 1,
+          next: null,
+        }),
+      'POST /api/notifications/read-all': () => json({ unreadCount: 0 }),
+    });
+    bell();
 
-    expect(shown.querySelector('.bell-glyph')).toBeNull();
-    expect(shown.textContent).toBe('A new kindat 09:00');
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const shown = await screen.findByRole('button', {
+      name: /^Ana Souza added a note to the event/,
+    });
+    const { container: plain } = render(<Glyph name="bell" size={20} />);
+
+    expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
+    expect(shown.querySelector('.bell-glyph')?.innerHTML).toBe(plain.innerHTML);
+    expect(shown.textContent).toContain('Unread');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByText('All read.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^Ana Souza added a note to the event/ }).textContent,
+    ).not.toContain('Unread');
   });
 });
 

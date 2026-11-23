@@ -108,17 +108,35 @@ export interface MenuCourse {
   items: string[];
   /** Null on a course that asks guests nothing, or that guests are not shown. */
   picksClose: PicksClose | null;
+  /** Given at `chooseBy` to anyone coming with no answer (sc-1362); null when unset, and on a course that asks nothing. */
+  default: CourseDefault | null;
 }
 
-/** When a course's picks close (sc-3905): the end of the event's Reply by, else its start, with the offset in the event's zone. */
+/** A whole pick: the dish, its Everyone variant when it has variants, and the options of each required choice. `chooseBy` is a calendar day in the event's zone. */
+export interface CourseDefault {
+  dish: string;
+  variant: string | null;
+  options: string[];
+  chooseBy: string;
+}
+
+/** When a course's picks close (sc-3905): the end of its choose-by date (sc-1362), else of the event's Reply by, else its start, with the offset in the event's zone. */
 export interface PicksClose {
   at: string;
-  source: 'replyBy' | 'start';
+  source: 'chooseBy' | 'replyBy' | 'start';
   closed: boolean;
 }
 
 export interface EventMenu {
   courses: MenuCourse[];
+}
+
+/** What Edit course sends: both null clears the pair. */
+export interface SentCourseDefault {
+  dish: string | null;
+  variant?: string | null;
+  options?: string[];
+  chooseBy: string | null;
 }
 
 export interface MenuCourseDetails {
@@ -324,11 +342,13 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
   const ownItems = names(raw.ownItems);
   const items = names(raw.items);
   const picksClose = asPicksClose(raw.picksClose);
+  const given = asCourseDefault(raw.default);
 
   return read.every((dish) => dish != null) &&
     ownItems != null &&
     items != null &&
-    picksClose !== undefined
+    picksClose !== undefined &&
+    given !== undefined
     ? {
         id,
         name,
@@ -339,8 +359,24 @@ function asMenuCourse(raw: unknown): MenuCourse | null {
         ownItems,
         items,
         picksClose,
+        default: given,
       }
     : null;
+}
+
+/** A menu kept offline from before sc-1362 has no default, which reads as none. */
+export function asCourseDefault(raw: unknown): CourseDefault | null | undefined {
+  if (raw == null) return null;
+  if (!isRecord(raw)) return undefined;
+  const { dish, variant, chooseBy } = raw;
+  const options = names(raw.options);
+
+  return typeof dish === 'string' &&
+    (variant === null || typeof variant === 'string') &&
+    typeof chooseBy === 'string' &&
+    options != null
+    ? { dish, variant, options, chooseBy }
+    : undefined;
 }
 
 /** A menu kept offline from before sc-3905 has no close, which reads as none. */
@@ -350,7 +386,7 @@ function asPicksClose(raw: unknown): PicksClose | null | undefined {
   const { at, source, closed } = raw;
 
   return typeof at === 'string' &&
-    (source === 'replyBy' || source === 'start') &&
+    (source === 'chooseBy' || source === 'replyBy' || source === 'start') &&
     typeof closed === 'boolean'
     ? { at, source, closed }
     : undefined;

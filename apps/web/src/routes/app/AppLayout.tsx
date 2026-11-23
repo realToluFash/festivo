@@ -243,7 +243,10 @@ function Shell() {
         onChoose={() => setChoosing((times) => times + 1)}
       />
     ) : organisation != null && overdue && !atAccount ? (
-      <TwoFactorOverdue organisation={organisation} />
+      <TwoFactorOverdue
+        organisation={organisation}
+        others={session.organisations.filter((other) => other.id !== organisation.id)}
+      />
     ) : null;
 
   const { handoff, showAnyway } = useHandoff(pathname, organisation?.id ?? null, standIn == null);
@@ -351,14 +354,14 @@ function Shell() {
           <DeskSidebar
             label={t('app.name')}
             pill={
-              organisation != null && (
+              (organisation != null || session.pausedIn != null) && (
                 <OrganisationSwitcher
                   current={organisation}
                   organisations={session.organisations}
                   waiting={waiting}
                   offer={offer}
                   email={session.email}
-                  paused={session.pausedIn != null}
+                  paused={session.pausedIn ?? null}
                   opened={choosing}
                   outside={session.outsideEvents ?? []}
                   onSwitch={switchInto}
@@ -562,11 +565,11 @@ function ShellEvents({ organisationId }: { organisationId: string | null }) {
   );
 }
 
-/** Settings, and the person at the sidebar's foot, who opens their account. */
+/** Settings, and the person at the sidebar's foot, who opens their account. A paused membership holds no role, so the person is named alone while the pill names it (sc-86077). */
 function ShellFoot({ onFollow }: { onFollow?: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
-  const organisation = session.organisation;
+  const organisation = session.pausedIn == null ? session.organisation : null;
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = { name: session.name, initials: initials(session.name), role };
   const atAccount = useLocation().pathname.startsWith('/app/account');

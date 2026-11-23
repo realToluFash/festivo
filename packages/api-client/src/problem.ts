@@ -54,6 +54,9 @@ export interface Problem {
   stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
+  /** On `menu_default_move`: the people given the default who would move to the new one, and those who would go back to not chosen (sc-1362). */
+  move?: number;
+  back?: number;
   /** On `meal_picks_closed`: the closed courses a send would have changed, none of them saved (sc-3907). */
   courses?: string[];
   /** On `meal_pick_ruled_out`: each person the plate's allergens rule out, nothing saved until sent again with `anyway` (sc-3909). */

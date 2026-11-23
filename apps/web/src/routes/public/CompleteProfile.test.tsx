@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { rememberedFor } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -715,7 +716,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
       phoneCountryCode: expect.any(String),
       phoneNumber: '',
     });
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_7',
+    );
   });
 
   it('holds Save while an accept is in flight, so a typed organisation is never sent beside it', async () => {
@@ -792,7 +795,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_9',
+    );
   });
 
   it('declining every one leaves the organisation fields as they were, and the row says so', async () => {

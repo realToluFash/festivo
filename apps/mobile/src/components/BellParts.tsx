@@ -271,7 +271,6 @@ function BellItem({
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const mark = markOf(row.category);
 
   return (
     <View>
@@ -291,15 +290,13 @@ function BellItem({
             .join(', ')}
           testID={row.testID}
         >
-          {mark != null && (
-            <View
-              style={styles.tile}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <Glyph name={mark} size={20} ink={tokens.colorInkSecondary} />
-            </View>
-          )}
+          <View
+            style={styles.tile}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Glyph name={markOf(row.category)} size={20} ink={tokens.colorInkSecondary} />
+          </View>
           <View style={styles.grow}>
             <Text
               size={16}

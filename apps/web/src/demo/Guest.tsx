@@ -32,6 +32,9 @@ import {
   wordsFor,
 } from './guest.ts';
 import { Thanks } from './Thanks.tsx';
+import { WalletDevices } from './Wallet.tsx';
+import { deviceOf } from './wallet.ts';
+import { WalletDevice } from './walletContext.ts';
 import {
   AddToCalendar,
   AnswerRows,
@@ -98,6 +101,7 @@ export function GuestPage() {
   const replyBy = params.get('replyBy');
   const days = params.get('days');
   const save = params.get('save');
+  const wallet = params.get('wallet');
   const ask = {
     ...(isReplyByChoice(replyBy) ? { replyBy } : {}),
     ...(days != null && (DAYS_CHOICES as readonly string[]).includes(days)
@@ -111,6 +115,7 @@ export function GuestPage() {
       state={state}
       ask={ask}
       saveFails={isSaveFail(save) ? save : null}
+      wallet={wallet}
     />
   );
 }
@@ -130,10 +135,12 @@ function Visitor({
   state,
   ask,
   saveFails,
+  wallet,
 }: {
   state: string | null;
   ask: Parameters<typeof startOf>[1];
   saveFails: SaveFail | null;
+  wallet: string | null;
 }) {
   const [visit, setVisit] = useState(() => startOf(state, ask));
   const [saveFail, setSaveFail] = useState(saveFails);
@@ -141,6 +148,8 @@ function Visitor({
   const [saving, setSaving] = useState(false);
   const layout = useLayout();
   const words = useMemo(() => wordsFor(visit.lang), [visit.lang]);
+  const device = deviceOf(wallet, layout);
+  const walletOf = useMemo(() => ({ device, lang: visit.lang }), [device, visit.lang]);
   const later = useLater();
   const laterMessage = useLater();
   const { hash } = useLocation();
@@ -409,26 +418,30 @@ function Visitor({
         <p className="visually-hidden" aria-live="polite" aria-atomic="true">
           {visit.said > 0 && <span key={visit.said}>{words.switched}</span>}
         </p>
-        <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
-          <Body
-            visit={visit}
-            words={words}
-            two={two}
-            band={band}
-            under={under}
-            retrying={retrying}
-            onRetry={retry}
-            saving={saving}
-            onSaveAgain={saveAgain}
-            yours={yours}
-            onTell={() =>
-              go(
-                (was) => ({ view: { kind: 'tellUs', busy: false, result: null, back: was.view } }),
-                'tellHead',
-              )
-            }
-          />
-        </main>
+        <WalletDevice.Provider value={walletOf}>
+          <main id="content" className={two ? 'gp-main is-two' : 'gp-main is-one'}>
+            <Body
+              visit={visit}
+              words={words}
+              two={two}
+              band={band}
+              under={under}
+              retrying={retrying}
+              onRetry={retry}
+              saving={saving}
+              onSaveAgain={saveAgain}
+              yours={yours}
+              onTell={() =>
+                go(
+                  (was) => ({
+                    view: { kind: 'tellUs', busy: false, result: null, back: was.view },
+                  }),
+                  'tellHead',
+                )
+              }
+            />
+          </main>
+        </WalletDevice.Provider>
         <footer className="gp-footer">
           <span>{words.copyright}</span>
           <span className="gp-footer-links">
@@ -441,6 +454,7 @@ function Visitor({
         <Link className="link-button" to="/demo">
           All states in the demo
         </Link>
+        {forTheDay(visit) && <WalletDevices device={walletOf.device} />}
       </div>
     </>
   );
@@ -914,7 +928,7 @@ export function Closed({
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
-  const saved = visit.kitchen?.saved === true;
+  const saved = !visit.started && visit.kitchen?.saved === true;
   const line =
     visit.started || !answersClosedByDate(visit)
       ? words.closed

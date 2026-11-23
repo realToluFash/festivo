@@ -51,13 +51,12 @@ import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { capUnderTitle } from '../layout/textSize.ts';
+import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 import { useMarkSide } from './markSide.ts';
 
-/** 16 is the smallest size iOS Safari will not zoom into on focus. */
-export const CONTROL_TEXT_SIZE = 16;
+export { CONTROL_TEXT_SIZE };
 
 interface FieldNamed {
   labelID: string;

@@ -357,6 +357,8 @@ export interface GuestPage {
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
   started: boolean;
+  /** From 00:00 on the start date until the end, both in the event's zone, by the server's clock (sc-24381). */
+  onTheDay: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
@@ -411,10 +413,12 @@ export interface MealCourse {
   answer: 'choose' | 'same';
   skippable: boolean;
   picksClose: { at: string; source: string; closed: boolean };
+  /** Given at `chooseBy` to each person coming with no answer whom it can't harm (sc-1362). */
+  default: { dish: string; variant: string | null; options: string[]; chooseBy: string } | null;
   dishes: MealDish[];
 }
 
-/** Not answered is no answer; `defaulted` is set only by sc-1362. */
+/** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
 export type MealAnswerKind = 'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted';
 
 export interface MealAnswer {
@@ -431,6 +435,8 @@ export interface GuestMeals {
   you: string;
   courses: MealCourse[];
   answers: Record<string, MealAnswer[]>;
+  /** By person: the courses whose default they are never given (sc-1362), each with `allergy` or the unmet diet's code. */
+  excluded: Record<string, { course: string; reason: string }[]>;
 }
 
 export interface MealPick {

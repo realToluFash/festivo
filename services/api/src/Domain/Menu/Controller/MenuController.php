@@ -6,6 +6,7 @@ namespace App\Domain\Menu\Controller;
 
 use App\Domain\Menu\ChoiceRules;
 use App\Domain\Menu\CourseRules;
+use App\Domain\Menu\DefaultRules;
 use App\Domain\Menu\DishRules;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\ItemRules;
@@ -82,7 +83,7 @@ final readonly class MenuController
         return $this->menu($event, Response::HTTP_CREATED, ['courseId' => $course->getId()->toRfc4122()]);
     }
 
-    /** The whole course; `ownItems` (sc-34230) left out keeps them. `answer` "same" is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+    /** The whole course; `ownItems` (sc-34230) left out keeps them, and so does `default` its default and choose-by date (sc-1362). `answer` "same" is refused 409 `menu_same_one_dish` unless it has exactly one dish; a new default after the date is refused 409 `menu_default_move` with `move` and `back` while it would move anyone, until sent with `confirmMove`. */
     #[Route('/api/events/{eventId}/menu/courses/{courseId}', name: 'menu_courses_change', methods: ['PUT'])]
     #[InEvent(Permission::MenuManage)]
     public function changeCourse(Request $request, string $eventId, #[InThisEvent('courseId')] MenuCourse $course): JsonResponse
@@ -94,10 +95,12 @@ final readonly class MenuController
             'answer' => Type\union(Type\literal_scalar('choose'), Type\literal_scalar('same')),
             'skippable' => Type\bool(),
             'ownItems' => Type\optional(Type\vec(Type\string())),
+            'default' => Type\optional(DefaultRules::sent()),
+            'confirmMove' => Type\optional(Type\bool()),
         ]));
         $details = $this->courseRules->details($body['name'], $body['servedAt'] ?? null);
         $own = Iter\contains_key($body, 'ownItems') ? $this->itemRules->ownItems($body['ownItems']) : null;
-        $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $own, $this->user());
+        $this->menuEditor->changeCourse($event, $course, $details, 'choose' === $body['answer'], $body['skippable'], $own, $this->user(), $body['default'] ?? null, $body['confirmMove'] ?? false);
 
         return $this->menu($event, Response::HTTP_OK, ['courseId' => $course->getId()->toRfc4122()]);
     }

@@ -49,7 +49,6 @@ final readonly class MenuSerialiser
         $choices = Dict\group_by($this->menuDishChoiceRepository->findOnEvent($event), static fn (MenuDishChoice $choice): string => $choice->getDish()->getId()->toRfc4122());
         $options = Dict\group_by($this->menuChoiceOptionRepository->findOnEvent($event), static fn (MenuChoiceOption $option): string => $option->getChoice()->getId()->toRfc4122());
         $currency = $event->getCurrency();
-        $close = $this->close($event);
 
         return [
             'courses' => Vec\map($this->menuCourseRepository->findOnEvent($event), fn (MenuCourse $course): array => self::withClose([
@@ -66,14 +65,15 @@ final readonly class MenuSerialiser
                     Vec\map($choices[$dish->getId()->toRfc4122()] ?? [], fn (MenuDishChoice $choice): array => $this->choice($choice, $options[$choice->getId()->toRfc4122()] ?? [])),
                     $withPrice ? $currency : null,
                 )),
-            ], $close)),
+                'default' => self::defaultOf($course),
+            ], $this->close($event, $course))),
         ];
     }
 
     /** @return array{at: string, source: string, closed: bool} in the event's zone */
-    private function close(Event $event): array
+    private function close(Event $event, MenuCourse $course): array
     {
-        $close = PicksClose::of($event);
+        $close = PicksClose::of($event, $course);
 
         return [
             'at' => $close->at->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
@@ -85,8 +85,8 @@ final readonly class MenuSerialiser
     /**
      * A course asks guests something when it is shown to them and they choose, or its one dish asks the way (two or more Everyone variants) or a choice. Only such a course closes.
      *
-     * @param array{answer: string, dishes: list<array<string, mixed>>, ...} $course
-     * @param array{at: string, source: string, closed: bool}                $close
+     * @param array{answer: string, dishes: list<array<string, mixed>>, default: mixed, ...} $course
+     * @param array{at: string, source: string, closed: bool}                                $close
      *
      * @return array<string, mixed>
      */
@@ -98,7 +98,25 @@ final readonly class MenuSerialiser
         $asks = 'choose' === $course['answer']
             || (null !== $one && ([] !== $one['choices'] || Iter\count(Vec\filter($one['variants'], static fn (array $variant): bool => 'everyone' === $variant['for'])) >= 2));
 
-        return [...$course, 'picksClose' => $shown && $asks ? $close : null];
+        return $shown && $asks ? [...$course, 'picksClose' => $close] : [...$course, 'picksClose' => null, 'default' => null];
+    }
+
+    /** @return ?array{dish: string, variant: ?string, options: list<string>, chooseBy: string} the whole pick given at the choose-by date (sc-1362) */
+    private static function defaultOf(MenuCourse $course): ?array
+    {
+        $dish = $course->getDefaultDish();
+        $chooseBy = $course->getChooseBy();
+
+        if (null === $dish || null === $chooseBy) {
+            return null;
+        }
+
+        return [
+            'dish' => $dish->getId()->toRfc4122(),
+            'variant' => $course->getDefaultVariant()?->getId()->toRfc4122(),
+            'options' => $course->getDefaultOptions(),
+            'chooseBy' => $chooseBy->format('Y-m-d'),
+        ];
     }
 
     /**

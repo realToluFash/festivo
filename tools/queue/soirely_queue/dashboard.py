@@ -12,8 +12,8 @@ import time
 import urllib.parse
 import webbrowser
 
-from . import (drawing, leftovers, local, machine, permissions, remote, roles, runlog, runner,
-               sessions, store)
+from . import (drawing, leftovers, local, logins, machine, permissions, remote, roles, runlog,
+               runner, sessions, store)
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
@@ -28,6 +28,7 @@ ASK_SECONDS = 10
 KEPT_SECONDS = 150
 TOLD = "peer.json"
 TOLD_MOST_BYTES = 1 << 20
+ASKED_MOST_BYTES = 64 << 10
 
 
 def first_line(text):
@@ -70,7 +71,7 @@ def snapshot(db, platform, now, home, load=machine.load):
             "warnings": [], "machine": None, "manager": platform.timer_active(),
             "paused": runner.paused(db), "machines": [], "peers": [], "roles": [],
             "elsewhere": [], "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
-            "drawing": drawing_view(db)}
+            "drawing": drawing_view(db), "logins": []}
     try:
         config = load()
     except machine.ConfigError as error:
@@ -118,6 +119,8 @@ def snapshot(db, platform, now, home, load=machine.load):
                                     "machine has not applied: just agents permissions apply")
         view["machines"] = [{"name": name, "seen": seen["seen"], "started": seen["started"]}
                             for name, seen in sorted((agreed.get("machines") or {}).items())]
+        view["logins"] = logins.read(config)
+        view["warnings"] += logins.warnings(view["logins"], now)
         accounts = {role: machine.account(machine.claude_dir(config, role)) for role in ready}
         if "ux" in ready:
             folder = machine.claude_dir(config, "ux")
@@ -293,16 +296,136 @@ def settle(view, others):
                 for row in view["elsewhere"]]
         view["elsewhere"] = [row for row in away
                              if row["held"] or row["waiting"] or row["waiting"] is None]
+    if "logins" in view:
+        view["peer_logins"] = {name: other.get("logins") or [] for name, other in others.items()}
     return view
 
 
+def relay(answer):
+    """A peer's `(status, body)` as `(status, dict)`."""
+    status, body = answer
+    try:
+        said = json.loads(body)
+    except ValueError:
+        said = None
+    return status, said if isinstance(said, dict) else {"error": f"it answered {status}"}
+
+
+class LoginDoor:
+    """The page's Claude logins: this machine's own, held by `desk`, and the other
+    machines', asked of them. Only a page looked at on this machine has its sign-in opened
+    in Chrome, since this machine's Chrome is the only one it can open."""
+
+    def __init__(self, desk, config, peers, secret, fetch=remote.fetch, post=remote.post,
+                 opener=logins.open_chrome, bridge=logins.bridge):
+        self.desk, self.config, self.peers, self.secret = desk, config, peers, secret
+        self.fetch, self.post, self.opener, self.bridge = fetch, post, opener, bridge
+        self.bridges = {}
+
+    def state(self, name, login_id):
+        if name:
+            base = self.peers().get(name)
+            if not base:
+                return 404, {"error": f"no machine called {name}"}
+            return relay(self.fetch(base, "login/state?id=" + urllib.parse.quote(login_id),
+                                    self.secret))
+        login = self.desk.get(login_id)
+        return (200, login.answer()) if login else (404, {"error": "no such login"})
+
+    def act(self, path, asked, here):
+        name = asked.get("machine") or ""
+        if name:
+            return self.elsewhere(name, path, asked, here)
+        if path == "/login/start":
+            folder = self.desk.folder(str(asked.get("folder") or ""))
+            if not folder:
+                return 404, {"error": "no role on this machine runs under that folder"}
+            said = self.desk.start(folder).answer()
+            if here and not asked.get("for_peer"):
+                self.open(said)
+            return 200, said
+        login = self.desk.get(str(asked.get("id") or ""))
+        if not login:
+            return 404, {"error": "no such login"}
+        if path == "/login/callback":
+            status, location, body = self.desk.callback(login, str(asked.get("query") or ""))
+            return 200, {"status": status, "location": location,
+                         "body": body.decode(errors="replace")}
+        if path == "/login/code":
+            self.desk.paste(login, str(asked.get("code") or ""))
+        elif path == "/login/cancel":
+            self.desk.cancel(login)
+        else:
+            return 404, {"error": "no such step"}
+        self.desk.check(login)
+        return 200, login.answer()
+
+    def elsewhere(self, name, path, asked, here):
+        base = self.peers().get(name)
+        if not base:
+            return 404, {"error": f"no machine called {name}"}
+        if path == "/login/start":
+            status, said = relay(self.post(base, "login/start", self.secret,
+                                           json.dumps({"folder": asked.get("folder"),
+                                                       "for_peer": True}).encode(),
+                                           timeout=logins.LINK_SECONDS + 10))
+            if status == 200 and here:
+                self.open(said, base)
+            return status, said
+        if path not in ("/login/code", "/login/cancel"):
+            return 404, {"error": "no such step"}
+        if path == "/login/cancel" and (bridged := self.bridges.pop(asked.get("id"), None)):
+            bridged.close()
+        return relay(self.post(base, path[1:], self.secret,
+                               json.dumps({key: asked.get(key) for key in ("id", "code")}).encode(),
+                               timeout=logins.CALLBACK_SECONDS))
+
+    def open(self, said, base=None):
+        """Opens the sign-in in this machine's Chrome: Claude's own link while its callback
+        can come back, through a bridge to `base` when the login is held there; otherwise
+        the link whose page shows a code to paste."""
+        said["opened"] = None
+        if said.get("ended"):
+            return
+        direct, made = said.get("direct"), None
+        if direct and base:
+            made = self.bridge(direct, lambda query: self.forward(base, said["id"], query))
+            direct = direct if made else None
+        url = direct or said.get("link")
+        if url and self.opener(said.get("email"), url, self.config()):
+            said["opened"] = "direct" if url == direct else "link"
+            if made:
+                self.bridges[said["id"]] = made
+        elif made:
+            made.close()
+
+    def forward(self, base, login_id, query):
+        status, said = relay(self.post(base, "login/callback", self.secret,
+                                       json.dumps({"id": login_id, "query": query}).encode(),
+                                       timeout=logins.CALLBACK_SECONDS + 5))
+        if status != 200:
+            return 502, None, (said.get("error") or "the other machine did not answer").encode()
+        return said.get("status") or 502, said.get("location"), (said.get("body") or "").encode()
+
+
+def named_here(host):
+    """Whether a `Host` names this machine's loopback, which a page that rebound its own
+    name to 127.0.0.1 cannot send."""
+    name = urllib.parse.urlsplit(f"//{host or ''}").hostname
+    return name in ("localhost", "127.0.0.1", "::1")
+
+
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
-          host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
+          host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch, config=dict,
+          desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge,
+          usage=None):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
     for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
     reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
     settled with the peers unless one of them is asking, `session` one session's view or
-    None, and `peers` the names and addresses of the other machines. Loopback needs no
+    None, and `peers` the names and addresses of the other machines. `/login/…` starts and
+    follows a Claude login, here or on a peer, through `LoginDoor`, and `usage`, when given,
+    keeps each account's plan usage read behind the page. Loopback needs no
     token; anyone else does. Each request has a thread of its own, so a peer that is slow to
     answer, or a connection left idle, holds only itself; the queue is read by one request
     at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
@@ -314,6 +437,8 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
     reading, last = threading.Lock(), {}
     others = PeerViews(peers, secret, fetch)
     others.views()
+    door = LoginDoor(desk or logins.Desk(config), config, peers, secret, fetch, post, opener,
+                     bridge)
 
     def shared():
         with reading:
@@ -323,6 +448,28 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
 
     class Page(http.server.BaseHTTPRequestHandler):
         timeout = 10
+
+        def answer(self, status, body, kind="application/json"):
+            self.send_response(status)
+            self.send_header("Content-Type", kind)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def asked(self, most):
+            """The posted JSON object, or the status that refuses it."""
+            try:
+                size = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return 400
+            if not 0 < size <= most:
+                return 413
+            try:
+                found = json.loads(self.rfile.read(size))
+            except ValueError:
+                return 400
+            return found if isinstance(found, dict) else 400
 
         def do_GET(self):
             path, _, query = self.path.partition("?")
@@ -354,16 +501,16 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                 if found is None:
                     return self.send_error(404)
                 body = json.dumps(found).encode()
+            elif path == "/login/state":
+                asked = urllib.parse.parse_qs(query)
+                status, said = door.state((asked.get("machine") or [""])[0],
+                                          (asked.get("id") or [""])[0])
+                body = json.dumps(said).encode()
             elif path in ("/", "/index.html"):
                 body, kind = PAGE.read_bytes(), "text/html; charset=utf-8"
             else:
                 return self.send_error(404)
-            self.send_response(status)
-            self.send_header("Content-Type", kind)
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self.answer(status, body, kind)
             return None
 
         def do_POST(self):
@@ -371,30 +518,44 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             ok, _ = remote.allowed(self.client_address[0], self.headers, "", secret)
             if not ok:
                 return self.send_error(401)
+            if path.startswith("/login/"):
+                return self.login(path)
             name = (urllib.parse.parse_qs(query).get("from") or [""])[0]
             if path != f"/{TOLD}" or name not in peers():
                 return self.send_error(404)
-            try:
-                size = int(self.headers.get("Content-Length") or 0)
-            except ValueError:
-                return self.send_error(400)
-            if not 0 < size <= TOLD_MOST_BYTES:
-                return self.send_error(413)
-            try:
-                view = json.loads(self.rfile.read(size))
-            except ValueError:
-                return self.send_error(400)
-            if not isinstance(view, dict):
-                return self.send_error(400)
+            view = self.asked(TOLD_MOST_BYTES)
+            if isinstance(view, int):
+                return self.send_error(view)
             others.keep(name, view)
             self.send_response(204)
             self.end_headers()
+            return None
+
+        def login(self, path):
+            """A login step. Only JSON from this page's own address is taken, so another
+            site open in the browser cannot post one to this machine."""
+            kind = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+            if kind != "application/json":
+                return self.send_error(415)
+            origin = self.headers.get("Origin")
+            if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):
+                return self.send_error(403)
+            near = remote.loopback(self.client_address[0])
+            if near and not named_here(self.headers.get("Host")):
+                return self.send_error(403)
+            asked = self.asked(ASKED_MOST_BYTES)
+            if isinstance(asked, int):
+                return self.send_error(asked)
+            status, said = door.act(path, asked, near)
+            self.answer(status, json.dumps(said).encode())
             return None
 
         def log_message(self, *_):
             pass
 
     server = http.server.ThreadingHTTPServer((host, port), Page)
+    if usage:
+        usage.start()
     url = f"http://127.0.0.1:{server.server_port}/"
     elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
     say(f"sq web: {url} (ctrl-c stops it){elsewhere}")

@@ -134,6 +134,8 @@ A check is written like a flow, and also:
 A check that needs one request held, not the whole API, runs with `QA_API_URL` pointed at
 `node scripts/qa-slow-proxy.mjs --target <api url> --path <regex> [--method POST] [--delay ms]`,
 which holds requests of that method (GET unless told) whose path matches, and names the command in its header.
+With `--status <code>` or `--body <file>` it answers those requests itself, a failure or an
+edited copy of the API's answer, instead of forwarding them.
 
 A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`
@@ -164,6 +166,9 @@ and wait out the unhealthy status a long pause leaves before `up --wait`, which 
 it. The `sc17675-*` checks and the `sc59333-*-tablet` ones turn the device with `${ORIENT}`:
 pass `ORIENT=PORTRAIT` (`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the
 unset value as a driver crash.
+The `sc6476-*` checks also turn the tablet through the harness with `${ROT}`: the path `/portrait`
+or `/landscape`, never the bare word (the harness answers 404 and `helper.js` throws "the harness
+refused"), and the same way round as `ORIENT`.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch

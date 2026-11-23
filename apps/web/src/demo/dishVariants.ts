@@ -116,8 +116,10 @@ export const VW = {
   guestsPickTheWay: (dish: string) => `Everyone gets ${dish}. Guests pick the way.`,
 } as const;
 
-export const variantsOf = (dish: WithVariants): readonly Variant[] => dish.variants ?? [];
-export const hasVariants = (dish: WithVariants): boolean => variantsOf(dish).length > 0;
+type Varied = Pick<WithVariants, 'variants'>;
+
+export const variantsOf = (dish: Varied): readonly Variant[] => dish.variants ?? [];
+export const hasVariants = (dish: Varied): boolean => variantsOf(dish).length > 0;
 export const isForEveryone = (variant: Variant): boolean => variant.for === 'everyone';
 export const variantPicked = (variant: Variant): boolean => variant.pickers.length > 0;
 
