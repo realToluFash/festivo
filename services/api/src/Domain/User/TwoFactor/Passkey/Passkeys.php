@@ -62,7 +62,7 @@ final readonly class Passkeys
         return [
             'challenge' => $this->challenge($user, $step),
             'rpId' => $rpId,
-            'allowCredentials' => $this->descriptors($passkeys),
+            'allowCredentials' => $this->descriptors(...$passkeys),
             'userVerification' => 'required',
             'timeout' => self::TIMEOUT_MS,
         ];
@@ -91,7 +91,7 @@ final readonly class Passkeys
             'pubKeyCredParams' => Vec\map(CoseKey::ALGORITHMS, static fn (int $alg): array => ['type' => 'public-key', 'alg' => $alg]),
             'authenticatorSelection' => ['residentKey' => 'required', 'requireResidentKey' => true, 'userVerification' => 'required'],
             'attestation' => 'none',
-            'excludeCredentials' => $this->descriptors($passkeys),
+            'excludeCredentials' => $this->descriptors(...$passkeys),
             'timeout' => self::TIMEOUT_MS,
         ];
     }
@@ -106,7 +106,7 @@ final readonly class Passkeys
     {
         try {
             $parts = $this->parts($credential, 'attestationObject');
-            $challenge = $this->takeChallenge($user, $steps, $parts['clientDataJSON']);
+            $challenge = $this->takeChallenge($user, $parts['clientDataJSON'], ...$steps);
             $made = $this->ceremonies->register($this->relyingParty, $parts['clientDataJSON'], $parts['attestationObject'], $challenge[0]);
         } catch (CeremonyRefused $refused) {
             $this->logger->info('A new passkey was refused: {reason}', ['reason' => $refused->getMessage()]);
@@ -134,7 +134,7 @@ final readonly class Passkeys
     {
         try {
             $parts = $this->parts($credential, 'authenticatorData', 'signature');
-            [$challenge] = $this->takeChallenge($user, [$step], $parts['clientDataJSON']);
+            [$challenge] = $this->takeChallenge($user, $parts['clientDataJSON'], $step);
             $passkey = $this->passkeyRepository->findOneOf($user, Type\string()->coerce($credential['id'] ?? null))
                 ?? throw new CeremonyRefused('not one of this member\'s passkeys');
             $checked = $this->ceremonies->assert(
@@ -180,12 +180,8 @@ final readonly class Passkeys
         return self::encode($bytes);
     }
 
-    /**
-     * @param list<PasskeyStep> $steps
-     *
-     * @return array{0: string, 1: PasskeyStep}
-     */
-    private function takeChallenge(User $user, array $steps, string $clientDataJson): array
+    /** @return array{0: string, 1: PasskeyStep} */
+    private function takeChallenge(User $user, string $clientDataJson, PasskeyStep ...$steps): array
     {
         $bytes = $this->ceremonies->challengeOf($clientDataJson);
         $held = $this->passkeyChallengeRepository->findOneByHash(\hash('sha256', $bytes));
@@ -226,12 +222,8 @@ final readonly class Passkeys
         return $parts;
     }
 
-    /**
-     * @param list<Passkey> $passkeys
-     *
-     * @return list<array{type: string, id: string}>
-     */
-    private function descriptors(array $passkeys): array
+    /** @return list<array{type: string, id: string}> */
+    private function descriptors(Passkey ...$passkeys): array
     {
         return Vec\map($passkeys, static fn (Passkey $passkey): array => ['type' => 'public-key', 'id' => $passkey->getCredentialId()]);
     }
