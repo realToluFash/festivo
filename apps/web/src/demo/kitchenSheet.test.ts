@@ -112,16 +112,17 @@ describe('sc-3911’s kitchen sheet, from See picks’ figures', () => {
     expect(sheet.allergyCounts).toEqual([]);
   });
 
-  it('reads its state, access and paper from the link', () => {
+  it('reads its state, access, paper and menu from the link', () => {
     const start = sheetStart(
-      new URL(`https://x${sheetAt('closed', 'counts', 'letter')}`).searchParams,
+      new URL(`https://x${sheetAt('closed', 'counts', 'letter', 'moved')}`).searchParams,
     );
 
-    expect(start).toEqual({ state: 'closed', access: 'counts', paper: 'letter' });
-    expect(sheetStart(new URLSearchParams('state=nope'))).toEqual({
+    expect(start).toEqual({ state: 'closed', access: 'counts', paper: 'letter', menu: 'moved' });
+    expect(sheetStart(new URLSearchParams('state=nope&menu=nope'))).toEqual({
       state: 'open',
       access: 'manage',
       paper: null,
+      menu: 'plain',
     });
     expect(KSW.namesNeed).toBe('Names need Guests manage.');
   });

@@ -352,10 +352,6 @@ const FISH_VARIANT: Dish = {
   items: [variantItem('p12'), fixed('p5', 'Pepper sauce'), fixed('p6', 'Yam chips')],
 };
 
-/** The Main's dishes with items as this event's Menu sets them; the kitchen sheet counts the same ones. */
-export const MENU_JOLLOF: Dish = jollof(JOLLOF_ITEMS);
-export { FISH as MENU_FISH };
-
 const MOI_MOI: Dish = {
   id: 'e10',
   name: 'Moi moi',

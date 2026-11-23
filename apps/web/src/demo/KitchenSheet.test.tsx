@@ -206,3 +206,101 @@ describe('the kitchen sheet (sc-3911)', () => {
     },
   );
 });
+
+describe('By station under each course (sc-34244)', () => {
+  const course = (name: string) => screen.getByRole('region', { name });
+  const station = (block: HTMLElement, name: string) =>
+    within(block)
+      .getByRole('list', { name })
+      .querySelectorAll('li')
+      .values()
+      .map((one) => one.textContent)
+      .toArray();
+
+  it(
+    'puts By station under the Main, the Pass first and Chef’s choice its last line',
+    SLOW,
+    async () => {
+      await sheet(sheetAt('open', 'manage', null, 'items'));
+
+      const main = course('Main');
+      expect(within(main).getByRole('heading', { level: 3, name: KSW.byStation })).toBeTruthy();
+      expect(
+        within(main)
+          .getAllByRole('heading', { level: 4 })
+          .map((one) => one.textContent),
+      ).toEqual(['Pass', 'Kitchen', 'Grill']);
+      expect(station(main, 'Pass')).toEqual([
+        'Garden salad · 2',
+        'Pepper sauce · 48',
+        'Chef’s choice · 9',
+      ]);
+      expect(station(main, 'Kitchen')).toContain('Fried yam · 0');
+      expect(station(main, 'Grill')).toEqual(['Fish · 5', 'Chicken · 10', 'Beef · 7']);
+    },
+  );
+
+  it('gives the Starter, with no items and all at the Pass, no By station', SLOW, async () => {
+    await sheet(sheetAt('open', 'manage', null, 'items'));
+
+    expect(within(course('Starter')).queryByRole('heading', { name: KSW.byStation })).toBeNull();
+  });
+
+  it('shows no By station anywhere on a menu with no items', SLOW, async () => {
+    await sheet(sheetAt('open'));
+
+    expect(screen.queryByRole('heading', { name: KSW.byStation })).toBeNull();
+  });
+
+  it('lists the stations in the walking order after a lead moves one', SLOW, async () => {
+    await sheet(sheetAt('open', 'manage', null, 'moved'));
+
+    expect(
+      within(course('Main'))
+        .getAllByRole('heading', { level: 4 })
+        .map((one) => one.textContent),
+    ).toEqual(['Pass', 'Grill', 'Kitchen']);
+  });
+
+  it('gives the same lines with counts only, naming nobody', SLOW, async () => {
+    await sheet(sheetAt('open', 'counts', null, 'items'));
+
+    expect(screen.getByText(KSW.namesNeed)).toBeTruthy();
+    expect(station(course('Main'), 'Pass')).toEqual([
+      'Garden salad · 2',
+      'Pepper sauce · 48',
+      'Chef’s choice · 9',
+    ]);
+  });
+
+  it('prints By station under each course, a course never split across pages', SLOW, async () => {
+    await sheet(sheetAt('open', 'manage', null, 'items'));
+    fireEvent.click(screen.getByRole('link', { name: KSW.print }));
+    await screen.findAllByRole('article', {}, WAIT);
+
+    const pages = screen.getAllByRole('article');
+    const last = pages.at(-1) as HTMLElement;
+    expect(pages.map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Page 1 of 4',
+      'Page 2 of 4',
+      'Page 3 of 4',
+      'Page 4 of 4',
+    ]);
+    expect(screen.getAllByRole('heading', { level: 3, name: KSW.byStation })).toHaveLength(2);
+    expect(within(last).getByRole('heading', { level: 2, name: 'Dessert' })).toBeTruthy();
+    expect(station(last, 'Pastry')).toEqual(['Chin chin · 20', 'Zobo sorbet · 15']);
+    expect(screen.getAllByText(KSW.health)).toHaveLength(4);
+    expect(screen.getByRole('link', { name: KSW.toSheet }).getAttribute('href')).toBe(
+      sheetAt('open', 'manage', null, 'items'),
+    );
+  });
+
+  it('keeps sc-3911’s two printed pages on a menu with no items', SLOW, async () => {
+    await sheet(sheetAt('open', 'manage', 'a4'));
+
+    expect(screen.getAllByRole('article').map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Page 1 of 2',
+      'Page 2 of 2',
+    ]);
+  });
+});
