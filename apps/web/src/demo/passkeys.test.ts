@@ -10,6 +10,8 @@ import {
   codeStepOf,
   factorRows,
   firstStep,
+  heldOf,
+  LOST_WORDS,
   offersApp,
   offersPasskey,
   passkeyName,
@@ -63,5 +65,15 @@ describe('two-factor with a passkey (sc-86885)', () => {
   it('names a passkey by its listed provider, else Passkey', () => {
     expect(passkeyName(PASSKEYS[0])).toBe('iCloud Keychain');
     expect(passkeyName(PASSKEYS[2])).toBe('Passkey');
+  });
+});
+
+describe('the lost-two-factor link', () => {
+  it('names the factors the member has', () => {
+    expect(LOST_WORDS[heldOf(appOnly)]).toBe('Lost your authenticator and your recovery codes?');
+    expect(LOST_WORDS[heldOf(passkeysOnly)]).toBe('Lost your passkeys and your recovery codes?');
+    expect(LOST_WORDS[heldOf({ app: APP_ON, passkeys: PASSKEYS })]).toBe(
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    );
   });
 });

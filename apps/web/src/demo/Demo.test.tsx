@@ -551,6 +551,16 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(screen.getByRole('link', { name: /This link has already been used/ })).toBeDefined();
   });
 
+  it('names the passkeys and the app in the lost link at the code step after a passkey (sc-86885)', async () => {
+    await page('?page=code&state=has-passkey', 'Enter your code');
+
+    expect(
+      screen.getByRole('link', {
+        name: 'Lost your passkeys, your authenticator and your recovery codes?',
+      }),
+    ).toBeDefined();
+  });
+
   it('opens from sign-in with the email typed there, and Back returns to that sign-in', async () => {
     await signInBoard('signed-out');
     type('Email', 'ade@ire.events');
@@ -863,6 +873,22 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(
       screen.queryByRole('heading', { name: 'Get back in without your authenticator' }),
     ).toBeNull();
+  });
+
+  it.each([
+    ['?page=recovery&state=passkeys-only', 'Lost your passkeys and your recovery codes?'],
+    [
+      '?page=recovery&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+  ])('names the factors the member has in the lost link, at %s (sc-86885)', async (query, lost) => {
+    await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+
+    expect(screen.getByRole('link', { name: lost })).toBeDefined();
   });
 
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {

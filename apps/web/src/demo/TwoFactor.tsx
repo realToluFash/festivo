@@ -7,6 +7,7 @@ import { offButton } from '../offButton.ts';
 import { BoardPage, SignedInAs } from './BoardPage.tsx';
 import { NoBrowser, PasskeyStep } from './Passkeys.tsx';
 import { CodeField, Heading, Notice, Resend, useBusy } from './parts.tsx';
+import { LOST_WORDS } from './passkeys.ts';
 import {
   CODE_LENGTH,
   LOCK_MS,
@@ -72,6 +73,11 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
   const noBrowser = state.startsWith('no-passkeys');
   const passkeysOnly = state.endsWith('passkeys-only');
   const backToPasskey = !noBrowser && (passkeysOnly || state === 'has-passkey');
+  const held = passkeysOnly
+    ? 'passkeys'
+    : state === 'has-passkey' || state === 'no-passkeys'
+      ? 'both'
+      : 'app';
   const carried = useLocation().state as { outlasted?: boolean } | null;
   const opening = recovery
     ? state === 'used'
@@ -246,7 +252,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
           to={twoFactorAt('start')}
           state={outlasted ? { outlasted } : null}
         >
-          Lost your authenticator and your recovery codes?
+          {LOST_WORDS[held]}
         </Link>
         {locked && (
           <p className="demo-aside">

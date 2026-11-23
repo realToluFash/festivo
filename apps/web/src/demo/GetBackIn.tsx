@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { offField } from '../offField.ts';
 import { BoardPage, HaveAccount, SignedInAs } from './BoardPage.tsx';
 import { NoBrowser, PasskeyStep } from './Passkeys.tsx';
+import { LOST_WORDS } from './passkeys.ts';
 import {
   CodeForm,
   Heading,
@@ -67,7 +68,7 @@ export function GetBackInBoard() {
     case 'done':
       return <Changed key={key} email={reset.email} />;
     case 'code':
-      return <CodeFirst key={key} email={reset.email} noBrowser={state === 'no-passkeys'} />;
+      return <CodeFirst key={key} email={reset.email} state={state} />;
     case 'code-passkey':
       return <PasskeyFirst key={key} email={reset.email} state={state} />;
     case 'support':
@@ -408,8 +409,11 @@ function ReadFailed() {
 }
 
 /** Two-factor on: the code passes before the password can change. */
-function CodeFirst({ email, noBrowser }: { email: string; noBrowser: boolean }) {
+function CodeFirst({ email, state }: { email: string; state: string }) {
   const navigate = useNavigate();
+  const noBrowser = state === 'no-passkeys';
+  /** sc-86885: reached from the passkey step, or a browser without passkeys, so the member holds both. */
+  const held = noBrowser || state === 'has-passkey' ? 'both' : 'app';
 
   return (
     <BoardPage end={null}>
@@ -431,11 +435,14 @@ function CodeFirst({ email, noBrowser }: { email: string; noBrowser: boolean }) 
         onVerified={() => void navigate(backIn('new'), { state: { email } })}
       />
       <div className="demo-asides">
-        <Link className="link-button demo-link" to={twoFactorAt('recovery')}>
+        <Link
+          className="link-button demo-link"
+          to={twoFactorAt('recovery', held === 'both' ? state : undefined)}
+        >
           Use a recovery code instead
         </Link>
         <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
-          Lost your authenticator and your recovery codes?
+          {LOST_WORDS[held]}
         </Link>
       </div>
     </BoardPage>
@@ -445,19 +452,25 @@ function CodeFirst({ email, noBrowser }: { email: string; noBrowser: boolean }) 
 /** sc-86885: two-factor with a passkey, so the reset asks for it first, in the code's place. */
 function PasskeyFirst({ email, state }: { email: string; state: string }) {
   const navigate = useNavigate();
+  const passkeysOnly = state.endsWith('passkeys-only');
 
   return (
     <BoardPage end={null}>
       <PasskeyStep
         lead={`Your account uses two-factor, so the reset asks for your passkey first. Nothing changes until it passes.`}
-        start={{ sheet: state !== 'cancelled' }}
+        start={{ sheet: !state.startsWith('cancelled') }}
         onPassed={() => void navigate(backIn('new'), { state: { email } })}
-        onCode={() => void navigate(backIn('code'), { state: { email } })}
+        onCode={() =>
+          void navigate(
+            passkeysOnly ? twoFactorAt('recovery', 'passkeys-only') : backIn('code', 'has-passkey'),
+            { state: { email } },
+          )
+        }
         onLapse={null}
       />
       <div className="demo-asides">
         <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
-          Lost your authenticator and your recovery codes?
+          {LOST_WORDS[passkeysOnly ? 'passkeys' : 'both']}
         </Link>
       </div>
     </BoardPage>

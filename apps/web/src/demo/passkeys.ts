@@ -104,6 +104,21 @@ export function firstStep(factors: Factors, webauthn: boolean): 'passkey' | Code
   return webauthn && factors.passkeys.length > 0 ? 'passkey' : codeStepOf(factors);
 }
 
+export type Held = 'app' | 'passkeys' | 'both';
+
+export function heldOf(factors: Factors): Held {
+  if (factors.passkeys.length === 0) return 'app';
+
+  return factors.app == null ? 'passkeys' : 'both';
+}
+
+/** The lost-two-factor link names the factors the member has; all three lead where today's does (sc-86885, #87307). */
+export const LOST_WORDS: Record<Held, string> = {
+  app: 'Lost your authenticator and your recovery codes?',
+  passkeys: 'Lost your passkeys and your recovery codes?',
+  both: 'Lost your passkeys, your authenticator and your recovery codes?',
+};
+
 export function passkeyName(passkey: Passkey): string {
   return passkey.provider ?? PASSKEY_WORDS.passkey;
 }
