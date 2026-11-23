@@ -57,6 +57,7 @@ import {
   TOOLS_BUTTON,
   MENU_ONBOARDED,
   SCREEN_READER_OFF,
+  TEXT_SIZE_RESET,
   STYLUS_HANDWRITING_OFF,
   driverBuilds,
   driverPids,
@@ -791,6 +792,18 @@ describe('the screen reader on an emulator android opens', () => {
 
   it('says so, so a tester turns it on again', () => {
     expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
+  });
+});
+
+describe('the text size on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+
+  it('goes back to default before Expo Go is launched, and says so', () => {
+    const reset = ANDROID_START[at('text size reset')];
+    expect(reset.adb).toBe(TEXT_SIZE_RESET);
+    expect(TEXT_SIZE_RESET).toEqual([['shell', 'settings', 'put', 'system', 'font_scale', '1.0']]);
+    expect(at('text size reset')).toBeLessThan(at('Expo Go launched'));
+    expect(reset.say).toMatch(/Text size is back to default/);
   });
 });
 

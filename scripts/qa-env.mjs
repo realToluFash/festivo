@@ -2570,6 +2570,9 @@ export const SCREEN_READER_OFF = [
   ['shell', 'settings', 'put', 'secure', 'accessibility_enabled', '0'],
 ];
 
+// A large-text pass leaves the text size up, which pushes buttons a flow taps below the fold (sc-88284).
+export const TEXT_SIZE_RESET = [['shell', 'settings', 'put', 'system', 'font_scale', '1.0']];
+
 // Console-sent touches open Gboard's stylus tryout over the app (sc-43614).
 export const STYLUS_HANDWRITING_OFF = [
   ['shell', 'settings', 'put', 'secure', 'stylus_handwriting_enabled', '0'],
@@ -2591,6 +2594,11 @@ export const ANDROID_START = [
     name: 'screen reader off',
     adb: SCREEN_READER_OFF,
     say: '  TalkBack is off: turn it on again in Settings for a screen-reader pass.',
+  },
+  {
+    name: 'text size reset',
+    adb: TEXT_SIZE_RESET,
+    say: '  Text size is back to default: set it again in Settings for a large-text pass.',
   },
   { name: 'stylus handwriting off', adb: STYLUS_HANDWRITING_OFF },
   {
