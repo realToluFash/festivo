@@ -848,8 +848,8 @@ function ProofStep({
       onClose={onClose}
       onContinue={async (password, code): Promise<ConfirmSays | null> => {
         if (spent.current) {
-          const next = pressAfterLimit(heldProof());
-          if (next !== 'tripAgain') {
+          const next = pressAfterLimit(heldProof(), proving.codeAsked);
+          if (typeof next === 'object') {
             const said = await onProved(next.resend, false);
             if (said?.limitedUntil == null) return said;
             setLimitedUntil(said.limitedUntil);
@@ -858,8 +858,7 @@ function ProofStep({
           }
           spent.current = false;
           proving.startOver();
-          // At the code step the proof starts again at the provider's button; without one, this press makes the trip.
-          if (proving.codeAsked) return { password: null, code: null, checked: false };
+          if (next === 'startOver') return { password: null, code: null, checked: false };
         }
         const blank = {
           password: asks.password && password === '' ? t('waysCard.passwordBlank') : null,

@@ -57,8 +57,10 @@ describe('proving it is you, from Security', () => {
   });
 
   it('keeps the code step after a sign-out limit, re-sending the held proof and making the trip again only once it lapsed (sc-22601)', () => {
-    expect(pressAfterLimit('held-proof')).toEqual({ resend: 'held-proof' });
-    expect(pressAfterLimit(null)).toBe('tripAgain');
+    expect(pressAfterLimit('held-proof', true)).toEqual({ resend: 'held-proof' });
+    expect(pressAfterLimit('held-proof', false)).toEqual({ resend: 'held-proof' });
+    expect(pressAfterLimit(null, true)).toBe('startOver');
+    expect(pressAfterLimit(null, false)).toBe('startOverAndTrip');
   });
 
   it('says a refused provider proof on the screen, not on a password field it does not show', () => {

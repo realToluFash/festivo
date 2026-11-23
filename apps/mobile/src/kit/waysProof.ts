@@ -44,9 +44,14 @@ export function tripStartsOver(
   };
 }
 
-/** The press after a sign-out limit that came after a passed proof: the held proof again while it stands, else the trip again (sc-22601). */
-export function pressAfterLimit(held: string | null): { resend: string } | 'tripAgain' {
-  return held == null ? 'tripAgain' : { resend: held };
+/** The press after a sign-out limit that came after a passed proof: the held proof again while it stands; once it lapsed, the proof starts over, back at the provider's button when the code was asked, else with this press making the trip (sc-22601). */
+export function pressAfterLimit(
+  held: string | null,
+  codeAsked: boolean,
+): { resend: string } | 'startOver' | 'startOverAndTrip' {
+  if (held != null) return { resend: held };
+
+  return codeAsked ? 'startOver' : 'startOverAndTrip';
 }
 
 /** A refusal of the trip itself (the wrong account, a sign-in too old, or a kept one lapsed): only then is it made again. */
