@@ -11,6 +11,7 @@ use DateTimeZone;
 use IntlDateFormatter;
 use IntlDatePatternGenerator;
 use Psl\Html;
+use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -75,7 +76,7 @@ final readonly class KitchenSheetDocument
                 self::e(Str\join([
                     $this->word('coming', $locale, ['count' => $sheet['coming']]),
                     $this->word('allergic', $locale, ['count' => $sheet['allergicCount']]),
-                    $this->word('courses', $locale, ['count' => \count($courses)]),
+                    $this->word('courses', $locale, ['count' => Iter\count($courses)]),
                 ], ' · ')),
             ),
             $this->allergies($sheet, $locale),

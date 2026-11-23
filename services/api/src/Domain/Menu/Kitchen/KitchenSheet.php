@@ -16,7 +16,6 @@ use App\Enum\Paper;
 use Closure;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Math;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -25,7 +24,6 @@ use Psl\Vec;
  * The kitchen sheet (sc-3911): who must not eat what, then the diets, then what to cook. Every count is See picks' own (sc-3909), so the two agree at the same moment.
  *
  * @phpstan-import-type Course from PicksMenu
- * @phpstan-import-type Spot from PicksMenu
  *
  * @phpstan-type Cell array{kind: string, text?: string}
  * @phpstan-type Allergic array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, cells: list<Cell>}
@@ -44,11 +42,7 @@ final readonly class KitchenSheet
     ) {
     }
 
-    /**
-     * @param bool $names guests.manage: Allergies names each person with what they eat; without it, counts per allergen only
-     *
-     * @return Sheet
-     */
+    /** @return Sheet Allergies names each person, with what they eat, only when $names (guests.manage) */
     public function of(Event $event, bool $names): array
     {
         $figures = $this->picksFigures->of($event, false);
@@ -57,7 +51,14 @@ final readonly class KitchenSheet
         $needs = $this->guestNeedsRecord->of($room);
         $needsOf = static fn (Guest $person): GuestNeeds => $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none();
         $allergic = Vec\filter($room, static fn (Guest $person): bool => [] !== $needsOf($person)->codesOf(NeedKind::Allergen));
-        $counted = Dict\from_entries(Vec\map(self::countedType()->coerce($figures['courses']), static fn (array $course): array => [$course['id'], $course]));
+        $counts = static fn (NeedKind $kind): array => Vec\filter(
+            Vec\map($kind->codes(), static fn (string $code): array => [
+                'code' => $code,
+                'count' => Iter\count(Vec\filter($room, static fn (Guest $person): bool => Iter\contains($needsOf($person)->codesOf($kind), $code))),
+            ]),
+            static fn (array $one): bool => $one['count'] > 0,
+        );
+        $counted = Dict\from_entries(Vec\map(KitchenCourse::countedType()->coerce($figures['courses']), static fn (array $course): array => [$course['id'], $course]));
 
         return [
             'asOf' => Type\string()->coerce($figures['updatedAt']),
@@ -66,9 +67,9 @@ final readonly class KitchenSheet
             'coming' => Iter\count($room),
             'allergicCount' => Iter\count($allergic),
             'allergic' => $names ? $this->allergic($event, $room, $allergic, $courses, $needsOf) : null,
-            'allergyCounts' => self::counts($room, $needsOf, NeedKind::Allergen),
-            'dietCounts' => self::counts($room, $needsOf, NeedKind::Diet),
-            'courses' => Vec\map($courses, static fn (array $course): array => self::course($course, $counted[$course['id']])),
+            'allergyCounts' => $counts(NeedKind::Allergen),
+            'dietCounts' => $counts(NeedKind::Diet),
+            'courses' => Vec\map($courses, static fn (array $course): array => KitchenCourse::of($course, $counted[$course['id']])),
         ];
     }
 
@@ -98,98 +99,8 @@ final readonly class KitchenSheet
                 'name' => $person->getFullName() ?? '',
                 'allergens' => $needs->codesOf(NeedKind::Allergen),
                 'otherAllergy' => $needs->otherOf(NeedKind::Allergen),
-                'cells' => Vec\map($courses, static fn (array $course): array => self::cell($course, $spots[$course['id']][$id])),
+                'cells' => Vec\map($courses, static fn (array $course): array => KitchenCourse::cell($course, $spots[$course['id']][$id])),
             ];
         });
-    }
-
-    /**
-     * @param Course $course
-     * @param Spot   $spot
-     *
-     * @return Cell a dish, or `kitchen`, `skipped`, `host`, `notYet` or `never`
-     */
-    private static function cell(array $course, array $spot): array
-    {
-        return match ($spot['state']) {
-            'dish', 'defaulted' => ['kind' => 'dish', 'text' => PicksMenu::plateName($course, $spot['dish'] ?? '', $spot['variant'] ?? null, $spot['options'] ?? [])],
-            'kitchen', 'skipped', 'host' => ['kind' => $spot['state']],
-            default => ['kind' => isset($spot['excluded']) && self::closedWithDefault($course) ? 'never' : 'notYet'],
-        };
-    }
-
-    /**
-     * @param Course  $course
-     * @param Counted $counted
-     *
-     * @return SheetCourse a dish's count is its chosen and its defaulted together, as See picks counts it
-     */
-    private static function course(array $course, array $counted): array
-    {
-        $rows = Vec\map($counted['rows'], static fn (array $row): array => [
-            'id' => $row['id'],
-            'kind' => match ($row['kind']) {
-                'variant' => 'variant',
-                'option' => 'side',
-                default => 'dish',
-            },
-            'name' => $row['name'],
-            'count' => $row['chosen'] + $row['defaulted'],
-        ]);
-        $defaulted = Math\sum(Vec\map(Vec\filter($counted['rows'], static fn (array $row): bool => 'dish' === $row['kind']), static fn (array $row): int => $row['defaulted']));
-        $default = $course['default'];
-
-        return [
-            'id' => $course['id'],
-            'name' => $course['name'],
-            'rows' => $rows,
-            'kitchen' => $counted['kitchen'],
-            'skipped' => $counted['skipped'],
-            'needsHost' => $counted['needsHost'],
-            'notChosen' => $counted['notChosen'],
-            'never' => self::closedWithDefault($course),
-            'room' => $counted['room'],
-            'given' => null !== $default && $counted['closed'] && $defaulted > 0
-                ? ['count' => $defaulted, 'plate' => PicksMenu::plateName($course, $default['dish'], $default['variant'], $default['options'])]
-                : null,
-            'sides' => Iter\any($counted['rows'], static fn (array $row): bool => 'option' === $row['kind']),
-        ];
-    }
-
-    /** @param Course $course after its close, anyone still without a dish is someone sc-1362 never gives the default */
-    private static function closedWithDefault(array $course): bool
-    {
-        return null !== $course['default'] && ($course['picksClose']['closed'] ?? false);
-    }
-
-    /**
-     * @param list<Guest>                $room
-     * @param Closure(Guest): GuestNeeds $needsOf
-     *
-     * @return list<array{code: string, count: int}> in the list's own order, Other last, only the codes someone has
-     */
-    private static function counts(array $room, Closure $needsOf, NeedKind $kind): array
-    {
-        $counts = Vec\map($kind->codes(), static fn (string $code): array => [
-            'code' => $code,
-            'count' => Iter\count(Vec\filter($room, static fn (Guest $person): bool => Iter\contains($needsOf($person)->codesOf($kind), $code))),
-        ]);
-
-        return Vec\filter($counts, static fn (array $one): bool => $one['count'] > 0);
-    }
-
-    /** @return Type\TypeInterface<list<Counted>> */
-    private static function countedType(): Type\TypeInterface
-    {
-        return Type\vec(Type\shape([
-            'id' => Type\string(),
-            'rows' => Type\vec(Type\shape(['id' => Type\string(), 'kind' => Type\string(), 'name' => Type\string(), 'chosen' => Type\int(), 'defaulted' => Type\int()], true)),
-            'kitchen' => Type\int(),
-            'skipped' => Type\int(),
-            'needsHost' => Type\int(),
-            'notChosen' => Type\int(),
-            'room' => Type\int(),
-            'closed' => Type\bool(),
-        ], true));
     }
 }
