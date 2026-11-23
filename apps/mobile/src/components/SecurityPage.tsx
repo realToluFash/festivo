@@ -373,7 +373,7 @@ export function SecurityPage({
     }
   }
 
-  async function signOutEverywhere(held: string): Promise<ConfirmSays | null> {
+  async function signOutEverywhere(held: string): Promise<ProvedSays | null> {
     const outcome = await signOutOthers(() => api.signOutEverywhereElse(held, others.sessionId), t);
     switch (outcome.kind) {
       case 'endedHere':
@@ -383,6 +383,19 @@ export function SecurityPage({
         done(outcome.words);
         readAgain();
         return null;
+      case 'limited':
+        return {
+          password: null,
+          code: null,
+          checked: false,
+          other:
+            outcome.until == null
+              ? t('passwordCard.pausedSoon')
+              : t('devices.everywhereLimitedBody', {
+                  time: formatTimeOfDay(outcome.until, dateLocale()),
+                }),
+          limitedUntil: outcome.until,
+        };
       case 'failed':
         if (outcome.refused) await onRefused().catch(() => {});
         return { password: null, code: null, checked: false, other: outcome.message };
@@ -755,7 +768,7 @@ function ProofStep({
   email: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
-  onProved: (proof: string, codeSpent: boolean) => Promise<ConfirmSays | null>;
+  onProved: (proof: string, codeSpent: boolean) => Promise<ProvedSays | null>;
   /** Turning off and new codes: the code is the proof, sent with the change. */
   onCode: (code: string) => Promise<string | null>;
 }) {
@@ -780,6 +793,18 @@ function ProofStep({
 
     return () => clearTimeout(lifts);
   }, [limitedUntil]);
+  const limited = useMemo(
+    () =>
+      limitedUntil == null
+        ? undefined
+        : {
+            title: t('devices.everywhereLimitedTitle'),
+            body: t('devices.everywhereLimitedBody', {
+              time: formatTimeOfDay(limitedUntil, dateLocale()),
+            }),
+          },
+    [limitedUntil, t],
+  );
   const stepTwo = provider != null && proving.signedIn != null ? provider : null;
   const lead = codeOnly
     ? t('twoFactorCard.offBody')
@@ -811,15 +836,7 @@ function ProofStep({
           : codeHelp(t, stepTwo),
     instead: provider,
     trip: tripVia == null ? undefined : { provider: tripVia, signedIn: proving.signedIn },
-    limited:
-      limitedUntil == null
-        ? undefined
-        : {
-            title: t('devices.everywhereLimitedTitle'),
-            body: t('devices.everywhereLimitedBody', {
-              time: formatTimeOfDay(limitedUntil, dateLocale()),
-            }),
-          },
+    limited,
   };
 
   return (
@@ -840,7 +857,13 @@ function ProofStep({
           return refused == null ? null : { password: null, code: refused, checked: false };
         }
         const outcome = await proving.submit(password, code);
-        if (outcome.kind === 'proved') return onProved(outcome.proof, outcome.codeSpent);
+        if (outcome.kind === 'proved') {
+          const said = await onProved(outcome.proof, outcome.codeSpent);
+          if (said?.limitedUntil == null || tripVia == null) return said;
+          setLimitedUntil(said.limitedUntil);
+
+          return { password: null, code: null, checked: false };
+        }
         if (outcome.kind !== 'refused') return { password: null, code: null, checked: false };
         const { field, message, until } = outcome.refusal;
         if (proof === 'everywhere' && tripVia != null && until != null) {
@@ -860,6 +883,9 @@ function ProofStep({
     />
   );
 }
+
+/** A sign-out the API held back for too many tries says until when, so a provider's button can stay off until then. */
+type ProvedSays = ConfirmSays & { limitedUntil?: Date | null };
 
 function askOf(ask: AskKind | null, words: Record<AskKind, AskWords | null>): AskWords | null {
   return ask == null ? null : words[ask];
