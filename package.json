@@ -8,7 +8,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:php && npm run lint:actions",
-    "lint:js": "eslint .",
+    "lint:js": "eslint . --concurrency=auto",
     "lint:css": "stylelint \"apps/web/src/**/*.css\"",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
     "lint:actions": "node scripts/lint-actions.mjs",

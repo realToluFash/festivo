@@ -40,7 +40,7 @@ final readonly class NotificationItemSerialiser
     {
         return [
             'id' => $item->getId()->toRfc4122(),
-            'category' => $item->getCategory()->value,
+            'category' => $item->getCategory(),
             'title' => $item->getTitle(),
             'lines' => $item->getLines(),
             'eventId' => $item->getEventId()?->toRfc4122(),

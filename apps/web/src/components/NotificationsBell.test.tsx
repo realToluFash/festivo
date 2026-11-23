@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Outlet, RouterProvider, createMemoryRouter } from 'react-router';
 
-import { BellPanel } from './BellPanel.tsx';
+import { Glyph } from './Glyph.tsx';
 import { MuteSwitch } from './MuteSwitch.tsx';
 import { cssRule, stylesheet } from '../test-styles.ts';
 import { NotificationsBell } from './NotificationsBell.tsx';
@@ -710,6 +710,33 @@ describe('the bell in the B frame (sc-83081)', () => {
     expect(pop?.style.top).toBe('152px');
   });
 
+  it('follows the bell when the offline band of the page arrives above it and leaves (#84630)', async () => {
+    answering({
+      'GET /api/notifications': () => json({ items: [item()], unreadCount: 1, next: null }),
+    });
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(800);
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(1280);
+    let bottom = 78;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      () =>
+        ({ top: bottom - 44, bottom, left: 1196, right: 1240, width: 44, height: 44 }) as DOMRect,
+    );
+    const { container } = renderedBell('banner');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const pop = container.querySelector<HTMLElement>('.bell-pop');
+    expect(pop?.style.top).toBe('86px');
+
+    const band = document.createElement('div');
+    bottom = 144;
+    document.body.prepend(band);
+    await waitFor(() => expect(pop?.style.top).toBe('152px'));
+
+    bottom = 78;
+    band.remove();
+    await waitFor(() => expect(pop?.style.top).toBe('86px'));
+  });
+
   it('scrolls only the items', () => {
     expect(cssRule('.bell-body', BELL_CSS)).toMatch(/overflow-y: auto;/u);
     expect(cssRule('.bell-pop', BELL_CSS)).not.toMatch(/overflow-y/u);
@@ -759,43 +786,42 @@ describe('the marks (sc-83081)', () => {
     expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('draws no mark for a category it does not know, and keeps its words', () => {
-    render(
-      <BellPanel
-        titleId="t"
-        heading={null}
-        refreshing={false}
-        unread={0}
-        onReadAll={() => undefined}
-        band={null}
-        notice={null}
-        ask={null}
-        feed="loaded"
-        rows={[
-          {
-            id: 'n1',
-            category: 'something_new',
-            title: 'A new kind',
-            lines: [],
-            where: 'at 09:00',
-            unread: false,
-            muted: false,
-            more: null,
-            goneShown: false,
-          },
-        ]}
-        onPick={() => undefined}
-        onTryAgain={() => undefined}
-        more={null}
-        menu={null}
-        onMenu={() => undefined}
-        settings={null}
-      />,
-    );
-    const shown = screen.getByRole('button', { name: /^A new kind/ });
+  it('keeps an item of a category it does not know, with the plain bell for its mark, and counts it (sc-84143)', async () => {
+    answering({
+      'GET /api/notifications': () =>
+        json({
+          items: [
+            item({
+              id: 'n9',
+              category: 'venue_news',
+              title: 'Ana Souza added a note to the event',
+              lines: [],
+            }),
+          ],
+          unreadCount: 1,
+          next: null,
+        }),
+      'POST /api/notifications/read-all': () => json({ unreadCount: 0 }),
+    });
+    bell();
 
-    expect(shown.querySelector('.bell-glyph')).toBeNull();
-    expect(shown.textContent).toBe('A new kindat 09:00');
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 1 unread' }));
+    const shown = await screen.findByRole('button', {
+      name: /^Ana Souza added a note to the event/,
+    });
+    const { container: plain } = render(<Glyph name="bell" size={20} />);
+
+    expect(shown.querySelector('.bell-glyph')?.getAttribute('aria-hidden')).toBe('true');
+    expect(shown.querySelector('.bell-glyph')?.innerHTML).toBe(plain.innerHTML);
+    expect(shown.textContent).toContain('Unread');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+
+    expect(await screen.findByText('All read.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Notifications' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^Ana Souza added a note to the event/ }).textContent,
+    ).not.toContain('Unread');
   });
 });
 

@@ -12,9 +12,9 @@ export const CATEGORY_MARK: Record<NotificationCategory, GlyphName> = {
   account_security: 'shield',
 };
 
-/** A category the client does not know draws no mark, and its item keeps its words. */
-export function markOf(category: string): GlyphName | null {
+/** A category the client does not know draws the plain bell, which names no category (sc-84143). */
+export function markOf(category: string): GlyphName {
   return Object.hasOwn(CATEGORY_MARK, category)
     ? CATEGORY_MARK[category as NotificationCategory]
-    : null;
+    : 'bell';
 }

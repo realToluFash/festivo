@@ -215,6 +215,7 @@ final readonly class GuestPageController
             'event' => $this->guestPageEvent->of($event, $phase),
             'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
+            'onTheDay' => $this->guestAnswers->onTheDay($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),

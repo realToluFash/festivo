@@ -96,7 +96,7 @@ export function bellStartOf(state: BellState): BellStart {
     case 'bellRefreshing':
       return { ...REST, offline: 'refreshing' };
     case 'bellUnknown':
-      return { ...REST, unknown: true, muted: true };
+      return { ...REST, unknown: true, muted: true, marked: ['replies', 'unknown'] };
     case 'bell':
       return REST;
   }
@@ -122,12 +122,10 @@ export const BW = {
   unknown: 'Ana Souza added a note to the event',
 };
 
-/** The categories Mute this event holds, as the API's NotificationCategory::heldByMute: never Event day or Account & security. */
-export const HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
-  'guest_replies',
-  'messages',
-  'event_changes',
-  'money',
+/** The categories Mute this event never holds, as the API's NotificationCategory::heldByMute; any other, one this app does not know included, it holds. */
+export const NEVER_HELD_BY_MUTE: ReadonlySet<NotificationCategory> = new Set([
+  'event_day',
+  'account_security',
 ]);
 
 /** An item is marked Muted when it arrived after the mute, in a category the mute holds; the switch re-marks nothing shown. */
@@ -135,7 +133,7 @@ export function mutedOf(
   start: BellStart,
   item: { key: string; category: NotificationCategory | typeof UNKNOWN_CATEGORY },
 ): boolean {
-  if (item.category === UNKNOWN_CATEGORY) return false;
+  if (!start.marked.includes(item.key)) return false;
 
-  return start.marked.includes(item.key) && HELD_BY_MUTE.has(item.category);
+  return item.category === UNKNOWN_CATEGORY || !NEVER_HELD_BY_MUTE.has(item.category);
 }

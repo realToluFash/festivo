@@ -591,6 +591,8 @@
     "tellThanks_one": "Thank you. {{hosts}} has been told and will look into it. You can close this page.",
     "tellThanks_other": "Thank you. {{hosts}} have been told and will look into it. You can close this page.",
     "yourAnswer": "Your answer",
+    "yourCode": "Your code",
+    "where": "Where",
     "replyBy": "Please answer by {{date}}. You can change your answer any time before then.",
     "yes": "Yes, I’ll be there",
     "no": "Sorry, I can’t",

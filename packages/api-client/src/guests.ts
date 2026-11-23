@@ -357,6 +357,8 @@ export interface GuestPage {
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
   started: boolean;
+  /** From 00:00 on the start date until the end, both in the event's zone, by the server's clock (sc-24381). */
+  onTheDay: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */

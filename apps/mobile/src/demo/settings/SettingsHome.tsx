@@ -157,7 +157,8 @@ export function SettingsHome({
   onSignOut,
   onDemo,
   held = null,
-}: Handlers & { held?: Held | null }) {
+  back,
+}: Handlers & { held?: Held | null; back?: (() => void) | undefined }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -177,7 +178,7 @@ export function SettingsHome({
   if (held != null)
     return (
       <PausedHere.Provider value={held === 'paused'}>
-        <HeldSettings held={held} onSignOut={onSignOut} />
+        <HeldSettings held={held} back={back} onSignOut={onSignOut} />
       </PausedHere.Provider>
     );
 
@@ -246,8 +247,16 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). */
-function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
+/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). */
+function HeldSettings({
+  held,
+  back,
+  onSignOut,
+}: {
+  held: Held;
+  back?: (() => void) | undefined;
+  onSignOut: () => void;
+}) {
   const shell = useShell();
   const search = held !== 'paused';
   const insets = useSafeAreaInsets();
@@ -271,6 +280,11 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
     return (
       <View style={styles.page}>
         <PortraitTop at="Settings" search={search} />
+        {back != null && (
+          <View style={styles.portraitBack}>
+            <Back onPress={back} testID="settings.held.back" />
+          </View>
+        )}
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
@@ -285,15 +299,28 @@ function HeldSettings({ held, onSignOut }: { held: Held; onSignOut: () => void }
           { paddingTop: insets.top + tokens.spaceXs, paddingBottom: foot + PHONE_TAB_BAR },
         ]}
       >
-        <View style={styles.orgRow}>
-          <OrgPill />
-          <View style={styles.grow} />
-          {search ? (
-            <SearchAndBell tell={shell.tell} role={shell.looking.role} />
-          ) : (
-            <Bell tell={shell.tell} />
-          )}
-        </View>
+        {back != null ? (
+          <>
+            <View style={styles.orgRow}>
+              <OrgPill />
+            </View>
+            <View style={styles.orgRow}>
+              <Back onPress={back} testID="settings.held.back" />
+              <View style={styles.grow} />
+              <Bell tell={shell.tell} />
+            </View>
+          </>
+        ) : (
+          <View style={styles.orgRow}>
+            <OrgPill />
+            <View style={styles.grow} />
+            {search ? (
+              <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+            ) : (
+              <Bell tell={shell.tell} />
+            )}
+          </View>
+        )}
         {standIn}
       </View>
       <TabBarFade />

@@ -39,6 +39,7 @@ const PAGE = {
   },
   phase: 'live',
   started: false,
+  onTheDay: false,
   answersOpen: true,
 };
 
