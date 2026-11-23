@@ -1,4 +1,4 @@
-# sc-6476: the app's design demo in state thankYouNotSaved, the demo half of its side-by-side pair. Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+# sc-6476: the app's design demo in state thankYouNotSaved, the demo half of its side-by-side pair. Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -11,9 +11,8 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=thankYouNotSaved
 - extendedWaitUntil:
     visible:
-      id: 'events.page'
-    timeout: 15000
-    optional: true
+      id: 'event.thankYou.field'
+    timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: demo-thankYouNotSaved

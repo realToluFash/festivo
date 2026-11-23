@@ -1,4 +1,4 @@
-# sc-6476: End now with the field left empty ends the event as before. Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+# sc-6476: End now with the field left empty ends the event as before. Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

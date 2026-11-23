@@ -1,4 +1,4 @@
-# sc-6476: the app's design demo in state thankYouLong, the demo half of its side-by-side pair. Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+# sc-6476: the app's design demo in state thankYouLong, the demo half of its side-by-side pair. Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -11,14 +11,12 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=thankYouLong
 - extendedWaitUntil:
     visible:
-      id: 'events.page'
-    timeout: 15000
-    optional: true
+      id: 'event.card'
+    timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000
 - scrollUntilVisible:
     element:
       id: 'event.thankYou'
     timeout: 8000
-    optional: true
 - takeScreenshot: demo-thankYouLong

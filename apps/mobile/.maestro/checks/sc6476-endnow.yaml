@@ -1,4 +1,4 @@
-# sc-6476: End now's sheet with the thank-you field, ending with a line. Needs ${METRO_URL}, ${EV_ENDT}, ${ORIENT}, ${HELPER_URL}, ${ROT}.
+# sc-6476: End now's sheet with the thank-you field, ending with a line. Needs ${METRO_URL}, ${EV_ENDT}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
