@@ -3497,6 +3497,6 @@
     "whoOverride": "Enregistré comme votre choix malgré la fiche : {{names}}.",
     "changed": "Menu modifié",
     "changedOn": "Menu modifié : {{course}} · choix précédent : {{dish}}",
-    "menuChanged": "Menu modifié : le plat choisi par ces invités a été retiré. La question leur est reposée, et ils ne sont pas comptés pour l’instant."
+    "menuChanged": "Menu modifié : le plat choisi par ces invités a changé ou a été retiré. La question leur est reposée, et ils ne sont pas comptés pour l’instant."
   }
 }

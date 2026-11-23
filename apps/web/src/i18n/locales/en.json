@@ -5987,7 +5987,7 @@
     "defaultMark": "(default)",
     "changed": "Menu changed",
     "changedOn": "Menu changed: {{course}} · picked {{dish}}",
-    "menuChanged": "Menu changed: the dish these guests picked was taken off. They are asked again, and are not counted as in."
+    "menuChanged": "Menu changed: the dish these guests picked has changed or been taken off. They are asked again, and are not counted as in."
   },
   "courseDefault": {
     "heading": "Default and choose-by date",

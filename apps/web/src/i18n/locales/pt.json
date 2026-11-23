@@ -6297,7 +6297,7 @@
     "defaultMark": "(predefinido)",
     "changed": "Menu alterado",
     "changedOn": "Menu alterado: {{course}} · escolha anterior: {{dish}}",
-    "menuChanged": "Menu alterado: o prato que estes convidados escolheram foi retirado. A pergunta volta a ser-lhes feita e não entram nas contas."
+    "menuChanged": "Menu alterado: o prato que estes convidados escolheram mudou ou foi retirado. A pergunta volta a ser-lhes feita e não entram nas contas."
   },
   "courseDefault": {
     "heading": "Prato predefinido e data-limite",

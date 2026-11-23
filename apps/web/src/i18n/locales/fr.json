@@ -6297,7 +6297,7 @@
     "defaultMark": "(par défaut)",
     "changed": "Menu modifié",
     "changedOn": "Menu modifié : {{course}} · choix précédent : {{dish}}",
-    "menuChanged": "Menu modifié : le plat choisi par ces invités a été retiré. La question leur est reposée, et ils ne sont pas comptés pour l’instant."
+    "menuChanged": "Menu modifié : le plat choisi par ces invités a changé ou a été retiré. La question leur est reposée, et ils ne sont pas comptés pour l’instant."
   },
   "courseDefault": {
     "heading": "Plat par défaut et date limite de choix",
@@ -6443,7 +6443,7 @@
     "pickedWith_one": "{{count, number}} invité ayant choisi ce plat a dans sa fiche : {{allergens}}. Cette personne figurera dans « En attente de l’hôte », et on lui demandera de choisir à nouveau pour le service « {{course}} ».",
     "pickedWith_other": "{{count, number}} invités ayant choisi ce plat ont dans leur fiche : {{allergens}}. Ces personnes figureront dans « En attente de l’hôte », et on leur demandera de choisir à nouveau pour le service « {{course}} ».",
     "pickedWith_many": "{{count, number}} invités ayant choisi ce plat ont dans leur fiche : {{allergens}}. Ces personnes figureront dans « En attente de l’hôte », et on leur demandera de choisir à nouveau pour le service « {{course}} ».",
-    "staysAgain": "Seul le service « {{course}} » est redemandé. Le reste de leurs réponses ne change pas, et leur ancien choix reste visible dans leur réponse.",
+    "staysAgain": "Seul le service « {{course}} » est redemandé. Le reste des réponses ne change pas, et l’ancien choix reste visible dans la réponse.",
     "staysNew": "Seul le service « {{course}} » est demandé. Le reste de leurs réponses ne change pas.",
     "doneDish_one": "Plat {{dish}} retiré du service « {{course}} ». On demandera à {{count, number}} invité de choisir à nouveau.",
     "doneDish_other": "Plat {{dish}} retiré du service « {{course}} ». On demandera à {{count, number}} invités de choisir à nouveau.",
