@@ -83,6 +83,9 @@ function invitationsLine(count: number): string {
 export function OrgSwitcher({ tell, toast = false }: { tell: Tell; toast?: boolean }) {
   const where = useWhere();
 
+  // As /app: paused in their only organisation, the session has no organisation to name (sc-85006).
+  if (where.paused && where.places.every((place) => place.id === PAUSED.id)) return null;
+
   return where.outside.length > 0 ? (
     <OutsideSwitcher tell={tell} toast={toast} />
   ) : (
