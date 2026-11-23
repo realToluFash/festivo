@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
+use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
@@ -15,6 +16,7 @@ use App\Entity\MenuDishVariant;
 use App\Entity\Organisation;
 use App\Entity\StaffStation;
 use App\Entity\User;
+use App\Enum\MenuChangeWhy;
 use App\Enum\Permission;
 use App\Repository\StaffStationRepository;
 use App\Tests\ApiTestCase;
@@ -152,6 +154,35 @@ final class KitchenSheetByStationTest extends ApiTestCase
         self::assertSame([
             ['Pass', [['Zobo sorbet', 5, false], ['Fruit salad', 1, false], ['Puff-puff', 1, false], ['Coconut flakes', 0, false], ['Chin chin', 1, false], ['', 3, true]]],
         ], self::stations($sheet, 'Dessert'), 'the three given the default have no answer to Toppings, so each is once in Chef’s choice as well as on Zobo sorbet');
+        $this->assertSameAsSeePicks($sheet);
+    }
+
+    #[Test]
+    public function aPersonAskedAgainIsChefsChoiceAndTheirLetGoPickIsCountedOnNoItem(): void
+    {
+        $this->picked();
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => Uuid::fromString($this->personId('Bisi Adewale')), 'course' => $this->main->getId()]) ?? self::fail('no answer');
+        $answer->askAgain(MenuChangeWhy::Removed);
+        self::em()->flush();
+        $grill = $this->addPlace('Grill');
+        $kitchen = $this->place('Kitchen');
+
+        foreach (['Jollof rice', 'Plantain', 'Coconut rice', 'Moi moi', 'Fried yam'] as $item) {
+            $this->dishAt($this->main, $item, $kitchen);
+        }
+
+        $this->dishAt($this->main, 'Chicken', $grill);
+        $this->dishAt($this->main, 'Beef', $grill);
+
+        $sheet = $this->sheet();
+
+        self::assertSame([
+            ['Pass', [['Pounded yam and egusi', 1, false], ['Pepper sauce', 6, false], ['', 3, true]]],
+            ['Kitchen', [['Jollof rice', 6, false], ['Plantain', 1, false], ['Coconut rice', 2, false], ['Moi moi', 1, false], ['Fried yam', 0, false]]],
+            ['Grill', [['Chicken', 1, false], ['Beef', 1, false]]],
+        ], self::stations($sheet, 'Main'), 'Bisi’s Jollof rice dish is let go: Bisi is in Chef’s choice, holds only the course’s own items (Jollof rice among them), and their Plantain is gone');
+        self::assertSame(1, self::course($sheet, 'Main')['menuChanged']);
         $this->assertSameAsSeePicks($sheet);
     }
 
@@ -306,7 +337,7 @@ final class KitchenSheetByStationTest extends ApiTestCase
             $course = self::courses($sheet)[$at];
             $rows = Type\vec(Type\shape(['id' => Type\string(), 'chosen' => Type\int(), 'defaulted' => Type\int()], true))->coerce($seen['rows']);
             self::assertSame(Vec\map($rows, static fn (array $row): array => [$row['id'], $row['chosen'] + $row['defaulted']]), Vec\map(Type\vec(Type\shape(['id' => Type\string(), 'count' => Type\int()], true))->coerce($course['rows']), static fn (array $row): array => [$row['id'], $row['count']]));
-            foreach (['kitchen', 'skipped', 'needsHost', 'notChosen', 'room'] as $state) {
+            foreach (['kitchen', 'skipped', 'needsHost', 'notChosen', 'menuChanged', 'room'] as $state) {
                 self::assertSame($seen[$state], $course[$state], $state);
             }
         }

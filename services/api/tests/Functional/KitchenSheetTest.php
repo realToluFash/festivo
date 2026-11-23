@@ -10,11 +10,13 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
 use App\Entity\MenuDishVariant;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Enum\MenuChangeWhy;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Tests\ApiTestCase;
@@ -113,6 +115,30 @@ final class KitchenSheetTest extends ApiTestCase
         self::assertSame([['code' => 'milk', 'count' => 1], ['code' => 'celery', 'count' => 1], ['code' => 'other', 'count' => 1]], $sheet['allergyCounts']);
         self::assertSame([['code' => 'vegan', 'count' => 1]], $sheet['dietCounts']);
         self::assertSame(['Starter', 'Main'], Vec\map(self::courses($sheet), static fn (array $course): mixed => $course['name']));
+        $this->assertSameAsSeePicks($sheet);
+    }
+
+    #[Test]
+    public function aPersonAskedAgainIsMenuChangedInTheirCellAndCountedOnNoDish(): void
+    {
+        $token = $this->coming([['fullName' => 'Ada Obi']]);
+        [$bisi, $ada] = [$this->personId('Bisi Adewale'), $this->personId('Ada Obi')];
+        $this->records($ada, ['milk']);
+        $this->meals($token, [
+            ['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+            ['person' => $ada, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+        ]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => Uuid::fromString($ada), 'course' => $this->main->getId()]) ?? self::fail('no answer');
+        $answer->askAgain(MenuChangeWhy::Removed);
+        self::em()->flush();
+
+        $sheet = $this->sheet();
+        $main = self::courses($sheet)[1];
+
+        self::assertSame([['kind' => 'dish', 'text' => 'Catfish pepper soup, Full bowl'], ['kind' => 'changed']], Type\vec(Type\shape(['cells' => Type\mixed()], true))->coerce($sheet['allergic'])[0]['cells']);
+        self::assertSame([1, 1], [$main['menuChanged'], Type\vec(Type\shape(['name' => Type\string(), 'count' => Type\int()], true))->coerce($main['rows'])[0]['count']], 'Ada’s Jollof rice is let go, so only Bisi’s counts');
         $this->assertSameAsSeePicks($sheet);
     }
 
@@ -312,7 +338,7 @@ final class KitchenSheetTest extends ApiTestCase
             $course = self::courses($sheet)[$at];
             $rows = Type\vec(Type\shape(['id' => Type\string(), 'chosen' => Type\int(), 'defaulted' => Type\int()], true))->coerce($seen['rows']);
             self::assertSame(Vec\map($rows, static fn (array $row): array => [$row['id'], $row['chosen'] + $row['defaulted']]), Vec\map(Type\vec(Type\shape(['id' => Type\string(), 'count' => Type\int()], true))->coerce($course['rows']), static fn (array $row): array => [$row['id'], $row['count']]));
-            foreach (['kitchen', 'skipped', 'needsHost', 'notChosen', 'room'] as $state) {
+            foreach (['kitchen', 'skipped', 'needsHost', 'notChosen', 'menuChanged', 'room'] as $state) {
                 self::assertSame($seen[$state], $course[$state], $state);
             }
         }

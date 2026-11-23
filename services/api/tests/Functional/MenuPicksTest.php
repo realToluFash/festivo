@@ -16,6 +16,7 @@ use App\Entity\MenuDish;
 use App\Entity\MenuDishVariant;
 use App\Entity\Organisation;
 use App\Entity\User;
+use App\Enum\MenuChangeWhy;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Tests\ApiTestCase;
@@ -138,6 +139,33 @@ final class MenuPicksTest extends ApiTestCase
         self::assertSame([['fish', 'celery'], ['milk', 'fish'], [], null, []], [self::row($starter, 'Catfish pepper soup')['allergens'], self::row($main, 'Pounded yam and egusi')['allergens'], self::row($main, 'Rice and stew')['allergens'], self::row($main, 'Suya')['allergens'], self::row($main, 'Ofada stew')['allergens']]);
         self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => []]], $picks['needsHost']);
         self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'changed' => [], 'excluded' => []]]]], $picks['waiting']);
+    }
+
+    #[Test]
+    public function aPersonAskedAgainIsMenuChangedOnTheirCourseWaitingWithWhatTheyPickedAndNeedsTheHostOnlyForAnAddedAllergen(): void
+    {
+        $token = $this->coming([['fullName' => 'Chidi Okonkwo'], ['fullName' => 'Ada Obi']]);
+        [$bisi, $chidi, $ada] = [$this->personId('Bisi Adewale'), $this->personId('Chidi Okonkwo'), $this->personId('Ada Obi')];
+        $this->meals($token, [
+            ['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+            ['person' => $chidi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->egusi)],
+            ['person' => $ada, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+        ]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->answerOf($bisi, $this->main)->askAgain(MenuChangeWhy::Removed);
+        self::em()->flush();
+        $this->answerOf($chidi, $this->main)->askAgain(MenuChangeWhy::Allergen, null, ['sesame']);
+        self::em()->flush();
+
+        $picks = $this->picks();
+        $main = self::course($picks, 'Main');
+
+        self::assertSame([1, 0, 2, 1, 3], [self::row($main, 'Jollof rice')['chosen'], self::row($main, 'Pounded yam and egusi')['chosen'], $main['menuChanged'], $main['answered'], self::sum($main) + Type\int()->coerce($main['menuChanged'])]);
+        self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['sesame']]], $picks['needsHost']);
+        self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [
+            ['id' => $bisi, 'name' => 'Bisi Adewale', 'courses' => [], 'changed' => [['course' => $this->id($this->main), 'picked' => 'Jollof rice']], 'excluded' => []],
+            ['id' => $chidi, 'name' => 'Chidi Okonkwo', 'courses' => [], 'changed' => [['course' => $this->id($this->main), 'picked' => 'Pounded yam and egusi']], 'excluded' => []],
+        ]]], $picks['waiting']);
     }
 
     #[Test]
