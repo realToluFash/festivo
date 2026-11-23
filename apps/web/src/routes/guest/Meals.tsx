@@ -697,78 +697,116 @@ export function MealCards({
             {eater.you ? t('guestMeal.yourMeals') : t('guestMeal.theirMeals', { name: eater.name })}
           </h3>
           <ul className="mx-rows">
-            {courses.map((course) => {
-              const key = keyOf(eater.key, course.id);
-              const shut = course.picksClose.closed || refused.has(course.id);
-              const mark = reasonOf(markOf(course, plates[key], allergies(eater.key)), eater, t);
-              const date = dayOf(course.picksClose.at, timeZone);
-
-              return (
-                <li key={key} className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
-                  <div className="mx-words">
-                    <p className="mx-course">{course.name}</p>
-                    <Pick plate={plates[key]} course={course} />
-                    {pending(key) && !shut && !locked && (
-                      <p className="mx-pending">{t('guestMeal.notSent')}</p>
-                    )}
-                    {(!single || locked) && (
-                      <p className="mx-close">
-                        <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
-                        {shut
-                          ? t('guestMeal.picksClosed', { date })
-                          : t('guestMeal.picksClose', { date })}
-                      </p>
-                    )}
-                    {unsaved.has(key) && (
-                      <p
-                        className="desk-error ms-refused"
-                        role="alert"
-                        tabIndex={-1}
-                        data-focus={`refused-${key}`}
-                      >
-                        <Glyph name="alert" size={16} weight={2.2} />
-                        {t('guestMeal.refusedClosed', { course: course.name, date })}
-                      </p>
-                    )}
-                    {mark != null && (
-                      <p className="ms-out-line">
-                        <AllergyMark />
-                        <span id={`meal-reason-${key.replace('|', '-')}`}>{mark}</span>
-                      </p>
-                    )}
-                    {mark != null && shut && (
-                      <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>
-                    )}
-                  </div>
-                  {!shut && !locked && (
-                    <button
-                      type="button"
-                      className="gp-text is-ink"
-                      data-focus={changeFocus(key)}
-                      aria-label={
-                        eater.you
-                          ? t('guestMeal.changeYou', { course: lower(course.name) })
-                          : t('guestMeal.changeName', {
-                              course: lower(course.name),
-                              name: eater.name,
-                            })
-                      }
-                      aria-describedby={
-                        mark == null ? undefined : `meal-reason-${key.replace('|', '-')}`
-                      }
-                      {...offButton(busy, { dim: false })}
-                      onClick={() => onChange(key)}
-                    >
-                      <span>{t('guest.changeShort')}</span>
-                    </button>
-                  )}
-                </li>
-              );
-            })}
+            {courses.map((course) => (
+              <MealRow
+                key={keyOf(eater.key, course.id)}
+                eater={eater}
+                course={course}
+                plates={plates}
+                allergies={allergies(eater.key)}
+                timeZone={timeZone}
+                single={single}
+                busy={busy}
+                pending={pending(keyOf(eater.key, course.id))}
+                refused={refused.has(course.id)}
+                unsaved={unsaved.has(keyOf(eater.key, course.id))}
+                locked={locked}
+                onChange={onChange}
+              />
+            ))}
           </ul>
         </section>
       ))}
     </div>
+  );
+}
+
+/** One course's row on a person's card, shared by Check your meal picks and the copied card. */
+function MealRow({
+  eater,
+  course,
+  plates,
+  allergies,
+  timeZone,
+  single,
+  busy,
+  pending,
+  refused,
+  unsaved,
+  locked,
+  onChange,
+}: {
+  eater: Eater;
+  course: MealCourse;
+  plates: Plates;
+  allergies: readonly string[];
+  timeZone: string;
+  single: boolean;
+  busy: boolean;
+  pending: boolean;
+  refused: boolean;
+  unsaved: boolean;
+  locked: boolean;
+  onChange: (key: string) => void;
+}) {
+  const { t } = useTranslation();
+  const key = keyOf(eater.key, course.id);
+  const shut = course.picksClose.closed || refused;
+  const mark = reasonOf(markOf(course, plates[key], allergies), eater, t);
+  const date = dayOf(course.picksClose.at, timeZone);
+
+  return (
+    <li className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
+      <div className="mx-words">
+        <p className="mx-course">{course.name}</p>
+        <Pick plate={plates[key]} course={course} />
+        {pending && !shut && !locked && <p className="mx-pending">{t('guestMeal.notSent')}</p>}
+        {(!single || locked) && (
+          <p className="mx-close">
+            <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
+            {shut ? t('guestMeal.picksClosed', { date }) : t('guestMeal.picksClose', { date })}
+          </p>
+        )}
+        {unsaved && (
+          <p
+            className="desk-error ms-refused"
+            role="alert"
+            tabIndex={-1}
+            data-focus={`refused-${key}`}
+          >
+            <Glyph name="alert" size={16} weight={2.2} />
+            {t('guestMeal.refusedClosed', { course: course.name, date })}
+          </p>
+        )}
+        {mark != null && (
+          <p className="ms-out-line">
+            <AllergyMark />
+            <span id={`meal-reason-${key.replace('|', '-')}`}>{mark}</span>
+          </p>
+        )}
+        {mark != null && shut && <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>}
+      </div>
+      {!shut && !locked && (
+        <button
+          type="button"
+          className="gp-text is-ink"
+          data-focus={changeFocus(key)}
+          aria-label={
+            eater.you
+              ? t('guestMeal.changeYou', { course: lower(course.name) })
+              : t('guestMeal.changeName', {
+                  course: lower(course.name),
+                  name: eater.name,
+                })
+          }
+          aria-describedby={mark == null ? undefined : `meal-reason-${key.replace('|', '-')}`}
+          {...offButton(busy, { dim: false })}
+          onClick={() => onChange(key)}
+        >
+          <span>{t('guest.changeShort')}</span>
+        </button>
+      )}
+    </li>
   );
 }
 
@@ -778,6 +816,8 @@ export function CopiedCard({
   from,
   courses,
   plates,
+  allergies,
+  timeZone,
   onChange,
   onBack,
   onContinue,
@@ -786,6 +826,8 @@ export function CopiedCard({
   from: Eater;
   courses: readonly MealCourse[];
   plates: Plates;
+  allergies: readonly string[];
+  timeZone: string;
   onChange: (key: string) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -807,29 +849,23 @@ export function CopiedCard({
         </span>
       </p>
       <ul className="mx-rows">
-        {courses.map((course) => {
-          const key = keyOf(eater.key, course.id);
-
-          return (
-            <li key={key} className="mx-row pc-row">
-              <div className="mx-words">
-                <p className="mx-course">{course.name}</p>
-                <Pick plate={plates[key]} course={course} />
-              </div>
-              {!course.picksClose.closed && (
-                <button
-                  type="button"
-                  className="gp-text is-ink"
-                  data-focus={changeFocus(key)}
-                  aria-label={t('guestMeal.changeName', { course: lower(course.name), name })}
-                  onClick={() => onChange(key)}
-                >
-                  <span>{t('guest.changeShort')}</span>
-                </button>
-              )}
-            </li>
-          );
-        })}
+        {courses.map((course) => (
+          <MealRow
+            key={keyOf(eater.key, course.id)}
+            eater={eater}
+            course={course}
+            plates={plates}
+            allergies={allergies}
+            timeZone={timeZone}
+            single={oneCloseDay(courses, (at) => dayOf(at, timeZone)) != null}
+            busy={false}
+            pending={false}
+            refused={false}
+            unsaved={false}
+            locked={false}
+            onChange={onChange}
+          />
+        ))}
       </ul>
       <div className="pc-footer">
         <button type="button" className="gp-outlined" onClick={onBack}>
