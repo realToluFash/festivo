@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu;
 
+use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\Model\CourseDefaultDetails;
 use App\Domain\Menu\Model\PicksClose;
 use App\Domain\Menu\Pick\PicksMenu;
@@ -27,6 +28,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final readonly class DefaultRules
 {
     public function __construct(
+        private MenuSerialiser $menuSerialiser,
         private MenuDishRepository $menuDishRepository,
         private MenuDishVariantRepository $menuDishVariantRepository,
         private TranslatorInterface $translator,
@@ -121,12 +123,7 @@ final readonly class DefaultRules
         );
     }
 
-    /**
-     * Whether the course's default is still a whole pick of a dish guests can see, after an edit to that dish (Decided, 23 Nov).
-     *
-     * @param array<string, mixed> $served the course as MenuSerialiser serves it
-     */
-    public function whole(array $served, MenuCourse $course): bool
+    public function whole(Event $event, MenuCourse $course): bool
     {
         $stored = $course->getDefaultDish();
 
@@ -134,6 +131,7 @@ final readonly class DefaultRules
             return true;
         }
 
+        $served = Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? [];
         $dish = $this->offered($served, $stored->getId()->toRfc4122());
 
         return null !== $dish && [] === self::pickOf($dish, $course->getDefaultVariant()?->getId()->toRfc4122(), $course->getDefaultOptions())['gaps'];

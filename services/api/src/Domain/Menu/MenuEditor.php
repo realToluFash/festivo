@@ -208,7 +208,6 @@ final readonly class MenuEditor
         }
     }
 
-    /** Run after an edit to a dish, before its lock is released: an edit that leaves the course's default no longer a whole pick is refused with the Remove… line (Decided, 23 Nov). */
     private function refuseUnfinishedDefault(Event $event, MenuDish $dish): void
     {
         $course = $dish->getCourse();
@@ -218,9 +217,8 @@ final readonly class MenuEditor
         }
 
         $this->entityManager->flush();
-        $served = Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? throw ApiException::notFound('access.not_found');
 
-        if (!$this->defaultRules->whole($served, $course)) {
+        if (!$this->defaultRules->whole($event, $course)) {
             throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_dish', parameters: ['{dish}' => $dish->getName(), '{course}' => $course->getName()]);
         }
     }
