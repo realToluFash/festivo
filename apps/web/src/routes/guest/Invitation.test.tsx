@@ -2274,6 +2274,128 @@ describe('a meal for each person coming (sc-3907)', () => {
   });
 });
 
+describe('Same as an earlier person (sc-17283)', () => {
+  const MILKY = { ...CHIDI, needs: { ...NO_NEEDS, allergies: ['milk'] } };
+  const PARTY_PAGE = {
+    ...PAGE,
+    guest: { ...PAGE.guest, places: 1, companions: [MILKY], unnamed: [] },
+    meals: MEALS,
+  };
+  const CHIDI_NAME = 'Chidi Okonkwo-Williams';
+
+  function toMeals(): void {
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, I’ll be there' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  }
+
+  function mine(main: RegExp): void {
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: main }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'No dessert for me' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  }
+
+  it('copies every course that can be picked, shows the card, and sends the copy as picks made by hand', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }],
+      '/api/guest-links/reply': [
+        {
+          status: 200,
+          body: {
+            ...PARTY_PAGE,
+            guest: {
+              ...PARTY_PAGE.guest,
+              reply: { answer: 'coming', at: '2026-10-17T14:20:00+01:00' },
+            },
+          },
+        },
+      ],
+      '/api/guest-links/meals': [{ status: 200, body: PARTY_PAGE }],
+    });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Jollof rice/);
+
+    const same = screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` });
+    expect(same.textContent).toBe('Same as mine');
+    expect(same.closest('fieldset')).toBeNull();
+    fireEvent.click(same);
+
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+    expect(
+      screen.getByText('Copied from your picks. Change anything that should be different.'),
+    ).toBeDefined();
+    expect(screen.getByText('Jollof rice')).toBeDefined();
+    expect(screen.getByText('No dessert')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: `Change main for ${CHIDI_NAME}` }));
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('button', { name: `Change main for ${CHIDI_NAME}` })).toBe(
+      document.activeElement,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.queryByText(/Copied from/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send my answer' }));
+    await waitFor(() => expect(sent.at(-1)?.path).toBe('/api/guest-links/meals'));
+    const jollof = { answer: 'chosen', dish: 'jollof', variant: null, options: [] };
+    expect(sent.at(-1)?.body).toEqual({
+      token: TOKEN,
+      picks: [
+        { person: MEALS.you, course: 'main', ...jollof },
+        { person: MEALS.you, course: 'dessert', answer: 'skipped' },
+        { person: CHIDI.id, course: 'main', ...jollof },
+        { person: CHIDI.id, course: 'dessert', answer: 'skipped' },
+      ],
+    });
+  });
+
+  it('asks a course that can’t be copied with its line, refuses it unanswered, and Back from the card returns to the buttons', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }] });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Pounded yam and egusi/);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Gizdodo/ }));
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+
+    const head = screen.getByRole('heading', { name: /Which main\?/ });
+    expect(head).toBe(document.activeElement);
+    const line = screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`);
+    expect(head.closest('fieldset')?.getAttribute('aria-describedby')).toContain(
+      line.closest('p')?.id,
+    );
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+    expect((screen.getByRole('radio', { name: /Gizdodo/ }) as HTMLInputElement).checked).toBe(
+      false,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('alert').textContent).toContain(
+      `Choose a main for ${CHIDI_NAME}, or let the kitchen choose.`,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+    expect(screen.getByText('No dessert')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` })).toBeDefined();
+    expect((screen.getByRole('radio', { name: /Jollof rice/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+  });
+});
+
 describe('a meal for each person coming, the close and the allergy rules (sc-3907)', () => {
   const CLOSED_CLOSE = { ...CLOSE, closed: true };
   const comingBack = (courses: object[], answers: object[], needs: object = NO_NEEDS) => ({
