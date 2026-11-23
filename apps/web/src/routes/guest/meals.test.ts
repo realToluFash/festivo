@@ -32,6 +32,7 @@ const course = (dishes: MealDish[], answer: 'choose' | 'same' = 'choose'): MealC
   answer,
   skippable: false,
   picksClose: { at: '2030-11-10T23:59:00+01:00', source: 'replyBy', closed: false },
+  default: null,
   dishes,
 });
 

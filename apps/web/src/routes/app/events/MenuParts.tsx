@@ -1,5 +1,6 @@
 import {
   CHOICES_PER_DISH_MAXIMUM,
+  type CourseDefault,
   type Dish,
   type DishDiet,
   MENU_COURSE_NAME_MAXIMUM,
@@ -8,8 +9,10 @@ import {
   type MenuDish,
   type MenuDishChoice,
   type PicksClose,
+  type PicksCourse,
   VARIANTS_PER_DISH_MAXIMUM,
 } from '@soirely/api-client';
+import type { TFunction } from 'i18next';
 import {
   type DishForm,
   type DishProblems,
@@ -40,6 +43,7 @@ import {
 } from '../menu/VariantParts.tsx';
 import { shownVariants } from '../menu/variants.ts';
 import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
+import { dayWords, givenOn, pickWords } from './courseDefault.ts';
 import { describedBy } from './eventFieldOrder.ts';
 import { DishPicks, SeePicksLink, WhoHasntLink, useCanChoose, useMenuPicks } from './menuPicks.tsx';
 import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
@@ -155,6 +159,22 @@ function Grip() {
   );
 }
 
+function defaultLine(
+  t: TFunction,
+  course: MenuCourse,
+  pick: CourseDefault,
+  closed: boolean,
+  counted: PicksCourse | null,
+): string {
+  const words = { pick: pickWords(course, pick), date: dayWords(pick.chooseBy, dateLocale()) };
+  if (!closed || counted == null) return t('courseDefault.line', words);
+  const count = givenOn(counted.rows);
+
+  return count === 0
+    ? t('courseDefault.lineNobody', words)
+    : t('courseDefault.lineGiven', { ...words, count });
+}
+
 function Refused({ words }: { words: string }) {
   return (
     <p className="mc-refused" role="status">
@@ -193,19 +213,31 @@ function Tags({ dish }: { dish: { name: string; diets: readonly DishDiet[] } }) 
 }
 
 /** sc-3905: the course's close as a shape with a word, and beside it where the date comes from, for the host only. */
-function CloseLine({ close, timeZone }: { close: PicksClose; timeZone: string }) {
+function CloseLine({
+  close,
+  course,
+  timeZone,
+}: {
+  close: PicksClose;
+  course: string;
+  timeZone: string;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const date = closeDay(close.at, timeZone, locale);
   const by = { time: closeTime(close.at, timeZone, locale), zone: zoneCity(timeZone) };
   const source =
-    close.source === 'replyBy'
+    close.source === 'chooseBy'
       ? close.closed
-        ? t('eventMenu.picksByReplyByClosed', by)
-        : t('eventMenu.picksByReplyBy', by)
-      : close.closed
-        ? t('eventMenu.picksByStartClosed', by)
-        : t('eventMenu.picksByStart', by);
+        ? t('eventMenu.picksByOwnClosed', { ...by, course })
+        : t('eventMenu.picksByOwn', { ...by, course })
+      : close.source === 'replyBy'
+        ? close.closed
+          ? t('eventMenu.picksByReplyByClosed', by)
+          : t('eventMenu.picksByReplyBy', by)
+        : close.closed
+          ? t('eventMenu.picksByStartClosed', by)
+          : t('eventMenu.picksByStart', by);
 
   return (
     <p className="mc-close">
@@ -229,6 +261,7 @@ export function CourseCard({
   asking,
   askFailed,
   refused,
+  defaultRefused,
   dragging,
   onDragStart,
   onDragEnd,
@@ -257,6 +290,8 @@ export function CourseCard({
   asking: 'course' | string | null;
   askFailed: string | null;
   refused: 'course' | string | null;
+  /** The dish whose Remove… was refused because it is the course's default (sc-1362). */
+  defaultRefused: string | null;
   dragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -341,7 +376,18 @@ export function CourseCard({
                 ? t('dishChoices.noFinishedDish')
                 : t('eventMenu.emptyTag')}
           </p>
-          {close != null && <CloseLine close={close} timeZone={timeZone} />}
+          {close != null && <CloseLine close={close} course={name} timeZone={timeZone} />}
+          {close != null && course.default != null && (
+            <p className="mc-def-line">
+              {defaultLine(
+                t,
+                course,
+                course.default,
+                close.closed,
+                shown?.picks.courses.find((one) => one.id === course.id) ?? null,
+              )}
+            </p>
+          )}
         </div>
         {manage && (
           <div
@@ -441,7 +487,13 @@ export function CourseCard({
               lit={litDish === dish.id}
               asking={asking === dish.id}
               askFailed={askFailed}
-              refused={refused === dish.id}
+              refused={
+                defaultRefused === dish.id
+                  ? t('courseDefault.refuseDish', { dish: dish.name, course: name })
+                  : refused === dish.id
+                    ? t('eventMenu.dishPicked')
+                    : null
+              }
               onEdit={() => onEditDish(dish)}
               onAskRemove={() => onAskRemove(dish)}
               onKeep={() => onKeep(`mc-remove-${dish.id}`)}
@@ -559,7 +611,7 @@ function DishRow({
   lit: boolean;
   asking: boolean;
   askFailed: string | null;
-  refused: boolean;
+  refused: string | null;
   onEdit: () => void;
   onAskRemove: () => void;
   onKeep: () => void;
@@ -677,7 +729,7 @@ function DishRow({
           onConfirm={(choice) => choices.onConfirm(dish, choice)}
         />
       )}
-      {refused && <Refused words={t('eventMenu.dishPicked')} />}
+      {refused != null && <Refused words={refused} />}
       {asking && (
         <div className="mn-ask">
           <p id={`mc-ask-${dish.id}`} tabIndex={-1}>

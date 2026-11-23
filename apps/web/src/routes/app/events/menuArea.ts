@@ -104,6 +104,15 @@ export function closeTime(at: string, timeZone: string, locale: string): string 
   }).format(new Date(at));
 }
 
+/** The open courses close on different days (sc-1362): the header reads "picks close from {date}". */
+export function menuCloseFrom(courses: readonly MenuCourse[]): boolean {
+  const open = courses.flatMap((course) =>
+    course.picksClose == null || course.picksClose.closed ? [] : [course.picksClose.at],
+  );
+
+  return new Set(open).size > 1;
+}
+
 /** The Menu header's close: the earliest of the courses still open, or the last once all have closed; null while no course asks guests anything. */
 export function menuClose(courses: readonly MenuCourse[]): PicksClose | null {
   const closes = courses

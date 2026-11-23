@@ -77,3 +77,17 @@ export const hostCount = (picks: EventPicks): number =>
   picks.courses.reduce((sum, course) => sum + course.needsHost, 0);
 
 export const clockOf = (at: string): string => at.slice(11, 16);
+
+/** A course default's words, "Jollof rice, Chicken": the dish, its variant and its options, from the menu. */
+export function defaultPick(
+  menu: EventMenu,
+  given: { course: string; dish: string; variant: string | null; options: readonly string[] },
+): string {
+  const dish = menuCourseOf(menu, given.course)?.dishes.find((one) => one.id === given.dish);
+
+  return dish == null ? '' : pickName(dish, given.variant, given.options);
+}
+
+/** Why a person is never given a default: an allergy, an Other diet, or a named diet the default doesn't meet. */
+export const excludedOf = (reason: string): 'allergy' | 'other' | 'diet' =>
+  reason === 'allergy' ? 'allergy' : reason === 'other' ? 'other' : 'diet';

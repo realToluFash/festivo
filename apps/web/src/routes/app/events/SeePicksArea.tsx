@@ -22,10 +22,13 @@ import { useDialogKeys } from '../../../dialogFocus.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
 import { allergensInSentence } from './allergenWords.ts';
+import { closeDay } from './menuArea.ts';
 import {
   against,
   clockOf,
+  defaultPick,
   dishRuledOut,
+  excludedOf,
   hostCount,
   menuCourseOf,
   pickName,
@@ -47,7 +50,7 @@ type Load =
   | { kind: 'loaded'; picks: EventPicks; menu: EventMenu; stale: boolean; refreshing: boolean };
 
 type Opened =
-  | { kind: 'chooseFor'; personId: string; courseIds: string[]; from: string }
+  | { kind: 'chooseFor'; personId: string; courseIds: string[]; from: string; given?: boolean }
   | { kind: 'chooseWho'; courseId: string; row: PicksRow; from: string };
 
 interface Said {
@@ -304,7 +307,7 @@ function Picks({
       </>
     );
 
-  const waiting = (picks.waiting ?? [])
+  const asked = (picks.waiting ?? [])
     .map((party) => ({
       ...party,
       people: party.people.filter(
@@ -312,6 +315,39 @@ function Picks({
       ),
     }))
     .filter((party) => party.people.length > 0);
+  const never = asked.flatMap((party) => party.people.filter((one) => one.excluded.length > 0));
+  const waiting = asked
+    .map((party) => ({ ...party, people: party.people.filter((one) => one.excluded.length === 0) }))
+    .filter((party) => party.people.length > 0);
+  const given = picks.given ?? [];
+  const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
+  const openWords = (person: (typeof never)[number]) =>
+    t('seePicks.notChosenOn', {
+      courses: list(
+        person.courses.map((id) => {
+          const excluded = person.excluded.find((one) => one.course === id);
+
+          return excluded == null
+            ? courseName(id)
+            : t('seePicks.excludedOn', { course: courseName(id), why: excludedWord(excluded) });
+        }),
+      ),
+    });
+  const excludedWord = (excluded: { reason: string }) =>
+    excludedOf(excluded.reason) === 'allergy'
+      ? t('seePicks.allergy')
+      : excludedOf(excluded.reason) === 'other'
+        ? t('seePicks.otherDiet')
+        : t(`guestNeeds.dietName.${excluded.reason}`);
+  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => ({
+    kind: 'chooseFor',
+    personId: person.id,
+    courseIds:
+      askedFor == null || !person.courses.includes(askedFor)
+        ? person.courses
+        : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
+    from: id,
+  });
 
   return (
     <>
@@ -397,6 +433,7 @@ function Picks({
         <CourseCard
           key={course.id}
           course={course}
+          menuCourse={menuCourseOf(menu, course.id)}
           manage={manage}
           onChooseWho={(row, from) => open({ kind: 'chooseWho', courseId: course.id, row, from })}
         />
@@ -408,12 +445,41 @@ function Picks({
               ? t('seePicks.whoHasnt')
               : t('seePicks.whoHasntOn', { course: courseName(askedFor) })}
           </h2>
-          {waiting.length === 0 && (
+          {waiting.length === 0 && never.length === 0 && (
             <p className="mn-quiet">
               {askedFor == null
                 ? t('seePicks.whoHasntNone')
                 : t('seePicks.whoHasntNoneOn', { course: courseName(askedFor) })}
             </p>
+          )}
+          {never.length > 0 && (
+            <div className="pk-party">
+              <h3>{t('seePicks.neverGiven', { count: never.length })}</h3>
+              <ul className="pk-people">
+                {never.map((person) => {
+                  const id = `pk-never-${person.id}`;
+
+                  return (
+                    <li key={person.id} className="pk-person">
+                      <div className="pk-person-words">
+                        <strong>{person.name}</strong>
+                        <span className="pk-state">
+                          <DashedCircle />
+                          {openWords(person)}
+                        </span>
+                      </div>
+                      {manage && (
+                        <ChooseForButton
+                          id={id}
+                          name={person.name}
+                          onOpen={() => open(chooseForWaiting(person, id))}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
           {waiting.map((party) => (
             <div key={party.id} className="pk-party">
@@ -428,10 +494,49 @@ function Picks({
                         <strong>{person.name}</strong>
                         <span className="pk-state">
                           <DashedCircle />
-                          {t('seePicks.notChosenOn', {
-                            courses: list(person.courses.map(courseName)),
-                          })}
+                          {openWords(person)}
                         </span>
+                      </div>
+                      {manage && (
+                        <ChooseForButton
+                          id={id}
+                          name={person.name}
+                          onOpen={() => open(chooseForWaiting(person, id))}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+      {names && givenCount > 0 && (
+        <section className="desk-card pk-waiting" aria-labelledby="pk-given-title">
+          <h2 id="pk-given-title" className="pk-card-title">
+            {t('seePicks.given', { count: givenCount })}
+          </h2>
+          {given.map((party) => (
+            <div key={party.id} className="pk-party">
+              <h3>{t('seePicks.replied', { name: party.replier, count: party.people.length })}</h3>
+              <ul className="pk-people">
+                {party.people.map((person) => {
+                  const id = `pk-given-${person.id}`;
+
+                  return (
+                    <li key={person.id} className="pk-person">
+                      <div className="pk-person-words">
+                        <strong>{person.name}</strong>
+                        {person.courses.map((one) => (
+                          <span key={one.course}>
+                            {t('seePicks.givenOn', {
+                              course: courseName(one.course),
+                              pick: defaultPick(menu, one),
+                            })}{' '}
+                            <span className="pk-default-mark">{t('seePicks.defaultMark')}</span>
+                          </span>
+                        ))}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -441,11 +546,9 @@ function Picks({
                             open({
                               kind: 'chooseFor',
                               personId: person.id,
-                              courseIds:
-                                askedFor == null || !person.courses.includes(askedFor)
-                                  ? person.courses
-                                  : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
+                              courseIds: person.courses.map((one) => one.course),
                               from: id,
+                              given: true,
                             })
                           }
                         />
@@ -465,6 +568,7 @@ function Picks({
           courses={opened.courseIds
             .map((id) => menuCourseOf(menu, id))
             .filter((one): one is MenuCourse => one != null)}
+          given={opened.given === true}
           onSaved={(next, line, overridden) => {
             onPicks(next);
             setSaid({ line, overridden });
@@ -521,17 +625,32 @@ function ChooseForButton({ id, name, onOpen }: { id: string; name: string; onOpe
 
 function CourseCard({
   course,
+  menuCourse,
   manage,
   onChooseWho,
 }: {
   course: PicksCourse;
+  menuCourse: MenuCourse | undefined;
   manage: boolean;
   onChooseWho: (row: PicksRow, from: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const titleId = `pk-course-${course.id}`;
   const options = course.rows.some((row) => row.kind === 'option');
-  const defaults = course.rows.some((row) => row.defaulted > 0);
+  const defaults = course.default != null || course.rows.some((row) => row.defaulted > 0);
+  const defaultLine = (() => {
+    if (course.default == null || menuCourse == null) return null;
+    const pick = defaultPick({ courses: [menuCourse] }, { course: course.id, ...course.default });
+    const date = closeDay(`${course.default.chooseBy}T12:00:00Z`, 'UTC', i18n.language);
+    if (!course.closed) return t('seePicks.defaultLine', { pick, date });
+    const count = course.rows
+      .filter((row) => row.kind === 'dish')
+      .reduce((sum, row) => sum + row.defaulted, 0);
+
+    return count === 0
+      ? t('seePicks.defaultLineNobody', { pick, date })
+      : t('seePicks.defaultLineGiven', { pick, date, count });
+  })();
   const dishName = (id: string | null) => course.rows.find((row) => row.id === id)?.name ?? '';
 
   return (
@@ -549,6 +668,7 @@ function CourseCard({
           {t('seePicks.asksNothing', { dish: course.rows[0]?.name ?? '' })}
         </p>
       )}
+      {defaultLine != null && <p className="mn-quiet">{defaultLine}</p>}
       <div className="pk-scroll">
         <table className="pk-table">
           <caption className="pk-hidden">{`${course.name} · ${t('seePicks.dish')}`}</caption>
@@ -660,19 +780,25 @@ function ChooseFor({
   eventId,
   person,
   courses,
+  given,
   onSaved,
   onClose,
 }: {
   eventId: string;
   person: PicksRoomPerson;
   courses: MenuCourse[];
+  given: boolean;
   onSaved: (picks: EventPicks, line: string, overridden: string | null) => void;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const allergens = useAllergens();
   const [at, setAt] = useState(0);
-  const [choice, setChoice] = useState<Choice>(blankChoice);
+  const startOf = (one: MenuCourse | undefined): Choice =>
+    given && one?.default != null
+      ? { dishId: one.default.dish, variantId: one.default.variant, optionIds: one.default.options }
+      : blankChoice;
+  const [choice, setChoice] = useState<Choice>(() => startOf(courses[0]));
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState<string[] | null>(null);
   const [refused, setRefused] = useState(false);
@@ -747,7 +873,7 @@ function ChooseFor({
       );
       if (at + 1 < courses.length) {
         setAt(at + 1);
-        setChoice(blankChoice);
+        setChoice(startOf(courses[at + 1]));
         setError(null);
         focusOn(box);
       } else onClose();

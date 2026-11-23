@@ -133,6 +133,7 @@ import {
   type MenuChange,
   type MenuCourseDetails,
   type MenuItem,
+  type SentCourseDefault,
   asEventMenu,
   asUnwarnedOptions,
   asUnwarnedPickers,
@@ -3337,11 +3338,17 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
+    details: MenuCourseDetails & {
+      answer: MenuAnswer;
+      skippable: boolean;
+      ownItems?: string[];
+      default?: SentCourseDefault;
+      confirmMove?: boolean;
+    },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -6339,7 +6346,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
 
 /** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
 function asGuestMeals(raw: unknown): GuestMeals {
-  const { you, courses, answers } = (raw ?? {}) as Record<string, unknown>;
+  const { you, courses, answers, excluded } = (raw ?? {}) as Record<string, unknown>;
   const strings = (list: unknown): string[] =>
     Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
   const known = Array.isArray(courses)
@@ -6368,7 +6375,22 @@ function asGuestMeals(raw: unknown): GuestMeals {
       }));
   }
 
-  return { you: typeof you === 'string' ? you : '', courses: known, answers: byPerson };
+  const never: Record<string, { course: string; reason: string }[]> = {};
+
+  for (const [person, list] of Object.entries((excluded ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    never[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.reason === 'string')
+      .map((one) => ({ course: one.course as string, reason: one.reason as string }));
+  }
+
+  return {
+    you: typeof you === 'string' ? you : '',
+    courses: known.map((course) => ({ ...course, default: course.default ?? null })),
+    answers: byPerson,
+    excluded: never,
+  };
 }
 
 /** Undefined when the shape is not one this client knows. */

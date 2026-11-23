@@ -45,7 +45,7 @@ export interface ShownVariant extends VariantLike {
 
 export type VariantAsk =
   | { variantId: string; kind: 'ask' | 'fold' }
-  | { variantId: string; kind: 'refused'; lines: readonly VariantRefusal[] };
+  | { variantId: string; kind: 'refused'; lines: readonly VariantRefusal[]; said?: string };
 
 /** Variants have no glyph in the web’s set: stacked layers, in its 24 px stroke. */
 export function LayersGlyph() {
@@ -231,7 +231,11 @@ export function VariantInsets({
               {here?.kind === 'refused' && (
                 <RowLine
                   id={`${ids}-vline-${variant.id}`}
-                  words={here.lines.map((one) => refusalWords(t, one, variant.name))}
+                  words={
+                    here.said == null
+                      ? here.lines.map((one) => refusalWords(t, one, variant.name))
+                      : [here.said]
+                  }
                 />
               )}
               {here?.kind === 'ask' && (

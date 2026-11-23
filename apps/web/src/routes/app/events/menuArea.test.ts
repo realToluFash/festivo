@@ -40,6 +40,7 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   ownItems: [],
   items: [],
   picksClose: null,
+  default: null,
 });
 
 describe('the course form', () => {

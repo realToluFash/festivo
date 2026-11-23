@@ -76,6 +76,7 @@ import {
   changeFocus,
   clearRuledOut,
   eatersOf,
+  defaultLine,
   keyOf,
   markOf,
   markedOpen,
@@ -1068,6 +1069,9 @@ export function Card({
       refused={meal.refused}
       unsaved={meal.unsaved}
       locked={head === 'back' && paused}
+      lineOf={(eater, course, shut) =>
+        defaultLine(page.meals, course, eater, meal.plates[keyOf(eater.key, course.id)], shut)
+      }
       onChange={changeMeal}
     />
   );
@@ -1094,6 +1098,13 @@ export function Card({
         cleared={meal.cleared[keyOf(eater.key, course.id)] ?? null}
         refusal={meal.pressed ? refusalOf(step, meal.draft, view.step === 0) : null}
         timeZone={event.timeZone}
+        line={defaultLine(
+          page.meals,
+          course,
+          eater,
+          meal.draft ?? meal.plates[keyOf(eater.key, course.id)],
+          course.picksClose.closed,
+        )}
         onPlate={(plate) => setMeal((was) => ({ ...was, draft: plate, pressed: false }))}
         onBack={mealBack}
         onNext={mealNext}

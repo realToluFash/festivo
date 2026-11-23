@@ -1,3 +1,5 @@
+import { type CourseDefault, asCourseDefault } from './menu.ts';
+
 export type PicksRowKind = 'dish' | 'variant' | 'option';
 
 export interface PicksRow {
@@ -18,6 +20,8 @@ export interface PicksCourse {
   asksNothing: boolean;
   skippable: boolean;
   closed: boolean;
+  /** The course's default and choose-by date (sc-1362), or null. */
+  default: CourseDefault | null;
   rows: PicksRow[];
   kitchen: number;
   skipped: number;
@@ -45,8 +49,26 @@ export interface PicksParty {
   replier: string;
 }
 
+/** Why a person is never given a course's default (sc-1362): `allergy` (Other included), or the unmet diet's code, `other` among them. */
+export interface PicksExcluded {
+  course: string;
+  reason: string;
+}
+
 export interface PicksWaiting extends PicksParty {
-  people: (PicksPerson & { courses: string[] })[];
+  people: (PicksPerson & { courses: string[]; excluded: PicksExcluded[] })[];
+}
+
+/** One course a person was given its default on (sc-1362), with the pick. */
+export interface PicksGivenCourse {
+  course: string;
+  dish: string;
+  variant: string | null;
+  options: string[];
+}
+
+export interface PicksGiven extends PicksParty {
+  people: (PicksPerson & { courses: PicksGivenCourse[] })[];
 }
 
 export interface PicksRoomPerson extends PicksPerson {
@@ -64,6 +86,8 @@ export interface EventPicks {
   courses: PicksCourse[];
   needsHost: PicksHostLine[] | null;
   waiting: PicksWaiting[] | null;
+  /** Given the default (sc-1362), by party; null without guests.read. */
+  given: PicksGiven[] | null;
   people: PicksRoomPerson[] | null;
   parties: PicksParty[] | null;
   canChoose: boolean;
@@ -116,6 +140,7 @@ function asCourse(raw: unknown): PicksCourse {
     asksNothing: one.asksNothing === true,
     skippable: one.skippable === true,
     closed: one.closed === true,
+    default: asCourseDefault(one.default) ?? null,
     rows: list(one.rows).map(asRow),
     kitchen: num(one.kitchen),
     skipped: num(one.skipped),
@@ -161,6 +186,33 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             people: list(reply.people).map((person) => ({
               ...asPerson(person),
               courses: strings(record(person).courses),
+              excluded: list(record(person).excluded).map((line) => ({
+                course: str(record(line).course),
+                reason: str(record(line).reason),
+              })),
+            })),
+          };
+        })
+      : null,
+    given: Array.isArray(one.given)
+      ? one.given.map((party) => {
+          const reply = record(party);
+
+          return {
+            id: str(reply.id),
+            replier: str(reply.replier),
+            people: list(reply.people).map((person) => ({
+              ...asPerson(person),
+              courses: list(record(person).courses).map((line) => {
+                const given = record(line);
+
+                return {
+                  course: str(given.course),
+                  dish: str(given.dish),
+                  variant: typeof given.variant === 'string' ? given.variant : null,
+                  options: strings(given.options),
+                };
+              }),
             })),
           };
         })

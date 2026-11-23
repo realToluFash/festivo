@@ -360,6 +360,7 @@ function OptionBlock({
   problems,
   open,
   binRefused,
+  binWords,
   onPatch,
   onOpen,
   onBin,
@@ -369,6 +370,7 @@ function OptionBlock({
   problems: ChoiceProblems['options'][number] | null;
   open: boolean;
   binRefused: boolean;
+  binWords: string | null;
   onPatch: (next: Partial<ChoiceOptionForm>) => void;
   onOpen: () => void;
   onBin: () => void;
@@ -378,7 +380,12 @@ function OptionBlock({
   const length = dishLength(form.name);
   const title = form.name.trim() === '' ? t('dishChoices.option', { n: at + 1 }) : form.name.trim();
   const allergens = form.none ? [] : form.allergens.length > 0 ? form.allergens : null;
-  const pickedLine = binRefused || problems?.picked === true ? t('dishChoices.optionPicked') : null;
+  const pickedLine =
+    binRefused && binWords != null
+      ? binWords
+      : binRefused || problems?.picked === true
+        ? t('dishChoices.optionPicked')
+        : null;
   const nameWrong = problems?.name ?? null;
 
   return (
@@ -540,6 +547,7 @@ export function ChoiceFields({
   ways,
   openKey,
   binRefused,
+  binWords = null,
   optionsFull,
   intro,
   onPatch,
@@ -554,6 +562,8 @@ export function ChoiceFields({
   ways: number;
   openKey: string | null;
   binRefused: string | null;
+  /** The words for a refused bin when it is not "Guests have picked this option." (sc-1362). */
+  binWords?: string | null;
   optionsFull: boolean;
   intro: ReactNode;
   onPatch: (next: Partial<ChoiceForm>) => void;
@@ -617,6 +627,7 @@ export function ChoiceFields({
           problems={problems?.options[at] ?? null}
           open={openKey === one.key}
           binRefused={binRefused === one.key}
+          binWords={binWords}
           onPatch={(next) => onOption(one.key, next)}
           onOpen={() => onOpen(one.key)}
           onBin={() => onBin(one.key)}
