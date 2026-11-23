@@ -13,6 +13,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Brand } from './Brand.tsx';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { LanguageChoice } from './LanguageChoice.tsx';
+import { OneHeight } from './OneHeight.tsx';
 import { ProviderButtons } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -57,7 +58,7 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
       }
       choices={
         <View style={styles.choices}>
-          <View style={styles.buttons}>
+          <OneHeight style={styles.buttons}>
             <PrimaryButton
               label={t('welcome.withEmail')}
               onPress={() => {
@@ -70,7 +71,7 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
               testID="welcome.email"
             />
             <ProviderButtons onFailed={setProviderFailed} />
-          </View>
+          </OneHeight>
           <QuietButton
             label={t('signIn.createAccount')}
             onPress={() => router.push('/register')}
