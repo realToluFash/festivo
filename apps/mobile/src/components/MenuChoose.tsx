@@ -177,9 +177,11 @@ export function ChooseFor({
                   on={draft.dishId === one.id}
                   title={one.name}
                   lines={
-                    one.allergens == null || one.allergens.length === 0
-                      ? []
-                      : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
+                    one.allergens == null
+                      ? [t('menuPicks.allergensNotStated')]
+                      : one.allergens.length === 0
+                        ? []
+                        : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
                   }
                   allergy={ruledWords(dishRuledOut(one, person))}
                   onPress={() => pickDish(one.id)}
