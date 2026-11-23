@@ -67,7 +67,6 @@ export function Landscape({
   search?: boolean;
 }) {
   const shell = useShell();
-  const org = useInAnOrganisation();
   const side = useSideFrame();
   const fromNone = useWayBackToNone();
   const { fontScale } = useWindowDimensions();
@@ -100,7 +99,7 @@ export function Landscape({
               onTab={shell.onTab}
               at={at}
               onPerson={() => shell.openSection('account')}
-              org={org}
+              org={shell.viewer !== 'noOrg'}
             />
           </TodayShellProvider>
         ))}
