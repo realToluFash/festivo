@@ -28,7 +28,7 @@ import { holdChoice, schemeOf } from './PersonalisationModel.ts';
 import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
-import { heldOf, opensWhilePaused } from './HeldModel.ts';
+import { heldOf, pausedStandsIn } from './HeldModel.ts';
 import { WayBackToNone } from '../../components/wayBackToNone.ts';
 import { boardFrom, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
@@ -212,16 +212,14 @@ export function SettingsRoute({
           : PAGES[shown];
   const home = <SettingsHome {...handlers} held={held} />;
   // An organisation's row opened while paused: the paused page stands in for it, under ‹ Settings back to the list, or beside the list on its side (sc-86077).
-  const pausedOver = held === 'paused' &&
-    Page != null &&
-    !opensWhilePaused(dataShown == null ? shown : null) && (
-      <SettingsHome
-        {...handlers}
-        held={held}
-        over
-        back={layout === 'landscape' ? undefined : toSettings}
-      />
-    );
+  const pausedOver = Page != null && pausedStandsIn(held, shown, dataShown != null) && (
+    <SettingsHome
+      {...handlers}
+      held={held}
+      over
+      back={layout === 'landscape' ? undefined : toSettings}
+    />
+  );
 
   return (
     <ShellContext.Provider value={shell}>

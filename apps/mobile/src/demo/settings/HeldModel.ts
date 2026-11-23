@@ -32,6 +32,15 @@ export function opensWhilePaused(section: ShellSection | null): boolean {
   return section != null && YOURS.includes(section);
 }
 
+/** Whether the paused page stands in for what is open: an organisation's section or its data, never your account's four (sc-86077). */
+export function pausedStandsIn(
+  held: Held | null,
+  shown: ShellSection | null,
+  data: boolean,
+): boolean {
+  return held === 'paused' && (data || (shown != null && !opensWhilePaused(shown)));
+}
+
 /** A paused membership holds no role, so its group lists the two sections that need no permission (sc-86077). */
 export function pausedGroups<Group extends { heading: string; sections: readonly ShellSection[] }>(
   groups: readonly Group[],
