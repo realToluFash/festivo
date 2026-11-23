@@ -834,6 +834,7 @@ export function CopiedCard({
 }) {
   const { t } = useTranslation();
   const name = eater.name ?? '';
+  const single = oneCloseDay(courses, (at) => dayOf(at, timeZone)) != null;
 
   return (
     <section className="gk ms pc-check" aria-labelledby="pc-for-h" aria-describedby="pc-copied">
@@ -857,7 +858,7 @@ export function CopiedCard({
             plates={plates}
             allergies={allergies}
             timeZone={timeZone}
-            single={oneCloseDay(courses, (at) => dayOf(at, timeZone)) != null}
+            single={single}
             busy={false}
             pending={false}
             refused={false}
