@@ -304,6 +304,7 @@ export function EventScreen({
   useSystemBack(backs, back);
 
   const partRef = (part: EditPart): RefObject<ViewInstance | null> => partRows[part];
+  const nobody = useRef<ScreenReaderTarget>(null);
   const openEdit = (
     part: EditPart,
     opener: RefObject<ScreenReaderTarget | null>,
@@ -652,7 +653,7 @@ export function EventScreen({
           part={editing.part}
           open={editing.open}
           event={event}
-          opener={editing.opener}
+          opener={editing.saved === true ? nobody : editing.opener}
           onClose={() => {
             if (editing.leaves && router.canGoBack()) router.back();
             else closeEdit();

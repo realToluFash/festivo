@@ -17,7 +17,7 @@ export interface ToastRest {
   room: number;
 }
 
-/** Where a row a screen reader's focus goes back to rests: wholly in sight, `margin` above the toast's top; a row taller than the room above the toast rests `margin` under the scroll's top (sc-86228). */
+/** Where a row a screen reader's focus goes back to rests: wholly in sight, `margin` above the toast's top; a row taller than the room above the toast rests `margin` under the scroll's top (sc-86228). It is offsetIntoView (keyboard.ts) with the sight ending `margin` above the toast, except that a row inside that margin is not yet in sight, a tall row shows its top, and it says the foot room the page needs: a sight ending above something else starts from offsetIntoView, not from here. */
 export function restAboveToast(at: RowOverToast): ToastRest {
   const { contentY, height, offset, scrollTop, scrollHeight, toastTop, content, margin } = at;
   const end = Math.max(0, content - scrollHeight);

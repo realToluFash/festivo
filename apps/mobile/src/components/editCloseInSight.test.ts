@@ -43,7 +43,17 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
       'restOverToast(scroll, closed.opener.current, over, roomNow.current,',
     );
     expect(inSight).toContain('scrollTo({ y: rest.to, animated: false })');
-    expect(inSight).toContain('if (!on || gone) return;');
+    expect(inSight).toContain('if (!on || !current()) return;');
+  });
+
+  it('sends focus to the row from the rest, once it has landed and the edit has gone, not on the edit’s timer', () => {
+    expect(screen).toContain('opener={editing.saved === true ? nobody : editing.opener}');
+    expect(inSight).toContain('landedOr(scroll, rest.to, rested);');
+    expect(inSight).toContain('if (rest == null || scroll == null) return rested();');
+    expect(inSight).toContain(
+      "setTimeout(() => focusOnceStill(still, closed, 'settled'), SETTLED_MS)",
+    );
+    expect(inSight).toContain('moveScreenReaderFocus(of.opener.current);');
   });
 
   it('takes away the room at the page’s foot as the toast goes', () => {
