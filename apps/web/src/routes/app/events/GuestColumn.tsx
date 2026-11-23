@@ -27,7 +27,6 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
@@ -586,15 +585,14 @@ function GuestView({
   const shown: Removing | null =
     gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
   const notFound = useEffectEvent(onNotFound);
-  const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
   const sends = manages && invites && guest.mobile != null;
   const fetchLink = useEffectEvent(onLink);
 
   useEffect(() => {
-    if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
-  }, [replace.kind]);
+    if (replace.kind === 'replaced') focus('replace');
+  }, [replace.kind, focus]);
 
   useEffect(() => {
     if (gone && removing == null) notFound();
@@ -1019,7 +1017,6 @@ function GuestView({
           copyByHand={copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
           marking={marking}
           markFailed={markFailed}
-          replaceButton={replaceButton}
           send={sends && link != null ? whatsAppHref(guest, event, link) : null}
           asked={asked}
           onCopy={copied}
