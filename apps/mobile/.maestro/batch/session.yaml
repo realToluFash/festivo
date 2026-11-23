@@ -29,10 +29,12 @@ appId: host.exp.Exponent
       visible: '{{t:any:signInRules.overdueTitle}}'
     file: sign-out.yaml
 # The paused card names no account and has no Settings, so the batch signs out from Your
-# account and back in; sign-in-form.yaml counts the card as signed in. sc-85143.
+# account and back in; sign-in-form.yaml counts the card as signed in. By its button's id, since
+# Paused is also the tag on a paused event in the Events list. sc-85683.
 - runFlow:
     when:
-      visible: '{{t:any:accessPaused.badge}}'
+      visible:
+        id: 'accessPaused.account'
     file: ../sign-out-held.yaml
 # The profile step after signing up names no account either, so the batch signs out there and
 # back in; sign-in-form.yaml counts that step as signed in. sc-44356.
