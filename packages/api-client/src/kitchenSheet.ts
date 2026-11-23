@@ -42,6 +42,20 @@ export interface KitchenCourse {
   sides: boolean;
 }
 
+/** A kitchen sheet given to the kitchen (sc-30812): when, in the event's zone, and the full name of who gave it. */
+export interface KitchenCopy {
+  id: string;
+  recordedAt: string;
+  by: string;
+}
+
+/** Final numbers due (sc-30812), a day or null; `picksOpenUntil` the last course's close while the day ends before it; the copies newest first. */
+export interface FinalNumbers {
+  due: string | null;
+  picksOpenUntil: string | null;
+  copies: KitchenCopy[];
+}
+
 export interface KitchenSheet {
   asOf: string;
   paper: 'a4' | 'letter';
@@ -53,6 +67,7 @@ export interface KitchenSheet {
   allergyCounts: KitchenCount[];
   dietCounts: KitchenCount[];
   courses: KitchenCourse[];
+  finalNumbers: FinalNumbers;
 }
 
 const record = (raw: unknown): Record<string, unknown> =>
@@ -106,7 +121,21 @@ function asCourse(raw: unknown): KitchenCourse {
   };
 }
 
-export function asKitchenSheet(raw: unknown): KitchenSheet | null {
+export function asFinalNumbers(raw: unknown): FinalNumbers {
+  const one = record(raw);
+
+  return {
+    due: typeof one.due === 'string' ? one.due : null,
+    picksOpenUntil: typeof one.picksOpenUntil === 'string' ? one.picksOpenUntil : null,
+    copies: list(one.copies).map((copy) => {
+      const given = record(copy);
+
+      return { id: str(given.id), recordedAt: str(given.recordedAt), by: str(given.by) };
+    }),
+  };
+}
+
+export function asKitchenSheet(raw: unknown, final: unknown = null): KitchenSheet | null {
   const one = record(raw);
   if (typeof one.coming !== 'number' || !Array.isArray(one.courses)) return null;
 
@@ -134,5 +163,6 @@ export function asKitchenSheet(raw: unknown): KitchenSheet | null {
     allergyCounts: list(one.allergyCounts).map(asCount),
     dietCounts: list(one.dietCounts).map(asCount),
     courses: one.courses.map(asCourse),
+    finalNumbers: asFinalNumbers(final),
   };
 }
