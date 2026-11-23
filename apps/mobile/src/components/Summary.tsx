@@ -1,4 +1,12 @@
-import { type ReactNode, type Ref, type RefObject, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type DimensionValue,
   type NativeScrollEvent,
@@ -90,11 +98,42 @@ export interface PageToastProps {
   onClose: () => void;
 }
 
-export function PageToast({ words, action, onClose, bottom }: PageToastProps & { bottom: number }) {
+/** Where a page's toast shows: the top of its box in the window, for the words it shows. */
+export interface ToastAt {
+  words: string;
+  top: number;
+}
+
+export function PageToast({
+  words,
+  action,
+  onClose,
+  bottom,
+  onAt,
+}: PageToastProps & {
+  bottom: number;
+  /** Called as each words' toast is laid out, and with null as the toast goes. */
+  onAt?: ((at: ToastAt | null) => void) | undefined;
+}) {
+  const box = useRef<ViewInstance>(null);
+  const at = useRef(onAt);
+
+  useEffect(() => {
+    at.current = onAt;
+  }, [onAt]);
+
+  useEffect(() => () => at.current?.(null), []);
+
   return (
     <TitleCap.Provider value={null}>
       <View style={[styles.toast, { bottom }]}>
-        <Toast key={words} words={words} action={action} onClose={onClose} />
+        <View
+          key={words}
+          ref={box}
+          onLayout={() => box.current?.measureInWindow((_x, top) => at.current?.({ words, top }))}
+        >
+          <Toast words={words} action={action} onClose={onClose} />
+        </View>
       </View>
     </TitleCap.Provider>
   );

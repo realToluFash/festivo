@@ -14,7 +14,7 @@ const inSight = page.slice(
 describe('an edit a link opened closes with its row in sight, where focus goes back to (sc-48600)', () => {
   it('hands the page each close, with the opener focus goes back to', () => {
     expect(screen).toContain('closedOnto={editing?.open === false ? editing : null}');
-    expect(page).toContain('useOpenerInSight(closedOnto);');
+    expect(page).toContain('useOpenerInSight(closedOnto, toast);');
   });
 
   it('brings that opener into the page’s scroll at once, with a screen reader on', () => {
@@ -24,6 +24,50 @@ describe('an edit a link opened closes with its row in sight, where focus goes b
 
   it('leaves a close the page was not open for alone, so coming back to Overview scrolls nothing', () => {
     expect(inSight).toContain('const seen = useRef(closed);');
-    expect(inSight).toContain('if (closed == null || closed === seen.current) return;');
+    expect(inSight).toContain(
+      'if (closed == null || closed === seen.current || closed.saved === true) return;',
+    );
+  });
+});
+
+describe('after Save, the row rests 12pt above the saved toast, with a screen reader on (sc-86228)', () => {
+  it('hands the page the toast’s top for the Save it says', () => {
+    expect(screen).toContain(
+      "setToast({ eventId, area, words: said ?? t('eventEdit.saved'), over: closed });",
+    );
+    expect(screen).toContain('onAt={setToastAt}');
+  });
+
+  it('rests the row against that toast, at once and only with a screen reader on', () => {
+    expect(inSight).toContain(
+      'restOverToast(scroll, closed.opener.current, over, roomNow.current,',
+    );
+    expect(inSight).toContain('scrollTo({ y: rest.to, animated: false })');
+    expect(inSight).toContain('if (!on || !current()) return;');
+  });
+
+  it('sends focus to the row from the rest, once it has landed and the edit has gone, not on the edit’s timer', () => {
+    expect(screen).toContain('opener={editing.saved === true ? nobody : editing.opener}');
+    expect(inSight).toContain('landedOr(scroll, rest.to, rested);');
+    expect(inSight).toContain('if (rest == null || scroll == null) return rested();');
+    expect(inSight).toContain("focusOnceStill(still, closed, 'settled');");
+    expect(inSight).toContain('moveScreenReaderFocus(of.opener.current);');
+  });
+
+  it('still sends focus back when no rest starts, because the toast’s top never came for this close', () => {
+    expect(inSight).toContain('if (still.current?.of === closed) still.current.resting = true;');
+    expect(inSight).toContain('if (still.current?.of === closed && !still.current.resting) {');
+    expect(inSight).toContain('clearTimeout(unrested);');
+  });
+
+  it('brings that row into sight before focus goes back to it, as a close without Save does', () => {
+    expect(inSight).toContain('still.current.resting = true;');
+    expect(inSight).toContain(
+      'found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),',
+    );
+  });
+
+  it('takes away the room at the page’s foot as the toast goes', () => {
+    expect(inSight).toContain('laidOut.current = () => keepInsideEnd(scroll);');
   });
 });
