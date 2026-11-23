@@ -3665,13 +3665,13 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
       }
       for (const flow of ['session', 'sign-in-form']) {
-        const toSettings = new RegExp(
-          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
-            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
-            .replaceAll("''", "'")})$`,
+        const [, paused, today] = readFileSync(join(target, `batch/${flow}.yaml`), 'utf8').match(
+          /when:\s+notVisible: '(.*)'\s+visible: '(.*)'\s+file: to-settings\.yaml/,
         );
+        const pattern = (alternatives) => new RegExp(`^(?:${alternatives.replaceAll("''", "'")})$`);
         for (const code of ['en', 'es', 'fr', 'pt']) {
-          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+          expect(catalogues[code].todayScreen.tab.today).toMatch(pattern(today));
+          expect(catalogues[code].accessPaused.badge).toMatch(pattern(paused));
         }
       }
       const atSettings = new RegExp(
