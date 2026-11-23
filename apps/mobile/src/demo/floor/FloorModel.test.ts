@@ -225,6 +225,7 @@ describe('Send back', () => {
     const back = undo(f);
     expect(at(back, 'Table 2').seats[7]?.owed).toHaveLength(1);
     expect(back.undo).toBeNull();
+    expect(back.heard).toBe('Undone: Sent back: Kemi Oke’s Goat curry · Dropped');
   });
 });
 

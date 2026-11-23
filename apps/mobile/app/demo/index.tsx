@@ -46,6 +46,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
@@ -2601,6 +2602,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Service · Floor, every table and what each one needs (sc-4021) · phone, tablet portrait and landscape',
+    boards: FLOOR_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',

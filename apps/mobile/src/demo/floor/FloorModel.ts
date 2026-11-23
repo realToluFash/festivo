@@ -121,6 +121,7 @@ export interface Floor {
   notSent: string[];
   line: string;
   online: boolean;
+  heard: string;
   /** Bumped by each step, so the same words said twice are read out twice. */
   said: number;
 }
@@ -431,6 +432,7 @@ export function floorSeed(state: FloorState): Floor {
     notSent: [],
     line: state === 'moved' ? 'You’re on Section D now.' : '',
     online: state !== 'offline',
+    heard: '',
     said: 0,
   };
   const t2 = places.find((p) => p.name === 'Table 2');
@@ -686,6 +688,7 @@ export function choose(f: Floor, name: string, seat: number, choice: Choice): Fl
   if (p == null || g?.held == null || !mayWrite(f, p)) return f;
   if (!choicesFor(g.held).includes(choice) || g.held.choice === choice) return f;
   const kept = !f.online;
+  const line = `${guestName(f, p, g)}: ${choice}`;
   return {
     ...f,
     places: withPlace(f, name, (q) => ({
@@ -694,13 +697,9 @@ export function choose(f: Floor, name: string, seat: number, choice: Choice): Fl
         x.seat === seat && x.held != null ? { ...x, held: { ...x.held, choice, kept } } : x,
       ),
     })),
-    undo: {
-      line: `${guestName(f, p, g)}: ${choice}`,
-      until: undoUntil(NOW),
-      kept,
-      before: clonePlace(p),
-    },
+    undo: { line, until: undoUntil(NOW), kept, before: clonePlace(p) },
     kept: f.kept + (kept ? 1 : 0),
+    heard: line,
     said: f.said + 1,
   };
 }
@@ -745,6 +744,7 @@ export function sendBack(f: Floor): Floor {
   const from = sh.owed == null ? null : (g.owed[sh.owed] ?? null);
   const items = from?.items ?? g.dish ?? '';
   const kept = !f.online;
+  const line = `Sent back: ${guestName(f, p, g)}’s ${items} · ${reason}`;
   return {
     ...f,
     places: withPlace(f, p.name, (q) => ({
@@ -763,13 +763,9 @@ export function sendBack(f: Floor): Floor {
       ),
     })),
     sheet: null,
-    undo: {
-      line: `Sent back: ${guestName(f, p, g)}’s ${items} · ${reason}`,
-      until: undoUntil(NOW),
-      kept,
-      before: clonePlace(p),
-    },
+    undo: { line, until: undoUntil(NOW), kept, before: clonePlace(p) },
     kept: f.kept + (kept ? 1 : 0),
+    heard: line,
     said: f.said + 1,
   };
 }
@@ -787,6 +783,7 @@ export function undo(f: Floor): Floor {
     places: f.places.map((p) => (p.name === u.before.name ? u.before : p)),
     undo: null,
     kept: f.kept + (kept ? 1 : 0),
+    heard: `Undone: ${u.line}`,
     said: f.said + 1,
   };
 }
@@ -811,5 +808,6 @@ export function movedTo(f: Floor, to: SectionId): Floor {
   for (const id of Object.keys(sections) as SectionId[])
     sections[id] = sections[id].filter((n) => n !== ME);
   sections[to] = [...sections[to], ME];
-  return { ...f, sections, line: `You’re on Section ${to} now.`, said: f.said + 1 };
+  const line = `You’re on Section ${to} now.`;
+  return { ...f, sections, line, heard: line, said: f.said + 1 };
 }
