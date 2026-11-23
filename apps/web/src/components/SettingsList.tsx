@@ -44,12 +44,14 @@ export function SectionTile({ look, children }: { look: string; children: ReactN
   );
 }
 
-/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members and Vendors only for a role that can read them, and Data and control for an Owner or an Admin. */
+/** Your account's sections, then the organisation's, as the demo's Settings list draws them; Members and Vendors only for a role that can read them, and Data and control for an Owner or an Admin. A paused membership holds no role, so while the pill names it the group is its own, with the two sections that need no permission (sc-86077). */
 export function SettingsList() {
   const { t } = useTranslation();
   const session = useSession();
   const { pathname } = useLocation();
-  const organisation = session.organisation;
+  const paused = session.pausedIn ?? null;
+  const organisation = paused ?? session.organisation;
+  const may = (permission: string) => paused == null && can(session, permission);
   const glyph = (name: 'shield' | 'bell' | 'users' | 'lock' | 'storefront') => (
     <Glyph name={name} size={17} />
   );
@@ -95,7 +97,7 @@ export function SettingsList() {
           tile: <SectionTile look="general">{initials(organisation.name)}</SectionTile>,
           end: true,
         },
-        ...(can(session, 'members.read')
+        ...(may('members.read')
           ? [
               {
                 to: '/app/settings/members',
@@ -109,7 +111,7 @@ export function SettingsList() {
           label: t('settings.sectionSignInRules'),
           tile: <SectionTile look="sign-in-rules">{glyph('lock')}</SectionTile>,
         },
-        ...(can(session, 'vendors.read')
+        ...(may('vendors.read')
           ? [
               {
                 to: '/app/settings/vendors',
@@ -118,7 +120,7 @@ export function SettingsList() {
               },
             ]
           : []),
-        ...(can(session, 'organisation.manage')
+        ...(may('organisation.manage')
           ? [
               {
                 to: '/app/settings/data-and-control',

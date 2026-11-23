@@ -565,11 +565,11 @@ function ShellEvents({ organisationId }: { organisationId: string | null }) {
   );
 }
 
-/** Settings, and the person at the sidebar's foot, who opens their account. */
+/** Settings, and the person at the sidebar's foot, who opens their account. A paused membership holds no role, so the person is named alone while the pill names it (sc-86077). */
 function ShellFoot({ onFollow }: { onFollow?: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
-  const organisation = session.organisation;
+  const organisation = session.pausedIn == null ? session.organisation : null;
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = { name: session.name, initials: initials(session.name), role };
   const atAccount = useLocation().pathname.startsWith('/app/account');
