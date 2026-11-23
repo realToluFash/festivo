@@ -588,8 +588,8 @@ function Seat({
                     <Pressable
                       key={c}
                       onPress={() => setF(choose(f, p.name, g.seat, c))}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
+                      accessibilityRole="togglebutton"
+                      accessibilityState={{ checked: on }}
                       style={[styles.choice, phone && styles.phoneHit, on && styles.choiceOn]}
                       testID={`floor.choice.${g.seat}.${on ? 'on' : 'off'}`}
                     >
