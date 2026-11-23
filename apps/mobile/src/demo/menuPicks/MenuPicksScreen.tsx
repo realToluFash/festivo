@@ -15,6 +15,7 @@ import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { FailureLine } from '../../components/FailureLine.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet, SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { Text } from '../../components/Text.tsx';
@@ -666,9 +667,8 @@ function ChooseFor({
   );
   const first = courses[0] == null ? null : firstCheck(courses[0], person, opened);
   const [blank, setBlank] = useState<string | null>(first?.kind === 'blank' ? first.words : null);
-  const [asking, setAsking] = useState<DraftCheck | null>(
-    first?.kind === 'ruledOut' ? first : null,
-  );
+  const [seeded] = useState(first?.kind === 'ruledOut' ? first : null);
+  const [asking, setAsking] = useState<DraftCheck | null>(null);
   const [refused, setRefused] = useState(first?.kind === 'ok' && opened.refuses === true);
   const [saving, setSaving] = useState(false);
   const phone = useLayout().kind === 'phone';
@@ -681,6 +681,13 @@ function ChooseFor({
     },
     [],
   );
+  useEffect(() => {
+    if (seeded == null) return;
+    // Android drops a modal put up before the sheet under it has shown (sc-87421).
+    const wait = setTimeout(() => setAsking(seeded), SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [seeded]);
 
   if (course == null) return null;
   const last = at === courses.length - 1;
