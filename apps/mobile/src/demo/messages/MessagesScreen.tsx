@@ -43,7 +43,7 @@ import { Bell } from '../settings/Frame.tsx';
 import { BellPlace } from './BellPlace.tsx';
 import type { BellState } from './BellStates.ts';
 import { Back } from '../../components/SettingsParts.tsx';
-import type { Anchor } from '../../components/Summary.tsx';
+import { type Anchor, useAnchorFollowsTurn } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
 import { KeysClear } from './KeysClear.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
@@ -363,6 +363,7 @@ export function MessagesScreen({
     if (!m.bell || phone) return undefined;
     return openOnceSettled(measuredUnder(bellRef), setBellAt, MENU_AFTER_MS);
   }, [m.bell, phone]);
+  useAnchorFollowsTurn(bellRef, m.bell && !phone && bellAt != null, setBellAt);
 
   const open = (id: RowId) => {
     from(`row.${rowName(id)}`);
