@@ -4,8 +4,7 @@ appId: host.exp.Exponent
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/
 - extendedWaitUntil:
-    visible:
-      id: 'accessPaused\..+'
+    visible: '{{t:accessPaused.badge}}'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 8000
