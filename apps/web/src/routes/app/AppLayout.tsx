@@ -245,7 +245,7 @@ function Shell() {
     ) : organisation != null && overdue && !atAccount ? (
       <TwoFactorOverdue
         organisation={organisation}
-        othersListed={session.organisations.some((other) => other.id !== organisation.id)}
+        others={session.organisations.filter((other) => other.id !== organisation.id)}
       />
     ) : null;
 

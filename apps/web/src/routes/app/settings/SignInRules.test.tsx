@@ -54,6 +54,12 @@ const PAGE = {
   ownProvider: true,
 };
 
+const PASSED = {
+  at: '2026-10-24T13:20:00+00:00',
+  written: 'Saturday, Oct 24 at 14:20 WAT',
+  overdue: true,
+};
+
 const GOOGLE: LinkedProvider = { provider: 'google', email: 'folake@gmail.com' };
 
 function signedIn(
@@ -858,6 +864,63 @@ describe('what the rules ask of a member, on every page', () => {
       }),
       [GOOGLE],
       [membership({ id: 'org_2', name: 'Okafor Family' })],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
+  });
+
+  it('past the deadline, a member past it in every other organisation is told only of single events', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [membership({ id: 'org_2', name: 'Okafor Family', twoFactorDue: PASSED })],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(screen.getByText('Your single-event access is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
+  });
+
+  it('past the deadline, another organisation with no two-factor to meet still counts', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [
+        membership({ id: 'org_2', name: 'Okafor Family', twoFactorDue: PASSED }),
+        membership({ id: 'org_3', name: 'Bello Socials', twoFactorDue: null }),
+      ],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
+  });
+
+  it('past the deadline, another organisation whose deadline is tomorrow still counts', async () => {
+    signedIn(
+      membership({ twoFactorDue: PASSED }),
+      [GOOGLE],
+      [
+        membership({
+          id: 'org_2',
+          name: 'Okafor Family',
+          twoFactorDue: {
+            at: new Date(Date.now() + 86_400_000).toISOString(),
+            written: 'Tomorrow',
+            overdue: false,
+          },
+        }),
+      ],
     );
     answering();
     open('/app/settings/sign-in-rules');

@@ -4,17 +4,19 @@ import { Link, useNavigate } from 'react-router';
 
 import { StillSignedIn } from './StillSignedIn.tsx';
 import { useSignOut } from '../signOut.ts';
+import { useAnyNotOverdue } from '../twoFactorStanding.ts';
 
 /** In place of every page of an organisation whose deadline for two-factor has passed (sc-609). */
 export function TwoFactorOverdue({
   organisation,
-  othersListed,
+  others,
 }: {
   organisation: Membership;
-  /** Whether the switcher lists an organisation besides this one (sc-85006). */
-  othersListed: boolean;
+  /** The organisations the switcher lists besides this one; those past their deadline do not count (sc-85645). */
+  others: readonly Pick<Membership, 'twoFactorDue'>[];
 }) {
   const { t } = useTranslation();
+  const othersUnaffected = useAnyNotOverdue(others);
   const navigate = useNavigate();
 
   const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
@@ -26,7 +28,7 @@ export function TwoFactorOverdue({
         {t('signInRules.overdueBody', { organisation: organisation.name })}
       </p>
       <p className="muted">
-        {t(othersListed ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
+        {t(othersUnaffected ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
       </p>
       {unreached && <StillSignedIn />}
       <div className="two-factor-overdue-actions">

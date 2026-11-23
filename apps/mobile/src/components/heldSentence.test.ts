@@ -5,16 +5,25 @@ import { describe, expect, it } from 'vitest';
 
 const source = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
 
-describe('sc-85006: the held cards name other organisations only when there are some', () => {
-  it('the paused card says its other organisations are untouched only when it has others', () => {
+describe('sc-85645: the held cards name other organisations only when one is not overdue', () => {
+  it('the paused card says its other organisations are untouched only when one is not overdue', () => {
     expect(source('AccessPaused.tsx')).toContain(
-      "t(others.length > 0 ? 'accessPaused.untouched' : 'accessPaused.untouchedSingleEvents')",
+      'const othersUnaffected = useAnyNotOverdue(others);',
     );
   });
 
-  it('the overdue card says its other organisations are unaffected only when any are listed', () => {
+  it('the overdue card says its other organisations are unaffected only when one is', () => {
     expect(source('TwoFactorOverdue.tsx')).toContain(
-      "t(othersListed ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')",
+      "t(othersUnaffected ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')",
     );
+    expect(source('TwoFactorOverdue.tsx')).toContain(
+      'const othersUnaffected = useAnyNotOverdue(others);',
+    );
+  });
+});
+
+describe('sc-85645: the frame tells the overdue card whether another organisation is not overdue', () => {
+  it('counts the listed organisations besides the one in use whose deadline has not passed', () => {
+    expect(source('AppFrame.tsx')).toMatch(/others=\{signedIn\.organisations\.filter\(/);
   });
 });

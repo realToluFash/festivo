@@ -23,8 +23,8 @@ describe('sc-85006: the held pages for a member of one organisation', () => {
     expect(pausedSwitch(othersOf(false))).toBe('switcher');
   });
 
-  it('feeds the paused card its others and the overdue card whether any are listed', () => {
+  it('feeds both cards their others', () => {
     expect(held).toContain('others={othersOf(alone)}');
-    expect(held).toContain('othersListed={!alone}');
+    expect(held.match(/others=\{othersOf\(alone\)\}/g)).toHaveLength(2);
   });
 });
