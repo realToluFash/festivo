@@ -87,7 +87,7 @@ describe('General at a desk (sc-30063)', () => {
     expect(screen.queryByRole('heading', { level: 2, name: 'Requests to join' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
-    expect(router.state.location.search).toBe('?as=julien&state=setup');
+    expect(router.state.location.search).toBe('?as=julien&state=choice');
     expect(screen.getByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
