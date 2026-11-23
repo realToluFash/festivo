@@ -513,5 +513,10 @@
     "menu.default_dish": "{dish} é o prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
     "menu.default_variant": "{variant} é a variante do prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
     "menu.default_option": "{option} faz parte do prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
-    "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar."
+    "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar.",
+    "timeline.give_final_numbers": "Give final numbers to the kitchen",
+    "timeline.open_kitchen_sheet": "Open the kitchen sheet",
+    "validation.final_numbers_invalid": "Choose a valid date.",
+    "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",
+    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date."
 }

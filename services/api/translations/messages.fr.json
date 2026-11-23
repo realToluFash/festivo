@@ -513,5 +513,10 @@
     "menu.default_dish": "{dish} est le plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
     "menu.default_variant": "{variant} est la variante du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
     "menu.default_option": "{option} fait partie du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
-    "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer."
+    "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer.",
+    "timeline.give_final_numbers": "Give final numbers to the kitchen",
+    "timeline.open_kitchen_sheet": "Open the kitchen sheet",
+    "validation.final_numbers_invalid": "Choose a valid date.",
+    "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",
+    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date."
 }

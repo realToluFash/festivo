@@ -513,5 +513,10 @@
     "menu.default_dish": "{dish} is {course}’s default. Choose another default first, in Edit course.",
     "menu.default_variant": "{variant} is {course}’s default variant. Choose another default first, in Edit course.",
     "menu.default_option": "{option} is part of {course}’s default. Choose another default first, in Edit course.",
-    "menu.default_move": "Changing the default moves the guests given it. Confirm to change it."
+    "menu.default_move": "Changing the default moves the guests given it. Confirm to change it.",
+    "timeline.give_final_numbers": "Give final numbers to the kitchen",
+    "timeline.open_kitchen_sheet": "Open the kitchen sheet",
+    "validation.final_numbers_invalid": "Choose a valid date.",
+    "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",
+    "validation.final_numbers_past": "The date cannot be in the past. Choose today or a later date."
 }

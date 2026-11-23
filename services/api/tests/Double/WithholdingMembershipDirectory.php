@@ -31,6 +31,11 @@ final class WithholdingMembershipDirectory implements MembershipDirectoryInterfa
         $this->withheld[] = $permission;
     }
 
+    public function restore(): void
+    {
+        $this->withheld = [];
+    }
+
     public function grantsIn(User $user, Uuid $organisationId): ?Grants
     {
         return $this->less($this->real->grantsIn($user, $organisationId));
