@@ -91,6 +91,22 @@ describe('the kitchen sheet (sc-3911)', () => {
     ).toBeGreaterThan(0);
   });
 
+  it('lists someone a diet alone kept from the default, after the close', SLOW, async () => {
+    await sheet(sheetAt('closed'));
+    const bea = within(allergies()).getByRole('row', { name: /Bea Mensah/u });
+
+    expect(within(bea).getByText('No allergy · Vegetarian')).toBeTruthy();
+    expect(within(bea).getAllByText(KSW.cellNever).length).toBeGreaterThan(0);
+  });
+
+  it('lists them under the no allergies line when nobody has one', SLOW, async () => {
+    await sheet(sheetAt('closedNoAllergies'));
+
+    expect(within(allergies()).getByText(KSW.noAllergies)).toBeTruthy();
+    const nadia = within(allergies()).getByRole('row', { name: /Nadia Petrova/u });
+    expect(within(nadia).getByText('No allergy · Other diet')).toBeTruthy();
+  });
+
   it('says so when no allergies are recorded', SLOW, async () => {
     await sheet(sheetAt('noAllergies'));
 
