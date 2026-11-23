@@ -6297,7 +6297,7 @@
     "defaultMark": "(por defecto)",
     "changed": "Menú modificado",
     "changedOn": "Menú modificado: {{course}} · elección anterior: {{dish}}",
-    "menuChanged": "Menú modificado: se ha quitado el plato que eligieron estos invitados. Se les vuelve a preguntar y no entran en el recuento."
+    "menuChanged": "Menú modificado: el plato que eligieron estos invitados ha cambiado o se ha quitado. Se les vuelve a preguntar y no entran en el recuento."
   },
   "courseDefault": {
     "heading": "Plato por defecto y fecha límite",
@@ -6443,7 +6443,7 @@
     "pickedWith_one": "{{count, number}} invitado que ha elegido este plato tiene anotado: {{allergens}}. Se le pedirá que vuelva a elegir en «{{course}}» y aparecerá en «Pendiente del anfitrión».",
     "pickedWith_other": "{{count, number}} invitados que han elegido este plato tienen anotado: {{allergens}}. Se les pedirá que vuelvan a elegir en «{{course}}» y aparecerán en «Pendiente del anfitrión».",
     "pickedWith_many": "{{count, number}} invitados que han elegido este plato tienen anotado: {{allergens}}. Se les pedirá que vuelvan a elegir en «{{course}}» y aparecerán en «Pendiente del anfitrión».",
-    "staysAgain": "Solo se vuelve a preguntar por «{{course}}». El resto de lo que respondieron se mantiene, y su elección anterior queda en su respuesta.",
+    "staysAgain": "Solo se vuelve a preguntar por «{{course}}». El resto de las respuestas se mantiene, y la elección anterior queda guardada en la respuesta.",
     "staysNew": "Solo se pregunta por «{{course}}». El resto de lo que respondieron se mantiene.",
     "doneDish_one": "Se ha quitado {{dish}} de «{{course}}». Se pedirá a {{count, number}} invitado que vuelva a elegir.",
     "doneDish_other": "Se ha quitado {{dish}} de «{{course}}». Se pedirá a {{count, number}} invitados que vuelvan a elegir.",
