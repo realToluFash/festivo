@@ -194,11 +194,21 @@ export interface ScrollReport {
   byHand: boolean;
 }
 
-/** Where the reader is after a list reports a scroll: a jump to the very top that neither their hand nor a scroll we asked for made is the list resetting itself, as an iPad's grid does when an event closes over it, and the place stays where it was (sc-83008). */
-export function placeAfter(kept: number, report: ScrollReport, asked: number | null): number {
-  const steered = report.byHand || (asked != null && Math.abs(report.y - asked) <= 1);
+/** The span a scroll we asked for runs over: one place for a jump, from and to for a glide. */
+export interface Asked {
+  from: number;
+  to: number;
+}
 
-  return steered || report.y > 1 || kept <= 1 ? report.y : kept;
+/** Where the reader is after the grid reports a scroll. Only their hand and the scrolls we ask for move them; any other report, wherever it lands, is the list moving by itself, as an iPad's grid does under an event, and the place stays where it was (sc-83008). */
+export function placeAfter(kept: number, report: ScrollReport, asked: Asked | null): number {
+  const { y } = report;
+  const within =
+    asked != null &&
+    y >= Math.min(asked.from, asked.to) - 1 &&
+    y <= Math.max(asked.from, asked.to) + 1;
+
+  return report.byHand || within || Math.abs(y - kept) <= 1 ? y : kept;
 }
 
 export function offsetsOf(weeks: readonly Week[], look: WeekLook): number[] {

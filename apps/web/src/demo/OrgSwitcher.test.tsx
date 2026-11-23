@@ -373,19 +373,19 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
   });
 
   it(
-    'draws no Switch organisation for a member paused with no other organisation, and says single events stay',
+    'draws no pill and no Switch organisation for a member paused with no other organisation, and says single events stay',
     SLOW,
     async () => {
       open('/demo/today?switcher=paused-alone');
-      await opener(/^Organisation: Casa Lumen Eventos/);
-      fireEvent.keyDown(document.body, { key: 'Escape' });
 
       expect(
-        screen.getByRole('heading', {
-          level: 1,
-          name: /^Your access to Casa Lumen Eventos is paused/,
-        }),
+        await screen.findByRole(
+          'heading',
+          { level: 1, name: /^Your access to Casa Lumen Eventos is paused/ },
+          WAIT,
+        ),
       ).toBeDefined();
+      expect(screen.queryByRole('button', { name: /^Organisation:/ })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
       expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
     },

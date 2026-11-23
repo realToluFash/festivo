@@ -72,6 +72,7 @@ export function CalendarScreen() {
       current="calendar"
       top="stays"
       listUnderTabs
+      switchedAt={styles.switched}
       title={t('calendar.title')}
       titleRef={title}
       offline={offline.stale}
@@ -215,6 +216,7 @@ function CalendarOf({
 const styles = StyleSheet.create({
   page: { flex: 1 },
   beside: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  switched: { marginTop: 0 },
 });
 
 const PAGE: Record<LayoutKind, { paddingHorizontal: number }> = {

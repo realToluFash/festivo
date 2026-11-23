@@ -291,6 +291,7 @@ export function AppFrame({
   besideBack,
   top,
   listUnderTabs = false,
+  switchedAt,
   offline = null,
   children,
 }: {
@@ -326,7 +327,7 @@ export function AppFrame({
   backInBody?: boolean;
   children: ReactNode;
 } & (
-  | { top?: undefined; primary?: undefined; listUnderTabs?: undefined }
+  | { top?: undefined; primary?: undefined; listUnderTabs?: undefined; switchedAt?: undefined }
   | {
       /** The top as the screen's own demo draws it: `scrolls` with the page, which places `FrameTop` at the head of its scroll, or `stays` above it (sc-39471). */
       top: 'scrolls' | 'stays';
@@ -334,6 +335,8 @@ export function AppFrame({
       primary?: TopPrimaryProps | undefined;
       /** On a phone the list runs on under the tab bar and its fade, and ends clear of them (sc-39471). */
       listUnderTabs?: boolean;
+      /** Where "Now working in …" sits under the title, when the screen's demo sets it other than Events' (sc-46032). */
+      switchedAt?: StyleProp<ViewStyle>;
     }
 )) {
   const { t } = useTranslation();
@@ -606,7 +609,7 @@ export function AppFrame({
         {...(focusInBody ? { answer: created, takesFocus: true, readMs: SETTLED_MS * 2 } : {})}
       />
     );
-  const switchedStyle = ownTop ? styles.switchedUnderTitle : styles.created;
+  const switchedStyle = ownTop ? (switchedAt ?? styles.switchedUnderTitle) : styles.created;
   const switchedNotice =
     switched == null ? null : inBody ? (
       switchedRead && <ReadOut words={switched} />
