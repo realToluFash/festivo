@@ -434,6 +434,7 @@ function AddressField({
   const creditRef = useRef<HTMLParagraphElement>(null);
   const closeUnlessOn = (keepOnField: boolean) => () =>
     window.setTimeout(() => {
+      if (!document.hasFocus()) return;
       const now = document.activeElement;
       const onCredit = now != null && creditRef.current?.contains(now) === true;
       if (!onCredit && !(keepOnField && now === inputRef.current)) onDismiss();
