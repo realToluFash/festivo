@@ -396,27 +396,12 @@
     visibility: visible;
   }
 
-  /* Ctrl+P on the sheet page itself prints the sheet in the page's order, without the app or its buttons. */
-  body:has(.ks-body):not(:has(.ks-paper-page)) * {
-    visibility: hidden;
+  /* Ctrl+P on the sheet page prints the same paper sheets as Print, footer and all. */
+  .ks-paper-page.is-print {
+    display: flex;
   }
 
-  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide,
-  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide * {
-    visibility: visible;
-  }
-
-  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    color: var(--colorPrintInk);
-  }
-
-  .ks .ev-crumb-row,
-  .ks-acts,
-  .ks-said {
+  .ks .ev-wide > :not(.ks-paper-page) {
     display: none;
   }
 
