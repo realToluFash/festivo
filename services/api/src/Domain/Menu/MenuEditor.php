@@ -6,7 +6,6 @@ namespace App\Domain\Menu;
 
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestNeedsRecord;
-use App\Domain\Menu\Http\MenuSerialiser;
 use App\Domain\Menu\Interfaces\MenuPicksInterface;
 use App\Domain\Menu\Model\ChoiceAnswers;
 use App\Domain\Menu\Model\CourseDetails;
@@ -97,7 +96,6 @@ final readonly class MenuEditor
         private DishLibrary $dishLibrary,
         private DefaultRules $defaultRules,
         private DefaultMoves $defaultMoves,
-        private MenuSerialiser $menuSerialiser,
         private ClockInterface $clock,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
@@ -165,8 +163,7 @@ final readonly class MenuEditor
     /** @param SentDefault $sent */
     private function setDefault(Event $event, MenuCourse $course, array $sent, bool $confirmMove): void
     {
-        $served = Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? throw ApiException::notFound('access.not_found');
-        $next = $this->defaultRules->details($event, $course, $served, $sent);
+        $next = $this->defaultRules->details($event, $course, $sent);
         $was = $course->getDefaultDish();
         $samePick = null !== $next && $was === $next->dish && $course->getDefaultVariant() === $next->variant && Vec\sort($course->getDefaultOptions()) === Vec\sort($next->options);
 

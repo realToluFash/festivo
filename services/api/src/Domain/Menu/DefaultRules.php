@@ -47,12 +47,10 @@ final readonly class DefaultRules
         ]);
     }
 
-    /**
-     * @param SentDefault          $sent
-     * @param array<string, mixed> $served the course as MenuSerialiser serves it, and null back when both are cleared
-     */
-    public function details(Event $event, MenuCourse $course, array $served, array $sent): ?CourseDefaultDetails
+    /** @param SentDefault $sent */
+    public function details(Event $event, MenuCourse $course, array $sent): ?CourseDefaultDetails
     {
+        $served = $this->served($event, $course);
         $stored = $course->getChooseBy()?->format('Y-m-d');
         $locked = null !== $stored && PicksClose::of($event, $course)->passedAt($this->clock->now());
         $date = null === $sent['chooseBy'] ? '' : Str\trim($sent['chooseBy']);
@@ -129,10 +127,15 @@ final readonly class DefaultRules
             return true;
         }
 
-        $served = Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? [];
-        $dish = $this->offered($served, $stored->getId()->toRfc4122());
+        $dish = $this->offered($this->served($event, $course), $stored->getId()->toRfc4122());
 
         return null !== $dish && [] === self::pickOf($dish, $course->getDefaultVariant()?->getId()->toRfc4122(), $course->getDefaultOptions())['gaps'];
+    }
+
+    /** @return array<string, mixed> */
+    private function served(Event $event, MenuCourse $course): array
+    {
+        return Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? throw ApiException::notFound('access.not_found');
     }
 
     /**
