@@ -190,6 +190,15 @@ RESTORE_KEY=… RESTORE_SECRET=… RESTORE_PROJECT=soirely-qa RESTORE_COMPOSE_FI
 
 The identity file must be under a path Docker can mount (on Docker Desktop, not `/tmp`).
 
+## Writing the scripts
+
+- Never pipe a command into `grep -q` under `set -o pipefail`. `grep -q` exits at its
+  first match, the command writing into it dies of a broken pipe, and the pipeline
+  fails though the line was there, on some runs and not others. Read the output once
+  into a variable and match it in bash (`deploy/restore.sh`, the services it closes).
+- Under `set -u`, bash 3.2 (macOS) treats `"${list[*]}"` of an empty array as unbound.
+  Refuse the empty case before using the list.
+
 ## The first deploy's pre-flight
 
 Each line of sc-1612, ticked on the first deploy:
