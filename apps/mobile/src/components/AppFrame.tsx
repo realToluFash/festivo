@@ -1323,13 +1323,16 @@ function FrameHeader({
       {pillAlone && named != null && (
         <OrgPill organisation={named} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
-      {backView}
       {paused ? (
-        <View style={styles.bellAlone}>
+        <View style={styles.titleRow}>
+          <View style={styles.fill}>{backView}</View>
           <BellButton />
         </View>
       ) : (
-        titleRow(<BellButton />)
+        <>
+          {backView}
+          {titleRow(<BellButton />)}
+        </>
       )}
     </View>
   );
