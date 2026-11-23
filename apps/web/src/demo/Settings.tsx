@@ -95,11 +95,11 @@ export function Settings({
   const covered = stack.length > 0;
   const fit = open === 'vendors' && !reminders;
   const atPhone = usePhoneWidth();
-  const barBell = fit && atPhone;
+  const shell = fit ? 'today desk dp-fit' : atPhone ? 'today desk dp-bar' : 'today desk';
 
   return (
     <LayersContext value={layers}>
-      <div className={fit ? 'today desk dp-fit' : 'today desk'}>
+      <div className={shell}>
         <DeskSearch reach={reachOfRole(viewer.role)} tell={tell}>
           <TodaySidebar
             events={SIDEBAR_EVENTS}
@@ -107,8 +107,8 @@ export function Settings({
             settings
             person={seen}
             inert={covered}
-            phone={fit}
-            bell={barBell && <DemoBell tell={tell} />}
+            phone={fit || atPhone}
+            bell={atPhone && <DemoBell tell={tell} />}
           />
           <main id="content" className="desk-main" inert={covered}>
             <>
@@ -170,7 +170,7 @@ export function Settings({
                   key={`${viewer.key}:${state}:${params.get('vendor') ?? ''}`}
                   state={state}
                   tell={tell}
-                  bell={!barBell}
+                  bell={!atPhone}
                 />
               ) : viewer.manages ? (
                 <Members
