@@ -354,14 +354,14 @@ function Shell() {
           <DeskSidebar
             label={t('app.name')}
             pill={
-              organisation != null && (
+              (organisation != null || session.pausedIn != null) && (
                 <OrganisationSwitcher
                   current={organisation}
                   organisations={session.organisations}
                   waiting={waiting}
                   offer={offer}
                   email={session.email}
-                  paused={session.pausedIn != null}
+                  paused={session.pausedIn ?? null}
                   opened={choosing}
                   outside={session.outsideEvents ?? []}
                   onSwitch={switchInto}

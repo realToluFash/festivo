@@ -94,6 +94,7 @@ export function OrgMenu({
   const field = useRef<HTMLInputElement>(null);
   const shown = useRef<HTMLDivElement>(null);
   const options = useRef<(HTMLDivElement | null)[]>([]);
+  const create = useRef<HTMLButtonElement>(null);
 
   const searchable = places.length > SEARCH_FROM;
   const typed = searchable ? query : '';
@@ -170,6 +171,7 @@ export function OrgMenu({
 
   useLayoutEffect(() => {
     const lit = body.current?.querySelector<HTMLElement>('[role="option"][tabindex="0"]');
+    if (lit == null && arrive) create.current?.focus();
     if (lit == null || body.current == null) return;
 
     reveal(body.current, lit);
@@ -283,7 +285,13 @@ export function OrgMenu({
     );
   });
   more.push(
-    <button key="create" type="button" className="sw-cell is-create" onClick={onCreate}>
+    <button
+      key="create"
+      ref={create}
+      type="button"
+      className="sw-cell is-create"
+      onClick={onCreate}
+    >
       <span className="sw-mark" aria-hidden="true">
         <span className="sw-tile is-create">
           <Glyph name="plus" size={20} weight={2.4} />
