@@ -597,7 +597,7 @@ function Page({
       <div className="ks-sheet-body">{children}</div>
       <footer className="ks-foot">
         <span>{t('kitchenSheet.health')}</span>
-        <span>{label}</span>
+        <span className="ks-foot-page">{label}</span>
       </footer>
     </article>
   );

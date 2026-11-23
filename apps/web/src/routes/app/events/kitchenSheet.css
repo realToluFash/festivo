@@ -410,4 +410,9 @@
   .ks-sheet tr {
     break-inside: avoid;
   }
+
+  /* The browser breaks the paper wherever the sheet runs over, so a drawn "Page 1 of 2" would be wrong on paper. */
+  .ks-foot-page {
+    display: none;
+  }
 }
