@@ -34,6 +34,7 @@ import {
   containsOf,
   courseFigures,
   defaultedOn,
+  dishRuled,
   giveVariant,
   givenDefault,
   goesBackTo,
@@ -851,7 +852,7 @@ function ChooseFor({
                     name="pk-for-dish"
                     label={one.name}
                     checked={choice.dishId === one.id}
-                    ruled={dishRuled(one, person)}
+                    ruled={dishRuled(one, person, allergensOf)}
                     onPick={() => pickDish(one.id)}
                   />
                 ))}
@@ -980,18 +981,6 @@ const overrideBody = (dish: string, asking: Asking, who: string): string =>
 
 const ruledFor = (person: Person, contains: readonly DishAllergen[] | null): string | null =>
   ruledWords(ruledOut(person, contains), contains == null, person.name, allergensOf);
-
-/** A dish's own line, or, with variants, the allergens every variant guests may pick shares; never stated when any of them was not. */
-function dishRuled(dish: EvDish, person: Person): string | null {
-  if (!hasVariants(dish)) return ruledFor(person, containsOf(dish, null, []));
-  const each = variantsOf(dish)
-    .filter(isForEveryone)
-    .map((variant) => containsOf(dish, variant.id, []));
-  const ruled = each.map((one) => ruledOut(person, one));
-  if (!ruled.every((one) => one.length > 0)) return null;
-
-  return ruledWords([...new Set(ruled.flat())], each.includes(null), person.name, allergensOf);
-}
 
 function DishOption({
   id,

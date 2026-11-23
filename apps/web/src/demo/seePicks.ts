@@ -270,6 +270,25 @@ export function ruledWords(
   return notStated ? SW.ruledOutNotStated : SW.ruledOut(list(allergens), who);
 }
 
+/** A dish's own line, or, with variants, the allergens every variant guests may pick shares; never stated when any of them was not. */
+export function dishRuled(
+  dish: EvDish,
+  person: Person,
+  list: (codes: readonly DishAllergen[]) => string,
+): string | null {
+  if (!hasVariants(dish)) {
+    const contains = containsOf(dish, null, []);
+    return ruledWords(ruledOut(person, contains), contains == null, person.name, list);
+  }
+  const each = variantsOf(dish)
+    .filter(isForEveryone)
+    .map((variant) => containsOf(dish, variant.id, []));
+  const ruled = each.map((one) => ruledOut(person, one));
+  if (!ruled.every((one) => one.length > 0)) return null;
+
+  return ruledWords([...new Set(ruled.flat())], each.includes(null), person.name, list);
+}
+
 /** Nothing a guest may pick themselves is safe for this person: every dish, or every Everyone variant of it, contains one of their allergies. */
 export function nothingFor(course: EvCourse, person: Person): boolean {
   return course.dishes.every((dish) =>
@@ -1154,7 +1173,7 @@ const STATES = {
   chooseForNotStated: () =>
     start({
       name: 'Choose for them, a dish whose allergens were never stated (sc-87421)',
-      note: 'Kwame has celery and peanuts recorded. Puff-puff never stated its allergens, so it is ruled out for him with the Allergy mark and “Allergens not stated. You can still pick it.” Nothing says what it contains.',
+      note: 'Kwame has peanuts and celery recorded. Puff-puff never stated its allergens, so it is ruled out for him with the Allergy mark and “Allergens not stated. You can still pick it.” Nothing says what it contains.',
       world: notStatedPicks(),
       opened: { kind: 'chooseFor', personId: 'kwame-asante', courseId: 'k3' },
     }),

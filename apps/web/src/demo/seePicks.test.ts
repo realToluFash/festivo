@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Variant } from './dishVariants.ts';
+
 import {
   type PicksWorld,
   PICKS_PAGES,
@@ -10,6 +12,7 @@ import {
   containsOf,
   courseFigures,
   defaultedOn,
+  dishRuled,
   giveVariant,
   givenDefault,
   goesBackTo,
@@ -435,6 +438,31 @@ describe('a dish whose allergens were never stated (sc-87421)', () => {
       'Contains milk, which Ada Obi is allergic to. You can still pick it.',
     );
     expect(ruledOut(base, containsOf({ ...PUFF_PUFF, contains: 'none' }, null, []))).toEqual([]);
+  });
+
+  it('says not stated for a dish with variants when every Everyone variant is ruled out and one was never stated', () => {
+    const way = (id: string, contains: Variant['contains']): Variant => ({
+      id,
+      name: id,
+      for: 'everyone',
+      contains,
+      diets: [],
+      price: null,
+      pickers: [],
+    });
+    const ways = (...variants: Variant[]) => ({ ...PUFF_PUFF, contains: [], variants });
+
+    expect(dishRuled(ways(way('v-nuts', ['peanuts']), way('v-blank', null)), base, list)).toBe(
+      'Allergens not stated. You can still pick it.',
+    );
+    expect(
+      dishRuled(ways(way('v-nuts', ['peanuts']), way('v-celery', ['celery'])), base, list),
+    ).toBe(
+      'Contains peanuts and celery, which Kwame Asante is allergic to. You can still pick it.',
+    );
+    expect(
+      dishRuled(ways(way('v-nuts', ['peanuts']), way('v-plain', 'none')), base, list),
+    ).toBeNull();
   });
 
   it('words the override body and the saved line without a claim about the dish', () => {
