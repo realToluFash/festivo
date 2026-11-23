@@ -29,7 +29,7 @@ describe('forwarding through the proxy', () => {
     await Promise.all(servers.splice(0).map((s) => new Promise((done) => s.close(done))));
   });
 
-  async function stack(delay, method) {
+  async function stack(delay, method, answer = {}) {
     const api = createServer((req, res) => {
       let body = '';
       req.on('data', (chunk) => (body += chunk));
@@ -45,6 +45,7 @@ describe('forwarding through the proxy', () => {
       delay,
       pattern: guests,
       method,
+      ...answer,
     });
     servers.push(proxy);
     return `http://127.0.0.1:${proxy.address().port}`;
@@ -74,6 +75,31 @@ describe('forwarding through the proxy', () => {
     const answer = await fetch(`${base}/api/events/ev1/guests`, { method: 'POST', body: 'x=1' });
     expect(Date.now() - started).toBeGreaterThanOrEqual(290);
     expect(await answer.text()).toBe('POST /api/events/ev1/guests x=1');
+  });
+
+  it('answers a matched request with the status it was given, without asking the API', async () => {
+    const base = await stack(0, 'GET', { status: 500 });
+    const answer = await fetch(`${base}/api/events/ev1/guests`);
+    expect(answer.status).toBe(500);
+    expect(answer.headers.get('x-api')).toBeNull();
+    const other = await fetch(`${base}/api/events/ev1`);
+    expect(other.status).toBe(201);
+  });
+
+  it('answers a matched request with the body it was given, 200 unless told otherwise', async () => {
+    const base = await stack(0, 'GET', { body: '{"paused":["org1"]}' });
+    const answer = await fetch(`${base}/api/events/ev1/guests`);
+    expect(answer.status).toBe(200);
+    expect(answer.headers.get('content-type')).toBe('application/json');
+    expect(await answer.json()).toEqual({ paused: ['org1'] });
+  });
+
+  it('holds an answer of its own for the delay too', async () => {
+    const base = await stack(300, 'GET', { status: 503 });
+    const started = Date.now();
+    const answer = await fetch(`${base}/api/events/ev1/guests`);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(290);
+    expect(answer.status).toBe(503);
   });
 
   it('answers 502 when the API is not there', async () => {
