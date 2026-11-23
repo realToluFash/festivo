@@ -703,3 +703,17 @@ describe('Settings > General at a desk (sc-30191)', () => {
     ).toBeDefined();
   });
 });
+
+describe('the sign-in rules’ notices on General at a desk (sc-39471, #87594)', () => {
+  it('stand in the page’s column above its title, not across the Settings card', async () => {
+    signedIn(membership({ id: 'org_1', name: 'Ìrè Events', withheldUntilTwoFactor: MANAGES }));
+    answering();
+    settings();
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'General' });
+    const notice = screen.getByText('Two-factor required by Ìrè Events').closest('.rn-box');
+
+    expect(notice?.closest('.settings-desk-page')).not.toBeNull();
+    expect(notice?.compareDocumentPosition(title)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+});

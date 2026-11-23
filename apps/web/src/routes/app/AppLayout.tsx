@@ -256,6 +256,9 @@ function Shell() {
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
   );
+  const rules = organisation != null && session.pausedIn == null && (
+    <SignInRulesNotices key={organisation.id} organisation={organisation} />
+  );
 
   const [landing, ...others] = session.outsideEvents ?? [];
   const [lastHeld, setLastHeld] = useState<readonly OutsideEvent[]>([]);
@@ -413,9 +416,7 @@ function Shell() {
         >
           {boxed ? <OfflineBox /> : !(bandless && ownNotices) && <OfflineBand />}
           <LinkedNotice />
-          {organisation != null && session.pausedIn == null && (
-            <SignInRulesNotices key={organisation.id} organisation={organisation} />
-          )}
+          {!(bandless && ownNotices) && rules}
           {!(bandless && ownNotices) && said}
 
           <DeskTopContext
@@ -424,7 +425,12 @@ function Shell() {
                 ? {
                     bell: <NotificationsBell userId={session.userId} look="desk" />,
                     said: ownNotices ? said : null,
-                    offline: ownNotices ? <OfflineBox /> : null,
+                    above: ownNotices ? (
+                      <>
+                        <OfflineBox />
+                        {rules}
+                      </>
+                    ) : null,
                   }
                 : NO_DESK_TOP
             }
@@ -439,6 +445,7 @@ function Shell() {
                   {bandless && ownNotices && (
                     <>
                       <OfflineBox />
+                      {rules}
                       {said}
                     </>
                   )}
@@ -476,7 +483,7 @@ function Shell() {
   );
 }
 
-const NO_DESK_TOP = { bell: null, said: null, offline: null };
+const NO_DESK_TOP = { bell: null, said: null, above: null };
 
 /** The run page marks no area, and its handoff's Menu still lists the event's areas, none lit (`EventHandoff.dc.html`). */
 function handoffInside(handoff: Handoff): ShownInside | undefined {

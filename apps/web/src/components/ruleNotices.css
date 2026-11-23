@@ -1,4 +1,4 @@
-/* The sign-in rules' notices at a desk: the amber box's frame, with a title, its line and its actions (sc-39471, #87355). */
+/* The sign-in rules' notices: the amber box's frame, with a dot, a title, its line and its actions (sc-39471, #87355, #87594). */
 
 .rn-box {
   display: flex;
@@ -78,7 +78,7 @@
   text-decoration: none;
 }
 
-/* The Calendar's page has no gap of its own and the product shares it: this stack gives the 18 the Events and Settings columns do (#87445). */
+/* The Calendar's page has no gap of its own: this stack gives the 18 the Events and Settings columns do (#87445). */
 .rn-stack {
   display: flex;
   flex-direction: column;
@@ -86,6 +86,7 @@
   margin-bottom: 18px;
 }
 
-.rn-stack:empty {
-  display: none;
+/* The product's offline box keeps its live region while online, so the stack is never empty. */
+.rn-stack:not(:has(.rn-box, .ev-offline)) {
+  margin-bottom: 0;
 }

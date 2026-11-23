@@ -74,7 +74,10 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
   it('keeps 18 between the boxes and to the title row on the Calendar (#87445)', async () => {
     const calendar = await open('/demo/calendar?notice=changed&offline', 'Calendar');
     const stack = screen.getByText('Sign-in rules changed').closest('.rn-stack');
-    const rule = cssRule('.rn-stack', stylesheet(import.meta.dirname, 'ruleNotices.css'));
+    const rule = cssRule(
+      '.rn-stack',
+      stylesheet(import.meta.dirname, '../components/ruleNotices.css'),
+    );
 
     expect(stack?.contains(screen.getByText(/Offline · as of/))).toBe(true);
     expect(follows(stack as Node, calendar.title)).toBe(true);

@@ -1,23 +1,13 @@
 import { formatDay } from '@soirely/domain';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
-import { TextAction } from '../components/SettingsParts.tsx';
+import { RuleNoticeBox, type RuleNoticeWords } from '../components/RuleNoticeBox.tsx';
 import { dateLocale } from '../i18n/index.ts';
 import { afterNotice, useFocusOnceShown } from '../stepFocus.ts';
 import { ORGANISATION } from './events.ts';
 import { CHANGED_AT, DEADLINE, type RuleNotice, noticesAsked } from './ruleNotices.ts';
-
-import './ruleNotices.css';
-
-interface Drawn {
-  kind: 'attention' | 'quiet';
-  title: string;
-  body: string | null;
-  step: { label: string; to: string };
-  close: string | null;
-}
 
 /** The sign-in rules' notices (SignInRulesNotices), in the amber box's place above the title row, under it when offline. */
 export function DemoRuleNotices() {
@@ -30,7 +20,7 @@ export function DemoRuleNotices() {
   const security = `/demo/settings/security${viewer}`;
   const organisation = ORGANISATION;
 
-  const drawn: Record<RuleNotice, Drawn> = {
+  const drawn: Record<RuleNotice, RuleNoticeWords> = {
     due: {
       kind: 'attention',
       title: t('signInRules.dueBody', { organisation, deadline: DEADLINE }),
@@ -65,9 +55,9 @@ export function DemoRuleNotices() {
   };
 
   return shown.map((notice) => (
-    <Notice
+    <RuleNoticeBox
       key={notice}
-      drawn={drawn[notice]}
+      words={drawn[notice]}
       onClose={(box) => {
         const next = afterNotice(box);
         setShown((was) => was.filter((one) => one !== notice));
@@ -75,28 +65,4 @@ export function DemoRuleNotices() {
       }}
     />
   ));
-}
-
-function Notice({ drawn, onClose }: { drawn: Drawn; onClose: (box: HTMLElement | null) => void }) {
-  const box = useRef<HTMLDivElement>(null);
-
-  return (
-    <div ref={box} className={`rn-box is-${drawn.kind}`} role="status">
-      <span className="rn-mark" aria-hidden="true" />
-      <div className="rn-main">
-        <div className="rn-words" data-notice-lead tabIndex={-1}>
-          <p className="rn-title">{drawn.title}</p>
-          {drawn.body != null && <p className="rn-body">{drawn.body}</p>}
-        </div>
-        <div className="rn-actions">
-          <Link className="desk-step" to={drawn.step.to}>
-            {drawn.step.label}
-          </Link>
-          {drawn.close != null && (
-            <TextAction label={drawn.close} onClick={() => onClose(box.current)} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
