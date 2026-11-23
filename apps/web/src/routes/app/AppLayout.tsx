@@ -15,7 +15,7 @@ import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { LinkedNoticeFor, useLinkedProvider } from '../../components/LinkedNotice.tsx';
 import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
@@ -154,6 +154,8 @@ function Shell() {
   const answers = useInvitationAnswers();
   const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
+  const [provider, dropProvider] = useLinkedProvider();
+  const linked = <LinkedNoticeFor provider={provider} onDismiss={dropProvider} />;
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
@@ -305,7 +307,7 @@ function Shell() {
         </AloneHeader>
         {atAccount ? (
           <main id="content" className="shell-content no-organisation-account">
-            <LinkedNotice />
+            {linked}
             <Link className="link-button back-link" to="/app">
               <span aria-hidden="true">←</span>
               <span>{t('noOrganisation.wayBack')}</span>
@@ -316,7 +318,7 @@ function Shell() {
           </main>
         ) : (
           <main id="content" className="no-organisation-main">
-            <LinkedNotice />
+            {linked}
             <ErrorBoundary>
               <NoOrganisation
                 waiting={answers}
@@ -415,7 +417,7 @@ function Shell() {
           inert={menuOpen}
         >
           {boxed ? <OfflineBox /> : !(bandless && ownNotices) && <OfflineBand />}
-          <LinkedNotice />
+          {!(bandless && ownNotices) && linked}
           {!(bandless && ownNotices) && rules}
           {!(bandless && ownNotices) && said}
 
@@ -428,6 +430,7 @@ function Shell() {
                     above: ownNotices ? (
                       <>
                         <OfflineBox />
+                        {linked}
                         {rules}
                       </>
                     ) : null,
@@ -445,6 +448,7 @@ function Shell() {
                   {bandless && ownNotices && (
                     <>
                       <OfflineBox />
+                      {linked}
                       {rules}
                       {said}
                     </>

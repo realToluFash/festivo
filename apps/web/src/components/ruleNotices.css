@@ -87,6 +87,6 @@
 }
 
 /* The product's offline box keeps its live region while online, so the stack is never empty. */
-.rn-stack:not(:has(.rn-box, .ev-offline)) {
+.rn-stack:not(:has(.rn-box, .ev-offline, .notice)) {
   margin-bottom: 0;
 }
