@@ -309,6 +309,9 @@ final class CourseDefaultTest extends ApiTestCase
         $this->as('PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $this->id($this->starter), ['name' => 'Starter', 'answer' => 'choose', 'skippable' => false, 'default' => ['dish' => $soup, 'chooseBy' => '2026-10-05']]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         $this->changeMain(['dish' => $this->id($this->jollof), 'chooseBy' => '2026-10-10']);
+        $this->as('GET', '/api/events/' . $this->eventId . '/timeline');
+        $milestones = Type\vec(Type\shape(['at' => Type\string(), 'title' => Type\string()], true))->coerce($this->last()['milestones'] ?? null);
+        self::assertSame(['2026-10-05T23:59:59+01:00'], Vec\map(Vec\filter($milestones, static fn (array $one): bool => 'Picks close' === $one['title']), static fn (array $one): string => $one['at']), 'the milestone sits on the earliest course’s close');
         $token = $this->coming([]);
         $bisi = $this->personId('Bisi Adewale');
 
