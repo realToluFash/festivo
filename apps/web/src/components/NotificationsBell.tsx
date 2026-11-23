@@ -226,23 +226,24 @@ export function NotificationsBell({
       const pop = container.current?.querySelector<HTMLElement>('.bell-pop');
       if (button.current != null && pop != null) placeUnder(button.current, pop);
     };
-    const afterBand = (): void => {
-      requestAnimationFrame(placeIt);
-    };
     const afterScroll = (event: Event): void => {
       if (!container.current?.contains(event.target as Node)) placeIt();
     };
+    const pageChanges = new MutationObserver(placeIt);
     placeIt();
     window.addEventListener('resize', placeIt);
     window.addEventListener('scroll', afterScroll, true);
-    window.addEventListener('online', afterBand);
-    window.addEventListener('offline', afterBand);
+    pageChanges.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributeFilter: ['class'],
+    });
 
     return () => {
       window.removeEventListener('resize', placeIt);
       window.removeEventListener('scroll', afterScroll, true);
-      window.removeEventListener('online', afterBand);
-      window.removeEventListener('offline', afterBand);
+      pageChanges.disconnect();
     };
   }, [open, stale]);
 
