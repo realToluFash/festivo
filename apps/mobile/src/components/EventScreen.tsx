@@ -195,6 +195,10 @@ export function EventScreen({
   const [toastAt, setToastAt] = useState<ToastAt | null>(null);
   const [toastClosed, setToastClosed] = useState<{ of: Editing } | null>(null);
   const saves = useRef(0);
+  const closeToast = () => {
+    if (toast?.over != null) setToastClosed({ of: toast.over });
+    setToast(null);
+  };
   const withdrawToastAction = useCallback(
     () => setToast((was) => (was == null ? null : { ...was, action: null })),
     [],
@@ -699,10 +703,7 @@ export function EventScreen({
           words={toast.words}
           id={toast.id}
           action={toast.action}
-          onClose={() => {
-            if (toast.over != null) setToastClosed({ of: toast.over });
-            setToast(null);
-          }}
+          onClose={closeToast}
           onAt={setToastAt}
           bottom={
             phone
