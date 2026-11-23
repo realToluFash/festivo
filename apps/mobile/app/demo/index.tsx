@@ -250,6 +250,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     ],
   },
   {
+    page: 'Today · its events loading or not loaded (sc-87600)',
+    boards: [
+      {
+        title: 'Today failed',
+        what: 'The cover and the tabs stay; Try again loads',
+        href: '/demo/today?load=failed',
+      },
+      {
+        title: 'Today failed · fails again',
+        what: 'Try again shows loading, then the failed box again',
+        href: '/demo/today?load=failed&retry=fails',
+      },
+      {
+        title: 'Today loading',
+        what: 'Empty for a second, then Loading, and it stays',
+        href: '/demo/today?load=loading',
+      },
+      {
+        title: 'Today failed · sidebar keeps its list',
+        what: 'On its side: the four its own read listed before',
+        href: '/demo/today?load=failed&sidebar=kept',
+      },
+      {
+        title: 'Today loading · sidebar keeps its list',
+        what: 'On its side: the same four while Today loads',
+        href: '/demo/today?load=loading&sidebar=kept',
+      },
+    ],
+  },
+  {
     page: 'Today · where signing in lands',
     boards: [
       { title: 'A planning day', what: 'Four things need you', href: '/demo/today' },
