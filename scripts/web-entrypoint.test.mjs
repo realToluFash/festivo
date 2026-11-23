@@ -49,6 +49,13 @@ describe('the web entrypoint', () => {
     ]);
   });
 
+  it('lets styles and fonts come from its own origin alone (sc-80882)', () => {
+    const policy = readFileSync(join(run({}), 'headers.conf'), 'utf8');
+
+    expect(policy).toMatch(/style-src 'self';/);
+    expect(policy).toMatch(/font-src 'self';/);
+  });
+
   it('refuses to start on a control character, naming the variable', () => {
     expect(() => run({ SOIRELY_SCHEME: 'a\tb' })).toThrow(
       /SOIRELY_SCHEME contains a control character/,
