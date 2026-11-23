@@ -4620,10 +4620,7 @@
     "keepIt": "La garder",
     "removeChoice": "Retirer la question",
     "answerChoices": "Tout le monde a le plat {{dish}}. Les invités répondent à ses questions.",
-    "noFinishedDish": "Aucun plat terminé · invisible pour les invités",
-    "unwarned_one": "Personne n’a prévenu {{count, number}} invité qui a choisi {{option}} et dont les besoins indiquent : {{allergens}}.",
-    "unwarned_other": "Personne n’a prévenu les {{count, number}} invités qui ont choisi {{option}} et dont les besoins indiquent : {{allergens}}.",
-    "unwarned_many": "Personne n’a prévenu les {{count, number}} d’invités qui ont choisi {{option}} et dont les besoins indiquent : {{allergens}}."
+    "noFinishedDish": "Aucun plat terminé · invisible pour les invités"
   },
   "dishItems": {
     "items": "Éléments",
@@ -4721,10 +4718,7 @@
     "failedChange_one": "Rien n’a été modifié : {{dish}} compte toujours {{count, number}} variante. Vérifiez votre connexion, puis réessayez.",
     "failedChange_other": "Rien n’a été modifié : {{dish}} compte toujours {{count, number}} variantes. Vérifiez votre connexion, puis réessayez.",
     "failedChange_many": "Rien n’a été modifié : {{dish}} compte toujours {{count, number}} de variantes. Vérifiez votre connexion, puis réessayez.",
-    "guestsPickTheWay": "Le même plat pour tous : {{dish}}. Chaque invité choisit sa variante.",
-    "unwarned_one": "Personne n’a prévenu {{count, number}} invité qui a choisi {{dish}} ({{variant}}) et dont les besoins indiquent : {{allergens}}.",
-    "unwarned_other": "Personne n’a prévenu les {{count, number}} invités qui ont choisi {{dish}} ({{variant}}) et dont les besoins indiquent : {{allergens}}.",
-    "unwarned_many": "Personne n’a prévenu les {{count, number}} d’invités qui ont choisi {{dish}} ({{variant}}) et dont les besoins indiquent : {{allergens}}."
+    "guestsPickTheWay": "Le même plat pour tous : {{dish}}. Chaque invité choisit sa variante."
   },
   "eventMenu": {
     "title": "Menu",
@@ -4837,9 +4831,6 @@
     "deleted": "Service {{course}} supprimé.",
     "dishPicked": "Des invités ont déjà choisi ce plat.",
     "coursePicked": "Des invités ont déjà choisi dans ce service.",
-    "unwarned_one": "{{count, number}} invité ayant choisi le plat {{dish}} a dans ses besoins : {{allergens}}. Personne ne lui en a encore parlé.",
-    "unwarned_other": "{{count, number}} invités ayant choisi le plat {{dish}} ont dans leurs besoins : {{allergens}}. Personne ne leur en a encore parlé.",
-    "unwarned_many": "{{count, number}} d’invités ayant choisi le plat {{dish}} ont dans leurs besoins : {{allergens}}. Personne ne leur en a encore parlé.",
     "lock": "Votre rôle, {{role}}, permet de voir ce menu mais pas de le modifier. Une personne dont le rôle permet de modifier Menu peut le faire.",
     "lockOnEvent": "Votre rôle sur cet événement, « {{role}} », permet de voir ce menu mais pas de le modifier. Une personne dont le rôle permet de modifier Menu peut le faire.",
     "loading": "Chargement du menu…",
@@ -6280,7 +6271,10 @@
     "given_other": "Avec le plat par défaut · {{count, number}} personnes",
     "given_many": "Avec le plat par défaut · {{count, number}} personnes",
     "givenOn": "{{course}}: {{pick}}",
-    "defaultMark": "(par défaut)"
+    "defaultMark": "(par défaut)",
+    "changed": "Menu changed",
+    "changedOn": "Menu changed: {{course}} · picked {{dish}}",
+    "menuChanged": "Menu changed: the dish these guests picked was taken off. They are asked again, and are not counted as in."
   },
   "courseDefault": {
     "heading": "Plat par défaut et date limite de choix",
@@ -6401,6 +6395,38 @@
     "printNow": "Imprimer cette page",
     "a4": "A4",
     "letter": "Lettre US",
-    "paperIs": "Papier"
+    "paperIs": "Papier",
+    "changed": "Menu changed",
+    "cellChanged": "Menu changed"
+  },
+  "menuChange": {
+    "go": "Change and ask them",
+    "cancel": "Cancel",
+    "close": "Close",
+    "nobodyMessaged": "Nobody is messaged from here.",
+    "removeDish": "Remove {{dish}} from {{course}}?",
+    "removeVariant": "Remove {{variant}} from {{dish}}?",
+    "addFirst": "Add {{dish}} to {{course}}?",
+    "addAllergens": "Add {{allergens}} to {{dish}}?",
+    "pickedDish_one": "{{count, number}} guest picked this dish. They’ll be asked to pick again for {{course}}.",
+    "pickedDish_other": "{{count, number}} guests picked this dish. They’ll be asked to pick again for {{course}}.",
+    "pickedVariant_one": "{{count, number}} guest picked this variant. They’ll be asked to pick again for {{course}}.",
+    "pickedVariant_other": "{{count, number}} guests picked this variant. They’ll be asked to pick again for {{course}}.",
+    "allComing_one": "All {{count, number}} guest coming will be asked to pick for {{course}}.",
+    "allComing_other": "All {{count, number}} guests coming will be asked to pick for {{course}}.",
+    "pickedWith_one": "{{count, number}} guest who picked this dish has {{allergens}} recorded. They’ll be asked to pick again for {{course}}, and will appear in Needs the host.",
+    "pickedWith_other": "{{count, number}} guests who picked this dish have {{allergens}} recorded. They’ll be asked to pick again for {{course}}, and will appear in Needs the host.",
+    "staysAgain": "Only {{course}} is asked again. Everything else they answered stays, and their old pick is kept on their RSVP.",
+    "staysNew": "Only {{course}} is asked. Everything else they answered stays.",
+    "doneDish_one": "{{dish}} removed from {{course}}. {{count, number}} guest will be asked to pick again.",
+    "doneDish_other": "{{dish}} removed from {{course}}. {{count, number}} guests will be asked to pick again.",
+    "doneVariant_one": "{{variant}} removed from {{dish}}. {{count, number}} guest will be asked to pick again.",
+    "doneVariant_other": "{{variant}} removed from {{dish}}. {{count, number}} guests will be asked to pick again.",
+    "doneFirst_one": "{{dish}} added to {{course}}. {{count, number}} guest will be asked to pick.",
+    "doneFirst_other": "{{dish}} added to {{course}}. {{count, number}} guests will be asked to pick.",
+    "doneAllergens_one": "{{dish}} saved. {{count, number}} guest will be asked to pick again.",
+    "doneAllergens_other": "{{dish}} saved. {{count, number}} guests will be asked to pick again.",
+    "refusedWord": "Not changed",
+    "pastDate": "{{event}} was on {{day}}. Its menu can’t change after the date. Nothing was changed."
   }
 }

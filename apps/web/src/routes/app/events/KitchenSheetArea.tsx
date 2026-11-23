@@ -388,6 +388,7 @@ const CELL_WORDS: Record<State, string> = {
   kitchen: 'kitchenSheet.kitchen',
   skipped: 'kitchenSheet.skipped',
   host: 'kitchenSheet.needsHost',
+  changed: 'kitchenSheet.cellChanged',
   notYet: 'kitchenSheet.cellNotYet',
   never: 'kitchenSheet.cellNever',
 };
@@ -449,6 +450,16 @@ function Course({ course }: { course: KitchenCourse }) {
             name: t('kitchenSheet.needsHost'),
             count: course.needsHost,
             mark: 'host' as const,
+          },
+        ]
+      : []),
+    ...(course.menuChanged > 0
+      ? [
+          {
+            key: 'changed',
+            name: t('kitchenSheet.changed'),
+            count: course.menuChanged,
+            mark: null,
           },
         ]
       : []),

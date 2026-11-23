@@ -19,7 +19,7 @@ export interface Eater {
   you: boolean;
 }
 
-export type Kind = Exclude<MealAnswerKind, 'defaulted'>;
+export type Kind = Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
 
 export interface Plate {
   kind: Kind | 'defaulted';
@@ -272,6 +272,7 @@ export function savedPlates(meals: GuestMeals, eaters: readonly Eater[]): Plates
   const plates: Record<string, Plate> = {};
   for (const eater of eaters) {
     for (const one of meals.answers[eater.id] ?? []) {
+      if (one.answer === 'menuChanged') continue;
       const course = meals.courses.find((each) => each.id === one.course);
       const dish = course == null ? null : plateDish(course, { ...blank(), dish: one.dish });
       const options: Record<string, string[]> = {};

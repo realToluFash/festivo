@@ -57,14 +57,6 @@ export interface ChoiceDetails {
   required: boolean;
 }
 
-/** Who picked an option and has an allergen just added to it recorded, until sc-3913 tells them. */
-export interface UnwarnedOption {
-  optionId: string;
-  option: string;
-  count: number;
-  allergens: DishAllergen[];
-}
-
 /** One item on a plate of a dish (sc-34230): a fixed name, one of the dish's choices, or its variant. */
 export type MenuItem =
   { kind: 'fixed'; name: string } | { kind: 'choice'; choiceId: string } | { kind: 'variants' };
@@ -144,10 +136,14 @@ export interface MenuCourseDetails {
   servedAt: string | null;
 }
 
-/** Who picked a dish and has an allergen just added to it recorded, until sc-3913 tells them. */
-export interface UnwarnedPickers {
-  count: number;
-  allergens: DishAllergen[];
+/** Someone a menu change asked again (sc-3913), not yet answered: who, their party by its replier's id, the course and the pick they had. */
+export interface MenuAskedAgain {
+  person: { id: string; name: string };
+  party: string;
+  course: string;
+  picked: string;
+  why: 'removed' | 'ways' | 'choices' | 'allergen';
+  ways: number | null;
 }
 
 export interface MenuChange {
@@ -155,8 +151,6 @@ export interface MenuChange {
   courseId: string | null;
   dishId: string | null;
   choiceId: string | null;
-  unwarned: UnwarnedPickers | null;
-  unwarnedOptions: UnwarnedOption[];
 }
 
 /** sc-3904: MenuDishChoice's limits on the API, in visible characters. */
@@ -399,26 +393,28 @@ export function asEventMenu(raw: unknown): EventMenu | null {
   return courses.every((course) => course != null) ? { courses: courses as MenuCourse[] } : null;
 }
 
-export function asUnwarnedPickers(raw: unknown): UnwarnedPickers | null {
-  if (!isRecord(raw) || typeof raw.count !== 'number') return null;
-  const allergens = codes(raw.allergens, DISH_ALLERGENS);
-
-  return allergens == null || allergens.length === 0 ? null : { count: raw.count, allergens };
-}
-
-export function asUnwarnedOptions(raw: unknown): UnwarnedOption[] {
+export function asMenuAskedAgain(raw: unknown): MenuAskedAgain[] {
   if (!Array.isArray(raw)) return [];
 
-  return raw.flatMap((one): UnwarnedOption[] => {
-    if (!isRecord(one)) return [];
-    const allergens = codes(one.allergens, DISH_ALLERGENS);
+  return raw.flatMap((one): MenuAskedAgain[] => {
+    if (!isRecord(one) || !isRecord(one.person)) return [];
+    const { person, party, course, picked, why, ways } = one;
 
-    return typeof one.optionId === 'string' &&
-      typeof one.option === 'string' &&
-      typeof one.count === 'number' &&
-      allergens != null &&
-      allergens.length > 0
-      ? [{ optionId: one.optionId, option: one.option, count: one.count, allergens }]
+    return typeof person.id === 'string' &&
+      typeof person.name === 'string' &&
+      typeof party === 'string' &&
+      typeof course === 'string' &&
+      typeof picked === 'string'
+      ? [
+          {
+            person: { id: person.id, name: person.name },
+            party,
+            course,
+            picked,
+            why: why === 'ways' || why === 'choices' || why === 'allergen' ? why : 'removed',
+            ways: typeof ways === 'number' ? ways : null,
+          },
+        ]
       : [];
   });
 }

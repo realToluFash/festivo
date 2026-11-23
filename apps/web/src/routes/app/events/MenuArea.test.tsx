@@ -62,14 +62,22 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function problem(code: string, status: number): Response {
+function problem(code: string, status: number, more: Record<string, unknown> = {}): Response {
   return new Response(
-    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status }),
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, ...more }),
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 }
 
-type Answer = (body: unknown) => Response | Promise<Response>;
+/** sc-3913's 409 until the change is sent again with `askAgain`, then the menu as saved. */
+const asksFirst =
+  (more: Record<string, unknown>, saved: Record<string, unknown>): Answer =>
+  (_body, search) =>
+    search.includes('askAgain=1')
+      ? json(saved)
+      : problem('menu_change_asks', 409, { count: 0, allergens: [], ...more });
+
+type Answer = (body: unknown, search: string) => Response | Promise<Response>;
 
 /** A dish and a course exactly as MenuSerialiser writes them (sc-3902). */
 function dish(id: string, name: string, more: Record<string, unknown> = {}) {
@@ -123,12 +131,13 @@ async function onMenu(
   signedIn(organisation);
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const url = new URL(String(input));
+    const line = `${init?.method ?? 'GET'} ${url.pathname}`;
     const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
-    sent.push({ line, body });
+    sent.push({ line: `${line}${url.search}`, body });
 
     const answer = answers[line];
-    if (answer != null) return answer(body);
+    if (answer != null) return answer(body, url.search);
     if (line === 'GET /api/events/ev_1')
       return json({ event: { ...EVENT, permissions, roleOnEvent } });
     if (line === 'GET /api/orgs/org_1/dishes')
@@ -279,18 +288,83 @@ describe('The event’s Menu (sc-3902)', () => {
     ).toBeDefined();
   });
 
-  it('refuses at once to remove a dish guests have picked, and asks first for one they have not', async () => {
-    const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(MAIN) });
+  it('asks the host first to remove a dish guests have picked, naming who and the course', async () => {
+    const sent = await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(MAIN),
+      'DELETE /api/events/ev_1/menu/dishes/d_jollof': asksFirst(
+        { count: 10, course: { id: 'c_main', name: 'Main' }, whom: 'picked' },
+        { menu: { courses: [course('c_main', 'Main', [dish('d_asun', 'Asun')])] } },
+      ),
+    });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove Jollof rice…' }));
-    expect(screen.getByText('Guests have picked this dish.')).toBeDefined();
-    expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Remove Jollof rice from Main?',
+    });
+    expect(
+      within(dialog).getByText(
+        '10 guests picked this dish. They’ll be asked to pick again for Main.',
+      ),
+    ).toBeDefined();
+    expect(within(dialog).getByText('Nobody is messaged from here.')).toBeDefined();
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove Jollof rice…' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Jollof rice…' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Change and ask them',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Jollof rice removed from Main. 10 guests will be asked to pick again.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.map((one) => one.line)).toContain(
+      'DELETE /api/events/ev_1/menu/dishes/d_jollof?askAgain=1',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove Asun…' }));
     expect(
       screen.getByText('Remove Asun from Main? It is only on this event, so it goes for good.'),
     ).toBeDefined();
-    expect(screen.queryByText('Guests have picked this dish.')).toBeNull();
+  });
+
+  it('shows the past date inside the dialog, with only Close, and changes nothing', async () => {
+    let asked = 0;
+    await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(MAIN),
+      'DELETE /api/events/ev_1/menu/dishes/d_jollof': (_body, search) => {
+        asked += 1;
+
+        return search.includes('askAgain=1')
+          ? problem('menu_event_over', 409)
+          : problem('menu_change_asks', 409, {
+              count: 2,
+              course: { id: 'c_main', name: 'Main' },
+              whom: 'picked',
+            });
+      },
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Jollof rice…' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change and ask them' }));
+
+    const alert = await within(dialog).findByRole('alert');
+    expect(alert.textContent).toContain('Not changed');
+    expect(alert.textContent).toContain('Adaeze and Tunde was on');
+    expect(alert.textContent).toContain('Nothing was changed.');
+    expect(within(dialog).queryByRole('button', { name: 'Change and ask them' })).toBeNull();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(asked).toBe(2);
   });
 
   it('refuses at once to delete a course guests have picked from', async () => {
@@ -417,7 +491,7 @@ describe('The event’s Menu (sc-3902)', () => {
     ];
     await onMenu({
       'GET /api/events/ev_1/menu': menuOf(LATE),
-      'GET /api/orgs/org_1/dishes': (body) => (tries.shift() ?? tries[0]!)(body),
+      'GET /api/orgs/org_1/dishes': (body, search) => (tries.shift() ?? tries[0]!)(body, search),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
@@ -460,15 +534,18 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(screen.getAllByText('“Everyone gets the same” needs exactly one dish.')).toHaveLength(1);
   });
 
-  it('saves an allergen added to a picked dish with the line counting who has it recorded', async () => {
+  it('asks first to add an allergen to a picked dish, counting who has it recorded', async () => {
     const sent = await onMenu({
       'GET /api/events/ev_1/menu': menuOf(MAIN),
-      'PUT /api/events/ev_1/menu/dishes/d_jollof': () =>
-        json({
-          menu: { courses: [MAIN] },
-          dishId: 'd_jollof',
-          unwarned: { count: 4, allergens: ['sesame', 'peanuts'] },
-        }),
+      'PUT /api/events/ev_1/menu/dishes/d_jollof': asksFirst(
+        {
+          count: 4,
+          course: { id: 'c_main', name: 'Main' },
+          whom: 'allergen',
+          allergens: ['sesame'],
+        },
+        { menu: { courses: [MAIN] }, dishId: 'd_jollof' },
+      ),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Edit Jollof rice' }));
@@ -476,14 +553,19 @@ describe('The event’s Menu (sc-3902)', () => {
     fireEvent.click(within(panel).getByLabelText('Sesame'));
     fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
 
-    expect(await screen.findByText('Jollof rice saved.')).toBeDefined();
+    const dialog = await screen.findByRole('alertdialog', { name: 'Add sesame to Jollof rice?' });
     expect(
-      screen.getByText(
-        '4 guests who picked Jollof rice have peanuts and sesame recorded, and nobody has told them.',
+      within(dialog).getByText(
+        '4 guests who picked this dish have sesame recorded. They’ll be asked to pick again for Main, and will appear in Needs the host.',
       ),
     ).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Change and ask them' }));
+
     expect(
-      sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/dishes/d_jollof')?.body,
+      await screen.findByText('Jollof rice saved. 4 guests will be asked to pick again.'),
+    ).toBeDefined();
+    expect(
+      sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/dishes/d_jollof?askAgain=1')?.body,
     ).toEqual(expect.objectContaining({ allergens: ['celery', 'sesame'], containsNone: false }));
   });
 
@@ -709,25 +791,28 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(document.querySelectorAll('.vr-inset.is-lit')).toHaveLength(1);
     });
 
-    it('saves an edited variant with the line counting who has it recorded', async () => {
+    it('asks first to add an allergen to a picked variant', async () => {
       await onMenu({
         'GET /api/events/ev_1/menu': menuOf(course('c_main', 'Main', [WAYS])),
-        'PUT /api/events/ev_1/menu/variants/v_chicken': () =>
-          json({
-            menu: { courses: [course('c_main', 'Main', [WAYS])] },
-            unwarned: { count: 2, allergens: ['milk'] },
-          }),
+        'PUT /api/events/ev_1/menu/variants/v_chicken': asksFirst(
+          {
+            count: 2,
+            course: { id: 'c_main', name: 'Main' },
+            whom: 'allergen',
+            allergens: ['milk'],
+          },
+          { menu: { courses: [course('c_main', 'Main', [WAYS])] } },
+        ),
       });
 
       fireEvent.click(await screen.findByRole('button', { name: 'Edit Chicken' }));
       const panel = await screen.findByRole('complementary', { name: 'Edit Chicken' });
       fireEvent.click(within(panel).getByRole('button', { name: 'Save variant' }));
 
-      expect(await screen.findByText('Chicken saved.')).toBeDefined();
+      const dialog = await screen.findByRole('alertdialog', { name: 'Add milk to Jollof rice?' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Change and ask them' }));
       expect(
-        screen.getByText(
-          '2 guests who picked Jollof rice (Chicken) have milk recorded, and nobody has told them.',
-        ),
+        await screen.findByText('Jollof rice saved. 2 guests will be asked to pick again.'),
       ).toBeDefined();
     });
 
@@ -893,32 +978,29 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(sent.some((one) => one.line.includes('/choices'))).toBe(false);
     });
 
-    it('names who picked an option whose allergens were just added', async () => {
+    it('asks first to add an allergen to an option guests picked', async () => {
+      const asun = course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })]);
       await onMenu({
-        'GET /api/events/ev_1/menu': menuOf(
-          course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })]),
+        'GET /api/events/ev_1/menu': menuOf(asun),
+        'PUT /api/events/ev_1/menu/choices/ch_side': asksFirst(
+          {
+            count: 2,
+            course: { id: 'c_main', name: 'Main' },
+            whom: 'allergen',
+            allergens: ['celery'],
+          },
+          { menu: { courses: [asun] }, choiceId: 'ch_side' },
         ),
-        'PUT /api/events/ev_1/menu/choices/ch_side': () =>
-          json({
-            menu: {
-              courses: [course('c_main', 'Main', [dish('d_asun', 'Asun', { choices: [side()] })])],
-            },
-            choiceId: 'ch_side',
-            unwarnedOptions: [
-              { optionId: 'o_salad', option: 'Garden salad', count: 2, allergens: ['celery'] },
-            ],
-          }),
       });
 
       fireEvent.click(await screen.findByRole('button', { name: 'Edit “And a side?”' }));
       const panel = await screen.findByRole('complementary', { name: 'Edit “And a side?”' });
       fireEvent.click(within(panel).getByRole('button', { name: 'Save choice' }));
 
-      expect(await screen.findByText('“And a side?” saved.')).toBeDefined();
+      const dialog = await screen.findByRole('alertdialog', { name: 'Add celery to Asun?' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Change and ask them' }));
       expect(
-        screen.getByText(
-          '2 guests who picked Garden salad have celery recorded, and nobody has told them.',
-        ),
+        await screen.findByText('Asun saved. 2 guests will be asked to pick again.'),
       ).toBeDefined();
     });
   });

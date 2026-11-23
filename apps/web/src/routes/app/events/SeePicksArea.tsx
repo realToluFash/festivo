@@ -315,7 +315,10 @@ function Picks({
     (picks.waiting ?? []).map((party) => ({
       ...party,
       people: party.people.filter(
-        (person) => askedFor == null || person.courses.includes(askedFor),
+        (person) =>
+          askedFor == null ||
+          person.courses.includes(askedFor) ||
+          person.changed.some((one) => one.course === askedFor),
       ),
     })),
   );
@@ -339,15 +342,38 @@ function Picks({
       : excludedOf(excluded.reason) === 'other'
         ? t('seePicks.otherDiet')
         : t(`guestNeeds.dietName.${excluded.reason}`);
-  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => ({
-    kind: 'chooseFor',
-    personId: person.id,
-    courseIds:
-      askedFor == null || !person.courses.includes(askedFor)
-        ? person.courses
-        : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
-    from: id,
-  });
+  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => {
+    const courses = [
+      ...person.courses,
+      ...person.changed.map((one) => one.course).filter((one) => !person.courses.includes(one)),
+    ];
+
+    return {
+      kind: 'chooseFor',
+      personId: person.id,
+      courseIds:
+        askedFor == null || !courses.includes(askedFor)
+          ? courses
+          : [askedFor, ...courses.filter((one) => one !== askedFor)],
+      from: id,
+    };
+  };
+  const personLines = (person: (typeof never)[number]) => (
+    <>
+      {person.courses.length > 0 && (
+        <span className="pk-state">
+          <DashedCircle />
+          {openWords(person)}
+        </span>
+      )}
+      {person.changed.map((one) => (
+        <span key={one.course} className="pk-state">
+          <Swap />
+          {t('seePicks.changedOn', { course: courseName(one.course), dish: one.picked })}
+        </span>
+      ))}
+    </>
+  );
 
   return (
     <>
@@ -463,10 +489,7 @@ function Picks({
                     <li key={person.id} className="pk-person">
                       <div className="pk-person-words">
                         <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {openWords(person)}
-                        </span>
+                        {personLines(person)}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -492,10 +515,7 @@ function Picks({
                     <li key={person.id} className="pk-person">
                       <div className="pk-person-words">
                         <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {openWords(person)}
-                        </span>
+                        {personLines(person)}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -730,6 +750,9 @@ function CourseCard({
             <StateRow mark={<CircleMinus />} name={t('seePicks.skipped')} n={course.skipped} />
             <StateRow mark={<Triangle />} name={t('seePicks.needsHost')} n={course.needsHost} />
             <StateRow mark={<DashedCircle />} name={t('seePicks.none')} n={course.notChosen} />
+            {course.menuChanged > 0 && (
+              <StateRow mark={<Swap />} name={t('seePicks.changed')} n={course.menuChanged} />
+            )}
           </tbody>
           <tfoot>
             <tr className="pk-room">
@@ -739,6 +762,7 @@ function CourseCard({
           </tfoot>
         </table>
       </div>
+      {course.menuChanged > 0 && <p className="mn-quiet">{t('seePicks.menuChanged')}</p>}
       {!course.skippable && !course.asksNothing && (
         <p className="mn-quiet">{t('seePicks.noSkip')}</p>
       )}
@@ -1421,6 +1445,21 @@ function CircleMinus() {
     <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M6.5 10h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Swap() {
+  return (
+    <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4 7h11l-3-3M16 13H5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
