@@ -155,6 +155,7 @@ function Shell() {
   const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
   const [provider, dropProvider] = useLinkedProvider();
+  const [gateLaterFor, setGateLaterFor] = useState<string | null>(null);
   const linked = <LinkedNoticeFor provider={provider} onDismiss={dropProvider} />;
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
@@ -258,8 +259,15 @@ function Shell() {
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
   );
+  // Held by the shell, as the provider is, so "Not now" lasts while the person moves between pages; another organisation asks again.
+  if (gateLaterFor != null && gateLaterFor !== organisation?.id) setGateLaterFor(null);
   const rules = organisation != null && session.pausedIn == null && (
-    <SignInRulesNotices key={organisation.id} organisation={organisation} />
+    <SignInRulesNotices
+      key={organisation.id}
+      organisation={organisation}
+      later={gateLaterFor === organisation.id}
+      onLater={() => setGateLaterFor(organisation.id)}
+    />
   );
 
   const [landing, ...others] = session.outsideEvents ?? [];

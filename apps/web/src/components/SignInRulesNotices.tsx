@@ -1,6 +1,5 @@
 import type { Membership } from '@soirely/api-client';
 import { formatDay } from '@soirely/domain';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -10,9 +9,16 @@ import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { RuleNoticeBox } from './RuleNoticeBox.tsx';
 
 /** What the organisation's sign-in rules ask of this member (sc-69, sc-609), named after the organisation. */
-export function SignInRulesNotices({ organisation }: { organisation: Membership }) {
+export function SignInRulesNotices({
+  organisation,
+  later,
+  onLater,
+}: {
+  organisation: Membership;
+  later: boolean;
+  onLater: () => void;
+}) {
   const { t } = useTranslation();
-  const [later, setLater] = useState(false);
   const seen = useRulesSeen(organisation.id);
   const name = organisation.name;
   const changedAt = organisation.signInRules.changedAt;
@@ -69,7 +75,7 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
             step: { label: t('signInRules.gateTurnOn'), to: security },
             close: t('signInRules.gateLater'),
           }}
-          onClose={close(() => setLater(true))}
+          onClose={close(onLater)}
         />
       )}
 

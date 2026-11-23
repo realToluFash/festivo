@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, type RouteObject, createMemoryRouter } from 'react-router';
 
@@ -48,8 +48,12 @@ function signedIn(organisation = HELD): void {
   vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
 }
 
-function at(path: string): void {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+function at(path: string): ReturnType<typeof createMemoryRouter> {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+
+  render(<RouterProvider router={router} />);
+
+  return router;
 }
 
 afterEach(() => {
@@ -91,5 +95,20 @@ describe('"Google linked" on Settings at a desk (sc-39471, #88228)', () => {
     const notice = (await screen.findByText(LINKED)).closest('.notice');
 
     expect(notice?.closest('.settings-desk-page')).not.toBeNull();
+  });
+});
+
+describe('"Not now" on the two-factor gate (sc-39471, #88316)', () => {
+  it('stays pressed when the person moves from Events to the Calendar', async () => {
+    signedIn();
+    const router = at('/app/events');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+    expect(screen.queryByText('Two-factor required by Ìrè Events')).toBeNull();
+
+    await act(() => router.navigate('/app/calendar'));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/calendar'));
+    expect(screen.queryByText('Two-factor required by Ìrè Events')).toBeNull();
   });
 });
