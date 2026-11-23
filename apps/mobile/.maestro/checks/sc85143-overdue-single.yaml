@@ -1,0 +1,29 @@
+# sc-85143: past the two-factor deadline of their only organisation, the overdue page reads the single-events line, not the elsewhere one, on Today, Events, Calendar and Settings. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactorOverdue.turnOn'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueSingleEvents}}'
+- assertNotVisible: '{{t:signInRules.overdueElsewhere}}'
+- takeScreenshot: overdue-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueSingleEvents}}'
+- takeScreenshot: overdue-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueSingleEvents}}'
+- takeScreenshot: overdue-calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueSingleEvents}}'
+- takeScreenshot: overdue-settings
