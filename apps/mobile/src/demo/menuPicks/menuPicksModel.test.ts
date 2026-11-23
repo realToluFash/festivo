@@ -11,6 +11,7 @@ import {
   courseClose,
   courseFigures,
   courseOf,
+  dishAllergens,
   draftPick,
   givenDefault,
   goesBackWords,
@@ -370,5 +371,22 @@ describe('a dish whose allergens were never stated (lead, #3654)', () => {
     expect(row('k3-puff').contains).toBeNull();
     expect(containsWords(row('k3-puff').contains)).toBe('Allergens not stated');
     expect(containsWords(row('k3-zobo').contains)).toBeNull();
+  });
+  it('rules out everyone with a recorded allergy, as the product reads a plate never stated (lead, #3660)', () => {
+    const puff = course('k3').dishes.find((one) => one.id === 'k3-puff')!;
+
+    expect(dishAllergens(puff, person('kojo-asante'))).toEqual(['celery']);
+    expect(dishAllergens(puff, person('kwame-asante'))).toEqual(['celery', 'peanuts']);
+    expect(dishAllergens(puff, person('bea-mensah'))).toEqual([]);
+  });
+
+  it('asks before Puff-puff is chosen for someone with a recorded allergy, and not for anyone else', () => {
+    const draft = { kind: 'dish', dishId: 'k3-puff', variantId: null, sideId: null } as const;
+
+    expect(checkDraft(course('k3'), person('elena-rossi'), draft)).toMatchObject({
+      kind: 'ruledOut',
+      allergens: ['fish'],
+    });
+    expect(checkDraft(course('k3'), person('bea-mensah'), draft)).toEqual({ kind: 'ok' });
   });
 });

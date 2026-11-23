@@ -780,11 +780,9 @@ function ChooseFor({
                   on={draft.variantId === way.id}
                   title={way.name}
                   lines={[
-                    ...(way.children === true ? [MW.childrenOnly] : []),
-                    ...(way.contains.length === 0
-                      ? []
-                      : [MW.contains(allergenWords(way.contains))]),
-                  ]}
+                    way.children === true ? MW.childrenOnly : null,
+                    containsWords(way.contains),
+                  ].filter((one) => one != null)}
                   allergy={
                     ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)
                   }
