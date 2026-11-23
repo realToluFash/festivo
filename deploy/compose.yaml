@@ -44,6 +44,7 @@ services:
     environment:
       APP_HOST: ${APP_HOST:?}
       API_HOST: ${API_HOST:?}
+      RP_HOST: ${RP_HOST:-}
       ACME_EMAIL: ${ACME_EMAIL:?}
     ports:
       - '80:80'
@@ -227,6 +228,9 @@ services:
       SOIRELY_APPLE_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:?}
       SOIRELY_SCHEME: ${SOIRELY_SCHEME:-}
       SOIRELY_SUPPORT_EMAIL: ${SUPPORT_EMAIL:?}
+      SOIRELY_ANDROID_CERT_SHA256: ${SOIRELY_ANDROID_CERT_SHA256:-}
+      SOIRELY_ANDROID_PACKAGE: ${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}
+      SOIRELY_APPLE_APP_ID: ${SOIRELY_APPLE_APP_ID:-}
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/config.json | grep -q apiBaseUrl']
       interval: 10s

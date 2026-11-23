@@ -56,12 +56,13 @@ JSON
 
 echo "soirely: wrote $TARGET for ${SOIRELY_ENVIRONMENT:-unknown} (api ${SOIRELY_API_URL})"
 
-# ── Android App Links ────────────────────────────────────────────────────────
+# ── Android App Links and passkeys ───────────────────────────────────────────
 #
 # Sign in with Apple on Android comes back to the app by an https link on this
 # host, and Android opens it in the app only if this file names the app and its
-# release signing certificate. Written only when a fingerprint is configured, so
-# a deployment without one serves a 404 here, never a file that verifies nothing.
+# release signing certificate. get_login_creds lets the app use this host's
+# passkeys (sc-86888). Written only when a fingerprint is configured, so a
+# deployment without one serves a 404 here, never a file that verifies nothing.
 WELL_KNOWN="$ROOT/.well-known"
 if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     mkdir -p "$WELL_KNOWN"
@@ -72,7 +73,10 @@ if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     cat > "$WELL_KNOWN/assetlinks.json" <<JSON
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": ${PACKAGE},
@@ -82,6 +86,23 @@ if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
 ]
 JSON
     echo "soirely: wrote $WELL_KNOWN/assetlinks.json for ${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}"
+fi
+
+# ── Apple webcredentials ─────────────────────────────────────────────────────
+#
+# iOS lets the app use this host's passkeys only when this file names the app
+# as <team id>.<bundle id> (sc-86888). Written only when that is configured.
+if [ -n "${SOIRELY_APPLE_APP_ID:-}" ]; then
+    mkdir -p "$WELL_KNOWN"
+    APPLE_APP_ID="$(json_string SOIRELY_APPLE_APP_ID "$SOIRELY_APPLE_APP_ID")"
+    cat > "$WELL_KNOWN/apple-app-site-association" <<JSON
+{
+  "webcredentials": {
+    "apps": [${APPLE_APP_ID}]
+  }
+}
+JSON
+    echo "soirely: wrote $WELL_KNOWN/apple-app-site-association for ${SOIRELY_APPLE_APP_ID}"
 fi
 
 # ── Security headers ─────────────────────────────────────────────────────────

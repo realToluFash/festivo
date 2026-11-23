@@ -5,18 +5,34 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const rangesLines = (ranges) => {
+const preflight = (env) => {
   const dir = mkdtempSync(join(tmpdir(), 'deploy-preflight-'));
   const envFile = join(dir, '.env');
-  writeFileSync(envFile, `MAIL_WEBHOOK_ALLOWED_RANGES="${ranges}"\n`, { mode: 0o600 });
+  writeFileSync(envFile, env, { mode: 0o600 });
   const { stdout } = spawnSync('bash', ['deploy/preflight.sh'], {
     env: { PATH: process.env.PATH, DEPLOY_ENV_FILE: envFile, DEPLOY_SECRETS_DIR: dir },
     encoding: 'utf8',
   });
-  return stdout.split('\n').filter((line) => line.includes('MAIL_WEBHOOK_ALLOWED_RANGES holds'));
+  return stdout.split('\n');
 };
 
+const rangesLines = (ranges) =>
+  preflight(`MAIL_WEBHOOK_ALLOWED_RANGES="${ranges}"\n`).filter((line) =>
+    line.includes('MAIL_WEBHOOK_ALLOWED_RANGES holds'),
+  );
+
 describe('the pre-flight', () => {
+  it.each(['RP_HOST', 'SOIRELY_ANDROID_CERT_SHA256', 'SOIRELY_APPLE_APP_ID'])(
+    'passes %s left empty, which turns its passkey file off',
+    (key) => {
+      expect(preflight(`${key}=\n`).filter((line) => line.includes(` ${key} `))).toEqual([]);
+    },
+  );
+
+  it('fails a required key left empty', () => {
+    expect(preflight('APP_HOST=\n')).toContain('FAIL  APP_HOST is not empty');
+  });
+
   it.each([
     'not-a-range',
     '10.0.0.0/33',
