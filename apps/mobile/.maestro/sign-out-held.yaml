@@ -1,0 +1,10 @@
+# Signs out a member whose organisation in use is held (paused or two-factor overdue), from Your account. sc-85006.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/account
+- waitForAnimationToEnd
+- runFlow: settings-sign-out-tap.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
