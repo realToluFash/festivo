@@ -10,18 +10,22 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\MealAnswerKind;
 use App\Enum\MembershipStatus;
+use App\Enum\MenuChangeWhy;
 use App\Enum\NeedKind;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedMenuPicks;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
+use App\Tests\Traits\StoresMealAnswers;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -36,6 +40,7 @@ final class DishChoicesTest extends ApiTestCase
 {
     use OnboardsAccounts;
     use PutsPeopleOnEvents;
+    use StoresMealAnswers;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -217,27 +222,59 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
-    public function addAChoiceIsRefusedOnAPickedDishFirstAndLaterButOpensOnASetCourseThatAsksNothing(): void
+    public function aChoiceOnAPickedDishAsksItsPickersAndOnASetCourseThatAlreadyAsksThoseWhoAnsweredIt(): void
     {
         $jollof = $this->jollof();
         $this->as($this->owner, 'PUT', $this->path('/courses/' . $this->courseNamed('Main')), ['name' => 'Main', 'answer' => 'same', 'skippable' => false]);
 
         $this->addChoice($jollof, self::side());
-        $this->picks(self::optionId($this->choices()[0], 0), $this->guest('Tolu Adeyemi', []));
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks(self::optionId($this->choices()[0], 0), $tolu);
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
 
         $this->as($this->owner, 'POST', $this->choicesOf($jollof), [...self::side(), 'question' => 'And a sauce?']);
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 'picked', 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
+        self::assertCount(1, $this->choices());
+        $this->as($this->owner, 'POST', $this->choicesOf($jollof) . '?askAgain=1', [...self::side(), 'question' => 'And a sauce?']);
+        self::assertSame(201, $this->statusCode());
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => $tolu->getId()]) ?? self::fail('no answer');
+        self::assertSame([MealAnswerKind::MenuChanged, MenuChangeWhy::Choices], [$answer->getKind(), $answer->getChangedWhy()]);
 
-        $asun = $this->newDish('Starter', ['name' => 'Asun', 'containsNone' => true, 'onlyForEvent' => true]);
+        $starter = $this->courseNamed('Starter');
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $starter . '/dishes?askAgain=1'), ['name' => 'Asun', 'containsNone' => true, 'onlyForEvent' => true]);
+        $asun = Type\string()->coerce($this->last()['dishId'] ?? null);
         $this->picks($asun, $this->guest('Femi Ade', []));
         $this->as($this->owner, 'POST', $this->choicesOf($asun), self::side());
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
+        self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
+        $this->as($this->owner, 'POST', $this->choicesOf($asun) . '?askAgain=1', self::side());
+        self::assertSame(201, $this->statusCode());
     }
 
     #[Test]
-    public function anAnswerToASetDishsChoiceRefusesRemovingTheDishAndDeletingItsCourse(): void
+    public function twoWaysOnASetDishThatAlreadyHasAChoiceAskThoseWhoAnsweredIt(): void
+    {
+        $jollof = $this->jollof();
+        $this->as($this->owner, 'PUT', $this->path('/courses/' . $this->courseNamed('Main')), ['name' => 'Main', 'answer' => 'same', 'skippable' => false]);
+        $this->addChoice($jollof, self::side());
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks(self::optionId($this->choices()[0], 0), $tolu);
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
+        $ways = ['variants' => [['name' => 'Chicken', 'for' => 'everyone', 'containsNone' => true], ['name' => 'Fish', 'for' => 'everyone', 'allergens' => ['fish']]]];
+
+        $this->as($this->owner, 'POST', $this->path('/dishes/' . $jollof . '/variants'), $ways);
+        self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
+        $this->as($this->owner, 'POST', $this->path('/dishes/' . $jollof . '/variants?askAgain=1'), $ways);
+        self::assertSame(201, $this->statusCode());
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => $tolu->getId()]) ?? self::fail('no answer');
+        self::assertSame([MealAnswerKind::MenuChanged, MenuChangeWhy::Ways, 2], [$answer->getKind(), $answer->getChangedWhy(), $answer->getChangedWays()]);
+    }
+
+    #[Test]
+    public function anAnswerToASetDishsChoiceAsksBeforeRemovingTheDishAndRefusesDeletingItsCourse(): void
     {
         $jollof = $this->jollof();
         $main = $this->courseNamed('Main');
@@ -246,8 +283,7 @@ final class DishChoicesTest extends ApiTestCase
         $this->picks(self::optionId($this->choices()[0], 0), $this->guest('Tolu Adeyemi', []));
 
         $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof));
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
 
         $this->as($this->owner, 'DELETE', $this->path('/courses/' . $main));
         self::assertSame(409, $this->statusCode());
@@ -274,7 +310,7 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
-    public function anAnsweredChoiceCannotBeRemovedButAnUnansweredOneCan(): void
+    public function removingAnAnsweredChoiceAsksEveryoneWhoAnsweredIt(): void
     {
         $jollof = $this->jollof();
         $this->addChoice($jollof, self::side());
@@ -282,54 +318,54 @@ final class DishChoicesTest extends ApiTestCase
         $this->addChoice($jollof, [...self::side(), 'question' => 'And to drink?']);
         [$side, $sauce, $drink] = $this->choices();
         $this->picks(self::optionId($side, 2), $this->guest('Tolu Adeyemi', []));
+        $this->picks($jollof, $this->guest('Femi Ade', []));
 
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($side['id'])));
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/choice_answered', $this->last()['type'] ?? null);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['count'] ?? null]);
 
-        self::service(ScriptedMenuPicks::class)->answerNone(Type\string()->coerce($sauce['id']));
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($sauce['id'])));
-        self::assertSame(409, $this->statusCode());
+        self::assertSame([409, 2], [$this->statusCode(), $this->last()['count'] ?? null], 'None for me is an answer to it too');
 
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($drink['id'])));
-        self::assertSame(200, $this->statusCode());
+        self::assertSame(200, $this->statusCode(), 'nobody has answered a required choice they have no option of');
         self::assertSame(['And a side?', 'And a sauce?'], Vec\map($this->choices(), static fn (array $one): mixed => $one['question']));
+
+        $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($side['id']) . '?askAgain=1'));
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['And a sauce?'], Vec\map($this->choices(), static fn (array $one): mixed => $one['question']));
     }
 
     #[Test]
-    public function aPickedOptionCannotBeDroppedOrCleared(): void
+    public function droppingAPickedOptionAsksThoseWhoPickedIt(): void
     {
         $choice = $this->answeredSide();
         $id = Type\string()->coerce($choice['id']);
         $sent = $this->sentBack($choice);
 
         $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...self::side(), 'options' => [$sent[0], $sent[1]]]);
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/choice_option_picked', $this->last()['type'] ?? null);
-
-        $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...self::side(), 'options' => [$sent[0], $sent[1], ['id' => $sent[2]['id'], 'name' => '']]]);
-        self::assertSame(422, $this->statusCode());
-        self::assertSame('Guests have picked this option.', $this->violation('options.2.name'));
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['count'] ?? null]);
 
         $this->changeChoice($id, [...self::side(), 'options' => [$sent[1], $sent[2]]]);
         self::assertSame(['Garden salad', 'Moi moi'], Vec\map(self::options($this->choices()[0]), static fn (array $one): mixed => $one['name']));
     }
 
     #[Test]
-    public function anAnsweredChoiceKeepsItsCountAndCannotTurnRequiredOnOverNoneForMe(): void
+    public function turningRequiredOnAsksNoneForMeAndChangingThePickAsksEveryoneWhoAnswered(): void
     {
         $choice = $this->answeredSide(required: false);
         $id = Type\string()->coerce($choice['id']);
-        self::service(ScriptedMenuPicks::class)->answerNone($id);
+        $this->picks(Type\string()->coerce($this->dish()['id']), $this->guest('Femi Ade', []));
         $sent = [...self::side(), 'required' => false, 'options' => $this->sentBack($choice)];
-
-        $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...$sent, 'pick' => 2, 'required' => true]);
-
-        self::assertSame(422, $this->statusCode());
-        self::assertSame('Guests have answered this choice.', $this->violation('pick'));
-        self::assertSame('Guests have answered this choice.', $this->violation('required'));
-        self::assertSame(1, $this->choices()[0]['pick']);
         self::assertSame(1, $this->choices()[0]['noneAnswers']);
+
+        $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...$sent, 'required' => true]);
+        self::assertSame([409, 1], [$this->statusCode(), $this->last()['count'] ?? null]);
+        $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...$sent, 'pick' => 2]);
+        self::assertSame([409, 2], [$this->statusCode(), $this->last()['count'] ?? null]);
+        self::assertSame(1, $this->choices()[0]['pick']);
+
+        $this->changeChoice($id, [...$sent, 'question' => 'Any side?', 'options' => [...$sent['options'], self::option('Coleslaw', 'eggs')]]);
+        $this->changeChoice($id, [...$sent, 'question' => 'Any side?', 'required' => false]);
     }
 
     #[Test]
@@ -380,26 +416,27 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
-    public function anAllergenAddedToPickedOptionsSavesWithALinePerOptionInTheChoicesOrder(): void
+    public function anAllergenAddedToPickedOptionsAsksAgainOnlyThoseWhoPickedThemWithItRecorded(): void
     {
         $choice = $this->sideWithPickers();
+        $id = Type\string()->coerce($choice['id']);
         $sent = $this->sentBack($choice);
-
-        $saved = $this->changeChoice(Type\string()->coerce($choice['id']), [...self::side(), 'options' => [
+        $body = [...self::side(), 'options' => [
             $sent[0],
             [...$sent[1], 'allergens' => ['celery', 'mustard']],
             [...$sent[2], 'allergens' => ['crustaceans', 'eggs', 'milk']],
-        ]]);
+        ]];
 
-        self::assertSame([
-            ['optionId' => $sent[1]['id'], 'option' => 'Garden salad', 'count' => 2, 'allergens' => ['celery']],
-            ['optionId' => $sent[2]['id'], 'option' => 'Moi moi', 'count' => 3, 'allergens' => ['crustaceans']],
-        ], $saved['unwarnedOptions'] ?? null);
+        $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), $body);
+        self::assertSame([409, 5, 'allergen', ['crustaceans', 'celery']], [$this->statusCode(), $this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
+        self::assertSame(['mustard'], self::options($this->choices()[0])[1]['allergens']);
+
+        $this->changeChoice($id . '?askAgain=1', $body);
         self::assertSame(['celery', 'mustard'], self::options($this->choices()[0])[1]['allergens']);
     }
 
     #[Test]
-    public function noLineWhenNobodyCountedHasItTheAllergyIsOtherOrOneIsRemoved(): void
+    public function nobodyIsAskedWhenNobodyCountedHasItTheAllergyIsOtherOrOneIsRemoved(): void
     {
         $choice = $this->sideWithPickers();
         $id = Type\string()->coerce($choice['id']);
@@ -411,8 +448,7 @@ final class DishChoicesTest extends ApiTestCase
             [...$sent[2], 'allergens' => ['eggs']],
             ['id' => $sent[2]['id'], 'name' => 'Moi moi', 'containsNone' => true],
         ] as $moiMoi) {
-            $saved = $this->changeChoice($id, [...self::side(), 'options' => [$sent[0], $sent[1], $moiMoi]]);
-            self::assertSame([], $saved['unwarnedOptions'] ?? null, Json\encode($moiMoi));
+            $this->changeChoice($id, [...self::side(), 'options' => [$sent[0], $sent[1], $moiMoi]]);
         }
     }
 
@@ -607,11 +643,6 @@ final class DishChoicesTest extends ApiTestCase
         self::em()->flush();
 
         return $guest;
-    }
-
-    private function picks(string $id, Guest $person): void
-    {
-        self::service(ScriptedMenuPicks::class)->pick($id, $person);
     }
 
     private function newEvent(): string

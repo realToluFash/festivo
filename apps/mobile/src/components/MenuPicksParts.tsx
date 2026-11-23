@@ -309,6 +309,9 @@ export function CourseCard({
         {course.needsHost > 0 && (
           <StateRow words={t('menuPicks.needsHost')} count={course.needsHost} mark />
         )}
+        {course.menuChanged > 0 && (
+          <StateRow words={t('menuPicks.changed')} count={course.menuChanged} mark />
+        )}
         <StateRow words={t('menuPicks.notChosen')} count={course.notChosen} />
       </View>
     </Card>

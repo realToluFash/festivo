@@ -30,9 +30,9 @@ use Psl\Vec;
  * @phpstan-type Cell array{kind: string, text?: string}
  * @phpstan-type Allergic array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, diets: list<string>, otherDiet: ?string, cells: list<Cell>}
  * @phpstan-type Row array{id: string, kind: string, name: string, count: int}
- * @phpstan-type Counted array{id: string, rows: list<array{id: string, kind: string, name: string, chosen: int, defaulted: int}>, kitchen: int, skipped: int, needsHost: int, notChosen: int, room: int, closed: bool}
+ * @phpstan-type Counted array{id: string, rows: list<array{id: string, kind: string, name: string, chosen: int, defaulted: int}>, kitchen: int, skipped: int, needsHost: int, notChosen: int, menuChanged: int, room: int, closed: bool}
  * @phpstan-type SheetStation array{id: string, name: string, lines: list<array{name: string, count: int, chefs: bool}>}
- * @phpstan-type SheetCourse array{id: string, name: string, rows: list<Row>, kitchen: int, skipped: int, needsHost: int, notChosen: int, never: bool, room: int, given: ?array{count: int, plate: string}, sides: bool, stations: ?list<SheetStation>}
+ * @phpstan-type SheetCourse array{id: string, name: string, rows: list<Row>, kitchen: int, skipped: int, needsHost: int, notChosen: int, menuChanged: int, never: bool, room: int, given: ?array{count: int, plate: string}, sides: bool, stations: ?list<SheetStation>}
  * @phpstan-type Sheet array{asOf: string, paper: Paper, names: bool, coming: int, allergicCount: int, allergic: ?list<Allergic>, allergyCounts: list<array{code: string, count: int}>, dietCounts: list<array{code: string, count: int}>, courses: list<SheetCourse>}
  */
 final readonly class KitchenSheet

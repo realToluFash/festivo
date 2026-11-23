@@ -1,6 +1,7 @@
 /** The kitchen sheet (sc-3911): allergies first, then diets, then each course as See picks counts it. */
 export type KitchenCell =
-  { kind: 'dish'; text: string } | { kind: 'kitchen' | 'skipped' | 'host' | 'notYet' | 'never' };
+  | { kind: 'dish'; text: string }
+  | { kind: 'kitchen' | 'skipped' | 'host' | 'changed' | 'notYet' | 'never' };
 
 export interface KitchenAllergic {
   id: string;
@@ -50,6 +51,8 @@ export interface KitchenCourse {
   skipped: number;
   needsHost: number;
   notChosen: number;
+  /** Asked again by a menu change (sc-3913). */
+  menuChanged: number;
   /** After the close of a course with a default: those not chosen were never given it. */
   never: boolean;
   room: number;
@@ -80,7 +83,7 @@ const strings = (raw: unknown): string[] =>
   Array.isArray(raw) ? raw.filter((one): one is string => typeof one === 'string') : [];
 const list = (raw: unknown): unknown[] => (Array.isArray(raw) ? raw : []);
 
-const STATES = ['kitchen', 'skipped', 'host', 'notYet', 'never'] as const;
+const STATES = ['kitchen', 'skipped', 'host', 'changed', 'notYet', 'never'] as const;
 
 function asCell(raw: unknown): KitchenCell {
   const one = record(raw);
@@ -130,6 +133,7 @@ function asCourse(raw: unknown): KitchenCourse {
     skipped: num(one.skipped),
     needsHost: num(one.needsHost),
     notChosen: num(one.notChosen),
+    menuChanged: num(one.menuChanged),
     never: one.never === true,
     room: num(one.room),
     given: given == null ? null : { count: num(given.count), plate: str(given.plate) },

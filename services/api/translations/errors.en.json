@@ -50,15 +50,11 @@
     "dish_in_use": "An event uses this dish, so it cannot be deleted. Archive it instead.",
     "menu_course_limit": "A menu can have at most {max} courses.",
     "menu_course_picked": "Guests have picked from this course.",
-    "menu_dish_picked": "Guests have picked this dish.",
     "menu_dish_on_course": "This dish is already on this course.",
     "menu_same_one_dish": "“Everyone gets the same” needs exactly one dish.",
     "variant_limit": "A dish can have at most {max} variants.",
-    "variant_picked": "Guests have picked this variant.",
     "variant_last_everyone": "This is the only variant for Everyone. Make another variant for Everyone first.",
     "choice_limit": "A dish can have at most 3 choices.",
-    "choice_answered": "Guests have answered this choice.",
-    "choice_option_picked": "Guests have picked this option.",
     "meal_picks_closed": "Picks for this course have closed.",
     "meal_pick_ruled_out": "Their record rules this out. Confirm to pick it anyway.",
     "replies_closed": "Answers have closed.",
@@ -153,5 +149,7 @@
     "audit_export_too_many": "Too many entries to export.",
     "door_code_invalid": "That code doesn’t work. Check it with whoever gave it to you.",
     "menu_is_default": "This is part of the course’s default. Choose another default first.",
-    "menu_default_move": "Changing the default moves the guests given it. Confirm to change it."
+    "menu_default_move": "Changing the default moves the guests given it. Confirm to change it.",
+    "menu_change_asks": "This change asks guests to pick again. Confirm to change it.",
+    "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed."
 }

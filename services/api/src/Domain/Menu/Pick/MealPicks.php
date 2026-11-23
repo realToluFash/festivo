@@ -84,7 +84,7 @@ final readonly class MealPicks
             $course = $courses[$pick['course']] ?? null;
             $kind = MealAnswerKind::tryFrom($pick['answer']);
 
-            if (null === $person || null === $course || null === $kind || MealAnswerKind::Defaulted === $kind) {
+            if (null === $person || null === $course || null === $kind || MealAnswerKind::Defaulted === $kind || MealAnswerKind::MenuChanged === $kind) {
                 $violations[] = $this->violation($path, 'validation.meal_pick_stale');
 
                 continue;

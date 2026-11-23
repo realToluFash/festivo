@@ -3313,3 +3313,167 @@ describe("the screen kept on while the code shows on the event's day (sc-24381)"
     expect(request).not.toHaveBeenCalled();
   });
 });
+
+describe('a guest asked again after a menu change (sc-3913)', () => {
+  const [MAIN, DESSERT] = MEALS.courses as [
+    (typeof MEALS.courses)[number],
+    (typeof MEALS.courses)[number],
+  ];
+  const changed = (course: string, picked: string, why: object = { why: 'removed' }) => ({
+    course,
+    answer: 'menuChanged',
+    dish: null,
+    variant: null,
+    options: [],
+    changed: { picked, ways: null, allergens: [], ...why },
+  });
+  const chosen = (course: string, dish: string) => ({
+    course,
+    answer: 'chosen',
+    dish,
+    variant: null,
+    options: [],
+  });
+  const back = (answers: Record<string, object[]>, courses: object[] = [MAIN, DESSERT]) => ({
+    ...answered('coming', undefined, 1, [CHIDI]),
+    meals: { ...MEALS, courses, answers },
+  });
+
+  it('opens straight on the changed course, says why, and sends the new pick with Send my changes', async () => {
+    const before = back({
+      [MEALS.you]: [changed('main', 'Sea bass'), chosen('dessert', 'cake')],
+      [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+    });
+    const { sent } = api({
+      '/api/guest-links/page': [{ status: 200, body: before }],
+      '/api/guest-links/meals': [{ status: 200, body: before }],
+    });
+    open();
+
+    const head = await screen.findByRole('heading', { name: /Pick a new main$/ });
+    expect(head.textContent).toContain('For you, Main, 1 of 1.');
+    expect(screen.getByText('You picked Sea bass, which is no longer on the menu.')).toBeDefined();
+    expect(screen.getByRole('radio', { name: /Let the kitchen choose for me/ })).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBe(
+      document.activeElement,
+    );
+    expect(screen.getByText('Not sent yet')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    await waitFor(() => expect(sent.map(({ path }) => path)).toContain('/api/guest-links/meals'));
+    const body = sent.find(({ path }) => path === '/api/guest-links/meals')?.body as {
+      picks: { person: string; course: string; answer: string; dish?: string }[];
+    };
+    expect(body.picks.find((one) => one.person === MEALS.you && one.course === 'main')).toEqual(
+      expect.objectContaining({ answer: 'chosen', dish: 'jollof' }),
+    );
+  });
+
+  it('walks only the changed courses of the people they changed, naming only their added allergens', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back({
+            [MEALS.you]: [chosen('main', 'jollof'), changed('dessert', 'Coconut cake')],
+            [CHIDI.id]: [
+              changed('main', 'Pounded yam and egusi', {
+                why: 'allergen',
+                allergens: ['milk', 'sesame'],
+              }),
+              chosen('dessert', 'cake'),
+            ],
+          }),
+        },
+      ],
+    });
+    open();
+
+    const first = await screen.findByRole('heading', { name: /Pick a new dessert$/ });
+    expect(first.textContent).toContain('For you, Dessert, 1 of 2.');
+    fireEvent.click(screen.getByRole('radio', { name: /No dessert/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const second = await screen.findByRole('heading', { name: /Pick a new main$/ });
+    expect(second.textContent).toContain('For Chidi Okonkwo-Williams, Main, 2 of 2.');
+    expect(
+      screen.getByText(
+        'Chidi Okonkwo-Williams picked Pounded yam and egusi, which now contains milk and sesame.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(await screen.findByRole('heading', { name: /Pick a new dessert$/ })).toBeDefined();
+  });
+
+  it('keeps the row Menu changed on Back, and refuses Send my changes while it is', async () => {
+    const { sent } = api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back({
+            [MEALS.you]: [
+              changed('main', 'Pounded yam and egusi', { why: 'ways', ways: 2 }),
+              chosen('dessert', 'cake'),
+            ],
+            [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+          }),
+        },
+      ],
+    });
+    open();
+
+    expect(
+      await screen.findByText('You picked Pounded yam and egusi, which now comes 2 ways.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    const change = await screen.findByRole('button', { name: 'Change main for you' });
+    expect(change).toBe(document.activeElement);
+    expect(screen.getByText('Menu changed')).toBeDefined();
+    expect(change.getAttribute('aria-describedby')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(
+      (await screen.findByText('The menu changed for a pick. Pick again before you send.')).closest(
+        '[role="alert"]',
+      ),
+    ).not.toBeNull();
+    expect(change).toBe(document.activeElement);
+    expect(sent.map(({ path }) => path)).toEqual(['/api/guest-links/page']);
+  });
+
+  it('shows a course closed since read-only, with the host in touch, and does not refuse Send', async () => {
+    api({
+      '/api/guest-links/page': [
+        {
+          status: 200,
+          body: back(
+            {
+              [MEALS.you]: [
+                changed('main', 'Jollof rice', { why: 'choices' }),
+                chosen('dessert', 'cake'),
+              ],
+              [CHIDI.id]: [chosen('main', 'jollof'), chosen('dessert', 'cake')],
+            },
+            [{ ...MAIN, picksClose: { ...CLOSE, closed: true } }, DESSERT],
+          ),
+        },
+      ],
+    });
+    open();
+
+    expect(await screen.findByRole('heading', { name: 'Your meal picks' })).toBeDefined();
+    expect(screen.getByText('You picked Jollof rice, and its choices have changed.')).toBeDefined();
+    expect(screen.getByText('The host will be in touch.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change main for you' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Send my changes' }));
+
+    expect(
+      await screen.findByText('Nothing has changed, so there is nothing to send.'),
+    ).toBeDefined();
+  });
+});

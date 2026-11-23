@@ -67,7 +67,14 @@ import {
   skipped,
 } from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
-import { CopiedCard, MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
+import {
+  ChangedLine,
+  CopiedCard,
+  MarkedLine,
+  MealCards,
+  MealScreen,
+  MealsSaved,
+} from './Meals.tsx';
 import {
   type Cleared,
   type Eater,
@@ -76,6 +83,7 @@ import {
   allergiesOf,
   askedCourses,
   changeFocus,
+  changedOpen,
   clearRuledOut,
   eatersOf,
   defaultLine,
@@ -112,13 +120,15 @@ type View =
   | {
       kind: 'meal';
       from: 'answer' | 'changing';
-      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, the picks saved, or the copied card. */
-      to: 'flow' | 'check' | 'saved' | 'card';
+      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, the picks saved, the copied card, or on through the courses a menu change asked again. */
+      to: 'flow' | 'check' | 'saved' | 'card' | 'changed';
       eater: number;
       course: number;
       step: number;
       /** A course a Same as press couldn't copy (sc-17283), asked straight after it. */
       asked?: boolean;
+      /** sc-3913: the rows a menu change asked again, as they stood when the visit opened, which `changed` walks. */
+      route?: readonly string[];
     }
   | { kind: 'copied'; from: 'answer' | 'changing'; eater: number }
   | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
@@ -140,7 +150,7 @@ interface Meal {
   cleared: Readonly<Record<string, Cleared>>;
   draft: Plate | null;
   pressed: boolean;
-  told: 'marked' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
+  told: 'marked' | 'changed' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
   refused: ReadonlySet<string>;
   /** The rows of a refused course whose answer the send changed, which carry its alert. */
   unsaved: ReadonlySet<string>;
@@ -381,6 +391,22 @@ function opening(page: GuestPage, token: string): View {
   return { kind: 'answer', busy: null, note: wasStarted(token) ? 'unsent' : null };
 }
 
+/** Coming back after a menu change asked someone again (sc-3913): straight to the first course it asked, while it is open, and nothing else. */
+function openingOf(page: GuestPage, token: string): View {
+  const view = opening(page, token);
+  if (view.kind !== 'recorded' || page.guest.reply?.answer !== 'coming') return view;
+  if (page.phase === 'paused' && !page.started) return view;
+  const courses = askedCourses(page.meals);
+  const eaters = eatersOf(page.meals, partyOf(page));
+  const route = changedOpen(savedPlates(page.meals, eaters), eaters, courses);
+  const first = route[0];
+  if (first == null) return view;
+  const eater = eaters.findIndex((one) => first.startsWith(`${one.key}|`));
+  const course = courses.findIndex((one) => first.endsWith(`|${one.id}`));
+
+  return { kind: 'meal', from: 'answer', to: 'changed', eater, course, step: 0, route };
+}
+
 function savedMeal(page: GuestPage): Meal {
   return {
     ...NO_MEAL,
@@ -412,7 +438,7 @@ export function Card({
   const { t } = useTranslation();
   const [page, setPage] = useState(first);
   const [view, setView] = useState<View>(() =>
-    preview == null ? opening(first, token) : PREVIEW_START,
+    preview == null ? openingOf(first, token) : PREVIEW_START,
   );
   const [party, setParty] = useState<Party>(() => partyOf(first));
   const [kitchen, setKitchen] = useState<Kitchen | null>(() =>
@@ -422,7 +448,7 @@ export function Card({
   const [meal, setMeal] = useState<Meal>(() => savedMeal(first));
   const [tell, setTell] = useState<Tell>({ kind: 'card' });
   const [want, setWant] = useState<{ on: string } | null>(() =>
-    preview == null ? null : { on: 'mealHead' },
+    preview != null || view.kind === 'meal' ? { on: 'mealHead' } : null,
   );
   const [gone, setGone] = useState(false);
   const columns = useColumns();
@@ -469,7 +495,7 @@ export function Card({
     if (standing(next) === seen.current) return;
 
     seen.current = standing(next);
-    setView(opening(next, token));
+    setView(openingOf(next, token));
     setParty(partyOf(next));
     setKitchen(null);
     setMeal(savedMeal(next));
@@ -610,6 +636,12 @@ export function Card({
       focus(changeFocus(marked[0]));
       return;
     }
+    const changed = changedOpen(meal.plates, eaters, courses);
+    if (changed[0] != null) {
+      setMeal((was) => ({ ...was, told: 'changed' }));
+      focus(changeFocus(changed[0]));
+      return;
+    }
     setView({ ...view, busy: true, failed: false });
     send('coming', (refused) => {
       setView({ ...view, busy: false, failed: !refused, unsaved: refused });
@@ -717,6 +749,7 @@ export function Card({
     if (who == null || what == null) return null;
     const was = plates[keyOf(who.key, what.id)];
     if (was == null || was.kind === 'defaulted' || was.kind === 'needsHost') return null;
+    if (was.kind === 'menuChanged') return null;
 
     return markOf(what, was, mine(who.key)) == null ? was : null;
   }
@@ -725,10 +758,11 @@ export function Card({
     eater: number,
     course: number,
     from: 'answer' | 'changing',
-    to: 'flow' | 'check' | 'saved' | 'card',
+    to: 'flow' | 'check' | 'saved' | 'card' | 'changed',
     plates: Plates = meal.plates,
     mine = allergies,
     asked = false,
+    route?: readonly string[],
   ): void {
     setMeal((was) => ({
       ...was,
@@ -737,7 +771,16 @@ export function Card({
       pressed: false,
       told: null,
     }));
-    setView({ kind: 'meal', from, to, eater, course, step: 0, ...(asked ? { asked } : {}) });
+    setView({
+      kind: 'meal',
+      from,
+      to,
+      eater,
+      course,
+      step: 0,
+      ...(asked ? { asked } : {}),
+      ...(route == null ? {} : { route }),
+    });
     focus('mealHead');
   }
 
@@ -787,6 +830,26 @@ export function Card({
     const result = clearRuledOut(meal.plates, eaters, courses, mine);
     setMeal((was) => ({ ...was, cleared: { ...was.cleared, ...result.cleared } }));
     openMeal(0, 0, from, 'flow', result.plates, mine);
+  }
+
+  /** sc-3913: the row at `at` on a menu changed visit's route, opened, or Your picks once it runs out. */
+  function changedStep(
+    route: readonly string[],
+    at: number,
+    from: 'answer' | 'changing',
+    plates: Plates,
+    out: string,
+  ): void {
+    const key = route[at];
+    const eater = key == null ? -1 : eaters.findIndex((one) => key.startsWith(`${one.key}|`));
+    const course = key == null ? -1 : courses.findIndex((one) => key.endsWith(`|${one.id}`));
+    if (eater < 0 || course < 0) {
+      setMeal((was) => ({ ...was, plates, draft: null, pressed: false }));
+      setView({ kind: 'recorded', same: false });
+      focus(out);
+      return;
+    }
+    openMeal(eater, course, from, 'changed', plates, allergies, false, route);
   }
 
   function leaveMeal(
@@ -839,6 +902,11 @@ export function Card({
     const plates = { ...meal.plates, [key]: answer };
     const cleared = Object.fromEntries(Object.entries(meal.cleared).filter(([one]) => one !== key));
     setMeal((was) => ({ ...was, plates, cleared, draft: null, pressed: false }));
+    if (view.to === 'changed') {
+      const route = view.route ?? [];
+      changedStep(route, route.indexOf(key) + 1, view.from, plates, 'mealsSaved');
+      return;
+    }
     if (view.to !== 'flow') {
       leaveMeal(view.to, key, view.from, view.eater);
       return;
@@ -868,17 +936,23 @@ export function Card({
       focus('mealHead');
       return;
     }
-    if (view.to !== 'flow') {
-      setMeal((was) => ({ ...was, draft: null, pressed: false }));
-      leaveMeal(view.to, key, view.from, view.eater);
-      return;
-    }
     const { draft } = meal;
     const done =
       draft != null &&
       (draft.kind !== 'chosen' ||
         stepsOf(course, draft).every((step, at) => refusalOf(step, draft, at === 0) == null));
     const plates = done ? { ...meal.plates, [key]: draft } : meal.plates;
+    if (view.to === 'changed') {
+      const route = view.route ?? [];
+      const at = route.indexOf(key);
+      changedStep(route, at > 0 ? at - 1 : -1, view.from, plates, changeFocus(route[0] ?? key));
+      return;
+    }
+    if (view.to !== 'flow') {
+      setMeal((was) => ({ ...was, draft: null, pressed: false }));
+      leaveMeal(view.to, key, view.from, view.eater);
+      return;
+    }
     if (view.asked === true) openMeal(view.eater, 0, view.from, 'flow', plates);
     else if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
     else if (view.eater > 0)
@@ -897,6 +971,12 @@ export function Card({
     if (marked[0] != null) {
       setMeal((was) => ({ ...was, told: 'marked' }));
       focus(changeFocus(marked[0]));
+      return;
+    }
+    const open = changedOpen(meal.plates, eaters, courses);
+    if (open[0] != null) {
+      setMeal((was) => ({ ...was, told: 'changed' }));
+      focus(changeFocus(open[0]));
       return;
     }
     const saved = savedPlates(page.meals, eaters);
@@ -1120,6 +1200,7 @@ export function Card({
   const saved = savedPlates(page.meals, eaters);
   const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
+  const changed = changedOpen(meal.plates, eaters, courses).length;
   const lineOf = (eater: Eater, course: MealCourse, shut: boolean) =>
     defaultLine(page.meals, course, eater, meal.plates[keyOf(eater.key, course.id)], shut);
   const cards = (head: 'check' | 'back') => (
@@ -1148,13 +1229,15 @@ export function Card({
     const steps = stepsOf(course, meal.draft);
     const step = steps[view.step] ?? steps[0];
     if (step == null) return null;
+    const key = keyOf(eater.key, course.id);
+    const walked = view.to === 'changed' ? (view.route ?? []).indexOf(key) : -1;
 
     return (
       <MealScreen
         eater={eater}
         course={course}
-        n={view.course + 1}
-        total={courses.length}
+        n={walked < 0 ? view.course + 1 : walked + 1}
+        total={walked < 0 ? courses.length : (view.route?.length ?? 1)}
         step={step}
         first={view.step === 0}
         plate={meal.draft}
@@ -1180,6 +1263,7 @@ export function Card({
             ? (eaters.find((one) => one.key === meal.copy?.from) ?? null)
             : null
         }
+        changed={view.step === 0 ? (saved[key]?.changed ?? null) : null}
         onSameAs={sameAs}
         onPlate={(plate) => setMeal((was) => ({ ...was, draft: plate, pressed: false }))}
         onBack={mealBack}
@@ -1224,6 +1308,7 @@ export function Card({
       <MealsSaved
         told={meal.told}
         marked={marked}
+        changed={changed}
         busy={meal.busy}
         savedUntil={paused ? null : oneCloseDay(courses, (at) => dayOf(at, event.timeZone))}
         kitchen={
@@ -1248,6 +1333,7 @@ export function Card({
       <>
         {cards('check')}
         {meal.told === 'marked' && marked > 0 && <MarkedLine count={marked} />}
+        {meal.told === 'changed' && changed > 0 && <ChangedLine count={changed} />}
       </>
     ) : null;
   const tagged = guest.reply != null && view.kind !== 'check';

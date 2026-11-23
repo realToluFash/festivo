@@ -79,7 +79,11 @@ export interface Problem {
   current?: unknown;
   /** On `payer_covers_costs` (sc-91): the costs the payer covers, in the budget's order, and how many. */
   lineIds?: string[];
+  /** And on `menu_change_asks` (sc-3913): how many people the change asks again, for `course`, `whom` they are, and on `allergen` the added allergens they have recorded. */
   count?: number;
+  course?: { id: string; name: string };
+  whom?: 'picked' | 'everyone' | 'allergen';
+  allergens?: string[];
   /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
   superseded_by?: { name: string; at: string };
 }
