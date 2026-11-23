@@ -162,8 +162,11 @@ class MealAnswer
         $this->changedAllergens = [];
     }
 
-    /** The pick is let go, so the kitchen counts it on no item, and only its dish's name stays for their RSVP. */
-    /** @param list<string> $allergens */
+    /**
+     * The pick is let go, so the kitchen counts it on no item, and only its dish's name stays for their RSVP.
+     *
+     * @param list<string> $allergens
+     */
     public function askAgain(MenuChangeWhy $why, ?int $ways = null, array $allergens = []): void
     {
         $name = null === $this->dish ? $this->changedFrom ?? '' : Str\join(Vec\filter_nulls([$this->dish->getName(), $this->variant?->getName()]), ', ');
