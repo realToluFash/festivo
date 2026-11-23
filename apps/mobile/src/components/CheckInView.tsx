@@ -348,7 +348,7 @@ export function CheckInView({
             setWalkIn({ ...walkIn, checked: true });
             return;
           }
-          const listed = allowDuplicate ? null : listedAs(checkIn, walkIn.name, currentLocale(), t);
+          const listed = allowDuplicate ? null : listedAs(t, checkIn, walkIn.name, currentLocale());
           if (listed != null) {
             setWalkIn({ ...walkIn, checked: true, same: { id: listed.id, name: listed.name } });
             return;

@@ -168,10 +168,10 @@ export function walkInProblem(name: string): 'blank' | 'long' | null {
 
 /** Who **Add walk-in**'s "already on the list" panel names: the guest with the same name, otherwise the first person **Search by name** would find by that name (sc-85893). */
 export function listedAs(
+  t: TFunction,
   checkIn: CheckIn,
   name: string,
   locale: string,
-  t: TFunction,
 ): DoorRow | null {
   if (words(name).length === 0) return null;
 

@@ -178,15 +178,15 @@ describe('a walk-in', () => {
   });
 
   it('asks about the first guest Search by name would find when no name is the same (sc-85893)', () => {
-    expect(listedAs(DOOR, 'Seun Adebayo', 'en', t)?.name).toBe(OLUWASEUN);
-    expect(listedAs(DOOR, 'seun', 'en', t)?.id).toBe('d_s');
-    expect(listedAs(DOOR, 'segun', 'en', t)).toMatchObject({ id: 'd_o', name: 'Olusegun Eze' });
-    expect(listedAs(DOOR, 'Kofi Asante', 'en', t)).toBeNull();
-    expect(listedAs(DOOR, '  ', 'en', t)).toBeNull();
+    expect(listedAs(t, DOOR, 'Seun Adebayo', 'en')?.name).toBe(OLUWASEUN);
+    expect(listedAs(t, DOOR, 'seun', 'en')?.id).toBe('d_s');
+    expect(listedAs(t, DOOR, 'segun', 'en')).toMatchObject({ id: 'd_o', name: 'Olusegun Eze' });
+    expect(listedAs(t, DOOR, 'Kofi Asante', 'en')).toBeNull();
+    expect(listedAs(t, DOOR, '  ', 'en')).toBeNull();
   });
 
   it('names the companion who matched, never the host shown above them (sc-85893, 23 Nov)', () => {
-    expect(listedAs(DOOR, 'Segun Eze', 'en', t)).toMatchObject({
+    expect(listedAs(t, DOOR, 'Segun Eze', 'en')).toMatchObject({
       id: 'd_o',
       name: 'Olusegun Eze',
       companion: true,
@@ -195,7 +195,7 @@ describe('a walk-in', () => {
 
   it('names the guest with the same name before the first one a search finds', () => {
     const both: CheckIn = { ...DOOR, guests: [...DOOR.guests, guest('d_x', 'Aseun Bello')] };
-    expect(listedAs(both, 'aseun bello', 'en', t)?.id).toBe('d_x');
+    expect(listedAs(t, both, 'aseun bello', 'en')?.id).toBe('d_x');
   });
 
   it('counts a name as a person sees it, as the API does', () => {
