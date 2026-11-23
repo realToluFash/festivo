@@ -69,7 +69,7 @@ import { GuestsMany } from './GuestsMany.tsx';
 import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
 import { KitchenSheetPage } from './KitchenSheet.tsx';
-import { SHEET_PAGES } from './kitchenSheet.ts';
+import { SHEET_PAGES, STATION_PAGES } from './kitchenSheet.ts';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
@@ -78,7 +78,7 @@ import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
-import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -529,9 +529,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={SHEET_PAGES} />
       </section>
       <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
-        <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
-        <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
-        <BoardPages pages={PARTS_PAGES} />
+        <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet by station</h2>
+        <h3>
+          Each course’s items under the station that serves them · sc-34244 · desktop, a web window
+          down to 320 px, and printed on A4 and Letter
+        </h3>
+        <BoardPages pages={STATION_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-33">

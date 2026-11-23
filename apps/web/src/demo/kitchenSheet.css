@@ -194,6 +194,70 @@
   font: 500 13px/1.45 var(--fontFamily);
 }
 
+/* sc-34244's By station: under the course's table, each station a column of lines, the count right-aligned like the table's. */
+.ks-stations {
+  margin-top: var(--spaceLg);
+}
+
+.ks-sub-head {
+  margin: 0 0 var(--spaceSm);
+  color: var(--colorInk);
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.ks-station-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--spaceMd) var(--spaceLg);
+}
+
+.ks-station-head {
+  margin: 0;
+  padding-bottom: var(--spaceXs);
+  border-bottom: 2px solid var(--colorInk);
+  color: var(--colorInk);
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.ks-station-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--colorInk);
+  font: 500 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.ks-station-lines li {
+  display: flex;
+  gap: var(--spaceSm);
+  justify-content: space-between;
+  padding: var(--spaceXs) 0;
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.ks-station-lines li.is-chefs {
+  font-weight: 700;
+}
+
+.ks-station-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ks-station-lines .ks-n {
+  flex: none;
+}
+
+.ks-sep {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .ks-loading {
   display: flex;
   flex-direction: column;
@@ -363,6 +427,30 @@
   color: var(--colorPrintInk);
 }
 
+.ks-sheet .ks-sub-head,
+.ks-sheet .ks-station-head,
+.ks-sheet .ks-station-lines {
+  color: var(--colorPrintInk);
+  font-size: 13px;
+}
+
+.ks-sheet .ks-stations {
+  margin-top: var(--spaceMd);
+}
+
+.ks-sheet .ks-station-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ks-sheet .ks-station-head {
+  border-bottom-color: var(--colorPrintInk);
+}
+
+.ks-sheet .ks-station-lines li {
+  padding: 4px 0;
+  border-bottom-color: var(--colorPrintInk);
+}
+
 .ks-foot {
   display: flex;
   gap: var(--spaceLg);
@@ -390,7 +478,8 @@
     break-after: page;
   }
 
-  .ks-sheet tr {
+  .ks-sheet tr,
+  .ks-station {
     break-inside: avoid;
   }
 }

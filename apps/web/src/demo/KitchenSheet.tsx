@@ -20,6 +20,7 @@ import {
   KSW,
   asOfLine,
   ksw,
+  menuOf,
   pdfName,
   sheetAt,
   sheetOf,
@@ -125,7 +126,7 @@ const LOAD_OF: Partial<Record<SheetStart['state'], Load>> = {
 const PDF_OF: Partial<Record<SheetStart['state'], Pdf>> = { making: 'making', failed: 'failed' };
 
 function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetStart; now: Date }) {
-  const [sheet] = useState(() => sheetOf(worldOf(first.state)));
+  const [sheet] = useState(() => sheetOf(worldOf(first.state, first.menu), menuOf(first.menu)));
   const [pdf, setPdf] = useState<Pdf>(PDF_OF[first.state] ?? 'rest');
   const [pressed, setPressed] = useState(false);
   const [load, setLoad] = useState<Load>(LOAD_OF[first.state] ?? 'loaded');
@@ -196,7 +197,7 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
             </button>
             <Link
               className="gs-pill is-secondary ks-act"
-              to={sheetAt(first.state, first.access, 'a4')}
+              to={sheetAt(first.state, first.access, 'a4', first.menu)}
             >
               <PrintMark />
               {KSW.print}
@@ -275,6 +276,7 @@ function SheetBody({ sheet, access }: { sheet: Sheet; access: SheetAccess }) {
             {one.course.name}
           </h2>
           <Course course={one} />
+          <ByStation course={one} at="ks" />
         </section>
       ))}
     </div>
@@ -459,6 +461,66 @@ function Course({ course }: { course: SheetCourse }) {
   );
 }
 
+/** sc-34244's By station: a heading, then each station by its name with its lines, the Pass first and Chef's choice its last line. A list per station, so it reads the same on the page, in print and in the PDF. */
+function ByStation({ course, at }: { course: SheetCourse; at: string }) {
+  if (course.stations == null) return null;
+  const id = `${at}-${course.course.id}-stations`;
+
+  return (
+    <div className="ks-stations">
+      <h3 id={id} className="ks-sub-head">
+        {KSW.byStation}
+      </h3>
+      <div className="ks-station-grid">
+        {course.stations.map(({ place, lines }) => (
+          <div key={place.id} className="ks-station">
+            <h4 id={`${id}-${place.id}`} className="ks-station-head">
+              {place.name}
+            </h4>
+            <ul className="ks-station-lines" aria-labelledby={`${id}-${place.id}`}>
+              {lines.map((line) => (
+                <li
+                  key={line.chefs ? '' : line.name}
+                  className={line.chefs ? 'is-chefs' : undefined}
+                >
+                  <span className="ks-station-item">{line.chefs ? KSW.chefs : line.name}</span>
+                  <span className="ks-sep"> · </span>
+                  <span className="ks-n">{line.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const PAGE_PX = 990;
+
+/** How tall a course stands on paper, near enough to choose its page: a course is never split across two. */
+function paperHeight(course: SheetCourse): number {
+  const table =
+    50 + 28 * (course.rows.length + 2) + (course.given == null ? 0 : 24) + (course.sides ? 24 : 0);
+  const lines = Math.max(0, ...(course.stations ?? []).map((one) => one.lines.length));
+
+  return table + (course.stations == null ? 0 : 66 + 24 * lines);
+}
+
+/** The pages after the first. sc-3911's menu keeps every course on one page; with By station, courses fill a page in order and the next starts a new one. */
+function coursePages(sheet: Sheet): SheetCourse[][] {
+  if (sheet.courses.every((one) => one.stations == null)) return [[...sheet.courses]];
+
+  return sheet.courses.reduce<SheetCourse[][]>((pages, course) => {
+    const last = pages.at(-1);
+    const used = (last ?? []).reduce((sum, one) => sum + paperHeight(one), 0);
+    if (last != null && used + paperHeight(course) <= PAGE_PX) last.push(course);
+    else pages.push([course]);
+
+    return pages;
+  }, []);
+}
+
 /** The printout and the PDF: black ink on white, 1 px rules, real headings and tables, the health footer on every page; A4 is 794 px wide, Letter 816. */
 function SheetPaper({
   event,
@@ -471,21 +533,23 @@ function SheetPaper({
   paper: Paper;
   now: Date;
 }) {
-  const [sheet] = useState(() => sheetOf(worldOf(first.state)));
-  const { state } = first;
+  const [sheet] = useState(() => sheetOf(worldOf(first.state, first.menu), menuOf(first.menu)));
+  const { state, menu } = first;
+  const pages = coursePages(sheet);
+  const m = pages.length + 1;
   const other: Paper = paper === 'a4' ? 'letter' : 'a4';
 
   return (
     <main id="content" className="ks-paper-page">
       <div className="ks-paper-bar">
-        <Link className="ks-back" to={sheetAt(state, first.access)}>
+        <Link className="ks-back" to={sheetAt(state, first.access, null, menu)}>
           <Glyph name="back" size={17} weight={2.4} />
           {KSW.toSheet}
         </Link>
         <p className="ks-paper-is">
           {KSW.paperIs}: {paper === 'a4' ? KSW.a4 : KSW.letter}
           {' · '}
-          <Link className="ks-back" to={sheetAt(state, first.access, other)}>
+          <Link className="ks-back" to={sheetAt(state, first.access, other, menu)}>
             {other === 'a4' ? KSW.a4 : KSW.letter}
           </Link>
         </p>
@@ -498,7 +562,7 @@ function SheetPaper({
           {KSW.printNow}
         </button>
       </div>
-      <Page n={1} m={2} paper={paper}>
+      <Page n={1} m={m} paper={paper}>
         <header className="ks-paper-head">
           <h1>{KSW.title}</h1>
           <p>{event.name}</p>
@@ -511,14 +575,17 @@ function SheetPaper({
         <h2>{KSW.diets}</h2>
         <Diets sheet={sheet} />
       </Page>
-      <Page n={2} m={2} paper={paper}>
-        {sheet.courses.map((one) => (
-          <section key={one.course.id} aria-labelledby={`ksp-${one.course.id}`}>
-            <h2 id={`ksp-${one.course.id}`}>{one.course.name}</h2>
-            <Course course={one} />
-          </section>
-        ))}
-      </Page>
+      {pages.map((courses, at) => (
+        <Page key={courses[0]?.course.id} n={at + 2} m={m} paper={paper}>
+          {courses.map((one) => (
+            <section key={one.course.id} aria-labelledby={`ksp-${one.course.id}`}>
+              <h2 id={`ksp-${one.course.id}`}>{one.course.name}</h2>
+              <Course course={one} />
+              <ByStation course={one} at="ksp" />
+            </section>
+          ))}
+        </Page>
+      ))}
     </main>
   );
 }

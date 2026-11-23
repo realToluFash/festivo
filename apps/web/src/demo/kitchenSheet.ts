@@ -3,6 +3,13 @@ import { demoWords } from './demoWords.ts';
 import { type SampleEvent, localDay } from './events.ts';
 import { ALLERGENS, type Allergen, DIETS, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
 import { KITCHEN_EVENT } from './kitchen.ts';
+import {
+  type ItemsMenu,
+  type StationBlock,
+  byStation,
+  sampleMenu,
+  withItems,
+} from './kitchenStations.ts';
 import type { EvCourse, EvDish } from './menuCourses.ts';
 import {
   type Person,
@@ -76,6 +83,8 @@ export const KSW = {
   a4: 'A4',
   letter: 'Letter',
   paperIs: 'Paper',
+  byStation: 'By station',
+  chefs: 'Chef’s choice',
 } as const;
 
 const { filled, many } = demoWords(KSW);
@@ -94,11 +103,14 @@ export type SheetState =
   | 'refused';
 export type SheetAccess = 'manage' | 'counts';
 export type Paper = 'a4' | 'letter';
+/** sc-34244: `plain` is sc-3911's menu, no items and every dish at the Pass; `items` gives the Main and the Dessert items and stations; `moved` is the same after a lead moves Grill before Kitchen. */
+export type SheetMenu = 'plain' | 'items' | 'moved';
 
 export interface SheetStart {
   state: SheetState;
   access: SheetAccess;
   paper: Paper | null;
+  menu: SheetMenu;
 }
 
 const STATES: Readonly<Record<SheetState, string>> = {
@@ -120,11 +132,13 @@ const isState = (raw: string | null): raw is SheetState =>
 export function sheetStart(params: URLSearchParams): SheetStart {
   const raw = params.get('state');
   const paper = params.get('paper');
+  const menu = params.get('menu');
 
   return {
     state: isState(raw) ? raw : 'open',
     access: params.get('access') === 'counts' ? 'counts' : 'manage',
     paper: paper === 'a4' || paper === 'letter' ? paper : null,
+    menu: menu === 'items' || menu === 'moved' ? menu : 'plain',
   };
 }
 
@@ -132,11 +146,13 @@ export function sheetAt(
   state: SheetState = 'open',
   access: SheetAccess = 'manage',
   paper: Paper | null = null,
+  menu: SheetMenu = 'plain',
 ): string {
   const more = [
     `state=${state}`,
     ...(access === 'counts' ? ['access=counts'] : []),
     ...(paper == null ? [] : [`paper=${paper}`]),
+    ...(menu === 'plain' ? [] : [`menu=${menu}`]),
   ];
 
   return `/demo/events/${KITCHEN_EVENT}/kitchen/sheet?${more.join('&')}`;
@@ -159,13 +175,26 @@ const noAllergies = (world: PicksWorld): PicksWorld => ({
   people: world.people.map((person) => ({ ...person, allergies: [] })),
 });
 
-/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. */
-export function worldOf(state: SheetState): PicksWorld {
+/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. A menu with items adds Fried yam to Coconut rice's side, picked by nobody, and an optional side to Zobo sorbet. */
+export function worldOf(state: SheetState, menu: SheetMenu = 'plain'): PicksWorld {
+  const world = roomOf(state);
+
+  return menu === 'plain' ? world : withItems(world);
+}
+
+function roomOf(state: SheetState): PicksWorld {
   if (state === 'closed') return withOther(picksAfterClose());
   if (state === 'closedNoAllergies') return noAllergies(picksAfterClose());
   if (state === 'noAllergies') return noAllergies(samplePicks());
 
   return withOther(samplePicks());
+}
+
+/** The stations' reading of the menu: none on sc-3911's own, so no course shows By station. */
+export function menuOf(menu: SheetMenu): ItemsMenu | null {
+  if (menu === 'plain') return null;
+
+  return menu === 'moved' ? sampleMenu(['grill', 'kitchen', 'pastry']) : sampleMenu();
 }
 
 const allergenWords = (code: Allergen, person: Person): string => {
@@ -222,6 +251,8 @@ export interface SheetCourse {
   room: number;
   given: string | null;
   sides: boolean;
+  /** sc-34244's By station, null on a course with no items and nothing served from anywhere but the Pass. */
+  stations: readonly StationBlock[] | null;
 }
 
 export interface Sheet {
@@ -253,7 +284,7 @@ function cellOf(world: PicksWorld, course: EvCourse, spot: Spot): Cell {
   }
 }
 
-function courseOf(world: PicksWorld, course: EvCourse): SheetCourse {
+function courseOf(world: PicksWorld, course: EvCourse, menu: ItemsMenu | null): SheetCourse {
   const figures = courseFigures(world, course);
   const given = defaultOf(world, course);
   const defaulted = figures.rows
@@ -292,11 +323,12 @@ function courseOf(world: PicksWorld, course: EvCourse): SheetCourse {
         ? filled(KSW.given, { count: defaulted, dish: pickWords(course, given.pick) })
         : null,
     sides: figures.rows.some((row) => row.kind === 'option'),
+    stations: menu == null ? null : byStation(menu, world, course),
   };
 }
 
 /** Everyone coming in one place per course, in the order the kitchen reads it: who must not eat what, then the diets, then each course's counts. */
-export function sheetOf(world: PicksWorld): Sheet {
+export function sheetOf(world: PicksWorld, menu: ItemsMenu | null = null): Sheet {
   const courses = shownCourses(world);
   const people = world.people;
   const rows = people.map((person) => ({
@@ -326,7 +358,7 @@ export function sheetOf(world: PicksWorld): Sheet {
           [dietWords(code), people.filter((one) => one.diets.includes(code)).length] as const,
       )
       .filter(([, count]) => count > 0),
-    courses: courses.map((course) => courseOf(world, course)),
+    courses: courses.map((course) => courseOf(world, course, menu)),
   };
 }
 
@@ -361,9 +393,20 @@ export function asOfLine(now: Date, timeZone: string): string {
 export const pdfName = (event: SampleEvent, now: Date): string =>
   `${event.name} kitchen sheet ${localDay(now, event.timeZone)}.pdf`;
 
-const link = (state: SheetState, access: SheetAccess = 'manage', paper: Paper | null = null) => ({
-  to: sheetAt(state, access, paper),
-  name: `${STATES[state]}${access === 'counts' ? ', counts only' : ''}${
+const MENU_NAMES: Readonly<Record<SheetMenu, string>> = {
+  plain: '',
+  items: '',
+  moved: ', after a lead moves Grill before Kitchen',
+};
+
+const link = (
+  state: SheetState,
+  access: SheetAccess = 'manage',
+  paper: Paper | null = null,
+  menu: SheetMenu = 'plain',
+) => ({
+  to: sheetAt(state, access, paper, menu),
+  name: `${STATES[state]}${MENU_NAMES[menu]}${access === 'counts' ? ', counts only' : ''}${
     paper == null ? '' : `, printed on ${paper === 'a4' ? KSW.a4 : KSW.letter}`
   }`,
 });
@@ -402,6 +445,34 @@ export const SHEET_PAGES: readonly { name: string; states: readonly DemoLink[] }
       link('closed', 'counts', 'a4'),
       link('open', 'manage', 'letter'),
       link('closed', 'counts', 'letter'),
+    ],
+  },
+];
+
+/** sc-34244's states: By station under the Main and the Dessert, the Starter as sc-3911 draws it. */
+export const STATION_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'By station under each course, at a desk and from 320 px',
+    states: [
+      link('open', 'manage', null, 'items'),
+      link('closed', 'manage', null, 'items'),
+      link('open', 'manage', null, 'moved'),
+      link('open', 'counts', null, 'items'),
+      link('closed', 'counts', null, 'items'),
+      {
+        to: sheetAt('open'),
+        name: 'A menu with no items, every dish at the Pass: sc-3911’s sheet, no By station',
+      },
+    ],
+  },
+  {
+    name: 'The printout and the PDF, carrying By station',
+    states: [
+      link('open', 'manage', 'a4', 'items'),
+      link('closed', 'counts', 'a4', 'items'),
+      link('open', 'manage', 'letter', 'moved'),
+      link('making', 'manage', null, 'items'),
+      link('failed', 'manage', null, 'items'),
     ],
   },
 ];
