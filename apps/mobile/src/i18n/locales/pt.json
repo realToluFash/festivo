@@ -1714,6 +1714,8 @@
     "leaveBody": "O que escreveu para este evento vai perder-se.",
     "venueLookupDown": "As sugestões não estão disponíveis de momento. Escreva a morada completa e será guardada tal como a escreveu.",
     "venueAddressHint": "Escreva pelo menos 3 caracteres para ver sugestões. Também pode escrever qualquer morada.",
+    "creditStadia": "Stadia Maps",
+    "creditOsm": "OpenStreetMap contributors",
     "venueZoneOffer": "O local fica no fuso horário {{zone}}. Pretende usá-lo?",
     "venueZoneUse": "Usar {{zone}}",
     "venueZoneKeep": "Manter {{zone}}",

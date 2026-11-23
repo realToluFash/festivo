@@ -6,6 +6,8 @@ import {
   type HostFocus,
   type HostRow,
   type HostsChange,
+  OSM_COPYRIGHT,
+  STADIA_ATTRIBUTION,
   foldedName,
   hostCalled,
   movedHost,
@@ -21,6 +23,7 @@ import {
   useState,
 } from 'react';
 import {
+  Linking,
   Pressable,
   StyleSheet,
   type TextInputInstance,
@@ -50,7 +53,15 @@ import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFo
 import { useShellLayout } from './settingsShell.ts';
 import { Pill } from './SettingsParts.tsx';
 import { GlyphMark } from './StatusMark.tsx';
-import { ASK_WIDTH, type AskProps, FocusedScreen, Row, RowList, TextAction } from './Summary.tsx';
+import {
+  ASK_WIDTH,
+  type AskProps,
+  FocusedScreen,
+  Row,
+  RowList,
+  RowRule,
+  TextAction,
+} from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
@@ -616,6 +627,7 @@ export function VenueFieldsView({
               ),
             }))}
           />
+          <AddressCredit testID={`${testID}.credit`} />
         </>
       )}
       {offer != null && (
@@ -638,6 +650,40 @@ export function VenueFieldsView({
           }
         />
       )}
+    </>
+  );
+}
+
+/** sc-80918: the credit Stadia's terms and OpenStreetMap's licence ask for wherever their data shows, under the last suggestion and not one of them; each link is its own 48pt target and opens in the device's browser. */
+function AddressCredit({ testID }: { testID: string }) {
+  const { t } = useTranslation();
+  const link = (url: string, name: string, id: string) => (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => void Linking.openURL(url)}
+      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
+      testID={`${testID}.${id}`}
+    >
+      <Text size={13} weight="medium" style={styles.creditWords}>
+        {name}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <>
+      <RowRule inset={40} />
+      <View style={styles.credit} testID={testID}>
+        <Text size={13} weight="medium" style={styles.creditSign}>
+          ©{' '}
+        </Text>
+        {link(STADIA_ATTRIBUTION, t('eventForm.creditStadia'), 'stadia')}
+        <Text size={13} weight="medium" style={styles.creditSign}>
+          {' '}
+          ©{' '}
+        </Text>
+        {link(OSM_COPYRIGHT, t('eventForm.creditOsm'), 'osm')}
+      </View>
     </>
   );
 }
@@ -1283,6 +1329,15 @@ const styles = StyleSheet.create({
   },
   selectWrong: { borderWidth: 2, borderColor: tokens.colorBroken, paddingLeft: 14 },
   offer: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXxl },
+  credit: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingLeft: 40 },
+  creditSign: { color: tokens.colorInkSecondary },
+  creditLink: {
+    minWidth: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
+    flexShrink: 1,
+    justifyContent: 'center',
+  },
+  creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   host: { gap: tokens.spaceHair },
   noHosts: {
     flexDirection: 'row',

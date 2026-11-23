@@ -1,21 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  CREDIT_TYPED,
-  OSM_COPYRIGHT,
-  OSM_CREDIT,
-  STADIA_ATTRIBUTION,
-  creditLanguageOf,
-  isCreditState,
-} from './addressCredit.ts';
+import { OSM_COPYRIGHT, STADIA_ATTRIBUTION } from '@soirely/domain';
+
+import { CREDIT_TYPED, FRENCH_CREDIT, creditLanguageOf, isCreditState } from './addressCredit.ts';
 import { suggestionsFor as found } from './EventsModel.ts';
 
 describe('the Stadia Maps and OpenStreetMap credit (sc-80918)', () => {
   it('keeps Stadia Maps and OpenStreetMap as written, each linking to its own page', () => {
-    for (const words of Object.values(OSM_CREDIT)) {
-      expect(words.stadia).toBe('Stadia Maps');
-      expect(words.osm).toMatch(/OpenStreetMap/);
-    }
+    expect(FRENCH_CREDIT).toMatch(/OpenStreetMap/);
     expect(STADIA_ATTRIBUTION).toBe('https://stadiamaps.com/attribution/');
     expect(OSM_COPYRIGHT).toBe('https://www.openstreetmap.org/copyright');
   });
