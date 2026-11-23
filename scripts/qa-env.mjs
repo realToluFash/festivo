@@ -84,37 +84,56 @@ export function lanAddress(env = process.env, interfaces = networkInterfaces()) 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
 // would overwrite a developer's session. One host for web and API keeps SameSite.
 // A phone passes the machine's network address instead: on a phone, 127.0.0.1 is the phone.
+// WebAuthn refuses an address, so a browser host names what a browser reaches. The app, the
+// harness and the store stay on the address: a simulator may not resolve the name.
 // One compose project with every port moved up by offset. QA and the second developer use it.
-export function stackConfig(project, offset, address = '127.0.0.1', { secure = false } = {}) {
-  const HOST = `${secure ? 'https' : 'http'}://${address}`;
+export function stackConfig(
+  project,
+  offset,
+  address = '127.0.0.1',
+  { secure = false, browserHost = null } = {},
+) {
+  const scheme = secure ? 'https' : 'http';
+  const HOST = `${scheme}://${address}`;
+  const BROWSER = `${scheme}://${browserHost ?? address}`;
   const BUNDLER = `http://${address}`;
   const ports = Object.fromEntries(
     Object.entries(DEVELOPMENT_PORTS).map(([key, port]) => [key, port + offset]),
   );
   const urls = {
     api: `${HOST}:${ports.API_PORT}`,
-    web: `${HOST}:${ports.WEB_PORT}`,
+    web: `${BROWSER}:${ports.WEB_PORT}`,
     mailpit: `${HOST}:${ports.MAILPIT_UI_PORT}`,
     smocker: `${HOST}:${ports.SMOCKER_UI_PORT}`,
     mercure: `${HOST}:${ports.MERCURE_PORT}/.well-known/mercure`,
     metro: `exp://${address}:${ports.METRO_PORT}`,
     oidc: `${HOST}:${ports.OIDC_PORT}`,
   };
+  const browser = {
+    api: `${BROWSER}:${ports.API_PORT}`,
+    mercure: `${BROWSER}:${ports.MERCURE_PORT}/.well-known/mercure`,
+    oidc: `${BROWSER}:${ports.OIDC_PORT}`,
+  };
+  const issuers = (provider, ...more) =>
+    [...new Set([browser.oidc, urls.oidc, 'http://oidc:8080'])]
+      .map((origin) => `${origin}/${provider}`)
+      .concat(more)
+      .join(',');
   // The sandbox signs a token with the address it was reached at: this stack's port from a
   // browser or simulator, oidc:8080 from the API. The issuer lists accept both.
   const overrides = {
     COMPOSE_PROJECT_NAME: project,
     ...ports,
-    MERCURE_PUBLIC_URL: urls.mercure,
+    MERCURE_PUBLIC_URL: browser.mercure,
     MERCURE_CORS_ORIGINS: `${urls.web} ${BUNDLER}:${ports.METRO_PORT}`,
     STORAGE_PUBLIC_ENDPOINT: `${HOST}:${ports.STORAGE_PORT}`,
-    OAUTH_GOOGLE_ISSUERS: `${urls.oidc}/google,http://oidc:8080/google`,
-    OAUTH_APPLE_ISSUERS: `${urls.oidc}/apple,http://oidc:8080/apple,https://appleid.apple.com`,
-    SOIRELY_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
-    SOIRELY_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
+    OAUTH_GOOGLE_ISSUERS: issuers('google'),
+    OAUTH_APPLE_ISSUERS: issuers('apple', 'https://appleid.apple.com'),
+    SOIRELY_GOOGLE_AUTHORIZE_URL: `${browser.oidc}/google/authorize`,
+    SOIRELY_APPLE_AUTHORIZE_URL: `${browser.oidc}/apple/authorize`,
     OAUTH_APPLE_RETURN_URI: `${urls.api}/api/auth/oauth/apple/return`,
-    SOIRELY_API_URL: urls.api,
-    SOIRELY_MERCURE_URL: urls.mercure,
+    SOIRELY_API_URL: browser.api,
+    SOIRELY_MERCURE_URL: browser.mercure,
     CORS_WEB_ORIGIN: urls.web,
     CORS_EXPO_WEB_ORIGIN: `${BUNDLER}:${ports.METRO_PORT}`,
     MAILPIT_URL: urls.mailpit,
@@ -128,20 +147,35 @@ export function stackConfig(project, offset, address = '127.0.0.1', { secure = f
     EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
     EXPO_PUBLIC_APPLE_TOKEN_URL: `${urls.oidc}/apple/token`,
   };
-  return { project, ports, urls, overrides, app };
+  return { project, ports, urls, browser, overrides, app };
+}
+
+export const defaultBrowserHost = (tester) => `qa${tester}.localhost`;
+export const BROWSER_HOST_FILE = '.qa/browser-host';
+
+export function browserHostOf(text) {
+  const host = String(text).trim().toLowerCase();
+  if (!/^([a-z0-9-]+\.)*localhost$/.test(host)) {
+    throw new Error(`browser host ${text} is not localhost or a name under .localhost`);
+  }
+  return host;
 }
 
 // Tester n is its own compose project and worktree, soirely-qa<n>, with every port up n×10000.
-export function qaConfig(tester = 1, address = undefined) {
+export function qaConfig(tester = 1, address = undefined, { browserHost = null } = {}) {
   const lan = tester === LAN;
   if (!lan && !TESTERS.includes(tester)) {
     throw new Error(`no QA tester ${tester}: one of ${TESTERS}, ${LAN}`);
   }
-  const { project, ports, urls, overrides, app } = stackConfig(
+  if (lan && browserHost) {
+    throw new Error('the lan stack is reached at its network address over https: no browser host');
+  }
+  const host = browserHost ? browserHostOf(browserHost) : null;
+  const { project, ports, urls, browser, overrides, app } = stackConfig(
     lan ? 'soirely-qa-lan' : tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
     lan ? LAN_OFFSET : testerOffset(tester),
     lan ? (address ?? lanAddress()) : '127.0.0.1',
-    { secure: lan },
+    { secure: lan, browserHost: host },
   );
   // The person brings the phone: setup makes none of its simulators or emulators.
   // The lan stack kept slot 4 when tester 4 came.
@@ -170,6 +204,8 @@ export function qaConfig(tester = 1, address = undefined) {
     project,
     ports,
     urls,
+    browser,
+    browserHost: host,
     overrides,
     app,
     simulators,
@@ -1176,9 +1212,49 @@ function mainCheckout() {
   return dirname(resolve(from, git(['rev-parse', '--git-common-dir'], from)));
 }
 
-function qaWorktree() {
+function qaWorktree(project = CONFIG.project) {
   if (INSTALLED) return resolve(HERE, '../..');
-  return process.env.SOIRELY_QA_WORKTREE ?? join(dirname(mainCheckout()), CONFIG.project);
+  return process.env.SOIRELY_QA_WORKTREE ?? join(dirname(mainCheckout()), project);
+}
+
+export function savedBrowserHost(root, read = readFileSync) {
+  try {
+    return browserHostOf(read(join(root, BROWSER_HOST_FILE), 'utf8'));
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+export function configFor(tester, root = null, read = readFileSync) {
+  const plain = qaConfig(tester);
+  if (!plain.simulated) return plain;
+  const browserHost = savedBrowserHost(root ?? qaWorktree(plain.project), read);
+  return browserHost ? qaConfig(tester, undefined, { browserHost }) : plain;
+}
+
+function browserHost([asked]) {
+  if (!CONFIG.simulated) throw new Error('the lan stack takes no browser host');
+  const root = qaWorktree();
+  assertQaStack(root);
+  const file = join(root, BROWSER_HOST_FILE);
+  if (asked === 'off') rmSync(file, { force: true });
+  else {
+    const host = browserHostOf(asked ?? defaultBrowserHost(CONFIG.tester));
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${host}\n`);
+  }
+  CONFIG = configFor(CONFIG.tester);
+  step('The environment');
+  writeFileSync(
+    join(root, '.env'),
+    renderQaEnv(readFileSync(join(root, '.env.example'), 'utf8'), CONFIG.overrides, CONFIG.project),
+  );
+  assertQaStack(root);
+  step('The stack, on the new environment');
+  run('docker', ['compose', 'up', '-d'], { cwd: root });
+  console.log(`\nWeb ${CONFIG.urls.web}, API ${CONFIG.browser.api} from a browser.`);
+  console.log(`The app stays on ${CONFIG.urls.api}.`);
 }
 
 function step(label) {
@@ -1605,7 +1681,7 @@ function status() {
   console.log(`
 QA environment, tester ${CONFIG.tester} — ${root}
   Checked out  ${state.label ?? '?'} — ${head ?? 'no worktree'}
-  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}
+  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}${CONFIG.browserHost ? `\n  API, browser ${CONFIG.browser.api}` : ''}
   Web          ${CONFIG.urls.web}
   App          ${CONFIG.urls.metro}   (node .qa/bin/qa-env.mjs ios, or android)
   Mailpit      ${CONFIG.urls.mailpit}
@@ -4591,6 +4667,7 @@ function chrome() {
 
 const COMMANDS = {
   setup,
+  'browser-host': browserHost,
   checkout,
   status,
   serve,
@@ -4618,6 +4695,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     CONFIG = qaConfig(asked);
     argv.splice(flag, 2);
   }
+  CONFIG = configFor(CONFIG.tester);
   // Node reads extra CAs only at start, so the lan harness reaches its https API as a child.
   const ca = join(lanCaDir(), 'ca.crt');
   if (!CONFIG.simulated && existsSync(ca) && process.env.NODE_EXTRA_CA_CERTS !== ca) {
