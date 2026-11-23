@@ -393,6 +393,135 @@ describe('See picks (sc-3909)', () => {
   });
 });
 
+describe('A dish whose allergens were never stated, on See picks (sc-87421)', () => {
+  const NOT_STATED_MENU = {
+    menu: {
+      courses: [
+        {
+          ...MENU.menu.courses[0],
+          dishes: [
+            dish('d_jollof', 'Jollof rice', ['celery']),
+            { ...dish('d_puff', 'Puff-puff', []), allergens: null },
+          ],
+        },
+      ],
+    },
+  };
+  const onNotStated = (more: Record<string, Answer> = {}) =>
+    onPicks({
+      [`GET ${PICKS}`]: () => json(picksOf()),
+      'GET /api/events/ev_1/menu': () => json(NOT_STATED_MENU),
+      ...more,
+    });
+  const chooseFor = async (name: string) => {
+    fireEvent.click(await screen.findByRole('button', { name: `Choose for ${name}` }));
+
+    return screen.getByRole('dialog', { name: `Choosing for ${name}` });
+  };
+
+  it('rules it out for a person with one of the 14, saying nobody stated it', async () => {
+    onNotStated();
+    const dialog = await chooseFor('Kwame Mensah');
+
+    const puff = within(dialog).getByRole('radio', { name: /Puff-puff/ });
+    expect(puff.getAttribute('aria-describedby')).not.toBeNull();
+    const ruled = document.getElementById(puff.getAttribute('aria-describedby') ?? '');
+    expect(ruled?.textContent).toBe('AllergyAllergens not stated. You can still pick it.');
+    expect(within(dialog).queryByText(/Contains celery, which Kwame Mensah/)).not.toBeNull();
+    expect(within(dialog).queryAllByText(/Contains/)).toHaveLength(1);
+  });
+
+  it('does not rule it out for a person with none of the 14 recorded', async () => {
+    onNotStated();
+    const dialog = await chooseFor('Ada Obi');
+
+    expect(
+      within(dialog)
+        .getByRole('radio', { name: /Puff-puff/ })
+        .getAttribute('aria-describedby'),
+    ).toBeNull();
+    expect(within(dialog).queryByText('Allergy')).toBeNull();
+  });
+
+  it('asks without saying what it contains, and saves a line that says nobody stated it', async () => {
+    const sent = onNotStated({ [CHOOSE_KWAME]: () => json(picksOf()) });
+    const dialog = await chooseFor('Kwame Mensah');
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Puff-puff/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText('Kwame Mensah’s record says celery. Pick it anyway?'),
+    ).toBeDefined();
+    expect(
+      within(ask).getByText(
+        'Nobody has stated what’s in Puff-puff. If you know it is safe for Kwame Mensah, the pick is saved with your name and the time you confirmed it.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Pick it anyway' }));
+    expect(
+      await screen.findByText(
+        'Recorded as your pick for Kwame Mensah, though nobody has stated what’s in Puff-puff.',
+      ),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === CHOOSE_KWAME)?.body).toMatchObject({ anyway: true });
+  });
+
+  it('keeps a stated dish’s words when it is picked anyway', async () => {
+    onNotStated({ [CHOOSE_KWAME]: () => json(picksOf()) });
+    const dialog = await chooseFor('Kwame Mensah');
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText(
+        'Jollof rice contains celery. If Kwame Mensah’s record is out of date, the pick is saved with your name and the time you confirmed it.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(within(ask).getByRole('button', { name: 'Pick it anyway' }));
+    expect(
+      await screen.findByText(
+        'Recorded as your pick for Kwame Mensah, despite the record: Jollof rice contains celery.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says under Needs the host that the pick has no allergens stated', async () => {
+    const host = (pick: string, notStated: boolean) => ({
+      person: { id: 'g_kwame', name: 'Kwame Mensah' },
+      course: 'c_main',
+      reason: 'allergy',
+      pick,
+      allergens: ['celery'],
+      notStated,
+    });
+    onPicks({
+      [`GET ${PICKS}`]: () =>
+        json(
+          picksOf({
+            needsHost: [host('Puff-puff', true), host('Jollof rice', false)],
+            courses: [{ ...picksOf().picks.courses[0], needsHost: 2 }],
+          }),
+        ),
+      'GET /api/events/ev_1/menu': () => json(NOT_STATED_MENU),
+    });
+
+    expect(
+      await screen.findByText(
+        'Main: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'Main: their pick, Jollof rice, contains celery, recorded after they picked it.',
+      ),
+    ).toBeDefined();
+  });
+});
+
 describe('A course’s default on See picks (sc-1362)', () => {
   const DEFAULT = { dish: 'd_egusi', variant: null, options: [], chooseBy: '2030-11-10' };
   const MENU_DEFAULT = {
