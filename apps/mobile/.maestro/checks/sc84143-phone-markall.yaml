@@ -1,0 +1,28 @@
+# sc-84143 on a phone: Mark all read clears the unknown-category item's Unread and the bell's count, and Notification settings lists only the six categories.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible: '${TITLE}'
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- tapOn:
+    id: notifications.markAllRead
+- waitForAnimationToEnd
+- takeScreenshot: bell-phone-markall-after
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 20000
+- assertNotVisible: '.*1 sin leer.*'
+- takeScreenshot: bell-phone-markall-bell
+- openLink: ${METRO_URL}/--/settings/notifications
+- waitForAnimationToEnd
+- takeScreenshot: bell-phone-settings
