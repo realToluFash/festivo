@@ -18,9 +18,9 @@ appId: host.exp.Exponent
 - runFlow:
     file: developer-menu.yaml
     env:
-      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      SETTLED: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
 - extendedWaitUntil:
-    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+    visible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
     timeout: 60000
     optional: true
 # The two-factor overdue screen names no account, so the batch signs out there and back in. sc-28435.
@@ -28,6 +28,14 @@ appId: host.exp.Exponent
     when:
       visible: '{{t:any:signInRules.overdueTitle}}'
     file: sign-out.yaml
+# The paused card names no account and has no Settings, so the batch signs out from Your
+# account and back in; sign-in-form.yaml counts the card as signed in. By its Paused since line,
+# which every paused card carries whatever the reason, since Paused is also the tag on a paused
+# event in the Events list. sc-85683.
+- runFlow:
+    when:
+      visible: '{{t:any:accessPaused.since}}'
+    file: ../sign-out-held.yaml
 # The profile step after signing up names no account either, so the batch signs out there and
 # back in; sign-in-form.yaml counts that step as signed in. sc-44356.
 - runFlow:
@@ -37,7 +45,7 @@ appId: host.exp.Exponent
 # The reload before this can crash an Expo Go that has only just opened.
 - runFlow:
     when:
-      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}'
+      notVisible: '{{t:any:home.signedInTo}}|{{t:any:todayScreen.tab.today}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:status.title}}|{{t:any:signIn.title}}|{{t:any:welcome.withEmail}}|{{t:any:signInRules.overdueTitle}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:accessPaused.badge}}'
     file: reopen.yaml
 # An account in no organisation that holds an event from outside lands inside it, which names
 # no account: Settings does. sc-68438.

@@ -75,6 +75,7 @@ import {
   parseBatch,
   parseCode,
   parseVars,
+  checkOrientation,
   readyReport,
   accountKind,
   REBUILD,
@@ -2149,6 +2150,24 @@ describe('an account line', () => {
   it('reads the same for batch and code', () => {
     const line = ['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'];
     expect(parseBatch(['tour', 'home', ...line]).vars).toEqual(parseVars(line));
+  });
+});
+
+describe('an ORIENT', () => {
+  it('refuses a bare LANDSCAPE, which Maestro knows only when it turns the device', () => {
+    expect(() => parseBatch(['tour', 'home', 'ORIENT=LANDSCAPE'])).toThrow(/LANDSCAPE_LEFT/);
+  });
+
+  it("takes Maestro's own four, a lowercase label and none at all", () => {
+    for (const orient of [
+      'PORTRAIT',
+      'LANDSCAPE_LEFT',
+      'LANDSCAPE_RIGHT',
+      'UPSIDE_DOWN',
+      'landscape',
+    ])
+      expect(() => checkOrientation({ ORIENT: orient })).not.toThrow();
+    expect(() => checkOrientation({})).not.toThrow();
   });
 });
 

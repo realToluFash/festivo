@@ -1,4 +1,4 @@
-# sc-85143: past the two-factor deadline of their only organisation, the overdue page reads the single-events line, not the elsewhere one, on Today, Events, Calendar and Settings. ORIENT.
+# sc-85143: past the two-factor deadline of their only organisation, the overdue page reads the single-events line, not the elsewhere one, on Today, Events, Calendar and Settings. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}

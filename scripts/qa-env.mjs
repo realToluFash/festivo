@@ -3133,6 +3133,7 @@ async function maestro(args) {
   const onAndroid = args.includes('--android');
   const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
   if (!flow) throw new Error('which flow? `maestro sign-in EMAIL=… PASSWORD=…`');
+  checkOrientation(parseVars(vars));
   const device = maestroDevice(args);
 
   const env = [...Object.entries(flowUrls(CONFIG.urls)).map(([k, v]) => `${k}=${v}`), ...vars];
@@ -3420,6 +3421,15 @@ export function parseVars(args) {
   );
 }
 
+const ORIENTATIONS = ['PORTRAIT', 'LANDSCAPE_LEFT', 'LANDSCAPE_RIGHT', 'UPSIDE_DOWN'];
+
+// Maestro fails a bare LANDSCAPE only when it reaches setOrientation, deep in a batch (sc-85143).
+// A lowercase ORIENT is a flow's own label for its screenshots, and passes.
+export function checkOrientation({ ORIENT: orient }) {
+  if (orient == null || orient !== orient.toUpperCase() || ORIENTATIONS.includes(orient)) return;
+  throw new Error(`ORIENT=${orient} is no Maestro orientation: use ${ORIENTATIONS.join(', ')}`);
+}
+
 export function parseBatch(args) {
   const positional = [];
   let languages = ['any'];
@@ -3435,7 +3445,9 @@ export function parseBatch(args) {
       'which batch? `batch <name> <check>… EMAIL=… PASSWORD=… [--lang en,es] [--cold]`',
     );
   }
-  return { name, checks, languages, vars: parseVars(args), cold: args.includes('--cold') };
+  const vars = parseVars(args);
+  checkOrientation(vars);
+  return { name, checks, languages, vars, cold: args.includes('--cold') };
 }
 
 async function api(path, { method = 'POST', body, token } = {}) {
