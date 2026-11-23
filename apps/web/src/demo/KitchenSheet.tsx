@@ -260,7 +260,9 @@ function Allergies({
   access: SheetAccess;
   screen?: boolean;
 }) {
-  if (sheet.allergic.length === 0) return <p className="ks-line">{KSW.noAllergies}</p>;
+  const none = sheet.withAllergies === 0 ? <p className="ks-line">{KSW.noAllergies}</p> : null;
+
+  if (sheet.allergic.length === 0 || (access === 'counts' && none != null)) return none;
 
   if (access === 'counts')
     return (
@@ -289,6 +291,7 @@ function Allergies({
 
   return (
     <>
+      {none}
       <table className={screen ? 'ks-table ks-people' : 'ks-table'}>
         <thead>
           <tr>
@@ -318,11 +321,13 @@ function Allergies({
           ))}
         </tbody>
       </table>
-      <p className="ks-line">
-        {sheet.allergyCounts
-          .map(([allergen, count]) => ksw(KSW.perAllergen, { allergen, count }))
-          .join(' · ')}
-      </p>
+      {none == null && (
+        <p className="ks-line">
+          {sheet.allergyCounts
+            .map(([allergen, count]) => ksw(KSW.perAllergen, { allergen, count }))
+            .join(' · ')}
+        </p>
+      )}
     </>
   );
 }

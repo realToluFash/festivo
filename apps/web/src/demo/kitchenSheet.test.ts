@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { KSW, sheetAt, sheetOf, sheetStart, worldOf } from './kitchenSheet.ts';
+import { KSW, sheetAt, sheetOf, sheetStart, summaryLine, worldOf } from './kitchenSheet.ts';
 import { courseFigures, menuFigures, shownCourses } from './seePicks.ts';
 
 const roomOf = (rows: readonly { kind: string; count: number }[]) =>
@@ -73,6 +73,36 @@ describe('sc-3911’s kitchen sheet, from See picks’ figures', () => {
         ?.rows.find((row) => row.kind === 'none');
       expect(none?.count ?? 0).toBe(courseFigures(world, course).none);
     }
+  });
+
+  it('lists the people a diet alone kept from the default after the close, outside the allergy counts', () => {
+    const before = sheetOf(worldOf('open'));
+    const after = sheetOf(worldOf('closed'));
+    const dietOnly = after.allergic.filter((one) => !one.allergy);
+
+    expect(before.allergic.every((one) => one.allergy)).toBe(true);
+    expect(dietOnly.map((one) => [one.name, one.allergens])).toEqual([
+      ['Bea Mensah', 'No allergy · Vegetarian'],
+      ['Nadia Petrova', 'No allergy · No garlic (other)'],
+    ]);
+    for (const person of dietOnly)
+      expect(person.cells.some((cell) => cell.kind === 'never')).toBe(true);
+    expect(after.dietCounts.map(([name]) => name)).toContain('Other diet');
+    expect(after.dietCounts.map(([name]) => name)).not.toContain('No garlic (other)');
+    expect(after.withAllergies).toBe(before.withAllergies);
+    expect(summaryLine(after)).toBe(summaryLine(before));
+    expect(after.allergic.map((one) => one.name)).toEqual(
+      after.allergic.map((one) => one.name).sort((a, b) => a.localeCompare(b, 'en')),
+    );
+  });
+
+  it('still lists them when nobody has an allergy', () => {
+    const sheet = sheetOf(worldOf('closedNoAllergies'));
+
+    expect(sheet.withAllergies).toBe(0);
+    expect(summaryLine(sheet)).toContain('0 people with allergies');
+    expect(sheet.allergyCounts).toEqual([]);
+    expect(sheet.allergic.map((one) => one.name)).toEqual(['Bea Mensah', 'Nadia Petrova']);
   });
 
   it('has no allergies to list when none are recorded', () => {
