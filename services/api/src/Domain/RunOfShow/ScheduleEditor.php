@@ -144,7 +144,7 @@ final readonly class ScheduleEditor
                 return [$overreach, false];
             }
 
-            $replayed = $this->replayed($event);
+            $replayed = $this->writeReplayed($event);
             $loss = $replayed->losses[$press->getId()->toRfc4122()] ?? null;
             $press->setAnswer($loss?->code->value);
 
@@ -225,7 +225,7 @@ final readonly class ScheduleEditor
     }
 
     /** Writes each item's state as the event's presses now leave it. */
-    private function replayed(Event $event): Replayed
+    private function writeReplayed(Event $event): Replayed
     {
         $items = $this->scheduleItemRepository->findOnEvent($event);
         $replayed = PressReplay::of($items, $this->schedulePressRepository->findStandingOnEvent($event));

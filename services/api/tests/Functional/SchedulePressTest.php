@@ -337,6 +337,31 @@ final class SchedulePressTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPressOverturnedSinceIsRefusedWhenSentAgainAndChangesAndPublishesNothing(): void
+    {
+        $drinks = $this->add('Drinks', '2027-03-06T18:00');
+        $this->press($this->owner, $drinks, 'start', '2027-03-06T18:00:00+01:00');
+        $this->press($this->owner, $drinks, 'done', '2027-03-06T19:00:00+01:00');
+        $speeches = $this->add('Speeches', '2027-03-06T19:00');
+        $first = $this->press($this->colleague, $speeches, 'start', '2027-03-06T19:05:00+01:00', 'tunde-1');
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        $this->press($this->owner, $speeches, 'start', '2027-03-06T19:02:00+01:00', 'ifeoma-1');
+        self::assertSame(200, $this->statusCode());
+        $versions = [$this->item($drinks)['version'], $this->item($speeches)['version']];
+        $hub = self::service(RecordingHub::class);
+        $published = $hub->published;
+
+        $refused = $this->press($this->colleague, $speeches, 'start', '2027-03-06T19:05:00+01:00', 'tunde-1');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/item_started', $refused['type'] ?? null);
+        self::assertSame(['name' => 'Ifeoma Nduka', 'at' => '2027-03-06T19:02:00+01:00'], $refused['superseded_by'] ?? null);
+        self::assertSame($versions, [$this->item($drinks)['version'], $this->item($speeches)['version']]);
+        self::assertSame($published, $hub->published);
+        self::assertSame('2027-03-06T19:02:00+01:00', $this->item($speeches)['startedAt']);
+    }
+
+    #[Test]
     public function aLatePressThatWouldChangeAnotherItemIsRefusedAndNeverCounts(): void
     {
         $drinks = $this->add('Welcome drinks', '2027-03-06T17:00');
