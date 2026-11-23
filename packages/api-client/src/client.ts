@@ -77,6 +77,7 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
+import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -3450,6 +3451,33 @@ export class ApiClient {
   /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
   async menuPicks(eventId: string): Promise<EventPicks> {
     return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
+  async kitchenSheet(eventId: string): Promise<KitchenSheet> {
+    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
+    const sheet = asKitchenSheet(body?.sheet);
+
+    if (sheet == null)
+      throw new Error(
+        'The API answered the kitchen sheet in a shape this client does not know. Check KitchenSheet in services/api.',
+      );
+
+    return sheet;
+  }
+
+  /** The sheet as a tagged PDF, made when asked, in the request's language; 503 when it cannot be made. */
+  async kitchenSheetPdf(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
+      method: 'POST',
+    });
+
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
   }
 
   /** Refused 403 without guests.manage, and 409 `meal_pick_ruled_out` with `people` until sent with `anyway`. */

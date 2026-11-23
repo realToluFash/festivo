@@ -1,0 +1,413 @@
+/* sc-3911's kitchen sheet, as its demo draws it: allergies first, in a card with a 2 px black border; each course one table. */
+.ks-top {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.ks-head {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.ks-event,
+.ks-as-of {
+  margin: var(--spaceXxs) 0 0;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.4 var(--fontFamily);
+}
+
+.ks-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.ks-act {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+}
+
+.ks-act[aria-disabled='true'] {
+  cursor: progress;
+}
+
+.ks-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ks-mark.is-act {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
+.ks-mark .is-dashed {
+  stroke-dasharray: 2.6 2.2;
+}
+
+.ks-spin {
+  flex: none;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ks-turn 0.8s linear infinite;
+}
+
+@keyframes ks-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ks-spin {
+    animation: none;
+  }
+}
+
+.ks-said,
+.ks-failed {
+  margin-top: var(--spaceMd);
+}
+
+.ks-said:empty {
+  display: none;
+}
+
+.ks-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.ks-failed p {
+  display: flex;
+  flex: 1 1 280px;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorBroken);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.ks-failed p svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ks-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin-top: var(--spaceLg);
+}
+
+.ks-summary {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.ks-card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0 0 var(--spaceSm);
+  color: var(--colorInk);
+  font: 700 17px/1.3 var(--fontFamily);
+}
+
+.ks-allergies {
+  box-shadow: inset 0 0 0 2px var(--colorPrintInk);
+}
+
+.ks-allergy-mark {
+  display: inline-flex;
+  color: var(--colorPrintInk);
+}
+
+.ks-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--colorInk);
+  font: 500 15px/1.4 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.ks-table th,
+.ks-table td {
+  padding: var(--spaceXs) var(--spaceSm) var(--spaceXs) 0;
+  border-bottom: 1px solid var(--colorBorder);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.ks-table thead th {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.ks-table tbody th {
+  font-weight: 600;
+}
+
+.ks-table tr.is-under th {
+  padding-left: var(--spaceLg);
+  font-weight: 500;
+}
+
+.ks-table tr.is-room th,
+.ks-table tr.is-room td {
+  border-bottom: none;
+  font-weight: 700;
+}
+
+.ks-table .ks-n {
+  padding-right: 0;
+  text-align: right;
+}
+
+.ks-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.ks-line {
+  margin: var(--spaceSm) 0 0;
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.45 var(--fontFamily);
+}
+
+.ks-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  margin-top: var(--spaceLg);
+}
+
+.ks-loading p {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.4 var(--fontFamily);
+}
+
+.ks-bone {
+  height: 160px;
+  border-radius: var(--radiusRow);
+  background: var(--colorInset);
+}
+
+.ks-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  margin-top: var(--spaceLg);
+}
+
+.ks-lock {
+  display: inline-flex;
+  color: var(--colorInkSecondary);
+}
+
+.ks-go {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  text-decoration: none;
+}
+
+/* From 320 px: the people table reads as one block per person, each cell under its heading. */
+@media (width <= 640px) {
+  .ks-people thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .ks-people tr {
+    display: block;
+    padding: var(--spaceSm) 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .ks-people th,
+  .ks-people td {
+    display: block;
+    padding: var(--spaceXxs) 0;
+    border-bottom: none;
+  }
+
+  .ks-people td::before {
+    content: attr(data-head) ': ';
+    color: var(--colorInkSecondary);
+    font-weight: 600;
+  }
+}
+
+/* The printout: black ink on white, 1 px rules, the health footer on every page. */
+.ks-paper-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space3xl);
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: var(--space3xl);
+  background: var(--colorNeutralFill);
+  font-family: var(--fontFamily);
+}
+
+.ks-paper-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--spaceLg);
+  justify-content: space-between;
+}
+
+.ks-paper-is {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.ks-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  color: var(--colorAccentText);
+  font: 600 15px/1 var(--fontFamily);
+  text-decoration: none;
+}
+
+.ks-sheet {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 794px;
+  min-height: 1123px;
+  padding: 48px 48px 32px;
+  background: var(--colorCard);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--colorPrintInk) 18%, transparent);
+  color: var(--colorPrintInk);
+  font: 500 13px/1.45 var(--fontFamily);
+}
+
+.ks-sheet.is-letter {
+  width: 816px;
+  min-height: 1056px;
+}
+
+.ks-sheet-body {
+  flex: 1;
+}
+
+.ks-paper-head {
+  padding-bottom: var(--spaceMd);
+  border-bottom: 1px solid var(--colorPrintInk);
+}
+
+.ks-paper-head h1 {
+  margin: 0 0 var(--spaceXxs);
+  font: 700 20px/1.2 var(--fontFamily);
+}
+
+.ks-paper-head p {
+  margin: 0;
+}
+
+.ks-sheet h2 {
+  margin: var(--spaceXl) 0 var(--spaceXs);
+  font: 700 15px/1.25 var(--fontFamily);
+}
+
+.ks-sheet .ks-table {
+  color: var(--colorPrintInk);
+  font-size: 13px;
+}
+
+.ks-sheet .ks-table tr > th,
+.ks-sheet .ks-table tr > td {
+  padding: 4px 8px 4px 0;
+  border-bottom: 1px solid var(--colorPrintInk);
+}
+
+.ks-sheet .ks-table thead th {
+  color: var(--colorPrintInk);
+  font-weight: 700;
+}
+
+.ks-sheet .ks-line {
+  color: var(--colorPrintInk);
+}
+
+.ks-foot {
+  display: flex;
+  gap: var(--spaceLg);
+  justify-content: space-between;
+  margin-top: var(--spaceXl);
+  padding-top: var(--spaceSm);
+  border-top: 1px solid var(--colorPrintInk);
+}
+
+/* The browser prints the sheet alone, on the printer's own A4 or Letter (sc-3911): the app around it is hidden. */
+@page {
+  size: auto;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .ks-paper-page,
+  .ks-paper-page * {
+    visibility: visible;
+  }
+
+  .ks-paper-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .ks-paper-bar {
+    display: none;
+  }
+
+  .ks-sheet {
+    box-shadow: none;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    break-after: page;
+  }
+
+  .ks-sheet tr {
+    break-inside: avoid;
+  }
+}

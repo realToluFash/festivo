@@ -63,7 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
+import { KitchenSheetLink, MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
 import {
   keepLoaded,
   keptFor,
@@ -1549,6 +1549,7 @@ function Courses({
             {t('eventMenu.previewAsGuest')}
           </Link>
         )}
+        <KitchenSheetLink />
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button
