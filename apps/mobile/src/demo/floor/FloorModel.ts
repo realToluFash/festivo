@@ -29,7 +29,6 @@ export const WAIT_ALL: Choice = 'Wait for all';
 const TRAY_STAGES: readonly string[] = ['Dishing', 'Checked', 'On its way'];
 
 export interface Owed {
-  /** 0 for what the read returned; a step's own number for a plate a step made, so Undo removes only it. */
   id: number;
   items: string;
   why: 'Bring after' | 'To follow' | 'Sent back';
@@ -87,7 +86,6 @@ export interface SendBackSheet {
   reason: Reason | null;
 }
 
-/** What one step changed, so Undo reverses that and nothing another device did since. */
 export type Step =
   | { kind: 'choice'; place: string; seat: number; from: Choice | null }
   | { kind: 'sendBack'; place: string; seat: number; made: number; fromOwed: number | null };
@@ -132,7 +130,6 @@ export interface Floor {
   heard: string;
   /** Bumped by each step, so the same words said twice are read out twice. */
   said: number;
-  /** Counts the steps made here, numbering the plates they owe. */
   steps: number;
 }
 
@@ -822,7 +819,6 @@ function reversed(g: Guest, step: Step, kept: boolean): Guest {
   };
 }
 
-/** Reverses the one step, leaving whatever else changed at the table since as it is. */
 export function undo(f: Floor): Floor {
   const u = f.undo;
   if (u == null) return f;
@@ -845,7 +841,6 @@ export function loseConnection(f: Floor): Floor {
   return { ...f, online: false };
 }
 
-/** Back online, the kept taps are sent (sc-4028): none is marked Waiting to send any more. */
 export function reconnect(f: Floor): Floor {
   return {
     ...f,
