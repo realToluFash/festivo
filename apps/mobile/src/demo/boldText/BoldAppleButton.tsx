@@ -18,24 +18,29 @@ export function BoldAppleButton({
   onPress: () => void;
   testID: string;
 }) {
-  const size = useAppleIosSize();
+  const size = useAppleIosSize(label, appleIosWeight(true));
   const oneHeight = useOneHeight();
 
   return (
     <Pressable
       key={oneHeight.key}
       style={[styles.button, { gap: size.gap }, oneHeight.style]}
-      onLayout={oneHeight.onLayout}
+      onLayout={(event) => {
+        oneHeight.onLayout?.(event);
+        size.room(event.nativeEvent.layout.width);
+      }}
       onPress={onPress}
       accessibilityLabel={label}
       accessibilityRole="button"
       testID={testID}
     >
+      {size.measure}
       <AppleLogoIos logoHeight={size.logoHeight} />
       <Text
         size={CONTROL_TEXT_SIZE}
         weight={appleIosWeight(true)}
         family="system"
+        maxFontSizeMultiplier={size.multiplier}
         style={styles.words}
       >
         {label}

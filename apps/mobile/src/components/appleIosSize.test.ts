@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
-import { appleIosSize } from './appleIosSize.ts';
+import { besideGlyph, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
+import { APPLE_IOS_CHROME, appleIosGlyph, appleIosSize } from './appleIosSize.ts';
 
 describe('appleIosSize', () => {
   it('gives the words the size asked for', () => {
@@ -25,5 +26,26 @@ describe('appleIosSize', () => {
       logoHeight: brand.appleLogoHeight,
       gap: brand.appleLogoGap,
     });
+  });
+});
+
+describe('appleIosGlyph', () => {
+  const room = 375 - 2 * tokens.spaceXxl - APPLE_IOS_CHROME;
+  const continuer = 5;
+  const words = (scale: number) =>
+    besideGlyph(
+      CONTROL_TEXT_SIZE,
+      CONTROL_TEXT_SIZE * scale,
+      continuer * CONTROL_TEXT_SIZE * scale,
+      appleIosGlyph(),
+      room,
+    );
+
+  it('steps a Continuer-wide word down at the largest text size on a 375 pt screen', () => {
+    expect(words(3.12)).toBeLessThan(CONTROL_TEXT_SIZE * 3.12);
+  });
+
+  it('leaves a Continuer-wide word at its size at Accessibility Large', () => {
+    expect(words(2.14)).toBe(CONTROL_TEXT_SIZE * 2.14);
   });
 });
