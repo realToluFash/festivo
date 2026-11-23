@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { type SheetCourse, menuOf, sheetOf, worldOf } from './kitchenSheet.ts';
-import { courseFigures } from './seePicks.ts';
+import { courseFigures, spotOf } from './seePicks.ts';
+
+const ADDED_ROWS = ['Side · Fried yam', 'Side · Fruit salad', 'Side · Puff-puff'];
 
 const lines = (course: SheetCourse | undefined) =>
   (course?.stations ?? []).map(({ place, lines: all }) => [
@@ -59,9 +61,34 @@ describe('By station under each course (sc-34244)', () => {
 
     expect(lines(dessert)).toEqual([
       ['Pass', ['Chef’s choice · 7']],
-      ['Pastry', ['Chin chin · 20', 'Zobo sorbet · 15']],
+      ['Pastry', ['Chin chin · 20', 'Zobo sorbet · 15', 'Fruit salad · 0', 'Puff-puff · 0']],
     ]);
     expect(counted).toBe(48 - skipped);
+  });
+
+  it('counts a guest given a default with no answer to its optional side as Chef’s choice, once', () => {
+    const world = worldOf('closed', 'items');
+    const dessert = named('closed', 'items', 'Dessert');
+    const figures = courseFigures(world, dessert!.course);
+    const defaulted = world.people.filter((person) => {
+      const spot = spotOf(world, dessert!.course, person);
+
+      return spot.kind === 'dish' && spot.defaulted;
+    }).length;
+
+    expect(defaulted).toBeGreaterThan(0);
+    expect(lines(dessert)).toEqual([
+      [
+        'Pass',
+        [
+          `Chef’s choice · ${figures.kitchen + figures.host + figures.none + figures.changed + defaulted}`,
+        ],
+      ],
+      [
+        'Pastry',
+        ['Chin chin · 20', `Zobo sorbet · ${15 + defaulted}`, 'Fruit salad · 0', 'Puff-puff · 0'],
+      ],
+    ]);
   });
 
   it('gives a course with no items, all at the Pass, no By station', () => {
@@ -74,7 +101,7 @@ describe('By station under each course (sc-34244)', () => {
 
     expect(plain.courses.every((one) => one.stations == null)).toBe(true);
     expect(
-      items.courses.map((one) => one.rows.filter((row) => row.name !== 'Side · Fried yam')),
+      items.courses.map((one) => one.rows.filter((row) => !ADDED_ROWS.includes(row.name))),
     ).toEqual(plain.courses.map((one) => one.rows));
   });
 });

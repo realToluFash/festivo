@@ -160,7 +160,7 @@ export interface ItemErrors {
   byKey: Record<string, string>;
 }
 
-const sameKey = (name: string): string => name.trim().toLowerCase();
+export const sameKey = (name: string): string => name.trim().toLowerCase();
 
 function nameErrors(
   named: readonly { key: string; name: string; fixed: boolean }[],
@@ -214,9 +214,14 @@ export function courseItems(course: Pick<Course, 'dishes' | 'ownItems'>): string
           return choiceOf(dish, item.choiceId)?.options ?? [];
         }),
   );
+  return eachOnce([...names, ...course.ownItems.map((one) => one.name)]);
+}
+
+/** Each name once, in the order it first appears, two names that differ only in case or spaces being one. */
+export function eachOnce(names: readonly string[]): string[] {
   const seen = new Set<string>();
 
-  return [...names, ...course.ownItems.map((one) => one.name)].flatMap((name) => {
+  return names.flatMap((name) => {
     if (seen.has(sameKey(name))) return [];
     seen.add(sameKey(name));
 

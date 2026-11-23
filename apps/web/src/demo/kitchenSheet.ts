@@ -8,7 +8,7 @@ import {
   type StationBlock,
   byStation,
   sampleMenu,
-  withFriedYam,
+  withItems,
 } from './kitchenStations.ts';
 import type { EvCourse, EvDish } from './menuCourses.ts';
 import {
@@ -84,7 +84,6 @@ export const KSW = {
   letter: 'Letter',
   paperIs: 'Paper',
   byStation: 'By station',
-  stationLine: '{{item}} · {{count}}',
   chefs: 'Chef’s choice',
 } as const;
 
@@ -176,11 +175,11 @@ const noAllergies = (world: PicksWorld): PicksWorld => ({
   people: world.people.map((person) => ({ ...person, allergies: [] })),
 });
 
-/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. A menu with items adds Fried yam to Coconut rice's side, picked by nobody. */
+/** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. A menu with items adds Fried yam to Coconut rice's side, picked by nobody, and an optional side to Zobo sorbet. */
 export function worldOf(state: SheetState, menu: SheetMenu = 'plain'): PicksWorld {
   const world = roomOf(state);
 
-  return menu === 'plain' ? world : withFriedYam(world);
+  return menu === 'plain' ? world : withItems(world);
 }
 
 function roomOf(state: SheetState): PicksWorld {

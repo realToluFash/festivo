@@ -286,7 +286,12 @@ describe('By station under each course (sc-34244)', () => {
     ]);
     expect(screen.getAllByRole('heading', { level: 3, name: KSW.byStation })).toHaveLength(2);
     expect(within(last).getByRole('heading', { level: 2, name: 'Dessert' })).toBeTruthy();
-    expect(station(last, 'Pastry')).toEqual(['Chin chin · 20', 'Zobo sorbet · 15']);
+    expect(station(last, 'Pastry')).toEqual([
+      'Chin chin · 20',
+      'Zobo sorbet · 15',
+      'Fruit salad · 0',
+      'Puff-puff · 0',
+    ]);
     expect(screen.getAllByText(KSW.health)).toHaveLength(4);
     expect(screen.getByRole('link', { name: KSW.toSheet }).getAttribute('href')).toBe(
       sheetAt('open', 'manage', null, 'items'),
