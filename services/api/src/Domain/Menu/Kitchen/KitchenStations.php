@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Kitchen;
 
-use App\Domain\Menu\CourseItemLister;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
 use App\Domain\Menu\Pick\PicksMenu;
 use App\Entity\Event;
@@ -28,7 +27,6 @@ use Psl\Vec;
 final readonly class KitchenStations
 {
     public function __construct(
-        private CourseItemLister $courseItemLister,
         private ServingStationsInterface $servingStations,
         private MenuDishRepository $menuDishRepository,
         private MenuDishVariantRepository $menuDishVariantRepository,
@@ -44,11 +42,11 @@ final readonly class KitchenStations
      */
     public function of(Event $event, array $courses, array $spots): array
     {
-        $listed = Dict\from_entries(Vec\map($this->courseItemLister->onEvent($event), static fn (array $one): array => [$one['course']->getId()->toRfc4122(), $one]));
         $dishes = Dict\from_entries(Vec\map($this->menuDishRepository->findOnEvent($event), static fn (MenuDish $dish): array => [$dish->getId()->toRfc4122(), $dish]));
         $variants = Dict\from_entries(Vec\map($this->menuDishVariantRepository->findOnEvent($event), static fn (MenuDishVariant $one): array => [$one->getId()->toRfc4122(), $one]));
         $options = Dict\group_by($this->menuChoiceOptionRepository->findOnEvent($event), static fn (MenuChoiceOption $one): string => $one->getChoice()->getId()->toRfc4122());
-        ['stops' => $stops, 'servedFrom' => $servedFrom] = $this->servingStations->of($event);
+        ['stops' => $stops, 'courses' => $served] = $this->servingStations->of($event);
+        $listed = Dict\from_entries(Vec\map($served, static fn (array $one): array => [$one['course']->getId()->toRfc4122(), $one]));
         $pass = $stops[0]['id'];
         $by = [];
 
@@ -61,11 +59,7 @@ final readonly class KitchenStations
                 continue;
             }
 
-            $items = Vec\map($one['items'], static function (string $name) use ($course, $servedFrom, $pass): array {
-                $key = NameNormaliser::key($name);
-
-                return ['name' => $name, 'key' => $key, 'stop' => $servedFrom[$course['id']][$key] ?? $pass];
-            });
+            $items = $one['items'];
             $uses = [] !== $one['course']->getOwnItems()
                 || Iter\any($dishes, static fn (MenuDish $dish): bool => $dish->getCourse() === $one['course'] && [] !== $dish->getItems())
                 || Iter\any($items, static fn (array $item): bool => $pass !== $item['stop']);
