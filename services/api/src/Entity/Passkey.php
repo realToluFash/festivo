@@ -8,6 +8,7 @@ use App\Doctrine\Traits\Timestampable;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 /** A passkey kept as a second factor: its public key, and what the authenticator last said of itself. */
@@ -47,7 +48,7 @@ class Passkey
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $lastUsedAt = null;
 
-    public function __construct(User $user, string $credentialId, string $publicKey, string $aaguid, bool $backedUp, int $signCount, DateTimeImmutable $addedAt)
+    public function __construct(User $user, #[SensitiveParameter] string $credentialId, string $publicKey, string $aaguid, bool $backedUp, int $signCount, DateTimeImmutable $addedAt)
     {
         $this->id = Uuid::v7();
         $this->createdAt = $addedAt;

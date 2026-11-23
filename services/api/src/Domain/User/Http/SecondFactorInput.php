@@ -26,11 +26,7 @@ final readonly class SecondFactorInput
         ];
     }
 
-    /**
-     * `code` from the app, or `recoveryCode`, as sign-in and a reset link's code step send them.
-     *
-     * @param array<string, mixed> $body
-     */
+    /** @param array<string, mixed> $body */
     public function separate(array $body): SecondFactorAnswer
     {
         $passkey = $this->passkey($body);
@@ -45,11 +41,7 @@ final readonly class SecondFactorInput
         return new SecondFactorAnswer(code: $code, recoveryCode: $recoveryCode, passkey: $passkey);
     }
 
-    /**
-     * `code` taking either kind in one field, as the card's steps send it.
-     *
-     * @param array<string, mixed> $body
-     */
+    /** @param array<string, mixed> $body */
     public function either(array $body): SecondFactorAnswer
     {
         $passkey = $this->passkey($body);
@@ -59,11 +51,7 @@ final readonly class SecondFactorInput
             : new SecondFactorAnswer(either: $this->codeField->required($body, 'code', CodeField::FROM_APP_OR_RECOVERY));
     }
 
-    /**
-     * `either`, where the step takes the current factor only while two-factor is on: nothing sent is null.
-     *
-     * @param array<string, mixed> $body
-     */
+    /** @param array<string, mixed> $body */
     public function eitherIfSent(array $body): ?SecondFactorAnswer
     {
         return \array_key_exists('code', $body) || \array_key_exists('passkey', $body) ? $this->either($body) : null;

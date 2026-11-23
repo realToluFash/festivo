@@ -8,6 +8,7 @@ use App\Entity\Passkey;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<Passkey> */
@@ -29,7 +30,7 @@ final class PasskeyRepository extends ServiceEntityRepository
         return $this->count(['user' => $user]);
     }
 
-    public function findOneOf(User $user, string $credentialId): ?Passkey
+    public function findOneOf(User $user, #[SensitiveParameter] string $credentialId): ?Passkey
     {
         return $this->findOneBy(['user' => $user, 'credentialId' => $credentialId]);
     }

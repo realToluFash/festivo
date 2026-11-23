@@ -51,11 +51,7 @@ final readonly class TwoFactorSettings
     ) {
     }
 
-    /**
-     * The card: whether it is on, each factor newest first, and whether this environment offers passkeys.
-     *
-     * @return array{on: bool, recoveryCodesLeft: int, passkeysOffered: bool, mostPasskeys: int, factors: list<array<string, mixed>>}
-     */
+    /** @return array{on: bool, recoveryCodesLeft: int, passkeysOffered: bool, mostPasskeys: int, factors: list<array<string, mixed>>} */
     public function status(User $user): array
     {
         $app = $this->secondFactors->app($user);
@@ -82,12 +78,7 @@ final readonly class TwoFactorSettings
         ];
     }
 
-    /**
-     * A new secret, off until a code from it matches. Asking again starts over with another. With passkeys already
-     * on, adding the app takes the current factor first.
-     *
-     * @return array{secret: string, otpauthUri: string, qrSvg: string}
-     */
+    /** @return array{secret: string, otpauthUri: string, qrSvg: string} */
     public function enrol(User $user, ?SecondFactorAnswer $answer = null): array
     {
         if (null !== $this->secondFactors->app($user)) {
@@ -142,11 +133,7 @@ final readonly class TwoFactorSettings
         });
     }
 
-    /**
-     * Off, the options that turn it on with a passkey. On, the current factor first, then the options to add one.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function passkeyCreationOptions(User $user, ?SecondFactorAnswer $answer = null): array
     {
         if (!$this->secondFactors->isOn($user)) {
@@ -188,11 +175,7 @@ final readonly class TwoFactorSettings
         });
     }
 
-    /**
-     * Options for the sheet at a signed-in step that takes the current factor.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function passkeyRequestOptions(User $user, PasskeyStep $step): array
     {
         return $this->passkeys->requestOptions($user, $step);
@@ -213,7 +196,6 @@ final readonly class TwoFactorSettings
         return $codes;
     }
 
-    /** One factor of several; the last is removed only by turning two-factor off. */
     public function remove(User $user, string $which, SecondFactorAnswer $answer, ?string $userAgent = null): void
     {
         $this->on($user);
@@ -258,7 +240,7 @@ final readonly class TwoFactorSettings
         });
     }
 
-    /** Turning off, or a lost-two-factor request approved: every factor and code goes. Not flushed. */
+    /** Not flushed. */
     public function removeEveryFactor(User $user): void
     {
         $this->recoveryCodeRepository->deleteAllFor($user);

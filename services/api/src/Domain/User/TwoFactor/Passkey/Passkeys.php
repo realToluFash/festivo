@@ -49,11 +49,7 @@ final readonly class Passkeys
         return null !== $this->relyingParty->id;
     }
 
-    /**
-     * For `navigator.credentials.get()`, offering only this member's passkeys.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function requestOptions(User $user, PasskeyStep $step): array
     {
         $rpId = $this->relyingPartyId();
@@ -72,11 +68,7 @@ final readonly class Passkeys
         ];
     }
 
-    /**
-     * For `navigator.credentials.create()`: discoverable, verified, no attestation, none the member already holds.
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function creationOptions(User $user, PasskeyStep $step): array
     {
         $rpId = $this->relyingPartyId();
@@ -105,8 +97,6 @@ final readonly class Passkeys
     }
 
     /**
-     * Checks a new passkey against a creation challenge made for one of `$steps`, and keeps it. Not flushed.
-     *
      * @param array<string, mixed> $credential
      * @param list<PasskeyStep>    $steps
      *
@@ -139,12 +129,7 @@ final readonly class Passkeys
         return [$passkey, $challenge[1]];
     }
 
-    /**
-     * Whether this member's passkey answered a challenge made for this step. The challenge is spent either way. Not
-     * flushed: the caller's guarded attempt does that.
-     *
-     * @param array<string, mixed> $credential
-     */
+    /** @param array<string, mixed> $credential */
     public function passes(User $user, PasskeyStep $step, array $credential): bool
     {
         try {

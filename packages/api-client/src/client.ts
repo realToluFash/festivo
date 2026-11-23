@@ -401,7 +401,6 @@ export interface TwoFactorStatus {
   /** False where this deployment has no relying party, or the browser could not make one anyway. */
   passkeysOffered: boolean;
   mostPasskeys: number;
-  /** Newest first. */
   factors: TwoFactorFactor[];
 }
 
@@ -409,13 +408,10 @@ export type TwoFactorFactor =
   | { kind: 'app'; addedAt: string }
   | { kind: 'passkey'; id: string; provider: string | null; synced: boolean; addedAt: string };
 
-/** A `PublicKeyCredential` as its `toJSON()` writes it. */
 export type PasskeyAnswer = Record<string, unknown>;
 
-/** The options a passkey sheet opens with, as the API writes them for `navigator.credentials`. */
 export type PasskeyOptions = Record<string, unknown>;
 
-/** The signed-in steps a passkey answers, each with its own challenge. */
 export type PasskeyStep = 'proof' | 'add' | 'add_app' | 'remove' | 'new_codes' | 'turn_off';
 
 /** An app code, a recovery code, or a passkey: what a signed-in change asks for once two-factor is on. */
@@ -1331,7 +1327,6 @@ export class ApiClient {
     );
   }
 
-  /** The sheet's options at the sign-in step, a new challenge each time it opens. */
   async signInPasskeyOptions(challenge: string): Promise<PasskeyOptions> {
     return this.post<PasskeyOptions>(
       '/api/auth/two-factor/passkey-options',
@@ -1367,7 +1362,6 @@ export class ApiClient {
     });
   }
 
-  /** To use a passkey at a signed-in step. */
   async passkeyOptions(step: PasskeyStep): Promise<PasskeyOptions> {
     return this.post<PasskeyOptions>('/api/auth/two-factor/passkeys/options', { step });
   }
@@ -1537,7 +1531,6 @@ export class ApiClient {
     };
   }
 
-  /** The sheet's options at the reset link's code step. */
   async resetPasskeyOptions(token: string): Promise<PasskeyOptions> {
     return this.post<PasskeyOptions>('/api/auth/password/reset/passkey-options', { token });
   }
