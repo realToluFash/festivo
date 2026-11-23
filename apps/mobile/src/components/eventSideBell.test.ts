@@ -48,3 +48,11 @@ describe('the bell on an iPad on its side (sc-68052)', () => {
     expect(page).toMatch(/card=\{<BellRow>\{card\}<\/BellRow>\}/u);
   });
 });
+
+describe('the bell on a phone, paused under a pushed screen (sc-85005)', () => {
+  it('ends ‹’s row, and no title row is drawn under it', () => {
+    expect(frame).toMatch(
+      /\{paused \? \(\n\s*<View style=\{styles\.titleRow\}>\n\s*<View style=\{styles\.fill\}>\{backView\}<\/View>\n\s*<BellButton \/>\n\s*<\/View>\n\s*\) : \(/u,
+    );
+  });
+});
