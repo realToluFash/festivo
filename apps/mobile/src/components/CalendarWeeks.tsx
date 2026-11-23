@@ -35,6 +35,7 @@ import {
 import { tokens } from '../theme/tokens.ts';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
+import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 import { Text } from './Text.tsx';
 
@@ -601,6 +602,7 @@ export function WeekList({
   const key = monthKey(pinned);
   const landed = useRef({ offset: offsets[start] ?? 0, onTop });
   const { byHand, handlers } = useHand();
+  const readerOn = useScreenReaderOn();
 
   useEffect(() => {
     const { offset, onTop: told } = landed.current;
@@ -635,9 +637,10 @@ export function WeekList({
         />
       )}
       onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) =>
-        onTop({ y: event.nativeEvent.contentOffset.y, byHand: byHand.current })
+        onTop({ y: event.nativeEvent.contentOffset.y, byHand: byHand.current || readerOn })
       }
       {...handlers}
+      scrollsToTop={false}
       scrollEventThrottle={16}
       contentContainerStyle={{ paddingBottom: bottom }}
       showsVerticalScrollIndicator={false}
