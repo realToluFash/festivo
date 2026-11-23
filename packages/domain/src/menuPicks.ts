@@ -1,6 +1,8 @@
 import type {
   DishAllergen,
   EventMenu,
+  PicksClose,
+  PicksWaiting,
   EventPicks,
   MenuCourse,
   MenuDish,
@@ -45,7 +47,11 @@ export function dishRuledOut(dish: MenuDish, person: PicksRoomPerson): DishAller
   return each.length > 0 && each.every((one) => one.length > 0) ? [...new Set(each.flat())] : [];
 }
 
-export function pickName(dish: MenuDish, variantId: string | null, optionIds: readonly string[]) {
+export function mealPickName(
+  dish: MenuDish,
+  variantId: string | null,
+  optionIds: readonly string[],
+) {
   const variant = dish.variants.find((one) => one.id === variantId);
   const options = dish.choices
     .flatMap((choice) => choice.options)
@@ -85,9 +91,70 @@ export function defaultPick(
 ): string {
   const dish = menuCourseOf(menu, given.course)?.dishes.find((one) => one.id === given.dish);
 
-  return dish == null ? '' : pickName(dish, given.variant, given.options);
+  return dish == null ? '' : mealPickName(dish, given.variant, given.options);
 }
 
 /** Why a person is never given a default: an allergy, an Other diet, or a named diet the default doesn't meet. */
 export const excludedOf = (reason: string): 'allergy' | 'other' | 'diet' =>
   reason === 'allergy' ? 'allergy' : reason === 'other' ? 'other' : 'diet';
+
+/** The Menu header's close (sc-3905): the earliest of the courses still open, or the last once all have closed; null while no course asks guests anything. */
+export function menuClose(
+  courses: readonly { picksClose: PicksClose | null }[],
+): PicksClose | null {
+  const closes = courses
+    .flatMap((course) => (course.picksClose == null ? [] : [course.picksClose]))
+    .sort((one, other) => Date.parse(one.at) - Date.parse(other.at));
+  const open = closes.filter((close) => !close.closed);
+
+  return open[0] ?? closes.at(-1) ?? null;
+}
+
+/** The open courses close on different days (sc-1362): the header reads "picks close from {date}". */
+export function menuCloseFrom(courses: readonly { picksClose: PicksClose | null }[]): boolean {
+  const open = courses.flatMap((course) =>
+    course.picksClose == null || course.picksClose.closed ? [] : [course.picksClose.at],
+  );
+
+  return new Set(open).size > 1;
+}
+
+export type WaitingPerson = PicksWaiting['people'][number];
+
+/** Who hasn't picked, split as sc-1362 shows it: the people never given a default first, apart from the parties, then each party's others. */
+export function waitingSplit(waiting: readonly PicksWaiting[]): {
+  never: WaitingPerson[];
+  parties: PicksWaiting[];
+} {
+  return {
+    never: waiting.flatMap((party) => party.people.filter((one) => one.excluded.length > 0)),
+    parties: waiting
+      .map((party) => ({
+        ...party,
+        people: party.people.filter((one) => one.excluded.length === 0),
+      }))
+      .filter((party) => party.people.length > 0),
+  };
+}
+
+/** How many on a course were given its default: the defaulted figures of its dish rows. */
+export const defaultedOn = (course: PicksCourse): number =>
+  course.rows.filter((row) => row.kind === 'dish').reduce((sum, row) => sum + row.defaulted, 0);
+
+/** A course shows the Defaulted column once it has a default, or anyone defaulted on it. */
+export const showsDefaulted = (course: PicksCourse): boolean =>
+  course.default != null || course.rows.some((row) => row.defaulted > 0);
+
+/** Where a person unticked on Choose who gets it goes (sc-3909): the course's Everyone variant on a course that asks nothing, Needs the host when that rules them out too, else not chosen. */
+export function goesBackTo(
+  course: Pick<PicksCourse, 'asksNothing'>,
+  dish: MenuDish | undefined,
+  person: Pick<PicksRoomPerson, 'allergens'>,
+): { kind: 'notChosen' } | { kind: 'needsHost' } | { kind: 'dish'; name: string } {
+  if (!course.asksNothing || dish == null) return { kind: 'notChosen' };
+  const everyone = dish.variants.find((one) => one.for === 'everyone');
+  const plate = everyone == null ? dish.allergens : everyone.allergens;
+  if (against(plate, person.allergens).length > 0) return { kind: 'needsHost' };
+
+  return { kind: 'dish', name: everyone?.name ?? dish.name };
+}

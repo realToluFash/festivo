@@ -10,7 +10,18 @@ import {
   type PicksRoomPerson,
   type PicksRow,
 } from '@soirely/api-client';
-import { listFormat } from '@soirely/domain';
+import {
+  against,
+  clockOf,
+  defaultPick,
+  dishRuledOut,
+  excludedOf,
+  hostCount,
+  listFormat,
+  mealPickName,
+  menuCourseOf,
+  plateOf,
+} from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
@@ -23,17 +34,6 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
 import { allergensInSentence } from './allergenWords.ts';
 import { closeDay } from './menuArea.ts';
-import {
-  against,
-  clockOf,
-  defaultPick,
-  dishRuledOut,
-  excludedOf,
-  hostCount,
-  menuCourseOf,
-  pickName,
-  plateOf,
-} from './seePicks.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -863,7 +863,9 @@ function ChooseFor({
     try {
       const next = await api.chooseForGuest(eventId, person.id, course.id, pick);
       const what =
-        dish == null ? t('seePicks.kitchen') : pickName(dish, choice.variantId, choice.optionIds);
+        dish == null
+          ? t('seePicks.kitchen')
+          : mealPickName(dish, choice.variantId, choice.optionIds);
       onSaved(
         next,
         t('seePicks.savedFor', { course: course.name, name: who, what }),
@@ -1038,7 +1040,7 @@ function ChooseFor({
         <Override
           title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
           body={t('seePicks.overrideBody', {
-            dish: pickName(dish, choice.variantId, choice.optionIds),
+            dish: mealPickName(dish, choice.variantId, choice.optionIds),
             allergens: allergens(asking),
             name: who,
           })}
