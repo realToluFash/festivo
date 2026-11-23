@@ -18,7 +18,8 @@ export interface Side {
 export interface Dish {
   id: string;
   name: string;
-  contains: readonly Allergen[];
+  /** null is Allergens not stated. */
+  contains: readonly Allergen[] | null;
   variants: readonly Variant[];
   sides: readonly Side[];
 }
@@ -177,6 +178,7 @@ export const MW = {
   pickOpen: (day: string) => `Picks close ${day}`,
   pickClosed: (day: string) => `Picks closed on ${day}`,
   contains: (allergens: string) => `Contains: ${allergens}`,
+  notStated: 'Allergens not stated',
   variant: 'Variant ·',
   side: 'Side ·',
   childrenOnly: 'Children only',
@@ -268,7 +270,7 @@ export const MW = {
 const dish = (
   id: string,
   name: string,
-  contains: readonly Allergen[],
+  contains: readonly Allergen[] | null,
   variants: readonly Variant[] = [],
   sides: readonly Side[] = [],
 ): Dish => ({ id, name, contains, variants, sides });
@@ -333,6 +335,7 @@ export function sampleCourses(): Course[] {
       dishes: [
         dish('k3-chinchin', 'Chin chin', ['gluten', 'milk', 'eggs']),
         dish('k3-zobo', 'Zobo sorbet', []),
+        dish('k3-puff', 'Puff-puff', null),
       ],
     },
   ];
@@ -503,14 +506,26 @@ export const personOf = (world: MenuWorld, id: string): Person | undefined =>
 
 export const isClosed = (world: MenuWorld, course: Course): boolean => world.today > course.closes;
 
-export function containsOf(found: Dish, variantId: string | null): Allergen[] {
+export const containsWords = (contains: readonly Allergen[] | null): string | null =>
+  contains == null
+    ? MW.notStated
+    : contains.length === 0
+      ? null
+      : MW.contains(allergenWords(contains));
+
+/** null when the dish never stated its allergens, as the product's `plateOf`. */
+export function containsOf(found: Dish, variantId: string | null): Allergen[] | null {
+  if (found.contains == null) return null;
   const variant = found.variants.find((one) => one.id === variantId);
 
   return [...new Set([...found.contains, ...(variant?.contains ?? [])])];
 }
 
-export const ruledOut = (person: Person, contains: readonly Allergen[]): Allergen[] =>
-  contains.filter((one) => person.allergies.includes(one));
+/** A plate never stated rules out every recorded allergy, as the product's `against`. */
+export const ruledOut = (person: Person, contains: readonly Allergen[] | null): Allergen[] =>
+  contains == null
+    ? [...person.allergies]
+    : contains.filter((one) => person.allergies.includes(one));
 
 export const forEveryone = (found: Dish): Variant[] =>
   found.variants.filter((one) => one.children !== true);
@@ -520,7 +535,7 @@ export const everyoneVariant = (found: Dish): Variant | null => forEveryone(foun
 export function nothingFor(course: Course, person: Person): boolean {
   return course.dishes.every((one) =>
     one.variants.length === 0
-      ? ruledOut(person, one.contains).length > 0
+      ? ruledOut(person, containsOf(one, null)).length > 0
       : forEveryone(one).every((way) => ruledOut(person, containsOf(one, way.id)).length > 0),
   );
 }
@@ -598,7 +613,8 @@ export interface FigureRow {
   id: string;
   dishId: string;
   name: string;
-  contains: readonly Allergen[];
+  /** null is Allergens not stated. */
+  contains: readonly Allergen[] | null;
   chosen: number;
   defaulted: number;
   children: boolean;
@@ -643,7 +659,7 @@ export function courseFigures(world: MenuWorld, course: Course): CourseFigures {
         id: way.id,
         dishId: one.id,
         name: way.name,
-        contains: way.contains.filter((a) => !one.contains.includes(a)),
+        contains: way.contains.filter((a) => !(one.contains ?? []).includes(a)),
         children: way.children === true,
         ...split((spot) => spot.variantId === way.id),
       })),
@@ -1106,7 +1122,7 @@ export function dishAllergens(
   variantId: string | null = null,
 ): Allergen[] {
   if (variantId != null) return ruledOut(person, containsOf(found, variantId));
-  if (found.variants.length === 0) return ruledOut(person, found.contains);
+  if (found.variants.length === 0) return ruledOut(person, containsOf(found, null));
   const each = found.variants.map((way) => ruledOut(person, containsOf(found, way.id)));
   if (!each.every((one) => one.length > 0)) return [];
 

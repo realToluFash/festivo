@@ -17,7 +17,7 @@ import {
   type FigureRow,
   type MenuWorld,
   MW,
-  allergenWords,
+  containsWords,
   courseClose,
   courseFigures,
 } from './menuPicksModel.ts';
@@ -120,7 +120,7 @@ function CountRow({
   const ref = useRef<ViewInstance>(null);
   const inset = row.kind !== 'dish';
   const lead = row.kind === 'variant' ? `${MW.variant} ` : row.kind === 'side' ? `${MW.side} ` : '';
-  const contains = row.contains.length === 0 ? null : MW.contains(allergenWords(row.contains));
+  const contains = containsWords(row.contains);
   const figure = split ? MW.rowSaid(row.chosen, row.defaulted) : `${row.chosen} of ${room}`;
   const said = [`${lead}${row.name}`, row.children ? MW.childrenOnly : null, contains, figure]
     .filter(Boolean)
