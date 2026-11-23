@@ -156,7 +156,7 @@ final readonly class PicksFigures
         $rows = [];
 
         foreach ($course['dishes'] as $dish) {
-            $rows[] = ['id' => $dish['id'], 'kind' => 'dish', 'name' => $dish['name'], 'chosen' => $onDish($dish['id'], 'dish', static fn (): bool => true), 'defaulted' => $onDish($dish['id'], 'defaulted', static fn (): bool => true)];
+            $rows[] = ['id' => $dish['id'], 'kind' => 'dish', 'name' => $dish['name'], 'allergens' => [] === $dish['variants'] ? $dish['allergens'] : $dish['allergens'] ?? [], 'chosen' => $onDish($dish['id'], 'dish', static fn (): bool => true), 'defaulted' => $onDish($dish['id'], 'defaulted', static fn (): bool => true)];
 
             foreach ($dish['variants'] as $variant) {
                 $on = static fn (array $spot): bool => ($spot['variant'] ?? null) === $variant['id'];

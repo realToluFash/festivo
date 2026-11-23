@@ -135,9 +135,11 @@ function CountRow({
         : row.name;
   const children = row.for === 'children';
   const contains =
-    row.allergens.length === 0
-      ? null
-      : t('menuPicks.contains', { allergens: allergens(row.allergens) });
+    row.allergens == null
+      ? t('menuPicks.allergensNotStated')
+      : row.allergens.length === 0
+        ? null
+        : t('menuPicks.contains', { allergens: allergens(row.allergens) });
   const figure = split
     ? t('menuPicks.rowSaid', { name, chosen: row.chosen, defaulted: row.defaulted })
     : t('menuPicks.rowChosen', { name, chosen: row.chosen, room });

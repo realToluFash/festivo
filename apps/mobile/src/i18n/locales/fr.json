@@ -3409,6 +3409,7 @@
     "courseOpen": "Choix jusqu’au {{date}}",
     "courseClosed": "Choix clos le {{date}}",
     "contains": "Contient : {{allergens}}",
+    "allergensNotStated": "Allergènes non indiqués",
     "variantOf": "Variante · {{name}}",
     "sideOf": "Option · {{name}}",
     "childrenOnly": "Enfants uniquement",
