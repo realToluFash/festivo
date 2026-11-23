@@ -18,6 +18,7 @@ import {
   DATA_HREF,
   dataAndControlListed,
   DESTINATION_HREF,
+  listedFor,
   SECTION_HREF,
   type SettingsOpen,
   settingsGroups,
@@ -74,7 +75,10 @@ export function SettingsSplit({
 
 export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsOpen | null }) {
   const { t } = useTranslation();
-  const { account, organisation } = useSignedIn();
+  const { account, organisation: inUse, pausedIn } = useSignedIn();
+  // A paused membership holds no role: its group lists what needs no permission, and the person names neither role nor organisation (sc-86077).
+  const member = pausedIn == null ? inUse : null;
+  const organisation = listedFor(inUse, pausedIn);
   const width = useSideListWidth(SETTINGS_LIST_WIDTH);
   const alone = !settingsListBeside(kind);
   const size = kind === 'phone' ? 'phone' : alone ? 'portrait' : 'column';
@@ -84,8 +88,8 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsO
     name: account?.name ?? '',
     initials: initials(account?.name ?? ''),
     email: account == null ? '' : (primaryEmailAddress(account) ?? ''),
-    role: organisation == null ? null : roleName(t, organisation.role),
-    organisation: organisation?.name ?? null,
+    role: member == null ? null : roleName(t, member.role),
+    organisation: member?.name ?? null,
   };
   const go = (section: SettingsOpen) => {
     const href = section === DATA_AND_CONTROL ? DATA_HREF.hub : SECTION_HREF[section];

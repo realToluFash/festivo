@@ -313,7 +313,7 @@ export function AppFrame({
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
   titleRef?: RefObject<TextHandle | null> | undefined;
-  /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
+  /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609), and Settings' list while an organisation is paused (sc-86077). */
   aboutTheAccount?: boolean;
   /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
   bodyTakesSwitch?: boolean;
@@ -626,6 +626,14 @@ export function AppFrame({
         {switchedWords}
       </View>
     ) : null;
+  const pausedCard = signedIn.pausedIn != null && (
+    <AccessPaused
+      paused={signedIn.pausedIn}
+      others={signedIn.organisations}
+      onSwitch={(next) => switchByTap(next.id)}
+      onChoose={(opener) => openSwitcher?.(opener)}
+    />
+  );
   // The paused card's own heading heads the page in place of the route's title (sc-83881).
   const paused = standIn === 'paused';
   const untitled = bodyUntitled || paused;
@@ -720,13 +728,8 @@ export function AppFrame({
                         <OpenJoined.Provider value={openJoined}>
                           <HideBack.Provider value={backRow.hide}>
                             <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                              {standIn === 'paused' && signedIn.pausedIn != null ? (
-                                <AccessPaused
-                                  paused={signedIn.pausedIn}
-                                  others={signedIn.organisations}
-                                  onSwitch={(next) => switchByTap(next.id)}
-                                  onChoose={(opener) => openSwitcher?.(opener)}
-                                />
+                              {standIn === 'paused' ? (
+                                pausedCard
                               ) : standIn === 'overdue' && signedIn.organisation != null ? (
                                 <TwoFactorOverdue
                                   organisation={signedIn.organisation.name}
@@ -748,7 +751,9 @@ export function AppFrame({
                                         <BellInPane.Provider
                                           value={sidebar && untitled && !bareList}
                                         >
-                                          {children}
+                                          <PausedCard.Provider value={pausedCard}>
+                                            {children}
+                                          </PausedCard.Provider>
                                         </BellInPane.Provider>
                                       </UnderTabsProvider>
                                     </BodySwitched.Provider>
@@ -958,6 +963,13 @@ export function FrameTop({
 }
 
 const BodySwitched = createContext<ReactNode>(null);
+
+const PausedCard = createContext<ReactNode>(null);
+
+/** The paused card in a body that keeps Settings' list beside it, on a tablet on its side, where it stands in for Choose a section or a section of the paused organisation's (sc-86077). */
+export function FramePaused() {
+  return useContext(PausedCard);
+}
 
 /** "Now working in …" in the notices of a body that draws its own top, as Today does, where its demo draws it (sc-44087). */
 export function FrameBodySwitched() {
@@ -1981,7 +1993,8 @@ function FrameSidebar({
   const [you, setYou] = useState(false);
   const youOpener = useRef<ViewInstance>(null);
   const name = account?.name ?? '';
-  const role = organisation == null ? null : roleName(t, organisation.role);
+  // A paused membership holds no role, so the person is named alone while the pill names it (sc-86077).
+  const role = organisation == null || pausedIn != null ? null : roleName(t, organisation.role);
   const person = useMemo(() => ({ name, role }), [name, role]);
   const shell = useMemo<TodayShell>(
     () => ({

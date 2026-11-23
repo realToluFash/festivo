@@ -20,6 +20,7 @@ import { DomainsSection, RequestsSection } from '../../src/components/Organisati
 import { type Candidate, OwnershipSection } from '../../src/components/OrganisationOwnership.tsx';
 import { useOrganisationChoices } from '../../src/components/OrganisationPicker.tsx';
 import { Refreshing } from '../../src/components/Refreshing.tsx';
+import { PausedSettingsSection } from '../../src/components/PausedSettings.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, useBackToSettings } from '../../src/components/SettingsList.tsx';
 import { PageToast } from '../../src/components/Summary.tsx';
@@ -34,7 +35,14 @@ import { tokens } from '../../src/theme/tokens.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
 /** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
-export default function Organisation() {
+/** While the pill names a paused organisation, its row opens the paused page, and nothing of the organisation is read (sc-86077). */
+export default function OrganisationRoute() {
+  const { pausedIn } = useSignedIn();
+
+  return pausedIn == null ? <Organisation /> : <PausedSettingsSection open="organisation" />;
+}
+
+function Organisation() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
   const { kind } = useLayout();
