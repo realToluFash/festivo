@@ -34,6 +34,8 @@ import './guests.css';
 import './kitchenSheet.css';
 
 const MAKE_MS = 900;
+const LOAD_MS = 900;
+const UNSHEETED: ReadonlySet<SheetStart['state']> = new Set(['refused', 'loading', 'cannotReach']);
 
 /** sc-3911's kitchen sheet, behind Kitchen sheet on the event's Menu: the page at a desk and from 320 px, and the printout on A4 or Letter. */
 export function KitchenSheetPage() {
@@ -50,7 +52,7 @@ function SheetAt({ id, first }: { id: string | undefined; first: SheetStart }) {
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== KITCHEN_EVENT) return <Navigate to={`/demo/events/${event.id}`} replace />;
-  if (first.paper != null && first.state !== 'refused' && first.state !== 'loading')
+  if (first.paper != null && !UNSHEETED.has(first.state))
     return <SheetPaper event={event} first={first} paper={first.paper} now={now} />;
 
   return (
@@ -113,6 +115,12 @@ function Crumbs({ event, tell }: { event: SampleEvent; tell: Tell }) {
 }
 
 type Pdf = 'rest' | 'making' | 'made' | 'failed';
+type Load = 'loading' | 'unreached' | 'retrying' | 'loaded';
+
+const LOAD_OF: Partial<Record<SheetStart['state'], Load>> = {
+  loading: 'loading',
+  cannotReach: 'unreached',
+};
 
 const PDF_OF: Partial<Record<SheetStart['state'], Pdf>> = { making: 'making', failed: 'failed' };
 
@@ -120,6 +128,14 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
   const [sheet] = useState(() => sheetOf(worldOf(first.state)));
   const [pdf, setPdf] = useState<Pdf>(PDF_OF[first.state] ?? 'rest');
   const [pressed, setPressed] = useState(false);
+  const [load, setLoad] = useState<Load>(LOAD_OF[first.state] ?? 'loaded');
+
+  useEffect(() => {
+    if (load !== 'retrying') return undefined;
+    const timer = window.setTimeout(() => setLoad('loaded'), LOAD_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   useEffect(() => {
     if (pdf !== 'making' || !pressed) return undefined;
@@ -161,7 +177,7 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
           <p className="ks-event">{rangeOf(event, now)}</p>
           <p className="ks-as-of">{asOfLine(now, event.timeZone)}</p>
         </div>
-        {first.state !== 'loading' && (
+        {load === 'loaded' && (
           <div className="ks-acts">
             <button
               type="button"
@@ -202,16 +218,30 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
           </button>
         </div>
       )}
-      {first.state === 'loading' ? (
+      {load === 'unreached' && (
+        <div className="ks-failed" role="alert">
+          <p>
+            <Glyph name="alert" size={17} weight={2.4} />
+            {KSW.cannotReach}
+          </p>
+          <button
+            type="button"
+            className="gs-pill is-secondary ks-act"
+            onClick={() => setLoad('retrying')}
+          >
+            {KSW.retry}
+          </button>
+        </div>
+      )}
+      {(load === 'loading' || load === 'retrying') && (
         <div className="ks-loading" aria-busy="true">
           <p role="status">{KSW.loading}</p>
           {[0, 1, 2].map((one) => (
             <div key={one} className="ks-bone" aria-hidden="true" />
           ))}
         </div>
-      ) : (
-        <SheetBody sheet={sheet} access={first.access} />
       )}
+      {load === 'loaded' && <SheetBody sheet={sheet} access={first.access} />}
     </>
   );
 }

@@ -160,6 +160,23 @@ describe('the kitchen sheet (sc-3911)', () => {
     expect(screen.queryByRole('button', { name: KSW.download })).toBeNull();
   });
 
+  it('says the sheet did not load, and Try again loads it', SLOW, async () => {
+    await sheet(sheetAt('cannotReach'));
+
+    expect(screen.getByRole('alert').textContent).toContain(KSW.cannotReach);
+    expect(screen.queryByRole('button', { name: KSW.download })).toBeNull();
+    expect(screen.queryByRole('region', { name: KSW.allergies })).toBeNull();
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: KSW.retry }));
+    expect(screen.getByText(KSW.loading)).toBeTruthy();
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(allergies()).toBeTruthy();
+    expect(screen.getByRole('button', { name: KSW.download })).toBeTruthy();
+  });
+
   it('refuses without Menu read, back to the event', SLOW, async () => {
     open(sheetAt('refused'));
     await screen.findByRole('heading', { level: 1, name: KSW.refused }, WAIT);

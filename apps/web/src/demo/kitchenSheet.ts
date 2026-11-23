@@ -65,6 +65,7 @@ export const KSW = {
   given: '{{count}} given the default, {{dish}}, when picks closed. They are in its count.',
   sides: 'Sides are counted per pick, so they add up to their dish, not to the room.',
   loading: 'Loading the kitchen sheet…',
+  cannotReach: 'The kitchen sheet could not be loaded.',
   refused: 'You cannot open the kitchen sheet',
   back: 'Back to the event',
   health:
@@ -87,6 +88,7 @@ export type SheetState =
   | 'noAllergies'
   | 'closedNoAllergies'
   | 'loading'
+  | 'cannotReach'
   | 'making'
   | 'failed'
   | 'refused';
@@ -106,6 +108,7 @@ const STATES: Readonly<Record<SheetState, string>> = {
   closedNoAllergies:
     'After the close, no allergies recorded: only diets kept people from the default',
   loading: 'Loading',
+  cannotReach: 'Cannot reach the sheet: it did not load, Try again loads it',
   making: 'Making the PDF',
   failed: 'The PDF could not be made',
   refused: 'Refused: no Menu read (403)',
@@ -375,6 +378,7 @@ export const SHEET_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'noAllergies',
         'closedNoAllergies',
         'loading',
+        'cannotReach',
         'making',
         'failed',
         'refused',
