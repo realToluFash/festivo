@@ -45,7 +45,8 @@ deploy/deploy.sh <sha>
 | `postgres`, `redis`, `mercure` | the stores and the realtime hub, on the internal network only                                                                                               |
 
 **Timeouts at the proxy.** `/api/assistant/*` may take 200 s before the API answers:
-seating and floor plan take up to 180 s with the fallback (sc-3987). Every other API
+seating and floor plan take up to 180 s with the fallback (sc-3987). Its one route today
+is `POST /api/assistant/chat`, the request to time on the first deploy. Every other API
 route is given 60 s. The realtime hub has none, as it streams.
 
 **Client addresses.** The API believes `X-Forwarded-For` from the proxy's fixed address
@@ -97,7 +98,7 @@ anywhere yet: the destination is Axiom Cloud, EU Central 1 as the organisation's
 edge, up to $25/month (bm's memo, sc-1612 #1685), and that spend waits on the owner's
 approval. Once approved, ops creates the organisation, adds the shipper here, and
 proves each alert with a forced failure on a non-production environment
-(sc-1612 #1696). Until then this section is the list the alerts are made from.
+(sc-86645). Until then this section is the list the alerts are made from.
 
 | Story    | The line's message                                                                                                                                      | Alert                        |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
@@ -116,9 +117,9 @@ Each line of sc-1612, ticked on the first deploy:
 - [ ] The migrations ran in the deploy's output before the containers were replaced.
 - [ ] `docker compose -p soirely logs scheduler` shows `app:two-factor-recovery:expire`
       running every 5 minutes.
-- [ ] An assistant seating request that takes over 60 s comes back, and a slow request
-      on any other route ends at 60 s.
+- [ ] An assistant seating request (`POST /api/assistant/chat`) that takes over 60 s
+      comes back, and a slow request on any other route ends at 60 s.
 - [ ] The "nobody can confirm this" screen names this environment's `SUPPORT_EMAIL`.
 - [ ] A test webhook from the mail provider is recorded.
 - [ ] Each alert above fires on a forced failure in a non-production environment
-      (waits on the owner's approval of the log destination).
+      (sc-86645, which waits on the owner's approval of the log destination).
