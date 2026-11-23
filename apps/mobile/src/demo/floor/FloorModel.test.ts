@@ -8,6 +8,7 @@ import {
   WAIT_ALL,
   WORD_ORDER,
   canSendBack,
+  canSendBackOwed,
   choicesFor,
   choose,
   dismissNotSent,
@@ -18,6 +19,7 @@ import {
   guestName,
   heldLine,
   inOrder,
+  loseConnection,
   mayWrite,
   movedTo,
   onItLine,
@@ -25,6 +27,7 @@ import {
   openTable,
   owedLine,
   pickReason,
+  reconnect,
   refusalAt,
   rowSaid,
   samplePlaces,
@@ -77,6 +80,11 @@ describe('Floor’s groups (sc-4021)', () => {
     expect(g).toHaveLength(1);
     expect(g[0]?.kind === 'other' ? g[0].places : []).toHaveLength(12);
   });
+
+  it('keeps Yours for service.manage on a section', () => {
+    const f = floorSeed('yours');
+    expect(names({ ...f, manage: true })).toEqual(names(f));
+  });
 });
 
 describe('the order', () => {
@@ -118,6 +126,17 @@ describe('each row’s word', () => {
   it('names an earlier course first', () => {
     expect(wordSaid(at(floorSeed('yours'), 'Table 5'))).toBe('Starter · Served');
     expect(wordSaid(at(floorSeed('yours'), 'Table 1'))).toBe('Served');
+  });
+
+  it('reads Not here yet only while nobody at the table has arrived', () => {
+    const t9 = at(floorSeed('yours'), 'Table 9');
+    const all = (stage: Place['seats'][number]['stage']): Place => ({
+      ...t9,
+      seats: t9.seats.map((g) => ({ ...g, stage })),
+    });
+    expect(wordOf(all('Not here yet'))).toBe('Not here yet');
+    expect(wordOf(all('Left'))).toBe('Served');
+    expect(wordOf(all('Nothing for this course'))).toBe('Served');
   });
 
   it('reads Waiting on the kitchen when the only guest left is held', () => {
@@ -194,6 +213,11 @@ describe('a held guest’s choice', () => {
     expect(at(back, 'Table 2').seats[4]?.held?.choice).toBe(WAIT_ALL);
   });
 
+  it('puts the choice before it back on Undo', () => {
+    const f = choose(floorSeed('table'), 'Table 2', 5, READY_NOW);
+    expect(at(undo(f), 'Table 2').seats[4]?.held?.choice).toBe(WAIT_ALL);
+  });
+
   it('offers no What’s ready, now while nothing is Ready', () => {
     const femi = at(floorSeed('nothingReady'), 'Table 6').seats[2];
     expect(femi?.held == null ? [] : choicesFor(femi.held)).toEqual([WAIT_ALL]);
@@ -227,6 +251,41 @@ describe('Send back', () => {
     expect(back.undo).toBeNull();
     expect(back.heard).toBe('Undone: Sent back: Kemi Oke’s Goat curry · Dropped');
   });
+
+  it('leaves another device’s change since the step as it is on Undo', () => {
+    const sent = sendBack(
+      pickReason(openSendBack(floorSeed('yours'), 'Table 4', 1, null), 'Dropped'),
+    );
+    const back = undo(servedElsewhere(sent));
+    const t4 = at(back, 'Table 4');
+    expect(t4.seats.map((g) => g.stage)).toEqual(Array(10).fill('Served'));
+    expect(t4.trays).toEqual([]);
+    expect(t4.seats[0]?.owed).toEqual([]);
+    expect(t4.seats[0]?.sentBack).toBe(false);
+  });
+
+  it('sends back a Served owed plate once, and Undo makes it sendable again', () => {
+    const f = floorSeed('table');
+    const kemi = at(f, 'Table 2').seats[7];
+    const chops = kemi?.owed[0];
+    if (chops == null) throw new Error('Kemi’s Small chops');
+    expect(canSendBackOwed(f, at(f, 'Table 2'), chops)).toBe(true);
+    const sent = sendBack(pickReason(openSendBack(f, 'Table 2', 8, 0), 'Wrong dish'));
+    const after = at(sent, 'Table 2').seats[7];
+    expect(after?.owed.map((o) => [o.items, o.why, o.stage])).toEqual([
+      ['Small chops', 'Bring after', 'Served'],
+      ['Small chops', 'Sent back', 'To serve'],
+    ]);
+    expect(after?.sentBack).toBe(false);
+    const again = after?.owed[0];
+    expect(again == null ? true : canSendBackOwed(sent, at(sent, 'Table 2'), again)).toBe(false);
+    expect(sendBack(pickReason(openSendBack(sent, 'Table 2', 8, 0), 'Dropped'))).toMatchObject({
+      steps: sent.steps,
+    });
+    const back = at(undo(sent), 'Table 2').seats[7];
+    expect(back?.owed).toHaveLength(1);
+    expect(back?.owed[0]?.sentBack).toBe(false);
+  });
 });
 
 describe('a table the person may not write at', () => {
@@ -258,6 +317,18 @@ describe('live and offline', () => {
     expect(t2.seats[1]?.owed.at(-1)?.kept).toBe(true);
     const more = choose(f, 'Table 2', 5, WAIT_ALL);
     expect(stripLine(more)).toBe('No connection · as of 21:04 · 3 taps waiting');
+  });
+
+  it('sends the kept taps on connecting again, so none still reads Waiting to send', () => {
+    const f = reconnect(choose(floorSeed('offline'), 'Table 2', 5, WAIT_ALL));
+    const t2 = at(f, 'Table 2');
+    expect(stripLine(f)).toBe('Connected · up to date 21:04');
+    expect(f.kept).toBe(0);
+    expect(f.undo?.kept).toBe(false);
+    expect(t2.seats[4]?.held?.kept).toBe(false);
+    expect(t2.seats[1]?.owed.some((o) => o.kept)).toBe(false);
+    const off = choose(loseConnection(f), 'Table 2', 5, READY_NOW);
+    expect(stripLine(off)).toBe('No connection · as of 21:04 · 1 tap waiting');
   });
 
   it('names who changed the guest first in the Not sent card, until dismissed', () => {

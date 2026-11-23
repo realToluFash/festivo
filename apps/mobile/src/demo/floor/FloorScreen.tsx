@@ -46,6 +46,7 @@ import {
   guestName,
   headerLine,
   heldLine,
+  loseConnection,
   mayWrite,
   movedTo,
   namesShown,
@@ -54,6 +55,7 @@ import {
   openTable,
   owedLine,
   pickReason,
+  reconnect,
   rowSaid,
   seatWord,
   sendBack,
@@ -339,7 +341,7 @@ function FloorList({
         />
         <SecondaryButton
           label={f.online ? 'Lose the connection' : 'Connect again'}
-          onPress={() => setF({ ...f, online: !f.online })}
+          onPress={() => setF(f.online ? loseConnection(f) : reconnect(f))}
           testID="floor.demo.online"
         />
         <SecondaryButton
@@ -618,7 +620,7 @@ function Seat({
           </View>
         )}
         {g.owed.map((o, i) => (
-          <View key={`${o.why}${o.items}${String(i)}`} style={styles.owed}>
+          <View key={`${String(o.id)}.${String(i)}`} style={styles.owed}>
             <Text size={14} weight="medium">
               {owedLine(p, o)}
             </Text>
