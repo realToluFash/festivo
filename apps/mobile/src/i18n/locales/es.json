@@ -3495,8 +3495,8 @@
     "whoSaved_other": "{{variant}}, {{dish}}: ahora {{count, number}} personas.",
     "whoSaved_many": "{{variant}}, {{dish}}: ahora {{count, number}} personas.",
     "whoOverride": "Registrado como elección suya pese a la ficha: {{names}}.",
-    "changed": "Menu changed",
-    "changedOn": "Menu changed: {{course}} · picked {{dish}}",
-    "menuChanged": "Menu changed: the dish these guests picked was taken off. They are asked again, and are not counted as in."
+    "changed": "Menú modificado",
+    "changedOn": "Menú modificado: {{course}} · elección anterior: {{dish}}",
+    "menuChanged": "Menú modificado: se ha quitado el plato que eligieron estos invitados. Se les vuelve a preguntar y no entran en el recuento."
   }
 }
