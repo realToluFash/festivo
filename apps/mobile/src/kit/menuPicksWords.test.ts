@@ -75,6 +75,7 @@ const picksCourse = (over: Partial<PicksCourse> = {}): PicksCourse => ({
   needsHost: 0,
   notChosen: 0,
   menuChanged: 0,
+  menuChangedAllergen: 0,
   room: 48,
   answered: 0,
   ...over,

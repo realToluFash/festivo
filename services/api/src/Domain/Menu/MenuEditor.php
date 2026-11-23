@@ -640,7 +640,7 @@ final readonly class MenuEditor
             $this->entityManager->refresh($course);
             $onCourse = $this->menuDishRepository->findOnCourse($course);
 
-            if ([] === $onCourse && $course->guestsChoose() && !$course->isSkippable()) {
+            if ([] === $onCourse && $course->guestsChoose()) {
                 $this->menuReasks->askEveryone($event, $course, $askAgain);
             }
             $dish = $made(0 === Iter\count($onCourse) ? 0 : Math\max(Vec\map($onCourse, static fn (MenuDish $one): int => $one->getPosition())) + 1);
@@ -674,8 +674,8 @@ final readonly class MenuEditor
     {
         return $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
-            $this->menuReasks->refusePast($event);
             $changed = $change();
+            $this->menuReasks->refusePast($event);
             $this->entityManager->flush();
 
             return $changed;

@@ -367,6 +367,20 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(asked).toBe(2);
   });
 
+  it('shows the past date on the page when a picked dish is refused before anyone is asked', async () => {
+    await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(MAIN),
+      'DELETE /api/events/ev_1/menu/dishes/d_jollof': () => problem('menu_event_over', 409),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Jollof rice…' }));
+
+    expect((await screen.findByText(/Adaeze and Tunde was on/)).textContent).toContain(
+      'Nothing was changed.',
+    );
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
   it('refuses at once to delete a course guests have picked from', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(MAIN) });
 
@@ -567,6 +581,36 @@ describe('The event’s Menu (sc-3902)', () => {
     expect(
       sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/dishes/d_jollof?askAgain=1')?.body,
     ).toEqual(expect.objectContaining({ allergens: ['celery', 'sesame'], containsNone: false }));
+  });
+
+  it('joins the added allergens with "and" in the title and "or" in the count line', async () => {
+    await onMenu({
+      'GET /api/events/ev_1/menu': menuOf(MAIN),
+      'PUT /api/events/ev_1/menu/dishes/d_jollof': asksFirst(
+        {
+          count: 2,
+          course: { id: 'c_main', name: 'Main' },
+          whom: 'allergen',
+          allergens: ['milk', 'sesame'],
+        },
+        { menu: { courses: [MAIN] }, dishId: 'd_jollof' },
+      ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Jollof rice' }));
+    const panel = await screen.findByRole('complementary', { name: 'Edit dish' });
+    fireEvent.click(within(panel).getByLabelText('Milk'));
+    fireEvent.click(within(panel).getByLabelText('Sesame'));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Add milk and sesame to Jollof rice?',
+    });
+    expect(
+      within(dialog).getByText(
+        '2 guests who picked this dish have milk or sesame recorded. They’ll be asked to pick again for Main, and will appear in Needs the host.',
+      ),
+    ).toBeDefined();
   });
 
   it('has no line when the save counts nobody', async () => {
