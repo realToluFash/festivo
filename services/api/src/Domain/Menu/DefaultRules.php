@@ -139,7 +139,6 @@ final readonly class DefaultRules
 
     /**
      * @param array{variants: list<array{id: string, for: string, ...}>, choices: list<array<array-key, mixed>>, ...} $dish
-     * @param list<string>                                                                                            $sent
      *
      * @return array{gaps: list<array{path: string, key: string, question: string, pick: int}>, variant: ?string, options: list<string>}
      */
