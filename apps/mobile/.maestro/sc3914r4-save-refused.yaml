@@ -1,7 +1,7 @@
-# sc-3914 r4: with the save refused, ticks ${P1} for ${VARIANT}, taps Save and fails unless the refused line shows.
+# sc-3914 r4: after sc3914r4-who-open-tick, with the member dropped to Can view, taps Save
+# and fails unless the refused line shows.
 appId: host.exp.Exponent
 ---
-- runFlow: sc3914r4/who-open-tick.yaml
 - tapOn:
     id: 'menu.who.save'
     retryTapIfNoChange: false
