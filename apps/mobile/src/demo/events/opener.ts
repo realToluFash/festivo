@@ -131,7 +131,7 @@ export function wayBack(
     : BACK_HREF[screen];
 }
 
-/** Where a notification about the sample event opens it: Changed guests at its Guests, the rest at its Overview. */
+/** Where a notification about the sample event opens it: Changed guests at its Guests filtered to Changed since you looked, the rest at its Overview. */
 export function bellOpens(key: string): 'guests' | 'overview' {
   return key === 'replies' ? 'guests' : 'overview';
 }
@@ -139,7 +139,10 @@ export function bellOpens(key: string): 'guests' | 'overview' {
 export function bellHref(key: string): string {
   const event = '/demo/events/evt-wed-4';
 
-  return withFrom(bellOpens(key) === 'guests' ? `${event}?area=guests` : event, 'eventBell');
+  return withFrom(
+    bellOpens(key) === 'guests' ? `${event}?area=guests&filter=changed` : event,
+    'eventBell',
+  );
 }
 
 /** The picker's words for each opener; on a phone an audit log event opens from the entry's own screen. */

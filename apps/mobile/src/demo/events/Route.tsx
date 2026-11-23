@@ -205,7 +205,12 @@ export function EventRoute() {
   const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
   // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
   const noStaff = staff === 'noRead';
-  const from = area === 'guests' ? guestsFromOf(params.filter) : null;
+  const from =
+    area !== 'guests'
+      ? null
+      : params.filter === 'changed'
+        ? 'changed'
+        : guestsFromOf(params.filter);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
   const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;

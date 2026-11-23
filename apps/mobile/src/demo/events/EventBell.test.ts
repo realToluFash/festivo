@@ -10,6 +10,8 @@ describe('the bell over an event’s page on an iPad (sc-84453)', () => {
 
   it('pushes the other event over this page, so ‹ Event goes back to it', () => {
     expect(bellHref('change')).toBe('/demo/events/evt-wed-4?from=eventBell&pushed=1');
-    expect(bellHref('replies')).toBe('/demo/events/evt-wed-4?area=guests&from=eventBell&pushed=1');
+    expect(bellHref('replies')).toBe(
+      '/demo/events/evt-wed-4?area=guests&filter=changed&from=eventBell&pushed=1',
+    );
   });
 });
