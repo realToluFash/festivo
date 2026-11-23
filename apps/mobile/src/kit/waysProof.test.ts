@@ -8,6 +8,7 @@ import {
   keptOnceCodeAsked,
   keptProof,
   keptProofRanOut,
+  pressAfterLimit,
   provingRefusal,
   signedInWith,
   transferSentKept,
@@ -53,6 +54,11 @@ describe('proving it is you, from Security', () => {
     });
     expect(tripStartsOver('apple', false).codeAsked).toBe(false);
     expect(tripStartsOver('password', true).codeAsked).toBe(true);
+  });
+
+  it('keeps the code step after a sign-out limit, re-sending the held proof and making the trip again only once it lapsed (sc-22601)', () => {
+    expect(pressAfterLimit('held-proof')).toEqual({ resend: 'held-proof' });
+    expect(pressAfterLimit(null)).toBe('tripAgain');
   });
 
   it('says a refused provider proof on the screen, not on a password field it does not show', () => {

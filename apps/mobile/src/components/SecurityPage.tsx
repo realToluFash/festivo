@@ -51,7 +51,7 @@ import {
   unlinkAsk,
   type Ways,
 } from '../kit/securityPage.ts';
-import { codeHelp, proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
+import { codeHelp, pressAfterLimit, proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { currentSessionId } from '../tokens.ts';
@@ -782,6 +782,7 @@ function ProofStep({
   const tripVia = codeOnly || via === 'password' || via == null ? null : via;
   const provider = tripVia == null ? null : PROVIDER_NAMES[tripVia];
   const [limitedUntil, setLimitedUntil] = useState<Date | null>(null);
+  const spent = useRef(false);
 
   useEffect(() => {
     if (limitedUntil == null) return;
@@ -846,6 +847,20 @@ function ProofStep({
       opener={opener}
       onClose={onClose}
       onContinue={async (password, code): Promise<ConfirmSays | null> => {
+        if (spent.current) {
+          const next = pressAfterLimit(heldProof());
+          if (next !== 'tripAgain') {
+            const said = await onProved(next.resend, false);
+            if (said?.limitedUntil == null) return said;
+            setLimitedUntil(said.limitedUntil);
+
+            return { password: null, code: null, checked: false };
+          }
+          spent.current = false;
+          proving.startOver();
+          // At the code step the proof starts again at the provider's button; without one, this press makes the trip.
+          if (proving.codeAsked) return { password: null, code: null, checked: false };
+        }
         const blank = {
           password: asks.password && password === '' ? t('waysCard.passwordBlank') : null,
           code: asks.code && code.trim() === '' ? t('waysCard.codeBlank') : null,
@@ -860,8 +875,7 @@ function ProofStep({
         if (outcome.kind === 'proved') {
           const said = await onProved(outcome.proof, outcome.codeSpent);
           if (said?.limitedUntil == null || tripVia == null) return said;
-          // The passed proof is spent: the button that comes back makes the trip again.
-          proving.startOver();
+          spent.current = true;
           setLimitedUntil(said.limitedUntil);
 
           return { password: null, code: null, checked: false };
