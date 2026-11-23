@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useRef } from 'react';
+import { type KeyboardEvent, type ReactNode, useContext, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 
 import { offButton } from '../offButton.ts';
@@ -27,6 +27,8 @@ import {
 import { hasWhere, inDayOrder, mapsLink, placeOf } from './guestDay.ts';
 import { ChangeLines } from './GuestChange.tsx';
 import { Programme } from './GuestProgramme.tsx';
+import { WalletButton, WalletLine } from './Wallet.tsx';
+import { WalletDevice } from './walletContext.ts';
 
 const LINES = {
   map: [
@@ -556,6 +558,7 @@ export function DoorCode({
   heading?: string;
   cardRef?: (card: HTMLDivElement | null) => void;
 }) {
+  const wallet = useContext(WalletDevice);
   const code = (
     <div className="gp-code">
       <svg role="img" aria-label={words.doorCode} width="196" height="196" viewBox="0 0 29 29">
@@ -574,7 +577,9 @@ export function DoorCode({
           <p className="gp-day-door">{words.doorTitle}</p>
           {code}
           <p className="gp-sub">{words.doorLine(companions)}</p>
+          {wallet && <WalletButton {...wallet} />}
         </div>
+        {wallet && <WalletLine {...wallet} />}
       </section>
     );
   }
@@ -586,6 +591,8 @@ export function DoorCode({
       </h2>
       <p className="gp-sub">{words.doorLine(companions)}</p>
       {code}
+      {wallet && <WalletButton {...wallet} start />}
+      {wallet && <WalletLine {...wallet} start />}
     </section>
   );
 }
