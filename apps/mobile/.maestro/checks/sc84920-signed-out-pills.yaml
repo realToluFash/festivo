@@ -1,0 +1,43 @@
+# Signed out at the current text size: Welcome, Sign in and a request-to-join link, each with Apple's pill. Signs out, so runs last. sc-84920.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-welcome
+- tapOn:
+    id: 'welcome.email'
+- waitForAnimationToEnd
+- tapOn:
+    point: '80%,6%'
+- waitForAnimationToEnd
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-sign-in-pills
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-sign-in-foot
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- scrollUntilVisible:
+    element:
+      id: 'requestToJoin.signIn'
+    timeout: 30000
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-join-pills
+- swipe:
+    direction: UP
+- swipe:
+    direction: UP
+- waitForAnimationToEnd
+- takeScreenshot: sc84920-join-foot
