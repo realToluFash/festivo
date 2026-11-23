@@ -5,6 +5,7 @@ set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 env_file="${DEPLOY_ENV_FILE:-$here/.env}"
+backup_env_file="${BACKUP_ENV_FILE:-$here/backup.env}"
 secrets_dir="${DEPLOY_SECRETS_DIR:-$here/secrets}"
 failed=0
 
@@ -86,6 +87,38 @@ case ",$(value_of MAIL_WEBHOOK_ALLOWED_RANGES)," in
     fail "MAIL_WEBHOOK_ALLOWED_RANGES holds a private range: set the provider's published ranges" ;;
   *) ok "MAIL_WEBHOOK_ALLOWED_RANGES holds no private range" ;;
 esac
+
+# The backup container's own file: the bucket's write-only credentials, and the
+# public half of the backup key (sc-30204).
+api_env_file="$env_file"
+env_file="$backup_env_file"
+if [ ! -f "$env_file" ]; then
+  fail "deploy/backup.env exists (copy deploy/backup.env.example)"
+else
+  mode="$(stat -c %a "$env_file")"
+  [ "$mode" = 600 ] && ok "deploy/backup.env is readable by its owner only" || fail "deploy/backup.env is mode $mode, not 600"
+  missing=0
+  for key in $(keys_of "$here/backup.env.example"); do
+    if ! grep -qE "^$key=" "$env_file"; then
+      fail "$key is set in backup.env"; missing=1
+    elif [ -z "$(value_of "$key")" ] && [ "$key" != BACKUP_ENDPOINT ]; then
+      fail "$key is not empty in backup.env"; missing=1
+    fi
+  done
+  [ "$missing" = 0 ] && ok "every variable in backup.env.example is set"
+  for key in $(keys_of "$env_file"); do
+    grep -qE "^$key=" "$here/backup.env.example" || fail "$key is not in backup.env.example: nothing reads it, so remove it"
+  done
+  [[ "$(value_of BACKUP_RECIPIENT)" == age1* ]] \
+    && ok "BACKUP_RECIPIENT is an age public key" \
+    || fail "BACKUP_RECIPIENT is not an age public key (age1…): the identity never goes on the server"
+  secret="$(value_of AWS_SECRET_ACCESS_KEY)"
+  if [ -n "$secret" ] && [ "$(git -C "$here" rev-parse --is-shallow-repository)" != true ] \
+    && [ -n "$(git -C "$here" log --all -S"$secret" --format=%h -1)" ]; then
+    fail "the backup job's AWS_SECRET_ACCESS_KEY appears in the repository's history: generate a fresh one"
+  fi
+fi
+env_file="$api_env_file"
 
 private="$secrets_dir/jwt/private.pem"
 public="$secrets_dir/jwt/public.pem"
