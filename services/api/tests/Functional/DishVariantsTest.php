@@ -251,7 +251,7 @@ final class DishVariantsTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->variantsOf($jollof), ['variants' => [self::sent('Chicken'), self::sent('Fish')]]);
         self::assertSame(409, $this->statusCode());
-        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['count'] ?? null]);
         self::assertSame([], $this->variants());
 
         $this->as($this->owner, 'POST', $this->variantsOf($jollof) . '?askAgain=1', ['variants' => [self::sent('Chicken'), self::sent('Fish')]]);
@@ -280,7 +280,7 @@ final class DishVariantsTest extends ApiTestCase
 
         $this->as($this->owner, 'DELETE', $this->path('/variants/' . $chicken));
         self::assertSame(409, $this->statusCode());
-        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['count'] ?? null]);
         self::assertTrue($this->variants()[0]['picked']);
 
         $this->as($this->owner, 'DELETE', $this->path('/variants/' . $chicken . '?askAgain=1'));
@@ -313,7 +313,7 @@ final class DishVariantsTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken), self::sent('Chicken', 'celery', 'peanuts', 'sesame', 'mustard'));
         self::assertSame(409, $this->statusCode());
-        self::assertSame([2, 'allergen', ['peanuts', 'sesame']], [$this->last()['people'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
+        self::assertSame([2, 'allergen', ['peanuts', 'sesame']], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
 
         $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken . '?askAgain=1'), self::sent('Chicken', 'celery', 'peanuts', 'sesame', 'mustard'));
         self::assertSame(200, $this->statusCode());

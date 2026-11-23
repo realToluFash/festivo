@@ -95,7 +95,7 @@ final readonly class MenuReasks
             $allergens = Vec\flat_map(Vec\values($fresh), static fn (array $pair): array => $pair[1]['allergens'] ?? []);
 
             throw new ApiException(ErrorCode::MenuChangeAsks, 'menu.change_asks', members: [
-                'people' => Iter\count($fresh),
+                'count' => Iter\count($fresh),
                 'course' => ['id' => $course->getId()->toRfc4122(), 'name' => $course->getName()],
                 'whom' => Iter\all($fresh, static fn (array $pair): bool => MenuChangeWhy::Allergen === $pair[1]['why']) ? 'allergen' : 'picked',
                 'allergens' => Vec\filter(DishRules::allergenCodes(), static fn (string $code): bool => Iter\contains($allergens, $code)),
@@ -122,7 +122,7 @@ final readonly class MenuReasks
         }
 
         throw new ApiException(ErrorCode::MenuChangeAsks, 'menu.change_asks', members: [
-            'people' => Iter\count($room),
+            'count' => Iter\count($room),
             'course' => ['id' => $course->getId()->toRfc4122(), 'name' => $course->getName()],
             'whom' => 'everyone',
             'allergens' => [],

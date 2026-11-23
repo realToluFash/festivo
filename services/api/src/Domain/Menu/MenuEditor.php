@@ -356,7 +356,9 @@ final readonly class MenuEditor
             $course = $dish->getCourse();
             $everyone = static fn (iterable $ways): int => Iter\count(Vec\filter($ways, static fn (MenuDishVariant|VariantDetails $one): bool => !($one instanceof MenuDishVariant ? $one->isForChildren() : $one->forChildren)));
 
-            if (!$course->guestsChoose() && $everyone($variants) < 2 && $everyone([...$variants, ...$details]) >= 2) {
+            $oneWay = static fn (iterable $ways): bool => $everyone($ways) < 2;
+
+            if (!$course->guestsChoose() && $oneWay($variants) && !$oneWay([...$variants, ...$details])) {
                 $this->menuReasks->askEveryone($event, $course, $askAgain);
             }
 

@@ -150,6 +150,6 @@
     "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné.",
     "menu_is_default": "Cela fait partie du plat par défaut du service. Choisissez d’abord un autre plat par défaut.",
     "menu_default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer.",
-    "menu_change_asks": "This change asks guests to pick again. Confirm to change it.",
-    "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed."
+    "menu_change_asks": "Ce changement demande aux invités de choisir à nouveau. Confirmez pour continuer.",
+    "menu_event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié."
 }

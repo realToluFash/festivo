@@ -318,7 +318,7 @@ final class EventMenuTest extends ApiTestCase
         $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
-        self::assertSame([2, ['id' => $main['id'], 'name' => 'Main'], 'picked'], [$this->last()['people'] ?? null, $this->last()['course'] ?? null, $this->last()['whom'] ?? null]);
+        self::assertSame([2, ['id' => $main['id'], 'name' => 'Main'], 'picked'], [$this->last()['count'] ?? null, $this->last()['course'] ?? null, $this->last()['whom'] ?? null]);
         self::assertSame(['Jollof rice', 'Asun'], $this->dishNames(1), 'nothing changes until the host confirms');
 
         $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id'] . '?askAgain=1'));
@@ -374,7 +374,7 @@ final class EventMenuTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
         self::assertSame(409, $this->statusCode());
-        self::assertSame([2, 'Dessert', 'everyone'], [$this->last()['people'] ?? null, Type\shape(['name' => Type\string()], true)->coerce($this->last()['course'] ?? null)['name'], $this->last()['whom'] ?? null]);
+        self::assertSame([2, 'Dessert', 'everyone'], [$this->last()['count'] ?? null, Type\shape(['name' => Type\string()], true)->coerce($this->last()['course'] ?? null)['name'], $this->last()['whom'] ?? null]);
         self::assertSame([], $this->dishNames(1));
 
         $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes?askAgain=1'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
@@ -390,7 +390,7 @@ final class EventMenuTest extends ApiTestCase
 
         $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof), ['name' => 'Jollof rice', 'allergens' => ['celery', 'peanuts', 'sesame', 'mustard']]);
         self::assertSame(409, $this->statusCode());
-        self::assertSame([4, 'allergen', ['peanuts', 'sesame']], [$this->last()['people'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null], 'a person counts once, an Other allergy is never matched');
+        self::assertSame([4, 'allergen', ['peanuts', 'sesame']], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null], 'a person counts once, an Other allergy is never matched');
         self::assertSame(['celery'], $this->dishes($this->courses()[0])[0]['allergens']);
 
         $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof . '?askAgain=1'), ['name' => 'Jollof rice', 'allergens' => ['celery', 'peanuts', 'sesame', 'mustard']]);

@@ -266,7 +266,7 @@ final class MealPicksTest extends ApiTestCase
         $this->as('DELETE', $this->menu('/dishes/' . $this->id($this->jollof)));
         self::assertSame(409, $this->statusCode(), 'sc-3913: Remove… on a picked dish asks first');
         self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
-        self::assertSame(1, $this->last()['people'] ?? null);
+        self::assertSame(1, $this->last()['count'] ?? null);
 
         $this->as('DELETE', $this->menu('/variants/' . $chicken->getId()->toRfc4122()));
         self::assertSame(409, $this->statusCode(), 'sc-3913: Remove… on a picked variant asks first');

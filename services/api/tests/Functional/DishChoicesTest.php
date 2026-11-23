@@ -228,7 +228,7 @@ final class DishChoicesTest extends ApiTestCase
         $this->picks(self::optionId($this->choices()[0], 0), $this->guest('Tolu Adeyemi', []));
 
         $this->as($this->owner, 'POST', $this->choicesOf($jollof), [...self::side(), 'question' => 'And a sauce?']);
-        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 'everyone', 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['whom'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 'everyone', 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
         self::assertCount(1, $this->choices());
 
         $starter = $this->courseNamed('Starter');
@@ -236,7 +236,7 @@ final class DishChoicesTest extends ApiTestCase
         $asun = Type\string()->coerce($this->last()['dishId'] ?? null);
         $this->picks($asun, $this->guest('Femi Ade', []));
         $this->as($this->owner, 'POST', $this->choicesOf($asun), self::side());
-        self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
         $this->as($this->owner, 'POST', $this->choicesOf($asun) . '?askAgain=1', self::side());
         self::assertSame(201, $this->statusCode());
     }
@@ -289,10 +289,10 @@ final class DishChoicesTest extends ApiTestCase
         $this->picks($jollof, $this->guest('Femi Ade', []));
 
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($side['id'])));
-        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['count'] ?? null]);
 
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($sauce['id'])));
-        self::assertSame([409, 2], [$this->statusCode(), $this->last()['people'] ?? null], 'None for me is an answer to it too');
+        self::assertSame([409, 2], [$this->statusCode(), $this->last()['count'] ?? null], 'None for me is an answer to it too');
 
         $this->as($this->owner, 'DELETE', $this->path('/choices/' . Type\string()->coerce($drink['id'])));
         self::assertSame(200, $this->statusCode(), 'nobody has answered a required choice they have no option of');
@@ -311,7 +311,7 @@ final class DishChoicesTest extends ApiTestCase
         $sent = $this->sentBack($choice);
 
         $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...self::side(), 'options' => [$sent[0], $sent[1]]]);
-        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['people'] ?? null]);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['count'] ?? null]);
 
         $this->changeChoice($id, [...self::side(), 'options' => [$sent[1], $sent[2]]]);
         self::assertSame(['Garden salad', 'Moi moi'], Vec\map(self::options($this->choices()[0]), static fn (array $one): mixed => $one['name']));
@@ -327,9 +327,9 @@ final class DishChoicesTest extends ApiTestCase
         self::assertSame(1, $this->choices()[0]['noneAnswers']);
 
         $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...$sent, 'required' => true]);
-        self::assertSame([409, 1], [$this->statusCode(), $this->last()['people'] ?? null]);
+        self::assertSame([409, 1], [$this->statusCode(), $this->last()['count'] ?? null]);
         $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), [...$sent, 'pick' => 2]);
-        self::assertSame([409, 2], [$this->statusCode(), $this->last()['people'] ?? null]);
+        self::assertSame([409, 2], [$this->statusCode(), $this->last()['count'] ?? null]);
         self::assertSame(1, $this->choices()[0]['pick']);
 
         $this->changeChoice($id, [...$sent, 'question' => 'Any side?', 'options' => [...$sent['options'], self::option('Coleslaw', 'eggs')]]);
@@ -396,7 +396,7 @@ final class DishChoicesTest extends ApiTestCase
         ]];
 
         $this->as($this->owner, 'PUT', $this->path('/choices/' . $id), $body);
-        self::assertSame([409, 5, 'allergen', ['crustaceans', 'celery']], [$this->statusCode(), $this->last()['people'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
+        self::assertSame([409, 5, 'allergen', ['crustaceans', 'celery']], [$this->statusCode(), $this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
         self::assertSame(['mustard'], self::options($this->choices()[0])[1]['allergens']);
 
         $this->changeChoice($id . '?askAgain=1', $body);
