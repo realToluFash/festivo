@@ -578,7 +578,7 @@ export function spotOf(world: MenuWorld, course: Course, person: Person): Spot {
   if (pick.kind !== 'dish') return pick;
 
   const found = course.dishes.find((one) => one.id === pick.dishId);
-  if (found == null) return { kind: 'changed', picked: pick.dishId };
+  if (found == null) return noPick(world, course, person);
 
   const allergens = ruledOut(person, containsOf(found, pick.variantId));
   if (allergens.length > 0 && pick.override == null)

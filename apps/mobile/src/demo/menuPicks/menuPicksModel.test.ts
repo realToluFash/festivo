@@ -144,6 +144,19 @@ describe('Who hasn’t picked', () => {
     ]);
     expect(courseFigures(changed, courseOf(changed, 'k3')!).changed).toBe(3);
   });
+
+  it('counts only a stored Menu changed, never a dish pick whose dish has gone (sc-3913)', () => {
+    const world = menuStart('menuChanged').world!;
+    const k2 = world.picks.k2 ?? {};
+    const [who, pick] = Object.entries(k2).find(([, one]) => one.kind === 'dish') ?? [];
+    if (who == null || pick?.kind !== 'dish') throw new Error('no dish pick on Main');
+    const gone = {
+      ...world,
+      picks: { ...world.picks, k2: { ...k2, [who]: { ...pick, dishId: 'gone' } } },
+    };
+
+    expect(spotOf(gone, courseOf(gone, 'k2')!, personOf(gone, who)!).kind).not.toBe('changed');
+  });
 });
 
 describe('Choose for them', () => {

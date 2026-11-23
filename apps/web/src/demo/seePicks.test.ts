@@ -192,6 +192,19 @@ describe('Menu changed (sc-3913)', () => {
     expect(openFor(world, person(world, 'lucia-ruiz')).map((one) => one.id)).toEqual(['k3']);
     expect(courseFigures(world, course(world, 'k3')).changed).toBe(3);
   });
+
+  it('counts only a stored Menu changed, never a dish pick whose dish has gone', () => {
+    const { world } = picksStart('picksMenuChanged');
+    const k2 = world.picks.k2 ?? {};
+    const [who, pick] = Object.entries(k2).find(([, one]) => one.kind === 'dish') ?? [];
+    if (who == null || pick?.kind !== 'dish') throw new Error('no dish pick on Main');
+    const gone: PicksWorld = {
+      ...world,
+      picks: { ...world.picks, k2: { ...k2, [who]: { ...pick, dishId: 'gone' } } },
+    };
+
+    expect(spotOf(gone, course(gone, 'k2'), person(gone, who)).kind).not.toBe('changed');
+  });
 });
 
 describe('Choose for them', () => {
