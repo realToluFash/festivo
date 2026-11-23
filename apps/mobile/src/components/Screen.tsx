@@ -316,6 +316,28 @@ export function useFocusedFieldAboveToast(scroll: ScreenScrollView): void {
   }, [scroll]);
 }
 
+/** Keeps the focused field above the keys each time the scroll view resizes under them, where no lift group will: in a sheet the page pads for the keys only after the keys' own scroll to the field has run, and a group held still leaves the field under the docked foot (sc-67886). */
+export function useFocusedFieldAboveKeys(scroll: ScreenScrollView, on: boolean): void {
+  useEffect(() => {
+    if (!on) return undefined;
+    const lift = () => {
+      const keyboardTop = keyboardTopNow(scroll.origin.current);
+      if (keyboardTop == null) return;
+      const groups = [...scroll.lifts].map(
+        (measure) => new Promise<LiftFromTop>((resolve) => measure(resolve)),
+      );
+      void Promise.all(groups).then((ys) => {
+        if (ys.every((y) => y == null)) liftAboveKeyboard(scroll, focusedField(), keyboardTop);
+      });
+    };
+    scroll.resized.add(lift);
+
+    return () => {
+      scroll.resized.delete(lift);
+    };
+  }, [scroll, on]);
+}
+
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
   const room = useContext(Dock)?.room;
