@@ -127,6 +127,7 @@ export async function rereadOrganisations(): Promise<void> {
 
     forgetEventsTab();
     set({ ...state, organisations: read.organisations, organisation, pausedIn });
+    rememberWorkingIn(organisation, pausedIn);
     if (pausedIn != null) return;
     if (organisation == null) router.replace('/');
     else for (const listener of movedOn) listener(organisation);
@@ -164,14 +165,10 @@ function load(): Promise<boolean> {
     api.myInvitations().catch(() => state.invitations),
   ])
     .then(([account, { organisations, paused }, id, invitations]) => {
-      set({
-        ...state,
-        account,
-        organisations,
-        organisation: chooseOrganisation(organisations, id),
-        pausedIn: choosePaused(paused, id, organisations.length),
-        invitations,
-      });
+      const organisation = chooseOrganisation(organisations, id);
+      const pausedIn = choosePaused(paused, id, organisations.length);
+      set({ ...state, account, organisations, organisation, pausedIn, invitations });
+      rememberWorkingIn(organisation, pausedIn);
       void registerAppPush().catch(() => {});
       // The account's language, followed at launch while this read was on its way (sc-9267).
       if (currentLocale() !== askedIn) void rereadOrganisations();
@@ -200,7 +197,7 @@ export function switchOrganisation(id: string, landed?: () => void): boolean {
   const go = (): void => {
     forgetEventsTab();
     set({ ...state, organisation, pausedIn: null });
-    void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+    void rememberOrganisation(id);
     landed?.();
   };
 
@@ -261,6 +258,14 @@ function forget(): void {
   ended = true;
   loading = null;
   set(SIGNED_OUT);
+}
+
+/** Opened by default as much as by choice, so a pause there shows its page at the next launch rather than another organisation (sc-86056). */
+function rememberWorkingIn(
+  organisation: Membership | null,
+  pausedIn: PausedOrganisation | null,
+): void {
+  if (organisation != null && pausedIn == null) void rememberOrganisation(organisation.id);
 }
 
 async function remembered(): Promise<string | null> {

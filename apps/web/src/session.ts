@@ -176,7 +176,9 @@ export async function adoptAccount(account: Account, asked = generation): Promis
 
   // A sign-in's answer carries the colours as /me does, so a new browser opens in them without a reload.
   followAccountScheme(schemeIn(account));
-  set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
+  const session = sessionFrom(account, organisations, paused);
+  set({ status: 'signedIn', session });
+  rememberWorkingIn(session);
   // The account's language, followed after this read and before the session was set (sc-9267).
   if (currentLocale() !== askedIn) void rereadOrganisations();
 }
@@ -257,14 +259,13 @@ export async function rereadOrganisations(): Promise<void> {
 
   if (kept == null && current.organisation != null && current.pausedIn == null) {
     const organisation = chooseOrganisation(read.organisations, recalled());
-    const pausedIn = choosePaused(read.paused, recalled(), read.organisations.length);
+    const pausedIn = choosePaused(read.paused, current.organisation.id, read.organisations.length);
+    const session = { ...current, organisations: read.organisations, organisation, pausedIn };
 
     forgetEventsTab();
     forgetKept();
-    set({
-      status: 'signedIn',
-      session: { ...current, organisations: read.organisations, organisation, pausedIn },
-    });
+    set({ status: 'signedIn', session });
+    rememberWorkingIn(session);
     if (organisation != null && pausedIn == null)
       for (const listener of movedOn) listener(organisation);
 
@@ -407,6 +408,11 @@ function recalled(): string | null {
   } catch {
     return null;
   }
+}
+
+/** Opened by default as much as by choice, so a pause there shows its page at the next open rather than another organisation (sc-86056). */
+function rememberWorkingIn(session: Session): void {
+  if (session.organisation != null && session.pausedIn == null) remember(session.organisation.id);
 }
 
 function remember(id: string): void {
