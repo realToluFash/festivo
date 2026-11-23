@@ -104,6 +104,15 @@ export function closeTime(at: string, timeZone: string, locale: string): string 
   }).format(new Date(at));
 }
 
+/** The minute a choose-by date closes at, 23:59, as the locale writes a time (sc-1362). */
+export const dayEndTime = (locale: string): string =>
+  new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC',
+  }).format(Date.UTC(2026, 0, 1, 23, 59));
+
 /** The open courses close on different days (sc-1362): the header reads "picks close from {date}". */
 export function menuCloseFrom(courses: readonly MenuCourse[]): boolean {
   const open = courses.flatMap((course) =>

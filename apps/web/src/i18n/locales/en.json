@@ -5968,7 +5968,7 @@
     "chooseN_one": "Choose {{count, number}}",
     "chooseN_other": "Choose {{count, number}}",
     "chooseBy": "Choose by",
-    "chooseByHint": "Picks for {{course}} close at 23:59 on this date, {{zone}} time. It must be before the event, {{date}}.",
+    "chooseByHint": "Picks for {{course}} close at {{time}} on this date, {{zone}} time. It must be before the event, {{date}}.",
     "clear": "Clear the default and date",
     "locked": "{{date}} has passed, so the date is locked.",
     "onlyDefault": "Enter a choose-by date, or set the default to No default.",

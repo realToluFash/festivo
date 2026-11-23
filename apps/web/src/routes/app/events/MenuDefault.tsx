@@ -23,6 +23,8 @@ import {
   variantRadio,
   withDish,
 } from './courseDefault.ts';
+import { dateLocale } from '../../../i18n/index.ts';
+import { dayEndTime } from './menuArea.ts';
 import './menuDefault.css';
 
 const described = (...ids: (string | false | null)[]): string | undefined =>
@@ -159,7 +161,12 @@ export function DefaultFields({
             />
           </div>
           <p id="mc-choose-by-help" className="desk-help">
-            {t('courseDefault.chooseByHint', { course: course.name, zone, date: day(dates.event) })}
+            {t('courseDefault.chooseByHint', {
+              course: course.name,
+              zone,
+              date: day(dates.event),
+              time: dayEndTime(dateLocale()),
+            })}
           </p>
           {errors?.chooseBy != null && <Wrong id="mc-choose-by-error">{errors.chooseBy}</Wrong>}
         </div>
