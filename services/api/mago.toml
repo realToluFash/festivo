@@ -193,6 +193,7 @@ pdf = ["App\\Pdf\\**"]
 realtime = ["App\\Realtime\\**"]
 translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
+webauthn = ["App\\WebAuthn\\**"]
 
 integrations = ["App\\Integrations\\**"]
 oidc = ["App\\Integrations\\OpenIdConnect\\**"]
@@ -247,6 +248,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:realtime"
 namespace = "App\\Storage\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:storage"]
 
+# Passkey ceremonies (sc-86885): bytes in, a checked credential or assertion out.
+[[guard.perimeter.rules]]
+namespace = "App\\WebAuthn\\"
+permit = ["@layer:native", "@layer:external", "@layer:webauthn"]
+
 [[guard.perimeter.rules]]
 namespace = "App\\Translation\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:translation", "@layer:locale"]
@@ -278,6 +284,7 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:locale",
+    "@layer:webauthn",
 ]
 
 # Organisations read the user scope's vocabulary (EmailAddressNormaliser for a

@@ -59,8 +59,9 @@ final readonly class TwoFactorSettings
     public function status(User $user): array
     {
         $app = $this->secondFactors->app($user);
+        $passkeys = $this->secondFactors->passkeys($user);
         $factors = [
-            ...Vec\map($this->secondFactors->passkeys($user), fn (Passkey $passkey): array => [
+            ...Vec\map($passkeys, fn (Passkey $passkey): array => [
                 'kind' => 'passkey',
                 'id' => $passkey->getId()->toRfc4122(),
                 'provider' => $this->passkeyProviders->nameOf($passkey->getAaguid()),
@@ -70,7 +71,7 @@ final readonly class TwoFactorSettings
             ...(null === $app ? [] : [['kind' => 'app', 'addedAt' => ($app->getActivatedAt() ?? $app->getCreatedAt())->format(\DATE_ATOM)]]),
         ];
         \usort($factors, static fn (array $a, array $b): int => $b['addedAt'] <=> $a['addedAt']);
-        $on = [] !== $factors;
+        $on = null !== $app || [] !== $passkeys;
 
         return [
             'on' => $on,

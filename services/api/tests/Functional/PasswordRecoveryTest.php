@@ -108,7 +108,10 @@ final class PasswordRecoveryTest extends ApiTestCase
         $elsewhere = $this->signIn('folake@example.com', self::OLD_PASSWORD);
         $token = $this->requestLink('folake@example.com');
 
-        self::assertSame(['email' => 'folake@example.com', 'twoFactor' => false], $this->call('POST', '/api/auth/password/reset/check', ['token' => $token]));
+        self::assertSame(
+            ['email' => 'folake@example.com', 'twoFactor' => false, 'factors' => ['app' => false, 'passkeys' => false], 'passkeysOffered' => true],
+            $this->call('POST', '/api/auth/password/reset/check', ['token' => $token])
+        );
 
         $body = $this->call('POST', '/api/auth/password/reset', ['token' => $token, 'password' => self::NEW_PASSWORD]);
 
