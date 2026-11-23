@@ -19,7 +19,7 @@ import {
   sendPicks,
   summaryClose,
 } from './mealClose.ts';
-import { DishScreen } from './MealParts.tsx';
+import { DishScreen, PickMark } from './MealParts.tsx';
 import { MW, PERSON, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
 import { dayWords } from './picksClose.ts';
@@ -142,7 +142,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
               <div className="mx-words">
                 <p className="mx-course">{one.course.name}</p>
                 {line === 'hostInTouch' ? (
-                  <HostInTouch words={after} />
+                  <PickMark shape="host" words={after} />
                 ) : (
                   <p className="mx-pick">{shown ?? MSW.notChosen}</p>
                 )}
@@ -195,17 +195,6 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
   );
 }
 
-function HostInTouch({ words }: { words: string | null }) {
-  return (
-    <p className="mx-pick pc-shape">
-      <span className="pc-ring is-host" aria-hidden="true">
-        <Glyph name="message" size={13} weight={2.4} />
-      </span>
-      <span>{words}</span>
-    </p>
-  );
-}
-
 function CourseScreen({
   id,
   pick,
@@ -252,7 +241,7 @@ function CourseScreen({
             {MSW.yourCourse(course.name)}
           </h2>
           {line === 'hostInTouch' ? (
-            <HostInTouch words={after} />
+            <PickMark shape="host" words={after} />
           ) : (
             after != null && <p className="gk-text">{after}</p>
           )}
