@@ -28,7 +28,8 @@ export function OneHeight({
   const outer = useContext(OneHeightGroup);
   const { fontScale, width } = useWindowDimensions();
   const { i18n } = useTranslation();
-  // Held at the tallest, a button would never report a shorter height of its own, so a new size, width or language measures again.
+  // Held at the tallest, a button would never report a shorter height of its own, and onLayout fires only on a frame change,
+  // so a new size, width or language remounts every button to report afresh.
   const at = `${fontScale}|${width}|${i18n.language}`;
   const [tallest, setTallest] = useState({ at, height: 0 });
   const group = useMemo<Group>(
@@ -41,7 +42,11 @@ export function OneHeight({
     }),
     [tallest, at],
   );
-  const inner = <View style={style}>{children}</View>;
+  const inner = (
+    <View key={at} style={style}>
+      {children}
+    </View>
+  );
 
   return outer == null ? (
     <OneHeightGroup.Provider value={group}>{inner}</OneHeightGroup.Provider>
