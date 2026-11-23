@@ -430,6 +430,20 @@ describe('the menu changed after you picked (sc-3913)', () => {
     );
   });
 
+  it('names more than one allergen added in Annex II order, joined with and', () => {
+    expect(
+      PW.changedLine(
+        { key: 'chidi', name: CHIDI, you: false },
+        {
+          kind: 'changed',
+          dish: 'Pounded yam and egusi',
+          why: 'allergen',
+          allergens: ['sesame', 'milk'],
+        },
+      ),
+    ).toBe(`[${CHIDI} picked Pounded yam and egusi, which now contains milk and sesame.]`);
+  });
+
   it('refuses Send my changes while a pick is still Menu changed', SLOW, async () => {
     await party('menuChangedCheck');
     const theirs = screen.getByRole('region', { name: `${CHIDI}’s meals` });
