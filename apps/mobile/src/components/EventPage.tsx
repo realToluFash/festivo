@@ -495,7 +495,7 @@ interface Closed {
 /** How long the saved toast's top holds still, with the keys down, before the row rests above it: a Save made with the keys up lays the toast out over them first, and it moves down only as the window grows back (sc-86228). */
 const TOAST_STILL_MS = 150;
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). When it goes is savedRowFocus's: the edit counts as gone SETTLED_MS after this close's own toast was laid out, since counted from the commit a heavy Save's window could still be going and TalkBack, as it went, put its focus on the header's back button. The rest waits for the keys to be down and the toast to hold still, and the latest moment rests above the toast too where its top is known. Closing the toast with × sends focus back to the latest Save's row once the room has gone. */
+/** Brings the row an edit closes onto into sight before focus goes back to it, and after Save rests it 12pt above the saved toast; focus must not move before the edit's window has gone, or TalkBack puts it on the header's back button (sc-48600, sc-86228). */
 function useOpenerInSight(
   closed: Closed | null,
   toast: { top: number; over: Closed | null } | null,
@@ -556,9 +556,10 @@ function useOpenerInSight(
         void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
           if (!on) return rested();
           const top = overNow.current;
-          if (seen.current === closed || top == null || Keyboard.isVisible())
-            return bringInto.current(closed, rested);
+          const restedBefore = seen.current === closed;
           seen.current = closed;
+          if (restedBefore || top == null || Keyboard.isVisible())
+            return bringInto.current(closed, rested);
           restAbove.current(closed, top, (measured) =>
             measured ? rested() : bringInto.current(closed, rested),
           );

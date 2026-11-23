@@ -85,6 +85,12 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
     expect(inSight).toContain('measured ? rested() : bringInto.current(closed, rested),');
   });
 
+  it('moves the row once: the latest moment marks it seen, so keys going down after it rest nothing more', () => {
+    expect(inSight).toContain(
+      'seen.current = closed;\n          if (restedBefore || top == null || Keyboard.isVisible())',
+    );
+  });
+
   it('sends focus back to the latest Save’s row when × closes the toast, once the room has gone', () => {
     expect(screen).toContain('if (toast?.over != null) setToastClosed({ of: toast.over });');
     expect(screen).toContain('onClose={closeToast}');
