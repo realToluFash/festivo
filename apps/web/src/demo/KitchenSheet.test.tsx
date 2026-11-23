@@ -153,11 +153,12 @@ describe('the kitchen sheet (sc-3911)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('shows the skeleton while loading', SLOW, async () => {
+  it('shows the skeleton while loading, with no snapshot time yet', SLOW, async () => {
     await sheet(sheetAt('loading'));
 
     expect(screen.getByText(KSW.loading)).toBeTruthy();
     expect(screen.queryByRole('button', { name: KSW.download })).toBeNull();
+    expect(screen.queryByText(/^As of /)).toBeNull();
   });
 
   it('says the sheet did not load, and Try again loads it', SLOW, async () => {
@@ -166,6 +167,7 @@ describe('the kitchen sheet (sc-3911)', () => {
     expect(screen.getByRole('alert').textContent).toContain(KSW.cannotReach);
     expect(screen.queryByRole('button', { name: KSW.download })).toBeNull();
     expect(screen.queryByRole('region', { name: KSW.allergies })).toBeNull();
+    expect(screen.queryByText(/^As of /)).toBeNull();
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: KSW.retry }));
     expect(screen.getByText(KSW.loading)).toBeTruthy();
@@ -175,6 +177,7 @@ describe('the kitchen sheet (sc-3911)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(allergies()).toBeTruthy();
     expect(screen.getByRole('button', { name: KSW.download })).toBeTruthy();
+    expect(screen.getByText(/^As of /)).toBeTruthy();
   });
 
   it('refuses without Menu read, back to the event', SLOW, async () => {
