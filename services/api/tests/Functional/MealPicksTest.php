@@ -250,7 +250,7 @@ final class MealPicksTest extends ApiTestCase
     }
 
     #[Test]
-    public function aStoredAnswerIsRefusedOnTheMenuThroughItsRoutesAndCountedInKitchenPrep(): void
+    public function aStoredAnswerAsksTheHostFirstOnTheMenuThroughItsRoutesAndIsCountedInKitchenPrep(): void
     {
         $chicken = new MenuDishVariant($this->jollof, 'Chicken', false, ['celery'], [], null, 0);
         $fish = new MenuDishVariant($this->jollof, 'Fish', false, ['fish'], [], null, 1);
@@ -264,16 +264,17 @@ final class MealPicksTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         $this->as('DELETE', $this->menu('/dishes/' . $this->id($this->jollof)));
-        self::assertSame(409, $this->statusCode(), 'sc-3902: Remove… on a picked dish');
-        self::assertSame(ErrorCode::MenuDishPicked->type(), $this->last()['type'] ?? null);
+        self::assertSame(409, $this->statusCode(), 'sc-3913: Remove… on a picked dish asks first');
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
+        self::assertSame(1, $this->last()['people'] ?? null);
 
         $this->as('DELETE', $this->menu('/variants/' . $chicken->getId()->toRfc4122()));
-        self::assertSame(409, $this->statusCode(), 'sc-3903: Remove… on a picked variant');
-        self::assertSame(ErrorCode::VariantPicked->type(), $this->last()['type'] ?? null);
+        self::assertSame(409, $this->statusCode(), 'sc-3913: Remove… on a picked variant asks first');
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
 
         $this->as('DELETE', $this->menu('/choices/' . $side->getId()->toRfc4122()));
-        self::assertSame(409, $this->statusCode(), 'sc-3904: removing an answered choice');
-        self::assertSame(ErrorCode::ChoiceAnswered->type(), $this->last()['type'] ?? null);
+        self::assertSame(409, $this->statusCode(), 'sc-3913: removing an answered choice asks first');
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
 
         self::assertSame(['Plantain' => 1, 'Moi moi' => 0], $this->kitchenPrep());
     }

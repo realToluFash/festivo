@@ -137,7 +137,7 @@ final class MenuPicksTest extends ApiTestCase
         self::assertSame([1, 1, 1, 1], [self::row($main, 'Jollof rice')['chosen'], $main['kitchen'], $main['skipped'], $main['notChosen']]);
         self::assertSame([['fish', 'celery'], ['milk', 'fish'], [], null, []], [self::row($starter, 'Catfish pepper soup')['allergens'], self::row($main, 'Pounded yam and egusi')['allergens'], self::row($main, 'Rice and stew')['allergens'], self::row($main, 'Suya')['allergens'], self::row($main, 'Ofada stew')['allergens']]);
         self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => []]], $picks['needsHost']);
-        self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'excluded' => []]]]], $picks['waiting']);
+        self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'changed' => [], 'excluded' => []]]]], $picks['waiting']);
     }
 
     #[Test]

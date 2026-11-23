@@ -21,7 +21,7 @@ use Psl\Vec;
  * @phpstan-type Choice array{id: string, question: string, pick: int, required: bool, draft: bool, options: list<Option>, ...}
  * @phpstan-type Dish array{id: string, name: string, allergens: ?list<string>, diets: list<string>, variants: list<Variant>, choices: list<array<array-key, mixed>>, ...}
  * @phpstan-type Course array{id: string, name: string, answer: string, skippable: bool, picksClose: ?array{at: string, source: string, closed: bool}, default: ?CourseDefault, dishes: list<Dish>, ...}
- * @phpstan-type Spot array{state: string, dish?: string, variant?: ?string, options?: list<string>, reason?: string, pick?: string, allergens?: list<string>, excluded?: string}
+ * @phpstan-type Spot array{state: string, dish?: string, variant?: ?string, options?: list<string>, reason?: string, pick?: string, allergens?: list<string>, excluded?: string, picked?: string, why?: string}
  */
 final readonly class PicksMenu
 {

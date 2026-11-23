@@ -17,7 +17,7 @@ use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
 /**
- * See picks (sc-3909): everyone coming is in exactly one state per course, so a course's dish rows and states always add up to the room.
+ * See picks (sc-3909): everyone coming is in exactly one state per course, so a course's dish rows and states always add up to the room. Menu changed is its own state (sc-3913), and one asked again for an allergen added to their pick is in Needs the host too.
  *
  * @phpstan-import-type GuestDish from GuestMenu
  * @phpstan-import-type Course from PicksMenu
@@ -67,6 +67,7 @@ final readonly class PicksFigures
         foreach ($room as $person) {
             $id = $person->getId()->toRfc4122();
             $open = [];
+            $changed = [];
             $excluded = [];
             $defaulted = [];
 
@@ -81,6 +82,20 @@ final readonly class PicksFigures
                         'pick' => $spot['pick'] ?? null,
                         'allergens' => $spot['allergens'] ?? [],
                     ];
+                }
+
+                if ('changed' === $spot['state']) {
+                    $changed[] = ['course' => $course['id'], 'picked' => $spot['picked'] ?? ''];
+
+                    if ('allergen' === ($spot['why'] ?? null)) {
+                        $needsHost[] = [
+                            'person' => $names ? self::person($person) : null,
+                            'course' => $course['id'],
+                            'reason' => 'allergy',
+                            'pick' => $spot['picked'] ?? null,
+                            'allergens' => $spot['allergens'] ?? [],
+                        ];
+                    }
                 }
 
                 if ('none' === $spot['state']) {
@@ -98,8 +113,8 @@ final readonly class PicksFigures
 
             $party = self::partyOf($person)->getId()->toRfc4122();
 
-            if ([] !== $open) {
-                $waiting[$party][] = [...self::person($person), 'courses' => $open, 'excluded' => $excluded];
+            if ([] !== $open || [] !== $changed) {
+                $waiting[$party][] = [...self::person($person), 'courses' => $open, 'changed' => $changed, 'excluded' => $excluded];
             }
 
             if ([] !== $defaulted) {
@@ -183,6 +198,7 @@ final readonly class PicksFigures
 
         $host = $count(static fn (array $spot): bool => 'host' === $spot['state']);
         $none = $count(static fn (array $spot): bool => 'none' === $spot['state']);
+        $changed = $count(static fn (array $spot): bool => 'changed' === $spot['state']);
 
         return [
             'id' => $course['id'],
@@ -196,8 +212,9 @@ final readonly class PicksFigures
             'skipped' => $count(static fn (array $spot): bool => 'skipped' === $spot['state']),
             'needsHost' => $host,
             'notChosen' => $none,
+            'menuChanged' => $changed,
             'room' => $room,
-            'answered' => $room - $host - $none,
+            'answered' => $room - $host - $none - $changed,
         ];
     }
 

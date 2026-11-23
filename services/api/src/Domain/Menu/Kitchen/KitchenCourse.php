@@ -24,13 +24,13 @@ final readonly class KitchenCourse
      * @param Course $course
      * @param Spot   $spot
      *
-     * @return Cell a dish, or `kitchen`, `skipped`, `host`, `notYet` or `never`
+     * @return Cell a dish, or `kitchen`, `skipped`, `host`, `changed`, `notYet` or `never`
      */
     public static function cell(array $course, array $spot): array
     {
         return match ($spot['state']) {
             'dish', 'defaulted' => ['kind' => 'dish', 'text' => PicksMenu::plateName($course, $spot['dish'] ?? '', $spot['variant'] ?? null, $spot['options'] ?? [])],
-            'kitchen', 'skipped', 'host' => ['kind' => $spot['state']],
+            'kitchen', 'skipped', 'host', 'changed' => ['kind' => $spot['state']],
             default => ['kind' => isset($spot['excluded']) && self::closedWithDefault($course) ? 'never' : 'notYet'],
         };
     }
@@ -65,6 +65,7 @@ final readonly class KitchenCourse
             'skipped' => $counted['skipped'],
             'needsHost' => $counted['needsHost'],
             'notChosen' => $counted['notChosen'],
+            'menuChanged' => $counted['menuChanged'],
             'never' => self::closedWithDefault($course),
             'room' => $counted['room'],
             'given' => null !== $default && $counted['closed'] && $defaulted > 0
@@ -91,6 +92,7 @@ final readonly class KitchenCourse
             'skipped' => Type\int(),
             'needsHost' => Type\int(),
             'notChosen' => Type\int(),
+            'menuChanged' => Type\int(),
             'room' => Type\int(),
             'closed' => Type\bool(),
         ]));

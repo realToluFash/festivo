@@ -11,6 +11,7 @@ use App\Entity\Guest;
 use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
 use App\Enum\MealAnswerKind;
+use App\Enum\MenuChangeWhy;
 use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use Psl\Dict;
@@ -31,7 +32,7 @@ final readonly class ServedMeals
     /**
      * @param non-empty-list<Guest> $people one party, the guest first
      *
-     * @return array{answers: array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>}>>, excluded: array<string, list<array{course: string, reason: string}>>} each by the person's id; `excluded` names the courses whose default the person is never given, and why
+     * @return array{answers: array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>, changed: ?array{picked: string, why: string, ways: ?int}}>>, excluded: array<string, list<array{course: string, reason: string}>>} each by the person's id; `changed` on an answer a menu change asked again (sc-3913); `excluded` names the courses whose default the person is never given, and why
      */
     public function of(array $people): array
     {
@@ -56,6 +57,9 @@ final readonly class ServedMeals
                 'dish' => $answer->getDish()?->getId()->toRfc4122(),
                 'variant' => $answer->getVariant()?->getId()->toRfc4122(),
                 'options' => $answer->getOptions(),
+                'changed' => MealAnswerKind::MenuChanged === $answer->getKind()
+                    ? ['picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'ways' => $answer->getChangedWays()]
+                    : null,
             ]);
 
             foreach ($withDefault as $course) {
@@ -70,7 +74,7 @@ final readonly class ServedMeals
                 if (null !== $reason) {
                     $excluded[$id][] = ['course' => $course['id'], 'reason' => $reason];
                 } elseif ($course['picksClose']['closed']) {
-                    $served[] = ['course' => $course['id'], 'answer' => MealAnswerKind::Defaulted->value, 'dish' => $default['dish'], 'variant' => $default['variant'], 'options' => $default['options']];
+                    $served[] = ['course' => $course['id'], 'answer' => MealAnswerKind::Defaulted->value, 'dish' => $default['dish'], 'variant' => $default['variant'], 'options' => $default['options'], 'changed' => null];
                 }
             }
 

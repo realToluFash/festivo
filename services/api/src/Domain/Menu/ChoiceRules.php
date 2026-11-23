@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu;
 
-use App\Domain\Menu\Model\ChoiceAnswers;
 use App\Domain\Menu\Model\ChoiceDetails;
 use App\Domain\Menu\Model\OptionDetails;
 use App\Entity\MenuChoiceOption;
@@ -73,10 +72,10 @@ final readonly class ChoiceRules
 
     /**
      * @param Sent                   $sent
-     * @param list<MenuChoiceOption> $options what the choice has now; none for a new one
-     * @param ?ChoiceAnswers         $answers what guests answered to the choice being changed; null for a new one
+     * @param list<MenuChoiceOption> $options  what the choice has now; none for a new one
+     * @param bool                   $answered whether guests answered the choice being changed: it can't then be left a draft
      */
-    public function details(array $sent, ?MenuDishChoice $was, array $options, ?ChoiceAnswers $answers): ChoiceDetails
+    public function details(array $sent, ?MenuDishChoice $was, array $options, bool $answered): ChoiceDetails
     {
         $violations = [];
         $question = NameNormaliser::name($sent['question']);
@@ -86,7 +85,6 @@ final readonly class ChoiceRules
         }
 
         $known = Vec\map($options, static fn (MenuChoiceOption $one): string => $one->getId()->toRfc4122());
-        $picked = $answers->pickedOptionIds ?? [];
         $kept = [];
         $taken = [];
 
@@ -104,10 +102,6 @@ final readonly class ChoiceRules
             $stated = [] !== $allergens || $none;
 
             if ('' === $name && !$stated) {
-                if (null !== $id && Iter\contains($picked, $id)) {
-                    $violations[] = $this->violation($path . 'name', 'menu.option_picked');
-                }
-
                 continue;
             }
 
@@ -136,21 +130,7 @@ final readonly class ChoiceRules
             $violations[] = $this->violation('pick', 'validation.choice_options_limit', ['{max}' => (string) MenuDishChoice::OPTIONS_MAXIMUM]);
         }
 
-        $sentIds = Vec\filter_nulls(Vec\map($sent['options'], static fn (array $one): ?string => $one['id'] ?? null));
-
-        if (Iter\any($picked, static fn (string $id): bool => !Iter\contains($sentIds, $id))) {
-            throw new ApiException(ErrorCode::ChoiceOptionPicked, 'menu.option_picked');
-        }
-
-        if (null !== $was && null !== $answers && $answers->answered()) {
-            if ($sent['pick'] !== $was->getPick()) {
-                $violations[] = $this->violation('pick', 'menu.choice_answered');
-            }
-
-            if ($sent['required'] && !$was->isRequired() && $answers->noneAnswers > 0) {
-                $violations[] = $this->violation('required', 'menu.choice_answered');
-            }
-
+        if (null !== $was && $answered) {
             $reasons = self::draftReasons($question, Iter\count($kept), $sent['pick']);
 
             if ([] !== $reasons) {
