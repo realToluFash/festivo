@@ -1095,13 +1095,13 @@ const STATES = {
   changeNobody: () =>
     start({
       name: 'MenuChange: nobody affected',
-      note: 'Crustaceans ticked on Jollof rice, which nobody who picked it has recorded. Save changes saves at once with the usual note, and opens no dialog.',
+      note: 'Mustard ticked on Jollof rice, which nobody who picked it has recorded. Save changes saves at once with the usual note, and opens no dialog.',
       asksAgain: true,
       opened: {
         kind: 'editDish',
         courseId: MAIN,
         dishId: 'k2-jollof',
-        form: { allergens: ['celery', 'crustaceans'] },
+        form: { allergens: ['celery', 'mustard'] },
       },
     }),
   changePastDate: () =>
