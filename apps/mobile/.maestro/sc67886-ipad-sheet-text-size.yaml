@@ -71,6 +71,13 @@ appId: host.exp.Exponent
     id: 'signIn.password'
     text: 'not-the-password'
 - assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+# Turned plain by the eye, the field keeps its focus but iOS can put the iPad's keys down. Tapped again at its foot,
+# the keys are surely up, so the hide key has keys to put down instead of landing outside the sheet and closing it.
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- waitForAnimationToEnd:
+    timeout: 3000
 - takeScreenshot: sc67886-ipad-sheet-keys-up
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-keys-down-again
