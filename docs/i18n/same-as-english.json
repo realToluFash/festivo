@@ -232,7 +232,9 @@
     "messagesCounts:guestReplies.push.title",
     "web:seePicks.side",
     "web:kitchenSheet.allergies",
-    "messagesCounts:kitchen_sheet.allergies"
+    "messagesCounts:kitchen_sheet.allergies",
+    "web:eventForm.creditStadia",
+    "mobile:eventForm.creditStadia"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
