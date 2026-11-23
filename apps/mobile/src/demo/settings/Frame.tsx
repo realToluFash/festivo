@@ -1,5 +1,6 @@
 import { type ReactNode, type Ref, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, View, type ViewInstance, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,14 +19,10 @@ import { SIDEBAR_EVENTS } from '../sideEvents.ts';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { demoShell } from '../demoShell.ts';
 import { openSearch, SearchButton } from '../search/SearchHeader.tsx';
+import { aloneOf, heldOf, inAnOrganisation } from './HeldModel.ts';
 import { viewerOfRole } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
-import {
-  type Looking,
-  ShellContext,
-  useShell,
-  type Viewer,
-} from '../../components/settingsShell.ts';
+import { type Looking, ShellContext, useShell } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { Bell as ProductBell } from '../../components/BellButton.tsx';
 import { PortraitRow, PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
@@ -70,6 +67,7 @@ export function Landscape({
   search?: boolean;
 }) {
   const shell = useShell();
+  const org = useInAnOrganisation();
   const side = useSideFrame();
   const fromNone = useWayBackToNone();
   const { fontScale } = useWindowDimensions();
@@ -103,6 +101,7 @@ export function Landscape({
               at={at}
               onPerson={() => shell.openSection('account')}
               org={shell.viewer !== 'noOrg'}
+              places={org}
             />
           </TodayShellProvider>
         ))}
@@ -258,22 +257,31 @@ export function OrgPill({
   );
 }
 
-/** With no organisation the tabs are Today and Settings, as the product's (sc-29914). */
-export function tabsFor(viewer: Viewer): readonly (typeof TABS)[number][] {
-  return viewer === 'noOrg' ? TABS.filter(([tab]) => tab === 'Today' || tab === 'Settings') : TABS;
+/** With no organisation in use the tabs are Today and Settings, as the product's (sc-29914, sc-39471). */
+export function tabsFor(org: boolean): readonly (typeof TABS)[number][] {
+  return org ? TABS : TABS.filter(([tab]) => tab === 'Today' || tab === 'Settings');
+}
+
+/** Whether an organisation is in use: not for no organisation, nor while paused in the only one (`?held=paused&switcher=one`). */
+function useInAnOrganisation(): boolean {
+  const shell = useShell();
+  const params = useLocalSearchParams<{ held?: string; switcher?: string }>();
+
+  return inAnOrganisation(shell.viewer === 'noOrg', heldOf(params.held), aloneOf(params.switcher));
 }
 
 /** The phone's tab bar, holding only the tabs the viewer has. */
 export function SettingsTabBar({ bottom }: { bottom: number }) {
   const { t } = useTranslation();
   const shell = useShell();
+  const org = useInAnOrganisation();
   const fromNone = useWayBackToNone();
 
   if (fromNone != null) return null;
 
   return (
     <TabBar
-      tabs={tabsFor(shell.viewer)}
+      tabs={tabsFor(org)}
       bottom={bottom}
       onTab={shell.onTab}
       at="Settings"
@@ -287,7 +295,7 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
 function usePortraitRow(at: Tab, search: boolean) {
   const { t } = useTranslation();
   const shell = useShell();
-  const tabs = tabsFor(shell.viewer);
+  const tabs = tabsFor(useInAnOrganisation());
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
 
   return {

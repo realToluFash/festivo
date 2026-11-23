@@ -25,6 +25,11 @@ export function othersOf(alone: boolean): readonly Membership[] {
   return alone ? [] : OTHERS;
 }
 
+/** Events and the Calendar need an organisation in use; paused in the only one, there is none, so the tabs are Today and Settings as the product's (sc-39471). */
+export function inAnOrganisation(noOrg: boolean, held: Held | null, alone: boolean): boolean {
+  return !noOrg && !(held === 'paused' && alone);
+}
+
 const YOURS: readonly ShellSection[] = ['account', 'security', 'notifications', 'personalisation'];
 
 /** Your account's four sections stay open while the organisation is paused, as the product's do. */

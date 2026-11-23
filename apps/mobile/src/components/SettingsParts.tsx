@@ -24,6 +24,7 @@ import {
   backWordSize,
   pillBack,
 } from '../layout/focusedHeader.ts';
+import type { Family, WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
@@ -195,10 +196,12 @@ const PILL_GLYPH_SIZE = 18;
 const TURNING_SIDE = 16;
 
 /** A growing pill's label: its full size while its widest word fits beside the glyph, which grows with it; else the largest that fits, never under `size` (sc-13496). */
-function useGrownLabel({
+export function useGrownLabel({
   on,
   label,
   size,
+  weight = 'semibold',
+  family = 'sans',
   glyph,
   beside,
   chrome,
@@ -206,6 +209,8 @@ function useGrownLabel({
   on: boolean;
   label: string;
   size: number;
+  weight?: WeightName;
+  family?: Family;
   /** The glyph's side per unit of the label's size, 0 when it does not grow. */
   glyph: number;
   /** What sits beside the words at every size: the gap, and a mark that does not grow. */
@@ -241,7 +246,8 @@ function useGrownLabel({
       <MeasuredWords
         words={words.filter((word) => widths[word] == null)}
         size={size}
-        weight="semibold"
+        weight={weight}
+        family={family}
         maxFontSizeMultiplier={start / size}
         onWidth={(word, measuredWidth) =>
           setMeasured((now) => {

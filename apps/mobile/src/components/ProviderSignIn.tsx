@@ -1,6 +1,6 @@
 import { type Provider, ProviderCancelled } from '@soirely/api-client';
 import { router } from 'expo-router';
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
@@ -9,11 +9,19 @@ import { PROVIDER_NAMES, signInWithProvider } from '../providerSignIn.ts';
 import { nextAfterSignIn } from '../challenge.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
-import { capUnderTitle, drawnSize } from '../layout/textSize.ts';
-import { appleIosSize } from './appleIosSize.ts';
+import { drawnSize } from '../layout/textSize.ts';
+import type { WeightName } from '../theme/fonts.ts';
+import {
+  APPLE_IOS_CHROME,
+  APPLE_IOS_LOGO_HEIGHT,
+  APPLE_IOS_LOGO_WIDTH,
+  appleIosGlyph,
+  appleIosSize,
+} from './appleIosSize.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
 import { OneHeight, useOneHeight } from './OneHeight.tsx';
-import { Text, TitleCap } from './Text.tsx';
+import { useGrownLabel } from './SettingsParts.tsx';
+import { Text } from './Text.tsx';
 
 const appleOnIos = Platform.OS === 'ios';
 // The glyph is centred at 20 units; a band ending at 40.8 centres it at 20.4, putting the glyph 0.3pt above the fill's centre, as on iOS's own.
@@ -105,7 +113,7 @@ export function ProviderButton({
   const inactive = busy || off;
   // Apple's words are drawn on every platform: iOS's own button reads in the device's language, not the app's.
   const appleIos = provider === 'apple' && appleOnIos;
-  const appleSize = useAppleIosSize();
+  const appleSize = useAppleIosSize(label, 'medium', appleIos);
   const oneHeight = useOneHeight();
 
   return (
@@ -118,7 +126,10 @@ export function ProviderButton({
         inactive && styles.inactive,
         oneHeight.style,
       ]}
-      onLayout={oneHeight.onLayout}
+      onLayout={(event) => {
+        oneHeight.onLayout?.(event);
+        appleSize.room(event.nativeEvent.layout.width);
+      }}
       onPress={inactive ? undefined : onPress}
       // A disabled button lets a tap through to the scroll view under it, which drops the keys mid-request.
       // Pressable lets any non-null disabled overwrite accessibilityState.disabled, so busy leaves it unset.
@@ -129,6 +140,7 @@ export function ProviderButton({
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}
     >
+      {appleSize.measure}
       {provider === 'google' ? (
         <GoogleMark />
       ) : appleIos ? (
@@ -150,6 +162,7 @@ export function ProviderButton({
           size={appleIos ? CONTROL_TEXT_SIZE : tokens.typeButton.size}
           weight="medium"
           family={appleIos ? 'system' : 'sans'}
+          maxFontSizeMultiplier={appleIos ? appleSize.multiplier : undefined}
           style={styles.appleText}
         >
           {label}
@@ -193,25 +206,37 @@ function AppleMark() {
   );
 }
 
-/** The iPhone Apple button's words as drawn at the text size, the logo and its gap in proportion to them (sc-84920). */
-export function useAppleIosSize(): ReturnType<typeof appleIosSize> {
+/** The iPhone Apple button's words as drawn at the text size, the logo and its gap in proportion to them (sc-84920); stepped down only as far as keeps its longest word whole beside the logo (sc-13496). */
+export function useAppleIosSize(label: string, weight: WeightName, on = true) {
   const { fontScale } = useWindowDimensions();
-  const cap = useContext(TitleCap);
+  const grown = useGrownLabel({
+    on,
+    label,
+    size: CONTROL_TEXT_SIZE,
+    weight,
+    family: 'system',
+    glyph: appleIosGlyph(),
+    beside: 0,
+    chrome: APPLE_IOS_CHROME,
+  });
 
-  const multiplier = cap == null ? undefined : capUnderTitle(cap, CONTROL_TEXT_SIZE);
-
-  return appleIosSize(drawnSize(CONTROL_TEXT_SIZE, fontScale, multiplier));
+  return {
+    ...appleIosSize(drawnSize(CONTROL_TEXT_SIZE, fontScale, grown.multiplier)),
+    multiplier: grown.multiplier,
+    measure: grown.measure,
+    room: grown.room,
+  };
 }
 
 /** Apple Design Resources' "Left Black Logo Medium", cropped at the sides and the foot. */
 export function AppleLogoIos({ logoHeight }: { logoHeight: number }) {
-  const scale = logoHeight / 19;
+  const scale = logoHeight / APPLE_IOS_LOGO_HEIGHT;
 
   return (
     <Svg
-      width={15.46 * scale}
+      width={APPLE_IOS_LOGO_WIDTH * scale}
       height={APPLE_IOS_LOGO_BAND * scale}
-      viewBox={`7.75 0 15.46 ${APPLE_IOS_LOGO_BAND}`}
+      viewBox={`7.75 0 ${APPLE_IOS_LOGO_WIDTH} ${APPLE_IOS_LOGO_BAND}`}
     >
       <Path
         fill={brand.appleInk}

@@ -101,6 +101,34 @@ describe('See picks (sc-3909)', () => {
     expect(screen.getByText('40 of 48 picks in · 83% of the room')).toBeTruthy();
   });
 
+  it('words a dish never stated as not stated, through the override (sc-87421)', SLOW, async () => {
+    await picks('chooseForNotStated');
+    const box = screen.getByRole('dialog');
+    expect(within(box).getByText(SW.ruledOutNotStated)).toBeTruthy();
+    expect(within(box).queryByText(/^Contains /)).toBeNull();
+
+    await picks('chooseForNotStatedOverride');
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText('Kwame Asante’s record says peanuts and celery. Pick it anyway?'),
+    ).toBeTruthy();
+    expect(
+      within(ask).getByText(SW.overrideBodyNotStated('Puff-puff', 'Kwame Asante')),
+    ).toBeTruthy();
+    fireEvent.click(within(ask).getByRole('button', { name: SW.pickAnyway }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(said()).toContain(SW.savedOverrideNotStated('Kwame Asante', 'Puff-puff'));
+  });
+
+  it('words a never-stated pick under Needs the host (sc-87421)', SLOW, async () => {
+    await picks('picksNotStatedHost');
+    expect(
+      within(region(SW.needsHost)).getByText(
+        SW.allergyForNotStated('Dessert', 'Puff-puff', 'celery'),
+      ),
+    ).toBeTruthy();
+  });
+
   it('says a 403 and saves nothing', SLOW, async () => {
     await picks('chooseForRefused');
     expect(within(screen.getByRole('dialog')).getByRole('alert').textContent).toContain(

@@ -4,6 +4,7 @@ import {
   HOST,
   MENU_STATES,
   TODAY,
+  allergyWords,
   checkDraft,
   choose,
   chooseCourses,
@@ -388,5 +389,63 @@ describe('a dish whose allergens were never stated (lead, #3654)', () => {
       allergens: ['fish'],
     });
     expect(checkDraft(course('k3'), person('bea-mensah'), draft)).toEqual({ kind: 'ok' });
+  });
+});
+
+describe('the host is never told a dish nobody described contains an allergy (sc-87421)', () => {
+  const puff = () => course('k3').dishes.find((one) => one.id === 'k3-puff')!;
+  const chinchin = () => course('k3').dishes.find((one) => one.id === 'k3-chinchin')!;
+  const draft = { kind: 'dish', dishId: 'k3-puff', variantId: null, sideId: null } as const;
+
+  it('marks a never-stated dish as not stated for a person with one of the 14', () => {
+    expect(allergyWords(puff(), person('kwame-asante'))).toBe(
+      'Allergens not stated. You can still pick it.',
+    );
+  });
+
+  it('gives no Allergy mark on it to a person with no allergy recorded', () => {
+    expect(allergyWords(puff(), person('bea-mensah'))).toBeNull();
+  });
+
+  it('asks the override question with a body that makes no claim about the dish', () => {
+    expect(checkDraft(course('k3'), person('kwame-asante'), draft)).toEqual({
+      kind: 'ruledOut',
+      allergens: ['celery', 'peanuts'],
+      title: 'Kwame Asante’s record says celery and peanuts. Pick it anyway?',
+      body: 'Nobody has stated what’s in Puff-puff. If you know it is safe for Kwame Asante, the pick is saved with your name and the time you confirmed it.',
+      saved:
+        'Recorded as your pick for Kwame Asante, though nobody has stated what’s in Puff-puff.',
+    });
+  });
+
+  it('saves the pick with the override and the saved line after Pick it anyway', () => {
+    const saved = settle(menuStart('notStatedSaved'));
+
+    expect(saved.said).toEqual([
+      'Recorded as your pick for Kwame Asante, though nobody has stated what’s in Puff-puff.',
+    ]);
+    expect(saved.world?.picks.k3?.['kwame-asante']).toMatchObject({
+      dishId: 'k3-puff',
+      override: { by: HOST },
+    });
+  });
+
+  it('words a never-stated pick under Needs the host without saying what it contains', () => {
+    const shown = menuStart('notStatedHost').world!;
+
+    expect(needsHost(shown).map(hostLineWords)).toContain(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+    );
+  });
+
+  it('words a stated dish exactly as before', () => {
+    expect(allergyWords(chinchin(), person('ada-obi'))).toBe(
+      'Contains milk, which Ada Obi is allergic to. You can still pick it.',
+    );
+    const stated = { ...draft, dishId: 'k3-chinchin' } as const;
+    expect(checkDraft(course('k3'), person('ada-obi'), stated)).toMatchObject({
+      body: 'Chin chin contains milk. If Ada Obi’s record is out of date, the pick is saved with your name and the time you confirmed it.',
+      saved: 'Recorded as your pick for Ada Obi, despite the record: Chin chin contains milk.',
+    });
   });
 });

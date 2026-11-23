@@ -22,7 +22,7 @@ appId: host.exp.Exponent
           id: notifications.pushAsk.notNow
 - waitForAnimationToEnd
 - takeScreenshot: bell-tabletportrait-unknown-product
-- setOrientation: LANDSCAPE
+- setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/events/${EVENT}
 - extendedWaitUntil:

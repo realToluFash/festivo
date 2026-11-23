@@ -247,6 +247,7 @@ export const CALENDAR_PAGES: readonly { name: string; states: readonly DemoLink[
       at('loading', 'Loading'),
       at('failed', 'Failed, with Try again'),
       at('offline', 'Offline, the amber box above the title'),
+      { to: '/demo/calendar?notice=changed', name: 'Sign-in rules changed, above the title' },
     ],
   },
   {

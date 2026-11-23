@@ -4,6 +4,9 @@ import { tokens } from '../theme/tokens.ts';
 const ACCESSIBILITY_SCALE = 1.7;
 const NINTH_STEP_SCALE = 2;
 
+/** 16 is the smallest size iOS Safari will not zoom into on focus. */
+export const CONTROL_TEXT_SIZE = 16;
+
 export function atAccessibilitySizes(fontScale: number): boolean {
   return fontScale >= ACCESSIBILITY_SCALE;
 }

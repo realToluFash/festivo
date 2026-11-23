@@ -785,10 +785,29 @@ describe('a button or link taking keyboard focus moves on from the landing toast
 describe('Your organisation mounts once it knows whether it lists invitations (sc-41296)', () => {
   it('so Organisation name never takes focus on a step that then drops it', () => {
     const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
-    const waits = text.indexOf('if (!loaded.read || !offersRead) return null;');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
 
     expect(waits).toBeGreaterThan(0);
     expect(waits).toBeLessThan(text.indexOf('<StepScreen nav={nav} foot={foot}>'));
+  });
+});
+
+describe('a step still reading is not a landing the landing toast is said over (sc-87539)', () => {
+  it('Your organisation waits as waiting', () => {
+    const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
+
+    expect(text.indexOf('<StepScreen nav={nav} waiting>', waits)).toBe(
+      text.indexOf('<StepScreen', waits),
+    );
+  });
+
+  it('StepScreen registers the step only once it is no longer waiting', () => {
+    const text = readFileSync(join('src', 'steps', 'StepScreen.tsx'), 'utf8');
+    const holds = text.indexOf('if (waiting) return undefined;');
+
+    expect(holds).toBeGreaterThan(0);
+    expect(holds).toBeLessThan(text.indexOf('const step = stepShown();'));
   });
 });
 

@@ -40,12 +40,11 @@ import {
   type System,
   UPDATED_AT,
   type WhoOpened,
-  allergenWords,
+  allergyWords,
   checkDraft,
   choose,
   chooseCourses,
   containsWords,
-  dishAllergens,
   draftPick,
   draftWords,
   givenDefault,
@@ -698,7 +697,7 @@ function ChooseFor({
       const check = checkDraft(course, person, draft);
       const words =
         override && check.kind === 'ruledOut'
-          ? MW.savedOverride(person.name, draftWords(course, draft), allergenWords(check.allergens))
+          ? check.saved
           : MW.savedFor(course.name, person.name, draftWords(course, draft));
       onSaved(course, draftPick(draft, override, NOW), words);
       if (last) onClose();
@@ -741,20 +740,17 @@ function ChooseFor({
       </Text>
       <SheetScrollView style={styles.sheetList} contentContainerStyle={styles.sheetScroll}>
         <View accessibilityRole="radiogroup" style={styles.choices}>
-          {course.dishes.map((dish) => {
-            const ruled = dishAllergens(dish, person);
-            return (
-              <Choice
-                key={dish.id}
-                on={draft?.kind === 'dish' && draft.dishId === dish.id}
-                title={dish.name}
-                lines={[containsWords(dish.contains)].filter((one) => one != null)}
-                allergy={ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)}
-                onPress={() => pickDish(dish.id)}
-                testID={`menu.choose.${dish.id}`}
-              />
-            );
-          })}
+          {course.dishes.map((dish) => (
+            <Choice
+              key={dish.id}
+              on={draft?.kind === 'dish' && draft.dishId === dish.id}
+              title={dish.name}
+              lines={[containsWords(dish.contains)].filter((one) => one != null)}
+              allergy={allergyWords(dish, person)}
+              onPress={() => pickDish(dish.id)}
+              testID={`menu.choose.${dish.id}`}
+            />
+          ))}
           <Choice
             on={draft?.kind === 'kitchen'}
             title={MW.kitchenChoose}
@@ -772,28 +768,23 @@ function ChooseFor({
             <Text size={17} weight="semibold" accessibilityRole="header">
               {MW.whichWay(chosen.name)}
             </Text>
-            {chosen.variants.map((way) => {
-              const ruled = dishAllergens(chosen, person, way.id);
-              return (
-                <Choice
-                  key={way.id}
-                  on={draft.variantId === way.id}
-                  title={way.name}
-                  lines={[
-                    way.children === true ? MW.childrenOnly : null,
-                    containsWords(way.contains),
-                  ].filter((one) => one != null)}
-                  allergy={
-                    ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)
-                  }
-                  onPress={() => {
-                    setBlank(null);
-                    setDraft({ ...draft, variantId: way.id });
-                  }}
-                  testID={`menu.choose.${way.id}`}
-                />
-              );
-            })}
+            {chosen.variants.map((way) => (
+              <Choice
+                key={way.id}
+                on={draft.variantId === way.id}
+                title={way.name}
+                lines={[
+                  way.children === true ? MW.childrenOnly : null,
+                  containsWords(way.contains),
+                ].filter((one) => one != null)}
+                allergy={allergyWords(chosen, person, way.id)}
+                onPress={() => {
+                  setBlank(null);
+                  setDraft({ ...draft, variantId: way.id });
+                }}
+                testID={`menu.choose.${way.id}`}
+              />
+            ))}
           </View>
         )}
         {chosen != null && draft?.kind === 'dish' && chosen.sides.length > 0 && (
