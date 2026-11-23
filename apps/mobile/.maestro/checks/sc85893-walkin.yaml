@@ -1,0 +1,52 @@
+# sc-85893 walk-in panel: companion example, host example, no match, same name
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'segun eze smith'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walkin-companion-nomatch-${LAYOUT}
+- tapOn: { id: 'checkIn.walkIn' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 60
+- inputText: 'Segun Eze'
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: walkin-companion-panel-${LAYOUT}
+- tapOn: { id: 'checkIn.walkIn.arrive' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkin-companion-arrived-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'seun adebayo smith'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn.name' }
+- eraseText: 60
+- inputText: 'Seun Adebayo'
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: walkin-host-panel-${LAYOUT}
+- tapOn: { id: 'checkIn.walkIn.new' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkin-host-added-${LAYOUT}
+- tapOn: { id: 'checkIn.search' }
+- eraseText: 60
+- inputText: 'Femi Lawal'
+- hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walkin-none-nomatch-${LAYOUT}
+- tapOn: { id: 'checkIn.walkIn' }
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn: { id: 'checkIn.walkIn.add' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkin-none-added-${LAYOUT}
