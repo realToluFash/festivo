@@ -1,8 +1,8 @@
 import type { LayoutKind } from '../layout/classify.ts';
 
-/** The screens an event's Overview names its ‹ after (sc-83008). */
+/** The screens an event's Overview names its ‹ after (sc-83008), another event's page among them, as the bell on an iPad opens one over it (sc-84453). */
 export type BackScreen =
-  'events' | 'today' | 'calendar' | 'search' | 'notifications' | 'auditLog' | 'entry';
+  'events' | 'today' | 'calendar' | 'search' | 'notifications' | 'auditLog' | 'entry' | 'event';
 
 export const BACK_KEY: Record<BackScreen, string> = {
   events: 'eventsScreen.title',
@@ -12,6 +12,7 @@ export const BACK_KEY: Record<BackScreen, string> = {
   notifications: 'notifications.heading',
   auditLog: 'auditLog.title',
   entry: 'auditLog.entry',
+  event: 'timeline.backToEvent',
 };
 
 const SCREEN_OF_ROUTE: Readonly<Record<string, BackScreen>> = {
@@ -22,6 +23,7 @@ const SCREEN_OF_ROUTE: Readonly<Record<string, BackScreen>> = {
   notifications: 'notifications',
   'settings/data-and-control/audit-log': 'auditLog',
   'settings/data-and-control/audit-entry': 'entry',
+  'events/[id]/index': 'event',
 };
 
 /** The route param through which a tablet's Search, which closes its palette before the event opens, passes what was typed. */
