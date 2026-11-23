@@ -282,7 +282,7 @@ function HeldSettings({
       <View style={styles.page}>
         <PortraitTop at="Settings" search={search} />
         {back != null && (
-          <View style={styles.portraitBack}>
+          <View style={styles.heldBack}>
             <Back onPress={back} testID="settings.held.back" />
           </View>
         )}
@@ -300,28 +300,30 @@ function HeldSettings({
           { paddingTop: insets.top + tokens.spaceXs, paddingBottom: foot + PHONE_TAB_BAR },
         ]}
       >
-        {back != null ? (
-          <>
+        <View style={styles.heldRows}>
+          {back != null ? (
+            <>
+              <View style={styles.orgRow}>
+                <OrgPill />
+              </View>
+              <View style={styles.orgRow}>
+                <Back onPress={back} testID="settings.held.back" />
+                <View style={styles.grow} />
+                <Bell tell={shell.tell} />
+              </View>
+            </>
+          ) : (
             <View style={styles.orgRow}>
               <OrgPill />
-            </View>
-            <View style={styles.orgRow}>
-              <Back onPress={back} testID="settings.held.back" />
               <View style={styles.grow} />
-              <Bell tell={shell.tell} />
+              {search ? (
+                <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+              ) : (
+                <Bell tell={shell.tell} />
+              )}
             </View>
-          </>
-        ) : (
-          <View style={styles.orgRow}>
-            <OrgPill />
-            <View style={styles.grow} />
-            {search ? (
-              <SearchAndBell tell={shell.tell} role={shell.looking.role} />
-            ) : (
-              <Bell tell={shell.tell} />
-            )}
-          </View>
-        )}
+          )}
+        </View>
         {standIn}
       </View>
       <TabBarFade />
@@ -383,8 +385,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   orgRow: { flexDirection: 'row', alignItems: 'center', marginBottom: tokens.spaceSm },
-  heldPhone: { flex: 1, paddingHorizontal: tokens.spaceXxl },
-  heldUpright: { flex: 1, paddingHorizontal: tokens.space5xl },
+  heldPhone: { flex: 1 },
+  // The pill and the bell at the header's edge; the stand-in keeps its own, as in the product (sc-85022).
+  heldRows: { paddingHorizontal: tokens.spaceXxl },
+  heldUpright: { flex: 1 },
+  // Upright, ‹ shares the pill's, the bell's and the card's 28pt edge (sc-85022).
+  heldBack: { flexDirection: 'row', paddingHorizontal: tokens.space4xl },
   heldSide: { flex: 1, paddingHorizontal: 30 },
   // The product's side header with no title: the bell alone at the content's top right (sc-83881).
   heldSideTop: {
