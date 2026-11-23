@@ -161,6 +161,7 @@ import {
   browserHostOf,
   defaultBrowserHost,
   savedBrowserHost,
+  configFor,
   BROWSER_HOST_FILE,
   qrPng,
   APP_SERVICES,
@@ -473,6 +474,21 @@ describe('the stack a person tests on', () => {
     expect(savedBrowserHost('/qa3', read)).toBeNull();
     files[`/qa4/${BROWSER_HOST_FILE}`] = 'qa4.example.com';
     expect(() => savedBrowserHost('/qa4', read)).toThrow(/not localhost/);
+  });
+
+  it('keeps a saved browser host for a simulated stack, and the lan stack ignores it', () => {
+    const read = (path) => {
+      if (path.endsWith(BROWSER_HOST_FILE)) return 'qa2.localhost\n';
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const missing = () => {
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const saved = configFor(2, '/qa2', read);
+    expect(saved.browserHost).toBe('qa2.localhost');
+    expect(saved.urls.web).toContain('qa2.localhost');
+    expect(configFor(2, '/qa2', missing).browserHost).toBeNull();
+    expect(configFor(LAN, '/lan', read).browserHost).toBeNull();
   });
 
   it('puts the proxy on every proxied port and takes those ports off the services', () => {

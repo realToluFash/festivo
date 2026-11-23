@@ -1226,10 +1226,10 @@ export function savedBrowserHost(root, read = readFileSync) {
   }
 }
 
-function configFor(tester) {
+export function configFor(tester, root = null, read = readFileSync) {
   const plain = qaConfig(tester);
   if (!plain.simulated) return plain;
-  const browserHost = savedBrowserHost(qaWorktree(plain.project));
+  const browserHost = savedBrowserHost(root ?? qaWorktree(plain.project), read);
   return browserHost ? qaConfig(tester, undefined, { browserHost }) : plain;
 }
 
@@ -1681,7 +1681,7 @@ function status() {
   console.log(`
 QA environment, tester ${CONFIG.tester} — ${root}
   Checked out  ${state.label ?? '?'} — ${head ?? 'no worktree'}
-  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}
+  API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}${CONFIG.browserHost ? `\n  API, browser ${CONFIG.browser.api}` : ''}
   Web          ${CONFIG.urls.web}
   App          ${CONFIG.urls.metro}   (node .qa/bin/qa-env.mjs ios, or android)
   Mailpit      ${CONFIG.urls.mailpit}
