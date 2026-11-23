@@ -892,6 +892,36 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     expect(screen.getByRole('link', { name: lost })).toBeDefined();
   });
 
+  it.each([
+    [
+      '?page=recovery&state=passkeys-only',
+      'Lost your passkeys and your recovery codes?',
+      'Get back in without your passkeys',
+      'For when you have lost your passkeys and your recovery codes.',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+      'Get back in without your passkeys or authenticator',
+      'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+    ],
+    [
+      '?page=code',
+      'Lost your authenticator and your recovery codes?',
+      'Get back in without your authenticator',
+      'For when you have lost your authenticator app and your recovery codes.',
+    ],
+  ])(
+    'opens the lost page named for the factors the link named, from %s (sc-86885, #87331)',
+    async (query, lost, title, line) => {
+      await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+      fireEvent.click(screen.getByRole('link', { name: lost }));
+
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+      expect(screen.getByText(line)).toBeDefined();
+    },
+  );
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));

@@ -9,7 +9,14 @@ import { Chevron, Dialog, Field, Note, RowWords } from '../components/SettingsPa
 import { offButton } from '../offButton.ts';
 import { DemoOnly } from './SingleSignOnParts.tsx';
 import { Notice, useBusy } from './parts.tsx';
-import { type CodeStep, type FactorRow, PASSKEY_WORDS as P, passkeyName } from './passkeys.ts';
+import {
+  type CodeStep,
+  type FactorRow,
+  type Held,
+  PASSKEY_WORDS as P,
+  SAVE_WORDS,
+  passkeyName,
+} from './passkeys.ts';
 import { LOCK_MS, SAMPLE, TRIES, timeOfDay } from './rules.ts';
 import './passkeys.css';
 
@@ -504,18 +511,45 @@ export function MakeDialog({
 }
 
 /** sc-86885: adding the app beside passkeys is today's setup step; only its title, verb and help line read true for two-factor already on. */
-export function AddAppWords({ children }: { children: ReactNode }) {
+/** The product's own dialog with a few of its keys reworded, in every language, as EventEdits.tsx does for the OSM credit. */
+function Reworded({ keys, children }: { keys: Record<string, string>; children: ReactNode }) {
   const [words] = useState(() => {
     const local = i18next.cloneInstance({ forkResourceStore: true });
     for (const language of local.languages) {
-      local.addResource(language, 'translation', 'security.setupTitle', P.addApp);
-      local.addResource(language, 'translation', 'security.setupVerb', P.addAppVerb);
-      local.addResource(language, 'translation', 'twoFactorCard.staysOff', P.addAppLine);
+      const bundle = local.getResourceBundle(language, 'translation') as Record<string, object>;
+      const groups: Record<string, Record<string, string>> = {};
+      for (const [key, line] of Object.entries(keys)) {
+        const [group, leaf] = key.split('.') as [string, string];
+        groups[group] = { ...bundle[group], ...groups[group], [leaf]: line };
+      }
+      // The fork copies only to the namespace, so a group is replaced whole rather than written into.
+      local.addResourceBundle(language, 'translation', groups, false, true);
     }
     return local;
   });
 
   return <I18nextProvider i18n={words}>{children}</I18nextProvider>;
+}
+
+export function AddAppWords({ children }: { children: ReactNode }) {
+  return (
+    <Reworded
+      keys={{
+        'security.setupTitle': P.addApp,
+        'security.setupVerb': P.addAppVerb,
+        'twoFactorCard.staysOff': P.addAppLine,
+      }}
+    >
+      {children}
+    </Reworded>
+  );
+}
+
+/** Save your recovery codes names the factors held; with the app only it is the product's line as today (#87331). */
+export function SaveWords({ held, children }: { held: Held; children: ReactNode }) {
+  if (held === 'app') return children;
+
+  return <Reworded keys={{ 'twoFactorCard.saveIntro': SAVE_WORDS[held] }}>{children}</Reworded>;
 }
 
 export function PasskeyStep({

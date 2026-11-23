@@ -294,6 +294,8 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     name: 'Lost authenticator',
     states: [
       { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Start, passkeys only (sc-86885)', to: twoFactorAt('start', 'passkeys-only') },
+      { name: 'Start, passkeys and the app (sc-86885)', to: twoFactorAt('start', 'both') },
       { name: 'Start, no verified phone', to: twoFactorAt('start', 'email-only') },
       { name: 'Sending the code', to: twoFactorAt('start', 'email-only-sending') },
       { name: 'Too many requests', to: twoFactorAt('start', 'limited') },

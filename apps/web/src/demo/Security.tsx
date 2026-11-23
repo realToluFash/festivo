@@ -85,6 +85,7 @@ import { focusWhenFree } from '../layers.ts';
 import { useLater } from '../useLater.ts';
 import {
   AddAppWords,
+  SaveWords,
   AddRow,
   ChoiceDialog,
   CodeStepDialog,
@@ -101,6 +102,7 @@ import {
   codeStepOf,
   factorRows,
   firstStep,
+  heldOf,
   madePasskey,
   offersApp,
   offersPasskey,
@@ -671,16 +673,18 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {dialog?.kind === 'recovery' && (
-        <RecoveryDialog
-          start={dialog}
-          codes={dialog.purpose === 'newCodes' ? NEW_CODES : RECOVERY_CODES}
-          onFinish={() =>
-            done(
-              dialog.purpose === 'newCodes' ? R.newCodes : dialog.byPasskey ? PR.onPasskey : R.on,
-              { unused: CODES_MADE },
-            )
-          }
-        />
+        <SaveWords held={heldOf(page)}>
+          <RecoveryDialog
+            start={dialog}
+            codes={dialog.purpose === 'newCodes' ? NEW_CODES : RECOVERY_CODES}
+            onFinish={() =>
+              done(
+                dialog.purpose === 'newCodes' ? R.newCodes : dialog.byPasskey ? PR.onPasskey : R.on,
+                { unused: CODES_MADE },
+              )
+            }
+          />
+        </SaveWords>
       )}
     </div>
   );

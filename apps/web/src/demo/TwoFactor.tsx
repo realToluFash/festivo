@@ -7,7 +7,7 @@ import { offButton } from '../offButton.ts';
 import { BoardPage, SignedInAs } from './BoardPage.tsx';
 import { NoBrowser, PasskeyStep } from './Passkeys.tsx';
 import { CodeField, Heading, Notice, Resend, useBusy } from './parts.tsx';
-import { LOST_WORDS } from './passkeys.ts';
+import { LOST_PAGE_WORDS, LOST_WORDS, lostStart } from './passkeys.ts';
 import {
   CODE_LENGTH,
   LOCK_MS,
@@ -249,7 +249,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
         )}
         <Link
           className="link-button demo-link"
-          to={twoFactorAt('start')}
+          to={twoFactorAt('start', lostStart(held))}
           state={outlasted ? { outlasted } : null}
         >
           {LOST_WORDS[held]}
@@ -343,6 +343,9 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
   );
   const limited = opensAt != null;
   const [emailOnly, setEmailOnly] = useState(state.startsWith('email-only'));
+  /** sc-86885: the link names the factors held, and so does the page it opens. */
+  const held = state === 'passkeys-only' ? 'passkeys' : state === 'both' ? 'both' : 'app';
+  const lost = LOST_PAGE_WORDS[held];
   const [busy, after] = useBusy();
   const sending = busy || state.endsWith('sending');
   const words = codeWords(emailOnly);
@@ -369,7 +372,12 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
   return (
     <BoardPage
       end={null}
-      back={{ to: twoFactorAt('code') }}
+      back={{
+        to:
+          held === 'passkeys'
+            ? twoFactorAt('recovery', 'passkeys-only')
+            : twoFactorAt('code', held === 'both' ? 'has-passkey' : undefined),
+      }}
       controls={
         <label className="demo-switch">
           <input
@@ -382,10 +390,8 @@ function Start({ state, asks, onAsk }: { state: string; asks: number; onAsk: () 
         </label>
       }
     >
-      <Heading title="Get back in without your authenticator">
-        <p className="demo-muted">
-          For when you have lost your authenticator app and your recovery codes.
-        </p>
+      <Heading title={lost.title}>
+        <p className="demo-muted">{lost.line}</p>
         {limited && (
           <Notice
             title="Too many requests"

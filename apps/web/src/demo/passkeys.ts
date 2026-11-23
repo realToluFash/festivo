@@ -119,6 +119,35 @@ export const LOST_WORDS: Record<Held, string> = {
   both: 'Lost your passkeys, your authenticator and your recovery codes?',
 };
 
+/** The page the lost link opens names the same factors; with the app only it reads as today (sc-86885, #87331). */
+export const LOST_PAGE_WORDS: Record<Held, { title: string; line: string }> = {
+  app: {
+    title: 'Get back in without your authenticator',
+    line: 'For when you have lost your authenticator app and your recovery codes.',
+  },
+  passkeys: {
+    title: 'Get back in without your passkeys',
+    line: 'For when you have lost your passkeys and your recovery codes.',
+  },
+  both: {
+    title: 'Get back in without your passkeys or authenticator',
+    line: 'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+  },
+};
+
+/** Save your recovery codes, its first line by the factors held (sc-86885, #87331). */
+export const SAVE_WORDS: Record<Held, string> = {
+  app: 'If you lose your authenticator, each of these signs you in once. This is the only time they are shown.',
+  passkeys:
+    'If you lose your passkeys, each of these signs you in once. This is the only time they are shown.',
+  both: 'If you lose your passkeys and your authenticator, each of these signs you in once. This is the only time they are shown.',
+};
+
+/** The lost page's `?state=` for the factors held. */
+export function lostStart(held: Held): string | undefined {
+  return held === 'app' ? undefined : held === 'passkeys' ? 'passkeys-only' : 'both';
+}
+
 export function passkeyName(passkey: Passkey): string {
   return passkey.provider ?? PASSKEY_WORDS.passkey;
 }

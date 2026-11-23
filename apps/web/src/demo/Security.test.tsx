@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { PASSKEY_WORDS as P } from './passkeys.ts';
+import { PASSKEY_WORDS as P, SAVE_WORDS } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
 import { NEW_PASSWORD, SECURITY_STATES, WEB_MOMENTS } from './security.ts';
 
@@ -509,6 +509,19 @@ describe('Security at a desk (sc-30223)', () => {
     expect(within(step).getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
     expect(within(step).getByRole('button', { name: P.useCode })).toBeDefined();
   });
+
+  it.each([
+    ['passkeyRecovery', SAVE_WORDS.passkeys],
+    ['recovery', SAVE_WORDS.app],
+  ])(
+    'names the factors held in Save your recovery codes, at ?state=%s (sc-86885, #87331)',
+    async (state, line) => {
+      await security(`/demo/settings/security?state=${state}`);
+      await screen.findByRole('heading', { name: 'Save your recovery codes' }, WAIT);
+
+      expect(within(dialog()).getByText(line)).toBeDefined();
+    },
+  );
 
   it('adds the app beside passkeys with today’s setup step, its words true for two-factor already on (sc-86885)', async () => {
     await security('/demo/settings/security?state=addApp');
