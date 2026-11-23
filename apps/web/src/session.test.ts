@@ -1,4 +1,5 @@
 import { type Account, type Membership } from '@soirely/api-client';
+import { rememberedEntry, rememberedFor } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SIGNED_OUT, api } from './api.ts';
@@ -13,6 +14,7 @@ import {
   onMovedOn,
   rereadOrganisations,
   refreshAccount,
+  switchOrganisation,
   useSessionState,
 } from './session.ts';
 import { membership } from './test-memberships.ts';
@@ -372,12 +374,12 @@ describe('the organisation this browser was last in, paused there (sc-86056)', (
 
   it('opens A’s paused page when A was opened by default, never chosen', async () => {
     await opened([a, b], []);
-    expect(localStorage.getItem(ORGANISATION)).toBe('org_1');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_1');
 
     const next = await opened([b], [pausedA]);
 
     expect(next.pausedIn?.id).toBe('org_1');
-    expect(localStorage.getItem(ORGANISATION)).toBe('org_1');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_1');
   });
 
   it('opens in A again once A restores the member', async () => {
@@ -395,11 +397,11 @@ describe('the organisation this browser was last in, paused there (sc-86056)', (
 
     expect(next.organisation?.id).toBe('org_2');
     expect(next.pausedIn).toBeNull();
-    expect(localStorage.getItem(ORGANISATION)).toBe('org_2');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_1')).toBe('org_2');
   });
 
   it('opens in B with no paused card when B was the one chosen', async () => {
-    localStorage.setItem(ORGANISATION, 'org_2');
+    localStorage.setItem(ORGANISATION, rememberedEntry('acc_1', 'org_2'));
 
     const next = await opened([b], [pausedA]);
 
@@ -423,5 +425,96 @@ describe('the organisation this browser was last in, paused there (sc-86056)', (
     const current = renderHook(() => useSessionState()).result.current;
     expect(current.status === 'signedIn' && current.session.pausedIn?.id).toBe('org_1');
     expect(movedTo).toEqual([]);
+  });
+});
+
+describe('a browser shared by several accounts (sc-86373)', () => {
+  const ORGANISATION = 'soirely.organisation';
+  const alpha = membership({ id: 'org_a', name: 'Alpha' });
+  const beta = membership({ id: 'org_b', name: 'Beta' });
+  const pausedAlpha = {
+    ...alpha,
+    suspension: {
+      reason: 'domain_closed' as const,
+      domain: 'alpha.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+
+  const signsIn = async (
+    id: string,
+    organisations: Membership[],
+    paused: (typeof pausedAlpha)[] = [],
+  ) => {
+    vi.spyOn(api, 'organisationsWithPaused').mockResolvedValue({ organisations, paused });
+    await act(() => adoptAccount(account({ id })));
+    const current = renderHook(() => useSessionState()).result.current;
+    if (current.status !== 'signedIn') throw new Error('not signed in');
+
+    return current.session;
+  };
+
+  const xChoosesAlpha = async () => {
+    await signsIn('acc_x', [beta, alpha]);
+    act(() => switchOrganisation('org_a'));
+  };
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('opens Y in Beta, Y’s own, after X chose Alpha', async () => {
+    await xChoosesAlpha();
+
+    const y = await signsIn('acc_y', [beta, alpha]);
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta with no paused card when Y’s access to Alpha is paused', async () => {
+    await xChoosesAlpha();
+
+    const y = await signsIn('acc_y', [beta], [pausedAlpha]);
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta after Z opened Alpha by default', async () => {
+    await signsIn('acc_z', [alpha]);
+
+    expect((await signsIn('acc_y', [beta, alpha])).organisation?.id).toBe('org_b');
+    await signsIn('acc_z', [alpha]);
+    const y = await signsIn('acc_y', [beta], [pausedAlpha]);
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens X in Beta again once Y has signed in between', async () => {
+    await xChoosesAlpha();
+    await signsIn('acc_y', [beta, alpha]);
+
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_b');
+  });
+
+  it('lets X’s Alpha go even when Y signs in to a paused page alone', async () => {
+    await xChoosesAlpha();
+    expect((await signsIn('acc_y', [], [pausedAlpha])).pausedIn?.id).toBe('org_a');
+
+    expect(localStorage.getItem(ORGANISATION)).toBeNull();
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_b');
+  });
+
+  it('keeps X’s Alpha for X, and shows its paused page once X is paused there', async () => {
+    await xChoosesAlpha();
+
+    expect((await signsIn('acc_x', [beta, alpha])).organisation?.id).toBe('org_a');
+    const paused = await signsIn('acc_x', [beta], [pausedAlpha]);
+    expect(paused.pausedIn?.id).toBe('org_a');
+    expect(rememberedFor(localStorage.getItem(ORGANISATION), 'acc_x')).toBe('org_a');
   });
 });

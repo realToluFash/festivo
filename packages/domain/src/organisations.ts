@@ -1,6 +1,26 @@
 import { visibleLength } from './visibleText.ts';
 import { emailProblem } from './forms.ts';
 
+/** What a device keeps: the organisation and the account that worked in it, so the next account to sign in there does not inherit it (sc-86373). */
+export function rememberedEntry(account: string, organisation: string): string {
+  return JSON.stringify({ account, organisation });
+}
+
+/** The organisation a device remembers for this account; null when another account, or nobody, left it there. */
+export function rememberedFor(stored: string | null, account: string): string | null {
+  if (stored == null) return null;
+
+  try {
+    const entry: unknown = JSON.parse(stored);
+    if (typeof entry !== 'object' || entry == null) return null;
+    const { account: owner, organisation } = entry as Record<string, unknown>;
+
+    return owner === account && typeof organisation === 'string' ? organisation : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The one remembered on this device while the account still belongs to it, else the first. */
 export function chooseOrganisation<T extends { id: string }>(
   organisations: readonly T[],

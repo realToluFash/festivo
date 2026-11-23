@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { rememberedEntry, rememberedFor } from '@soirely/domain';
 import { join } from 'node:path';
 
 import type { Membership } from '@soirely/api-client';
@@ -138,7 +139,7 @@ describe('switching organisation', () => {
     expect(
       screen.getByRole('button', { name: /Organisation: Okafor Family, your role Member/ }),
     ).toBeDefined();
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_2');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'u1')).toBe('org_2');
   });
 
   it('takes Close this notice on a sign-in rules notice above it to "Now working in"', () => {
@@ -175,7 +176,7 @@ describe('switching organisation', () => {
   });
 
   it('opens on the organisation this device chose last time', async () => {
-    window.localStorage.setItem('soirely.organisation', 'org_2');
+    window.localStorage.setItem('soirely.organisation', rememberedEntry('acc_1', 'org_2'));
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ organisations: [IRE, OKAFOR] }), { status: 200 }),
     );
@@ -593,7 +594,7 @@ describe('creating an organisation from the switcher (sc-30412)', () => {
     expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
     );
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'u1')).toBe('org_9');
   });
 
   it('keeps Tab and Shift+Tab inside the walk', async () => {
