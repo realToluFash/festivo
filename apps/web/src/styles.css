@@ -2379,15 +2379,6 @@ span {
   margin-bottom: var(--space3xl);
 }
 
-.notice-words {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  max-width: 47.5rem;
-  border-radius: var(--radiusCheckbox);
-  font: var(--typeBody);
-}
-
 /* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
 [data-notice-landing]:focus {
   outline: 2px solid var(--colorAccent);
