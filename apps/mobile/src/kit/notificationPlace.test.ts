@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { appPlace, sameEventParams } from './notificationPlace.ts';
+import { appPlace, bellOpens, sameEventParams } from './notificationPlace.ts';
 
 describe("a bell item's place in the app (sc-3980)", () => {
   it("opens the app's screen for the web's path", () => {
@@ -53,5 +53,21 @@ describe('a notification for the event already open opens it in place (sc-84453)
     expect(sameEventParams('/events/e2', '/events/e1')).toBeNull();
     expect(sameEventParams('/events', '/events')).toBeNull();
     expect(sameEventParams('/events/e1/night?track=a', '/events/e1')).toBeNull();
+  });
+});
+
+describe('what a tap in the bell does (sc-84453)', () => {
+  it('pushes another event, from the popover too', () => {
+    expect(bellOpens('/events/e2', '/events/e1', 'popover')).toEqual({ push: '/events/e2' });
+  });
+
+  it("sets the open page's params for the same event from the popover", () => {
+    expect(bellOpens('/events/e1?area=guests', '/events/e1', 'popover')).toEqual({
+      setParams: { area: 'guests', filter: undefined, since: undefined },
+    });
+  });
+
+  it("pushes the same event from the phone's bell screen", () => {
+    expect(bellOpens('/events/e1', '/events/e1', 'screen')).toEqual({ push: '/events/e1' });
   });
 });

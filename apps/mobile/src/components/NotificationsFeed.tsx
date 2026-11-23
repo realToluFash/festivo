@@ -21,7 +21,7 @@ import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { markAllRead } from '../kit/notificationFeed.ts';
-import { appPlace, sameEventParams } from '../kit/notificationPlace.ts';
+import { appPlace, bellOpens } from '../kit/notificationPlace.ts';
 import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -225,14 +225,10 @@ export function NotificationsFeed({ where }: { where: FeedWhere }) {
 
     const place = appPlace(item.place);
     if (place == null) return;
-    if (where.kind !== 'popover') {
-      router.push(place);
-      return;
-    }
-    where.onClose();
-    const here = sameEventParams(place, pathname);
-    if (here == null) router.push(place);
-    else router.setParams(here);
+    if (where.kind === 'popover') where.onClose();
+    const opens = bellOpens(place, pathname, where.kind);
+    if ('push' in opens) router.push(opens.push);
+    else router.setParams(opens.setParams);
   }
 
   async function readAll(): Promise<void> {

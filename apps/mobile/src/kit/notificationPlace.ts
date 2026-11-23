@@ -38,3 +38,14 @@ export function sameEventParams(
     [GUESTS_SINCE]: params.get(GUESTS_SINCE) ?? undefined,
   };
 }
+
+/** What a tap in the bell does: only the popover over an event's page sets that page's params instead of pushing a second copy (sc-84453). */
+export function bellOpens(
+  place: Href,
+  pathname: string,
+  kind: 'screen' | 'popover' | 'framed',
+): { push: Href } | { setParams: Record<string, string | undefined> } {
+  const here = kind === 'popover' ? sameEventParams(place, pathname) : null;
+
+  return here == null ? { push: place } : { setParams: here };
+}
