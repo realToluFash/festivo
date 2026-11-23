@@ -357,6 +357,11 @@ function Picks({
           {t('menuPicks.held', { count: picks.held, room: picks.room })}
         </Text>
       )}
+      {picks.courses.some((course) => course.menuChanged > 0) && (
+        <Text size={15} style={parts.secondary} testID="menu.changed">
+          {t('menuPicks.menuChanged')}
+        </Text>
+      )}
     </View>
   );
 
@@ -448,6 +453,19 @@ function Picks({
   const given = picks.given ?? [];
   const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
   const words = (person: (typeof never)[number]) => openWords(t, language, person, courseName);
+  const opensOn = (person: (typeof never)[number]) => [
+    ...person.courses,
+    ...person.changed.map((one) => one.course).filter((id) => !person.courses.includes(id)),
+  ];
+  const changedLines = (person: (typeof never)[number]) =>
+    person.changed.map((one) => (
+      <View key={one.course} style={parts.markLine}>
+        <Glyph name="alert" size={16} ink={tokens.colorAttentionText} />
+        <Text size={15} style={parts.secondary}>
+          {t('menuPicks.changedOn', { course: courseName(one.course), dish: one.picked })}
+        </Text>
+      </View>
+    ));
 
   const waiting = !names ? null : (
     <>
@@ -469,15 +487,18 @@ function Picks({
                 <Text size={17} weight="semibold">
                   {person.name}
                 </Text>
-                <Text size={15} style={parts.secondary}>
-                  {words(person)}
-                </Text>
+                {person.courses.length > 0 && (
+                  <Text size={15} style={parts.secondary}>
+                    {words(person)}
+                  </Text>
+                )}
+                {changedLines(person)}
                 <ChooseButton
                   name={person.name}
                   manage={manage}
                   onPress={(from) =>
                     onOpen(
-                      { kind: 'chooseFor', personId: person.id, courseIds: person.courses },
+                      { kind: 'chooseFor', personId: person.id, courseIds: opensOn(person) },
                       from,
                     )
                   }
@@ -502,15 +523,18 @@ function Picks({
                 <Text size={17} weight="semibold">
                   {person.name}
                 </Text>
-                <Text size={15} style={parts.secondary}>
-                  {words(person)}
-                </Text>
+                {person.courses.length > 0 && (
+                  <Text size={15} style={parts.secondary}>
+                    {words(person)}
+                  </Text>
+                )}
+                {changedLines(person)}
                 <ChooseButton
                   name={person.name}
                   manage={manage}
                   onPress={(from) =>
                     onOpen(
-                      { kind: 'chooseFor', personId: person.id, courseIds: person.courses },
+                      { kind: 'chooseFor', personId: person.id, courseIds: opensOn(person) },
                       from,
                     )
                   }

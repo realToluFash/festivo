@@ -3355,6 +3355,9 @@
     "giveAnyway": "Give it anyway",
     "whoSaved_one": "{{variant}}, {{dish}}: {{count, number}} person now.",
     "whoSaved_other": "{{variant}}, {{dish}}: {{count, number}} people now.",
-    "whoOverride": "{{names}} recorded as your pick despite the record."
+    "whoOverride": "{{names}} recorded as your pick despite the record.",
+    "changed": "Menu changed",
+    "changedOn": "Menu changed: {{course}} · picked {{dish}}",
+    "menuChanged": "Menu changed: the dish these guests picked was taken off. They are asked again, and are not counted as in."
   }
 }
