@@ -41,8 +41,14 @@ export interface DishPick {
   override?: Override;
 }
 
-/** What is stored for a person on a course; nothing stored is not chosen. `changed` is sc-3913's Menu changed. */
-export type Pick = DishPick | { kind: 'kitchen' } | { kind: 'skipped' } | { kind: 'changed' };
+/** sc-3913's Menu changed: the course is asked again, and the pick they had is kept by name. */
+export interface Changed {
+  kind: 'changed';
+  picked: string;
+}
+
+/** What is stored for a person on a course; nothing stored is not chosen. */
+export type Pick = DishPick | { kind: 'kitchen' } | { kind: 'skipped' } | Changed;
 
 export interface PicksWorld {
   courses: readonly EvCourse[];
@@ -69,7 +75,7 @@ export type Spot =
     }
   | { kind: 'kitchen' }
   | { kind: 'skipped' }
-  | { kind: 'changed' }
+  | Changed
   | { kind: 'none'; excluded: Excluded | null }
   | { kind: 'host'; reason: HostReason };
 
@@ -123,6 +129,7 @@ export const SW = {
   whoHasntNone: 'Everyone coming has picked every course, or is with the host above.',
   replied: (name: string, n: number) => `Replied by ${name} · ${people(n)}`,
   notChosenOn: (courses: string) => `Not chosen: ${courses}`,
+  changedOn: (course: string, dish: string) => `Menu changed: ${course} · picked ${dish}`,
   neverGiven: (n: number) => `[Never given the default · ${people(n)}]`,
   excludedOn: (course: string, why: string) => `${course} · ${why}`,
   allergy: 'allergy',
@@ -305,7 +312,7 @@ export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spo
   if (pick.kind !== 'dish') return pick;
 
   const dish = course.dishes.find((one) => one.id === pick.dishId);
-  if (dish == null) return { kind: 'changed' };
+  if (dish == null) return noPick(world, course, person);
 
   const allergens = ruledOut(person, containsOf(dish, pick.variantId, pick.optionIds));
   if (allergens.length > 0 && pick.override == null)
@@ -476,10 +483,17 @@ export interface OpenCourse {
   excluded: Excluded | null;
 }
 
+export interface ChangedCourse {
+  course: EvCourse;
+  picked: string;
+}
+
 export interface WaitingPerson {
   person: Person;
+  /** Every course Choose for them opens on: not chosen, then Menu changed, in menu order. */
   courses: readonly EvCourse[];
   open: readonly OpenCourse[];
+  changed: readonly ChangedCourse[];
 }
 
 export interface Waiting {
@@ -488,13 +502,21 @@ export interface Waiting {
 }
 
 function waitingOf(world: PicksWorld, person: Person): WaitingPerson {
-  const open = shownCourses(world).flatMap((course): OpenCourse[] => {
-    const spot = spotOf(world, course, person);
+  const spots = shownCourses(world).map((course) => ({
+    course,
+    spot: spotOf(world, course, person),
+  }));
+  const open = spots.flatMap(({ course, spot }): OpenCourse[] =>
+    spot.kind === 'none' ? [{ course, excluded: spot.excluded }] : [],
+  );
+  const changed = spots.flatMap(({ course, spot }): ChangedCourse[] =>
+    spot.kind === 'changed' ? [{ course, picked: spot.picked }] : [],
+  );
+  const courses = spots
+    .filter(({ spot }) => spot.kind === 'none' || spot.kind === 'changed')
+    .map(({ course }) => course);
 
-    return spot.kind === 'none' ? [{ course, excluded: spot.excluded }] : [];
-  });
-
-  return { person, courses: open.map((one) => one.course), open };
+  return { person, courses, open, changed };
 }
 
 const isExcluded = (one: WaitingPerson): boolean =>
@@ -561,8 +583,8 @@ export function openFor(world: PicksWorld, person: Person, courseId?: string): E
     const kind = spotOf(world, course, person).kind;
 
     return courseId == null
-      ? kind === 'none'
-      : course.id === courseId && (kind === 'none' || kind === 'host');
+      ? kind === 'none' || kind === 'changed'
+      : course.id === courseId && (kind === 'none' || kind === 'host' || kind === 'changed');
   });
 }
 
@@ -882,7 +904,7 @@ function changedPicks(): PicksWorld {
   const world = samplePicks();
 
   return ['lucia-ruiz', 'louis-martin', 'femi-adeyemi'].reduce(
-    (next, id) => chooseFor(next, 'k3', id, { kind: 'changed' }),
+    (next, id) => chooseFor(next, 'k3', id, { kind: 'changed', picked: 'Puff puff' }),
     world,
   );
 }
@@ -980,7 +1002,7 @@ const STATES = {
   picksMenuChanged: () =>
     start({
       name: 'Menu changed (sc-3913)',
-      note: 'Three Dessert picks whose dish came off, counted as Menu changed and not in.',
+      note: 'Three Dessert picks of Puff puff, which came off: counted as Menu changed and not in, and listed in Who hasn’t picked under their party with the pick they kept. Choose for them opens on Dessert.',
       world: changedPicks(),
     }),
   chooseFor: () =>

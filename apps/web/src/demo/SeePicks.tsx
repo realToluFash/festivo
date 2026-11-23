@@ -25,6 +25,7 @@ import {
   type PicksStart,
   type PicksWorld,
   type Row,
+  type WaitingPerson,
   HOST,
   SW,
   UPDATED_AT,
@@ -282,14 +283,14 @@ function Picks({ first }: { first: PicksStart }) {
             <div className="pk-party">
               <h3>{SW.neverGiven(never.length)}</h3>
               <ul className="pk-people">
-                {never.map(({ person, open: courses }) => (
+                {never.map((one) => (
                   <WaitingLine
-                    key={person.id}
-                    id={`pk-never-${person.id}`}
-                    person={person}
-                    words={openWords(courses)}
+                    key={one.person.id}
+                    id={`pk-never-${one.person.id}`}
+                    person={one.person}
+                    one={one}
                     manage={manage}
-                    onOpen={(from) => open({ kind: 'chooseFor', personId: person.id }, from)}
+                    onOpen={(from) => open({ kind: 'chooseFor', personId: one.person.id }, from)}
                   />
                 ))}
               </ul>
@@ -299,14 +300,14 @@ function Picks({ first }: { first: PicksStart }) {
             <div key={group.party.id} className="pk-party">
               <h3>{SW.replied(group.party.replier, group.people.length)}</h3>
               <ul className="pk-people">
-                {group.people.map(({ person, open: courses }) => (
+                {group.people.map((one) => (
                   <WaitingLine
-                    key={person.id}
-                    id={`pk-wait-${person.id}`}
-                    person={person}
-                    words={openWords(courses)}
+                    key={one.person.id}
+                    id={`pk-wait-${one.person.id}`}
+                    person={one.person}
+                    one={one}
                     manage={manage}
-                    onOpen={(from) => open({ kind: 'chooseFor', personId: person.id }, from)}
+                    onOpen={(from) => open({ kind: 'chooseFor', personId: one.person.id }, from)}
                   />
                 ))}
               </ul>
@@ -433,13 +434,13 @@ function Lock({ words }: { words: string }) {
 function WaitingLine({
   id,
   person,
-  words,
+  one,
   manage,
   onOpen,
 }: {
   id: string;
   person: Person;
-  words: string;
+  one: WaitingPerson;
   manage: boolean;
   onOpen: (from: string) => void;
 }) {
@@ -447,10 +448,18 @@ function WaitingLine({
     <li className="pk-person">
       <div className="pk-person-words">
         <strong>{person.name}</strong>
-        <span className="pk-state">
-          <DashedCircle />
-          {words}
-        </span>
+        {one.open.length > 0 && (
+          <span className="pk-state">
+            <DashedCircle />
+            {openWords(one.open)}
+          </span>
+        )}
+        {one.changed.map(({ course, picked }) => (
+          <span key={course.id} className="pk-state">
+            <Swap />
+            {SW.changedOn(course.name, picked)}
+          </span>
+        ))}
       </div>
       {manage && <ChooseForButton id={id} person={person} onOpen={onOpen} />}
     </li>

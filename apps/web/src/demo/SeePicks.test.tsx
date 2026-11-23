@@ -133,6 +133,28 @@ describe('See picks (sc-3909)', () => {
     expect(within(region(SW.needsHost)).getAllByText(SW.nothingFor('Starter'))).toHaveLength(2);
   });
 
+  it(
+    'lists Menu changed under the party, and chooses for them on the changed course (sc-3913)',
+    SLOW,
+    async () => {
+      await picks('picksMenuChanged');
+      const waiting = region(SW.whoHasnt);
+      expect(within(waiting).getAllByText(SW.changedOn('Dessert', 'Puff puff'))).toHaveLength(3);
+      expect(within(waiting).getByText('Replied by Mateo Ruiz · 1 person')).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Choose for Lucía Ruiz' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText('Dessert · 1 of 1')).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole('radio', { name: SW.kitchenChoose }));
+      fireEvent.click(within(dialog).getByRole('button', { name: SW.save }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(
+        within(region(SW.whoHasnt)).getAllByText(SW.changedOn('Dessert', 'Puff puff')),
+      ).toHaveLength(2);
+    },
+  );
+
   it('asks before giving a variant to someone it rules out', SLOW, async () => {
     await picks('chooseWhoOverride');
     expect(
