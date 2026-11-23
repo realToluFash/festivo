@@ -167,9 +167,7 @@ function CountRow({
           )}
         </View>
         <Text size={size} weight="semibold" style={split ? styles.countSplit : styles.count}>
-          {split
-            ? t('menuPicks.number', { n: row.chosen })
-            : t('menuPicks.ofRoom', { n: row.chosen, room })}
+          {t('menuPicks.number', { n: row.chosen })}
         </Text>
         {split && (
           <Text size={size} weight="semibold" style={styles.countSplit}>

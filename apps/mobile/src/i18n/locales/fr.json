@@ -3420,7 +3420,6 @@
     "everyoneElse": "Tous les autres",
     "people": "Personnes",
     "number": "{{n, number}}",
-    "ofRoom": "{{n, number}} sur {{room, number}}",
     "rowChosen": "{{name}}, {{chosen, number}} sur {{room, number}}",
     "rowSaid": "{{name}}, choisi : {{chosen, number}}, par défaut : {{defaulted, number}}",
     "kitchen": "Au choix de la cuisine",
