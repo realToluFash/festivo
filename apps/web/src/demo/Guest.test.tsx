@@ -94,7 +94,7 @@ describe('the guest’s own page, A · The cover card (sc-31306)', () => {
     );
 
     expect(guestLinks).toEqual(GUEST_PAGES.flatMap((one) => one.states).map((one) => one.to));
-    expect(guestLinks).toHaveLength(91);
+    expect(guestLinks).toHaveLength(92);
   });
 
   it('opens on the cover card: the invitation, the guest, the event, when and where', async () => {
@@ -236,6 +236,7 @@ const SAYS: [string, () => void][] = [
     'closed',
     () => screen.getByText('Answers have closed. Contact your host if something has changed.'),
   ],
+  ['closedSaved', () => expect(screen.queryByText('Saved. The kitchen will see this.')).toBeNull()],
   ['closedNever', () => screen.getByRole('heading', { name: 'You didn’t answer.' })],
   ['paused', () => screen.getByText(/^This event is paused\./u)],
   ['pausedNever', () => screen.getByRole('heading', { name: 'You didn’t answer.' })],
@@ -966,6 +967,20 @@ describe('after the date to answer by, every answer (sc-3780)', () => {
       screen.queryByRole('button', { name: 'Update what the kitchen should know' }),
     ).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Show this at the door' })).toBeNull();
+  });
+});
+
+describe('closed at the start, the kitchen needs saved (sc-24381, Invitation.tsx’s kitchenAfter)', () => {
+  it('drops the kitchen’s saved note and the pencil once the event has started', async () => {
+    await guest('closedSaved');
+    const closed = screen
+      .getByRole('heading', { name: /^You answered Coming on /u })
+      .closest('section')!;
+
+    expect(within(closed).queryByText('Saved. The kitchen will see this.')).toBeNull();
+    expect(
+      within(closed).queryByRole('button', { name: 'Update what the kitchen should know' }),
+    ).toBeNull();
   });
 });
 
