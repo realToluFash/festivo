@@ -81,11 +81,31 @@ bytes="$(printf '%s' "$(value_of TWO_FACTOR_KEY)" | base64 -d 2>/dev/null | wc -
   && ok "DATABASE_URL carries POSTGRES_PASSWORD" \
   || fail "DATABASE_URL does not carry POSTGRES_PASSWORD"
 
-case ",$(value_of MAIL_WEBHOOK_ALLOWED_RANGES)," in
-  *,10.0.0.0/8,* | *,172.16.0.0/12,* | *,192.168.0.0/16,* | *,127.0.0.0/8,*)
-    fail "MAIL_WEBHOOK_ALLOWED_RANGES holds a private range: set the provider's published ranges" ;;
-  *) ok "MAIL_WEBHOOK_ALLOWED_RANGES holds no private range" ;;
-esac
+# Prints the first and last address of an IPv4 range as integers, or nothing.
+ipv4_span() {
+  local ip="${1%%/*}" bits=32 a b c d
+  [[ "$1" == */* ]] && bits="${1#*/}"
+  [[ "$bits" =~ ^[0-9]+$ ]] && (( bits <= 32 )) || return
+  [[ "$ip" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return
+  a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[2]}" c="${BASH_REMATCH[3]}" d="${BASH_REMATCH[4]}"
+  local size=$(( 1 << (32 - bits) )) n=$(( (a << 24) + (b << 16) + (c << 8) + d ))
+  printf '%s %s' $(( n / size * size )) $(( n / size * size + size - 1 ))
+}
+
+private_ranges=()
+IFS=, read -ra ranges <<<"$(value_of MAIL_WEBHOOK_ALLOWED_RANGES)"
+for range in "${ranges[@]}"; do
+  range="${range//[[:space:]]/}"
+  read -r first last <<<"$(ipv4_span "$range")"
+  [ -z "$first" ] && continue
+  for blocked in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8; do
+    read -r bfirst blast <<<"$(ipv4_span "$blocked")"
+    if (( first <= blast && last >= bfirst )); then private_ranges+=("$range"); break; fi
+  done
+done
+[ "${#private_ranges[@]}" = 0 ] \
+  && ok "MAIL_WEBHOOK_ALLOWED_RANGES holds no private range" \
+  || fail "MAIL_WEBHOOK_ALLOWED_RANGES holds a private range (${private_ranges[*]}): set the provider's published ranges"
 
 private="$secrets_dir/jwt/private.pem"
 public="$secrets_dir/jwt/public.pem"

@@ -54,6 +54,11 @@ route is given 60 s. The realtime hub has none, as it streams.
 ranges are checked against it; a proxy in front of this one (a CDN, a load balancer)
 would make every webhook a 401 until its address is trusted too.
 
+A server set up before the network had its `ip_range` keeps the old network, which hands
+`172.30.0.2` to whichever service starts first, and the proxy then fails to start. On such
+a server, once, before `deploy/deploy.sh`: `docker compose --project-directory deploy
+--env-file deploy/.env -f deploy/compose.yaml down`. The volumes stay.
+
 ## Sets
 
 Every value is generated fresh for each environment. The repository is public, and its
