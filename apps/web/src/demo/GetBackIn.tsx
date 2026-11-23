@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { offField } from '../offField.ts';
 import { BoardPage, HaveAccount, SignedInAs } from './BoardPage.tsx';
+import { NoBrowser, PasskeyStep } from './Passkeys.tsx';
 import {
   CodeForm,
   Heading,
@@ -66,7 +67,9 @@ export function GetBackInBoard() {
     case 'done':
       return <Changed key={key} email={reset.email} />;
     case 'code':
-      return <CodeFirst key={key} email={reset.email} />;
+      return <CodeFirst key={key} email={reset.email} noBrowser={state === 'no-passkeys'} />;
+    case 'code-passkey':
+      return <PasskeyFirst key={key} email={reset.email} state={state} />;
     case 'support':
       return <Support key={key} />;
     case 'link':
@@ -405,7 +408,7 @@ function ReadFailed() {
 }
 
 /** Two-factor on: the code passes before the password can change. */
-function CodeFirst({ email }: { email: string }) {
+function CodeFirst({ email, noBrowser }: { email: string; noBrowser: boolean }) {
   const navigate = useNavigate();
 
   return (
@@ -415,6 +418,7 @@ function CodeFirst({ email }: { email: string }) {
           Your account uses two-factor, so the reset asks for a code first. Open your authenticator
           app and enter the 6-digit code for {email}. Nothing changes until it passes.
         </p>
+        {noBrowser && <NoBrowser />}
       </Heading>
       <CodeForm
         opening=""
@@ -430,6 +434,28 @@ function CodeFirst({ email }: { email: string }) {
         <Link className="link-button demo-link" to={twoFactorAt('recovery')}>
           Use a recovery code instead
         </Link>
+        <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
+          Lost your authenticator and your recovery codes?
+        </Link>
+      </div>
+    </BoardPage>
+  );
+}
+
+/** sc-86885: two-factor with a passkey, so the reset asks for it first, in the code's place. */
+function PasskeyFirst({ email, state }: { email: string; state: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <BoardPage end={null}>
+      <PasskeyStep
+        lead={`Your account uses two-factor, so the reset asks for your passkey first. Nothing changes until it passes.`}
+        start={{ sheet: state !== 'cancelled' }}
+        onPassed={() => void navigate(backIn('new'), { state: { email } })}
+        onCode={() => void navigate(backIn('code'), { state: { email } })}
+        onLapse={null}
+      />
+      <div className="demo-asides">
         <Link className="link-button demo-link" to={backIn('support')} state={{ email }}>
           Lost your authenticator and your recovery codes?
         </Link>

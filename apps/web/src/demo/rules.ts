@@ -240,6 +240,9 @@ export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: stri
     name: 'A code first',
     states: [
       { name: 'Enter your code', to: backIn('code') },
+      { name: 'A passkey first (sc-86885)', to: backIn('code-passkey') },
+      { name: 'A passkey after a cancel', to: backIn('code-passkey', 'cancelled') },
+      { name: 'No passkeys in this browser', to: backIn('code', 'no-passkeys') },
       { name: 'Contact Soirely support', to: backIn('support') },
     ],
   },
@@ -263,6 +266,25 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     states: [
       { name: 'Enter a recovery code', to: twoFactorAt('recovery') },
       { name: 'A used code', to: twoFactorAt('recovery', 'used') },
+    ],
+  },
+  {
+    name: 'A passkey (sc-86885)',
+    states: [
+      { name: 'The waiting state, the sheet open', to: twoFactorAt('passkey') },
+      { name: 'After a cancel', to: twoFactorAt('passkey', 'cancelled') },
+      { name: 'A refused passkey', to: twoFactorAt('passkey', 'refused') },
+      { name: 'Paused after five refused passkeys', to: twoFactorAt('passkey', 'paused') },
+      { name: 'With the app, Use a code instead', to: twoFactorAt('code', 'has-passkey') },
+      {
+        name: 'Passkeys only, Use a code instead',
+        to: twoFactorAt('recovery', 'passkeys-only'),
+      },
+      { name: 'No passkeys in this browser, the app', to: twoFactorAt('code', 'no-passkeys') },
+      {
+        name: 'No passkeys in this browser, passkeys only',
+        to: twoFactorAt('recovery', 'no-passkeys-passkeys-only'),
+      },
     ],
   },
   {

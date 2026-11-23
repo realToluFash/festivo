@@ -5,6 +5,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { offButton } from '../offButton.ts';
 import { BoardPage, SignedInAs } from './BoardPage.tsx';
+import { NoBrowser, PasskeyStep } from './Passkeys.tsx';
 import { CodeField, Heading, Notice, Resend, useBusy } from './parts.tsx';
 import {
   CODE_LENGTH,
@@ -39,6 +40,8 @@ export function TwoFactorBoard() {
   switch (page) {
     case 'recovery':
       return <CodeEntry key={key} recovery state={state} />;
+    case 'passkey':
+      return <PasskeySignIn key={key} state={state} />;
     case 'start':
       return <Start key={key} state={state} asks={asks} onAsk={() => setAsks(asks + 1)} />;
     case 'codes':
@@ -65,6 +68,10 @@ export function TwoFactorBoard() {
 
 function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
   const navigate = useNavigate();
+  /** sc-86885: a browser with no PublicKeyCredential opens here, and a member with passkeys can go back to one. */
+  const noBrowser = state.startsWith('no-passkeys');
+  const passkeysOnly = state.endsWith('passkeys-only');
+  const backToPasskey = !noBrowser && (passkeysOnly || state === 'has-passkey');
   const carried = useLocation().state as { outlasted?: boolean } | null;
   const opening = recovery
     ? state === 'used'
@@ -175,6 +182,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
             ? 'One of the codes you saved when you turned on two-factor. Each works once.'
             : `Open your authenticator app and enter the ${CODE_LENGTH}-digit code for ${SAMPLE.email}.`}
         </p>
+        {noBrowser && <NoBrowser />}
         {until != null && (
           <Notice
             title="Too many wrong codes"
@@ -213,13 +221,26 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
       </form>
 
       <div className="demo-asides">
-        <Link
-          className="link-button demo-link"
-          to={twoFactorAt(recovery ? 'code' : 'recovery')}
-          state={outlasted ? { outlasted } : null}
-        >
-          {recovery ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
-        </Link>
+        {backToPasskey && (
+          <Link
+            className="link-button demo-link"
+            to={twoFactorAt('passkey', passkeysOnly ? 'cancelled-passkeys-only' : 'cancelled')}
+          >
+            Use a passkey instead
+          </Link>
+        )}
+        {!passkeysOnly && (
+          <Link
+            className="link-button demo-link"
+            to={twoFactorAt(
+              recovery ? 'code' : 'recovery',
+              noBrowser ? state : backToPasskey ? 'has-passkey' : undefined,
+            )}
+            state={outlasted ? { outlasted } : null}
+          >
+            {recovery ? 'Use your authenticator app instead' : 'Use a recovery code instead'}
+          </Link>
+        )}
         <Link
           className="link-button demo-link"
           to={twoFactorAt('start')}
@@ -236,6 +257,57 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
           </p>
         )}
       </div>
+    </BoardPage>
+  );
+}
+
+/* A passkey at sign-in (sc-86885) */
+
+/** The waiting state in Enter your code's place: the browser's sheet over it, then Use a passkey with Use a code instead under it. */
+function PasskeySignIn({ state }: { state: string }) {
+  const navigate = useNavigate();
+  const [passkeysOnly, setPasskeysOnly] = useState(state.endsWith('passkeys-only'));
+  const refused = state.startsWith('refused');
+
+  return (
+    <BoardPage
+      end={null}
+      back={toSignIn}
+      controls={
+        <label className="demo-switch">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={passkeysOnly}
+            onChange={(event) => setPasskeysOnly(event.target.checked)}
+          />
+          Demo: passkeys only, no authenticator app
+        </label>
+      }
+    >
+      <PasskeyStep
+        lead={`Your browser asks for your passkey for ${SAMPLE.email}. Unlock it with your face, fingerprint, PIN or screen lock.`}
+        start={{
+          sheet: !(state.startsWith('cancelled') || refused || state.startsWith('paused')),
+          refused,
+          paused: state.startsWith('paused'),
+          wrongs: refused ? 1 : 0,
+        }}
+        onPassed={() => void navigate('/demo/today')}
+        onCode={() =>
+          void navigate(
+            passkeysOnly
+              ? twoFactorAt('recovery', 'passkeys-only')
+              : twoFactorAt('code', 'has-passkey'),
+          )
+        }
+        onLapse={() =>
+          void navigate('/demo/sign-in?state=code-timed-out', {
+            replace: true,
+            state: toSignIn.state,
+          })
+        }
+      />
     </BoardPage>
   );
 }
@@ -788,7 +860,7 @@ function SetUpAgain() {
         </p>
       </Heading>
       <div className="demo-buttons">
-        <Link className="button button-primary demo-wide" to="/demo/later?screen=security">
+        <Link className="button button-primary demo-wide" to="/demo/settings/security?state=choice">
           Set up two-factor
         </Link>
         <Link className="button demo-wide" to="/demo/today">
