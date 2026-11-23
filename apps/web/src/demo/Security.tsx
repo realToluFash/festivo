@@ -18,6 +18,7 @@ import {
   type Device,
   type DialogStart,
   NEW_CODES,
+  OFF,
   PROOF_MINUTES,
   PROVIDERS,
   type Provider,
@@ -68,10 +69,44 @@ import {
   sampleSend,
 } from './securitySamples.ts';
 import type { Viewer } from './settings.ts';
-import { Ask, Chevron, Head, RedAction, RowWords, TitleRow } from '../components/SettingsParts.tsx';
+import {
+  Ask,
+  Chevron,
+  Dialog,
+  Field,
+  Head,
+  Note,
+  RedAction,
+  RowWords,
+  TitleRow,
+} from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { useLater } from '../useLater.ts';
+import {
+  AddAppDialog,
+  AddRow,
+  ChoiceDialog,
+  CodeStepDialog,
+  FactorOpenable,
+  MakeDialog,
+  PasskeyDialog,
+} from './Passkeys.tsx';
+import {
+  type FactorRow,
+  PASSKEY_RESULTS as PR,
+  PASSKEY_WORDS as P,
+  REMOVE_WORDS as RM,
+  atMost,
+  codeStepOf,
+  factorRows,
+  firstStep,
+  madePasskey,
+  offersApp,
+  offersPasskey,
+  turnOffAt,
+} from './passkeys.ts';
+import { SAMPLE } from './rules.ts';
 
 /** Security at a desk in B · Summary first (Web-Security-*.dc.html): the app's page, the same for every role. */
 export function Security({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tell }) {
@@ -112,7 +147,50 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
   function prove(purpose: Purpose, provider: Provider | null = null): void {
     setAsk(null);
     if (proved && (purpose === 'link' || purpose === 'unlink')) return provedFor(purpose, provider);
+    if (
+      page.passkeys.length > 0 &&
+      (purpose === 'link' || purpose === 'unlink' || purpose === 'everywhere')
+    )
+      return setDialog(
+        page.ways.password
+          ? opening('password', { purpose, provider })
+          : factorStep(purpose, provider),
+      );
+    if (purpose === 'turnOff' || purpose === 'newCodes')
+      return setDialog(
+        page.passkeys.length === 0 ? opening('prove', { purpose }) : factorStep(purpose),
+      );
     setDialog(opening('prove', { purpose, provider }));
+  }
+
+  /** The current factor: the sheet while there is a passkey this browser can use, else the code step. */
+  function factorStep(
+    purpose: Purpose,
+    provider: Provider | null = null,
+    factor: string | null = null,
+  ): DialogStart {
+    return firstStep(page, page.webauthn) === 'passkey'
+      ? opening('passkey', { purpose, provider, factor, sheet: true })
+      : opening('codeStep', { purpose, provider, factor });
+  }
+
+  function factorPassed(start: DialogStart): void {
+    const { purpose, provider, factor } = start;
+    if (purpose === 'addPasskey') return setDialog(opening('make'));
+    if (purpose === 'addApp') return setDialog(opening('addApp'));
+    if (purpose === 'remove') {
+      const gone = page.passkeys.find((one) => one.id === factor);
+      if (gone == null) return done(PR.appRemoved(you.email), { app: null });
+      return done(PR.passkeyRemoved(gone, you.email), {
+        passkeys: page.passkeys.filter((one) => one.id !== factor),
+      });
+    }
+    if (purpose === 'turnOff') return done(R.off(you.email), { ...OFF });
+    if (purpose != null) provedFor(purpose, provider);
+  }
+
+  function turnOn(): void {
+    setDialog(opening(page.webauthn ? 'choice' : 'setup'));
   }
 
   function provedFor(purpose: Purpose, provider: Provider | null): void {
@@ -125,7 +203,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
     else if (purpose === 'unlink' && provider != null)
       done(R.unlinked(provider), { ways: { ...page.ways, [provider]: false } });
     else if (purpose === 'everywhere') done(R.everywhere(others), { devices: here(page) });
-    else if (purpose === 'turnOff') done(R.off(you.email), { on: false });
+    else if (purpose === 'turnOff') done(R.off(you.email), { ...OFF });
     else setDialog(opening('recovery', { purpose: 'newCodes' }));
   }
 
@@ -188,11 +266,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
             saidRef={(line) => {
               saidLine.current = line;
             }}
-            step={
-              card.step == null
-                ? null
-                : { label: card.step, onClick: () => setDialog(opening('setup')) }
-            }
+            step={card.step == null ? null : { label: card.step, onClick: turnOn }}
           />
         ) : (
           <SaidLine
@@ -269,62 +343,33 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           ) : page.factor === 'loading' ? (
             <Bones count={1} label={W.loading} />
           ) : page.on ? (
-            <ul className="desk-rows account-rows">
-              <Openable
-                title={W.authenticator}
-                line={W.onLine}
-                lead="shield"
-                on={open === 'auth'}
-                onToggle={() => toggle('auth')}
-              >
-                <div className="account-acts">
-                  {page.twoFactorRule ? (
-                    <KeptAction label={W.turnOffKept} />
-                  ) : (
-                    <button
-                      type="button"
-                      className="desk-text is-red"
-                      onClick={() => setAsk('turnOff')}
-                    >
-                      {W.turnOffAsking}
-                    </button>
-                  )}
-                </div>
-                <p className="desk-note">
-                  {page.twoFactorRule ? W.keptTwoFactor : W.turnOffLine(you.email)}
-                </p>
-              </Openable>
-              <Openable
-                title={W.recoveryCodes}
-                line={W.codesLine(page.unused)}
-                lead="lock"
-                on={open === 'codes'}
-                onToggle={() => toggle('codes')}
-              >
-                <div className="account-acts">
-                  <button type="button" className="desk-text" onClick={() => setAsk('newCodes')}>
-                    {W.newCodes}
-                  </button>
-                </div>
-                <p className="desk-note">{W.newCodesLine}</p>
-              </Openable>
-            </ul>
+            <FactorsCard
+              page={page}
+              email={you.email}
+              locale={locale}
+              open={open}
+              onToggle={toggle}
+              onRemove={() => setAsk('remove')}
+              onTurnOff={() => setAsk('turnOff')}
+              onNewCodes={() => setAsk('newCodes')}
+              onAddPasskey={() => setDialog(factorStep('addPasskey'))}
+              onAddApp={() => setDialog(factorStep('addApp'))}
+            />
           ) : (
             <>
               <ul className="desk-rows account-rows">
                 <li>
-                  <button
-                    type="button"
-                    className="desk-row account-row"
-                    onClick={() => setDialog(opening('setup'))}
-                  >
+                  <button type="button" className="desk-row account-row" onClick={turnOn}>
                     <Lead name="shield" />
-                    <RowWords title={W.authenticator} lines={[W.offRow]} />
+                    <RowWords
+                      title={page.webauthn ? W.turnOn : W.authenticator}
+                      lines={[W.offRow]}
+                    />
                     <Chevron />
                   </button>
                 </li>
               </ul>
-              <p className="desk-foot">{W.offFoot}</p>
+              <p className="desk-foot">{page.webauthn ? W.offFootPasskey : W.offFoot}</p>
             </>
           )}
         </section>
@@ -444,6 +489,97 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           onGo={() => prove('everywhere')}
         />
       )}
+      {ask === 'remove' && open != null && (
+        <RemoveAsk
+          page={page}
+          open={open}
+          email={you.email}
+          onKeep={() => setAsk(null)}
+          onGo={() => {
+            setAsk(null);
+            setDialog(factorStep('remove', null, open));
+          }}
+        />
+      )}
+      {dialog?.kind === 'choice' && (
+        <ChoiceDialog
+          making={dialog.sheet}
+          onClose={() => setDialog(null)}
+          onApp={() => setDialog(opening('setup'))}
+          onMade={() => {
+            setPage((now) => ({
+              ...now,
+              on: true,
+              passkeys: [madePasskey(new Date(), 0)],
+              unused: CODES_MADE,
+            }));
+            setDialog(opening('recovery', { byPasskey: true }));
+          }}
+        />
+      )}
+      {dialog?.kind === 'password' && (
+        <PasswordFirst
+          lead={
+            proveAsks(
+              dialog.purpose === 'everywhere' ? 'everywhere' : (dialog.purpose ?? 'everywhere'),
+              dialog.provider,
+              page,
+              you.email,
+            ).lead
+          }
+          onClose={() => setDialog(null)}
+          onPassed={() =>
+            dialog.purpose != null && setDialog(factorStep(dialog.purpose, dialog.provider))
+          }
+        />
+      )}
+      {dialog?.kind === 'passkey' && (
+        <PasskeyDialog
+          key={`${dialog.purpose ?? ''}:${dialog.factor ?? ''}`}
+          lead={stepLead(dialog.purpose, dialog.provider, you.email)}
+          start={{
+            sheet: dialog.sheet,
+            refused: dialog.refused,
+            wrongs: dialog.refused ? 1 : 0,
+            paused: dialog.paused,
+          }}
+          onClose={() => setDialog(null)}
+          onPassed={() => factorPassed(dialog)}
+          onCode={() => setDialog({ ...dialog, kind: 'codeStep', sheet: false })}
+        />
+      )}
+      {dialog?.kind === 'codeStep' && (
+        <CodeStepDialog
+          step={codeStepOf(page)}
+          webauthn={page.webauthn}
+          lead={stepLead(dialog.purpose, dialog.provider, you.email)}
+          onClose={() => setDialog(null)}
+          onPassed={() => factorPassed(dialog)}
+          onPasskey={
+            firstStep(page, page.webauthn) === 'passkey'
+              ? () => setDialog({ ...dialog, kind: 'passkey', sheet: true })
+              : null
+          }
+        />
+      )}
+      {dialog?.kind === 'make' && (
+        <MakeDialog
+          exists={dialog.refused}
+          onClose={() => setDialog(null)}
+          onExists={() => setDialog(opening('make', { refused: true }))}
+          onMade={() =>
+            done(PR.passkeyAdded(you.email), {
+              passkeys: [madePasskey(new Date(), page.passkeys.length), ...page.passkeys],
+            })
+          }
+        />
+      )}
+      {dialog?.kind === 'addApp' && (
+        <AddAppDialog
+          onClose={() => setDialog(null)}
+          onAdded={() => done(PR.appAdded(you.email), { app: new Date() })}
+        />
+      )}
       {dialog?.kind === 'change' && (
         <ChangePasswordDialog
           start={dialog}
@@ -524,7 +660,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           activate={sampleActivate}
           onClose={() => setDialog(null)}
           onOn={() => {
-            setPage((now) => ({ ...now, on: true, unused: CODES_MADE }));
+            setPage((now) => ({ ...now, on: true, app: new Date(), unused: CODES_MADE }));
             setDialog(opening('recovery'));
           }}
         />
@@ -534,7 +670,10 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
           start={dialog}
           codes={dialog.purpose === 'newCodes' ? NEW_CODES : RECOVERY_CODES}
           onFinish={() =>
-            done(dialog.purpose === 'newCodes' ? R.newCodes : R.on, { unused: CODES_MADE })
+            done(
+              dialog.purpose === 'newCodes' ? R.newCodes : dialog.byPasskey ? PR.onPasskey : R.on,
+              { unused: CODES_MADE },
+            )
           }
         />
       )}
@@ -635,5 +774,213 @@ function WayInside({
       </div>
       <p className="desk-note">{W.unlinkLine(provider, stillLine(page.ways, provider))}</p>
     </>
+  );
+}
+
+/** What the current-factor step is for, over the waiting state or the code. */
+function stepLead(purpose: Purpose | null, provider: Provider | null, email: string): string {
+  switch (purpose) {
+    case 'addPasskey':
+      return 'To add a passkey, confirm it’s you.';
+    case 'addApp':
+      return 'To add an authenticator app, confirm it’s you.';
+    case 'remove':
+      return `To remove it, confirm it’s you. We will email ${email} to say it was removed.`;
+    case 'turnOff':
+      return `To turn off two-factor, confirm it’s you. We will email ${email} to say it was turned off.`;
+    case 'newCodes':
+      return 'To make new recovery codes, confirm it’s you.';
+    case 'link':
+    case 'unlink':
+      return `To ${purpose} ${provider ?? 'Google'}, confirm it’s you. You won’t be asked again for ${PROOF_MINUTES} minutes.`;
+    default:
+      return 'So that nobody who picks up this device can do this without you.';
+  }
+}
+
+/** Confirm it's you's first step for a member with passkeys: the password, then the passkey in its own step. */
+function PasswordFirst({
+  lead,
+  onClose,
+  onPassed,
+}: {
+  lead: string;
+  onClose: () => void;
+  onPassed: () => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function go(): void {
+    if (busy) return;
+    if (typed === '') {
+      setError('Enter your password.');
+      return input.current?.focus();
+    }
+    setBusy(true);
+    window.setTimeout(() => {
+      setBusy(false);
+      if (typed === SAMPLE.password) return onPassed();
+      setError('That password is not right. Try again, or reset it from Your password.');
+      input.current?.focus();
+    }, SEND_MS);
+  }
+
+  return (
+    <Dialog
+      title={P.proveTitle}
+      verb={P.continue}
+      on={!busy}
+      locked={busy}
+      first={input}
+      onDismiss={onClose}
+      onConfirm={go}
+    >
+      <Note>{lead}</Note>
+      <div className="desk-fields">
+        <Field
+          label="Your password"
+          value={typed}
+          secret
+          autoComplete="current-password"
+          inputRef={input}
+          error={error}
+          onChange={(value) => {
+            setTyped(value);
+            setError(null);
+          }}
+        />
+      </div>
+    </Dialog>
+  );
+}
+
+/** Two-factor once on: each factor, newest first, Recovery codes, the rows that add, and Turn off two-factor… once. */
+function FactorsCard({
+  page,
+  email,
+  locale,
+  open,
+  onToggle,
+  onRemove,
+  onTurnOff,
+  onNewCodes,
+  onAddPasskey,
+  onAddApp,
+}: {
+  page: SecurityPage;
+  email: string;
+  locale: string;
+  open: string | null;
+  onToggle: (key: string) => void;
+  onRemove: () => void;
+  onTurnOff: () => void;
+  onNewCodes: () => void;
+  onAddPasskey: () => void;
+  onAddApp: () => void;
+}) {
+  const rows = factorRows(page);
+  const offAt = turnOffAt(page);
+  const turnOff = (
+    <>
+      <div className="account-acts">
+        {page.twoFactorRule ? (
+          <KeptAction label={W.turnOffKept} />
+        ) : (
+          <button type="button" className="desk-text is-red" onClick={onTurnOff}>
+            {W.turnOffAsking}
+          </button>
+        )}
+      </div>
+      <p className="desk-note">{page.twoFactorRule ? W.keptTwoFactor : W.turnOffLine(email)}</p>
+    </>
+  );
+
+  return (
+    <>
+      <ul className="desk-rows account-rows">
+        {rows.map((row: FactorRow) => (
+          <FactorOpenable
+            key={row.key}
+            row={row}
+            day={(when) => dayOf(when, locale)}
+            on={open === row.key}
+            onToggle={() => onToggle(row.key)}
+          >
+            {offAt === 'row' ? (
+              turnOff
+            ) : (
+              <>
+                <div className="account-acts">
+                  <button type="button" className="desk-text is-red" onClick={onRemove}>
+                    {P.remove}
+                  </button>
+                </div>
+                <p className="desk-note">{P.removeLine}</p>
+              </>
+            )}
+          </FactorOpenable>
+        ))}
+        <Openable
+          title={W.recoveryCodes}
+          line={W.codesLine(page.unused)}
+          lead="lock"
+          on={open === 'codes'}
+          onToggle={() => onToggle('codes')}
+        >
+          <div className="account-acts">
+            <button type="button" className="desk-text" onClick={onNewCodes}>
+              {W.newCodes}
+            </button>
+          </div>
+          <p className="desk-note">{W.newCodesLine}</p>
+        </Openable>
+        {offersPasskey(page, page.webauthn) && (
+          <AddRow label={P.addPasskey} onClick={onAddPasskey} />
+        )}
+        {offersApp(page) && <AddRow label={P.addApp} onClick={onAddApp} />}
+      </ul>
+      {atMost(page, page.webauthn) && <p className="desk-foot">{P.atMost}</p>}
+      {page.webauthn && <p className="desk-foot">{P.ownDevice}</p>}
+      {offAt === 'end' && <div className="passkey-end">{turnOff}</div>}
+    </>
+  );
+}
+
+function RemoveAsk({
+  page,
+  open,
+  email,
+  onKeep,
+  onGo,
+}: {
+  page: SecurityPage;
+  open: string;
+  email: string;
+  onKeep: () => void;
+  onGo: () => void;
+}) {
+  const passkey = page.passkeys.find((one) => one.id === open);
+
+  return passkey == null ? (
+    <Ask
+      title={RM.appTitle}
+      line={RM.appLine(email)}
+      keep={RM.keep}
+      go={RM.appGo}
+      onKeep={onKeep}
+      onGo={onGo}
+    />
+  ) : (
+    <Ask
+      title={RM.passkeyTitle(passkey)}
+      line={RM.passkeyLine(passkey, email)}
+      keep={RM.keep}
+      go={RM.passkeyGo}
+      onKeep={onKeep}
+      onGo={onGo}
+    />
   );
 }

@@ -1,6 +1,7 @@
 import { PROVE_WORDS, WRONG_CODE, WRONG_FACTOR } from './account.ts';
 import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
+import { APP_ON, PASSKEYS, type Passkey, TEN_PASSKEYS } from './passkeys.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
 export type Provider = 'Google' | 'Apple';
@@ -31,6 +32,11 @@ export interface SecurityPage {
   providerRule: boolean;
   twoFactorRule: boolean;
   factor: 'loaded' | 'loading' | 'failed';
+  /** The day the app was turned on (`TwoFactorFactor.activatedAt`), or none. */
+  app: Date | null;
+  passkeys: readonly Passkey[];
+  /** The browser has `PublicKeyCredential`: without it, no step offers a passkey. */
+  webauthn: boolean;
 }
 
 export const PROVIDERS: readonly Provider[] = ['Google', 'Apple'];
@@ -150,6 +156,8 @@ export const SECURITY_WORDS = {
   offRow: 'Off',
   offFoot:
     'Asks for a code from an authenticator app every time you sign in, whether with your password, Google or Apple.',
+  offFootPasskey:
+    'Asks for your passkey or a code from an authenticator app every time you sign in, whether with your password, Google or Apple.',
   turnOffAsking: 'Turn off two-factor…',
   turnOffKept: 'Turn off two-factor',
   turnOffLine: (email: string) =>
@@ -303,7 +311,8 @@ export function deviceLine(device: Device, locale: string): string {
   return device.lastUsed == null ? W.here : W.used(dayAtTime(device.lastUsed, locale));
 }
 
-export type Purpose = 'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes';
+export type Purpose =
+  'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes' | 'addPasskey' | 'addApp' | 'remove';
 
 export interface ProveAsks {
   lead: string;
@@ -378,7 +387,20 @@ export function qrSeed(code: string): number {
 }
 
 export type DialogKind =
-  'change' | 'forgot' | 'sent' | 'setCode' | 'choose' | 'prove' | 'setup' | 'recovery';
+  | 'change'
+  | 'forgot'
+  | 'sent'
+  | 'setCode'
+  | 'choose'
+  | 'prove'
+  | 'setup'
+  | 'recovery'
+  | 'choice'
+  | 'password'
+  | 'passkey'
+  | 'codeStep'
+  | 'make'
+  | 'addApp';
 
 export interface DialogStart {
   kind: DialogKind;
@@ -391,6 +413,14 @@ export interface DialogStart {
   copied: boolean;
   saved: boolean;
   expired: boolean;
+  /** The factor Remove… is for: `auth` or a passkey's id. */
+  factor: string | null;
+  /** The browser's sheet is open over the step. */
+  sheet: boolean;
+  refused: boolean;
+  paused: boolean;
+  /** Recovery codes made because a passkey turned two-factor on. */
+  byPasskey: boolean;
 }
 
 export function opening(kind: DialogKind, more: Partial<DialogStart> = {}): DialogStart {
@@ -405,11 +435,16 @@ export function opening(kind: DialogKind, more: Partial<DialogStart> = {}): Dial
     copied: false,
     saved: false,
     expired: false,
+    factor: null,
+    sheet: false,
+    refused: false,
+    paused: false,
+    byPasskey: false,
     ...more,
   };
 }
 
-export type AskKind = 'unlink' | 'signOut' | 'turnOff' | 'newCodes' | 'everywhere';
+export type AskKind = 'unlink' | 'signOut' | 'turnOff' | 'newCodes' | 'everywhere' | 'remove';
 
 export interface SecurityStart {
   page: SecurityPage;
@@ -475,11 +510,54 @@ export const WEB_MOMENTS = [
   'failed',
 ] as const;
 
-type SecurityState = (typeof SECURITY_STATES)[number] | (typeof WEB_MOMENTS)[number];
+/** sc-86885: two-factor with a passkey, on the web. */
+export const PASSKEY_MOMENTS = [
+  'choice',
+  'choiceSheet',
+  'passkeyRecovery',
+  'turnedOnPasskey',
+  'appOnlyOpen',
+  'passkeysOnly',
+  'bothFactors',
+  'tenPasskeys',
+  'onePasskey',
+  'onePasskeyKept',
+  'addPasskey',
+  'addPasskeyCode',
+  'addPasskeyApp',
+  'makePasskey',
+  'passkeyExists',
+  'passkeyAdded',
+  'addApp',
+  'appAdded',
+  'remove',
+  'removeApp',
+  'removeProve',
+  'removed',
+  'passkeyCancelled',
+  'passkeyRefused',
+  'passkeyPaused',
+  'newCodesPasskey',
+  'turnOffPasskey',
+  'everywherePasskey',
+  'noPasskeysTurnOn',
+  'noPasskeysCard',
+  'noPasskeysProve',
+] as const;
+
+type SecurityState =
+  | (typeof SECURITY_STATES)[number]
+  | (typeof WEB_MOMENTS)[number]
+  | (typeof PASSKEY_MOMENTS)[number];
 
 function stateOf(name: string): SecurityState | null {
-  return [...SECURITY_STATES, ...WEB_MOMENTS].find((state) => state === name) ?? null;
+  return (
+    [...SECURITY_STATES, ...WEB_MOMENTS, ...PASSKEY_MOMENTS].find((state) => state === name) ?? null
+  );
 }
+
+/** Two-factor off: no app, no passkey. */
+export const OFF = { on: false, app: null, passkeys: [] } as const satisfies Partial<SecurityPage>;
 
 export const REST_PAGE: SecurityPage = {
   ways: { password: true, Google: true, Apple: false },
@@ -489,6 +567,9 @@ export const REST_PAGE: SecurityPage = {
   providerRule: false,
   twoFactorRule: false,
   factor: 'loaded',
+  app: APP_ON,
+  passkeys: [],
+  webauthn: true,
 };
 
 /** What a state link opens on; one the page does not know opens it at rest. */
@@ -497,7 +578,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
   const { email } = yourSecurity(viewer);
   const REST: SecurityStart = { page: REST_PAGE, said: null, open: null, ask: null, dialog: null };
   const page = (more: Partial<SecurityPage>) => ({ ...REST_PAGE, ...more });
-  const googleOnly = page({ ways: { password: false, Google: true, Apple: false }, on: false });
+  const googleOnly = page({ ways: { password: false, Google: true, Apple: false }, ...OFF });
   const kept = page({ providerRule: true, twoFactorRule: true });
   const here = DEVICES.filter((device) => device.here).map((device) => device.id);
   const change = (typed: string, second: string, more: Partial<DialogStart> = {}) => ({
@@ -506,6 +587,11 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
   });
   const prove = (purpose: Purpose, provider: Provider | null, more: Partial<DialogStart> = {}) =>
     opening('prove', { purpose, provider, ...more });
+  const passkeysOnly = page({ app: null, passkeys: PASSKEYS });
+  const both = page({ passkeys: PASSKEYS });
+  const [icloud] = PASSKEYS;
+  const passkey = (purpose: Purpose, more: Partial<DialogStart> = {}) =>
+    opening('passkey', { purpose, sheet: true, ...more });
 
   switch (name) {
     case null:
@@ -564,7 +650,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
     case 'added':
       return {
         ...REST,
-        page: page({ on: false }),
+        page: page({ ...OFF }),
         said: RESULT_WORDS.added('Google'),
       };
     case 'linkPick':
@@ -601,11 +687,11 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         said: RESULT_WORDS.unlinked('Google'),
       };
     case 'setup':
-      return { ...REST, page: page({ on: false }), dialog: opening('setup') };
+      return { ...REST, page: page({ ...OFF }), dialog: opening('setup') };
     case 'setupWrong':
       return {
         ...REST,
-        page: page({ on: false }),
+        page: page({ ...OFF }),
         dialog: opening('setup', { typed: WRONG_FACTOR, tried: true }),
       };
     case 'recovery':
@@ -627,7 +713,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
     case 'turnOffProve':
       return { ...REST, open: 'auth', dialog: prove('turnOff', null) };
     case 'turnedOff':
-      return { ...REST, page: page({ on: false }), said: RESULT_WORDS.off(email) };
+      return { ...REST, page: page({ ...OFF }), said: RESULT_WORDS.off(email) };
     case 'signOutDevice':
       return { ...REST, open: OTHER_DEVICE.id, ask: 'signOut' };
     case 'deviceSignedOut':
@@ -668,16 +754,132 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
         }),
         said: RESULT_WORDS.device(OTHER_DEVICE.name),
       };
+    case 'choice':
+      return { ...REST, page: page({ ...OFF }), dialog: opening('choice') };
+    case 'choiceSheet':
+      return { ...REST, page: page({ ...OFF }), dialog: opening('choice', { sheet: true }) };
+    case 'passkeyRecovery':
+      return {
+        ...REST,
+        page: page({ app: null, passkeys: [icloud], unused: CODES_MADE }),
+        dialog: opening('recovery', { byPasskey: true }),
+      };
+    case 'turnedOnPasskey':
+      return {
+        ...REST,
+        page: page({ app: null, passkeys: [icloud], unused: CODES_MADE }),
+        said: 'Two-factor is on. Every sign-in now asks for your passkey.',
+      };
+    case 'appOnlyOpen':
+      return { ...REST, open: 'auth' };
+    case 'passkeysOnly':
+      return { ...REST, page: passkeysOnly };
+    case 'bothFactors':
+      return { ...REST, page: both };
+    case 'tenPasskeys':
+      return { ...REST, page: page({ passkeys: TEN_PASSKEYS }) };
+    case 'onePasskey':
+      return { ...REST, page: page({ app: null, passkeys: [icloud] }), open: icloud.id };
+    case 'onePasskeyKept':
+      return {
+        ...REST,
+        page: page({ app: null, passkeys: [icloud], twoFactorRule: true }),
+        open: icloud.id,
+      };
+    case 'addPasskey':
+      return { ...REST, page: passkeysOnly, dialog: passkey('addPasskey') };
+    case 'addPasskeyCode':
+      return { ...REST, page: both, dialog: opening('codeStep', { purpose: 'addPasskey' }) };
+    case 'addPasskeyApp':
+      return { ...REST, dialog: opening('codeStep', { purpose: 'addPasskey' }) };
+    case 'makePasskey':
+      return { ...REST, page: passkeysOnly, dialog: opening('make') };
+    case 'passkeyExists':
+      return { ...REST, page: passkeysOnly, dialog: opening('make', { refused: true }) };
+    case 'passkeyAdded':
+      return {
+        ...REST,
+        page: page({
+          app: null,
+          passkeys: [
+            { ...icloud, id: 'pk-new', added: new Date(2026, 10, 23, 9, 30) },
+            ...PASSKEYS,
+          ],
+        }),
+        said: `Passkey added. We emailed ${email} to say so.`,
+      };
+    case 'addApp':
+      return { ...REST, page: passkeysOnly, dialog: opening('addApp') };
+    case 'appAdded':
+      return {
+        ...REST,
+        page: page({ app: new Date(2026, 10, 23, 9, 30), passkeys: PASSKEYS }),
+        said: `Authenticator app added. We emailed ${email} to say so.`,
+      };
+    case 'remove':
+      return { ...REST, page: both, open: icloud.id, ask: 'remove' };
+    case 'removeApp':
+      return { ...REST, page: both, open: 'auth', ask: 'remove' };
+    case 'removeProve':
+      return {
+        ...REST,
+        page: both,
+        open: icloud.id,
+        dialog: passkey('remove', { factor: icloud.id }),
+      };
+    case 'removed':
+      return {
+        ...REST,
+        page: page({ passkeys: PASSKEYS.slice(1) }),
+        said: `Passkey removed. It stays in ${icloud.provider ?? ''} until you delete it there. We emailed ${email} to say so.`,
+      };
+    case 'passkeyCancelled':
+      return {
+        ...REST,
+        page: passkeysOnly,
+        open: 'codes',
+        dialog: passkey('newCodes', { sheet: false }),
+      };
+    case 'passkeyRefused':
+      return {
+        ...REST,
+        page: passkeysOnly,
+        open: 'codes',
+        dialog: passkey('newCodes', { sheet: false, refused: true }),
+      };
+    case 'passkeyPaused':
+      return {
+        ...REST,
+        page: passkeysOnly,
+        open: 'codes',
+        dialog: passkey('newCodes', { sheet: false, paused: true }),
+      };
+    case 'newCodesPasskey':
+      return { ...REST, page: passkeysOnly, open: 'codes', dialog: passkey('newCodes') };
+    case 'turnOffPasskey':
+      return { ...REST, page: both, dialog: passkey('turnOff') };
+    case 'everywherePasskey':
+      return { ...REST, page: both, dialog: passkey('everywhere') };
+    case 'noPasskeysTurnOn':
+      return { ...REST, page: page({ ...OFF, webauthn: false }), dialog: opening('setup') };
+    case 'noPasskeysCard':
+      return { ...REST, page: { ...passkeysOnly, webauthn: false } };
+    case 'noPasskeysProve':
+      return {
+        ...REST,
+        page: { ...passkeysOnly, webauthn: false },
+        dialog: opening('codeStep', { purpose: 'turnOff' }),
+      };
   }
 }
 
 export interface HeldStep {
   label: string;
-  opens: 'setup' | 'linkPick';
+  opens: 'choice' | 'linkPick';
 }
 
 export const HELD_STEPS = {
-  turnOn: { label: W.turnOn, opens: 'setup' },
+  turnOn: { label: W.turnOn, opens: 'choice' },
   link: { label: 'Link Google or Apple', opens: 'linkPick' },
 } as const satisfies Record<string, HeldStep>;
 
@@ -755,6 +957,42 @@ export const SECURITY_PAGES: readonly { name: string; states: readonly DemoLink[
       security('factorLoadingSignedOut', 'Still loading, a device signed out: the line alone'),
       security('loading', 'Two-factor and the devices loading'),
       security('failed', 'Two-factor and the devices did not load'),
+    ],
+  },
+  {
+    name: 'Two-factor with a passkey (sc-86885)',
+    states: [
+      security('choice', 'Turn on two-factor: How do you want to do it?'),
+      security('choiceSheet', 'The choice, the browser’s sheet open'),
+      security('passkeyRecovery', 'A passkey made, Save your recovery codes'),
+      security('turnedOnPasskey', 'Two-factor on with a passkey'),
+      security('appOnlyOpen', 'The app only, its row opened'),
+      security('passkeysOnly', 'The card with passkeys only'),
+      security('bothFactors', 'The card with both'),
+      security('tenPasskeys', 'The card at 10 passkeys'),
+      security('onePasskey', 'One passkey, the last factor'),
+      security('onePasskeyKept', 'The last factor, kept by a rule'),
+      security('addPasskey', 'Add a passkey, the current factor first'),
+      security('addPasskeyCode', 'Add a passkey, Use a code instead'),
+      security('addPasskeyApp', 'Add a passkey with the app only, its code'),
+      security('makePasskey', 'Add a passkey, the browser’s sheet'),
+      security('passkeyExists', 'Add a passkey, one already saved there'),
+      security('passkeyAdded', 'A passkey added'),
+      security('addApp', 'Add an authenticator app'),
+      security('appAdded', 'The app added beside passkeys'),
+      security('remove', 'Remove a passkey?'),
+      security('removeApp', 'Remove the authenticator app?'),
+      security('removeProve', 'Remove, the current factor'),
+      security('removed', 'A passkey removed'),
+      security('passkeyCancelled', 'The waiting state after a cancel'),
+      security('passkeyRefused', 'A refused passkey'),
+      security('passkeyPaused', 'Paused after five refused passkeys, with the time'),
+      security('newCodesPasskey', 'Make new codes with a passkey'),
+      security('turnOffPasskey', 'Turn off two-factor with a passkey'),
+      security('everywherePasskey', 'Confirm it’s you with a passkey'),
+      security('noPasskeysTurnOn', 'No passkeys in this browser: Turn on'),
+      security('noPasskeysCard', 'No passkeys in this browser: the card'),
+      security('noPasskeysProve', 'No passkeys in this browser: a recovery code'),
     ],
   },
   {

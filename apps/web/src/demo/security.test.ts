@@ -12,6 +12,7 @@ import {
   REST_PAGE,
   RESULT_WORDS,
   SECURITY_PAGES,
+  PASSKEY_MOMENTS,
   SECURITY_STATES,
   WEB_MOMENTS,
   WRONG_PASSWORD,
@@ -75,7 +76,7 @@ describe('Security’s sample (sc-30223)', () => {
       'forgot',
       'forgotSent',
     ]);
-    for (const state of [...SECURITY_STATES, ...WEB_MOMENTS])
+    for (const state of [...SECURITY_STATES, ...WEB_MOMENTS, ...PASSKEY_MOMENTS])
       expect(securityStart(state), state).not.toEqual(rest);
   });
 
@@ -84,7 +85,9 @@ describe('Security’s sample (sc-30223)', () => {
       (link) => new URL(link.to, 'http://demo').searchParams.get('state') ?? '',
     );
 
-    expect([...linked].sort()).toEqual(['', '', '', ...SECURITY_STATES, ...WEB_MOMENTS].sort());
+    expect([...linked].sort()).toEqual(
+      ['', '', '', ...SECURITY_STATES, ...WEB_MOMENTS, ...PASSKEY_MOMENTS].sort(),
+    );
   });
 
   it('is the viewer’s own sign-in, the same page for every role', () => {
@@ -181,7 +184,7 @@ describe('Security’s sample (sc-30223)', () => {
     expect(REFUSALS.twoFactor.step).toBe(HELD_STEPS.turnOn);
     expect(REFUSALS.provider.step).toBe(HELD_STEPS.link);
     expect(heldStepPath(HOLDS.twoFactor.step, VIEWERS.julien)).toBe(
-      '/demo/settings/security?as=julien&state=setup',
+      '/demo/settings/security?as=julien&state=choice',
     );
     expect(heldStepPath(HOLDS.linking.step, VIEWERS.julien)).toBe(
       '/demo/settings/security?as=julien&state=linkPick',

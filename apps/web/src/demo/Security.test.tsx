@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -81,7 +81,11 @@ describe('Security at a desk (sc-30223)', () => {
     expect(screen.getByText('Two-factor is on')).toBeDefined();
     expect(screen.getByText('2 ways to sign in · 3 devices')).toBeDefined();
     expect(within(block('Ways to sign in')).getAllByRole('button')).toHaveLength(3);
-    expect(within(block('Two-factor authentication')).getAllByRole('button')).toHaveLength(2);
+    expect(
+      within(block('Two-factor authentication'))
+        .getAllByRole('button')
+        .map((button) => button.querySelector('.desk-row-name')?.textContent ?? button.textContent),
+    ).toEqual(['Authenticator app', 'Recovery codes', 'Add a passkey']);
     expect(within(block('Signed in on')).getByText('This device · in use now')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out everywhere else…' })).toBeDefined();
   });
@@ -279,6 +283,8 @@ describe('Security at a desk (sc-30223)', () => {
   it('sets up two-factor from the card, then holds the codes until they are saved, saying Copied only once the browser has', async () => {
     await security('/demo/settings/security?state=googleOnly');
     fireEvent.click(screen.getByRole('button', { name: 'Turn on two-factor' }));
+    expect(within(dialog()).getByText('How do you want to do it?')).toBeDefined();
+    fireEvent.click(within(dialog()).getByRole('button', { name: /^Use an authenticator app/ }));
 
     expect(
       await within(dialog()).findByRole('img', { name: 'QR code for your authenticator app' }),
@@ -428,4 +434,50 @@ describe('Security at a desk (sc-30223)', () => {
     ).toBeDefined();
     expect(document.activeElement).toBe(title);
   }, 15_000);
+
+  it('lists passkeys newest first, each with a shape and a word, and stops at ten with the line (sc-86885)', async () => {
+    await security('/demo/settings/security?state=bothFactors');
+    const rows = within(block('Two-factor authentication')).getAllByRole('button');
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringMatching(/^iCloud Keychain Passkey/),
+      expect.stringMatching(/^Google Password Manager Passkey/),
+      expect.stringMatching(/^PasskeyThis device only/),
+      expect.stringMatching(/^Authenticator appTurned on/),
+      expect.stringMatching(/^Recovery codes/),
+      'Add a passkey',
+      'Turn off two-factor…',
+    ]);
+    expect(within(block('Two-factor authentication')).getAllByText('Synced')).toHaveLength(2);
+    expect(within(block('Two-factor authentication')).getByText('This device only')).toBeDefined();
+
+    cleanup();
+    await security('/demo/settings/security?state=tenPasskeys');
+    expect(screen.queryByRole('button', { name: 'Add a passkey' })).toBeNull();
+    expect(
+      screen.getByText(
+        'You have 10 passkeys, the most an account can hold. Remove one to add another.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('removes a passkey after its Ask and the current factor, saying it stays in the password manager (sc-86885)', async () => {
+    await security('/demo/settings/security?state=remove');
+    const ask = screen.getByRole('alertdialog');
+    expect(within(ask).getByText(/stays in iCloud Keychain/)).toBeDefined();
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove the passkey' }));
+
+    expect(await within(dialog()).findByText('Use your passkey')).toBeDefined();
+    expect(within(dialog()).getByRole('status').textContent).toBe('Waiting for your passkey…');
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Demo: use the passkey' }));
+    expect(
+      await screen.findByText(/Passkey removed. It stays in iCloud Keychain/, {}, WAIT),
+    ).toBeDefined();
+  });
+
+  it('opens a code step under the line, with no passkey, in a browser that cannot use one (sc-86885)', async () => {
+    await security('/demo/settings/security?state=noPasskeysProve');
+    expect(within(dialog()).getByText('This browser can’t use passkeys.')).toBeDefined();
+    expect(within(dialog()).getByRole('textbox', { name: /Recovery code/ })).toBeDefined();
+    expect(within(dialog()).queryByRole('button', { name: /passkey/i })).toBeNull();
+  });
 });
