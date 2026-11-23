@@ -235,6 +235,15 @@
 
 /* From 320 px: the people table reads as one block per person, each cell under its heading. */
 @media (width <= 640px) {
+  .shell-content:has(.ks.desk-page) {
+    padding-inline: var(--spaceSm);
+  }
+
+  .ks.desk-page {
+    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
+    overflow: visible;
+  }
+
   .ks-people thead {
     position: absolute;
     width: 1px;
@@ -378,16 +387,40 @@
 }
 
 @media print {
-  body * {
+  body:has(.ks-paper-page) * {
     visibility: hidden;
   }
 
-  .ks-paper-page,
-  .ks-paper-page * {
+  body:has(.ks-paper-page) .ks-paper-page,
+  body:has(.ks-paper-page) .ks-paper-page * {
     visibility: visible;
   }
 
-  .ks-paper-page {
+  /* Ctrl+P on the sheet page itself prints the sheet in the page's order, without the app or its buttons. */
+  body:has(.ks-body):not(:has(.ks-paper-page)) * {
+    visibility: hidden;
+  }
+
+  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide,
+  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide * {
+    visibility: visible;
+  }
+
+  body:has(.ks-body):not(:has(.ks-paper-page)) .ks .ev-wide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: var(--colorPrintInk);
+  }
+
+  .ks .ev-crumb-row,
+  .ks-acts,
+  .ks-said {
+    display: none;
+  }
+
+  body:has(.ks-paper-page) .ks-paper-page {
     position: absolute;
     top: 0;
     left: 0;
