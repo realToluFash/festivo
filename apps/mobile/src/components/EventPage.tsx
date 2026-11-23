@@ -479,12 +479,15 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
   }),
 };
 
+/** The latest focus goes back to a saved row, however its rest went. */
+const SAVED_FOCUS_LATEST_MS = SETTLED_MS * 3;
+
 interface Closed {
   opener: RefObject<ScreenReaderTarget | null>;
   saved?: boolean;
 }
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). A rest that never starts, because the toast's top never comes for this close, brings the row into sight SETTLED_MS after the edit has gone and hands focus back from its landing, keeping sc-48600's guarantee. */
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). The edit counts as gone SETTLED_MS after the toast its close shows has been laid out, since that layout is mounted with the edit's window going: counted from the commit instead, a heavy Save's window could still be going when the move came, and TalkBack, as it went, put its own focus on the header's back button. A rest that never ends, or never starts because the toast's top never comes for this close, gives way at SAVED_FOCUS_LATEST_MS: the row is brought into sight and focus goes from that landing, keeping sc-48600's guarantee. */
 function useOpenerInSight(
   closed: Closed | null,
   toast: { top: number; over: Closed | null } | null,
@@ -500,29 +503,31 @@ function useOpenerInSight(
 
   useEffect(() => {
     if (closed?.saved !== true) return;
-    still.current = { of: closed, settled: false, rested: false, resting: false };
-    let unrested: ReturnType<typeof setTimeout> | undefined;
-    const settle = setTimeout(() => {
-      focusOnceStill(still, closed, 'settled');
-      unrested = setTimeout(() => {
-        if (still.current?.of === closed && !still.current.resting) {
-          still.current.resting = true;
-          const rested = () => focusOnceStill(still, closed, 'rested');
-          void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-            if (!on) return rested();
-            bringIntoView(scroll, closed.opener.current, false, {}, (found) =>
-              found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),
-            );
-          });
-        }
-      }, SETTLED_MS);
-    }, SETTLED_MS);
+    still.current = { of: closed, settled: false, rested: false };
+    const late = setTimeout(() => {
+      const now = still.current;
+      if (now?.of !== closed) return;
+      now.settled = true;
+      const rested = () => focusOnceStill(still, closed, 'rested');
+      if (now.rested) return rested();
+      void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+        if (!on) return rested();
+        bringIntoView(scroll, closed.opener.current, false, {}, (found) =>
+          found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),
+        );
+      });
+    }, SAVED_FOCUS_LATEST_MS);
 
-    return () => {
-      clearTimeout(settle);
-      clearTimeout(unrested);
-    };
+    return () => clearTimeout(late);
   }, [closed, scroll]);
+
+  const toastShown = over != null;
+  useEffect(() => {
+    if (!toastShown || closed == null || still.current?.of !== closed) return;
+    const settle = setTimeout(() => focusOnceStill(still, closed, 'settled'), SETTLED_MS);
+
+    return () => clearTimeout(settle);
+  }, [closed, toastShown]);
 
   useEffect(() => {
     if (closed == null || closed === seen.current || closed.saved === true) return;
@@ -541,7 +546,6 @@ function useOpenerInSight(
   useEffect(() => {
     if (over == null || closed == null || closed === seen.current) return;
     seen.current = closed;
-    if (still.current?.of === closed) still.current.resting = true;
 
     const current = () => seen.current === closed;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
@@ -554,10 +558,11 @@ function useOpenerInSight(
           if (rest.to != null) scroll.ref.current?.scrollTo({ y: rest.to, animated: false });
           landedOr(scroll, rest.to, rested);
         };
-        if (rest.room === roomNow.current) return go();
-        roomNow.current = rest.room;
+        const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);
+        if (wanted === roomNow.current) return go();
+        roomNow.current = wanted;
         laidOut.current = go;
-        setRoom(rest.room);
+        setRoom(wanted);
       });
     });
   }, [closed, over, scroll]);
@@ -583,7 +588,6 @@ interface Still {
   of: Closed;
   settled: boolean;
   rested: boolean;
-  resting: boolean;
 }
 
 /** Sends focus to the saved row once both its edit has gone and the page has come to rest. */

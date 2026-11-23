@@ -50,18 +50,31 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
     expect(screen).toContain('opener={editing.saved === true ? nobody : editing.opener}');
     expect(inSight).toContain('landedOr(scroll, rest.to, rested);');
     expect(inSight).toContain('if (rest == null || scroll == null) return rested();');
-    expect(inSight).toContain("focusOnceStill(still, closed, 'settled');");
+    expect(inSight).toContain(
+      "const settle = setTimeout(() => focusOnceStill(still, closed, 'settled'), SETTLED_MS);",
+    );
     expect(inSight).toContain('moveScreenReaderFocus(of.opener.current);');
   });
 
-  it('still sends focus back when no rest starts, because the toast’s top never came for this close', () => {
-    expect(inSight).toContain('if (still.current?.of === closed) still.current.resting = true;');
-    expect(inSight).toContain('if (still.current?.of === closed && !still.current.resting) {');
-    expect(inSight).toContain('clearTimeout(unrested);');
+  it('counts the edit as gone from the toast’s layout, mounted as its window goes, not from the commit', () => {
+    expect(inSight).toContain(
+      'if (!toastShown || closed == null || still.current?.of !== closed) return;',
+    );
+    expect(inSight).toContain('}, [closed, toastShown]);');
+  });
+
+  it('still sends focus back when a rest never ends or never starts, by SAVED_FOCUS_LATEST_MS', () => {
+    expect(page).toContain('const SAVED_FOCUS_LATEST_MS = SETTLED_MS * 3;');
+    expect(inSight).toContain('}, SAVED_FOCUS_LATEST_MS);');
+    expect(inSight).toContain('now.settled = true;');
+    expect(inSight).not.toContain('resting');
+  });
+
+  it('asks no room under a point, which lays out nothing and would hold the rest', () => {
+    expect(inSight).toContain('const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);');
   });
 
   it('brings that row into sight before focus goes back to it, as a close without Save does', () => {
-    expect(inSight).toContain('still.current.resting = true;');
     expect(inSight).toContain(
       'found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),',
     );
