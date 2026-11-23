@@ -21,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import {
+  type Asked,
   BIG_WEEK,
   type CalEvent,
   type Days,
@@ -203,7 +204,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const agendaRef = useRef<ScrollViewInstance>(null);
   const weekY = useRef(0);
   const agendaY = useRef(0);
-  const weekAsked = useRef<number | null>(null);
+  const weekAsked = useRef<Asked | null>(null);
   const places = useRef(new Map<string, number>());
   const glide = useGlide(reduced);
   const placed = start.view != null && start.at != null;
@@ -274,9 +275,15 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     setOpen(day);
   }, []);
   const toWeekY = useCallback((y: number) => {
-    weekAsked.current = y;
     listRef.current?.scrollToOffset({ offset: y, animated: false });
   }, []);
+  const putWeekY = useCallback(
+    (y: number) => {
+      weekAsked.current = { from: y, to: y };
+      toWeekY(y);
+    },
+    [toWeekY],
+  );
   const toAgendaY = useCallback((y: number) => {
     agendaRef.current?.scrollTo({ y, animated: false });
   }, []);
@@ -285,11 +292,11 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
       if (!here) return;
       const y = placeAfter(weekY.current, report, weekAsked.current);
       if (report.byHand) weekAsked.current = null;
-      if (y !== report.y) toWeekY(y);
+      if (y !== report.y) putWeekY(y);
       weekY.current = y;
       setTop(topIndex(offsets, y));
     },
-    [here, offsets, toWeekY],
+    [here, offsets, putWeekY],
   );
 
   useEffect(() => {
@@ -297,13 +304,18 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
     wasHere.current = here;
     if (!back) return;
     if (view === 'agenda') toAgendaY(agendaY.current);
-    else toWeekY(weekY.current);
-  }, [here, view, toAgendaY, toWeekY]);
+    else putWeekY(weekY.current);
+  }, [here, view, toAgendaY, putWeekY]);
 
   const scrollWeeks = (index: number, toToday: boolean) => {
     const to = offsets[index] ?? 0;
     if (toToday) setTodayRuns(true);
-    glide(weekY.current, to, toWeekY, () => setTodayRuns(false));
+    const from = weekY.current;
+    glide(from, to, toWeekY, () => {
+      weekAsked.current = { from: to, to };
+      setTodayRuns(false);
+    });
+    weekAsked.current = { from, to };
   };
   const scrollAgenda = (key: string, toToday: boolean) => {
     const to = places.current.get(key);
