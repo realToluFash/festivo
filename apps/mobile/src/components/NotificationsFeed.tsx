@@ -11,7 +11,7 @@ import {
   readSettled,
   whenShown,
 } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,7 @@ import { markPushAsked, pushAskDue, turnOnAppPush } from '../appPush.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { markAllRead } from '../kit/notificationFeed.ts';
-import { appPlace } from '../kit/notificationPlace.ts';
+import { appPlace, bellOpens } from '../kit/notificationPlace.ts';
 import { type ScreenOffline, keepsWhatLoaded, useOffline } from '../offline.ts';
 import { arrivalsSeen, countedSince, setUnread, useArrivals } from '../notificationsUnread.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -60,6 +60,7 @@ export type FeedWhere =
 /** The bell's feed in the app (sc-3980), live, with its push ask, Mark all read and Show more, in the B frame (sc-83081): a phone's own screen, a tablet's popover under the bell, or the body of main's frame for a phone on its side (sc-62023). */
 export function NotificationsFeed({ where }: { where: FeedWhere }) {
   const { t } = useTranslation();
+  const pathname = usePathname();
   const [feed, setFeed] = useState<Feed>({ status: 'loading' });
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [more, setMore] = useState<'idle' | 'loading' | 'failed'>('idle');
@@ -225,7 +226,9 @@ export function NotificationsFeed({ where }: { where: FeedWhere }) {
     const place = appPlace(item.place);
     if (place == null) return;
     if (where.kind === 'popover') where.onClose();
-    router.push(place);
+    const opens = bellOpens(place, pathname, where.kind);
+    if ('push' in opens) router.push(opens.push);
+    else router.setParams(opens.setParams);
   }
 
   async function readAll(): Promise<void> {

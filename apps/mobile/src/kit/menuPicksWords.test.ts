@@ -3,7 +3,17 @@ import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import { defaultLine, headerClose, openWords, picksAccess, whoChanges } from './menuPicksWords.ts';
+import {
+  defaultLine,
+  headerClose,
+  hostLine,
+  openWords,
+  overrideBody,
+  picksAccess,
+  ruledOutWords,
+  savedOverride,
+  whoChanges,
+} from './menuPicksWords.ts';
 
 const i18n = createInstance();
 void i18n.init({
@@ -200,5 +210,60 @@ describe('Choose who gets it', () => {
     const had = { holders: ['kojo'], allergens: ['celery'] };
 
     expect(whoChanges(had, new Set(['kojo']), people).ruled).toEqual([]);
+  });
+});
+
+describe('a plate whose allergens were never stated, on Menu picks (sc-87421)', () => {
+  const inSentence = (codes: readonly string[]) => codes.join(' and ');
+
+  it('is ruled out saying nobody stated it, never what it contains', () => {
+    expect(ruledOutWords(t, inSentence, ['peanuts', 'celery'], null, 'Kwame Asante')).toBe(
+      'Allergens not stated. You can still pick it.',
+    );
+  });
+
+  it('is not ruled out for a person with none of the 14', () => {
+    expect(ruledOutWords(t, inSentence, [], null, 'Ada Obi')).toBeNull();
+  });
+
+  it('asks and saves without saying what it contains', () => {
+    expect(overrideBody(t, inSentence, 'Puff-puff', ['peanuts'], null, 'Kwame Asante')).toBe(
+      'Nobody has stated what’s in Puff-puff. If you know it is safe for Kwame Asante, the pick is saved with your name and the time you confirmed it.',
+    );
+    expect(savedOverride(t, inSentence, 'Puff-puff', ['peanuts'], null, 'Kwame Asante')).toBe(
+      'Recorded as your pick for Kwame Asante, though nobody has stated what’s in Puff-puff.',
+    );
+  });
+
+  it('says under Needs the host that the pick has no allergens stated', () => {
+    const line = {
+      person: { id: 'kojo', name: 'Kojo Mensah' },
+      course: 'dessert',
+      reason: 'allergy' as const,
+      pick: 'Puff-puff',
+      allergens: ['peanuts'],
+      notStated: true,
+    };
+
+    expect(hostLine(t, inSentence, line, 'Dessert')).toBe(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to peanuts was recorded after they picked it.',
+    );
+    expect(
+      hostLine(t, inSentence, { ...line, pick: 'Chin-chin', notStated: false }, 'Dessert'),
+    ).toBe('Dessert: their pick, Chin-chin, contains peanuts, recorded after they picked it.');
+  });
+
+  it('keeps a stated dish’s words', () => {
+    expect(ruledOutWords(t, inSentence, ['celery'], ['celery'], 'Kwame Asante')).toBe(
+      'Contains celery, which Kwame Asante is allergic to. You can still pick it.',
+    );
+    expect(overrideBody(t, inSentence, 'Jollof rice', ['celery'], ['celery'], 'Kwame Asante')).toBe(
+      'Jollof rice contains celery. If Kwame Asante’s record is out of date, the pick is saved with your name and the time you confirmed it.',
+    );
+    expect(
+      savedOverride(t, inSentence, 'Jollof rice', ['celery'], ['celery'], 'Kwame Asante'),
+    ).toBe(
+      'Recorded as your pick for Kwame Asante, despite the record: Jollof rice contains celery.',
+    );
   });
 });

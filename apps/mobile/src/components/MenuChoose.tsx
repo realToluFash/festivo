@@ -22,7 +22,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import { useShownLanguage } from '../i18n/index.ts';
-import { whoChanges } from '../kit/menuPicksWords.ts';
+import { overrideBody, ruledOutWords, savedOverride, whoChanges } from '../kit/menuPicksWords.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -88,8 +88,8 @@ export function ChooseFor({
   const dish = course.dishes.find((one) => one.id === draft.dishId) ?? null;
   const questions = dish?.choices.filter((one) => !one.draft) ?? [];
   const saveLabel = last ? t('menuPicks.save') : t('menuPicks.saveNext');
-  const ruledWords = (ruled: readonly string[]) =>
-    ruled.length === 0 ? null : t('menuPicks.ruledOut', { allergens: allergens(ruled), name: who });
+  const ruledWords = (ruled: readonly string[], plate: readonly string[] | null) =>
+    ruledOutWords(t, allergens, ruled, plate, who);
 
   const save = async (confirmed: boolean) => {
     if (busy || refused) return;
@@ -104,10 +104,8 @@ export function ChooseFor({
     );
     if (unanswered != null)
       return setError(t('menuPicks.blankOption', { question: unanswered.question, name: who }));
-    const ruled =
-      dish == null
-        ? []
-        : against(plateOf(dish, draft.variantId, draft.optionIds), person.allergens);
+    const plate = dish == null ? [] : plateOf(dish, draft.variantId, draft.optionIds);
+    const ruled = against(plate, person.allergens);
     if (ruled.length > 0 && !confirmed) return setAsking(ruled);
     setAsking(null);
     setError(null);
@@ -130,9 +128,7 @@ export function ChooseFor({
           : mealPickName(dish, draft.variantId, draft.optionIds);
       onSaved(next, [
         t('menuPicks.savedFor', { course: course.name, name: who, what }),
-        ...(ruled.length > 0
-          ? [t('menuPicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) })]
-          : []),
+        ...(ruled.length === 0 ? [] : [savedOverride(t, allergens, what, ruled, plate, who)]),
       ]);
       if (last) onClose();
       else {
@@ -196,7 +192,7 @@ export function ChooseFor({
                         ? []
                         : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
                   }
-                  allergy={ruledWords(dishRuledOut(one, person))}
+                  allergy={ruledWords(dishRuledOut(one, person), plateOf(one, null, []))}
                   onPress={() => pickDish(one.id)}
                   testID={`menu.choose.${one.id}`}
                 />
@@ -226,7 +222,7 @@ export function ChooseFor({
                         ? []
                         : [t('menuPicks.contains', { allergens: allergens(way.allergens) })]),
                     ]}
-                    allergy={ruledWords(against(way.allergens, person.allergens))}
+                    allergy={ruledWords(against(way.allergens, person.allergens), way.allergens)}
                     onPress={() => {
                       setError(null);
                       setDraft({ ...draft, variantId: way.id });
@@ -247,7 +243,10 @@ export function ChooseFor({
                     on={draft.optionIds.includes(option.id)}
                     title={option.name}
                     lines={[]}
-                    allergy={ruledWords(against(option.allergens, person.allergens))}
+                    allergy={ruledWords(
+                      against(option.allergens, person.allergens),
+                      option.allergens,
+                    )}
                     onPress={() => {
                       setError(null);
                       setDraft({
@@ -293,11 +292,14 @@ export function ChooseFor({
       {asking != null && dish != null && (
         <OverrideAlert
           title={t('menuPicks.overrideTitle', { name: who, allergens: allergens(asking) })}
-          body={t('menuPicks.overrideBody', {
-            dish: mealPickName(dish, draft.variantId, draft.optionIds),
-            allergens: allergens(asking),
-            name: who,
-          })}
+          body={overrideBody(
+            t,
+            allergens,
+            mealPickName(dish, draft.variantId, draft.optionIds),
+            asking,
+            plateOf(dish, draft.variantId, draft.optionIds),
+            who,
+          )}
           keep={t('menuPicks.chooseAnother')}
           go={t('menuPicks.pickAnyway')}
           onKeep={() => setAsking(null)}
