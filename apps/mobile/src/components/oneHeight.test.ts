@@ -4,10 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { reportHeight, tallestAt } from './oneHeight.ts';
 
 const screen = vi.hoisted(() => ({ fontScale: 1.6, width: 320, language: 'en' }));
+const held = vi.hoisted(() => ({ group: null as unknown }));
 
 vi.mock('react', async (actual) => ({
   ...(await actual<typeof import('react')>()),
-  useContext: () => null,
+  useContext: () => held.group,
   useMemo: <T>(make: () => T) => make(),
   useState: <T>(initial: T) => [initial, () => undefined],
 }));
@@ -19,38 +20,51 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ i18n: { language: screen.language } }),
 }));
 
-const { OneHeight } = await import('./OneHeight.tsx');
+const { OneHeight, useOneHeight: partOf } = await import('./OneHeight.tsx');
 
-/** The view holding the buttons: its key changing is what remounts each one, so each reports its height again. */
-function buttonsKey(): string | null {
-  const provider = OneHeight({ children: null }) as ReactElement<{ children: unknown }>;
-  const inner = provider.props.children;
-  if (!isValidElement(inner)) throw new Error('OneHeight no longer wraps its buttons in one view');
+function group(): ReactElement<{ value: unknown; children: unknown }> {
+  held.group = null;
 
-  return inner.key;
+  return OneHeight({ children: null }) as ReactElement<{ value: unknown; children: unknown }>;
+}
+
+/** A button's own frame: its key changing is what remounts it, so it reports its height again. */
+function frameKey(): string | undefined {
+  held.group = group().props.value;
+
+  return partOf().key;
 }
 
 describe('OneHeight', () => {
-  it('remounts its buttons under a new language, so the tallest, whose frame did not change, reports again', () => {
+  it('remounts each button under a new language, so the tallest, whose frame did not change, reports again', () => {
     screen.language = 'en';
-    const english = buttonsKey();
+    const english = frameKey();
     screen.language = 'fr';
 
-    expect(buttonsKey()).not.toBe(english);
+    expect(english).toBeDefined();
+    expect(frameKey()).not.toBe(english);
   });
 
-  it('remounts its buttons under a new text size or width', () => {
-    const before = buttonsKey();
+  it('remounts each button under a new text size or width', () => {
+    const before = frameKey();
     screen.fontScale = 2;
-    const larger = buttonsKey();
+    const larger = frameKey();
     screen.width = 375;
 
     expect(larger).not.toBe(before);
-    expect(buttonsKey()).not.toBe(larger);
+    expect(frameKey()).not.toBe(larger);
   });
 
-  it('keeps its buttons mounted while nothing changes', () => {
-    expect(buttonsKey()).toBe(buttonsKey());
+  it('keeps each button mounted while nothing changes', () => {
+    expect(frameKey()).toBe(frameKey());
+  });
+
+  it('never remounts what holds the buttons, so a sign-in in flight stays busy across a new size', () => {
+    const inner = group().props.children;
+    if (!isValidElement(inner))
+      throw new Error('OneHeight no longer wraps its buttons in one view');
+
+    expect(inner.key).toBeNull();
   });
 });
 

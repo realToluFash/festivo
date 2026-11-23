@@ -23,6 +23,7 @@ export function BoldAppleButton({
 
   return (
     <Pressable
+      key={oneHeight.key}
       style={[styles.button, { gap: size.gap }, oneHeight.style]}
       onLayout={oneHeight.onLayout}
       onPress={onPress}

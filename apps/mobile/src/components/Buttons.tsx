@@ -54,6 +54,7 @@ export function PrimaryButton({
 
   return (
     <PressFade
+      key={oneHeight.key}
       ref={ref}
       style={[
         styles.primary,

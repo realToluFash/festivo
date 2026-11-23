@@ -110,6 +110,7 @@ export function ProviderButton({
 
   return (
     <Pressable
+      key={oneHeight.key}
       style={[
         styles.button,
         provider === 'google' ? styles.google : styles.apple,
