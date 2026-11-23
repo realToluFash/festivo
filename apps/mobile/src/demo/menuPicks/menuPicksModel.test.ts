@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HOST,
   MENU_STATES,
+  MW,
   TODAY,
   checkDraft,
   choose,
@@ -11,6 +12,7 @@ import {
   courseClose,
   courseFigures,
   courseOf,
+  allergyWords,
   dishAllergens,
   draftPick,
   givenDefault,
@@ -27,6 +29,7 @@ import {
   openWords,
   personOf,
   sampleMenu,
+  savedWords,
   setStarter,
   settle,
   spotOf,
@@ -388,5 +391,61 @@ describe('a dish whose allergens were never stated (lead, #3654)', () => {
       allergens: ['fish'],
     });
     expect(checkDraft(course('k3'), person('bea-mensah'), draft)).toEqual({ kind: 'ok' });
+  });
+});
+
+describe('the words for a dish never stated (sc-87421)', () => {
+  const puff = course('k3').dishes.find((one) => one.id === 'k3-puff')!;
+  const draft = { kind: 'dish', dishId: 'k3-puff', variantId: null, sideId: null } as const;
+  const leila = person('leila-haddad');
+
+  it('says its allergens were not stated for someone it rules out, and nothing for anyone else', () => {
+    expect(allergyWords(puff, leila)).toBe('Allergens not stated. You can still pick it.');
+    expect(allergyWords(puff, person('bea-mensah'))).toBeNull();
+  });
+
+  it('makes no claim about the dish in the override question or the saved line', () => {
+    expect(checkDraft(course('k3'), leila, draft)).toEqual({
+      kind: 'ruledOut',
+      allergens: ['sesame'],
+      notStated: true,
+      title: 'Leila Haddad’s record says sesame. Pick it anyway?',
+      body: 'Nobody has stated what’s in Puff-puff. If you know it is safe for Leila Haddad, the pick is saved with your name and the time you confirmed it.',
+    });
+    expect(savedWords(course('k3'), leila, draft, true)).toBe(
+      'Recorded as your pick for Leila Haddad, though nobody has stated what’s in Puff-puff.',
+    );
+  });
+
+  it('says under Needs the host that it has no allergens stated', () => {
+    const shown = menuStart('notStatedHost').world!;
+    const lines = needsHost(shown).filter((one) => one.person.id === 'rosa-lima');
+
+    expect(lines.map(hostLineWords)).toEqual([
+      'Dessert: their pick, Puff-puff, has no allergens stated, and peanuts was recorded after they picked it.',
+    ]);
+    expect(spotOf(menuStart('notStated').world!, course('k3'), person('rosa-lima')).kind).toBe(
+      'dish',
+    );
+  });
+
+  it('keeps a stated dish’s words', () => {
+    const chicken = {
+      kind: 'dish',
+      dishId: 'k2-jollof',
+      variantId: 'v-chicken',
+      sideId: null,
+    } as const;
+    const kwame = person('kwame-asante');
+    const jollof = course('k2').dishes.find((one) => one.id === 'k2-jollof')!;
+
+    expect(checkDraft(course('k2'), kwame, chicken)).toMatchObject({
+      notStated: false,
+      body: 'Jollof rice, Chicken contains celery. If Kwame Asante’s record is out of date, the pick is saved with your name and the time you confirmed it.',
+    });
+    expect(savedWords(course('k2'), kwame, chicken, true)).toBe(
+      'Recorded as your pick for Kwame Asante, despite the record: Jollof rice, Chicken contains celery.',
+    );
+    expect(allergyWords(jollof, kwame, 'v-chicken')).toBe(MW.ruledOut('celery', 'Kwame Asante'));
   });
 });

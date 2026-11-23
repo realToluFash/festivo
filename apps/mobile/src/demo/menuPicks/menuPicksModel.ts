@@ -79,8 +79,10 @@ export interface MenuWorld {
   today: string;
 }
 
+/** `notStated`: the pick was never stated, so it is ruled out for any of the allergies they have (sc-87421). */
 export type HostReason =
-  { kind: 'nothing' } | { kind: 'allergy'; dish: string; allergens: readonly Allergen[] };
+  | { kind: 'nothing' }
+  | { kind: 'allergy'; dish: string; allergens: readonly Allergen[]; notStated: boolean };
 
 export type Excluded = { kind: 'allergy' } | { kind: 'diet'; diet: Diet | 'other' };
 
@@ -173,6 +175,8 @@ export const MW = {
   nothingFor: (course: string) => `${course}: nothing on this course can be picked for them.`,
   allergyFor: (course: string, dish: string, allergens: string) =>
     `${course}: their pick, ${dish}, contains ${allergens}, recorded after they picked it.`,
+  allergyForNotStated: (course: string, dish: string, allergens: string) =>
+    `${course}: their pick, ${dish}, has no allergens stated, and ${allergens} was recorded after they picked it.`,
   hostCount: (course: string, n: number) => `${course} · ${people(n)}`,
   answered: (n: number, room: number) => `${n} of ${room} answered`,
   pickOpen: (day: string) => `Picks close ${day}`,
@@ -247,6 +251,7 @@ export const MW = {
   allergyMark: 'Allergy',
   ruledOut: (allergens: string, who: string) =>
     `Contains ${allergens}, which ${who} is allergic to. You can still pick it.`,
+  ruledOutNotStated: 'Allergens not stated. You can still pick it.',
   blank: (course: string, who: string) =>
     `Choose ${course.toLocaleLowerCase('en')} for ${who}, or let the kitchen choose.`,
   blankWay: (dish: string, who: string) => `Choose how ${who} has the ${dish}.`,
@@ -257,6 +262,8 @@ export const MW = {
     `${who}’s record says ${allergens}. Pick it anyway?`,
   overrideBody: (dish: string, allergens: string, who: string) =>
     `${dish} contains ${allergens}. If ${who}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
+  overrideBodyNotStated: (dish: string, who: string) =>
+    `Nobody has stated what’s in ${dish}. If you know it is safe for ${who}, the pick is saved with your name and the time you confirmed it.`,
   chooseAnother: 'Choose another dish',
   pickAnyway: 'Pick it anyway',
   refused:
@@ -264,6 +271,8 @@ export const MW = {
   savedFor: (course: string, who: string, what: string) => `${course} chosen for ${who}: ${what}.`,
   savedOverride: (who: string, dish: string, allergens: string) =>
     `Recorded as your pick for ${who}, despite the record: ${dish} contains ${allergens}.`,
+  savedOverrideNotStated: (who: string, dish: string) =>
+    `Recorded as your pick for ${who}, though nobody has stated what’s in ${dish}.`,
   shared: 'The kitchen sheet is ready. The system share sheet opens here.',
 } as const;
 
@@ -595,9 +604,13 @@ export function spotOf(world: MenuWorld, course: Course, person: Person): Spot {
   const found = course.dishes.find((one) => one.id === pick.dishId);
   if (found == null) return noPick(world, course, person);
 
-  const allergens = ruledOut(person, containsOf(found, pick.variantId));
+  const plate = containsOf(found, pick.variantId);
+  const allergens = ruledOut(person, plate);
   if (allergens.length > 0 && pick.override == null)
-    return { kind: 'host', reason: { kind: 'allergy', dish: pickName(found, pick), allergens } };
+    return {
+      kind: 'host',
+      reason: { kind: 'allergy', dish: pickName(found, pick), allergens, notStated: plate == null },
+    };
 
   return {
     kind: 'dish',
@@ -778,7 +791,11 @@ export function needsHost(world: MenuWorld): HostLine[] {
 export function hostLineWords(line: HostLine): string {
   return line.reason.kind === 'nothing'
     ? MW.nothingFor(line.course.name)
-    : MW.allergyFor(line.course.name, line.reason.dish, allergenWords(line.reason.allergens));
+    : (line.reason.notStated ? MW.allergyForNotStated : MW.allergyFor)(
+        line.course.name,
+        line.reason.dish,
+        allergenWords(line.reason.allergens),
+      );
 }
 
 export function hostCounts(world: MenuWorld): string[] {
@@ -928,7 +945,13 @@ export type Draft =
 
 export type DraftCheck =
   | { kind: 'blank'; words: string }
-  | { kind: 'ruledOut'; title: string; body: string; allergens: readonly Allergen[] }
+  | {
+      kind: 'ruledOut';
+      title: string;
+      body: string;
+      allergens: readonly Allergen[];
+      notStated: boolean;
+    }
   | { kind: 'ok' };
 
 export function checkDraft(course: Course, person: Person, draft: Draft): DraftCheck {
@@ -938,7 +961,8 @@ export function checkDraft(course: Course, person: Person, draft: Draft): DraftC
   if (found == null) return { kind: 'blank', words: MW.blank(course.name, person.name) };
   if (found.variants.length > 0 && draft.variantId == null)
     return { kind: 'blank', words: MW.blankWay(found.name, person.name) };
-  const allergens = ruledOut(person, containsOf(found, draft.variantId));
+  const plate = containsOf(found, draft.variantId);
+  const allergens = ruledOut(person, plate);
   if (allergens.length === 0) return { kind: 'ok' };
   const words = allergenWords(allergens);
   const name = pickName(found, draft);
@@ -946,9 +970,39 @@ export function checkDraft(course: Course, person: Person, draft: Draft): DraftC
   return {
     kind: 'ruledOut',
     allergens,
+    notStated: plate == null,
     title: MW.overrideTitle(person.name, words),
-    body: MW.overrideBody(name, words, person.name),
+    body:
+      plate == null
+        ? MW.overrideBodyNotStated(name, person.name)
+        : MW.overrideBody(name, words, person.name),
   };
+}
+
+/** The line a saved pick leaves: the override says what was known about the dish. */
+export function savedWords(
+  course: Course,
+  person: Person,
+  draft: Exclude<Draft, null>,
+  override: boolean,
+): string {
+  const check = checkDraft(course, person, draft);
+  const what = draftWords(course, draft);
+  if (!override || check.kind !== 'ruledOut') return MW.savedFor(course.name, person.name, what);
+
+  return check.notStated
+    ? MW.savedOverrideNotStated(person.name, what)
+    : MW.savedOverride(person.name, what, allergenWords(check.allergens));
+}
+
+/** The words under a dish or variant the person's record rules out, or null. */
+export function allergyWords(found: Dish, person: Person, variantId: string | null = null) {
+  const ruled = dishAllergens(found, person, variantId);
+  if (ruled.length === 0) return null;
+
+  return found.contains == null
+    ? MW.ruledOutNotStated
+    : MW.ruledOut(allergenWords(ruled), person.name);
 }
 
 export function draftWords(course: Course, draft: Exclude<Draft, null>): string {
@@ -1140,6 +1194,19 @@ function allInMenu(): MenuWorld {
 
   return world;
 }
+
+/** Rosa picked Puff-puff, whose allergens were never stated, and Leila has no Dessert yet; with `peanuts`, Rosa's peanut allergy was recorded after she picked (sc-87421). */
+function notStatedMenu(peanuts = false): MenuWorld {
+  const world = choose(sampleMenu(), 'k3', 'rosa-lima', dishPick('k3-puff'));
+  const { ['leila-haddad']: _gone, ...dessert } = world.picks.k3 ?? {};
+  const people = world.people.map((one) =>
+    peanuts && one.id === 'rosa-lima' ? { ...one, allergies: ['peanuts' as const] } : one,
+  );
+
+  return { ...world, people, picks: { ...world.picks, k3: dessert } };
+}
+
+const PUFF: Draft = { kind: 'dish', dishId: 'k3-puff', variantId: null, sideId: null };
 
 function changedMenu(): MenuWorld {
   return ['lucia-ruiz', 'louis-martin', 'femi-adeyemi'].reduce(
@@ -1407,6 +1474,32 @@ const STATES = {
         draft: { kind: 'dish', dishId: 'k2-wrap', variantId: 'v-beef', sideId: null },
         press: true,
       },
+    }),
+  notStated: () =>
+    start({
+      name: 'A dish never stated (sc-87421)',
+      note: 'Dessert offers Puff-puff, whose allergens were never stated. Rosa picked it with no allergy recorded, so it counts as her pick.',
+      world: notStatedMenu(),
+    }),
+  notStatedHost: () =>
+    start({
+      name: 'A dish never stated, then an allergy recorded (sc-87421)',
+      note: 'Rosa’s peanut allergy was recorded after she picked Puff-puff: she waits under Needs the host, and the line says it has no allergens stated rather than that it contains peanuts.',
+      world: notStatedMenu(true),
+    }),
+  notStatedChoose: () =>
+    start({
+      name: 'Choose for them, a dish never stated (sc-87421)',
+      note: 'Leila Haddad, sesame recorded and no Dessert yet: Puff-puff carries the Allergy mark and Allergens not stated. You can still pick it.',
+      world: notStatedMenu(),
+      opened: { personId: 'leila-haddad', courseId: 'k3', draft: PUFF },
+    }),
+  notStatedOverride: () =>
+    start({
+      name: 'The override alert, a dish never stated (sc-87421)',
+      note: 'Leila picked Puff-puff: the title names her record, and the body says nothing about what it contains. Pick it anyway saves it with the line that nobody has stated what’s in it.',
+      world: notStatedMenu(),
+      opened: { personId: 'leila-haddad', courseId: 'k3', draft: PUFF, press: true },
     }),
   chooseForChildren: () =>
     start({
