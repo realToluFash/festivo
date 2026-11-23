@@ -15,6 +15,7 @@ import {
   APPLE_IOS_CHROME,
   APPLE_IOS_LOGO_HEIGHT,
   APPLE_IOS_LOGO_WIDTH,
+  APPLE_IOS_PAD,
   appleIosGlyph,
   appleIosSize,
 } from './appleIosSize.ts';
@@ -218,6 +219,8 @@ export function useAppleIosSize(label: string, weight: WeightName, on = true) {
     glyph: appleIosGlyph(),
     beside: 0,
     chrome: APPLE_IOS_CHROME,
+    pad: APPLE_IOS_PAD,
+    ring: 1,
   });
 
   return {

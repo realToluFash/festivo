@@ -6,9 +6,8 @@ import {
   lettersIn,
   sideStart,
   sideTextSize,
-  wrapOf,
 } from '../layout/sidebarSize.ts';
-import { piecesIn, wordsIn } from '../layout/textSize.ts';
+import { piecesIn, wordsIn, wrapOf } from '../layout/textSize.ts';
 import type { WeightName } from '../theme/fonts.ts';
 import { TitleCap } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';

@@ -11,6 +11,7 @@ export function appleIosSize(text: number): { text: number; logoHeight: number; 
 export const APPLE_IOS_LOGO_WIDTH = 15.46;
 export const APPLE_IOS_LOGO_HEIGHT = 19;
 export const APPLE_IOS_CHROME = 2 * (tokens.spaceXxl + 1);
+export const APPLE_IOS_PAD = tokens.spaceSm + 1;
 
 /** The logo's width and its gap per point of the words, the room beside them that decides whether the longest word stays whole (sc-84920). */
 export function appleIosGlyph(): number {
