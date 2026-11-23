@@ -1,0 +1,18 @@
+# sc-84143 on a phone: Notifications holds an item of a category the app does not know, drawn with the plain bell, Unread and Muted.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- waitForAnimationToEnd
+- takeScreenshot: bell-phone-unknown-product
+- assertVisible: '${TITLE}'
