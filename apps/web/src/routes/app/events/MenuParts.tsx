@@ -14,6 +14,7 @@ import {
 } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import {
+  defaultedOn,
   type DishForm,
   type DishProblems,
   type MoneyLanguage,
@@ -43,7 +44,7 @@ import {
 } from '../menu/VariantParts.tsx';
 import { shownVariants } from '../menu/variants.ts';
 import { AddChoiceButton, type ChoiceAsk, ChoiceInsets, NotOffered } from './ChoiceParts.tsx';
-import { dayWords, givenOn, pickWords } from './courseDefault.ts';
+import { dayWords, pickWords } from './courseDefault.ts';
 import { describedBy } from './eventFieldOrder.ts';
 import { DishPicks, SeePicksLink, WhoHasntLink, useCanChoose, useMenuPicks } from './menuPicks.tsx';
 import { DishItemsField, ItemsLine, OwnItemsField, OwnItemsFacts } from './ItemParts.tsx';
@@ -168,7 +169,7 @@ function defaultLine(
 ): string {
   const words = { pick: pickWords(course, pick), date: dayWords(pick.chooseBy, dateLocale()) };
   if (!closed || counted == null) return t('courseDefault.line', words);
-  const count = givenOn(counted.rows);
+  const count = defaultedOn(counted);
 
   return count === 0
     ? t('courseDefault.lineNobody', words)

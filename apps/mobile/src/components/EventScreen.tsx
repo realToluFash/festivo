@@ -74,6 +74,7 @@ import { EventGuests, type GuestsTop } from './EventGuests.tsx';
 import { ExportButton } from './GuestExport.tsx';
 import { GuestsHeading } from './GuestsHeading.tsx';
 import { EventPeople } from './EventPeople.tsx';
+import { EventMenu } from './EventMenu.tsx';
 import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } from './Events.tsx';
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
@@ -457,6 +458,7 @@ export function EventScreen({
     );
 
   const guests = area === 'guests' && event != null;
+  const menu = area === 'menu' && event != null;
   const refreshing =
     opened.refreshing || (guests && guestsOffline.refreshing) ? (
       <Refreshing testID="events.page.refreshing" wraps={guests || area === 'overview'} />
@@ -498,7 +500,7 @@ export function EventScreen({
     besideBackRow === 'givingWay' && area === 'overview' && !refreshingBesideBack
       ? refreshing
       : null;
-  const titledInList = areaTitled || guests;
+  const titledInList = areaTitled || guests || menu;
   const frameBack = !backs
     ? undefined
     : guestBack != null
@@ -597,6 +599,14 @@ export function EventScreen({
             />
           }
           onOffline={setGuestsOffline}
+        />
+      ) : menu && event != null ? (
+        <EventMenu
+          key={event.id}
+          event={event}
+          kind={kind}
+          titleRef={title}
+          onGuests={() => chooseArea('guests')}
         />
       ) : (
         <Screen

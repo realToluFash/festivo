@@ -1,11 +1,11 @@
 import type { EventPicks } from '@soirely/api-client';
+import { hostCount, shareOf } from '@soirely/domain';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
-import { hostCount, shareOf } from './seePicks.ts';
 import './seePicks.css';
 
 const POLL_MS = 8000;

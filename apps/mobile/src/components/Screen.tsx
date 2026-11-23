@@ -1209,6 +1209,8 @@ export interface ScreenProps {
   edges?: readonly ('top' | 'bottom' | 'left' | 'right')[];
   style?: ViewStyle;
   contentStyle?: ViewStyle;
+  /** Pull to refresh on a scrolling screen. */
+  refreshControl?: ReactElement<RefreshControlProps> | undefined;
 }
 
 const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const;
@@ -1219,6 +1221,7 @@ export function Screen({
   edges = ALL_EDGES,
   style,
   contentStyle,
+  refreshControl,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { screenScroll, scrollProps, heldStyle, onContentLayout } = useScreenScrollView();
@@ -1281,6 +1284,7 @@ export function Screen({
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={underTabs === 0}
+      refreshControl={refreshControl}
       {...scrollInsets(LIFT, docked != null)}
     >
       <View onLayout={onContentLayout} style={[styles.content, contentStyle]}>

@@ -10,7 +10,22 @@ import {
   type PicksRoomPerson,
   type PicksRow,
 } from '@soirely/api-client';
-import { listFormat } from '@soirely/domain';
+import {
+  against,
+  clockOf,
+  defaultPick,
+  defaultedOn,
+  dishRuledOut,
+  excludedOf,
+  goesBackTo,
+  hostCount,
+  listFormat,
+  mealPickName,
+  menuCourseOf,
+  plateOf,
+  showsDefaulted,
+  waitingSplit,
+} from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
@@ -23,17 +38,6 @@ import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
 import { allergensInSentence } from './allergenWords.ts';
 import { closeDay } from './menuArea.ts';
-import {
-  against,
-  clockOf,
-  defaultPick,
-  dishRuledOut,
-  excludedOf,
-  hostCount,
-  menuCourseOf,
-  pickName,
-  plateOf,
-} from './seePicks.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -307,18 +311,14 @@ function Picks({
       </>
     );
 
-  const asked = (picks.waiting ?? [])
-    .map((party) => ({
+  const { never, parties: waiting } = waitingSplit(
+    (picks.waiting ?? []).map((party) => ({
       ...party,
       people: party.people.filter(
         (person) => askedFor == null || person.courses.includes(askedFor),
       ),
-    }))
-    .filter((party) => party.people.length > 0);
-  const never = asked.flatMap((party) => party.people.filter((one) => one.excluded.length > 0));
-  const waiting = asked
-    .map((party) => ({ ...party, people: party.people.filter((one) => one.excluded.length === 0) }))
-    .filter((party) => party.people.length > 0);
+    })),
+  );
   const given = picks.given ?? [];
   const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
   const openWords = (person: (typeof never)[number]) =>
@@ -637,15 +637,13 @@ function CourseCard({
   const { t, i18n } = useTranslation();
   const titleId = `pk-course-${course.id}`;
   const options = course.rows.some((row) => row.kind === 'option');
-  const defaults = course.default != null || course.rows.some((row) => row.defaulted > 0);
+  const defaults = showsDefaulted(course);
   const defaultLine = (() => {
     if (course.default == null || menuCourse == null) return null;
     const pick = defaultPick({ courses: [menuCourse] }, { course: course.id, ...course.default });
     const date = closeDay(`${course.default.chooseBy}T12:00:00Z`, 'UTC', i18n.language);
     if (!course.closed) return t('seePicks.defaultLine', { pick, date });
-    const count = course.rows
-      .filter((row) => row.kind === 'dish')
-      .reduce((sum, row) => sum + row.defaulted, 0);
+    const count = defaultedOn(course);
 
     return count === 0
       ? t('seePicks.defaultLineNobody', { pick, date })
@@ -863,7 +861,9 @@ function ChooseFor({
     try {
       const next = await api.chooseForGuest(eventId, person.id, course.id, pick);
       const what =
-        dish == null ? t('seePicks.kitchen') : pickName(dish, choice.variantId, choice.optionIds);
+        dish == null
+          ? t('seePicks.kitchen')
+          : mealPickName(dish, choice.variantId, choice.optionIds);
       onSaved(
         next,
         t('seePicks.savedFor', { course: course.name, name: who, what }),
@@ -1038,7 +1038,7 @@ function ChooseFor({
         <Override
           title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
           body={t('seePicks.overrideBody', {
-            dish: pickName(dish, choice.variantId, choice.optionIds),
+            dish: mealPickName(dish, choice.variantId, choice.optionIds),
             allergens: allergens(asking),
             name: who,
           })}
@@ -1193,13 +1193,12 @@ function ChooseWho({
   const dishName = dish?.name ?? '';
   const ruledFor = (person: PicksRoomPerson) => against(row.allergens, person.allergens);
   const goesBack = (person: PicksRoomPerson): string => {
-    if (!course.asksNothing || dish == null) return t('seePicks.goesBackNone');
-    const everyone = dish.variants.find((one) => one.for === 'everyone');
-    const plate = everyone == null ? dish.allergens : everyone.allergens;
-    if (against(plate, person.allergens).length > 0)
-      return t('seePicks.goesBack', { to: t('seePicks.needsHost') });
+    const to = goesBackTo(course, dish, person);
+    if (to.kind === 'notChosen') return t('seePicks.goesBackNone');
 
-    return t('seePicks.goesBack', { to: everyone?.name ?? dish.name });
+    return t('seePicks.goesBack', {
+      to: to.kind === 'needsHost' ? t('seePicks.needsHost') : to.name,
+    });
   };
 
   const save = async (confirmed: boolean) => {

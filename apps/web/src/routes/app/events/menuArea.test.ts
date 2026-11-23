@@ -1,4 +1,5 @@
 import type { MenuCourse, MenuDish } from '@soirely/api-client';
+import { menuClose, menuCloseFrom } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -10,8 +11,6 @@ import {
   coursePicked,
   dayEndTime,
   firstCourseProblem,
-  menuClose,
-  menuCloseFrom,
   menuCounts,
   moveTarget,
   servedTime,
