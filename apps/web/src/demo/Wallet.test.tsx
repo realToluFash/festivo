@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { NAMES } from './wallet.ts';
 
 const SLOW = { timeout: 15000 };
 const tested = config();
@@ -92,6 +93,8 @@ describe('the pass faces (sc-9956)', () => {
 
       const pass = screen.getByRole('region', { name: 'Apple Wallet pass, front' });
       expect(within(pass).getByText('Soirely')).toBeTruthy();
+      expect(pass.textContent).toContain(NAMES.page.event);
+      expect(pass.textContent).toContain(NAMES.page.guest);
       expect(within(pass).getByText('Show this at the door')).toBeTruthy();
       expect(within(pass).queryAllByRole('link')).toHaveLength(0);
       expect(pass.querySelector('svg.wl-qr')).not.toBeNull();
@@ -104,6 +107,8 @@ describe('the pass faces (sc-9956)', () => {
     const pass = screen.getByRole('region', { name: 'Google Wallet pass, emptied' });
     expect(within(pass).getByText('This pass is no longer valid')).toBeTruthy();
     expect(within(pass).getByText('Expired')).toBeTruthy();
+    expect(pass.textContent).not.toContain(NAMES.page.event);
+    expect(pass.textContent).not.toContain(NAMES.page.guest);
     expect(pass.querySelector('svg.wl-qr')).toBeNull();
   });
 
