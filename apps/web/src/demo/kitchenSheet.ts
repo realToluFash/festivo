@@ -1,10 +1,11 @@
 import { pickWords } from './courseDefault.ts';
 import { demoWords } from './demoWords.ts';
 import { type SampleEvent, localDay } from './events.ts';
-import { ALLERGENS, DIETS, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
+import { ALLERGENS, type Allergen, DIETS, GUEST_KITCHEN_NAMES } from './guestKitchenWords.ts';
 import { KITCHEN_EVENT } from './kitchen.ts';
 import type { EvCourse, EvDish } from './menuCourses.ts';
 import {
+  type Person,
   type PicksWorld,
   type Spot,
   courseFigures,
@@ -42,6 +43,7 @@ export const KSW = {
   allergen: 'Allergen',
   people: 'People',
   perAllergen: '{{allergen}} {{count}}',
+  otherAllergy: '{{what}} (other)',
   namesNeed: 'Names need Guests manage.',
   diets: 'Diets',
   diet: 'Diet',
@@ -127,14 +129,32 @@ export function sheetAt(
   return `/demo/events/${KITCHEN_EVENT}/kitchen/sheet?${more.join('&')}`;
 }
 
+/** What an Other allergy says, as the guest typed it; See picks keeps only the codes. Leila already has an allergy, so the room's figures are See picks' own. */
+const OTHER_ALLERGY: Readonly<Record<string, string>> = { 'leila-haddad': 'Kiwi' };
+
+const withOther = (world: PicksWorld): PicksWorld => ({
+  ...world,
+  people: world.people.map((person) =>
+    OTHER_ALLERGY[person.id] == null || person.allergies.length === 0
+      ? person
+      : { ...person, allergies: [...person.allergies, 'other'] },
+  ),
+});
+
 /** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded. */
 export function worldOf(state: SheetState): PicksWorld {
-  if (state === 'closed') return picksAfterClose();
+  if (state === 'closed') return withOther(picksAfterClose());
   const world = samplePicks();
-  if (state !== 'noAllergies') return world;
+  if (state !== 'noAllergies') return withOther(world);
 
   return { ...world, people: world.people.map((person) => ({ ...person, allergies: [] })) };
 }
+
+const allergenWords = (code: Allergen, person: Person): string => {
+  const what = code === 'other' ? OTHER_ALLERGY[person.id] : undefined;
+
+  return what == null ? NAMES.allergens[code] : filled(KSW.otherAllergy, { what });
+};
 
 export type Cell =
   | { kind: 'dish'; text: string }
@@ -244,7 +264,7 @@ export function sheetOf(world: PicksWorld): Sheet {
         id: person.id,
         name: person.name,
         allergens: ALLERGENS.filter((code) => person.allergies.includes(code))
-          .map((code) => NAMES.allergens[code])
+          .map((code) => allergenWords(code, person))
           .join(', '),
         cells: courses.map((course) => cellOf(world, course, spotOf(world, course, person))),
       })),
@@ -324,6 +344,7 @@ export const SHEET_PAGES: readonly { name: string; states: readonly DemoLink[] }
     states: [
       link('open', 'manage', 'a4'),
       link('closed', 'manage', 'a4'),
+      link('noAllergies', 'manage', 'a4'),
       link('open', 'counts', 'a4'),
       link('closed', 'counts', 'a4'),
       link('open', 'manage', 'letter'),

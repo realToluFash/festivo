@@ -6,7 +6,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
-import { type SampleEvent, sampleEvent } from './events.ts';
+import { type SampleEvent, rangeOf, sampleEvent } from './events.ts';
 import { OkLine } from './GuestsParts.tsx';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { KITCHEN_EVENT, clockOfKitchen } from './kitchen.ts';
@@ -150,8 +150,6 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
     setPressed(true);
     setPdf('making');
   };
-  const contextOf = paperState(first.state);
-
   return (
     <>
       <header className="gs-top ks-top">
@@ -160,6 +158,7 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
             {KSW.title}
           </h1>
           <p className="ks-event">{event.name}</p>
+          <p className="ks-event">{rangeOf(event, now)}</p>
           <p className="ks-as-of">{asOfLine(now, event.timeZone)}</p>
         </div>
         {first.state !== 'loading' && (
@@ -181,7 +180,7 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
             </button>
             <Link
               className="gs-pill is-secondary ks-act"
-              to={sheetAt(contextOf, first.access, 'a4')}
+              to={sheetAt(first.state, first.access, 'a4')}
             >
               <PrintMark />
               {KSW.print}
@@ -216,8 +215,6 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
     </>
   );
 }
-
-const paperState = (state: SheetStart['state']) => (state === 'closed' ? 'closed' : 'open');
 
 function SheetBody({ sheet, access }: { sheet: Sheet; access: SheetAccess }) {
   return (
@@ -440,7 +437,7 @@ function SheetPaper({
   now: Date;
 }) {
   const [sheet] = useState(() => sheetOf(worldOf(first.state)));
-  const state = paperState(first.state);
+  const { state } = first;
   const other: Paper = paper === 'a4' ? 'letter' : 'a4';
 
   return (
@@ -470,6 +467,7 @@ function SheetPaper({
         <header className="ks-paper-head">
           <h1>{KSW.title}</h1>
           <p>{event.name}</p>
+          <p>{rangeOf(event, now)}</p>
           <p>{asOfLine(now, event.timeZone)}</p>
           <p>{summaryLine(sheet)}</p>
         </header>

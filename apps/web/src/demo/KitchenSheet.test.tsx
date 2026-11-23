@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { resetSample } from './events.ts';
+import { type SampleEvent, rangeOf, resetSample, sampleEvent } from './events.ts';
+import { clockOfKitchen } from './kitchen.ts';
 import { KSW, sheetAt } from './kitchenSheet.ts';
 import { coursesAt } from './menuCourses.ts';
 
@@ -60,6 +61,10 @@ describe('the kitchen sheet (sc-3911)', () => {
       expect(within(allergies()).getByRole('columnheader', { name: KSW.allergicTo })).toBeTruthy();
       expect(screen.getAllByRole('rowheader', { name: KSW.room }).length).toBeGreaterThan(0);
       expect(screen.getByText(/As of /u)).toBeTruthy();
+      const date = rangeOf(sampleEvent('evt-wed-4') as SampleEvent, clockOfKitchen());
+      expect(screen.getByText(date)).toBeTruthy();
+      const leila = within(allergies()).getByRole('row', { name: /Leila Haddad/u });
+      expect(within(leila).getByText('Sesame, Kiwi (other)')).toBeTruthy();
     },
   );
 
@@ -84,6 +89,17 @@ describe('the kitchen sheet (sc-3911)', () => {
     await sheet(sheetAt('noAllergies'));
 
     expect(within(allergies()).getByText(KSW.noAllergies)).toBeTruthy();
+  });
+
+  it('prints the state it came from, and goes back to it', SLOW, async () => {
+    await sheet(sheetAt('noAllergies'));
+    fireEvent.click(screen.getByRole('link', { name: KSW.print }));
+    await screen.findAllByRole('article', {}, WAIT);
+
+    expect(screen.getByText(KSW.noAllergies)).toBeTruthy();
+    expect(screen.getByRole('link', { name: KSW.toSheet }).getAttribute('href')).toBe(
+      sheetAt('noAllergies'),
+    );
   });
 
   it('makes the PDF when pressed, then names the file', SLOW, async () => {
@@ -143,6 +159,8 @@ describe('the kitchen sheet (sc-3911)', () => {
 
       expect(pages).toHaveLength(2);
       for (const page of pages) expect(within(page).getByText(KSW.health)).toBeTruthy();
+      const date = rangeOf(sampleEvent('evt-wed-4') as SampleEvent, clockOfKitchen());
+      expect(within(pages[0] as HTMLElement).getByText(date)).toBeTruthy();
       expect(pages[0]?.className).toContain(paper === 'letter' ? 'is-letter' : 'ks-sheet');
       expect(screen.queryByText(/£|€|\$/u)).toBeNull();
       if (access === 'counts') expect(screen.getByText(KSW.namesNeed)).toBeTruthy();
