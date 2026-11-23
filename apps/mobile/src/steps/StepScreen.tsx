@@ -44,6 +44,7 @@ import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
 import { stepFill } from '../kit/stepFill.ts';
+import { SheetReadout, useSheetMeasure } from './sheetMeasure.tsx';
 
 /** Inside the iPad's sheet, which UIKit lifts away from the keys itself and which has no safe area of its own. */
 export const InSheet = createContext(false);
@@ -166,7 +167,7 @@ function useKeysCover(
   on: boolean,
   /** Where the page starts on screen beyond what it measures: inside a sheet it measures from the sheet's own top. */
   offset: number,
-): number {
+): { cover: number; keysTop: () => number | null } {
   const origin = useWindowOrigin();
   const top = useRef<number | null>(null);
   const [cover, setCover] = useState(0);
@@ -201,7 +202,7 @@ function useKeysCover(
     };
   }, [on, origin, measure]);
 
-  return cover;
+  return { cover, keysTop: () => top.current };
 }
 
 export function StepScreen({
@@ -226,7 +227,8 @@ export function StepScreen({
   const page = useRef<ViewInstance>(null);
   const measured = ANDROID || inSheet;
   const sheetTop = inSheet ? insets.top + SHEET_LIFTED_GAP : 0;
-  const cover = useKeysCover(page, measured, sheetTop);
+  const { cover, keysTop } = useKeysCover(page, measured, sheetTop);
+  const origin = useWindowOrigin();
   // The lifts read the keys against the sheet's own frame, as the cover does.
   const { screenScroll, scrollProps } = useScreenScrollView(sheetTop);
   useFocusedFieldAboveToast(screenScroll);
@@ -250,6 +252,16 @@ export function StepScreen({
     });
   if (nextInline !== inline) setInline(nextInline);
   const footRef = useRef<ViewInstance>(null);
+  const readout = useSheetMeasure(inSheet, {
+    screenScroll,
+    page,
+    foot: footRef,
+    cover,
+    origin,
+    sheetTop,
+    insetsTop: insets.top,
+    keysTop,
+  });
   const wasInline = useRef(inline);
   const hasFoot = foot != null;
   const shown = useRef<ReturnType<typeof stepShown> | null>(null);
@@ -396,6 +408,7 @@ export function StepScreen({
         </ScrollView>
         {foot != null && !inline && footView}
       </KeyboardAvoidingView>
+      <SheetReadout lines={readout} />
     </View>
   );
 }

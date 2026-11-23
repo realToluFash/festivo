@@ -1,0 +1,50 @@
+# MEASUREMENT ONLY, never merged (sc-67886, pm #87961): step 1, keys up with Password focused. The PR's flow up to
+# its keys-up screenshot, minus the Forgot your password? steps. Read the yellow readout in the screenshot, the
+# hierarchy dump (sc67886.readout) or the [sc67886] lines in the Metro log. Step 2 is sc67886-ipad-sheet-text-size.yaml
+# unchanged, read at sc67886-ipad-sheet-forgot-keys-down.
+#
+#   xcrun simctl ui booted content_size accessibility-extra-extra-extra-large
+#   node .qa/bin/qa-env.mjs maestro sc67886-measure-keys-up
+appId: host.exp.Exponent
+---
+# Welcome reached by a link has nothing under Sign in, which then opens full screen: sign out to reach it.
+- runFlow: welcome-signed-out.yaml
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 20000
+- tapOn:
+    id: 'signIn.email'
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-top
+- tapOn:
+    id: 'signIn.email'
+    point: '50%,92%'
+- eraseText: 120
+- inputText: 'qa-sc67886@example.com'
+- assertVisible:
+    id: 'signIn.email'
+    text: 'qa-sc67886@example.com'
+- assertNotVisible: 'Enter your password.'
+- runFlow: keys-down-ipad-sheet.yaml
+- takeScreenshot: sc67886-ipad-sheet-typed
+- scrollUntilVisible:
+    element:
+      id: 'signIn.password'
+    centerElement: false
+- tapOn:
+    id: 'signIn.password'
+    point: '50%,92%'
+- inputText: 'not-the-password'
+- tapOn:
+    id: 'signIn.password.reveal'
+    point: '50%,92%'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'signIn.password'
+    text: 'not-the-password'
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
+- takeScreenshot: sc67886-measure-keys-up

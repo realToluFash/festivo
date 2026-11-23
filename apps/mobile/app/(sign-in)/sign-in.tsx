@@ -17,6 +17,7 @@ import { Heading, Says } from '../../src/steps/Lines.tsx';
 import { useShake } from '../../src/steps/shake.ts';
 import { useSignInOver } from '../../src/steps/signInOver.ts';
 import { InSheet, NavBar, StepScreen, useStepsInSheet } from '../../src/steps/StepScreen.tsx';
+import { measureTarget } from '../../src/steps/sheetMeasure.tsx';
 import { currentLocale, dateLocale } from '../../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../src/kit/formChecks.ts';
 import { tokens } from '../../src/theme/tokens.ts';
@@ -28,6 +29,8 @@ import {
   refusalFromParams,
   ruleRefusal,
 } from '../../src/kit/signInRules.ts';
+
+const forgotTarget = measureTarget('forgot');
 
 type Status =
   | { kind: 'ready' }
@@ -138,7 +141,7 @@ export default function SignIn() {
   };
 
   const forgotLink = (
-    <View style={styles.forgot}>
+    <View ref={forgotTarget} style={styles.forgot}>
       <QuietButton label={t('recovery.forgot')} onPress={forgot} testID="signIn.forgot" />
     </View>
   );
