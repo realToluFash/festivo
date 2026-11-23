@@ -21,7 +21,7 @@ import {
   clockOf,
   countLine,
   doorRows,
-  sameName,
+  listedAs,
   walkInProblem,
 } from '../kit/checkIn.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
@@ -348,7 +348,7 @@ export function CheckInView({
             setWalkIn({ ...walkIn, checked: true });
             return;
           }
-          const listed = allowDuplicate ? null : sameName(checkIn, walkIn.name);
+          const listed = allowDuplicate ? null : listedAs(t, checkIn, walkIn.name, currentLocale());
           if (listed != null) {
             setWalkIn({ ...walkIn, checked: true, same: { id: listed.id, name: listed.name } });
             return;

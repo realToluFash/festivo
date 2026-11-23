@@ -571,13 +571,23 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'Settings · access paused',
-        what: 'Two other organisations: Switch organisation',
+        what: 'The list: Organisation and Sign-in rules, no role (sc-86077)',
         href: '/demo/settings?held=paused',
       },
       {
         title: 'Settings · access paused, no other organisation',
-        what: 'No Switch organisation; single events only (sc-85006)',
+        what: 'The same list for a member of it alone (sc-86077)',
         href: '/demo/settings?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · access paused, Organisation',
+        what: 'The paused page: Switch organisation (sc-86077)',
+        href: '/demo/settings/organisation?held=paused',
+      },
+      {
+        title: 'Settings · access paused, Organisation, no other organisation',
+        what: 'No Switch organisation; single events only (sc-85006)',
+        href: '/demo/settings/organisation?held=paused&switcher=one',
       },
       {
         title: 'Settings · two-factor overdue',

@@ -14,7 +14,9 @@ describe('sc-82858: the paused page has no Search', () => {
   });
 
   it('drops the sidebar row on its side and the button upright', () => {
-    expect(home).toContain('<Landscape column={null} search={search}>');
+    expect(home).toContain(
+      "<Landscape column={held === 'paused' ? shell.listColumn : null} search={search}>",
+    );
     expect(home).toContain('<HeldPortraitTop search={search}>');
   });
 
@@ -35,7 +37,19 @@ describe('sc-82858: the paused page has no Search', () => {
 describe('sc-46032: the phone Settings top has Search, as the product does (sc-39534)', () => {
   it('puts Search before the bell unless the page leads back to no organisation', () => {
     expect(source('SettingsHome.tsx')).toMatch(
-      /backToNone \? \(\s*<Bell tell=\{shell\.tell\} \/>\s*\) : \(\s*<SearchAndBell tell=\{shell\.tell\} role=\{shell\.looking\.role\} \/>/u,
+      /backToNone \|\| paused \? \(\s*<Bell tell=\{shell\.tell\} \/>\s*\) : \(\s*<SearchAndBell tell=\{shell\.tell\} role=\{shell\.looking\.role\} \/>/u,
+    );
+  });
+});
+
+describe('sc-86077: the Settings list while paused keeps sc-82858’s no Search', () => {
+  it('drops Search from the list in every layout, and sits the paused page beside it on its side', () => {
+    const home = source('SettingsHome.tsx');
+
+    expect(home).toContain('<Landscape column={shell.listColumn} search={!paused}>');
+    expect(home).toContain('<PortraitTop at="Settings" search={!paused} />');
+    expect(home).toContain(
+      "if (held === 'overdue' || (paused && (over || shell.layout === 'landscape')))",
     );
   });
 });

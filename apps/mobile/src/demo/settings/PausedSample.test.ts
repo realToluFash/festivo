@@ -94,7 +94,7 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(held.match(/\{title\}/gu)).toHaveLength(3);
     expect(held).toMatch(/\{title\}\s*<\/HeldPortraitTop>/u);
     expect(held).toMatch(
-      /styles\.heldSideTop\}>\s*\{title != null && <View style=\{styles\.grow\}>\{title\}<\/View>\}\s*<Bell/u,
+      /styles\.heldSideTop\}>\s*\{title != null && <View style=\{styles\.grow\}>\{title\}<\/View>\}\s*\{held !== 'paused' && <Bell/u,
     );
     expect(held).toMatch(/styles\.titleRow\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>/u);
     expect(held).not.toContain('heldSideHead');

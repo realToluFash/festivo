@@ -2,6 +2,42 @@ import { Glyph } from '../components/Glyph.tsx';
 import { type MealAnswer, type MealCourse, MW, cardLines, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
 
+export type PickShape = 'kitchen' | 'skipped' | 'host';
+
+export function PickMark({ shape, words }: { shape: PickShape; words: string | null }) {
+  return (
+    <p className="mx-pick pc-shape">
+      <span className={`pc-ring is-${shape}`} aria-hidden="true">
+        {shape === 'kitchen' ? (
+          <ForkKnife />
+        ) : (
+          <Glyph
+            name={shape === 'skipped' ? 'minus' : 'message'}
+            size={13}
+            weight={shape === 'skipped' ? 2.6 : 2.4}
+          />
+        )}
+      </span>
+      <span>{words}</span>
+    </p>
+  );
+}
+
+function ForkKnife() {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+      <path
+        d="M4 1.5v4.5a1.5 1.5 0 0 0 1.5 1.5v7M7 1.5v4.5a1.5 1.5 0 0 1-1.5 1.5M5.5 1.5v4M11.5 14.5V1.5c-1.7.8-2.5 2.6-2.5 5v2h2.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function Refused({ words }: { words: string }) {
   return (
     <p id="ms-refused" className="desk-error ms-refused" role="alert">

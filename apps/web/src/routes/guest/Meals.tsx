@@ -973,7 +973,7 @@ export function MealsSaved({
   onSend,
   children,
 }: {
-  told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
+  told: 'marked' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
   marked: number;
   busy: boolean;
   /** The one day every course closes on, while all are open. */
@@ -1006,6 +1006,7 @@ export function MealsSaved({
       <div className="mx-told" role="status">
         {told === 'nothing' && <p>{t('guestMeal.nothingToSend')}</p>}
         {told === 'saved' && <p>{t('guestMeal.changesSaved')}</p>}
+        {told === 'otherSaved' && <p>{t('guestMeal.otherChangesSaved')}</p>}
       </div>
       {ending === 'askHosts' && <p className="gk-text">{t('guestMeal.askHosts', { hosts })}</p>}
       {ending === 'send' && (

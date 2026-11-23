@@ -2,8 +2,16 @@ import type { OrganisationEvent } from '@soirely/api-client';
 import { type Choice, changedWords, takesThankYou } from '@soirely/domain';
 import { router } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { AccessibilityInfo, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -51,6 +59,8 @@ import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { BellRow } from './BellButton.tsx';
 import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { bringIntoView } from './intoView.ts';
+import { ScreenScroll } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
 import { TextAction } from './Summary.tsx';
@@ -66,6 +76,7 @@ export function EventPage({
   onChange,
   onEdit,
   partRef,
+  closedOnto = null,
   onDuplicate,
   onDeleted,
   onGuests,
@@ -92,6 +103,8 @@ export function EventPage({
   onEdit?: ((part: EditPart, opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Each part's row, which its edit returns focus to. */
   partRef: (part: EditPart) => RefObject<ViewInstance | null>;
+  /** A new one each time an edit closes, naming where its focus goes back to. */
+  closedOnto?: { opener: RefObject<ScreenReaderTarget | null> } | null;
   /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -145,6 +158,7 @@ export function EventPage({
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
+  useOpenerInSight(closedOnto);
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
   useEffect(() => {
@@ -457,6 +471,26 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
     testID: 'events.delete',
   }),
 };
+
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). */
+function useOpenerInSight(closed: { opener: RefObject<ScreenReaderTarget | null> } | null): void {
+  const scroll = useContext(ScreenScroll);
+  const seen = useRef(closed);
+
+  useEffect(() => {
+    if (closed == null || closed === seen.current) return;
+    seen.current = closed;
+
+    let gone = false;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (on && !gone) bringIntoView(scroll, closed.opener.current, false);
+    });
+
+    return () => {
+      gone = true;
+    };
+  }, [closed, scroll]);
+}
 
 const styles = StyleSheet.create({
   page: { gap: 18 },

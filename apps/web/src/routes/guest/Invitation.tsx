@@ -140,7 +140,7 @@ interface Meal {
   cleared: Readonly<Record<string, Cleared>>;
   draft: Plate | null;
   pressed: boolean;
-  told: 'marked' | 'nothing' | 'saved' | 'failed' | null;
+  told: 'marked' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
   refused: ReadonlySet<string>;
   /** The rows of a refused course whose answer the send changed, which carry its alert. */
   unsaved: ReadonlySet<string>;
@@ -676,6 +676,15 @@ export function Card({
                 .filter((key) => !samePlate(plates[key], before[key])),
             ),
           );
+          const savedSome = people.some((eater) =>
+            askedCourses(at.meals)
+              .filter((course) => !refused.has(course.id) && !course.picksClose.closed)
+              .some((course) => {
+                const key = keyOf(eater.key, course.id);
+                return !samePlate(plates[key], before[key]);
+              }),
+          );
+          const said = told === 'saved' && savedSome ? 'otherSaved' : null;
           const first = [...unsaved][0];
           const shown = () => {
             if (first != null) focus(`refused-${first}`);
@@ -685,11 +694,11 @@ export function Card({
               seen.current = standing(after);
               setPage(after);
               if (!after.answersOpen) setView(opening(after, token));
-              setMeal({ ...savedMeal(after), refused, unsaved });
+              setMeal({ ...savedMeal(after), refused, unsaved, told: said });
               shown();
             },
             () => {
-              setMeal((was) => ({ ...was, busy: false, refused, unsaved }));
+              setMeal((was) => ({ ...was, busy: false, refused, unsaved, told: said }));
               shown();
             },
           );

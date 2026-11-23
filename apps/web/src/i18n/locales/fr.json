@@ -4017,6 +4017,7 @@
     "sendChanges": "Envoyer mes modifications",
     "nothingToSend": "Rien n’a changé, il n’y a donc rien à envoyer.",
     "changesSaved": "Vos modifications sont enregistrées.",
+    "otherChangesSaved": "Vos autres modifications sont enregistrées.",
     "notSaved": "Non envoyé. Vérifiez votre connexion et réessayez.",
     "refusedClosed": "Le choix pour le service « {{course}} » a été clos le {{date}}, votre modification n’a donc pas été enregistrée.",
     "askHosts": "Pour modifier un choix maintenant, adressez-vous à {{hosts}}.",

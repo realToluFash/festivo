@@ -29,7 +29,7 @@ export const KSW = {
   making: 'Making the PDF',
   print: 'Print',
   made: '{{file}} is ready. The demo makes no PDF.',
-  failed: 'The PDF couldn’t be made. The sheet on this page is unchanged, and Print still works.',
+  failed: 'The PDF could not be made. The sheet on this page is unchanged, and Print still works.',
   retry: 'Try again',
   coming: '{{count}} coming',
   allergic_one: '{{count}} person with allergies',
@@ -64,7 +64,7 @@ export const KSW = {
   given: '{{count}} given the default, {{dish}}, when picks closed. They are in its count.',
   sides: 'Sides are counted per pick, so they add up to their dish, not to the room.',
   loading: 'Loading the kitchen sheet…',
-  refused: 'You can’t open the kitchen sheet',
+  refused: 'You cannot open the kitchen sheet',
   back: 'Back to the event',
   health:
     'This sheet holds guests’ health information. Keep it with the kitchen and dispose of it after the event.',
