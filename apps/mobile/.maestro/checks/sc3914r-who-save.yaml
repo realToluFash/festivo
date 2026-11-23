@@ -30,10 +30,12 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'menu.who.save'
 - extendedWaitUntil:
-    visible: 'Give it anyway'
+    visible:
+      id: 'menu.override.anyway'
     timeout: 5000
 - takeScreenshot: override-on-save
-- tapOn: 'Give it anyway'
+- tapOn:
+    id: 'menu.override.anyway'
 - takeScreenshot: saved-0s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
 - takeScreenshot: saved-2s
