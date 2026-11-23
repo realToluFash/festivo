@@ -434,7 +434,7 @@ describe('the host is never told a dish nobody described contains an allergy (sc
     const shown = menuStart('notStatedHost').world!;
 
     expect(needsHost(shown).map(hostLineWords)).toContain(
-      'Dessert: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to celery was recorded after they picked it.',
     );
   });
 
