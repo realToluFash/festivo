@@ -16,8 +16,8 @@ appId: host.exp.Exponent
 # The paused page shows Today too, and has no Settings. sc-86367.
 - runFlow:
     when:
-      visible: '{{t:any:todayScreen.tab.today}}'
       notVisible: '{{t:any:accessPaused.badge}}'
+      visible: '{{t:any:todayScreen.tab.today}}'
     file: to-settings.yaml
 # An account in no organisation that holds an event from outside lands inside it, which names
 # no account: Settings does. sc-68438.
