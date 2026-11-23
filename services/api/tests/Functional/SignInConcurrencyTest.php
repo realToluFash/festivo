@@ -31,6 +31,9 @@ final class SignInConcurrencyTest extends FunctionalTestCase
 
     private const string VENUE_WIFI = '198.51.100.7';
 
+    /** pg_locks is the whole cluster's: under ParaTest the other processes' databases take sign-in locks too. */
+    private const string ADVISORY_LOCKS_HERE = "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND database = (SELECT oid FROM pg_database WHERE datname = current_database())";
+
     #[Test]
     public function twentyParallelGuessesForOneAddressCheckFiveAndOnlyTheFifthSpendsTheBudget(): void
     {
@@ -72,11 +75,11 @@ final class SignInConcurrencyTest extends FunctionalTestCase
             $waiting = 0;
             while (0 === $waiting && \microtime(true) < $startAt + 10) {
                 Async\sleep(Duration::milliseconds(100));
-                $waiting = (int) $holder->fetchOne("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted");
+                $waiting = (int) $holder->fetchOne(self::ADVISORY_LOCKS_HERE . ' AND NOT granted');
             }
 
             self::assertSame(1, $waiting, 'the sign-in is waiting on its address');
-            self::assertSame(0, (int) $holder->fetchOne("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid <> pg_backend_pid()"), 'and holds no lock of its own, such as one for its IP');
+            self::assertSame(0, (int) $holder->fetchOne(self::ADVISORY_LOCKS_HERE . ' AND granted AND pid <> pg_backend_pid()'), 'and holds no lock of its own, such as one for its IP');
         } finally {
             $holder->rollBack();
             $holder->close();
