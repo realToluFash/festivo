@@ -1,0 +1,27 @@
+# sc-3914 retest: opens Choose who gets it for ${VARIANT} on a phone and swipes its list up twice, to show whether the last party can be reached above Cancel and Save.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- tapOn:
+    id: 'menu.who.${VARIANT}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- takeScreenshot: open
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+- takeScreenshot: swiped-1
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+- takeScreenshot: swiped-2

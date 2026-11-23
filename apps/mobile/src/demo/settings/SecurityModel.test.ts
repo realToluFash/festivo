@@ -69,7 +69,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(41);
+    expect(SECURITY_STATES).toHaveLength(48);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -251,5 +251,40 @@ describe('the passkey states (sc-86888)', () => {
     expect(securityStart('removePasskey')).toMatchObject({ ask: 'remove', removing: 'passkey-1' });
     expect(securityStart('removeProof')).toMatchObject({ proof: 'remove', screen: 'passkey' });
     expect(securityStart('confirmRefused')).toMatchObject({ sheet: false, keyRefused: true });
+  });
+});
+
+describe("the provider states: Confirm it's you with no password (sc-22601)", () => {
+  it('open on an account that signs in with Google alone, or Apple alone', () => {
+    expect(securityStart('proveGoogle').ways).toEqual({
+      password: false,
+      google: true,
+      apple: false,
+    });
+    expect(securityStart('everywhereApple').ways).toEqual({
+      password: false,
+      google: false,
+      apple: true,
+    });
+    expect(securityStart('proveGoogle')).toMatchObject({ screen: 'confirm', proof: 'link' });
+  });
+
+  it('take two-factor only where the code step is drawn', () => {
+    expect(securityStart('everywhereGoogle').twoFactor).toBe(false);
+    expect(securityStart('everywhereGoogleCode').twoFactor).toBe(true);
+    expect(securityStart('everywhereLimitedCode')).toMatchObject({
+      twoFactor: true,
+      limited: true,
+      codeStep: true,
+      proof: 'everywhere',
+    });
+  });
+
+  it('confirm with the provider in place of the password', () => {
+    const start = securityStart('everywhereLimited');
+    const asks = proofAsks('everywhere', 'google', start.ways, start.twoFactor, t);
+
+    expect(start.limited).toBe(true);
+    expect(asks).toMatchObject({ password: false, code: false, instead: 'Google' });
   });
 });

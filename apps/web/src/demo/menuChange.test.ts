@@ -1,10 +1,29 @@
 import { describe, expect, it } from 'vitest';
 
-import { MCW, addedAllergens, asksAtFirstDish, changeAsks, pickedWithAdded } from './menuChange.ts';
+import {
+  type ChoiceOption,
+  choice,
+  option,
+  optionalSide,
+  sauceChoice,
+  sideChoice,
+} from './dishChoices.ts';
+import { childrenFold, variant } from './dishVariants.ts';
+import {
+  MCW,
+  addedAllergens,
+  answeredBy,
+  asksAtFirstDish,
+  changeAsks,
+  choiceChange,
+  pickedBy,
+  pickedWithAdded,
+} from './menuChange.ts';
 import {
   type EvCourse,
   type EvDish,
   addedAllergenLine,
+  choiceCourses,
   sampleCourses,
   variantCourses,
 } from './menuCourses.ts';
@@ -97,5 +116,121 @@ describe('what a menu change asks (sc-3913)', () => {
     expect(asks?.count).toBe(
       '4 guests who picked this dish have Sesame recorded. They’ll be asked to pick again for Main, and will appear in Needs the host.',
     );
+  });
+});
+
+describe('who a choice or variant change asks (sc-3913)', () => {
+  it('answers a choice once per guest who picked its dish, so no count passes the room', () => {
+    for (const side of [sideChoice(), optionalSide()]) {
+      const courses = choiceCourses([side, sauceChoice()]);
+
+      expect(answeredBy(side)).toBe(pickedBy(jollof(courses)));
+      expect(answeredBy(side)).toBeLessThanOrEqual(48);
+    }
+  });
+
+  it('never counts more than answered a choice, at any pick', () => {
+    const ten = Array.from({ length: 10 }, () => ['crustaceans'] as const);
+    const was = choice(
+      'c-two',
+      'And two sides?',
+      [option('c-a', 'Plantain', 'none', ten), option('c-b', 'Moi moi', ['eggs'], ten)],
+      { pick: 2 },
+    );
+    const now = {
+      ...was,
+      options: [{ ...(was.options[0] as ChoiceOption), contains: ['crustaceans' as const] }],
+    };
+
+    expect(answeredBy(was)).toBe(10);
+    expect(choiceChange(was, now).people).toBe(10);
+  });
+
+  const sameStarter = (dish: (pepper: EvDish) => EvDish): EvCourse[] =>
+    sampleCourses().map((one) =>
+      one.id === 'k1' ? { ...one, dishes: one.dishes.map((d) => dish(d)) } : one,
+    );
+
+  it('asks everyone coming only when a course everyone gets starts asking', () => {
+    const starts = sameStarter((d) => d);
+    const pepper = starts[0]?.dishes[0] as EvDish;
+    const first = changeAsks(
+      {
+        kind: 'choice',
+        courseId: 'k1',
+        dishId: pepper.id,
+        choiceId: null,
+        next: { ...pepper, choices: [sideChoice(false, 'c-new')] },
+      },
+      starts,
+      48,
+    );
+    expect(first?.people).toBe(48);
+
+    const asking = sameStarter((d) => ({ ...d, choices: [sideChoice()] }));
+    const asked = asking[0]?.dishes[0] as EvDish;
+    const second = changeAsks(
+      {
+        kind: 'choice',
+        courseId: 'k1',
+        dishId: asked.id,
+        choiceId: null,
+        next: { ...asked, choices: [...(asked.choices ?? []), sauceChoice('c-new')] },
+      },
+      asking,
+      48,
+    );
+    expect(second?.people).toBe(45);
+    expect(second?.count).toBe(
+      '45 guests answered the choices on Catfish pepper soup. They’ll be asked to pick again for Starter.',
+    );
+  });
+
+  it('asks everyone coming at a second Everyone variant, and nobody at another variant after it', () => {
+    const light = variant('v-light', 'Light bowl', 'everyone', ['fish', 'celery'], ['pescatarian']);
+    const kids = variantCourses();
+    const pepper = kids[0]?.dishes[0] as EvDish;
+    const second = changeAsks(
+      {
+        kind: 'variantAdded',
+        courseId: 'k1',
+        dishId: pepper.id,
+        next: { ...pepper, variants: [...childrenFold(), light] },
+      },
+      kids,
+      48,
+    );
+    expect(second?.title).toBe('Add Light bowl to Catfish pepper soup?');
+    expect(second?.people).toBe(48);
+
+    const two = sameStarter((d) => ({ ...d, variants: [...childrenFold(), light] }));
+    const asking = two[0]?.dishes[0] as EvDish;
+    const third = variant('v-third', 'Spicy bowl', 'everyone', ['fish'], ['pescatarian']);
+    expect(
+      changeAsks(
+        {
+          kind: 'variantAdded',
+          courseId: 'k1',
+          dishId: asking.id,
+          next: { ...asking, variants: [...(asking.variants ?? []), third] },
+        },
+        two,
+        48,
+      ),
+    ).toBeNull();
+
+    const jollofWays = jollof(kids);
+    expect(
+      changeAsks(
+        {
+          kind: 'variantAdded',
+          courseId: 'k2',
+          dishId: jollofWays.id,
+          next: { ...jollofWays, variants: [...(jollofWays.variants ?? []), third] },
+        },
+        kids,
+        48,
+      ),
+    ).toBeNull();
   });
 });
