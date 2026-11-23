@@ -36,7 +36,7 @@ function Overdue({ alone, onSignOut }: { alone: boolean; onSignOut: () => void }
       organisation={YOU.organisation}
       others={othersOf(alone)}
       answer={null}
-      onTurnOn={() => shell.openSection('security', 'setup')}
+      onTurnOn={() => shell.openSection('security', 'choose')}
       onSignOut={onSignOut}
     />
   );

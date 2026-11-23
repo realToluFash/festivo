@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { LEAD_INSET, LineIcon } from '../../components/AccountCard.tsx';
 import { PrimaryButton, QuietButton } from '../../components/Buttons.tsx';
 import { FieldError } from '../../components/Field.tsx';
+import { useReadOut } from '../../components/ReadOut.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import {
   FocusedScreen,
@@ -217,9 +218,11 @@ function SheetStandIn({
   );
 }
 
-function Waiting() {
+export function Waiting() {
+  useReadOut(WAITING);
+
   return (
-    <View style={styles.waiting} accessible accessibilityLiveRegion="polite">
+    <View style={styles.waiting} accessible>
       <TurningMark side={16} />
       <Text size={15} weight="medium" style={styles.secondary}>
         {WAITING}

@@ -58,6 +58,7 @@ export const SECURITY_STATES = [
   'factorFailed',
   'factorFailedLinked',
   'factorLoadingSignedOut',
+  'choose',
   'chooseFaceId',
   'chooseTouchId',
   'choosePasskey',
@@ -360,6 +361,8 @@ export function securityStart(state: SecurityState): SecurityStart {
         finished: { kind: 'signedOut', device: SIGNED_OUT },
         signedOut: [SIGNED_OUT],
       };
+    case 'choose':
+      return choosing;
     case 'chooseFaceId':
       return { ...choosing, unlock: 'faceId' };
     case 'chooseTouchId':
