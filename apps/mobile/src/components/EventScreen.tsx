@@ -372,6 +372,7 @@ export function EventScreen({
             onChange={change}
             onEdit={onEdit}
             partRef={partRef}
+            closedOnto={editing?.open === false ? editing : null}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
