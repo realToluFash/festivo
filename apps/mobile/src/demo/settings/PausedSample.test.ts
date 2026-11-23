@@ -57,7 +57,7 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     );
   });
 
-  it('draws no page title on the paused page, and the bell on its side', () => {
+  it("draws no page title on the paused page, Settings' on the overdue one, and the bell on its side", () => {
     const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
     const side = held.slice(0, held.indexOf("shell.layout === 'portrait'"));
 
@@ -69,28 +69,36 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(side).toContain('<Bell tell={shell.tell} />');
   });
 
-  it('keeps the page title above the overdue card in every layout, as the product (sc-85006)', () => {
-    const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
-
-    expect(held.match(/\{title\}/gu)).toHaveLength(3);
-    expect(held).toContain('<View style={styles.heldUprightTitle}>{title}</View>');
-    expect(held).toMatch(
-      /styles\.heldSideHead\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>\s*<Bell/u,
-    );
-  });
-
-  it('pads the held page once: the stand-in keeps its own inset, and only the header rows pad (sc-85022)', () => {
-    const source = readFileSync(join(import.meta.dirname, 'SettingsHome.tsx'), 'utf8');
-    const style = (name: string) => source.match(new RegExp(`^  ${name}: \\{[^}]*\\}`, 'mu'))?.[0];
+  it('pads the held page once and titles overdue once per layout, in the product header shapes (sc-85006, sc-85022)', () => {
+    const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
+    const styleIn = (file: string) => (name: string) =>
+      read(file).match(new RegExp(`^  ${name}: \\{[^}]*\\}`, 'mu'))?.[0];
+    const style = styleIn('SettingsHome.tsx');
 
     expect(style('heldPhone')).toBe('  heldPhone: { flex: 1 }');
     expect(style('heldUpright')).toBe('  heldUpright: { flex: 1 }');
+    expect(style('heldSide')).toBe('  heldSide: { flex: 1 }');
     expect(style('heldRows')).toContain('paddingHorizontal: tokens.spaceXxl');
-    expect(style('heldBack')).toContain('paddingHorizontal: tokens.space4xl');
+    expect(style('heldSideTop')).toContain('paddingHorizontal: 30');
+    expect(styleIn('Frame.tsx')('heldTop')).toContain('paddingHorizontal: tokens.space4xl');
 
     const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
 
+    expect(held.match(/\{title\}/gu)).toHaveLength(3);
+    expect(held).toMatch(/\{title\}\s*<\/HeldPortraitTop>/u);
+    expect(held).toMatch(
+      /styles\.heldSideTop\}>\s*\{title != null && <View style=\{styles\.grow\}>\{title\}<\/View>\}\s*<Bell/u,
+    );
+    expect(held).toMatch(/styles\.titleRow\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>/u);
+    expect(held).not.toContain('heldSideHead');
+
     expect(held).toMatch(/<View style=\{styles\.heldRows\}>[\s\S]*<\/View>\s*\{standIn\}/u);
     expect(held).toContain('<View style={styles.heldUpright}>{standIn}</View>');
+    expect(held).toMatch(
+      /<View style=\{styles\.heldSide\}>[\s\S]*\{standIn\}\s*<\/View>\s*<\/Landscape>/u,
+    );
+    expect(held).toMatch(
+      /<HeldPortraitTop search=\{search\}>[\s\S]*settings\.held\.back[\s\S]*<\/HeldPortraitTop>/u,
+    );
   });
 });
