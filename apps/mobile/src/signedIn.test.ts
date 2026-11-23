@@ -570,3 +570,63 @@ describe('the organisation being worked in, ended while the app is open (sc-2817
     expect(router.replace).not.toHaveBeenCalled();
   });
 });
+
+describe('the organisation this phone was last in, paused there (sc-86056)', () => {
+  const other = { ...organisation, id: 'org_2', name: 'Ọ̀ṣun Parties' };
+  const paused = {
+    ...organisation,
+    suspension: {
+      reason: 'address_gone' as const,
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+
+  const launched = async (
+    remembered: string | null,
+    organisations: (typeof organisation)[],
+    pausedIn: (typeof paused)[],
+  ) => {
+    vi.clearAllMocks();
+    storage.getItem.mockResolvedValue(remembered as never);
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations, paused: pausedIn });
+    await reloadSignedIn();
+  };
+
+  it('remembers the organisation it opened by default', async () => {
+    await launched(null, [organisation, other], []);
+
+    expect(useSignedIn().organisation?.id).toBe('org_1');
+    expect(storage.setItem).toHaveBeenCalledWith('soirely.organisation', 'org_1');
+  });
+
+  it('opens its paused page at the next launch, and keeps it remembered', async () => {
+    await launched('org_1', [other], [paused]);
+
+    expect(useSignedIn().pausedIn?.id).toBe('org_1');
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('opens in the other with no paused card on a phone that was in no organisation', async () => {
+    await launched(null, [other], [paused]);
+
+    expect(useSignedIn().organisation?.id).toBe('org_2');
+    expect(useSignedIn().pausedIn).toBeNull();
+    expect(storage.setItem).toHaveBeenCalledWith('soirely.organisation', 'org_2');
+  });
+
+  it('keeps the paused one remembered when it pauses while the app is open', async () => {
+    await launched(null, [organisation, other], []);
+    vi.clearAllMocks();
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [other], paused: [paused] });
+
+    await rereadOrganisations();
+
+    expect(useSignedIn().pausedIn?.id).toBe('org_1');
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+});
