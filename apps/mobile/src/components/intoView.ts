@@ -9,6 +9,7 @@ import {
   shownAboveKeys,
 } from '../kit/keyboard.ts';
 import { scrollAsked } from '../kit/focusBack.ts';
+import { type ToastRest, restAboveToast } from '../kit/toastRest.ts';
 import { tokens } from '../theme/tokens.ts';
 import { keyboardTopNow } from './keyboardWatch.ts';
 import type { ScreenScrollView } from './Screen.tsx';
@@ -78,6 +79,58 @@ export function bringIntoView(
       );
     },
     () => measured(null),
+  );
+}
+
+/** Measures where `line` rests above the toast whose top is at `toastTop` in the window, with `room` already given to the content's foot, as restAboveToast has it; null when it cannot be measured (sc-86228). */
+export function restOverToast(
+  scroll: SightScroll | null,
+  line: ScreenReaderTarget | null,
+  toastTop: number,
+  room: number,
+  measured: (rest: ToastRest | null) => void,
+): void {
+  const view = scroll?.ref.current;
+  const content = view?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
+    return measured(null);
+
+  line.measureLayout(
+    content,
+    (_x, contentY, _w, height) =>
+      content.measureInWindow((_cx, _cy, _cw, contentHeight) =>
+        scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) =>
+          measured(
+            restAboveToast({
+              contentY,
+              height,
+              offset: scroll.offset.current,
+              scrollTop,
+              scrollHeight,
+              toastTop,
+              content: contentHeight - room,
+              margin: tokens.spaceLg,
+            }),
+          ),
+        ),
+      ),
+    () => measured(null),
+  );
+}
+
+/** Brings the scroll back inside its content's end, once the content has shrunk under it. */
+export function keepInsideEnd(scroll: SightScroll | null): void {
+  const view = scroll?.ref.current;
+  const content = view?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null) return;
+
+  content.measureInWindow((_cx, _cy, _cw, contentHeight) =>
+    scrollHost.measureInWindow((_sx, _sy, _sw, scrollHeight) => {
+      const end = Math.max(0, contentHeight - scrollHeight);
+      if (scroll.offset.current > end) view.scrollTo({ y: end, animated: false });
+    }),
   );
 }
 

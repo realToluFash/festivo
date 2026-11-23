@@ -59,7 +59,7 @@ import { ThankYouCard, ThankYouScreen } from './ThankYou.tsx';
 import { BellRow } from './BellButton.tsx';
 import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
-import { bringIntoView } from './intoView.ts';
+import { bringIntoView, keepInsideEnd, restOverToast } from './intoView.ts';
 import { ScreenScroll } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
@@ -77,6 +77,7 @@ export function EventPage({
   onEdit,
   partRef,
   closedOnto = null,
+  toast = null,
   onDuplicate,
   onDeleted,
   onGuests,
@@ -104,7 +105,9 @@ export function EventPage({
   /** Each part's row, which its edit returns focus to. */
   partRef: (part: EditPart) => RefObject<ViewInstance | null>;
   /** A new one each time an edit closes, naming where its focus goes back to. */
-  closedOnto?: { opener: RefObject<ScreenReaderTarget | null> } | null;
+  closedOnto?: Closed | null;
+  /** The toast over the page's foot, where its top shows in the window and the close by Save it says. */
+  toast?: { top: number; over: Closed | null } | null;
   /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -158,7 +161,7 @@ export function EventPage({
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
-  useOpenerInSight(closedOnto);
+  const toastRoom = useOpenerInSight(closedOnto, toast);
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
   useEffect(() => {
@@ -382,7 +385,11 @@ export function EventPage({
     );
 
   return (
-    <View style={styles.page} testID="events.page">
+    <View
+      style={[styles.page, toastRoom.room > 0 && { paddingBottom: toastRoom.room }]}
+      onLayout={toastRoom.onLayout}
+      testID="events.page"
+    >
       <OverviewColumns
         landscape={kind === 'tabletLandscape'}
         card={<BellRow>{card}</BellRow>}
@@ -472,13 +479,26 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
   }),
 };
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). */
-function useOpenerInSight(closed: { opener: RefObject<ScreenReaderTarget | null> } | null): void {
+interface Closed {
+  opener: RefObject<ScreenReaderTarget | null>;
+  saved?: boolean;
+}
+
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far (sc-86228). */
+function useOpenerInSight(
+  closed: Closed | null,
+  toast: { top: number; over: Closed | null } | null,
+): { room: number; onLayout: () => void } {
   const scroll = useContext(ScreenScroll);
   const seen = useRef(closed);
+  const [room, setRoom] = useState(0);
+  const roomNow = useRef(0);
+  const laidOut = useRef<(() => void) | null>(null);
+  const over = toast != null && closed?.saved === true && toast.over === closed ? toast.top : null;
+  const shows = toast != null;
 
   useEffect(() => {
-    if (closed == null || closed === seen.current) return;
+    if (closed == null || closed === seen.current || closed.saved === true) return;
     seen.current = closed;
 
     let gone = false;
@@ -490,6 +510,46 @@ function useOpenerInSight(closed: { opener: RefObject<ScreenReaderTarget | null>
       gone = true;
     };
   }, [closed, scroll]);
+
+  useEffect(() => {
+    if (over == null || closed == null || closed === seen.current) return;
+    seen.current = closed;
+
+    let gone = false;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!on || gone) return;
+      restOverToast(scroll, closed.opener.current, over, roomNow.current, (rest) => {
+        if (rest == null || gone) return;
+        const go = () => {
+          if (rest.to != null) scroll?.ref.current?.scrollTo({ y: rest.to, animated: false });
+        };
+        if (rest.room === roomNow.current) return go();
+        roomNow.current = rest.room;
+        laidOut.current = go;
+        setRoom(rest.room);
+      });
+    });
+
+    return () => {
+      gone = true;
+    };
+  }, [closed, over, scroll]);
+
+  useEffect(() => {
+    if (shows || roomNow.current === 0) return;
+    roomNow.current = 0;
+    laidOut.current = () => keepInsideEnd(scroll);
+    setRoom(0);
+  }, [shows, scroll]);
+
+  return {
+    room,
+    onLayout: () => {
+      const then = laidOut.current;
+      laidOut.current = null;
+      then?.();
+    },
+  };
 }
 
 const styles = StyleSheet.create({

@@ -78,7 +78,7 @@ import { EventNotFound, EventTop, EventsFailed, OutsideNotFound, usePhaseOf } fr
 import { Refreshing } from './Refreshing.tsx';
 import { Screen } from './Screen.tsx';
 import { StepScreen } from '../steps/StepScreen.tsx';
-import { LoadingBlock, PageToast, TextAction } from './Summary.tsx';
+import { LoadingBlock, PageToast, TextAction, type ToastAt } from './Summary.tsx';
 import type { ToastAction } from './Toast.tsx';
 import { phoneTabBarClearance } from './TodayCover.tsx';
 import { Arrived } from './Skeleton.tsx';
@@ -92,6 +92,16 @@ import { BACK_KEY, eventBack, overviewGivesWay } from '../kit/eventBack.ts';
 import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
+
+interface Editing {
+  part: EditPart;
+  count: number;
+  open: boolean;
+  leaves: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
+  /** Closed by Save, which shows the saved toast. */
+  saved?: boolean;
+}
 
 /** An event's page, a screen of its own pushed over Events, Happening now or Calendar (sc-22103). */
 export function EventScreen({
@@ -153,13 +163,7 @@ export function EventScreen({
     getState():
       { routes: readonly { name?: string; params?: unknown }[]; index: number } | undefined;
   }>();
-  const [editing, setEditing] = useState<{
-    part: EditPart;
-    count: number;
-    open: boolean;
-    leaves: boolean;
-    opener: RefObject<ScreenReaderTarget | null>;
-  } | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
   const [partRows] = useState(
     () =>
       Object.fromEntries(EDIT_PARTS.map((part) => [part, createRef<ViewInstance>()])) as Record<
@@ -182,7 +186,10 @@ export function EventScreen({
     area: EventPlace;
     words: string;
     action?: ToastAction | null | undefined;
+    /** The Save it says, whose row rests above it with a screen reader on (sc-86228). */
+    over?: Editing | undefined;
   } | null>(null);
+  const [toastAt, setToastAt] = useState<ToastAt | null>(null);
   const withdrawToastAction = useCallback(
     () => setToast((was) => (was == null ? null : { ...was, action: null })),
     [],
@@ -306,7 +313,9 @@ export function EventScreen({
   };
   const closeEdit = (opener?: RefObject<ScreenReaderTarget | null>) =>
     setEditing((was) =>
-      was == null ? was : { ...was, open: false, ...(opener == null ? {} : { opener }) },
+      was == null
+        ? was
+        : { ...was, open: false, saved: false, ...(opener == null ? {} : { opener }) },
     );
   const onEdit = manages ? openEdit : undefined;
   const [linked, setLinked] = useState<EditPart | undefined>();
@@ -373,6 +382,11 @@ export function EventScreen({
             onEdit={onEdit}
             partRef={partRef}
             closedOnto={editing?.open === false ? editing : null}
+            toast={
+              toast?.eventId === eventId && toast.area === area && toastAt?.words === toast.words
+                ? { top: toastAt.top, over: toast.over ?? null }
+                : null
+            }
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
@@ -646,8 +660,9 @@ export function EventScreen({
           onSaved={(saved, said) => {
             change(saved);
             if (editing.part === 'cover') setCoverRefused(null);
-            closeEdit(partRef(editing.part));
-            setToast({ eventId, area, words: said ?? t('eventEdit.saved') });
+            const closed = { ...editing, open: false, opener: partRef(editing.part), saved: true };
+            setEditing(closed);
+            setToast({ eventId, area, words: said ?? t('eventEdit.saved'), over: closed });
           }}
           onLatest={(latest) => {
             change(latest);
@@ -661,6 +676,7 @@ export function EventScreen({
           words={toast.words}
           action={toast.action}
           onClose={() => setToast(null)}
+          onAt={setToastAt}
           bottom={
             phone
               ? phoneTabBarClearance(insets.bottom) + tokens.spaceXl + tokens.spaceHair
