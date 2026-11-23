@@ -8,7 +8,8 @@ export interface PicksRow {
   name: string;
   dish: string | null;
   for: 'everyone' | 'children' | null;
-  allergens: string[];
+  /** Null is never stated: the plate may hold any of the 14. */
+  allergens: string[] | null;
   chosen: number;
   defaulted: number;
   holders: string[] | null;
@@ -124,7 +125,7 @@ function asRow(raw: unknown): PicksRow {
     name: str(one.name),
     dish: typeof one.dish === 'string' ? one.dish : null,
     for: one.for === 'children' || one.for === 'everyone' ? one.for : null,
-    allergens: strings(one.allergens),
+    allergens: Array.isArray(one.allergens) ? strings(one.allergens) : null,
     chosen: num(one.chosen),
     defaulted: num(one.defaulted),
     holders: Array.isArray(one.holders) ? strings(one.holders) : null,

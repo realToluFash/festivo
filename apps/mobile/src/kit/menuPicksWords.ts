@@ -114,7 +114,7 @@ export function picksAccess(
 
 /** What a save on Choose who gets it changes: who newly given it it rules out, asked about first, and who had it and goes back. */
 export function whoChanges(
-  row: { holders: readonly string[] | null; allergens: readonly string[] },
+  row: { holders: readonly string[] | null; allergens: readonly string[] | null },
   ticked: ReadonlySet<string>,
   people: readonly PicksRoomPerson[],
 ): { ruled: PicksRoomPerson[]; leaving: string[] } {

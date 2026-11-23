@@ -3278,6 +3278,7 @@
     "courseOpen": "Picks close {{date}}",
     "courseClosed": "Picks closed on {{date}}",
     "contains": "Contains: {{allergens}}",
+    "allergensNotStated": "Allergens not stated",
     "variantOf": "Variant · {{name}}",
     "sideOf": "Side · {{name}}",
     "childrenOnly": "Children only",

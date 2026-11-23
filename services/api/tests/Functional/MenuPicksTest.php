@@ -99,6 +99,16 @@ final class MenuPicksTest extends ApiTestCase
         $token = $this->coming([['fullName' => 'Chidi Okonkwo'], ['fullName' => 'Ada Obi'], ['fullName' => 'Kojo Asante']]);
         [$bisi, $chidi, $ada, $kojo] = [$this->personId('Bisi Adewale'), $this->personId('Chidi Okonkwo'), $this->personId('Ada Obi'), $this->personId('Kojo Asante')];
         $this->hostRecords($chidi, ['celery']);
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no main');
+        $suya = new MenuDish($main, null, 'Suya', null, null, [], 3);
+        $ofada = new MenuDish($main, null, 'Ofada stew', null, null, [], 4);
+        $ofadaPlate = new MenuDishVariant($ofada, 'Plate', false, ['peanuts'], [], null, 0);
+
+        foreach ([$suya, $ofada, $ofadaPlate] as $row) {
+            self::em()->persist($row);
+        }
+
+        self::em()->flush();
         $this->meals($token, [
             ['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
             ['person' => $chidi, 'course' => $this->id($this->main), 'answer' => 'chefsChoice'],
@@ -125,7 +135,7 @@ final class MenuPicksTest extends ApiTestCase
 
         $main = self::course($picks, 'Main');
         self::assertSame([1, 1, 1, 1], [self::row($main, 'Jollof rice')['chosen'], $main['kitchen'], $main['skipped'], $main['notChosen']]);
-        self::assertSame([['fish', 'celery'], ['milk', 'fish'], []], [self::row($starter, 'Catfish pepper soup')['allergens'], self::row($main, 'Pounded yam and egusi')['allergens'], self::row($main, 'Rice and stew')['allergens']]);
+        self::assertSame([['fish', 'celery'], ['milk', 'fish'], [], null, []], [self::row($starter, 'Catfish pepper soup')['allergens'], self::row($main, 'Pounded yam and egusi')['allergens'], self::row($main, 'Rice and stew')['allergens'], self::row($main, 'Suya')['allergens'], self::row($main, 'Ofada stew')['allergens']]);
         self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => []]], $picks['needsHost']);
         self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'excluded' => []]]]], $picks['waiting']);
     }
