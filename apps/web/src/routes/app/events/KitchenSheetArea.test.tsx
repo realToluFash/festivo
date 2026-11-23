@@ -255,7 +255,7 @@ describe('The kitchen sheet (sc-3911)', () => {
     const alert = await screen.findByRole('alert');
     expect(
       within(alert).getByText(
-        'The PDF couldn’t be made. The sheet on this page is unchanged, and Print still works.',
+        'The PDF could not be made. The sheet on this page is unchanged, and Print still works.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('region', { name: 'Allergies' })).toBeDefined();
@@ -283,7 +283,7 @@ describe('The kitchen sheet (sc-3911)', () => {
   it('is refused without Menu read', async () => {
     onSheet({ [SHEET]: () => problem('permission_required', 403) });
 
-    expect(await screen.findByText('You can’t open the kitchen sheet')).toBeDefined();
+    expect(await screen.findByText('You cannot open the kitchen sheet')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Back to the event' })).toBeDefined();
   });
 });
