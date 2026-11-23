@@ -1959,6 +1959,7 @@
     "emailNotSaved": "Le réglage des e-mails n’a pas été enregistré. Réessayez.",
     "couldNotLoad": "Vos paramètres de notification n’ont pas pu être chargés.",
     "tryAgain": "Réessayer",
+    "loading": "Loading your notification settings…",
     "pushBlocked": "Les notifications push sont désactivées sur cet appareil : elles ne vous parviendront pas ici.",
     "kinds": "Ce qui vous est notifié",
     "openSettings": "Ouvrir les réglages de l’appareil",

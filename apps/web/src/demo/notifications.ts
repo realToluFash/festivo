@@ -37,7 +37,7 @@ export const NOTIFICATION_WORDS = {
   couldNotLoad: 'Your notification settings did not load.',
   check: 'Check your connection and try again.',
   tryAgain: 'Try again',
-  loading: 'Loading…',
+  loading: 'Loading your notification settings…',
   says: (value: string) => `You hear by ${value.toLowerCase()}`,
   summary: (push: number, email: number, of: number) =>
     `${push} of ${of} by push · ${email} of ${of} by email`,
