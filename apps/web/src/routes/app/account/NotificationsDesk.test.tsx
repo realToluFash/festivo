@@ -81,6 +81,22 @@ afterEach(() => {
 });
 
 describe('Notification settings at a desk (sc-30411)', () => {
+  it('says what is loading while the settings load (sc-88403)', () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    render(
+      <RouterProvider
+        router={createMemoryRouter(
+          [{ path: '/app/account/notifications', element: <NotificationSettings /> }],
+          { initialEntries: ['/app/account/notifications'] },
+        )}
+      />,
+    );
+
+    expect(
+      screen.getByRole('status', { name: 'Loading your notification settings…' }),
+    ).toBeTruthy();
+  });
+
   it('opens on the card, how you hear and the counts, then each kind with its value in words', async () => {
     opened();
 
@@ -274,6 +290,9 @@ describe('Notification settings at a desk (sc-30411)', () => {
     expect(alert.textContent).toContain('Your notification settings did not load.');
     expect(alert.textContent).toContain('Check your connection and try again.');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      screen.getByRole('status', { name: 'Loading your notification settings…' }),
+    ).toBeTruthy();
 
     expect(await screen.findByText('You hear by push and email')).toBeTruthy();
   });

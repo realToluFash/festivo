@@ -2529,6 +2529,7 @@
     "emailNotSaved": "A alteração do e-mail não foi guardada. Tente novamente.",
     "couldNotLoad": "Não foi possível carregar as suas definições de notificações.",
     "tryAgain": "Tentar novamente",
+    "loading": "Loading your notification settings…",
     "pushBlocked": "As notificações push estão desativadas neste navegador, por isso não as vai receber aqui. Ative-as nas definições do navegador.",
     "quietHours": "Entre {{start}} e {{end}} (hora local), só chegam as notificações push de «Dia do evento».",
     "category": {
