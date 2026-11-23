@@ -73,6 +73,13 @@ export const SECURITY_STATES = [
   'confirmPasskey',
   'confirmRefused',
   'addApp',
+  'proveGoogle',
+  'proveApple',
+  'everywhereGoogle',
+  'everywhereApple',
+  'everywhereGoogleCode',
+  'everywhereLimited',
+  'everywhereLimitedCode',
 ] as const;
 
 export type SecurityState = (typeof SECURITY_STATES)[number];
@@ -138,7 +145,27 @@ export interface SecurityStart {
   removing: string | null;
   /** The setup step opens as Add an authenticator app, two-factor already on with passkeys. */
   addsApp: boolean;
+  /** Sign out everywhere else was refused for too many tries: the button and Continue stay off until it ends. */
+  limited: boolean;
+  /** Confirm it's you opens with Google or Apple already answered, at the code step. */
+  codeStep: boolean;
 }
+
+/** An account with no password, which confirms it's you with Google or Apple (sc-22601). */
+const PROVIDER_ONLY: ReadonlySet<SecurityState> = new Set([
+  'proveGoogle',
+  'proveApple',
+  'everywhereGoogle',
+  'everywhereApple',
+  'everywhereGoogleCode',
+  'everywhereLimited',
+  'everywhereLimitedCode',
+]);
+const APPLE_ONLY: ReadonlySet<SecurityState> = new Set(['proveApple', 'everywhereApple']);
+const PROVIDER_TWO_FACTOR: ReadonlySet<SecurityState> = new Set([
+  'everywhereGoogleCode',
+  'everywhereLimitedCode',
+]);
 
 const ORG = SAMPLE.organisation;
 const SETUP_STATES: ReadonlySet<SecurityState> = new Set([
@@ -260,10 +287,18 @@ export function setupRefusal(code: string, key: string): string | null {
 export function securityStart(state: SecurityState): SecurityStart {
   const googleOnly =
     state === 'googleOnly' || state === 'setPassword' || state === 'setPasswordExpired';
+  const providerOnly = PROVIDER_ONLY.has(state);
+  const appleOnly = APPLE_ONLY.has(state);
   const picking = state === 'linkPick';
   const start: SecurityStart = {
-    ways: { password: !googleOnly, google: !picking, apple: false },
-    twoFactor: !googleOnly && !SETUP_STATES.has(state),
+    ways: {
+      password: !googleOnly && !providerOnly,
+      google: !picking && !appleOnly,
+      apple: appleOnly,
+    },
+    twoFactor: providerOnly
+      ? PROVIDER_TWO_FACTOR.has(state)
+      : !googleOnly && !SETUP_STATES.has(state),
     codesLeft: state === 'recovery' ? RECOVERY_CODES.length : RECOVERY_LEFT,
     rules: {
       providerOnly: state === 'keptByRule' || picking ? ORG : null,
@@ -290,6 +325,8 @@ export function securityStart(state: SecurityState): SecurityStart {
     keyRefused: false,
     removing: null,
     addsApp: false,
+    limited: false,
+    codeStep: false,
   };
   const off: Factors = { app: null, passkeys: [] };
   const both: Factors = { app: APP_ON, passkeys: samplePasskeys(2) };
@@ -345,6 +382,31 @@ export function securityStart(state: SecurityState): SecurityStart {
       return { ...start, opened: 'safari', ask: 'signOut' };
     case 'everywhere':
       return { ...start, ask: 'everywhere', inView: 'everywhere' };
+    case 'proveGoogle':
+      return { ...start, opened: 'apple', screen: 'confirm', proof: 'link' };
+    case 'proveApple':
+      return { ...start, opened: 'google', screen: 'confirm', proof: 'link' };
+    case 'everywhereGoogle':
+    case 'everywhereApple':
+    case 'everywhereGoogleCode':
+      return { ...start, inView: 'everywhere', screen: 'confirm', proof: 'everywhere' };
+    case 'everywhereLimited':
+      return {
+        ...start,
+        inView: 'everywhere',
+        screen: 'confirm',
+        proof: 'everywhere',
+        limited: true,
+      };
+    case 'everywhereLimitedCode':
+      return {
+        ...start,
+        inView: 'everywhere',
+        screen: 'confirm',
+        proof: 'everywhere',
+        limited: true,
+        codeStep: true,
+      };
     case 'forgot':
       return { ...start, screen: 'forgot' };
     case 'forgotSent':

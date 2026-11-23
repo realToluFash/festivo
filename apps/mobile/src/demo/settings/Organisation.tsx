@@ -2,7 +2,7 @@ import { formattingLocale, type OrganisationDetails, organisationChanges } from 
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ScrollViewInstance, ViewInstance } from 'react-native';
+import { type ScrollViewInstance, View, type ViewInstance } from 'react-native';
 
 import { SeenBy } from './Frame.tsx';
 import { LEAVER, offeredFor, SAMPLE_LEADS, samplePeople } from './MembersSample.ts';
@@ -35,6 +35,7 @@ import { SummaryPage } from './SummaryPage.tsx';
 import { SAMPLE } from '../samples.ts';
 import { ledEvents } from './MembersHandover.ts';
 import { HandoverAsk } from './MembersHandover.tsx';
+import { ProviderTransferScreen } from './ProviderTransfer.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
@@ -79,6 +80,8 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const [toast, setToast] = useState<string | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
   const cardStep = useRef<ViewInstance>(null);
+  const transferOpener = useRef<ViewInstance>(null);
+  const [providerTransfer, setProviderTransfer] = useState(start.transferVia != null);
   const opening: DetailsOpening =
     editVisit === 0
       ? {
@@ -149,33 +152,58 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
             onToast={setToast}
           />
         )}
-        <OwnershipSection
-          organisation={ORGANISATION}
-          calls={calls}
-          owner={owner}
-          onlyOwner
+        <View ref={transferOpener} collapsable={false}>
+          <OwnershipSection
+            organisation={ORGANISATION}
+            calls={calls}
+            owner={owner}
+            onlyOwner
+            candidates={CANDIDATES.map((member) => ({
+              id: member.initials,
+              name: member.name,
+              role: member.role,
+            }))}
+            via={start.transferVia ?? 'password'}
+            opening={{
+              screen:
+                start.screen === 'transfer' || start.screen === 'delete' ? start.screen : null,
+              ask:
+                (start.ask === 'leave' && !handsOver) || start.ask === 'onlyOwner'
+                  ? start.ask
+                  : null,
+              transfer: start.transferPicked ? { password: SAMPLE.password } : null,
+              mistyped: start.deleteMistyped ? MISTYPED : null,
+            }}
+            leaveRef={leaveRef}
+            onLeave={handsOver ? () => setHandingOver(true) : undefined}
+            onTransferred={(to) => {
+              setRole('Admin');
+              setSaid({ kind: 'transferred', to });
+            }}
+            onGone={() => router.replace('/demo/today')}
+          />
+        </View>
+      </SummaryPage>
+      {start.transferVia != null && (
+        <ProviderTransferScreen
+          open={providerTransfer}
+          provider={start.transferVia}
+          twoFactor={start.transferTwoFactor}
+          organisation={ORGANISATION.name}
           candidates={CANDIDATES.map((member) => ({
             id: member.initials,
             name: member.name,
             role: member.role,
           }))}
-          via="password"
-          opening={{
-            screen: start.screen === 'transfer' || start.screen === 'delete' ? start.screen : null,
-            ask:
-              (start.ask === 'leave' && !handsOver) || start.ask === 'onlyOwner' ? start.ask : null,
-            transfer: start.transferPicked ? { password: SAMPLE.password } : null,
-            mistyped: start.deleteMistyped ? MISTYPED : null,
-          }}
-          leaveRef={leaveRef}
-          onLeave={handsOver ? () => setHandingOver(true) : undefined}
-          onTransferred={(to) => {
+          opener={transferOpener}
+          onClose={() => setProviderTransfer(false)}
+          onDone={(to) => {
+            setProviderTransfer(false);
             setRole('Admin');
             setSaid({ kind: 'transferred', to });
           }}
-          onGone={() => router.replace('/demo/today')}
         />
-      </SummaryPage>
+      )}
       {handsOver && (
         <HandoverAsk
           key={`leave.${leaveVisit}`}
