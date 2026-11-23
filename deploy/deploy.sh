@@ -22,7 +22,7 @@ git -c advice.detachedHead=false checkout --quiet --detach "$sha"
 export DEPLOY_SHA="$sha"
 compose=(docker compose --project-directory "$here" --env-file "$here/.env" -f "$here/compose.yaml")
 
-"${compose[@]}" build api web
+"${compose[@]}" build api web backup
 "${compose[@]}" up -d --wait postgres redis mercure
 "${compose[@]}" run --rm --no-deps api \
   php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
