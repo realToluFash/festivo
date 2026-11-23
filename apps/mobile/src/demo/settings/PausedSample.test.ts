@@ -62,11 +62,18 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     const side = held.slice(0, held.indexOf("shell.layout === 'portrait'"));
 
     expect(held).not.toMatch(/<Title\b|accessibilityRole="header"|settings\.title/u);
-    expect(bodyOf('SettingsHome.tsx', 'SettingsHome')).toContain(
-      "title={held === 'overdue' ? title : null}",
+    expect(bodyOf('SettingsHome.tsx', 'SettingsHome')).toMatch(
+      /held === 'overdue' \? \(\s*<HeldTitle onDrawn=\{titleCap\.onDrawn\}>\{t\('settings\.title'\)\}<\/HeldTitle>\s*\) : null/u,
     );
     expect(side).toContain("shell.layout === 'landscape'");
     expect(side).toContain('<Bell tell={shell.tell} />');
+  });
+
+  it("titles overdue at the product frame's size, not the unheld Settings title's (sc-85022)", () => {
+    const title = bodyOf('SettingsHome.tsx', 'HeldTitle');
+
+    expect(title).toContain("size={frameTitleSize(kind !== 'phone', Math.min(width, height))}");
+    expect(title).not.toMatch(/TOP_TITLE|topTitle|style=/u);
   });
 
   it('pads the held page once and titles overdue once per layout, in the product header shapes (sc-85006, sc-85022)', () => {
