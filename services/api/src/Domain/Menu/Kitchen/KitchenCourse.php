@@ -83,13 +83,13 @@ final readonly class KitchenCourse
     {
         return Type\vec(Type\shape([
             'id' => Type\string(),
-            'rows' => Type\vec(Type\shape(['id' => Type\string(), 'kind' => Type\string(), 'name' => Type\string(), 'chosen' => Type\int(), 'defaulted' => Type\int()], true)),
+            'rows' => Type\vec(Type\shape(['id' => Type\string(), 'kind' => Type\string(), 'name' => Type\string(), 'chosen' => Type\int(), 'defaulted' => Type\int()])),
             'kitchen' => Type\int(),
             'skipped' => Type\int(),
             'needsHost' => Type\int(),
             'notChosen' => Type\int(),
             'room' => Type\int(),
             'closed' => Type\bool(),
-        ], true));
+        ]));
     }
 }
