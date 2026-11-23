@@ -3590,6 +3590,8 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).toMatch(landed);
         expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
         expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
+        expect(catalogues[code].accessPaused.badge).toMatch(landed);
+        expect(catalogues[code].accessPaused.badge).toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);
