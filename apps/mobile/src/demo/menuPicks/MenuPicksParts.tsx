@@ -333,6 +333,7 @@ export const styles = StyleSheet.create({
   attention: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   pill: {
+    flexShrink: 0,
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
