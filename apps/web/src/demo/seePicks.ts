@@ -845,7 +845,7 @@ function withDefaults(world: PicksWorld, today: string, dessert = false): PicksW
 export const picksAfterClose = (): PicksWorld => withDefaults(samplePicks(), AFTER_DATE, true);
 
 function allInPicks(): PicksWorld {
-  const world = withDefaults(samplePicks(), AFTER_DATE, true);
+  const world = picksAfterClose();
   const at = '18 Oct, 17:05';
   let next = world;
   for (const person of world.people)

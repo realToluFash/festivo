@@ -6,7 +6,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { type SampleEvent, rangeOf, resetSample, sampleEvent } from './events.ts';
 import { clockOfKitchen } from './kitchen.ts';
-import { KSW, sheetAt } from './kitchenSheet.ts';
+import { KSW, asOfLine, sheetAt } from './kitchenSheet.ts';
 import { coursesAt } from './menuCourses.ts';
 
 const tested = config();
@@ -40,6 +40,12 @@ afterEach(() => {
 });
 
 describe('the kitchen sheet (sc-3911)', () => {
+  it('dates the snapshot as the board does, in the event’s zone', () => {
+    expect(asOfLine(new Date('2027-06-08T18:42:00Z'), 'Europe/London')).toBe(
+      'As of Tuesday, Jun 8 · 19:42',
+    );
+  });
+
   it('opens from Kitchen sheet on the Menu with its picks', SLOW, async () => {
     const router = open(coursesAt('menuPicks'));
     fireEvent.click(await screen.findByRole('link', { name: KSW.title }, WAIT));

@@ -296,13 +296,13 @@ export function summaryLine(sheet: Sheet): string {
   ].join(' · ');
 }
 
-const AS_OF = new Intl.DateTimeFormat('en-GB', {
+const AS_OF = new Intl.DateTimeFormat('en-US', {
   weekday: 'long',
   month: 'short',
   day: 'numeric',
   timeZone: 'UTC',
 });
-/** "As of Tuesday, 3 Nov · 09:41", in the event's time zone, 24-hour. */
+/** "As of Tuesday, Jun 8 · 19:42" as the board reads, in the event's time zone, 24-hour. */
 export function asOfLine(now: Date, timeZone: string): string {
   const day = AS_OF.format(new Date(`${localDay(now, timeZone)}T12:00:00Z`));
   const time = new Intl.DateTimeFormat('en-GB', {
