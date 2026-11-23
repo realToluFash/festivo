@@ -419,7 +419,17 @@ export interface MealCourse {
 }
 
 /** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
-export type MealAnswerKind = 'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted';
+export type MealAnswerKind =
+  'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted' | 'menuChanged';
+
+/** Why a menu change asked a person again (sc-3913), and the dish they had picked. */
+export interface MealChanged {
+  picked: string;
+  why: 'removed' | 'ways' | 'choices' | 'allergen';
+  ways: number | null;
+  /** On `allergen`: the added allergens this person has recorded, in Annex II order. */
+  allergens: string[];
+}
 
 export interface MealAnswer {
   course: string;
@@ -428,6 +438,7 @@ export interface MealAnswer {
   dish: string | null;
   variant: string | null;
   options: string[];
+  changed: MealChanged | null;
 }
 
 export interface GuestMeals {
@@ -442,7 +453,7 @@ export interface GuestMeals {
 export interface MealPick {
   person: string;
   course: string;
-  answer: Exclude<MealAnswerKind, 'defaulted'>;
+  answer: Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
   dish?: string | null;
   variant?: string | null;
   options?: string[];

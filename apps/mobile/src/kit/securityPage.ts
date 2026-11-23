@@ -1,4 +1,4 @@
-import { ApiError, type Provider } from '@soirely/api-client';
+import { ApiError, proofRefusal, type Provider } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 
 export interface WayIn {
@@ -189,6 +189,7 @@ export function everywhereDone(signedOut: number, t: TFunction): string {
 export type EverywhereOutcome =
   | { kind: 'endedHere' }
   | { kind: 'done'; words: string }
+  | { kind: 'limited'; until: Date | null }
   | { kind: 'failed'; message: string; refused: boolean };
 
 /** Signs out every other device; a failure is an outcome, so the sheet that sent it stays usable. */
@@ -203,6 +204,9 @@ export async function signOutOthers(
       ? { kind: 'endedHere' }
       : { kind: 'done', words: everywhereDone(signedOut, t) };
   } catch (refusal) {
+    const limit = proofRefusal(refusal);
+    if (limit.kind === 'limited') return { kind: 'limited', until: limit.until };
+
     return {
       kind: 'failed',
       message: t('devices.everywhereFailedBody'),

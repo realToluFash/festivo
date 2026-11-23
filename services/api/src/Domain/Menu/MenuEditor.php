@@ -5,21 +5,19 @@ declare(strict_types=1);
 namespace App\Domain\Menu;
 
 use App\Audit\Auditor;
-use App\Domain\Guest\GuestNeedsRecord;
-use App\Domain\Menu\Interfaces\MenuPicksInterface;
-use App\Domain\Menu\Model\ChoiceAnswers;
+use App\Domain\Menu\Model\ChoiceDetails;
 use App\Domain\Menu\Model\CourseDetails;
 use App\Domain\Menu\Model\DishDetails;
 use App\Domain\Menu\Model\DishItems;
 use App\Domain\Menu\Model\OptionDetails;
 use App\Domain\Menu\Model\OwnItems;
 use App\Domain\Menu\Model\PicksClose;
-use App\Domain\Menu\Model\UnwarnedOption;
-use App\Domain\Menu\Model\UnwarnedPickers;
+use App\Domain\Menu\Model\VariantDetails;
 use App\Domain\Menu\Pick\DefaultMoves;
+use App\Domain\Menu\Pick\MenuReasks;
 use App\Entity\Dish;
 use App\Entity\Event;
-use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
@@ -28,7 +26,8 @@ use App\Entity\MenuDishVariant;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
-use App\Enum\NeedKind;
+use App\Enum\MealAnswerKind;
+use App\Enum\MenuChangeWhy;
 use App\Http\Exception\ApiException;
 use App\Repository\DishVariantRepository;
 use App\Repository\MenuChoiceOptionRepository;
@@ -50,6 +49,7 @@ use Symfony\Component\Uid\Uuid;
  * Each change runs under a lock on the event's row, so two pages adding together cannot both pass the limit, and is published whole to the event's menu topic (sc-3902).
  *
  * @phpstan-import-type SentDefault from DefaultRules
+ * @phpstan-import-type Asked from MenuReasks
  */
 final readonly class MenuEditor
 {
@@ -90,9 +90,8 @@ final readonly class MenuEditor
         private ChoiceRules $choiceRules,
         private DishVariantRepository $dishVariantRepository,
         private VariantRules $variantRules,
-        private MenuPicksInterface $menuPicks,
+        private MenuReasks $menuReasks,
         private MenuPublisher $menuPublisher,
-        private GuestNeedsRecord $guestNeedsRecord,
         private DishLibrary $dishLibrary,
         private DefaultRules $defaultRules,
         private DefaultMoves $defaultMoves,
@@ -240,13 +239,13 @@ final readonly class MenuEditor
         $this->menuPublisher->published($event);
     }
 
-    /** Refused 409 `menu_course_picked` once anyone has picked from it, until sc-3913. Its dishes go with it. */
+    /** Refused 409 `menu_course_picked` once anyone has picked from it. Its dishes go with it. */
     public function deleteCourse(Event $event, MenuCourse $course, User $by): void
     {
         $this->locked($event, function () use ($event, $course, $by): void {
             $dishes = $this->menuDishRepository->findOnCourse($course);
 
-            if (Iter\any($dishes, $this->dishPicked(...))) {
+            if (Iter\any($dishes, fn (MenuDish $dish): bool => [] !== $this->menuReasks->naming($dish))) {
                 throw new ApiException(ErrorCode::MenuCoursePicked, 'menu.course_picked');
             }
 
@@ -267,9 +266,9 @@ final readonly class MenuEditor
     }
 
     /** Marks the library dish used, so the library archives it rather than deleting it. */
-    public function addFromLibrary(Event $event, MenuCourse $course, Dish $dish, User $by): MenuDish
+    public function addFromLibrary(Event $event, MenuCourse $course, Dish $dish, User $by, bool $askAgain = false): MenuDish
     {
-        return $this->addDish($event, $course, $by, function (int $position) use ($event, $course, $dish): MenuDish {
+        return $this->addDish($event, $course, $by, $askAgain, function (int $position) use ($event, $course, $dish): MenuDish {
             if (null !== $this->menuDishRepository->findOneBy(['course' => $course, 'libraryDish' => $dish])) {
                 throw new ApiException(ErrorCode::MenuDishOnCourse, 'menu.dish_on_course');
             }
@@ -285,9 +284,9 @@ final readonly class MenuEditor
         });
     }
 
-    public function addNew(Event $event, MenuCourse $course, DishDetails $details, bool $onlyHere, bool $allowShared, User $by): MenuDish
+    public function addNew(Event $event, MenuCourse $course, DishDetails $details, bool $onlyHere, bool $allowShared, User $by, bool $askAgain = false): MenuDish
     {
-        return $this->addDish($event, $course, $by, function (int $position) use ($event, $course, $details, $onlyHere, $allowShared, $by): MenuDish {
+        return $this->addDish($event, $course, $by, $askAgain, function (int $position) use ($event, $course, $details, $onlyHere, $allowShared, $by): MenuDish {
             if ($onlyHere) {
                 return new MenuDish($course, null, $details->name, $details->description, $details->allergens, $details->diets, $position);
             }
@@ -299,9 +298,9 @@ final readonly class MenuEditor
         });
     }
 
-    public function changeDish(Event $event, MenuDish $dish, DishDetails $details, ?DishItems $items, User $by): ?UnwarnedPickers
+    public function changeDish(Event $event, MenuDish $dish, DishDetails $details, ?DishItems $items, User $by, bool $askAgain = false): void
     {
-        $unwarned = $this->locked($event, function () use ($dish, $details, $items, $by): ?UnwarnedPickers {
+        $this->locked($event, function () use ($dish, $details, $items, $by, $askAgain): void {
             $this->entityManager->refresh($dish);
             $before = self::recordedDish($dish);
 
@@ -312,6 +311,7 @@ final readonly class MenuEditor
             }
 
             $added = $plain ? Vec\filter($details->allergens, static fn (string $code): bool => !Iter\contains($dish->getAllergens() ?? [], $code)) : [];
+            $this->menuReasks->ask($dish->getCourse(), [$this->menuReasks->withAllergens($this->menuReasks->naming($dish), $added)], $askAgain);
 
             if ($plain) {
                 $dish->describe($details->name, $details->description, $details->allergens, $details->diets);
@@ -324,23 +324,16 @@ final readonly class MenuEditor
             if ([] !== $changes) {
                 $this->audit(self::DISH_CHANGED, 'MenuDish', $dish->getId(), $by, $changes);
             }
-
-            return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOf($dish), $added);
         });
 
         $this->menuPublisher->published($event);
-
-        return $unwarned;
     }
 
-    public function removeDish(Event $event, MenuDish $dish, User $by): void
+    public function removeDish(Event $event, MenuDish $dish, User $by, bool $askAgain = false): void
     {
-        $this->locked($event, function () use ($dish, $by): void {
+        $this->locked($event, function () use ($dish, $by, $askAgain): void {
             self::refuseDefault($dish);
-
-            if ($this->dishPicked($dish)) {
-                throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
-            }
+            $this->menuReasks->ask($dish->getCourse(), [['answers' => $this->menuReasks->naming($dish), 'why' => MenuChangeWhy::Removed]], $askAgain);
 
             $course = $dish->getCourse();
             $this->audit(self::DISH_REMOVED, 'MenuDish', $dish->getId(), $by, Auditor::diff(self::recordedDish($dish), []));
@@ -353,18 +346,24 @@ final readonly class MenuEditor
     }
 
     /** @param list<array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}}> $sent */
-    public function addVariants(Event $event, MenuDish $dish, array $sent, User $by): void
+    public function addVariants(Event $event, MenuDish $dish, array $sent, User $by, bool $askAgain = false): void
     {
-        $this->locked($event, function () use ($event, $dish, $sent, $by): void {
+        $this->locked($event, function () use ($event, $dish, $sent, $by, $askAgain): void {
             $this->entityManager->refresh($dish);
             $variants = $this->menuDishVariantRepository->findOnDish($dish);
             $this->variantRules->refuseCount(Iter\count($variants), Iter\count($sent));
+            $details = $this->variantRules->details($sent, $variants, $event->getCurrency());
+            $course = $dish->getCourse();
+            $startsWays = !$course->guestsChoose() && self::oneWay($variants) && !self::oneWay([...$variants, ...$details]);
+            $chosen = [] !== $this->menuDishChoiceRepository->findOnDish($dish);
 
-            if ([] === $variants && [] !== $this->menuPicks->pickersOf($dish)) {
-                throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
+            if ($startsWays && !$chosen) {
+                $this->menuReasks->askEveryone($event, $course, $askAgain);
             }
 
-            $details = $this->variantRules->details($sent, $variants, $event->getCurrency());
+            if ([] === $variants || ($startsWays && $chosen)) {
+                $this->menuReasks->ask($course, [['answers' => $this->menuReasks->naming($dish), 'why' => MenuChangeWhy::Ways, 'ways' => Iter\count($details)]], $askAgain);
+            }
 
             if ([] === $variants && null !== $dish->getCostMinor()) {
                 $before = self::recordedDish($dish);
@@ -386,14 +385,15 @@ final readonly class MenuEditor
     }
 
     /** @param array{name: string, for: 'everyone'|'children', allergens?: list<string>, containsNone?: bool, diets?: list<string>, cost?: ?string, lastPrice?: ?array{amount: string, currency: string}} $sent */
-    public function changeVariant(Event $event, MenuDishVariant $variant, array $sent, bool $withCost, User $by): ?UnwarnedPickers
+    public function changeVariant(Event $event, MenuDishVariant $variant, array $sent, bool $withCost, User $by, bool $askAgain = false): void
     {
-        $unwarned = $this->locked($event, function () use ($event, $variant, $sent, $withCost, $by): ?UnwarnedPickers {
+        $this->locked($event, function () use ($event, $variant, $sent, $withCost, $by, $askAgain): void {
             $this->entityManager->refresh($variant);
             $others = Vec\filter($this->menuDishVariantRepository->findOnDish($variant->getDish()), static fn (MenuDishVariant $one): bool => $one !== $variant);
             $details = $this->variantRules->details([$sent], Vec\values($others), $event->getCurrency())[0];
             $before = self::recordedVariant($variant);
             $added = Vec\filter($details->allergens, static fn (string $code): bool => !Iter\contains($variant->getAllergens(), $code));
+            $this->menuReasks->ask($variant->getDish()->getCourse(), [$this->menuReasks->withAllergens($this->onVariant($variant), $added)], $askAgain);
             $variant->describe($details->name, $details->forChildren, $details->allergens, $details->diets);
 
             if ($withCost) {
@@ -407,39 +407,36 @@ final readonly class MenuEditor
             }
 
             $this->refuseUnfinishedDefault($event, $variant->getDish());
-
-            return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOfVariant($variant), $added);
         });
 
         $this->menuPublisher->published($event);
-
-        return $unwarned;
     }
 
     /** Removing one of two folds the other into the dish: a Children only variant then serves every guest. */
-    public function removeVariant(Event $event, MenuDishVariant $variant, User $by): void
+    public function removeVariant(Event $event, MenuDishVariant $variant, User $by, bool $askAgain = false): void
     {
-        $this->locked($event, function () use ($variant, $by): void {
+        $this->locked($event, function () use ($variant, $by, $askAgain): void {
             $dish = $variant->getDish();
             $left = Vec\filter($this->menuDishVariantRepository->findOnDish($dish), static fn (MenuDishVariant $one): bool => $one !== $variant);
 
             self::refuseDefault($dish, $variant);
             $folding = 1 === Iter\count($left);
-            $picked = $folding ? [$variant, ...$left] : [$variant];
-
-            if (Iter\any($picked, fn (MenuDishVariant $one): bool => [] !== $this->menuPicks->pickersOfVariant($one))) {
-                throw new ApiException(ErrorCode::VariantPicked, 'menu.variant_picked');
-            }
 
             if (Iter\count($left) >= 2 && !$variant->isForChildren() && Iter\all($left, static fn (MenuDishVariant $one): bool => $one->isForChildren())) {
                 throw new ApiException(ErrorCode::VariantLastEveryone, 'menu.variant_last_everyone', parameters: ['{variant}' => $variant->getName()]);
             }
 
+            $this->menuReasks->ask($dish->getCourse(), [['answers' => $this->onVariant($variant), 'why' => MenuChangeWhy::Removed]], $askAgain);
             $this->audit(self::VARIANT_REMOVED, 'MenuDishVariant', $variant->getId(), $by, Auditor::diff(self::recordedVariant($variant), []));
             $this->entityManager->remove($variant);
 
             if ($folding) {
                 $staying = Vec\values($left)[0];
+
+                foreach ($this->onVariant($staying) as $answer) {
+                    $answer->foldWay();
+                }
+
                 $course = $dish->getCourse();
                 $chooseBy = $course->getChooseBy();
 
@@ -458,10 +455,10 @@ final readonly class MenuEditor
         $this->menuPublisher->published($event);
     }
 
-    /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913 */
-    public function addChoice(Event $event, MenuDish $dish, array $sent, User $by): MenuDishChoice
+    /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent refused 409 `choice_limit` at 3 */
+    public function addChoice(Event $event, MenuDish $dish, array $sent, User $by, bool $askAgain = false): MenuDishChoice
     {
-        $choice = $this->locked($event, function () use ($event, $dish, $sent, $by): MenuDishChoice {
+        $choice = $this->locked($event, function () use ($event, $dish, $sent, $by, $askAgain): MenuDishChoice {
             $this->entityManager->refresh($dish);
             $choices = $this->menuDishChoiceRepository->findOnDish($dish);
 
@@ -469,11 +466,14 @@ final readonly class MenuEditor
                 throw new ApiException(ErrorCode::ChoiceLimit, 'menu.choice_limit', parameters: ['{max}' => MenuDishChoice::PER_DISH_MAXIMUM]);
             }
 
-            if ($this->dishPicked($dish)) {
-                throw new ApiException(ErrorCode::MenuDishPicked, 'menu.dish_picked');
+            $details = $this->choiceRules->details($sent, null, [], false);
+
+            if ($dish->getCourse()->guestsChoose() || [] !== $choices || !self::oneWay($this->menuDishVariantRepository->findOnDish($dish))) {
+                $this->menuReasks->ask($dish->getCourse(), [['answers' => $this->menuReasks->naming($dish), 'why' => MenuChangeWhy::Choices]], $askAgain);
+            } else {
+                $this->menuReasks->askEveryone($event, $dish->getCourse(), $askAgain);
             }
 
-            $details = $this->choiceRules->details($sent, null, [], null);
             $next = [] === $choices ? 0 : Math\max(Vec\map($choices, static fn (MenuDishChoice $one): int => $one->getPosition())) + 1;
             $choice = new MenuDishChoice($dish, $details->question, $details->pick, $details->required, $next);
             $this->entityManager->persist($choice);
@@ -494,21 +494,18 @@ final readonly class MenuEditor
         return $choice;
     }
 
-    /**
-     * @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent an answered choice refuses, until sc-3913, what would leave an answer outside it
-     *
-     * @return list<UnwarnedOption> in the choice's order
-     */
-    public function changeChoice(Event $event, MenuDishChoice $choice, array $sent, User $by): array
+    /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent */
+    public function changeChoice(Event $event, MenuDishChoice $choice, array $sent, User $by, bool $askAgain = false): void
     {
-        $unwarned = $this->locked($event, function () use ($event, $choice, $sent, $by): array {
+        $this->locked($event, function () use ($event, $choice, $sent, $by, $askAgain): void {
             $this->entityManager->refresh($choice);
             $options = $this->menuChoiceOptionRepository->findOnChoice($choice);
-            $details = $this->choiceRules->details($sent, $choice, $options, $this->answersTo($choice, $options));
+            $answers = $this->answersTo($choice, $options);
+            $details = $this->choiceRules->details($sent, $choice, $options, [] !== $answers['picked'] || [] !== $answers['none']);
             $before = self::recordedChoice($choice, $options);
             $byId = Dict\reindex($options, static fn (MenuChoiceOption $one): string => $one->getId()->toRfc4122());
             $kept = Vec\filter_nulls(Vec\map($details->options, static fn (OptionDetails $one): ?string => $one->id));
-            $lines = [];
+            $this->menuReasks->ask($choice->getDish()->getCourse(), $this->choiceAsks($choice, $details, $byId, $kept, $answers), $askAgain);
 
             foreach ($options as $one) {
                 if (!Iter\contains($kept, $one->getId()->toRfc4122())) {
@@ -528,13 +525,7 @@ final readonly class MenuEditor
                     continue;
                 }
 
-                $added = Vec\filter($one->allergens, static fn (string $code): bool => !Iter\contains($option->getAllergens(), $code));
                 $option->describe($one->name, $one->allergens, $at);
-                $pickers = [] === $added ? null : $this->unwarned($this->menuPicks->pickersOfOption($option), $added);
-
-                if (null !== $pickers) {
-                    $lines[] = new UnwarnedOption($option->getId()->toRfc4122(), $option->getName(), $pickers);
-                }
             }
 
             $changes = Auditor::diff($before, self::recordedChoice($choice, $details->options));
@@ -544,27 +535,22 @@ final readonly class MenuEditor
             }
 
             $this->refuseUnfinishedDefault($event, $choice->getDish());
-
-            return $lines;
         });
 
         $this->menuPublisher->published($event);
-
-        return $unwarned;
     }
 
-    public function removeChoice(Event $event, MenuDishChoice $choice, User $by): void
+    public function removeChoice(Event $event, MenuDishChoice $choice, User $by, bool $askAgain = false): void
     {
-        $this->locked($event, function () use ($choice, $by): void {
+        $this->locked($event, function () use ($choice, $by, $askAgain): void {
             $options = $this->menuChoiceOptionRepository->findOnChoice($choice);
 
             foreach ($options as $one) {
                 self::refuseDefault($choice->getDish(), option: $one);
             }
 
-            if ($this->answersTo($choice, $options)->answered()) {
-                throw new ApiException(ErrorCode::ChoiceAnswered, 'menu.choice_answered');
-            }
+            $answers = $this->answersTo($choice, $options);
+            $this->menuReasks->ask($choice->getDish()->getCourse(), [['answers' => [...Vec\flatten(Vec\values($answers['picked'])), ...$answers['none']], 'why' => MenuChangeWhy::Choices]], $askAgain);
 
             $this->audit(self::CHOICE_REMOVED, 'MenuDishChoice', $choice->getId(), $by, Auditor::diff(self::recordedChoice($choice, $options), []));
             $dish = $choice->getDish();
@@ -583,28 +569,80 @@ final readonly class MenuEditor
         $this->menuPublisher->published($event);
     }
 
-    /** @param list<MenuChoiceOption> $options */
-    private function answersTo(MenuDishChoice $choice, array $options): ChoiceAnswers
+    /**
+     * @param list<MenuChoiceOption> $options
+     *
+     * @return array{picked: array<string, list<MealAnswer>>, none: list<MealAnswer>} by option id
+     */
+    private function answersTo(MenuDishChoice $choice, array $options): array
     {
-        $picked = Vec\filter($options, fn (MenuChoiceOption $one): bool => [] !== $this->menuPicks->pickersOfOption($one));
+        $ids = Vec\map($options, static fn (MenuChoiceOption $one): string => $one->getId()->toRfc4122());
+        $naming = $this->menuReasks->naming($choice->getDish());
+        $picked = Dict\filter(Dict\from_keys($ids, static fn (string $id): array => Vec\filter($naming, static fn (MealAnswer $answer): bool => Iter\contains($answer->getOptions(), $id))), static fn (array $answers): bool => [] !== $answers);
+        $none = $choice->isRequired() ? [] : Vec\filter($naming, static fn (MealAnswer $answer): bool => MealAnswerKind::Chosen === $answer->getKind() && !Iter\any($answer->getOptions(), static fn (string $id): bool => Iter\contains($ids, $id)));
 
-        return new ChoiceAnswers(Vec\map($picked, static fn (MenuChoiceOption $one): string => $one->getId()->toRfc4122()), $this->menuPicks->noneAnswersTo($choice));
+        return ['picked' => $picked, 'none' => $none];
     }
 
-    /** The one count Remove, Delete course and Add a choice refuse on: the dish's picks, a variant's, or an answer to one of its choices. */
-    private function dishPicked(MenuDish $dish): bool
+    /**
+     * @param array<string, MenuChoiceOption>                                        $byId    the choice's options now
+     * @param list<string>                                                           $kept    the ids sent back
+     * @param array{picked: array<string, list<MealAnswer>>, none: list<MealAnswer>} $answers
+     *
+     * @return list<Asked>
+     */
+    private function choiceAsks(MenuDishChoice $choice, ChoiceDetails $details, array $byId, array $kept, array $answers): array
     {
-        return [] !== $this->menuPicks->pickersOf($dish)
-            || Iter\any($this->menuDishVariantRepository->findOnDish($dish), fn (MenuDishVariant $one): bool => [] !== $this->menuPicks->pickersOfVariant($one))
-            || Iter\any($this->menuDishChoiceRepository->findOnDish($dish), fn (MenuDishChoice $one): bool => $this->answersTo($one, $this->menuChoiceOptionRepository->findOnChoice($one))->answered());
+        $everyone = [...Vec\flatten(Vec\values($answers['picked'])), ...$answers['none']];
+        $asked = [];
+
+        if ($details->pick !== $choice->getPick()) {
+            $asked[] = ['answers' => $everyone, 'why' => MenuChangeWhy::Choices];
+        }
+
+        if ($details->required && !$choice->isRequired()) {
+            $asked[] = ['answers' => $answers['none'], 'why' => MenuChangeWhy::Choices];
+        }
+
+        foreach ($answers['picked'] as $id => $pickers) {
+            if (!Iter\contains($kept, $id)) {
+                $asked[] = ['answers' => $pickers, 'why' => MenuChangeWhy::Choices];
+            }
+        }
+
+        foreach ($details->options as $one) {
+            $option = null === $one->id ? null : $byId[$one->id] ?? null;
+
+            if (null !== $option) {
+                $asked[] = $this->menuReasks->withAllergens($answers['picked'][$option->getId()->toRfc4122()] ?? [], Vec\filter($one->allergens, static fn (string $code): bool => !Iter\contains($option->getAllergens(), $code)));
+            }
+        }
+
+        return $asked;
+    }
+
+    /** @param iterable<MenuDishVariant|VariantDetails> $ways a set course asks which way only from two ways for everyone */
+    private static function oneWay(iterable $ways): bool
+    {
+        return Iter\count(Vec\filter($ways, static fn (MenuDishVariant|VariantDetails $one): bool => !($one instanceof MenuDishVariant ? $one->isForChildren() : $one->forChildren))) < 2;
+    }
+
+    /** @return list<MealAnswer> */
+    private function onVariant(MenuDishVariant $variant): array
+    {
+        return Vec\filter($this->menuReasks->naming($variant->getDish()), static fn (MealAnswer $answer): bool => $answer->getVariant() === $variant);
     }
 
     /** @param callable(int): MenuDish $made */
-    private function addDish(Event $event, MenuCourse $course, User $by, callable $made): MenuDish
+    private function addDish(Event $event, MenuCourse $course, User $by, bool $askAgain, callable $made): MenuDish
     {
-        $dish = $this->locked($event, function () use ($course, $by, $made): MenuDish {
+        $dish = $this->locked($event, function () use ($event, $course, $by, $askAgain, $made): MenuDish {
             $this->entityManager->refresh($course);
             $onCourse = $this->menuDishRepository->findOnCourse($course);
+
+            if ([] === $onCourse && $course->guestsChoose() && !$course->isSkippable()) {
+                $this->menuReasks->askEveryone($event, $course, $askAgain);
+            }
             $dish = $made(0 === Iter\count($onCourse) ? 0 : Math\max(Vec\map($onCourse, static fn (MenuDish $one): int => $one->getPosition())) + 1);
             $this->entityManager->persist($dish);
             self::keepAnswerHonest($course, Iter\count($onCourse) + 1);
@@ -626,28 +664,6 @@ final readonly class MenuEditor
     }
 
     /**
-     * @param list<Guest>  $pickers
-     * @param list<string> $added   an Other allergy is words, never a code, so it never matches one
-     */
-    private function unwarned(array $pickers, array $added): ?UnwarnedPickers
-    {
-        if ([] === $pickers) {
-            return null;
-        }
-
-        $recorded = Vec\map(Vec\values($this->guestNeedsRecord->of($pickers)), static fn ($needs): array => $needs->codesOf(NeedKind::Allergen));
-        $counted = Vec\filter($recorded, static fn (array $codes): bool => Iter\any($added, static fn (string $code): bool => Iter\contains($codes, $code)));
-
-        if ([] === $counted) {
-            return null;
-        }
-
-        $named = Vec\filter(DishRules::allergenCodes(), static fn (string $code): bool => Iter\contains($added, $code) && Iter\any($counted, static fn (array $codes): bool => Iter\contains($codes, $code)));
-
-        return new UnwarnedPickers(Iter\count($counted), Type\non_empty_vec(Type\string())->coerce($named));
-    }
-
-    /**
      * @template T
      *
      * @param callable(): T $change
@@ -658,6 +674,7 @@ final readonly class MenuEditor
     {
         return $this->entityManager->wrapInTransaction(function () use ($event, $change): mixed {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            $this->menuReasks->refusePast($event);
             $changed = $change();
             $this->entityManager->flush();
 

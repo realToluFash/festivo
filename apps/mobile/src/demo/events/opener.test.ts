@@ -8,10 +8,12 @@ import {
   BACK_KEY,
   BEHIND_BOARDS,
   type BackScreen,
+  EVENT_BEHIND,
   OPENERS,
   backScreenOf,
   openerOf,
   type Opened,
+  openersFor,
   opensOver,
   wayBack,
   withFrom,
@@ -81,6 +83,7 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
       notifications: 'Notificaciones',
       auditLog: 'Registro de auditoría',
       entry: 'Entrada',
+      event: 'Evento',
     };
     for (const [screen, words] of Object.entries(spanish))
       expect(wordAt(es, BACK_KEY[screen as BackScreen])).toBe(words);
@@ -155,5 +158,50 @@ describe('‹ names the screen behind the event (sc-83008)', () => {
 
   it('never marks the page list’s rows as pushed', () => {
     for (const { href } of BEHIND_BOARDS) expect(href).not.toContain('pushed=');
+  });
+});
+
+describe('‹ on an event the bell opened over another event, on an iPad (sc-84453)', () => {
+  const pushed: Opened = {
+    opener: 'eventBell',
+    pushed: true,
+    term: null,
+    spanish: false,
+    refreshing: false,
+  };
+
+  it('reads Event on an iPad, the word a copy already uses', () => {
+    for (const opener of ['eventBell', 'eventBellGone'] as const) {
+      expect(backScreenOf(opener, 'portrait')).toBe('event');
+      expect(backScreenOf(opener, 'landscape')).toBe('event');
+    }
+    expect(BACK_KEY.event).toBe('timeline.backToEvent');
+    expect(wordAt(en, BACK_KEY.event)).toBe('Event');
+  });
+
+  it('is not offered on a phone, whose bell is its own screen', () => {
+    expect(openersFor('phone')).not.toContain('eventBell');
+    expect(openersFor('phone')).not.toContain('eventBellGone');
+    expect(openersFor('portrait')).toContain('eventBell');
+    expect(backScreenOf('eventBell', 'phone')).toBe('notifications');
+  });
+
+  it('goes back to the event behind as it was left, or to its area with its filter', () => {
+    expect(wayBack('event', 'eventBell', pushed)).toBe('back');
+    expect(wayBack('event', 'eventBell', { ...pushed, pushed: false })).toBe(EVENT_BEHIND);
+    expect(EVENT_BEHIND).toContain('area=guests');
+    expect(EVENT_BEHIND).toContain('filter=coming');
+  });
+
+  it('still goes back when the event behind was deleted, and that page says so', () => {
+    expect(wayBack('event', 'eventBellGone', { ...pushed, opener: 'eventBellGone' })).toBe(
+      '/demo/events/evt-party-2?area=guests&state=eventDeleted',
+    );
+  });
+
+  it('lists the bell over the event already open', () => {
+    expect(BEHIND_BOARDS.map(({ href }) => href)).toContain(
+      '/demo/events/evt-wed-4?from=today&bell=open',
+    );
   });
 });

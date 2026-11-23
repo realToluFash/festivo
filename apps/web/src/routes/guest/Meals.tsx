@@ -1,4 +1,4 @@
-import type { MealCourse } from '@soirely/api-client';
+import type { MealChanged, MealCourse } from '@soirely/api-client';
 import { listFormat } from '@soirely/domain';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +41,27 @@ function allergenList(codes: readonly string[], t: Translate): string {
   return new Intl.ListFormat(currentLocale(), { type: 'unit', style: 'short' }).format(
     fourteen(codes).map((code) => lower(t(`guestNeeds.allergen.${code}`))),
   );
+}
+
+/** sc-3913's line naming the pick a menu change asked again, and why. */
+function changedLine(changed: MealChanged, eater: Eater, t: Translate): string {
+  const words = { dish: changed.picked, name: eater.name ?? '' };
+  const who = eater.you ? 'You' : 'Name';
+  switch (changed.why) {
+    case 'removed':
+      return t(`guestMeal.changed.removed${who}`, words);
+    case 'ways':
+      return t(`guestMeal.changed.ways${who}`, { ...words, count: changed.ways ?? 2 });
+    case 'choices':
+      return t(`guestMeal.changed.choices${who}`, words);
+    case 'allergen':
+      return t(`guestMeal.changed.allergen${who}`, {
+        ...words,
+        list: listFormat(currentLocale(), { type: 'conjunction' }).format(
+          fourteen(changed.allergens).map((code) => lower(t(`guestNeeds.allergen.${code}`))),
+        ),
+      });
+  }
 }
 
 function reasonOf(ruled: Ruled, eater: Eater, t: Translate): string | null {
@@ -223,6 +244,7 @@ export function MealScreen({
   line = null,
   earlier = [],
   copiedFrom = null,
+  changed = null,
   onSameAs,
   onPlate,
   onBack,
@@ -245,6 +267,8 @@ export function MealScreen({
   earlier?: readonly Eater[];
   /** sc-17283: whose answer on this course a Same as press couldn't copy, on the course it asks. */
   copiedFrom?: Eater | null;
+  /** sc-3913: the pick a menu change asked again on this course, on its first screen. */
+  changed?: MealChanged | null;
   onSameAs?: (from: Eater) => void;
   onPlate: (plate: Plate) => void;
   onBack: () => void;
@@ -325,6 +349,7 @@ export function MealScreen({
     safe &&
     [...(dishes ?? []), ...(ways ?? []), ...(options ?? [])].some((one) => one.reason != null);
   const describedBy = [
+    changed != null && 'pc-changed',
     copiedFrom != null && 'pc-asked',
     said != null && 'ms-refused',
     other != null && 'pc-other',
@@ -337,7 +362,9 @@ export function MealScreen({
     .join(' ');
   const title =
     step.kind === 'dish'
-      ? t('guestMeal.which', { course: lower(course.name) })
+      ? t(changed == null ? 'guestMeal.which' : 'guestMeal.pickNew', {
+          course: lower(course.name),
+        })
       : step.kind === 'way'
         ? t('guestMeal.wayQuestion', {
             dish: dish?.name ?? '',
@@ -415,6 +442,14 @@ export function MealScreen({
             </span>
           )}
         </legend>
+        {changed != null && (
+          <p id="pc-changed" className="pc-inset pc-asked">
+            <span className="pc-info" aria-hidden="true">
+              <Swap />
+            </span>
+            <span>{changedLine(changed, eater, t)}</span>
+          </p>
+        )}
         {copiedFrom != null && (
           <p id="pc-asked" className="pc-inset pc-asked">
             <span className="pc-info" aria-hidden="true">
@@ -604,6 +639,22 @@ const blankOf = (kind: 'chefsChoice' | 'skipped'): Plate => ({
   options: {},
 });
 
+/** sc-3913's Menu changed mark, the two arrows See picks draws. */
+function Swap() {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" focusable="false">
+      <path
+        d="M4 7h11l-3-3M16 13H5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ForkKnife() {
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
@@ -668,11 +719,13 @@ function Shape({
             mark: <Glyph name="minus" size={13} weight={2.6} />,
             words: t('guestMeal.skipped', { course: lower(course.name) }),
           }
-        : {
-            ring: 'is-host',
-            mark: <Glyph name="message" size={13} weight={2.4} />,
-            words: words ?? t('guestMeal.hostInTouch'),
-          };
+        : kind === 'menuChanged'
+          ? { ring: 'is-changed', mark: <Swap />, words: t('guestMeal.menuChanged') }
+          : {
+              ring: 'is-host',
+              mark: <Glyph name="message" size={13} weight={2.4} />,
+              words: words ?? t('guestMeal.hostInTouch'),
+            };
 
   return (
     <p className="mx-pick pc-shape">
@@ -795,6 +848,9 @@ function MealRow({
   const key = keyOf(eater.key, course.id);
   const shut = course.picksClose.closed || refused;
   const mark = reasonOf(markOf(course, plates[key], allergies), eater, t);
+  const changed = plates[key]?.changed;
+  const reason = changed == null ? mark : changedLine(changed, eater, t);
+  const reasonId = `meal-reason-${key.replace('|', '-')}`;
   const date = dayOf(course.picksClose.at, timeZone);
   const line = lineOf(eater, course, shut);
   const waiting = closeWords(line, course, eater, date, t);
@@ -844,13 +900,18 @@ function MealRow({
             {t('guestMeal.refusedClosed', { course: course.name, date })}
           </p>
         )}
-        {mark != null && (
-          <p className="ms-out-line">
-            <AllergyMark />
-            <span id={`meal-reason-${key.replace('|', '-')}`}>{mark}</span>
+        {changed != null && (
+          <p id={reasonId} className="gk-text">
+            {reason}
           </p>
         )}
-        {mark != null && shut && <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>}
+        {changed == null && mark != null && (
+          <p className="ms-out-line">
+            <AllergyMark />
+            <span id={reasonId}>{mark}</span>
+          </p>
+        )}
+        {reason != null && shut && <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>}
       </div>
       {!shut && !locked && (
         <button
@@ -865,7 +926,7 @@ function MealRow({
                   name: eater.name,
                 })
           }
-          aria-describedby={mark == null ? undefined : `meal-reason-${key.replace('|', '-')}`}
+          aria-describedby={reason == null ? undefined : reasonId}
           {...offButton(busy, { dim: false })}
           onClick={() => onChange(key)}
         >
@@ -961,10 +1022,23 @@ export function MarkedLine({ count }: { count: number }) {
   );
 }
 
+/** The refusal above Send while a pick a menu change asked again is still open (sc-3913), counted. */
+export function ChangedLine({ count }: { count: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <p className="desk-error ms-refused pc-marked" role="alert">
+      <Glyph name="alert" size={16} weight={2.2} />
+      {t('guestMeal.changedOpen', { count })}
+    </p>
+  );
+}
+
 /** Your meal picks, on coming back (sc-3907): the saved picks, each open one changeable until its course closes, and Send my changes. */
 export function MealsSaved({
   told,
   marked,
+  changed,
   busy,
   savedUntil,
   kitchen,
@@ -973,8 +1047,10 @@ export function MealsSaved({
   onSend,
   children,
 }: {
-  told: 'marked' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
+  told: 'marked' | 'changed' | 'nothing' | 'saved' | 'otherSaved' | 'failed' | null;
   marked: number;
+  /** Rows a menu change asked again whose course is still open (sc-3913). */
+  changed: number;
   busy: boolean;
   /** The one day every course closes on, while all are open. */
   savedUntil: string | null;
@@ -1002,6 +1078,7 @@ export function MealsSaved({
       {kitchen != null && <div className="gk-rows">{kitchen}</div>}
       {children}
       {told === 'marked' && marked > 0 && <MarkedLine count={marked} />}
+      {told === 'changed' && changed > 0 && <ChangedLine count={changed} />}
       {told === 'failed' && <Notice kind="broken">{t('guestMeal.notSaved')}</Notice>}
       <div className="mx-told" role="status">
         {told === 'nothing' && <p>{t('guestMeal.nothingToSend')}</p>}

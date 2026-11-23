@@ -209,12 +209,15 @@ export function StepScreen({
   children,
   foot,
   centred = false,
+  waiting = false,
 }: {
   nav?: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
   /** Content in the middle of the screen, as welcome and the endings with no bar are. */
   centred?: boolean;
+  /** Still reading what it shows: not yet a landing the landing toast is said over (sc-87539). */
+  waiting?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const inSheet = useInSheet();
@@ -269,6 +272,7 @@ export function StepScreen({
   }, []);
 
   useEffect(() => {
+    if (waiting) return undefined;
     const step = stepShown();
     const landed = setTimeout(() => {
       shown.current = step;
@@ -280,7 +284,7 @@ export function StepScreen({
       shown.current = null;
       step.left();
     };
-  }, [placeStep]);
+  }, [placeStep, waiting]);
 
   useEffect(() => {
     footInPage.current = inline;

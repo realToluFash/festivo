@@ -3272,6 +3272,7 @@
     "needsHostBody": "Nothing is decided for these people on these courses until you step in.",
     "nothingFor": "{{course}}: nothing on this course can be picked for them.",
     "allergyFor": "{{course}}: their pick, {{dish}}, contains {{allergens}}, recorded after they picked it.",
+    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and their allergy to {{allergens}} was recorded after they picked it.",
     "hostCount_one": "{{course}} · {{count, number}} person",
     "hostCount_other": "{{course}} · {{count, number}} people",
     "answered": "{{n, number}} of {{room, number}} answered",
@@ -3288,7 +3289,6 @@
     "everyoneElse": "Everyone else",
     "people": "People",
     "number": "{{n, number}}",
-    "ofRoom": "{{n, number}} of {{room, number}}",
     "rowChosen": "{{name}}, {{chosen, number}} of {{room, number}}",
     "rowSaid": "{{name}}, {{chosen, number}} chosen, {{defaulted, number}} defaulted",
     "kitchen": "Kitchen’s choice",
@@ -3327,6 +3327,7 @@
     "whichWay": "How should {{dish}} come?",
     "allergyMark": "Allergy",
     "ruledOut": "Contains {{allergens}}, which {{name}} is allergic to. You can still pick it.",
+    "ruledOutNotStated": "Allergens not stated. You can still pick it.",
     "ruledOutWho": "Contains {{allergens}}, which {{name}} is allergic to.",
     "blank": "Choose {{course}} for {{name}}, or let the kitchen choose.",
     "blankWay": "Choose how {{name}} has the {{dish}}.",
@@ -3338,11 +3339,13 @@
     "close": "Close",
     "overrideTitle": "{{name}}’s record says {{allergens}}. Pick it anyway?",
     "overrideBody": "{{dish}} contains {{allergens}}. If {{name}}’s record is out of date, the pick is saved with your name and the time you confirmed it.",
+    "overrideBodyNotStated": "Nobody has stated what’s in {{dish}}. If you know it is safe for {{name}}, the pick is saved with your name and the time you confirmed it.",
     "chooseAnother": "Choose another dish",
     "pickAnyway": "Pick it anyway",
     "refused": "You cannot choose for guests on this event any more: your role no longer has Guests manage. Nothing was saved.",
     "savedFor": "{{course}} chosen for {{name}}: {{what}}.",
     "savedOverride": "Recorded as your pick for {{name}}, despite the record: {{dish}} contains {{allergens}}.",
+    "savedOverrideNotStated": "Recorded as your pick for {{name}}, though nobody has stated what’s in {{dish}}.",
     "whoTitle": "Choose who gets {{variant}}",
     "whoSub": "{{dish}} · {{course}}",
     "whoHelp": "Everyone coming, by who replied. Ticked people have it now. Guests are never offered it on their own page.",
@@ -3355,6 +3358,9 @@
     "giveAnyway": "Give it anyway",
     "whoSaved_one": "{{variant}}, {{dish}}: {{count, number}} person now.",
     "whoSaved_other": "{{variant}}, {{dish}}: {{count, number}} people now.",
-    "whoOverride": "{{names}} recorded as your pick despite the record."
+    "whoOverride": "{{names}} recorded as your pick despite the record.",
+    "changed": "Menu changed",
+    "changedOn": "Menu changed: {{course}} · picked {{dish}}",
+    "menuChanged": "Menu changed: the dish these guests picked has changed or been taken off. They are asked again, and are not counted as in."
   }
 }

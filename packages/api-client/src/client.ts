@@ -49,6 +49,7 @@ import {
   type Headcount,
   type MealAnswer,
   type MealAnswerKind,
+  type MealChanged,
   type MealCourse,
   type MealPick,
   type MarkedTogether,
@@ -131,13 +132,13 @@ import {
   type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
+  type MenuAskedAgain,
   type MenuChange,
   type MenuCourseDetails,
   type MenuItem,
   type SentCourseDefault,
   asEventMenu,
-  asUnwarnedOptions,
-  asUnwarnedPickers,
+  asMenuAskedAgain,
 } from './menu.ts';
 import { type EventPicks, type HostPick, asEventPicks } from './picks.ts';
 import {
@@ -334,6 +335,9 @@ export interface GuestChanges {
   since: string;
   rows: GuestChange[];
 }
+
+const asking = (path: string, askAgain: boolean): string =>
+  askAgain ? `${path}?askAgain=1` : path;
 
 function guestChangesOf(body: Record<string, unknown>): GuestChanges {
   const rows = Array.isArray(body.rows) ? body.rows : [];
@@ -3462,78 +3466,113 @@ export class ApiClient {
     eventId: string,
     courseId: string,
     dish: { libraryDishId: string } | (DishDetails & { onlyForEvent: boolean }),
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/dishes`, dish),
+      await this.post<unknown>(
+        asking(`${this.menuCoursePath(eventId, courseId)}/dishes`, askAgain),
+        dish,
+      ),
     );
   }
 
-  /** The event's copy only, never refused for picks; `unwarned` counts who picked it and has an allergen just added recorded. */
+  /** The event's copy only. Without `askAgain`, a change that asks guests to pick again (sc-3913) is refused 409 `menu_change_asks`, as every change below is. */
   async changeMenuDish(
     eventId: string,
     dishId: string,
     details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `menu_dish_picked` once a guest has picked it. */
-  async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  async removeMenuDish(eventId: string, dishId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain)),
+    );
   }
 
-  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants` (sc-3903). */
   async addMenuVariants(
     eventId: string,
     dishId: string,
     variants: VariantDetails[],
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+      await this.post<unknown>(asking(`${this.menuDishPath(eventId, dishId)}/variants`, askAgain), {
+        variants,
+      }),
     );
   }
 
-  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  /** Without `cost` the cost stays as it was. */
   async changeMenuVariant(
     eventId: string,
     variantId: string,
     details: VariantDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain), details),
+    );
   }
 
-  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
-  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone`. */
+  async removeMenuVariant(
+    eventId: string,
+    variantId: string,
+    askAgain = false,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain)),
+    );
   }
 
   private menuVariantPath(eventId: string, variantId: string): string {
     return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
-  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3. */
   async addMenuChoice(
     eventId: string,
     dishId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+      await this.post<unknown>(
+        asking(`${this.menuDishPath(eventId, dishId)}/choices`, askAgain),
+        details,
+      ),
     );
   }
 
-  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  /** An answered choice is refused under `draft`. */
   async changeMenuChoice(
     eventId: string,
     choiceId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `choice_answered` once guests have answered it. */
-  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  async removeMenuChoice(eventId: string, choiceId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain)),
+    );
+  }
+
+  /** The people a menu change asked again who have not answered yet, for Messaging to tell (sc-3913); refused 403 without guests.read. */
+  async menuAskedAgain(eventId: string): Promise<MenuAskedAgain[]> {
+    const body = await this.get<{ people?: unknown }>(`${this.menuPath(eventId)}/asked-again`);
+
+    return asMenuAskedAgain(body?.people);
   }
 
   private menuChoicePath(eventId: string, choiceId: string): string {
@@ -3640,8 +3679,6 @@ export class ApiClient {
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
       choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
-      unwarned: asUnwarnedPickers(record.unwarned),
-      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
@@ -6465,6 +6502,20 @@ function asGuestPage(raw: unknown): GuestPage | null {
 }
 
 /** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
+function asMealChanged(raw: unknown): MealChanged | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { picked, why, ways, allergens } = raw as Record<string, unknown>;
+
+  return {
+    picked: typeof picked === 'string' ? picked : '',
+    why: why === 'ways' || why === 'choices' || why === 'allergen' ? why : 'removed',
+    ways: typeof ways === 'number' ? ways : null,
+    allergens: Array.isArray(allergens)
+      ? allergens.filter((one): one is string => typeof one === 'string')
+      : [],
+  };
+}
+
 function asGuestMeals(raw: unknown): GuestMeals {
   const { you, courses, answers, excluded } = (raw ?? {}) as Record<string, unknown>;
   const strings = (list: unknown): string[] =>
@@ -6492,6 +6543,7 @@ function asGuestMeals(raw: unknown): GuestMeals {
         dish: typeof one.dish === 'string' ? one.dish : null,
         variant: typeof one.variant === 'string' ? one.variant : null,
         options: strings(one.options),
+        changed: asMealChanged(one.changed),
       }));
   }
 

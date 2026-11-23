@@ -353,3 +353,118 @@ describe('Same as an earlier person (sc-17283)', () => {
     expect(screen.queryByRole('button', { name: PW.send })).toBeNull();
   });
 });
+
+describe('the menu changed after you picked (sc-3913)', () => {
+  const CHIDI_MAIN = `For ${CHIDI}, Main, 1 of 1. ${PW.pickNew('Main')}`;
+  const SEA_BASS = `[${CHIDI} picked Sea bass, which is no longer on the menu.]`;
+
+  it(
+    'asks only the changed course, keeps the pick by name, and sends the new one',
+    SLOW,
+    async () => {
+      await party('menuChanged');
+      expect(screen.getByRole('group', { name: CHIDI_MAIN })).toBeTruthy();
+      expect(screen.getByText(`For ${CHIDI} · Main · 1 of 1`)).toBeTruthy();
+      expect(screen.getByText(SEA_BASS)).toBeTruthy();
+      expect(screen.queryByRole('radio', { name: /Sea bass/ })).toBeNull();
+      expect(screen.getByRole('radio', { name: PW.letKitchen })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+
+      click(PW.next);
+      expect(screen.getByRole('alert').textContent).toContain(
+        `Choose a main for ${CHIDI}, or let the kitchen choose.`,
+      );
+      radio(/Grilled croaker/);
+      click(PW.next);
+
+      expect(heading()).toBe(PW.yourPicks);
+      const theirs = screen.getByRole('region', { name: `${CHIDI}’s meals` });
+      expect(within(theirs).getByText('Grilled croaker')).toBeTruthy();
+      expect(within(theirs).getAllByText(PW.notSent)).toHaveLength(1);
+      click(PW.sendChanges);
+      expect(screen.getByRole('status').textContent).toBe(PW.changesSaved);
+    },
+  );
+
+  it('walks only the changed courses of only the people they changed', SLOW, async () => {
+    await party('menuChangedTwo');
+    expect(screen.getByText('For you · Starter · 1 of 2')).toBeTruthy();
+    expect(
+      screen.getByText('You picked Suya skewers, which is no longer on the menu.'),
+    ).toBeTruthy();
+    radio(/Pepper soup/);
+    click(PW.next);
+    expect(screen.getByText(`For ${CHIDI} · Starter · 2 of 2`)).toBeTruthy();
+    click(PW.back);
+    expect(screen.getByText('For you · Starter · 1 of 2')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pepper soup/ })).toHaveProperty('checked', true);
+    click(PW.next);
+    radio(PW.letKitchen);
+    click(PW.next);
+    expect(heading()).toBe(PW.yourPicks);
+  });
+
+  it('words a dish that now comes in ways, and one whose choices changed', SLOW, async () => {
+    await party('menuChangedWays');
+    expect(
+      screen.getByText(`[${CHIDI} picked Pounded yam and egusi, which now comes 2 ways.]`),
+    ).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pounded yam and egusi/ })).toHaveProperty(
+      'checked',
+      false,
+    );
+    await party('menuChangedChoices');
+    expect(screen.getByText('You picked Jollof rice, and its choices have changed.')).toBeTruthy();
+    expect(heading()).toContain(PW.pickNew('Main'));
+  });
+
+  it('words an allergen added, naming only the one the person has recorded', SLOW, async () => {
+    await party('menuChangedAllergen');
+    expect(heading()).toContain(PW.pickNew('Main'));
+    expect(
+      screen.getByText(`[${CHIDI} picked Pounded yam and egusi, which now contains milk.]`),
+    ).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pounded yam and egusi/ })).toHaveProperty(
+      'checked',
+      false,
+    );
+  });
+
+  it('names more than one allergen added in Annex II order, joined with and', () => {
+    expect(
+      PW.changedLine(
+        { key: 'chidi', name: CHIDI, you: false },
+        {
+          kind: 'changed',
+          dish: 'Pounded yam and egusi',
+          why: 'allergen',
+          allergens: ['sesame', 'milk'],
+        },
+      ),
+    ).toBe(`[${CHIDI} picked Pounded yam and egusi, which now contains milk and sesame.]`);
+  });
+
+  it('refuses Send my changes while a pick is still Menu changed', SLOW, async () => {
+    await party('menuChangedCheck');
+    const theirs = screen.getByRole('region', { name: `${CHIDI}’s meals` });
+    expect(within(theirs).getByText(PW.menuChanged)).toBeTruthy();
+    expect(within(theirs).getByText(SEA_BASS)).toBeTruthy();
+    click(PW.sendChanges);
+    expect(screen.getByRole('alert').textContent).toContain(PW.changedOpen(1));
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: `Change main for ${CHIDI}` }),
+    );
+  });
+
+  it('leaves a closed course to the host, without refusing the send', SLOW, async () => {
+    await party('menuChangedClosed');
+    expect(heading()).toBe(PW.yourPicks);
+    const theirs = screen.getByRole('region', { name: `${CHIDI}’s meals` });
+    expect(within(theirs).getByText(PW.menuChanged)).toBeTruthy();
+    expect(within(theirs).getByText(PW.hostInTouchLine)).toBeTruthy();
+    expect(within(theirs).queryByRole('button', { name: `Change main for ${CHIDI}` })).toBeNull();
+    click(PW.sendChanges);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe(PW.nothingToSend);
+  });
+});

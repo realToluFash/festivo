@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   against,
   cardParts,
+  changedOpen,
   copyPlates,
   copyable,
   dishRuled,
@@ -15,6 +16,7 @@ import {
   plateAllergens,
   refusalOf,
   samePlate,
+  savedPlates,
   stepsOf,
 } from './meals.ts';
 
@@ -302,5 +304,60 @@ describe('Same as an earlier person (sc-17283)', () => {
     expect(picksOf(copied, eaters, [main], (key) => (key === 'tom' ? 'tom-id' : null))).toEqual(
       picksOf({ [keyOf('tom', 'main')]: pick }, eaters, [main], () => 'tom-id'),
     );
+  });
+});
+
+describe('a pick a menu change asked again (sc-3913)', () => {
+  const eaters = [
+    { key: 'me', id: 'g1', name: null, you: true },
+    { key: 'c1', id: 'c1', name: 'Chidi', you: false },
+  ];
+  const main = course([dish()]);
+  const starter = { ...course([dish()]), id: 'starter', name: 'Starter' };
+  const shut = { ...starter, picksClose: { ...starter.picksClose, closed: true } };
+  const asked = (picked: string) => ({
+    course: 'main',
+    answer: 'menuChanged' as const,
+    dish: null,
+    variant: null,
+    options: [],
+    changed: { picked, why: 'removed' as const, ways: null, allergens: [] },
+  });
+  const plates = savedPlates(
+    {
+      you: 'g1',
+      courses: [starter, main],
+      answers: {
+        g1: [asked('Sea bass'), { ...asked('Suya'), course: 'starter' }],
+        c1: [asked('Sea bass')],
+      },
+      excluded: {},
+    },
+    eaters,
+  );
+
+  it('keeps the answer as Menu changed with why and the dish as picked', () => {
+    expect(plates['me|main']).toEqual({
+      kind: 'menuChanged',
+      dish: null,
+      variant: null,
+      options: {},
+      changed: { picked: 'Sea bass', why: 'removed', ways: null, allergens: [] },
+    });
+  });
+
+  it('walks the open changed rows in party order, and none of a closed course', () => {
+    expect(changedOpen(plates, eaters, [starter, main])).toEqual([
+      'me|starter',
+      'me|main',
+      'c1|main',
+    ]);
+    expect(changedOpen(plates, eaters, [shut, main])).toEqual(['me|main', 'c1|main']);
+  });
+
+  it('is never sent, never copied by Same as, and never marked for an allergen', () => {
+    expect(picksOf(plates, eaters, [main], (key) => key)).toEqual([]);
+    expect(copyable(plates['me|main'], main, [])).toBe(false);
+    expect(markOf(main, plates['me|main'], ['celery'])).toBeNull();
   });
 });

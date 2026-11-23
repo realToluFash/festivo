@@ -8,7 +8,7 @@ appId: host.exp.Exponent
     visible: 'Ana Souza added a note to the event'
     timeout: 20000
 - takeScreenshot: bell-tabletportrait-unknown-demo
-- setOrientation: LANDSCAPE
+- setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd
 - openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellUnknown
 - extendedWaitUntil:

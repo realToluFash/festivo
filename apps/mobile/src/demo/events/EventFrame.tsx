@@ -95,6 +95,13 @@ export function BellRow({ children }: { children: ReactNode }) {
   );
 }
 
+/** The bell an event's page lends to every area's frame on an iPad, so an area drawn by its own screen, as Guests, opens it too (sc-84453). A frame given its own `onBell`, as Messages', keeps that. */
+export const EventBellAt = createContext<{
+  onBell?: (() => void) | undefined;
+  bellRef?: Ref<ViewInstance> | undefined;
+  place: ReactNode;
+} | null>(null);
+
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
 export interface AreaBadge {
   count: number;
@@ -156,6 +163,11 @@ export function EventFrame({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const large = useAccessibilitySizes();
+  const lent = useContext(EventBellAt);
+  const ownBell = onBell != null;
+  const bellPress = ownBell ? onBell : lent?.onBell;
+  const bellAt = ownBell ? bellRef : lent?.bellRef;
+  const bellPlace = ownBell ? null : lent?.place;
   const phone = shell.layout === 'phone';
   const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
   // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
@@ -201,12 +213,13 @@ export function EventFrame({
         overlay={
           <>
             {overlay}
+            {bellPlace}
             {told}
           </>
         }
       >
         <PaneBellAt.Provider
-          value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
+          value={{ bell: <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} /> }}
         >
           {capped(
             fill ? (
@@ -249,7 +262,7 @@ export function EventFrame({
         <BackSlot beside={besideBack} capped={capped}>
           <Back label={back.label} onPress={back.onPress} />
         </BackSlot>
-        <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
+        <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
       {capped(
@@ -298,6 +311,7 @@ export function EventFrame({
         </>
       )}
       {overlay}
+      {bellPlace}
       {told}
     </View>
   );

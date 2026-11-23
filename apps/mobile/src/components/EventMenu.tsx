@@ -13,7 +13,7 @@ import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'r
 
 import { api } from '../api.ts';
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import { headerClose, openWords, picksAccess } from '../kit/menuPicksWords.ts';
+import { headerClose, hostLine, openWords, picksAccess } from '../kit/menuPicksWords.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { Confirmed } from '../steps/Lines.tsx';
@@ -357,6 +357,11 @@ function Picks({
           {t('menuPicks.held', { count: picks.held, room: picks.room })}
         </Text>
       )}
+      {picks.courses.some((course) => course.menuChanged > 0) && (
+        <Text size={15} style={parts.secondary} testID="menu.changed">
+          {t('menuPicks.menuChanged')}
+        </Text>
+      )}
     </View>
   );
 
@@ -410,15 +415,7 @@ function Picks({
                 <HostLine
                   key={`${line.person.id}.${line.course}`}
                   name={line.person.name}
-                  words={
-                    line.reason === 'nothing'
-                      ? t('menuPicks.nothingFor', { course: courseName(line.course) })
-                      : t('menuPicks.allergyFor', {
-                          course: courseName(line.course),
-                          dish: line.pick ?? '',
-                          allergens: allergens(line.allergens),
-                        })
-                  }
+                  words={hostLine(t, allergens, line, courseName(line.course))}
                   manage={manage}
                   onChoose={(from) =>
                     onOpen(
@@ -448,6 +445,19 @@ function Picks({
   const given = picks.given ?? [];
   const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
   const words = (person: (typeof never)[number]) => openWords(t, language, person, courseName);
+  const opensOn = (person: (typeof never)[number]) => [
+    ...person.courses,
+    ...person.changed.map((one) => one.course).filter((id) => !person.courses.includes(id)),
+  ];
+  const changedLines = (person: (typeof never)[number]) =>
+    person.changed.map((one) => (
+      <View key={one.course} style={parts.markLine}>
+        <Glyph name="alert" size={16} ink={tokens.colorAttentionText} />
+        <Text size={15} style={parts.secondary}>
+          {t('menuPicks.changedOn', { course: courseName(one.course), dish: one.picked })}
+        </Text>
+      </View>
+    ));
 
   const waiting = !names ? null : (
     <>
@@ -469,15 +479,18 @@ function Picks({
                 <Text size={17} weight="semibold">
                   {person.name}
                 </Text>
-                <Text size={15} style={parts.secondary}>
-                  {words(person)}
-                </Text>
+                {person.courses.length > 0 && (
+                  <Text size={15} style={parts.secondary}>
+                    {words(person)}
+                  </Text>
+                )}
+                {changedLines(person)}
                 <ChooseButton
                   name={person.name}
                   manage={manage}
                   onPress={(from) =>
                     onOpen(
-                      { kind: 'chooseFor', personId: person.id, courseIds: person.courses },
+                      { kind: 'chooseFor', personId: person.id, courseIds: opensOn(person) },
                       from,
                     )
                   }
@@ -502,15 +515,18 @@ function Picks({
                 <Text size={17} weight="semibold">
                   {person.name}
                 </Text>
-                <Text size={15} style={parts.secondary}>
-                  {words(person)}
-                </Text>
+                {person.courses.length > 0 && (
+                  <Text size={15} style={parts.secondary}>
+                    {words(person)}
+                  </Text>
+                )}
+                {changedLines(person)}
                 <ChooseButton
                   name={person.name}
                   manage={manage}
                   onPress={(from) =>
                     onOpen(
-                      { kind: 'chooseFor', personId: person.id, courseIds: person.courses },
+                      { kind: 'chooseFor', personId: person.id, courseIds: opensOn(person) },
                       from,
                     )
                   }

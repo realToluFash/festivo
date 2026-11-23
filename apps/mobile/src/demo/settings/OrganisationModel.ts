@@ -35,6 +35,9 @@ export const ORGANISATION_STATES = [
   'leaveLoadFailed',
   'delete',
   'domainBoth',
+  'transferGoogle',
+  'transferApple',
+  'transferGoogleCode',
 ] as const;
 
 export type OrganisationState = (typeof ORGANISATION_STATES)[number];
@@ -63,6 +66,9 @@ export interface OrganisationStart {
   leadsAny: boolean;
   /** The one leaving leads a single event: Leave's words for 1. */
   leadsOne: boolean;
+  /** An owner with no password, who confirms Transfer ownership with Google or Apple (sc-22601). */
+  transferVia: 'google' | 'apple' | null;
+  transferTwoFactor: boolean;
 }
 
 /** Leave's states, as Ana Souza: the Ask with her two events, or today's when she leads none. */
@@ -116,6 +122,8 @@ const AT_REST: Omit<OrganisationStart, 'role'> = {
   leaving: null,
   leadsAny: true,
   leadsOne: false,
+  transferVia: null,
+  transferTwoFactor: false,
 };
 
 /** What a state link opens on; an owner's states open on the page at rest for a member, who has no way to them. */
@@ -172,6 +180,14 @@ export function organisationStart(
       return page;
     case 'transfer':
       return { ...page, screen: 'transfer', transferPicked: true };
+    case 'transferGoogle':
+    case 'transferApple':
+    case 'transferGoogleCode':
+      return {
+        ...page,
+        transferVia: state === 'transferApple' ? 'apple' : 'google',
+        transferTwoFactor: state === 'transferGoogleCode',
+      };
     case 'transferred':
       return { ...page, role: 'Admin', said: { kind: 'transferred', to: TRANSFERRED_TO } };
     case 'delete':

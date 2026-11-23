@@ -15,6 +15,7 @@ import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { FailureLine } from '../../components/FailureLine.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
+import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet, SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { Text } from '../../components/Text.tsx';
@@ -40,12 +41,11 @@ import {
   type System,
   UPDATED_AT,
   type WhoOpened,
-  allergenWords,
+  allergyWords,
   checkDraft,
   choose,
   chooseCourses,
   containsWords,
-  dishAllergens,
   draftPick,
   draftWords,
   givenDefault,
@@ -667,11 +667,11 @@ function ChooseFor({
   );
   const first = courses[0] == null ? null : firstCheck(courses[0], person, opened);
   const [blank, setBlank] = useState<string | null>(first?.kind === 'blank' ? first.words : null);
-  const [asking, setAsking] = useState<DraftCheck | null>(
-    first?.kind === 'ruledOut' ? first : null,
-  );
+  const [seeded] = useState(first?.kind === 'ruledOut' ? first : null);
+  const [asking, setAsking] = useState<DraftCheck | null>(null);
   const [refused, setRefused] = useState(first?.kind === 'ok' && opened.refuses === true);
   const [saving, setSaving] = useState(false);
+  const phone = useLayout().kind === 'phone';
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const course = courses[at];
 
@@ -681,6 +681,13 @@ function ChooseFor({
     },
     [],
   );
+  useEffect(() => {
+    if (seeded == null) return;
+    // Android drops a modal put up before the sheet under it has shown (sc-87421).
+    const wait = setTimeout(() => setAsking(seeded), SETTLED_MS);
+
+    return () => clearTimeout(wait);
+  }, [seeded]);
 
   if (course == null) return null;
   const last = at === courses.length - 1;
@@ -698,7 +705,7 @@ function ChooseFor({
       const check = checkDraft(course, person, draft);
       const words =
         override && check.kind === 'ruledOut'
-          ? MW.savedOverride(person.name, draftWords(course, draft), allergenWords(check.allergens))
+          ? check.saved
           : MW.savedFor(course.name, person.name, draftWords(course, draft));
       onSaved(course, draftPick(draft, override, NOW), words);
       if (last) onClose();
@@ -730,31 +737,39 @@ function ChooseFor({
   };
   const chosen =
     draft?.kind === 'dish' ? course.dishes.find((one) => one.id === draft.dishId) : undefined;
+  const saveButton = (
+    <PrimaryButton
+      label={last ? MW.save : MW.saveNext}
+      onPress={save}
+      busy={saving}
+      off={refused}
+      testID="menu.choose.save"
+    />
+  );
 
   return (
     <View style={styles.sheet}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-        {MW.choosing(person.name)}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {MW.courseOf(course.name, at + 1, courses.length)}
-      </Text>
+      <View style={styles.sheetHead}>
+        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+          {MW.choosing(person.name)}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {MW.courseOf(course.name, at + 1, courses.length)}
+        </Text>
+      </View>
       <SheetScrollView style={styles.sheetList} contentContainerStyle={styles.sheetScroll}>
         <View accessibilityRole="radiogroup" style={styles.choices}>
-          {course.dishes.map((dish) => {
-            const ruled = dishAllergens(dish, person);
-            return (
-              <Choice
-                key={dish.id}
-                on={draft?.kind === 'dish' && draft.dishId === dish.id}
-                title={dish.name}
-                lines={[containsWords(dish.contains)].filter((one) => one != null)}
-                allergy={ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)}
-                onPress={() => pickDish(dish.id)}
-                testID={`menu.choose.${dish.id}`}
-              />
-            );
-          })}
+          {course.dishes.map((dish) => (
+            <Choice
+              key={dish.id}
+              on={draft?.kind === 'dish' && draft.dishId === dish.id}
+              title={dish.name}
+              lines={[containsWords(dish.contains)].filter((one) => one != null)}
+              allergy={allergyWords(dish, person)}
+              onPress={() => pickDish(dish.id)}
+              testID={`menu.choose.${dish.id}`}
+            />
+          ))}
           <Choice
             on={draft?.kind === 'kitchen'}
             title={MW.kitchenChoose}
@@ -772,28 +787,23 @@ function ChooseFor({
             <Text size={17} weight="semibold" accessibilityRole="header">
               {MW.whichWay(chosen.name)}
             </Text>
-            {chosen.variants.map((way) => {
-              const ruled = dishAllergens(chosen, person, way.id);
-              return (
-                <Choice
-                  key={way.id}
-                  on={draft.variantId === way.id}
-                  title={way.name}
-                  lines={[
-                    way.children === true ? MW.childrenOnly : null,
-                    containsWords(way.contains),
-                  ].filter((one) => one != null)}
-                  allergy={
-                    ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)
-                  }
-                  onPress={() => {
-                    setBlank(null);
-                    setDraft({ ...draft, variantId: way.id });
-                  }}
-                  testID={`menu.choose.${way.id}`}
-                />
-              );
-            })}
+            {chosen.variants.map((way) => (
+              <Choice
+                key={way.id}
+                on={draft.variantId === way.id}
+                title={way.name}
+                lines={[
+                  way.children === true ? MW.childrenOnly : null,
+                  containsWords(way.contains),
+                ].filter((one) => one != null)}
+                allergy={allergyWords(chosen, person, way.id)}
+                onPress={() => {
+                  setBlank(null);
+                  setDraft({ ...draft, variantId: way.id });
+                }}
+                testID={`menu.choose.${way.id}`}
+              />
+            ))}
           </View>
         )}
         {chosen != null && draft?.kind === 'dish' && chosen.sides.length > 0 && (
@@ -818,14 +828,14 @@ function ChooseFor({
         {refused && <FailureLine words={MW.refused} testID="menu.choose.refused" />}
       </SheetScrollView>
       <SheetActions>
-        <SecondaryButton label={MW.cancel} onPress={onClose} testID="menu.choose.cancel" />
-        <PrimaryButton
-          label={last ? MW.save : MW.saveNext}
-          onPress={save}
-          busy={saving}
-          off={refused}
-          testID="menu.choose.save"
+        {phone && saveButton}
+        <SecondaryButton
+          label={MW.cancel}
+          onPress={onClose}
+          stacked={phone}
+          testID="menu.choose.cancel"
         />
+        {!phone && saveButton}
       </SheetActions>
       {asking?.kind === 'ruledOut' && (
         <OverrideAlert
@@ -877,6 +887,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },
+  sheetHead: { flexShrink: 0, gap: tokens.spaceMd },
   sheetList: { flexShrink: 1 },
   sheetScroll: { gap: tokens.spaceMd },
   choices: { gap: tokens.spaceSm },

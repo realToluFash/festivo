@@ -1,5 +1,5 @@
 import type { Allergen } from './guestKitchenWords.ts';
-import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS } from './menuLibrary.ts';
+import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS, listOf } from './menuLibrary.ts';
 import { allergenList } from './mealStep.ts';
 import { coursesAt } from './menuCourses.ts';
 import { type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
@@ -37,7 +37,19 @@ export type PartyAnswer =
   | { kind: 'chosen'; dishId: string; by: 'guest' | 'host' }
   | { kind: 'kitchen' }
   | { kind: 'skipped' }
-  | { kind: 'host' };
+  | { kind: 'host' }
+  | MenuChanged;
+
+/** sc-3913: the host changed the menu after this pick. The course is asked again, and the pick is kept by the dish's name as picked. An allergen added names only the added ones this person has recorded. */
+export type MenuChanged = { kind: 'changed'; dish: string } & (
+  | { why: 'removed' }
+  | { why: 'ways'; ways: number }
+  | { why: 'choices' }
+  | { why: 'allergen'; allergens: readonly DishAllergen[] }
+);
+
+export const isChanged = (answer: PartyAnswer | undefined): answer is MenuChanged =>
+  answer?.kind === 'changed';
 
 export type Answers = Readonly<Partial<Record<RowKey, PartyAnswer>>>;
 export type Allergies = Readonly<Record<Who, readonly Allergen[]>>;
@@ -238,6 +250,24 @@ export const PW = {
       ? 'Copied from your picks. Change anything that should be different.'
       : `Copied from ${from.name}. Change anything that should be different.`,
   continue: 'Continue',
+  pickNew: (course: string) => `Pick a new ${lower(course)}`,
+  menuChanged: 'Menu changed',
+  changedLine: (person: PartyPerson, answer: MenuChanged) => {
+    const who = person.you ? 'You' : `[${person.name}`;
+    const end = person.you ? '' : ']';
+    if (answer.why === 'removed')
+      return `${who} picked ${answer.dish}, which is no longer on the menu.${end}`;
+    if (answer.why === 'ways')
+      return `${who} picked ${answer.dish}, which now comes ${answer.ways} ways.${end}`;
+    if (answer.why === 'allergen')
+      return `${who} picked ${answer.dish}, which now contains ${allergenList(answer.allergens, 'en', listOf)}.${end}`;
+
+    return `${who} picked ${answer.dish}, and its choices have changed.${end}`;
+  },
+  changedOpen: (n: number) =>
+    n === 1
+      ? '[The menu changed for a pick. Pick again before you send.]'
+      : `[The menu changed for ${n} picks. Pick again before you send.]`,
 } as const;
 
 export type Ruled = { kind: 'allergen'; codes: DishAllergen[] } | { kind: 'notStated' } | null;
@@ -291,6 +321,16 @@ export const screenAt = (
   course: CourseKey,
   screens: readonly MealScreen[] = SCREENS,
 ): number => screens.findIndex((one) => one.who === who && one.course === course);
+
+/** sc-3913: the screens a Menu changed visit walks, in party order: only the changed courses still open, of only the people they changed. */
+export const changedRoute = (
+  answers: Answers,
+  screens: readonly MealScreen[],
+  closed: (course: CourseKey) => boolean,
+): number[] =>
+  screens.flatMap((one, at) =>
+    isChanged(answers[rowKey(one.who, one.course)]) && !closed(one.course) ? [at] : [],
+  );
 
 export interface ClearedPick {
   dishId: string;
@@ -381,7 +421,7 @@ export function copyable(
   if (answer == null) return false;
   if (answer.kind === 'kitchen') return !nothingSafe(course, allergies);
   if (answer.kind === 'skipped') return course.skip;
-  if (answer.kind === 'host') return false;
+  if (answer.kind === 'host' || answer.kind === 'changed') return false;
   const picked = dishOf(course.key, answer.dishId);
 
   return picked != null && ruledOut(picked, allergies) == null;
@@ -770,7 +810,84 @@ const PREVIEW_STATES = {
     }),
 } satisfies Record<string, () => PartyStart>;
 
-const ALL_PARTY = { ...PARTY_STATES, ...SAME_AS_STATES, ...PREVIEW_STATES };
+const SEA_BASS: MenuChanged = { kind: 'changed', dish: 'Sea bass', why: 'removed' };
+const SUYA: MenuChanged = { kind: 'changed', dish: 'Suya skewers', why: 'removed' };
+const CHIDI_SEA_BASS: Answers = { ...PICKED, 'chidi|main': SEA_BASS };
+const comeBack = (over: Partial<PartyStart> & { name: string; note: string }) =>
+  start({ mode: 'back', ...over, saved: over.answers ?? {} });
+
+/** sc-3913's guest side: the host changed the menu after these picks were sent, and the guest opens the RSVP again. */
+export const MENU_CHANGED_STATES = {
+  menuChanged: () =>
+    comeBack({
+      name: 'Menu changed, a dish taken off',
+      note: 'Chidi Okonkwo-Williams picked Sea bass for his main, and the host took it off the menu. Opening the RSVP goes straight to his Main and nothing else: Pick a new main, the line naming the pick he kept, the dishes left and Let the kitchen choose for me. Next goes to Your picks with the new pick as Not sent yet; Send my changes saves it. Back goes to Your picks with the row still Menu changed.',
+      answers: CHIDI_SEA_BASS,
+      view: at('chidi', 'main'),
+    }),
+  menuChangedTwo: () =>
+    comeBack({
+      name: 'Menu changed, two people on one course',
+      note: 'You and Chidi Okonkwo-Williams both picked Suya skewers, which came off the Starter. Only the two starters are asked, 1 of 2 then 2 of 2; the mains and desserts you sent are not shown again. Then Your picks.',
+      answers: { ...PICKED, 'me|starter': SUYA, 'chidi|starter': SUYA },
+      view: at('me', 'starter'),
+    }),
+  menuChangedWays: () =>
+    comeBack({
+      name: 'Menu changed, a dish now comes 2 ways',
+      note: 'Chidi picked Pounded yam and egusi, which now comes 2 ways (its first Add variant, sc-3903). His Main is asked with nothing chosen and the dish still listed. Its ways are sc-3903’s step, shown on the single-person meal step demo, so here Next takes the dish as picked.',
+      answers: {
+        ...PICKED,
+        'chidi|main': { kind: 'changed', dish: 'Pounded yam and egusi', why: 'ways', ways: 2 },
+      },
+      view: at('chidi', 'main'),
+    }),
+  menuChangedChoices: () =>
+    comeBack({
+      name: 'Menu changed, a dish’s choices changed',
+      note: 'You picked Jollof rice, and its choices changed (a choice added, removed, or its Guests pick exactly changed, sc-3904). Your Main is asked with nothing chosen. Its choices are sc-3904’s step, shown on the single-person meal step demo.',
+      answers: { ...PICKED, 'me|main': { kind: 'changed', dish: 'Jollof rice', why: 'choices' } },
+      view: at('me', 'main'),
+    }),
+  menuChangedAllergen: () =>
+    comeBack({
+      name: 'Menu changed, an allergen added',
+      note: 'Chidi Okonkwo-Williams has milk recorded and picked Pounded yam and egusi; the host then added milk to its Contains. Only his Main is asked, headed Pick a new main, with the line naming the added allergen he has recorded. The dish is greyed for him with the allergen notice, as any dish with his allergen is. On Your picks the row reads Menu changed with the same line. The host also sees him in Needs the host (sc-3909); the guest is not told that.',
+      recorded: MILK,
+      answers: {
+        ...PICKED,
+        'chidi|main': {
+          kind: 'changed',
+          dish: 'Pounded yam and egusi',
+          why: 'allergen',
+          allergens: ['milk'],
+        },
+      },
+      view: at('chidi', 'main'),
+    }),
+  menuChangedCheck: () =>
+    comeBack({
+      name: 'Menu changed, on Your picks',
+      note: 'Back from the changed course, or a visit that goes to Your picks: Chidi’s main reads Menu changed with the two-arrow shape and the word, and the pick he kept. Send my changes is refused with focus on that row’s Change while it is still Menu changed.',
+      answers: CHIDI_SEA_BASS,
+      view: { kind: 'check' },
+    }),
+  menuChangedClosed: () =>
+    comeBack({
+      name: 'Menu changed, after Main closed',
+      note: 'Today is Saturday, Oct 17, and Main closed Friday, Oct 16 (sample only). The host took Sea bass off after that: the guest can’t answer it, so the visit opens on Your picks with his main read-only, Menu changed and “The host will be in touch.” The host chooses for him from Who hasn’t picked (sc-3909). Send my changes is not refused.',
+      answers: CHIDI_SEA_BASS,
+      dates: MAIN_FIRST,
+      view: { kind: 'check' },
+    }),
+} satisfies Record<string, () => PartyStart>;
+
+const ALL_PARTY = {
+  ...PARTY_STATES,
+  ...SAME_AS_STATES,
+  ...PREVIEW_STATES,
+  ...MENU_CHANGED_STATES,
+};
 
 export type PartyStateName = keyof typeof ALL_PARTY;
 
@@ -810,5 +927,11 @@ export const PARTY_PAGES: readonly { name: string; states: readonly DemoLink[] }
       to: partyAt(state),
       name: SAME_AS_STATES[state]().name,
     })),
+  },
+  {
+    name: 'Menu changed after you picked (sc-3913)',
+    states: (Object.keys(MENU_CHANGED_STATES) as (keyof typeof MENU_CHANGED_STATES)[]).map(
+      (state) => ({ to: partyAt(state), name: MENU_CHANGED_STATES[state]().name }),
+    ),
   },
 ];

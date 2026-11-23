@@ -211,7 +211,6 @@
     "validation.course_served_invalid": "Saisissez une heure au format 24 heures, par exemple 20:30.",
     "menu.course_limit": "Un menu peut compter au plus {max} services.",
     "menu.course_picked": "Des invités ont déjà choisi dans ce service.",
-    "menu.dish_picked": "Des invités ont déjà choisi ce plat.",
     "menu.dish_on_course": "Ce plat figure déjà dans ce service.",
     "menu.same_one_dish": "« Le même plat pour tous » n’est possible qu’avec un seul plat.",
     "validation.variant_name_required": "Saisissez le nom de la variante.",
@@ -254,7 +253,6 @@
     "validation.budget_currency_mismatch": "Saisissez le prix en {currency}, la devise de cet événement.",
     "validation.budget_note_too_long": "Raccourcissez la note à {max} caractères maximum.",
     "menu.variant_limit": "Un plat peut avoir au maximum {max} variantes.",
-    "menu.variant_picked": "Des invités ont déjà choisi cette variante.",
     "menu.variant_last_everyone": "{variant} est la seule variante pour « Tout le monde ». Créez d’abord une autre variante pour « Tout le monde ».",
     "validation.choice_question_too_long": "Raccourcissez la question à {max} caractères maximum.",
     "validation.option_name_required": "Saisissez le nom de l’option.",
@@ -262,8 +260,6 @@
     "validation.option_name_taken": "Chaque option doit avoir son propre nom.",
     "validation.choice_options_limit": "Une question peut proposer au plus {max} options.",
     "menu.choice_limit": "Un plat peut avoir au plus {max} questions.",
-    "menu.choice_answered": "Des invités ont déjà répondu à cette question.",
-    "menu.option_picked": "Des invités ont déjà choisi cette option.",
     "menu.choice_answered_draft": "Des invités ont déjà répondu à cette question, elle doit donc rester terminée.",
     "menu.choice_draft_question": "Ajoutez la question posée aux invités.",
     "menu.choice_draft_options": "Ajoutez au moins 2 options.",
@@ -521,5 +517,7 @@
     "menu.default_dish": "{dish} est le plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
     "menu.default_variant": "{variant} est la variante du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
     "menu.default_option": "{option} fait partie du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
-    "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer."
+    "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer.",
+    "menu.change_asks": "Ce changement demande aux invités de choisir à nouveau. Confirmez pour continuer.",
+    "menu.event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié."
 }

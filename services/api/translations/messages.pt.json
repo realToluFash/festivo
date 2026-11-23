@@ -211,7 +211,6 @@
     "validation.course_served_invalid": "Introduza uma hora em formato de 24 horas, por exemplo 20:30.",
     "menu.course_limit": "Um menu pode ter, no máximo, {max} serviços.",
     "menu.course_picked": "Os convidados já escolheram pratos deste serviço.",
-    "menu.dish_picked": "Os convidados já escolheram este prato.",
     "menu.dish_on_course": "Este prato já está neste serviço.",
     "menu.same_one_dish": "«Todos recebem o mesmo» só é possível com um único prato.",
     "validation.variant_name_required": "Introduza o nome da variante.",
@@ -254,7 +253,6 @@
     "validation.budget_currency_mismatch": "Introduza o preço em {currency}, a moeda deste evento.",
     "validation.budget_note_too_long": "Encurte a nota para um máximo de {max} caracteres.",
     "menu.variant_limit": "Um prato pode ter no máximo {max} variantes.",
-    "menu.variant_picked": "Os convidados já escolheram esta variante.",
     "menu.variant_last_everyone": "{variant} é a única variante para «Todos». Crie primeiro outra variante para «Todos».",
     "validation.choice_question_too_long": "Encurte a pergunta para um máximo de {max} caracteres.",
     "validation.option_name_required": "Introduza o nome da opção.",
@@ -262,8 +260,6 @@
     "validation.option_name_taken": "Cada opção tem de ter um nome diferente.",
     "validation.choice_options_limit": "Uma pergunta pode ter no máximo {max} opções.",
     "menu.choice_limit": "Um prato pode ter no máximo {max} perguntas.",
-    "menu.choice_answered": "Os convidados já responderam a esta pergunta.",
-    "menu.option_picked": "Os convidados já escolheram esta opção.",
     "menu.choice_answered_draft": "Os convidados já responderam a esta pergunta, por isso tem de continuar concluída.",
     "menu.choice_draft_question": "Adicione a pergunta que os convidados veem.",
     "menu.choice_draft_options": "Adicione pelo menos 2 opções.",
@@ -521,5 +517,7 @@
     "menu.default_dish": "{dish} é o prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
     "menu.default_variant": "{variant} é a variante do prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
     "menu.default_option": "{option} faz parte do prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
-    "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar."
+    "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar.",
+    "menu.change_asks": "Esta alteração pede aos convidados que escolham de novo. Confirme para continuar.",
+    "menu.event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado."
 }

@@ -167,9 +167,7 @@ function CountRow({
           )}
         </View>
         <Text size={size} weight="semibold" style={split ? styles.countSplit : styles.count}>
-          {split
-            ? t('menuPicks.number', { n: row.chosen })
-            : t('menuPicks.ofRoom', { n: row.chosen, room })}
+          {t('menuPicks.number', { n: row.chosen })}
         </Text>
         {split && (
           <Text size={size} weight="semibold" style={styles.countSplit}>
@@ -310,6 +308,9 @@ export function CourseCard({
         {course.skipped > 0 && <StateRow words={t('menuPicks.skipped')} count={course.skipped} />}
         {course.needsHost > 0 && (
           <StateRow words={t('menuPicks.needsHost')} count={course.needsHost} mark />
+        )}
+        {course.menuChanged > 0 && (
+          <StateRow words={t('menuPicks.changed')} count={course.menuChanged} mark />
         )}
         <StateRow words={t('menuPicks.notChosen')} count={course.notChosen} />
       </View>

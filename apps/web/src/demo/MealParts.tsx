@@ -2,7 +2,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import { type MealAnswer, type MealCourse, MW, cardLines, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
 
-export type PickShape = 'kitchen' | 'skipped' | 'host';
+export type PickShape = 'kitchen' | 'skipped' | 'host' | 'changed';
 
 export function PickMark({ shape, words }: { shape: PickShape; words: string | null }) {
   return (
@@ -10,6 +10,8 @@ export function PickMark({ shape, words }: { shape: PickShape; words: string | n
       <span className={`pc-ring is-${shape}`} aria-hidden="true">
         {shape === 'kitchen' ? (
           <ForkKnife />
+        ) : shape === 'changed' ? (
+          <Swap />
         ) : (
           <Glyph
             name={shape === 'skipped' ? 'minus' : 'message'}
@@ -20,6 +22,22 @@ export function PickMark({ shape, words }: { shape: PickShape; words: string | n
       </span>
       <span>{words}</span>
     </p>
+  );
+}
+
+/** sc-3913's Menu changed mark, the two arrows See picks draws. */
+export function Swap() {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true" focusable="false">
+      <path
+        d="M4 7h11l-3-3M16 13H5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

@@ -3402,6 +3402,7 @@
     "needsHostBody": "Nada fica decidido para estas pessoas nestes serviços até que intervenha.",
     "nothingFor": "{{course}}: nada neste serviço pode ser escolhido para esta pessoa.",
     "allergyFor": "{{course}}: escolheu {{dish}}, mas depois foi registada uma alergia que o exclui: {{allergens}}.",
+    "allergyForNotStated": "{{course}}: escolheu {{dish}}, sem alergénios indicados, e depois foi registada uma alergia: {{allergens}}.",
     "hostCount_one": "{{course}} · {{count, number}} pessoa",
     "hostCount_other": "{{course}} · {{count, number}} pessoas",
     "hostCount_many": "{{course}} · {{count, number}} pessoas",
@@ -3419,7 +3420,6 @@
     "everyoneElse": "Todos os outros",
     "people": "Pessoas",
     "number": "{{n, number}}",
-    "ofRoom": "{{n, number}} de {{room, number}}",
     "rowChosen": "{{name}}, {{chosen, number}} de {{room, number}}",
     "rowSaid": "{{name}}, escolhido: {{chosen, number}}, por omissão: {{defaulted, number}}",
     "kitchen": "À escolha da cozinha",
@@ -3462,6 +3462,7 @@
     "whichWay": "Que variante de {{dish}}?",
     "allergyMark": "Alergia",
     "ruledOut": "Contém algo a que {{name}} tem alergia: {{allergens}}. Ainda assim, pode escolhê-lo.",
+    "ruledOutNotStated": "Alergénios não indicados. Ainda assim, pode escolhê-lo.",
     "ruledOutWho": "Contém algo a que {{name}} tem alergia: {{allergens}}.",
     "blank": "Escolha o que {{name}} vai querer de {{course}}, ou deixe a cozinha escolher.",
     "blankWay": "Escolha a variante de {{dish}} para {{name}}.",
@@ -3473,11 +3474,13 @@
     "close": "Fechar",
     "overrideTitle": "A ficha de {{name}} indica: {{allergens}}. Escolher mesmo assim?",
     "overrideBody": "{{dish}} contém: {{allergens}}. Se a ficha de {{name}} estiver desatualizada, a escolha fica registada em seu nome, com a hora em que a confirmar.",
+    "overrideBodyNotStated": "Ninguém indicou o que leva {{dish}}. Se sabe que é seguro para {{name}}, a escolha fica registada em seu nome, com a hora em que a confirmar.",
     "chooseAnother": "Escolher outro prato",
     "pickAnyway": "Escolher mesmo assim",
     "refused": "Já não pode escolher pelos convidados neste evento: a sua função já não tem permissão para gerir convidados. Nada foi guardado.",
     "savedFor": "Escolha guardada para {{name}} em «{{course}}»: {{what}}.",
     "savedOverride": "Fica registada como escolha sua para {{name}}, embora {{dish}} contenha algo a que tem alergia: {{allergens}}.",
+    "savedOverrideNotStated": "Fica registada como escolha sua para {{name}}, embora ninguém tenha indicado o que leva {{dish}}.",
     "whoTitle": "Escolher quem recebe {{variant}}",
     "whoSub": "{{dish}} · {{course}}",
     "whoHelp": "Todos os que vêm, agrupados por quem respondeu. As pessoas assinaladas já a têm. Nunca é oferecida aos convidados na própria página.",
@@ -3491,6 +3494,9 @@
     "whoSaved_one": "{{variant}}, {{dish}}: agora {{count, number}} pessoa.",
     "whoSaved_other": "{{variant}}, {{dish}}: agora {{count, number}} pessoas.",
     "whoSaved_many": "{{variant}}, {{dish}}: agora {{count, number}} pessoas.",
-    "whoOverride": "Registado como escolha sua apesar da ficha: {{names}}."
+    "whoOverride": "Registado como escolha sua apesar da ficha: {{names}}.",
+    "changed": "Menu alterado",
+    "changedOn": "Menu alterado: {{course}} · escolha anterior: {{dish}}",
+    "menuChanged": "Menu alterado: o prato que estes convidados escolheram mudou ou foi retirado. A pergunta volta a ser-lhes feita e não entram nas contas."
   }
 }

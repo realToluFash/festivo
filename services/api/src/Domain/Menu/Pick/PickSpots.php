@@ -11,6 +11,7 @@ use App\Entity\Guest;
 use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
 use App\Enum\MealAnswerKind;
+use App\Enum\MenuChangeWhy;
 use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use Psl\Dict;
@@ -114,9 +115,10 @@ final readonly class PickSpots
             MealAnswerKind::Skipped => ['state' => 'skipped'],
             MealAnswerKind::NeedsHost => ['state' => 'host', 'reason' => 'nothing'],
             MealAnswerKind::Defaulted => $onPlate('defaulted'),
+            MealAnswerKind::MenuChanged => ['state' => 'changed', 'picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'allergens' => $answer->getChangedAllergens()],
             MealAnswerKind::Chosen => [] === ($since = $this->servedMeals->recordedSince($answer, $allergens, $options))
                 ? $onPlate('dish')
-                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since],
+                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since, 'notStated' => ServedMeals::notStated($answer)],
         };
     }
 

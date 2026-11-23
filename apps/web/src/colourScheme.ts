@@ -14,6 +14,7 @@ export interface ColourScheme {
 
 let current: ColourScheme = { shown: defaultScheme, chosen: undefined };
 let held: string | null = null;
+let heard: Date | null = null;
 let channel: BroadcastChannel | null = null;
 const listeners = new Set<() => void>();
 
@@ -78,6 +79,7 @@ export function startColourScheme(): void {
 /** The account's pick as /me or a save answered it; never chosen shows Violet. */
 export function followAccountScheme(chosen: Scheme | null): void {
   const shown = chosen ?? defaultScheme;
+  heard = new Date();
   store(shown);
   set({ shown, chosen });
 }
@@ -105,6 +107,11 @@ export function holdScheme(scheme: string): () => void {
   };
 }
 
+/** When Soirely last told this tab the account's pick: the minute Personalisation shows when it is not reached. */
+export function schemeHeardAt(): Date | null {
+  return heard;
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
 
@@ -119,6 +126,7 @@ export function __resetColourScheme(): void {
   channel?.close();
   channel = null;
   held = null;
+  heard = null;
   current = { shown: defaultScheme, chosen: undefined };
   delete document.documentElement.dataset.scheme;
 }

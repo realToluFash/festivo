@@ -48,6 +48,8 @@ final readonly class KitchenSheetDocument
         .mark.host { width: 0; height: 0; border-width: 0 4pt 7pt; border-color: transparent transparent #000; border-radius: 0; }
         .mark.never, .mark.notYet { border-style: dashed; }
         .mark.skipped { background: linear-gradient(#000, #000) center / 5pt 1px no-repeat; }
+        .mark.changed { width: auto; height: auto; border: 0; border-radius: 0; }
+        .mark.changed::before { content: "\21c4"; }
         .foot { position: running(foot); font-size: 8pt; }
         .course.whole { break-inside: avoid; }
         h3 { font-size: 11pt; margin: 8pt 0 4pt; break-after: avoid; }
@@ -174,6 +176,7 @@ final readonly class KitchenSheetDocument
             $this->countRow($this->word('kitchen', $locale), $course['kitchen']),
             $this->countRow($this->word('skipped', $locale), $course['skipped'], mark: 'skipped'),
             ...$course['needsHost'] > 0 ? [$this->countRow($this->word('needs_host', $locale), $course['needsHost'], mark: 'host')] : [],
+            ...$course['menuChanged'] > 0 ? [$this->countRow($this->word('menu_changed', $locale), $course['menuChanged'], mark: 'changed')] : [],
             ...$course['notChosen'] > 0 ? [$this->countRow($this->word($course['never'] ? 'never' : 'not_yet', $locale, ['count' => $course['notChosen']]), $course['notChosen'], mark: $course['never'] ? 'never' : 'notYet')] : [],
         ];
         $given = $course['given'];

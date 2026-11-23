@@ -3,6 +3,7 @@ import {
   type GuestMeals,
   type GuestPage,
   type MealAnswerKind,
+  type MealChanged,
   type MealChoice,
   type MealCourse,
   type MealDish,
@@ -19,15 +20,17 @@ export interface Eater {
   you: boolean;
 }
 
-export type Kind = Exclude<MealAnswerKind, 'defaulted'>;
+export type Kind = Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
 
 export interface Plate {
-  kind: Kind | 'defaulted';
+  kind: Kind | 'defaulted' | 'menuChanged';
   dish: string | null;
   variant: string | null;
   options: Readonly<Record<string, readonly string[]>>;
   /** Made by the host (sc-3909): never marked, never refused. */
   byHost?: boolean;
+  /** sc-3913: why the host's menu change asked this course again, and the dish as it was picked. */
+  changed?: MealChanged;
 }
 
 export type Plates = Readonly<Record<string, Plate>>;
@@ -272,6 +275,14 @@ export function savedPlates(meals: GuestMeals, eaters: readonly Eater[]): Plates
   const plates: Record<string, Plate> = {};
   for (const eater of eaters) {
     for (const one of meals.answers[eater.id] ?? []) {
+      if (one.answer === 'menuChanged') {
+        plates[keyOf(eater.key, one.course)] = {
+          ...blank(),
+          kind: 'menuChanged',
+          ...(one.changed == null ? {} : { changed: one.changed }),
+        };
+        continue;
+      }
       const course = meals.courses.find((each) => each.id === one.course);
       const dish = course == null ? null : plateDish(course, { ...blank(), dish: one.dish });
       const options: Record<string, string[]> = {};
@@ -326,6 +337,20 @@ export function clearRuledOut(
   return { plates: next, cleared };
 }
 
+/** sc-3913: the rows a menu change asked again whose course is still open, in party order: the only screens a visit then walks. */
+export function changedOpen(
+  plates: Plates,
+  eaters: readonly Eater[],
+  courses: readonly MealCourse[],
+): string[] {
+  return eaters.flatMap((eater) =>
+    courses
+      .filter((course) => !course.picksClose.closed)
+      .map((course) => keyOf(eater.key, course.id))
+      .filter((key) => plates[key]?.kind === 'menuChanged'),
+  );
+}
+
 export function markedOpen(
   plates: Plates,
   eaters: readonly Eater[],
@@ -374,7 +399,8 @@ export function picksOf(
 
     return courses.flatMap((course): MealPick[] => {
       const plate = plates[keyOf(eater.key, course.id)];
-      if (plate == null || course.picksClose.closed || plate.kind === 'defaulted') return [];
+      if (plate == null || course.picksClose.closed) return [];
+      if (plate.kind === 'defaulted' || plate.kind === 'menuChanged') return [];
       if (plate.byHost === true) return [];
       const chosen = plate.kind === 'chosen' || (plate.kind === 'needsHost' && plate.dish != null);
       if (!chosen) return [{ person, course: course.id, answer: plate.kind }];

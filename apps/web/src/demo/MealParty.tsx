@@ -13,6 +13,7 @@ import {
   type CopyMade,
   type MealScreen,
   type CourseKey,
+  type MenuChanged,
   type PartyAnswer,
   type PartyCourse,
   type PartyDish,
@@ -23,10 +24,12 @@ import {
   COURSES,
   PW,
   allergyList,
+  changedRoute,
   clearRuledOut,
   copyAnswers,
   courseOf,
   dishOf,
+  isChanged,
   mapWho,
   markOf,
   markedOpen,
@@ -42,20 +45,20 @@ import {
   screenAt,
   screensOf,
 } from './mealParty.ts';
-import { PickMark, Refused } from './MealParts.tsx';
+import { PickMark, Refused, Swap } from './MealParts.tsx';
 import { allergenList } from './mealStep.ts';
 import { type DishAllergen, type Lang, allergenName, dietName } from './menuLibrary.ts';
 import { PCW, closeOf, dayWords } from './picksClose.ts';
 import './mealParty.css';
 
-type From = 'flow' | 'check' | 'card' | 'copy';
+type From = 'flow' | 'check' | 'card' | 'copy' | 'changed';
 type View =
   | { kind: 'kitchen'; from: From }
   | { kind: 'course'; at: number; from: From }
   | { kind: 'card' }
   | { kind: 'check' }
   | { kind: 'sent' };
-type Told = 'marked' | 'nothing' | 'saved' | null;
+type Told = 'marked' | 'changed' | 'nothing' | 'saved' | null;
 
 const changeId = (key: RowKey | 'kitchen') => `pc-change-${key.replace('|', '-')}`;
 const reasonId = (key: RowKey) => `pc-reason-${key.replace('|', '-')}`;
@@ -73,7 +76,7 @@ function draftOf(
   course: CourseKey,
   allergies: readonly Allergen[],
 ) {
-  if (answer == null) return null;
+  if (answer == null || answer.kind === 'changed') return null;
   if (answer.kind !== 'chosen' || answer.by === 'host') return answer;
   const picked = dishOf(course, answer.dishId);
 
@@ -97,13 +100,22 @@ export function MealParty({
   const SCREENS = screensOf(first.people);
   const PARTY = partyOf(first.people);
   const opening = first.view.kind === 'course' ? SCREENS[first.view.at] : undefined;
+  const ROUTE = changedRoute(
+    first.answers,
+    SCREENS,
+    (course) => closeOf(course, first.dates).closed,
+  );
   const [answers, setAnswers] = useState<Answers>(first.answers);
   const [added, setAdded] = useState<Allergies>(first.added);
   const [saved, setSaved] = useState<Answers>(first.saved);
   const [savedAdded, setSavedAdded] = useState<Allergies>(first.savedAdded);
   const [view, setView] = useState<View>(
     first.view.kind === 'course'
-      ? { kind: 'course', at: first.view.at, from: first.copy == null ? 'flow' : 'copy' }
+      ? {
+          kind: 'course',
+          at: first.view.at,
+          from: ROUTE.includes(first.view.at) ? 'changed' : first.copy == null ? 'flow' : 'copy',
+        }
       : first.view,
   );
   const [copy, setCopy] = useState<CopyMade | null>(first.copy ?? null);
@@ -231,10 +243,13 @@ export function MealParty({
           )
         : [];
     const asking = view.from === 'copy' && copy?.who === screen.who ? copy : null;
+    const step = view.from === 'changed' ? ROUTE.indexOf(view.at) : -1;
+    const was = first.answers[key];
 
     return (
       <CourseScreen
-        screen={screen}
+        screen={step < 0 ? screen : { ...screen, n: step + 1, total: ROUTE.length }}
+        changed={isChanged(was) ? was : null}
         person={person}
         course={course}
         allergies={allergies[screen.who]}
@@ -264,6 +279,13 @@ export function MealParty({
             toCard(changeId(key));
             return;
           }
+          if (view.from === 'changed') {
+            const kept = draft == null ? answers : store(key, draft);
+            const before = ROUTE[step - 1];
+            if (before == null) toCheck(changeId(key));
+            else openCourse(before, 'changed', kept);
+            return;
+          }
           const kept = store(key, draft);
           if (view.at === 0) {
             setView({ kind: 'kitchen', from: 'flow' });
@@ -285,7 +307,11 @@ export function MealParty({
           );
           if (view.from === 'check') toCheck(changeId(key));
           else if (view.from === 'card') toCard(changeId(key));
-          else if (view.from === 'copy' && asking != null) {
+          else if (view.from === 'changed') {
+            const after = ROUTE[step + 1];
+            if (after == null) toCheck('pc-h');
+            else openCourse(after, 'changed', kept);
+          } else if (view.from === 'copy' && asking != null) {
             const after = asking.asked.find((one) => screenAt(screen.who, one, SCREENS) > view.at);
             if (after == null) toCard('pc-for-h');
             else openCourse(screenAt(screen.who, after, SCREENS), 'copy', kept);
@@ -336,6 +362,11 @@ export function MealParty({
 
   const closed = (course: CourseKey) => closeOf(course, first.dates).closed;
   const marked = markedOpen(answers, allergies, closed, lang, SCREENS);
+  const changedOpen = changedRoute(answers, SCREENS, closed).map((at) => {
+    const one = SCREENS[at] as MealScreen;
+
+    return rowKey(one.who, one.course);
+  });
   const back = first.mode === 'back';
   const kitchenPending =
     back && PARTY.some((one) => !sameAllergies(added[one.key], savedAdded[one.key]));
@@ -350,6 +381,12 @@ export function MealParty({
     if (firstMarked != null) {
       setTold('marked');
       focus.current = changeId(firstMarked);
+      return;
+    }
+    const firstChanged = changedOpen[0];
+    if (firstChanged != null) {
+      setTold('changed');
+      focus.current = changeId(firstChanged);
       return;
     }
     if (!back) {
@@ -379,6 +416,7 @@ export function MealParty({
       dates={first.dates}
       lang={lang}
       marked={marked}
+      changedOpen={changedOpen}
       told={told}
       preview={preview}
       kitchenPending={kitchenPending}
@@ -469,6 +507,7 @@ function ContainsLine({ dish, lang }: { dish: PartyDish; lang: Lang }) {
 
 function CourseScreen({
   screen,
+  changed,
   person,
   course,
   allergies,
@@ -486,6 +525,7 @@ function CourseScreen({
   onNext,
 }: {
   screen: MealScreen;
+  changed: MenuChanged | null;
   person: PartyPerson;
   course: PartyCourse;
   allergies: readonly Allergen[];
@@ -507,6 +547,7 @@ function CourseScreen({
   const anyOut = safe && ruled.some((one) => one != null);
   const clearedDish = cleared == null ? null : dishOf(course.key, cleared.dishId);
   const describedBy = [
+    changed != null && 'pc-changed',
     asked != null && 'pc-asked',
     refusal != null && 'ms-refused',
     other != null && 'pc-other',
@@ -553,9 +594,17 @@ function CourseScreen({
             <span className="visually-hidden">
               {`${PW.forWhoLegend(person, course.name, screen.n, screen.total)} `}
             </span>
-            {PW.which(course.name)}
+            {changed == null ? PW.which(course.name) : PW.pickNew(course.name)}
           </h2>
         </legend>
+        {changed != null && (
+          <p id="pc-changed" className="pc-inset pc-asked">
+            <span className="pc-info" aria-hidden="true">
+              <Swap />
+            </span>
+            <span>{PW.changedLine(person, changed)}</span>
+          </p>
+        )}
         {asked != null && (
           <p id="pc-asked" className="pc-inset pc-asked">
             <span className="pc-info" aria-hidden="true">
@@ -666,6 +715,7 @@ function Pick({ answer, course }: { answer: PartyAnswer | undefined; course: Par
   if (answer.kind === 'kitchen') return <PickMark shape="kitchen" words={PW.kitchenChooses} />;
   if (answer.kind === 'skipped')
     return <PickMark shape="skipped" words={PW.skipped(course.name)} />;
+  if (answer.kind === 'changed') return <PickMark shape="changed" words={PW.menuChanged} />;
 
   return <PickMark shape="host" words={PW.hostInTouch} />;
 }
@@ -737,6 +787,7 @@ function CheckAndSend({
   dates,
   lang,
   marked,
+  changedOpen,
   told,
   preview,
   kitchenPending,
@@ -756,6 +807,7 @@ function CheckAndSend({
   dates: PartyStart['dates'];
   lang: Lang;
   marked: readonly RowKey[];
+  changedOpen: readonly RowKey[];
   told: Told;
   preview: boolean;
   kitchenPending: boolean;
@@ -857,6 +909,8 @@ function CheckAndSend({
                 const key = rowKey(person.key, course.key);
                 const shut = closed(course.key);
                 const mark = markOf(key, answers, allergies, lang);
+                const answer = answers[key];
+                const changed = isChanged(answer) ? answer : null;
 
                 return (
                   <li key={key} className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
@@ -877,6 +931,12 @@ function CheckAndSend({
                         </p>
                       )}
                       {mark != null && shut && <p className="gk-text">{PW.hostInTouchLine}</p>}
+                      {changed != null && (
+                        <p id={reasonId(key)} className="gk-text">
+                          {PW.changedLine(person, changed)}
+                        </p>
+                      )}
+                      {changed != null && shut && <p className="gk-text">{PW.hostInTouchLine}</p>}
                     </div>
                     {!shut && (
                       <button
@@ -884,7 +944,9 @@ function CheckAndSend({
                         type="button"
                         className="gp-text is-ink"
                         aria-label={PW.changeAria(course.name, person)}
-                        aria-describedby={mark == null ? undefined : reasonId(key)}
+                        aria-describedby={
+                          mark == null && changed == null ? undefined : reasonId(key)
+                        }
                         onClick={() => onChange(key)}
                       >
                         <span>{PW.change}</span>
@@ -901,6 +963,12 @@ function CheckAndSend({
         <p className="desk-error ms-refused pc-marked" role="alert">
           <Glyph name="alert" size={16} weight={2.2} />
           {PW.marked(marked.length)}
+        </p>
+      )}
+      {told === 'changed' && changedOpen.length > 0 && (
+        <p className="desk-error ms-refused pc-marked" role="alert">
+          <Glyph name="alert" size={16} weight={2.2} />
+          {PW.changedOpen(changedOpen.length)}
         </p>
       )}
       <div className="mx-told" role="status">

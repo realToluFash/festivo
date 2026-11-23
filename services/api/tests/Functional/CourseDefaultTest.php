@@ -180,7 +180,7 @@ final class CourseDefaultTest extends ApiTestCase
 
         $this->anonymous('/api/guest-links/page', ['token' => $token]);
         $meals = Type\shape(['answers' => Type\dict(Type\string(), Type\vec(Type\mixed_dict())), 'excluded' => Type\dict(Type\string(), Type\mixed())], true)->coerce($this->last()['meals'] ?? null);
-        self::assertSame([['course' => $this->id($this->main), 'answer' => 'defaulted', 'dish' => $this->id($this->jollof), 'variant' => null, 'options' => []]], $meals['answers'][$kojo]);
+        self::assertSame([['course' => $this->id($this->main), 'answer' => 'defaulted', 'dish' => $this->id($this->jollof), 'variant' => null, 'options' => [], 'changed' => null]], $meals['answers'][$kojo]);
         self::assertSame([['course' => $this->id($this->main), 'reason' => 'vegan']], $meals['excluded'][$ada]);
 
         $this->records($ada, []);

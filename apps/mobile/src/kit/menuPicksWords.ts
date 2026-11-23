@@ -3,6 +3,7 @@ import type {
   EventPicks,
   PicksCourse,
   PicksExcluded,
+  PicksHostLine,
   PicksRoomPerson,
 } from '@soirely/api-client';
 import {
@@ -129,4 +130,62 @@ export function whoChanges(
     ),
     leaving: holders.filter((id) => !ticked.has(id)),
   };
+}
+
+type InSentence = (codes: readonly string[]) => string;
+
+/** A plate never stated is ruled out (sc-3907) and never said to contain anything (sc-87421). */
+export function ruledOutWords(
+  t: TFunction,
+  allergens: InSentence,
+  ruled: readonly string[],
+  plate: readonly string[] | null,
+  who: string,
+): string | null {
+  if (ruled.length === 0) return null;
+
+  return plate == null
+    ? t('menuPicks.ruledOutNotStated')
+    : t('menuPicks.ruledOut', { allergens: allergens(ruled), name: who });
+}
+
+export function overrideBody(
+  t: TFunction,
+  allergens: InSentence,
+  dish: string,
+  asking: readonly string[],
+  plate: readonly string[] | null,
+  who: string,
+): string {
+  return plate == null
+    ? t('menuPicks.overrideBodyNotStated', { dish, name: who })
+    : t('menuPicks.overrideBody', { dish, allergens: allergens(asking), name: who });
+}
+
+export function savedOverride(
+  t: TFunction,
+  allergens: InSentence,
+  dish: string,
+  ruled: readonly string[],
+  plate: readonly string[] | null,
+  who: string,
+): string {
+  return plate == null
+    ? t('menuPicks.savedOverrideNotStated', { name: who, dish })
+    : t('menuPicks.savedOverride', { name: who, dish, allergens: allergens(ruled) });
+}
+
+export function hostLine(
+  t: TFunction,
+  allergens: InSentence,
+  line: PicksHostLine,
+  course: string,
+): string {
+  if (line.reason === 'nothing') return t('menuPicks.nothingFor', { course });
+
+  return t(line.notStated ? 'menuPicks.allergyForNotStated' : 'menuPicks.allergyFor', {
+    course,
+    dish: line.pick ?? '',
+    allergens: allergens(line.allergens),
+  });
 }

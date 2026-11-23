@@ -8,6 +8,7 @@ import {
   keyStep,
   nextScheme,
   savedScheme,
+  schemeHeardAt,
   schemeIn,
   schemeName,
   useColourScheme,
@@ -50,7 +51,7 @@ export function Personalisation() {
   const step = useRef<HTMLButtonElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const savesMade = useRef(0);
-  const { watch } = useOffline({
+  const { watch, keep } = useOffline({
     loaded: load === 'loaded',
     reload: () => setRefresh((n) => n + 1),
     title,
@@ -66,15 +67,18 @@ export function Personalisation() {
         if (current) setLoad('loaded');
       },
       (error: unknown) => {
-        if (current)
-          setLoad((was) => (was === 'loaded' && keepsWhatLoaded(error) ? was : 'failed'));
+        if (!current) return;
+        const heard = schemeHeardAt();
+
+        if (keepsWhatLoaded(error) && heard != null) keep(heard);
+        setLoad((was) => (was === 'loaded' && keepsWhatLoaded(error) ? was : 'failed'));
       },
     );
 
     return () => {
       current = false;
     };
-  }, [attempt, refresh, watch]);
+  }, [attempt, refresh, watch, keep]);
 
   function open(): void {
     setSaved(false);
@@ -106,8 +110,12 @@ export function Personalisation() {
           .then((answer) => schemeIn(answer) ?? pick),
       );
     } catch (error) {
+      const offline = error instanceof ApiUnreachableError;
+      const heard = schemeHeardAt();
+
+      if (offline && heard != null) keep(heard);
       setSaving(false);
-      setUnsaved(error instanceof ApiUnreachableError ? 'offline' : 'failed');
+      setUnsaved(offline ? 'offline' : 'failed');
       return;
     }
 

@@ -366,7 +366,9 @@ export function CourseCard({
         )}
         <div className="mn-course-names">
           <p className="mn-eyebrow">{line}</p>
-          <h2 id={`mc-c-${course.id}`}>{name}</h2>
+          <h2 id={`mc-c-${course.id}`} tabIndex={-1}>
+            {name}
+          </h2>
           <p className={ready ? 'mc-state is-ready' : 'mc-state is-empty'}>
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}

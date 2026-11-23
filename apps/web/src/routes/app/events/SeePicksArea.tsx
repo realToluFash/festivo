@@ -315,7 +315,10 @@ function Picks({
     (picks.waiting ?? []).map((party) => ({
       ...party,
       people: party.people.filter(
-        (person) => askedFor == null || person.courses.includes(askedFor),
+        (person) =>
+          askedFor == null ||
+          person.courses.includes(askedFor) ||
+          person.changed.some((one) => one.course === askedFor),
       ),
     })),
   );
@@ -339,15 +342,38 @@ function Picks({
       : excludedOf(excluded.reason) === 'other'
         ? t('seePicks.otherDiet')
         : t(`guestNeeds.dietName.${excluded.reason}`);
-  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => ({
-    kind: 'chooseFor',
-    personId: person.id,
-    courseIds:
-      askedFor == null || !person.courses.includes(askedFor)
-        ? person.courses
-        : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
-    from: id,
-  });
+  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => {
+    const courses = [
+      ...person.courses,
+      ...person.changed.map((one) => one.course).filter((one) => !person.courses.includes(one)),
+    ];
+
+    return {
+      kind: 'chooseFor',
+      personId: person.id,
+      courseIds:
+        askedFor == null || !courses.includes(askedFor)
+          ? courses
+          : [askedFor, ...courses.filter((one) => one !== askedFor)],
+      from: id,
+    };
+  };
+  const personLines = (person: (typeof never)[number]) => (
+    <>
+      {person.courses.length > 0 && (
+        <span className="pk-state">
+          <DashedCircle />
+          {openWords(person)}
+        </span>
+      )}
+      {person.changed.map((one) => (
+        <span key={one.course} className="pk-state">
+          <Swap />
+          {t('seePicks.changedOn', { course: courseName(one.course), dish: one.picked })}
+        </span>
+      ))}
+    </>
+  );
 
   return (
     <>
@@ -391,11 +417,16 @@ function Picks({
                       <span>
                         {one.reason === 'nothing'
                           ? t('seePicks.nothingFor', { course: courseName(one.course) })
-                          : t('seePicks.allergyFor', {
-                              course: courseName(one.course),
-                              dish: one.pick ?? '',
-                              allergens: allergens(one.allergens),
-                            })}
+                          : t(
+                              one.notStated
+                                ? 'seePicks.allergyForNotStated'
+                                : 'seePicks.allergyFor',
+                              {
+                                course: courseName(one.course),
+                                dish: one.pick ?? '',
+                                allergens: allergens(one.allergens),
+                              },
+                            )}
                       </span>
                     </div>
                     {manage && (
@@ -463,10 +494,7 @@ function Picks({
                     <li key={person.id} className="pk-person">
                       <div className="pk-person-words">
                         <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {openWords(person)}
-                        </span>
+                        {personLines(person)}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -492,10 +520,7 @@ function Picks({
                     <li key={person.id} className="pk-person">
                       <div className="pk-person-words">
                         <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {openWords(person)}
-                        </span>
+                        {personLines(person)}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -730,6 +755,9 @@ function CourseCard({
             <StateRow mark={<CircleMinus />} name={t('seePicks.skipped')} n={course.skipped} />
             <StateRow mark={<Triangle />} name={t('seePicks.needsHost')} n={course.needsHost} />
             <StateRow mark={<DashedCircle />} name={t('seePicks.none')} n={course.notChosen} />
+            {course.menuChanged > 0 && (
+              <StateRow mark={<Swap />} name={t('seePicks.changed')} n={course.menuChanged} />
+            )}
           </tbody>
           <tfoot>
             <tr className="pk-room">
@@ -739,6 +767,7 @@ function CourseCard({
           </tfoot>
         </table>
       </div>
+      {course.menuChanged > 0 && <p className="mn-quiet">{t('seePicks.menuChanged')}</p>}
       {!course.skippable && !course.asksNothing && (
         <p className="mn-quiet">{t('seePicks.noSkip')}</p>
       )}
@@ -838,10 +867,8 @@ function ChooseFor({
         t('seePicks.blankOption', { question: unanswered.question, name: who }),
         'pk-for-option',
       );
-    const ruled =
-      dish == null
-        ? []
-        : against(plateOf(dish, choice.variantId, choice.optionIds), person.allergens);
+    const plate = dish == null ? [] : plateOf(dish, choice.variantId, choice.optionIds);
+    const ruled = against(plate, person.allergens);
     if (ruled.length > 0 && !confirmed) {
       setAsking(ruled);
       return;
@@ -867,9 +894,11 @@ function ChooseFor({
       onSaved(
         next,
         t('seePicks.savedFor', { course: course.name, name: who, what }),
-        ruled.length > 0
-          ? t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) })
-          : null,
+        ruled.length === 0
+          ? null
+          : plate == null
+            ? t('seePicks.savedOverrideNotStated', { name: who, dish: what })
+            : t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) }),
       );
       if (at + 1 < courses.length) {
         setAt(at + 1);
@@ -933,6 +962,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     ruled={dishRuledOut(one, person)}
+                    notStated={plateOf(one, null, []) == null}
                     who={who}
                     onPick={() => pickDish(one.id)}
                   />
@@ -1037,11 +1067,18 @@ function ChooseFor({
       {asking != null && dish != null && (
         <Override
           title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
-          body={t('seePicks.overrideBody', {
-            dish: mealPickName(dish, choice.variantId, choice.optionIds),
-            allergens: allergens(asking),
-            name: who,
-          })}
+          body={
+            plateOf(dish, choice.variantId, choice.optionIds) == null
+              ? t('seePicks.overrideBodyNotStated', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  name: who,
+                })
+              : t('seePicks.overrideBody', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  allergens: allergens(asking),
+                  name: who,
+                })
+          }
           keep={t('seePicks.chooseAnother')}
           go={t('seePicks.pickAnyway')}
           onKeep={() => {
@@ -1061,6 +1098,7 @@ function DishOption({
   label,
   checked,
   ruled,
+  notStated = false,
   who,
   childrenOnly = false,
   onPick,
@@ -1070,6 +1108,7 @@ function DishOption({
   label: string;
   checked: boolean;
   ruled: readonly string[];
+  notStated?: boolean;
   who: string;
   childrenOnly?: boolean;
   onPick: () => void;
@@ -1099,7 +1138,9 @@ function DishOption({
               <Triangle />
               {t('seePicks.allergyMark')}
             </span>
-            {t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
+            {notStated
+              ? t('seePicks.ruledOutNotStated')
+              : t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
           </span>
         )}
       </span>
@@ -1421,6 +1462,21 @@ function CircleMinus() {
     <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M6.5 10h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Swap() {
+  return (
+    <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4 7h11l-3-3M16 13H5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

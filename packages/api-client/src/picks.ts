@@ -28,6 +28,8 @@ export interface PicksCourse {
   skipped: number;
   needsHost: number;
   notChosen: number;
+  /** Asked again by a menu change (sc-3913), and not counted as in. */
+  menuChanged: number;
   room: number;
   answered: number;
 }
@@ -43,6 +45,8 @@ export interface PicksHostLine {
   reason: 'nothing' | 'allergy';
   pick: string | null;
   allergens: string[];
+  /** The pick never stated its allergens (sc-87421): nothing says it contains them. */
+  notStated: boolean;
 }
 
 export interface PicksParty {
@@ -56,8 +60,18 @@ export interface PicksExcluded {
   reason: string;
 }
 
+/** A course a menu change asked the person again (sc-3913), with the name of the pick they had. */
+export interface PicksChanged {
+  course: string;
+  picked: string;
+}
+
 export interface PicksWaiting extends PicksParty {
-  people: (PicksPerson & { courses: string[]; excluded: PicksExcluded[] })[];
+  people: (PicksPerson & {
+    courses: string[];
+    changed: PicksChanged[];
+    excluded: PicksExcluded[];
+  })[];
 }
 
 /** One course a person was given its default on (sc-1362), with the pick. */
@@ -147,6 +161,7 @@ function asCourse(raw: unknown): PicksCourse {
     skipped: num(one.skipped),
     needsHost: num(one.needsHost),
     notChosen: num(one.notChosen),
+    menuChanged: num(one.menuChanged),
     room: num(one.room),
     answered: num(one.answered),
   };
@@ -174,6 +189,7 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             reason: host.reason === 'allergy' ? 'allergy' : 'nothing',
             pick: typeof host.pick === 'string' ? host.pick : null,
             allergens: strings(host.allergens),
+            notStated: host.notStated === true,
           };
         })
       : null,
@@ -187,6 +203,10 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             people: list(reply.people).map((person) => ({
               ...asPerson(person),
               courses: strings(record(person).courses),
+              changed: list(record(person).changed).map((line) => ({
+                course: str(record(line).course),
+                picked: str(record(line).picked),
+              })),
               excluded: list(record(person).excluded).map((line) => ({
                 course: str(record(line).course),
                 reason: str(record(line).reason),

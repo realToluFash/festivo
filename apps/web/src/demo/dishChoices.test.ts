@@ -215,7 +215,7 @@ describe('allergens added to a picked option', () => {
 
 describe('Kitchen prep and the set course', () => {
   it('sums guests’ answers per option once somebody has picked', () => {
-    expect(kitchenPrep(sideChoice())).toBe(CHW.prep('41 plantain, 33 garden salad, 12 moi moi'));
+    expect(kitchenPrep(sideChoice())).toBe(CHW.prep('21 plantain, 16 garden salad, 8 moi moi'));
     expect(kitchenPrep(sauceChoice())).toBeNull();
   });
 
