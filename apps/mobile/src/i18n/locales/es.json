@@ -1715,7 +1715,7 @@
     "venueLookupDown": "Las sugerencias no están disponibles en este momento. Escriba la dirección completa y se guardará tal como la ha escrito.",
     "venueAddressHint": "Escriba al menos 3 caracteres para ver sugerencias. También puede escribir cualquier dirección.",
     "creditStadia": "Stadia Maps",
-    "creditOsm": "OpenStreetMap contributors",
+    "creditOsm": "colaboradores de OpenStreetMap",
     "venueZoneOffer": "El lugar está en {{zone}}. ¿Quiere usar esa zona horaria?",
     "venueZoneUse": "Usar {{zone}}",
     "venueZoneKeep": "Mantener {{zone}}",

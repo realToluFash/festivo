@@ -253,7 +253,7 @@
     "venueAddress": "Adresse",
     "venueAddressHint": "Saisissez au moins 3 caractères pour voir des suggestions. Vous pouvez aussi saisir n’importe quelle adresse.",
     "creditStadia": "Stadia Maps",
-    "creditOsm": "OpenStreetMap contributors",
+    "creditOsm": "les contributeurs d’OpenStreetMap",
     "venueSuggestions": "Suggestions d’adresses",
     "venueSuggestionsFound_one": "{{count, number}} suggestion. Utilisez les flèches haut et bas pour la choisir.",
     "venueSuggestionsFound_other": "{{count, number}} suggestions. Utilisez les flèches haut et bas pour en choisir une.",
