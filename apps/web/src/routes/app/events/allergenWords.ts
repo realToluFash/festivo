@@ -5,8 +5,9 @@ export function allergensInSentence(
   t: TFunction,
   language: string,
   codes: readonly string[],
+  type: 'conjunction' | 'disjunction' = 'conjunction',
 ): string {
-  return listFormat(language, { type: 'conjunction' }).format(
+  return listFormat(language, { type }).format(
     codes.map((code) => t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(language)),
   );
 }
