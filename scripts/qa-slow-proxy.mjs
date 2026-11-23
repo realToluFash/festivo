@@ -5,16 +5,17 @@ import { request as httpsRequest } from 'node:https';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
-export function holds(method, url, pattern, held = 'GET') {
+export function holds(method, url, pattern, held = 'GET', query) {
   if (method !== held) return false;
-  const path = new URL(url, 'http://proxy').pathname;
-  return pattern.test(path);
+  const { pathname, search } = new URL(url, 'http://proxy');
+  return pattern.test(pathname) && (query === undefined || query.test(search.slice(1)));
 }
 
 export function startProxy({
   target,
   delay,
   pattern,
+  query,
   method = 'GET',
   status,
   body,
@@ -53,7 +54,7 @@ export function startProxy({
       res.end(body ?? '');
     };
 
-    if (holds(req.method, req.url, pattern, method)) {
+    if (holds(req.method, req.url, pattern, method, query)) {
       req.pause();
       const held = setTimeout(() => {
         if (status === undefined && body === undefined) {
@@ -75,7 +76,7 @@ export function startProxy({
 }
 
 const usage =
-  'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--port n] [--host addr]';
+  'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--query regex] [--port n] [--host addr]';
 
 export class UsageError extends Error {}
 
@@ -111,6 +112,7 @@ async function main() {
       body: { type: 'string' },
       method: { type: 'string', default: 'GET' },
       path: { type: 'string', default: '^/api/events/[^/]+/guests$' },
+      query: { type: 'string' },
       port: { type: 'string', default: '0' },
       host: { type: 'string', default: '127.0.0.1' },
     },
@@ -130,6 +132,7 @@ async function main() {
     status,
     body,
     pattern: new RegExp(values.path),
+    query: values.query === undefined ? undefined : new RegExp(values.query),
     method: values.method.toUpperCase(),
     port: Number(values.port),
     host: values.host,
@@ -139,7 +142,7 @@ async function main() {
     ? `answered ${status ?? 200}${values.body ? ` with ${values.body}` : ''}`
     : 'forwarded';
   console.log(
-    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, ${values.method.toUpperCase()} ${values.path} held ${delay} ms, then ${outcome}`,
+    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, ${values.method.toUpperCase()} ${values.path}${values.query === undefined ? '' : ` ?${values.query}`} held ${delay} ms, then ${outcome}`,
   );
 }
 
