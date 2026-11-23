@@ -28,8 +28,8 @@ appId: host.exp.Exponent
     when:
       visible: '{{t:any:signInRules.overdueTitle}}'
     file: sign-out.yaml
-# The paused card names no account and has no Settings, so the batch signs out from Your
-# account and back in; sign-in-form.yaml counts the card as signed in. By its Paused since line,
+# The paused card names no account and has no Settings, so the batch signs out from Security's
+# This device row and back in; sign-in-form.yaml counts the card as signed in. By its Paused since line,
 # which every paused card carries whatever the reason, since Paused is also the tag on a paused
 # event in the Events list. sc-85683.
 - runFlow:

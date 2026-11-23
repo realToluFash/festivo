@@ -1,9 +1,24 @@
-# Signs out a member whose organisation in use is held (paused or two-factor overdue), from Your account. sc-85006.
+# Signs out a member whose organisation in use is held (paused or two-factor overdue). sc-85006.
+#
+# From Security's This device row: the held page stands in for Settings, and Your account
+# carries Sign out only beside the list on a tablet on its side, so upright on an iPad, as on
+# a phone, it has none. Security is about the account and is never held. sc-85022.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/account
+- openLink: ${METRO_URL}/--/settings/security
 - waitForAnimationToEnd
-- runFlow: settings-sign-out-tap.yaml
+- scrollUntilVisible:
+    element:
+      text: '.*{{t:any:security.thisDevice}}.*'
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 30000
+- tapOn:
+    text: '.*{{t:any:security.thisDevice}}.*'
+- runFlow:
+    file: scroll-tap.yaml
+    env:
+      ID: 'security.device.here.signOut'
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'
