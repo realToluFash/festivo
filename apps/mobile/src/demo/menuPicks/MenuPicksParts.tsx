@@ -2,7 +2,8 @@ import { type RefObject, useEffect, useRef } from 'react';
 import { Modal, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
+import { AskLayer } from '../../components/AskLayer.tsx';
+import { SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { RadioMark } from '../../components/RadioMark.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -377,39 +378,18 @@ export function OverrideAlert({
   onAnother: () => void;
   onAnyway: () => void;
 }) {
-  const another = useRef<ViewInstance>(null);
-
-  useEffect(() => {
-    const focus = setTimeout(() => moveScreenReaderFocus(another.current), 300);
-    return () => clearTimeout(focus);
-  }, []);
-
   return (
     <Modal visible={useModalOpen(true)} transparent animationType="fade" onRequestClose={onAnother}>
-      <View style={styles.scrim}>
-        <View
-          style={styles.alert}
-          accessibilityViewIsModal
-          accessibilityRole="alert"
-          onAccessibilityEscape={onAnother}
+      <View style={styles.askRoom} accessibilityViewIsModal onAccessibilityEscape={onAnother}>
+        <AskLayer
+          title={title}
+          line={body}
+          keep={{ label: keep, testID: 'menu.override.another' }}
+          confirm={{ label: go, testID: 'menu.override.anyway' }}
+          onKeep={onAnother}
+          onConfirm={onAnyway}
           testID="menu.override"
-        >
-          <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-            {title}
-          </Text>
-          <Text size={15} style={styles.secondary}>
-            {body}
-          </Text>
-          <View style={styles.alertActions}>
-            <PrimaryButton
-              ref={another}
-              label={keep}
-              onPress={onAnother}
-              testID="menu.override.another"
-            />
-            <SecondaryButton label={go} onPress={onAnyway} testID="menu.override.anyway" />
-          </View>
-        </View>
+        />
       </View>
     </Modal>
   );
@@ -460,6 +440,7 @@ export const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   rows: { marginTop: tokens.spaceSm },
+  askRoom: { flex: 1 },
   rowWrap: {
     paddingVertical: tokens.spaceSm,
     borderTopWidth: 1,
@@ -519,20 +500,4 @@ export const styles = StyleSheet.create({
     borderRadius: tokens.radiusPill,
     backgroundColor: tokens.colorAttentionTint,
   },
-  scrim: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: tokens.spaceXl,
-    backgroundColor: tokens.scrimDialog,
-  },
-  alert: {
-    width: '100%',
-    maxWidth: 420,
-    gap: tokens.spaceMd,
-    padding: tokens.spaceXl,
-    borderRadius: tokens.radiusSheet,
-    backgroundColor: tokens.colorCard,
-  },
-  alertActions: { gap: tokens.spaceSm, marginTop: tokens.spaceSm },
 });
