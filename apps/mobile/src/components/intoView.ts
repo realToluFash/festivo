@@ -119,17 +119,23 @@ export function restOverToast(
   );
 }
 
-/** Brings the scroll back inside its content's end, once the content has shrunk under it. */
-export function keepInsideEnd(scroll: SightScroll | null): void {
+/** Brings the scroll back inside its content's end, once the content has shrunk under it, and says where it scrolled to, null when it stayed. */
+export function keepInsideEnd(
+  scroll: SightScroll | null,
+  measured: (to: number | null) => void = () => {},
+): void {
   const view = scroll?.ref.current;
   const content = view?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
-  if (scroll == null || view == null || content == null || scrollHost == null) return;
+  if (scroll == null || view == null || content == null || scrollHost == null)
+    return measured(null);
 
   content.measureInWindow((_cx, _cy, _cw, contentHeight) =>
     scrollHost.measureInWindow((_sx, _sy, _sw, scrollHeight) => {
       const end = Math.max(0, contentHeight - scrollHeight);
-      if (scroll.offset.current > end) view.scrollTo({ y: end, animated: false });
+      if (scroll.offset.current <= end) return measured(null);
+      view.scrollTo({ y: end, animated: false });
+      measured(end);
     }),
   );
 }

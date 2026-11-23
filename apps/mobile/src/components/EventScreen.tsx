@@ -193,7 +193,12 @@ export function EventScreen({
     over?: Editing | undefined;
   } | null>(null);
   const [toastAt, setToastAt] = useState<ToastAt | null>(null);
+  const [toastClosed, setToastClosed] = useState<{ of: Editing } | null>(null);
   const saves = useRef(0);
+  const closeToast = () => {
+    if (toast?.over != null) setToastClosed({ of: toast.over });
+    setToast(null);
+  };
   const withdrawToastAction = useCallback(
     () => setToast((was) => (was == null ? null : { ...was, action: null })),
     [],
@@ -392,6 +397,7 @@ export function EventScreen({
                 ? toastOverPage(toast, toastAt)
                 : null
             }
+            toastClosed={toastClosed}
             onDuplicate={onDuplicate}
             onDeleted={onDeleted}
             tell={(words) => setToast({ eventId, area, words })}
@@ -697,7 +703,7 @@ export function EventScreen({
           words={toast.words}
           id={toast.id}
           action={toast.action}
-          onClose={() => setToast(null)}
+          onClose={closeToast}
           onAt={setToastAt}
           bottom={
             phone

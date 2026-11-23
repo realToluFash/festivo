@@ -2,6 +2,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -9,6 +10,7 @@ import {
 } from 'react';
 import {
   type DimensionValue,
+  Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -128,16 +130,22 @@ export function PageToast({
 
   useEffect(() => () => at.current?.(null), []);
 
+  const measure = useCallback(
+    () => box.current?.measureInWindow((_x, top) => at.current?.({ words, id, top })),
+    [words, id],
+  );
+
+  // A toast laid out over the keys moves down with its place as the window grows back, and its own box is not laid out again (sc-86228).
+  useEffect(() => {
+    const hidden = Keyboard.addListener('keyboardDidHide', () => requestAnimationFrame(measure));
+
+    return () => hidden.remove();
+  }, [measure]);
+
   return (
     <TitleCap.Provider value={null}>
-      <View style={[styles.toast, { bottom }]}>
-        <View
-          key={id ?? words}
-          ref={box}
-          onLayout={() =>
-            box.current?.measureInWindow((_x, top) => at.current?.({ words, id, top }))
-          }
-        >
+      <View style={[styles.toast, { bottom }]} onLayout={measure}>
+        <View key={id ?? words} ref={box} onLayout={measure}>
           <Toast words={words} action={action} onClose={onClose} />
         </View>
       </View>
