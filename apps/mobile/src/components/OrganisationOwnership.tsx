@@ -28,7 +28,8 @@ import { Glyph } from './Glyph.tsx';
 import { type OrganisationCalls } from './OrganisationJoining.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
-import { Pill } from './SettingsParts.tsx';
+import { Notice } from './Notice.tsx';
+import { ProviderButton } from './ProviderSignIn.tsx';
 import {
   Ask,
   type AskProps,
@@ -330,6 +331,12 @@ function TransferScreen({
 
   async function continueWith(by: Provider): Promise<void> {
     if (busy) return;
+    if (chosen == null) {
+      setErrors({ owner: t('ownership.ownerBlank') });
+      setOwnerAnswer({});
+
+      return;
+    }
 
     setBusy(true);
     setProviderError(null);
@@ -485,10 +492,11 @@ function TransferScreen({
       {provider != null && vouched == null && (
         <View style={styles.prove}>
           <Line text={t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[provider] })} />
-          <Pill
-            kind="secondary"
+          <ProviderButton
+            provider={provider}
             label={t('waysCard.continueWith', { provider: PROVIDER_NAMES[provider] })}
             onPress={() => void continueWith(provider)}
+            busy={busy}
             testID="organisation.transfer.provider"
           />
           {providerError != null && <FieldError message={providerError} />}
@@ -503,14 +511,15 @@ function TransferScreen({
         </View>
       )}
       {provider != null && vouched != null && (
-        <View style={styles.signedIn} testID="organisation.transfer.signedIn">
-          <View {...hidden}>
-            <Glyph name="tick" size={18} ink={tokens.colorAccentText} weight={2.6} />
-          </View>
-          <Text size={15} weight="semibold">
-            {t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
-          </Text>
-        </View>
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.done.glyph}
+          markTone="done"
+          title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[provider] })}
+          accentTitle
+          detail={vouched.email}
+          announce
+        />
       )}
       {codeAsked && (
         <Field label={t('ownership.code')} error={errors.code}>
@@ -716,12 +725,6 @@ const styles = StyleSheet.create({
   step: { paddingVertical: tokens.spaceXs },
   warning: { gap: tokens.spaceXs },
   prove: { gap: tokens.spaceSm },
-  signedIn: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-  },
   uncounted: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
   uncountedMark: { marginTop: tokens.spaceHair },
   matches: {

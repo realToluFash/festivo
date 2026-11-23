@@ -8,10 +8,12 @@ import {
   keptOnceCodeAsked,
   keptProof,
   keptProofRanOut,
+  pressAfterLimit,
   provingRefusal,
   signedInWith,
   transferSentKept,
   tripRefused,
+  tripStartsOver,
   unlinkProofLapsed,
 } from './waysProof.ts';
 
@@ -43,6 +45,24 @@ describe('proving it is you, from Security', () => {
     expect(codeBeforeTrip('password', false)).toBe(false);
   });
 
+  it('starts a spent trip over, so the next press opens Google or Apple and asks no code first (sc-22601)', () => {
+    expect(tripStartsOver('google', true)).toEqual({
+      returned: null,
+      kept: null,
+      signedIn: null,
+      codeAsked: false,
+    });
+    expect(tripStartsOver('apple', false).codeAsked).toBe(false);
+    expect(tripStartsOver('password', true).codeAsked).toBe(true);
+  });
+
+  it('keeps the code step after a sign-out limit, re-sending the held proof and making the trip again only once it lapsed (sc-22601)', () => {
+    expect(pressAfterLimit('held-proof', true)).toEqual({ resend: 'held-proof' });
+    expect(pressAfterLimit('held-proof', false)).toEqual({ resend: 'held-proof' });
+    expect(pressAfterLimit(null, true)).toBe('startOver');
+    expect(pressAfterLimit(null, false)).toBe('startOverAndTrip');
+  });
+
   it('says a refused provider proof on the screen, not on a password field it does not show', () => {
     expect(provingRefusal(refusal('invalid_credentials', 401), t, 'Google', 'en')).toEqual({
       field: 'failed',
@@ -55,6 +75,25 @@ describe('proving it is you, from Security', () => {
     expect(provingRefusal(refusal('two_factor_code_invalid', 422), t, 'Apple', 'en').field).toBe(
       'code',
     );
+  });
+
+  it('carries when too many tries lift, so Sign out everywhere else can hold its button off until then (sc-22601)', () => {
+    const problem = {
+      type: 'https://soirely.com/errors/too_many_attempts',
+      title: 'No.',
+      status: 429,
+    };
+    const limited = new ApiError(
+      problem,
+      new Response(JSON.stringify(problem), { status: 429, headers: { 'Retry-After': '120' } }),
+    );
+    const said = provingRefusal(limited, t, 'Google', 'en');
+
+    expect(said.field).toBe('failed');
+    expect(said.until).toBeInstanceOf(Date);
+    expect(
+      provingRefusal(refusal('two_factor_code_invalid', 422), t, 'Google', 'en'),
+    ).not.toHaveProperty('until');
   });
 
   it('keeps the provider’s sign-in across a wrong code, and makes the trip again only when the trip was refused', () => {

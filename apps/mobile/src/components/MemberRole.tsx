@@ -258,6 +258,10 @@ function ProveScreen({
         code: proof.codeAsked,
         codeHelp: codeHelp(t, stepTwo),
         instead: provider,
+        trip:
+          via === 'password' || via == null
+            ? undefined
+            : { provider: via, signedIn: proof.signedIn },
       }}
       opener={opener}
       onClose={onCancel}
