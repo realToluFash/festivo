@@ -15,7 +15,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld, useRevealed } from '../components/Field.tsx';
-import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
+import { fieldFocused, fieldLeft, focusOwed } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import {
@@ -85,12 +85,18 @@ export function InsideField({
   const [labelHeight, setLabelHeight] = useState(LABEL_LARGE * 1.3 * fontScale);
   const restingHeight = Math.max(HEIGHT - 2, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
+  const [focusesItself] = useState(rest.autoFocus === true);
 
   useEffect(() => {
     const mounted = box.current;
 
-    return () => fieldLeft(mounted);
-  }, []);
+    const unowed = focusesItself ? focusOwed(mounted) : undefined;
+
+    return () => {
+      unowed?.();
+      fieldLeft(mounted);
+    };
+  }, [focusesItself]);
 
   useEffect(() => {
     const run = glide(lift, raised ? 1 : 0, tokens.motionFast);
