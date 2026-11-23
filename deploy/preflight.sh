@@ -82,31 +82,95 @@ bytes="$(printf '%s' "$(value_of TWO_FACTOR_KEY)" | base64 -d 2>/dev/null | wc -
   && ok "DATABASE_URL carries POSTGRES_PASSWORD" \
   || fail "DATABASE_URL does not carry POSTGRES_PASSWORD"
 
-# Prints the first and last address of an IPv4 range as integers, or nothing.
-ipv4_span() {
-  local ip="${1%%/*}" bits=32 a b c d
-  [[ "$1" == */* ]] && bits="${1#*/}"
-  [[ "$bits" =~ ^[0-9]+$ ]] && (( bits <= 32 )) || return
-  [[ "$ip" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return
-  a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[2]}" c="${BASH_REMATCH[3]}" d="${BASH_REMATCH[4]}"
-  local size=$(( 1 << (32 - bits) )) n=$(( (a << 24) + (b << 16) + (c << 8) + d ))
-  printf '%s %s' $(( n / size * size )) $(( n / size * size + size - 1 ))
+# Prints a number's lowest $2 bits.
+to_bits() {
+  local i out=""
+  for (( i = $2 - 1; i >= 0; i-- )); do out+=$(( ($1 >> i) & 1 )); done
+  printf '%s' "$out"
 }
 
-private_ranges=()
+# Prints an IPv4 or IPv6 address as its 32 or 128 bits, or nothing.
+bits_of() {
+  local ip="$1" out="" part head tail fill i v4 h=() t=() groups=()
+  if [[ "$ip" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+    for part in "${BASH_REMATCH[@]:1}"; do
+      (( 10#$part <= 255 )) || return
+      out+="$(to_bits $(( 10#$part )) 8)"
+    done
+    printf '%s' "$out"
+    return
+  fi
+  [[ "$ip" == *:* && "$ip" != *::*::* ]] || return
+  if [[ "$ip" =~ ^(.*:)([0-9]+\.[0-9.]+)$ ]]; then
+    head="${BASH_REMATCH[1]}"
+    v4="$(bits_of "${BASH_REMATCH[2]}")"
+    [ -n "$v4" ] || return
+    ip="$head$(printf '%x:%x' $(( 2#${v4:0:16} )) $(( 2#${v4:16} )))"
+  fi
+  [[ "$ip" == :* && "$ip" != ::* ]] && return
+  [[ "$ip" == *: && "$ip" != *:: ]] && return
+  if [[ "$ip" == *::* ]]; then
+    head="${ip%%::*}" tail="${ip#*::}"
+    [ -n "$head" ] && IFS=: read -ra h <<<"$head"
+    [ -n "$tail" ] && IFS=: read -ra t <<<"$tail"
+    fill=$(( 8 - ${#h[@]} - ${#t[@]} ))
+    (( fill >= 1 )) || return
+  else
+    IFS=: read -ra h <<<"$ip"
+    fill=0
+    (( ${#h[@]} == 8 )) || return
+  fi
+  groups=("${h[@]}")
+  for (( i = 0; i < fill; i++ )); do groups+=(0); done
+  groups+=("${t[@]}")
+  for part in "${groups[@]}"; do
+    [[ "$part" =~ ^[0-9a-fA-F]{1,4}$ ]] || return
+    out+="$(to_bits $(( 16#$part )) 16)"
+  done
+  printf '%s' "$out"
+}
+
+# Not globally reachable, from IANA's special-purpose registries (RFC 6890, RFC 8190);
+# IPv6 must also lie in global unicast, 2000::/3 (RFC 4291).
+ipv4_unreachable="0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 127.0.0.0/8 169.254.0.0/16 172.16.0.0/12 192.0.0.0/24
+192.0.2.0/24 192.168.0.0/16 198.18.0.0/15 198.51.100.0/24 203.0.113.0/24 224.0.0.0/4 240.0.0.0/4"
+ipv6_unreachable="2001::/23 2001:db8::/32 2002::/16 3fff::/20"
+
+# Succeeds when the item is an address or range, every address of which an internet caller can come from.
+reachable_range() {
+  local bits len=32 blocked block prefix list="$ipv4_unreachable"
+  bits="$(bits_of "${1%%/*}")"
+  [ -n "$bits" ] || return 1
+  (( ${#bits} == 128 )) && len=128 list="$ipv6_unreachable"
+  if [[ "$1" == */* ]]; then
+    [[ "${1#*/}" =~ ^[0-9]{1,3}$ ]] && (( 10#${1#*/} <= len )) || return 1
+    len=$(( 10#${1#*/} ))
+  fi
+  (( ${#bits} == 128 )) && { (( len >= 3 )) && [ "${bits:0:3}" = 001 ] || return 1; }
+  for blocked in $list; do
+    block="$(bits_of "${blocked%/*}")" prefix="${blocked#*/}"
+    (( len < prefix )) && prefix=$len
+    [ "${bits:0:prefix}" = "${block:0:prefix}" ] && return 1
+  done
+  return 0
+}
+
+items=0 refused=()
 IFS=, read -ra ranges <<<"$(value_of MAIL_WEBHOOK_ALLOWED_RANGES)"
 for range in "${ranges[@]}"; do
-  range="${range//[[:space:]]/}"
-  read -r first last <<<"$(ipv4_span "$range")"
-  [ -z "$first" ] && continue
-  for blocked in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8; do
-    read -r bfirst blast <<<"$(ipv4_span "$blocked")"
-    if (( first <= blast && last >= bfirst )); then private_ranges+=("$range"); break; fi
-  done
+  range="${range#"${range%%[![:space:]]*}"}"
+  range="${range%"${range##*[![:space:]]}"}"
+  [ -z "$range" ] && continue
+  items=$(( items + 1 ))
+  reachable_range "$range" || refused+=("$range")
 done
-[ "${#private_ranges[@]}" = 0 ] \
-  && ok "MAIL_WEBHOOK_ALLOWED_RANGES holds no private range" \
-  || fail "MAIL_WEBHOOK_ALLOWED_RANGES holds a private range (${private_ranges[*]}): set the provider's published ranges"
+if [ "$items" = 0 ]; then
+  fail "MAIL_WEBHOOK_ALLOWED_RANGES holds no range: set the provider's published ranges"
+elif [ "${#refused[@]}" != 0 ]; then
+  fail "MAIL_WEBHOOK_ALLOWED_RANGES holds ${refused[*]}: not an address or range, or not one an internet caller comes from, so the API would refuse every webhook; set the provider's published ranges"
+else
+  ok "MAIL_WEBHOOK_ALLOWED_RANGES holds only ranges an internet caller comes from"
+fi
 
 # The backup container's own file: the bucket's write-only credentials, and the
 # public half of the backup key (sc-30204).

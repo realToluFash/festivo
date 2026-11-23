@@ -89,8 +89,9 @@ port and `REDIS_PASSWORD`; this path does not set it.
   and the web client's own pages. Set explicitly in every environment, even when it is
   the default `support@soirely.com`.
 - **`MAIL_WEBHOOK_SECRET` and `MAIL_WEBHOOK_ALLOWED_RANGES`** (sc-4332): the
-  provider's published ranges, set beside the secret, never the local stacks' private
-  ranges (the pre-flight refuses those). A refused bounce never reaches the rate check,
+  provider's published ranges, set beside the secret. The pre-flight refuses an item it
+  cannot read as an address or range, and any range, IPv4 or IPv6, that reaches an
+  address no internet caller comes from (sc-87247). A refused bounce never reaches the rate check,
   so the rate alert cannot catch a wrong value: **after each deploy, send a test webhook
   from the provider and confirm it is recorded.**
 - Every other provider's credentials are in `deploy/env.example`, one per line. A
