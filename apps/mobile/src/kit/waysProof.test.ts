@@ -57,6 +57,25 @@ describe('proving it is you, from Security', () => {
     );
   });
 
+  it('carries when too many tries lift, so Sign out everywhere else can hold its button off until then (sc-22601)', () => {
+    const problem = {
+      type: 'https://soirely.com/errors/too_many_attempts',
+      title: 'No.',
+      status: 429,
+    };
+    const limited = new ApiError(
+      problem,
+      new Response(JSON.stringify(problem), { status: 429, headers: { 'Retry-After': '120' } }),
+    );
+    const said = provingRefusal(limited, t, 'Google', 'en');
+
+    expect(said.field).toBe('failed');
+    expect(said.until).toBeInstanceOf(Date);
+    expect(
+      provingRefusal(refusal('two_factor_code_invalid', 422), t, 'Google', 'en'),
+    ).not.toHaveProperty('until');
+  });
+
   it('keeps the provider’s sign-in across a wrong code, and makes the trip again only when the trip was refused', () => {
     expect(tripRefused(refusal('two_factor_code_invalid', 422))).toBe(false);
     expect(tripRefused(refusal('recovery_code_used', 422))).toBe(false);

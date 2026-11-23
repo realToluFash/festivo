@@ -108,12 +108,13 @@ export function provingRefusal(
   t: TFunction,
   providerName: string | null,
   locale: string,
-): { field: ProvingField | 'failed'; message: string } {
+): { field: ProvingField | 'failed'; message: string; until?: Date | null } {
   const refusal = proofRefusal(error, providerName == null);
 
   if (refusal.kind === 'limited')
     return {
       field: 'failed',
+      until: refusal.until,
       message:
         refusal.until == null
           ? t('passwordCard.pausedSoon')

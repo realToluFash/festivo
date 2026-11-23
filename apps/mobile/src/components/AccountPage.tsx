@@ -535,6 +535,10 @@ function ConfirmStep({
         code: proving.codeAsked,
         codeHelp: codeHelp(t, stepTwo),
         instead: provider,
+        trip:
+          via === 'password' || via == null
+            ? undefined
+            : { provider: via, signedIn: proving.signedIn },
       }}
       opener={opener}
       onClose={onClose}

@@ -673,9 +673,8 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts);
-  // Security's proofs, Sign out everywhere else among them, take ConfirmScreen's.
-  const RECOVERY_CODE_FIELDS = ['${testID}.code', '${idPrefix}.code'];
+  // Every proof, Sign out everywhere else among them, takes ConfirmScreen's.
+  const RECOVERY_CODE_FIELDS = ['${testID}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
@@ -856,7 +855,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
   // sc-20209 carries it to adding and checking an address or a number, and to A few details. sc-20210: the signed-out forms.
   const HELD_FORMS = [
-    'src/components/ConfirmItsYou.tsx',
+    'src/components/AccountConfirm.tsx',
     'src/components/SecurityPassword.tsx',
     'src/components/AccountName.tsx',
     'src/components/AccountZone.tsx',
@@ -1226,11 +1225,6 @@ describe('a submit with the keys down keeps them down (sc-20209)', () => {
 });
 
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
-  const offWhile = (file: string, busy: string) =>
-    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
-      .filter(({ markup }) => markup.includes(`off={${busy}}`))
-      .map(({ markup }) => propValue(markup, 'testID'));
-
   it('in Password, where each screen that sends waits on Cancel while it is busy', () => {
     const source = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8');
     const screens = [...source.matchAll(/<FocusedScreen\b/gu)].map(({ index }) =>
@@ -1250,16 +1244,13 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
     ['AccountName.tsx', 'saving'],
     ['AccountZone.tsx', 'saving'],
     ['AccountAdd.tsx', 'sending'],
+    ['AccountConfirm.tsx', 'checking'],
   ])('in %s, where the focused screen waits on Cancel while %s', (file, busy) => {
     const source = readFileSync(join('src', 'components', file), 'utf8');
     const start = source.indexOf('<FocusedScreen');
     const screen = source.slice(start, tagEnd(source, start));
 
     expect(propValue(screen, 'waits')).toBe(`{${busy}}`);
-  });
-
-  it("in Confirm it's you, beside Continue", () => {
-    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
   });
 });
 

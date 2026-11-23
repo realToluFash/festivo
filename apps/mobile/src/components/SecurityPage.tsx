@@ -766,7 +766,20 @@ function ProofStep({
       ? confirmWith(account.hasPassword, account.providers)
       : proveWith(account.hasPassword, account.providers, acting);
   const proving = useProof(codeOnly ? 'password' : via, twoFactorOn);
-  const provider = codeOnly || via === 'password' || via == null ? null : PROVIDER_NAMES[via];
+  const tripVia = codeOnly || via === 'password' || via == null ? null : via;
+  const provider = tripVia == null ? null : PROVIDER_NAMES[tripVia];
+  const [limitedUntil, setLimitedUntil] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (limitedUntil == null) return;
+    // The button comes back and the notice goes at the API's `until`, with nothing in their place.
+    const lifts = setTimeout(
+      () => setLimitedUntil(null),
+      Math.max(0, limitedUntil.getTime() - Date.now()),
+    );
+
+    return () => clearTimeout(lifts);
+  }, [limitedUntil]);
   const stepTwo = provider != null && proving.signedIn != null ? provider : null;
   const lead = codeOnly
     ? t('twoFactorCard.offBody')
@@ -797,6 +810,16 @@ function ProofStep({
           ? t('devices.everywhereCodeHelp')
           : codeHelp(t, stepTwo),
     instead: provider,
+    trip: tripVia == null ? undefined : { provider: tripVia, signedIn: proving.signedIn },
+    limited:
+      limitedUntil == null
+        ? undefined
+        : {
+            title: t('devices.everywhereLimitedTitle'),
+            body: t('devices.everywhereLimitedBody', {
+              time: formatTimeOfDay(limitedUntil, dateLocale()),
+            }),
+          },
   };
 
   return (
@@ -819,7 +842,12 @@ function ProofStep({
         const outcome = await proving.submit(password, code);
         if (outcome.kind === 'proved') return onProved(outcome.proof, outcome.codeSpent);
         if (outcome.kind !== 'refused') return { password: null, code: null, checked: false };
-        const { field, message } = outcome.refusal;
+        const { field, message, until } = outcome.refusal;
+        if (proof === 'everywhere' && tripVia != null && until != null) {
+          setLimitedUntil(until);
+
+          return { password: null, code: null, checked: false };
+        }
 
         return {
           password: field === 'password' ? message : null,
