@@ -14,6 +14,7 @@ import { Text, type TextHandle } from './Text.tsx';
 /** `PolicySignIn-*` state `everyone_blocked`: in place of every screen of the organisation (sc-609). */
 export function TwoFactorOverdue({
   organisation,
+  othersListed,
   answer,
   headingRef,
   onTurnOn,
@@ -21,6 +22,8 @@ export function TwoFactorOverdue({
 }: {
   /** The organisation's name. */
   organisation: string;
+  /** Whether the switcher lists an organisation besides this one (sc-85006). */
+  othersListed: boolean;
   /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
   answer: unknown;
   headingRef?: RefObject<TextHandle | null>;
@@ -46,7 +49,7 @@ export function TwoFactorOverdue({
           {t('signInRules.overdueBody', { organisation })}
         </Text>
         <Text size={tokens.typeBodyPhone.size} muted>
-          {t('signInRules.overdueElsewhere')}
+          {t(othersListed ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
         </Text>
         <View style={[styles.actions, kind !== 'phone' && styles.actionsTablet]}>
           <PrimaryButton

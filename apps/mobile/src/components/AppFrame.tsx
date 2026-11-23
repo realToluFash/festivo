@@ -727,6 +727,9 @@ export function AppFrame({
                               ) : standIn === 'overdue' && signedIn.organisation != null ? (
                                 <TwoFactorOverdue
                                   organisation={signedIn.organisation.name}
+                                  othersListed={signedIn.organisations.some(
+                                    (other) => other.id !== signedIn.organisation?.id,
+                                  )}
                                   answer={switchAnswer ?? lapsed}
                                   headingRef={overdueHeading}
                                   onTurnOn={() => router.navigate(SECTION_HREF.security)}

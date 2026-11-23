@@ -56,7 +56,11 @@ const PAGE = {
 
 const GOOGLE: LinkedProvider = { provider: 'google', email: 'folake@gmail.com' };
 
-function signedIn(organisation: Membership, providers: LinkedProvider[] = [GOOGLE]): void {
+function signedIn(
+  organisation: Membership,
+  providers: LinkedProvider[] = [GOOGLE],
+  others: Membership[] = [],
+): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -68,7 +72,7 @@ function signedIn(organisation: Membership, providers: LinkedProvider[] = [GOOGL
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: 'Africa/Lagos',
     waitingFor: null,
@@ -833,15 +837,35 @@ describe('what the rules ask of a member, on every page', () => {
     expect(
       screen.getByText('Ìrè Events requires two-factor, and the time to turn it on has passed.'),
     ).toBeDefined();
-    expect(
-      screen.getByText('Your other organisations and single-event access are not affected.'),
-    ).toBeDefined();
+    expect(screen.getByText('Your single-event access is not affected.')).toBeDefined();
+    expect(screen.queryByText(/Your other organisations/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Sign-in rules' })).toBeNull();
 
     fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
+  });
+
+  it('past the deadline, a member of another organisation is told it is not affected', async () => {
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+      [GOOGLE],
+      [membership({ id: 'org_2', name: 'Okafor Family' })],
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
   });
 
   it('past the deadline, stays signed in and says so when signing out cannot reach Soirely', async () => {

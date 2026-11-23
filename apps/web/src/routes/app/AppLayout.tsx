@@ -243,7 +243,10 @@ function Shell() {
         onChoose={() => setChoosing((times) => times + 1)}
       />
     ) : organisation != null && overdue && !atAccount ? (
-      <TwoFactorOverdue organisation={organisation} />
+      <TwoFactorOverdue
+        organisation={organisation}
+        othersListed={session.organisations.some((other) => other.id !== organisation.id)}
+      />
     ) : null;
 
   const { handoff, showAnyway } = useHandoff(pathname, organisation?.id ?? null, standIn == null);
