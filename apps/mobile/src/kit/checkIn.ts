@@ -26,13 +26,24 @@ const words = (name: string) =>
     .split(/[\s-]+/u)
     .filter((one) => one !== '');
 
-/** Every word typed starts some word of the name, in any order, ignoring case and accents; a hyphen separates words. "okon ada" finds "Chief Mrs Adaeze Okonkwo-Williams", "kwo" does not. */
-export function doorMatches(name: string, typed: string): boolean {
-  const wanted = words(typed);
-  if (wanted.length === 0) return true;
-  const has = words(name);
+/** How a name answers what was typed at the door (sc-85893). `start`: every word typed starts some word of the name, in any order (sc-1454's rule). `inside`: otherwise, every word typed starts a word or, from 3 letters, sits inside one. Case and accents are ignored; a hyphen or a space separates words. */
+export type DoorMatch = 'start' | 'inside';
 
-  return wanted.every((one) => has.some((word) => word.startsWith(one)));
+const INSIDE_FROM = 3;
+
+export function doorMatch(name: string, typed: string): DoorMatch | null {
+  const wanted = words(typed);
+  if (wanted.length === 0) return 'start';
+  const has = words(name);
+  if (wanted.every((one) => has.some((word) => word.startsWith(one)))) return 'start';
+
+  return wanted.every((one) =>
+    has.some(
+      (word) => word.startsWith(one) || ([...one].length >= INSIDE_FROM && word.includes(one)),
+    ),
+  )
+    ? 'inside'
+    : null;
 }
 
 function rowsOf(t: TFunction, guest: CheckInGuest): DoorRow[] {
@@ -58,21 +69,53 @@ function rowsOf(t: TFunction, guest: CheckInGuest): DoorRow[] {
   ];
 }
 
-/** Everyone A–Z by full name in the reader's locale, each companion under their host. A search keeps whoever matches by their own name; a companion found shows under their host, and a host found shows with all their companions. */
-export function doorRows(t: TFunction, checkIn: CheckIn, typed: string, locale: string): DoorRow[] {
-  const order = new Intl.Collator(locale, { sensitivity: 'base' });
-  const guests = [...checkIn.guests].sort((a, b) => order.compare(a.fullName, b.fullName));
+interface DoorBlock {
+  rows: DoorRow[];
+  match: DoorMatch;
+  /** The first of its people found by their own name, named as the host typed it. */
+  found: DoorRow;
+}
 
-  return guests.flatMap((guest) => {
-    const rows = rowsOf(t, guest);
-    const [host, ...companions] = rows;
-    if (host == null || doorMatches(guest.fullName, typed)) return rows;
-    const found = companions.filter(
-      (row, at) => guest.companions[at]?.fullName != null && doorMatches(row.name, typed),
-    );
+function blockOf(t: TFunction, guest: CheckInGuest, typed: string): DoorBlock | null {
+  const [host, ...companions] = rowsOf(t, guest);
+  if (host == null) return null;
+  const own = doorMatch(guest.fullName, typed);
+  const hits = companions.flatMap((row, at) => {
+    const name = guest.companions[at]?.fullName;
+    if (name == null) return [];
+    const match = doorMatch(name, typed);
 
-    return found.length === 0 ? [] : [host, ...found];
+    return match == null ? [] : [{ row, name, match }];
   });
+  const matches = [own, ...hits.map((hit) => hit.match)];
+  const match = matches.includes('start') ? 'start' : matches.includes('inside') ? 'inside' : null;
+  const first = hits[0];
+  if (match == null) return null;
+  if (own != null) return { rows: [host, ...companions], match, found: host };
+  if (first == null) return null;
+
+  return {
+    rows: [host, ...hits.map((hit) => hit.row)],
+    match,
+    found: { ...first.row, name: first.name },
+  };
+}
+
+function doorBlocks(t: TFunction, checkIn: CheckIn, typed: string, locale: string): DoorBlock[] {
+  const order = new Intl.Collator(locale, { sensitivity: 'base' });
+  const blocks = [...checkIn.guests]
+    .sort((a, b) => order.compare(a.fullName, b.fullName))
+    .flatMap((guest) => blockOf(t, guest, typed) ?? []);
+
+  return [
+    ...blocks.filter((block) => block.match === 'start'),
+    ...blocks.filter((block) => block.match === 'inside'),
+  ];
+}
+
+/** Everyone A–Z by full name in the reader's locale, each companion under their host. A search lists the guests whose words start with what was typed, then those whose words only hold it, each group A–Z (sc-85893); a host found shows with all their companions, a companion found shows under their host, and the two stay in the first group either belongs to. */
+export function doorRows(t: TFunction, checkIn: CheckIn, typed: string, locale: string): DoorRow[] {
+  return doorBlocks(t, checkIn, typed, locale).flatMap((block) => block.rows);
 }
 
 /** "141 of 152 arrived", attended of expected; with nobody expected, "37 arrived" (sc-1454, The count). */
@@ -121,6 +164,18 @@ export function walkInProblem(name: string): 'blank' | 'long' | null {
   if (trimmed === '') return 'blank';
 
   return visibleLength(trimmed) > 200 ? 'long' : null;
+}
+
+/** Who **Add walk-in**'s "already on the list" panel names: the guest with the same name, otherwise the first person **Search by name** would find by that name (sc-85893). */
+export function listedAs(
+  checkIn: CheckIn,
+  name: string,
+  locale: string,
+  t: TFunction,
+): DoorRow | null {
+  if (words(name).length === 0) return null;
+
+  return sameName(checkIn, name) ?? doorBlocks(t, checkIn, name, locale)[0]?.found ?? null;
 }
 
 export function sameName(checkIn: CheckIn, name: string): DoorRow | null {
