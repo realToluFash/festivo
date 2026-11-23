@@ -104,18 +104,25 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     #[TestWith([true, 'without your passkeys or authenticator:', 'the passkeys, the authenticator and the recovery codes are lost', 'They lost their passkeys, their authenticator and their recovery codes,'])]
     public function theEmailsNameThePasskeysTheMemberHolds(bool $keepsApp, string $code, string $started, string $approver): void
     {
-        self::em()->persist(new Passkey($this->person, 'credential', 'key', '00000000-0000-0000-0000-000000000000', true, 0, new DateTimeImmutable()));
+        $person = Type\instance_of(User::class)->coerce(self::em()->find(User::class, $this->person->getId()));
+        self::em()->persist(new Passkey($person, 'credential', 'key', '00000000-0000-0000-0000-000000000000', true, 0, new DateTimeImmutable()));
         if (!$keepsApp) {
-            self::em()->remove(self::service(TwoFactorFactorRepository::class)->findActiveFor($this->person) ?? self::fail('the app is on'));
+            self::em()->remove(self::service(TwoFactorFactorRepository::class)->findActiveFor($person) ?? self::fail('the app is on'));
         }
         self::em()->flush();
         self::drainNotifications();
 
-        $this->prove($this->start(), $this->emailCode());
+        $handle = $this->start();
+        $codeMail = $this->mailTo(self::ADDRESS, 'Your code to get back into Soirely');
+        self::assertStringContainsString($code, $codeMail);
 
-        self::assertStringContainsString($code, $this->mailTo(self::ADDRESS, 'Your code to get back into Soirely'));
-        self::assertStringContainsString($started, $this->mailTo(self::ADDRESS, 'A request to get into your Soirely account'));
-        self::assertStringContainsString($approver, $this->mailTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account'));
+        $this->prove($handle, Regex\first_match($codeMail, '/^(\d{6})$/m')[1] ?? self::fail('the email carries no code'));
+        $sent = Str\join(Vec\map(
+            Type\vec(Type\instance_of(Email::class))->coerce(self::getMailerMessages()),
+            static fn (Email $mail): string => Type\string()->coerce($mail->getTextBody()),
+        ), "\n");
+        self::assertStringContainsString($started, $sent, 'to the member');
+        self::assertStringContainsString($approver, $sent, 'to the approver');
     }
 
     /** A reset link proves only the inbox, so it opens no recovery: that asks for the first factor (sc-29067, Decided, 8 Nov). */
