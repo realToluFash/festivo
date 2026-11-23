@@ -2515,6 +2515,37 @@ describe("An event's venue in New event (sc-3589)", () => {
     });
   });
 
+  it('credits Stadia Maps and OpenStreetMap under the suggestions, outside the listbox (sc-80918)', async () => {
+    signedIn();
+    serving({
+      'GET /api/addresses/suggest': () =>
+        json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+    });
+    await creating();
+
+    expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull();
+    fireEvent.change(address(), { target: { value: 'Civic' } });
+    const list = await screen.findByRole('listbox');
+    const links = [
+      screen.getByRole('link', { name: 'Stadia Maps' }),
+      screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
+    ];
+
+    expect(links[0].closest('p')?.textContent).toBe('© Stadia Maps © OpenStreetMap contributors');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      'https://stadiamaps.com/attribution/',
+      'https://www.openstreetmap.org/copyright',
+    ]);
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(list.contains(link)).toBe(false);
+    }
+    expect(within(list).getAllByRole('option')).toHaveLength(1);
+
+    fireEvent.change(address(), { target: { value: 'Ci' } });
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull());
+  });
+
   it('saves a typed address as typed, with a name', async () => {
     signedIn();
     const sent = serving({ 'GET /api/addresses/suggest': () => json({ success: true, data: [] }) });

@@ -2,6 +2,8 @@ import { type AddressSuggestion } from '@soirely/api-client';
 import {
   HOSTS_MAXIMUM,
   NOTHING_SEEN,
+  OSM_COPYRIGHT,
+  STADIA_ATTRIBUTION,
   type EventFormField,
   type HostErrors,
   type HostRow,
@@ -429,6 +431,13 @@ function AddressField({
   onPick: (index: number) => void;
 }) {
   const { t } = useTranslation();
+  const creditRef = useRef<HTMLParagraphElement>(null);
+  const closeUnlessOn = (keepOnField: boolean) => () =>
+    window.setTimeout(() => {
+      const now = document.activeElement;
+      const onCredit = now != null && creditRef.current?.contains(now) === true;
+      if (!onCredit && !(keepOnField && now === inputRef.current)) onDismiss();
+    });
 
   return (
     <div className="desk-field ev-combo">
@@ -454,7 +463,7 @@ function AddressField({
           aria-describedby={`${id}-help`}
           onChange={(change) => onType(change.target.value)}
           onKeyDown={onKeyDown}
-          onBlur={onDismiss}
+          onBlur={closeUnlessOn(false)}
         />
       </div>
       {error != null && <Alert>{error}</Alert>}
@@ -473,34 +482,80 @@ function AddressField({
         </p>
       )}
       {suggestions.length > 0 && (
-        <ul
-          id={`${id}-list`}
-          className="desk-rows ev-options"
-          role="listbox"
-          aria-label={t('eventForm.venueSuggestions')}
-        >
-          {suggestions.map((one, index) => (
-            <li
-              key={one.id}
-              id={`${id}-option-${index}`}
-              role="option"
-              aria-selected={index === active}
-              className={index === active ? 'desk-row ev-option is-active' : 'desk-row ev-option'}
-              onPointerDown={(pointer) => pointer.preventDefault()}
-              onClick={() => onPick(index)}
-              onKeyDown={(key) => {
-                if (key.key === 'Enter') onPick(index);
-              }}
-            >
-              <Glyph name="pin" size={20} />
-              <RowWords
-                title={one.text}
-                lines={one.secondaryText == null ? [] : [one.secondaryText]}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className="ev-suggest">
+          <ul
+            id={`${id}-list`}
+            className="desk-rows ev-options"
+            role="listbox"
+            aria-label={t('eventForm.venueSuggestions')}
+          >
+            {suggestions.map((one, index) => (
+              <li
+                key={one.id}
+                id={`${id}-option-${index}`}
+                role="option"
+                aria-selected={index === active}
+                className={index === active ? 'desk-row ev-option is-active' : 'desk-row ev-option'}
+                onPointerDown={(pointer) => pointer.preventDefault()}
+                onClick={() => onPick(index)}
+                onKeyDown={(key) => {
+                  if (key.key === 'Enter') onPick(index);
+                }}
+              >
+                <Glyph name="pin" size={20} />
+                <RowWords
+                  title={one.text}
+                  lines={one.secondaryText == null ? [] : [one.secondaryText]}
+                />
+              </li>
+            ))}
+          </ul>
+          <AddressCredit
+            creditRef={creditRef}
+            onLeave={closeUnlessOn(true)}
+            onEscape={() => {
+              onDismiss();
+              inputRef.current?.focus();
+            }}
+          />
+        </div>
       )}
     </div>
+  );
+}
+
+/** sc-80918: the credit Stadia's terms and OpenStreetMap's licence ask for wherever their data shows; a sibling of the listbox, so neither link is ever an option, and a press on a link keeps Address focused so the list stays. */
+function AddressCredit({
+  creditRef,
+  onLeave,
+  onEscape,
+}: {
+  creditRef: RefObject<HTMLParagraphElement | null>;
+  onLeave: () => void;
+  onEscape: () => void;
+}) {
+  const { t } = useTranslation();
+  const link = (href: string, name: string) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onPointerDown={(pointer) => pointer.preventDefault()}
+      onBlur={onLeave}
+      onKeyDownCapture={(key) => {
+        if (key.key !== 'Escape') return;
+        key.preventDefault();
+        onEscape();
+      }}
+    >
+      {name}
+    </a>
+  );
+
+  return (
+    <p className="ev-credit" ref={creditRef}>
+      © {link(STADIA_ATTRIBUTION, t('eventForm.creditStadia'))} ©{' '}
+      {link(OSM_COPYRIGHT, t('eventForm.creditOsm'))}
+    </p>
   );
 }
