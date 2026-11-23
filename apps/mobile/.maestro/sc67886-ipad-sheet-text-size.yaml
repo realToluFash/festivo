@@ -78,6 +78,7 @@ appId: host.exp.Exponent
     point: '50%,92%'
 - waitForAnimationToEnd:
     timeout: 3000
+- assertNotVisible: 'That email and password do not match. Check both, or reset your password.'
 - takeScreenshot: sc67886-ipad-sheet-keys-up
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-keys-down-again
