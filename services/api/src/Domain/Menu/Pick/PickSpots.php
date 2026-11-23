@@ -118,7 +118,7 @@ final readonly class PickSpots
             MealAnswerKind::MenuChanged => ['state' => 'changed', 'picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'allergens' => $answer->getChangedAllergens()],
             MealAnswerKind::Chosen => [] === ($since = $this->servedMeals->recordedSince($answer, $allergens, $options))
                 ? $onPlate('dish')
-                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since],
+                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since, 'notStated' => ServedMeals::notStated($answer)],
         };
     }
 

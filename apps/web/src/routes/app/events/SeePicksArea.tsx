@@ -417,11 +417,16 @@ function Picks({
                       <span>
                         {one.reason === 'nothing'
                           ? t('seePicks.nothingFor', { course: courseName(one.course) })
-                          : t('seePicks.allergyFor', {
-                              course: courseName(one.course),
-                              dish: one.pick ?? '',
-                              allergens: allergens(one.allergens),
-                            })}
+                          : t(
+                              one.notStated
+                                ? 'seePicks.allergyForNotStated'
+                                : 'seePicks.allergyFor',
+                              {
+                                course: courseName(one.course),
+                                dish: one.pick ?? '',
+                                allergens: allergens(one.allergens),
+                              },
+                            )}
                       </span>
                     </div>
                     {manage && (
@@ -862,10 +867,8 @@ function ChooseFor({
         t('seePicks.blankOption', { question: unanswered.question, name: who }),
         'pk-for-option',
       );
-    const ruled =
-      dish == null
-        ? []
-        : against(plateOf(dish, choice.variantId, choice.optionIds), person.allergens);
+    const plate = dish == null ? [] : plateOf(dish, choice.variantId, choice.optionIds);
+    const ruled = against(plate, person.allergens);
     if (ruled.length > 0 && !confirmed) {
       setAsking(ruled);
       return;
@@ -891,9 +894,11 @@ function ChooseFor({
       onSaved(
         next,
         t('seePicks.savedFor', { course: course.name, name: who, what }),
-        ruled.length > 0
-          ? t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) })
-          : null,
+        ruled.length === 0
+          ? null
+          : plate == null
+            ? t('seePicks.savedOverrideNotStated', { name: who, dish: what })
+            : t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) }),
       );
       if (at + 1 < courses.length) {
         setAt(at + 1);
@@ -957,6 +962,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     ruled={dishRuledOut(one, person)}
+                    notStated={plateOf(one, null, []) == null}
                     who={who}
                     onPick={() => pickDish(one.id)}
                   />
@@ -1061,11 +1067,18 @@ function ChooseFor({
       {asking != null && dish != null && (
         <Override
           title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
-          body={t('seePicks.overrideBody', {
-            dish: mealPickName(dish, choice.variantId, choice.optionIds),
-            allergens: allergens(asking),
-            name: who,
-          })}
+          body={
+            plateOf(dish, choice.variantId, choice.optionIds) == null
+              ? t('seePicks.overrideBodyNotStated', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  name: who,
+                })
+              : t('seePicks.overrideBody', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  allergens: allergens(asking),
+                  name: who,
+                })
+          }
           keep={t('seePicks.chooseAnother')}
           go={t('seePicks.pickAnyway')}
           onKeep={() => {
@@ -1085,6 +1098,7 @@ function DishOption({
   label,
   checked,
   ruled,
+  notStated = false,
   who,
   childrenOnly = false,
   onPick,
@@ -1094,6 +1108,7 @@ function DishOption({
   label: string;
   checked: boolean;
   ruled: readonly string[];
+  notStated?: boolean;
   who: string;
   childrenOnly?: boolean;
   onPick: () => void;
@@ -1123,7 +1138,9 @@ function DishOption({
               <Triangle />
               {t('seePicks.allergyMark')}
             </span>
-            {t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
+            {notStated
+              ? t('seePicks.ruledOutNotStated')
+              : t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
           </span>
         )}
       </span>

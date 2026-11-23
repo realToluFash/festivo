@@ -45,6 +45,8 @@ export interface PicksHostLine {
   reason: 'nothing' | 'allergy';
   pick: string | null;
   allergens: string[];
+  /** The pick never stated its allergens (sc-87421): nothing says it contains them. */
+  notStated: boolean;
 }
 
 export interface PicksParty {
@@ -187,6 +189,7 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             reason: host.reason === 'allergy' ? 'allergy' : 'nothing',
             pick: typeof host.pick === 'string' ? host.pick : null,
             allergens: strings(host.allergens),
+            notStated: host.notStated === true,
           };
         })
       : null,

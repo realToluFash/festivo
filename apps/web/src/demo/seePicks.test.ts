@@ -486,7 +486,10 @@ describe('a dish whose allergens were never stated (sc-87421)', () => {
       notStated: true,
     });
     expect(SW.allergyForNotStated('Dessert', 'Puff-puff', 'celery')).toBe(
-      'Dessert: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to celery was recorded after they picked it.',
+    );
+    expect(SW.allergyForNotStated('Dessert', 'Puff-puff', 'peanuts and milk')).toBe(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to peanuts and milk was recorded after they picked it.',
     );
   });
 });

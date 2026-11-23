@@ -13,7 +13,7 @@ import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'r
 
 import { api } from '../api.ts';
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import { headerClose, openWords, picksAccess } from '../kit/menuPicksWords.ts';
+import { headerClose, hostLine, openWords, picksAccess } from '../kit/menuPicksWords.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { Confirmed } from '../steps/Lines.tsx';
@@ -415,15 +415,7 @@ function Picks({
                 <HostLine
                   key={`${line.person.id}.${line.course}`}
                   name={line.person.name}
-                  words={
-                    line.reason === 'nothing'
-                      ? t('menuPicks.nothingFor', { course: courseName(line.course) })
-                      : t('menuPicks.allergyFor', {
-                          course: courseName(line.course),
-                          dish: line.pick ?? '',
-                          allergens: allergens(line.allergens),
-                        })
-                  }
+                  words={hostLine(t, allergens, line, courseName(line.course))}
                   manage={manage}
                   onChoose={(from) =>
                     onOpen(

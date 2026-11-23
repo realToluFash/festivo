@@ -81,6 +81,7 @@ final readonly class PicksFigures
                         'reason' => $spot['reason'] ?? 'nothing',
                         'pick' => $spot['pick'] ?? null,
                         'allergens' => $spot['allergens'] ?? [],
+                        'notStated' => $spot['notStated'] ?? false,
                     ];
                 }
 
@@ -94,6 +95,7 @@ final readonly class PicksFigures
                             'reason' => 'allergy',
                             'pick' => $spot['picked'] ?? null,
                             'allergens' => $spot['allergens'] ?? [],
+                            'notStated' => false,
                         ];
                     }
                 }

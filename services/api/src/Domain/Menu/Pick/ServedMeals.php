@@ -100,6 +100,14 @@ final readonly class ServedMeals
         return [] === $this->recordedSince($answer, $allergens, $options) ? MealAnswerKind::Chosen : MealAnswerKind::NeedsHost;
     }
 
+    /** The chosen plate never stated its allergens: its dish, or the variant picked (sc-87421). */
+    public static function notStated(MealAnswer $answer): bool
+    {
+        $dish = $answer->getDish();
+
+        return null !== $dish && null === $answer->getVariant() && null === $dish->getAllergens();
+    }
+
     /**
      * @param list<string>                    $allergens the person's now
      * @param array<string, MenuChoiceOption> $options   the event's, by id

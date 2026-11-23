@@ -137,7 +137,7 @@ final class MenuPicksTest extends ApiTestCase
         $main = self::course($picks, 'Main');
         self::assertSame([1, 1, 1, 1], [self::row($main, 'Jollof rice')['chosen'], $main['kitchen'], $main['skipped'], $main['notChosen']]);
         self::assertSame([['fish', 'celery'], ['milk', 'fish'], [], null, []], [self::row($starter, 'Catfish pepper soup')['allergens'], self::row($main, 'Pounded yam and egusi')['allergens'], self::row($main, 'Rice and stew')['allergens'], self::row($main, 'Suya')['allergens'], self::row($main, 'Ofada stew')['allergens']]);
-        self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => []]], $picks['needsHost']);
+        self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => [], 'notStated' => false]], $picks['needsHost']);
         self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'changed' => [], 'excluded' => []]]]], $picks['waiting']);
     }
 
@@ -161,7 +161,7 @@ final class MenuPicksTest extends ApiTestCase
         $main = self::course($picks, 'Main');
 
         self::assertSame([1, 0, 2, 1, 3], [self::row($main, 'Jollof rice')['chosen'], self::row($main, 'Pounded yam and egusi')['chosen'], $main['menuChanged'], $main['answered'], self::sum($main) + Type\int()->coerce($main['menuChanged'])]);
-        self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['sesame']]], $picks['needsHost']);
+        self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['sesame'], 'notStated' => false]], $picks['needsHost']);
         self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [
             ['id' => $bisi, 'name' => 'Bisi Adewale', 'courses' => [], 'changed' => [['course' => $this->id($this->main), 'picked' => 'Jollof rice']], 'excluded' => []],
             ['id' => $chidi, 'name' => 'Chidi Okonkwo', 'courses' => [], 'changed' => [['course' => $this->id($this->main), 'picked' => 'Pounded yam and egusi']], 'excluded' => []],
@@ -253,11 +253,47 @@ final class MenuPicksTest extends ApiTestCase
         $this->hostRecords($bisi, ['milk']);
         $main = self::course($this->picks(), 'Main');
         self::assertSame([0, 1], [self::row($main, 'Pounded yam and egusi')['chosen'], $main['needsHost']]);
-        self::assertSame([['person' => ['id' => $bisi, 'name' => 'Bisi Adewale'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['milk']]], $this->picks()['needsHost']);
+        self::assertSame([['person' => ['id' => $bisi, 'name' => 'Bisi Adewale'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['milk'], 'notStated' => false]], $this->picks()['needsHost']);
 
         $this->hostRecords($bisi, []);
         $main = self::course($this->picks(), 'Main');
         self::assertSame([1, 0], [self::row($main, 'Pounded yam and egusi')['chosen'], $main['needsHost']]);
+    }
+
+    #[Test]
+    public function aPickThatNeverStatedItsAllergensSaysSoUnderNeedsTheHost(): void
+    {
+        $token = $this->coming([]);
+        $bisi = $this->personId('Bisi Adewale');
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no main');
+        $suya = new MenuDish($main, null, 'Suya', null, null, [], 3);
+        self::em()->persist($suya);
+        self::em()->flush();
+        $this->meals($token, [['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($suya)]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->hostRecords($bisi, ['peanuts']);
+
+        self::assertSame([['person' => ['id' => $bisi, 'name' => 'Bisi Adewale'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Suya', 'allergens' => ['peanuts'], 'notStated' => true]], $this->picks()['needsHost']);
+    }
+
+    #[Test]
+    public function anOtherAllergyAloneRulesOutNoPlateThatNeverStatedItsAllergens(): void
+    {
+        $this->coming([]);
+        $bisi = $this->personId('Bisi Adewale');
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no main');
+        $suya = new MenuDish($main, null, 'Suya', null, null, [], 3);
+        self::em()->persist($suya);
+        self::em()->flush();
+        $this->hostRecords($bisi, ['other'], 'Kiwi');
+
+        $people = Type\vec(Type\mixed_dict())->coerce($this->picks()['people']);
+        self::assertSame([[]], Vec\map(Vec\filter($people, static fn (array $one): bool => $bisi === $one['id']), static fn (array $one): mixed => $one['allergens']));
+
+        $this->chooseFor($bisi, $this->main, ['answer' => 'chosen', 'dish' => $this->id($suya)]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([], $this->picks()['needsHost']);
     }
 
     #[Test]
@@ -452,11 +488,11 @@ final class MenuPicksTest extends ApiTestCase
     }
 
     /** @param list<string> $allergies */
-    private function hostRecords(string $guestId, array $allergies): void
+    private function hostRecords(string $guestId, array $allergies, ?string $other = null): void
     {
         $person = self::em()->find(Guest::class, Uuid::fromString($guestId)) ?? self::fail('no guest');
         $needs = GuestNeeds::none();
-        self::service(GuestNeedsRecord::class)->write($person, new GuestNeeds([...$needs->codes, NeedKind::Allergen->value => $allergies], $needs->others, null), $this->owner);
+        self::service(GuestNeedsRecord::class)->write($person, new GuestNeeds([...$needs->codes, NeedKind::Allergen->value => $allergies], [...$needs->others, NeedKind::Allergen->value => $other], null), $this->owner);
         self::em()->flush();
     }
 
