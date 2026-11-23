@@ -7,6 +7,7 @@ import { Glyph } from '../../components/Glyph.tsx';
 import { CheckMark } from '../../components/SecurityTwoFactor.tsx';
 import { SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
+import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   CONFIRMED_AT,
@@ -47,6 +48,7 @@ export function ChooseWho({
   const [asking, setAsking] = useState<WhoOutcome | null>(first?.kind === 'ask' ? first : null);
   const [refused, setRefused] = useState(first?.kind === 'refused');
   const [saving, setSaving] = useState(false);
+  const phone = useLayout().kind === 'phone';
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -78,17 +80,28 @@ export function ChooseWho({
       return next;
     });
 
+  const saveButton = (
+    <PrimaryButton
+      label={MW.save}
+      onPress={() => save(false)}
+      busy={saving}
+      testID="menu.who.save"
+    />
+  );
+
   return (
     <View style={styles.sheet}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-        {MW.whoTitle(variant.name)}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {MW.whoSub(found.name, course.name)}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {MW.whoHelp}
-      </Text>
+      <View style={styles.head}>
+        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+          {MW.whoTitle(variant.name)}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {MW.whoSub(found.name, course.name)}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {MW.whoHelp}
+        </Text>
+      </View>
       <SheetScrollView style={styles.list} contentContainerStyle={styles.scroll}>
         {refused ? (
           <FailureLine words={MW.refused} testID="menu.who.refused" />
@@ -162,16 +175,22 @@ export function ChooseWho({
       </SheetScrollView>
       <SheetActions>
         {refused ? (
-          <SecondaryButton label={MW.close} onPress={onClose} testID="menu.who.close" />
+          <SecondaryButton
+            label={MW.close}
+            onPress={onClose}
+            stacked={phone}
+            testID="menu.who.close"
+          />
         ) : (
           <>
-            <SecondaryButton label={MW.cancel} onPress={onClose} testID="menu.who.cancel" />
-            <PrimaryButton
-              label={MW.save}
-              onPress={() => save(false)}
-              busy={saving}
-              testID="menu.who.save"
+            {phone && saveButton}
+            <SecondaryButton
+              label={MW.cancel}
+              onPress={onClose}
+              stacked={phone}
+              testID="menu.who.cancel"
             />
+            {!phone && saveButton}
           </>
         )}
       </SheetActions>
@@ -204,6 +223,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },
+  head: { flexShrink: 0, gap: tokens.spaceMd },
   list: { flexShrink: 1 },
   scroll: { gap: tokens.spaceMd },
   group: { gap: tokens.spaceXxs },
