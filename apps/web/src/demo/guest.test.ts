@@ -44,8 +44,8 @@ describe('the guest’s page states (sc-31306)', () => {
       'Your messages, opened from the guest’s page (sc-3969, sc-3950)',
       'Your messages, from an email’s link (sc-3969)',
     ]);
-    expect(STATES).toHaveLength(91);
-    expect(new Set(STATES).size).toBe(91);
+    expect(STATES).toHaveLength(92);
+    expect(new Set(STATES).size).toBe(92);
     expect(STATES.every(isGuestState)).toBe(true);
     expect(LINKED.find((one) => one.to.includes('messageArrival'))?.to).toBe(
       '/demo/guest?state=messageArrival#m-3',

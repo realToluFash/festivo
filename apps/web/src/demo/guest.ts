@@ -509,6 +509,15 @@ const STATES = {
     name: 'Closed at the start, Coming',
     starts: { started: true, recorded: COMING, view: CLOSED },
   },
+  closedSaved: {
+    name: 'Closed at the start, Coming, the kitchen needs saved: the note and the pencil go',
+    starts: {
+      started: true,
+      recorded: COMING,
+      view: CLOSED,
+      kitchen: closedKitchen(COMPANIONS, EARLIER, { saved: true }),
+    },
+  },
   closedNever: {
     name: 'Closed at the start, never answered',
     starts: { started: true, view: CLOSED },
@@ -822,6 +831,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyByClosedSaved',
         'closedRefused',
         'closed',
+        'closedSaved',
         'closedNever',
         'paused',
         'pausedNever',
