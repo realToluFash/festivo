@@ -20,10 +20,17 @@ appId: host.exp.Exponent
     file: scroll-tap.yaml
     env:
       ID: 'security.device.here.signOut'
-# On a phone the tap can land while the row is still opening, and nothing happens. sc-86367.
-- waitForAnimationToEnd
+# On a phone the tap can land while the row is still opening, and nothing happens. Sign out
+# stays on screen until its request settles, so only a tap that did nothing is retried. sc-86367.
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 5000
+    optional: true
 - runFlow:
     when:
+      notVisible:
+        id: 'welcome.email'
       visible:
         id: 'security.device.here.signOut'
     commands:
