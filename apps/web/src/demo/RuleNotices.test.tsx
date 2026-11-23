@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
+import { cssRule, stylesheet } from '../test-styles.ts';
 import { noticesAsked } from './ruleNotices.ts';
 
 const tested = config();
@@ -68,5 +69,16 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
   it('stands above Events’ title', async () => {
     const events = await open('/demo/events?notice=due', 'Events');
     expect(follows(screen.getByText(/requires two-factor from/), events.title)).toBe(true);
+  });
+
+  it('keeps 18 between the boxes and to the title row on the Calendar (#87445)', async () => {
+    const calendar = await open('/demo/calendar?notice=changed&offline', 'Calendar');
+    const stack = screen.getByText('Sign-in rules changed').closest('.rn-stack');
+    const rule = cssRule('.rn-stack', stylesheet(import.meta.dirname, 'ruleNotices.css'));
+
+    expect(stack?.contains(screen.getByText(/Offline · as of/))).toBe(true);
+    expect(follows(stack as Node, calendar.title)).toBe(true);
+    expect(rule).toContain('gap: 18px;');
+    expect(rule).toContain('margin-bottom: 18px;');
   });
 });

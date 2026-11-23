@@ -77,3 +77,15 @@
   margin-top: 0;
   text-decoration: none;
 }
+
+/* The Calendar's page has no gap of its own and the product shares it: this stack gives the 18 the Events and Settings columns do (#87445). */
+.rn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.rn-stack:empty {
+  display: none;
+}

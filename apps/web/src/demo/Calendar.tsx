@@ -183,7 +183,9 @@ function CalendarPage({ start, tell }: { start: CalendarStart; tell: Tell }) {
   return (
     <CalendarFrameContext value={FRAME}>
       <div className="desk-page cal-page">
-        <DemoOffline on={start.offline} />
+        <div className="rn-stack">
+          <DemoOffline on={start.offline} />
+        </div>
         <CalendarTop
           subscribe={subscribe}
           onSubscribe={() => setFeed('open')}
