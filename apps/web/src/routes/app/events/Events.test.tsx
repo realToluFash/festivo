@@ -2531,7 +2531,7 @@ describe("An event's venue in New event (sc-3589)", () => {
       screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
     ];
 
-    expect(links[0].closest('p')?.textContent).toBe('© Stadia Maps © OpenStreetMap contributors');
+    expect(links[0]?.closest('p')?.textContent).toBe('© Stadia Maps © OpenStreetMap contributors');
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       'https://stadiamaps.com/attribution/',
       'https://www.openstreetmap.org/copyright',
