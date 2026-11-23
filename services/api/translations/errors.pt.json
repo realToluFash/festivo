@@ -152,6 +152,6 @@
     "email_domain_taken": "Outra organização já verificou este domínio.",
     "audit_export_too_many": "Há demasiados registos para exportar.",
     "door_code_invalid": "Esse código não funciona. Confirme-o com quem lho deu.",
-    "menu_is_default": "This is part of the course’s default. Choose another default first.",
-    "menu_default_move": "Changing the default moves the guests given it. Confirm to change it."
+    "menu_is_default": "Isto faz parte do prato predefinido do serviço. Escolha primeiro outro prato predefinido.",
+    "menu_default_move": "Mudar o prato predefinido muda os convidados que o receberam. Confirme para o mudar."
 }
