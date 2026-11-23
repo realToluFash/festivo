@@ -51,7 +51,6 @@ type Load =
   | { kind: 'loaded'; page: SignInRulesPage; tapped: boolean }
   | { kind: 'failed'; tapped: boolean };
 
-/** Settings > Sign-in rules as its demo draws it (sc-30412): where you stand on each rule, then what changed. */
 /** While the pill names a paused organisation, its row opens the paused page, and nothing of the organisation is read (sc-86077). */
 export default function SignInRulesRoute() {
   const { pausedIn } = useSignedIn();
@@ -59,6 +58,7 @@ export default function SignInRulesRoute() {
   return pausedIn == null ? <SignInRules /> : <PausedSettingsSection open="signInRules" />;
 }
 
+/** Settings > Sign-in rules as its demo draws it (sc-30412): where you stand on each rule, then what changed. */
 function SignInRules() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();

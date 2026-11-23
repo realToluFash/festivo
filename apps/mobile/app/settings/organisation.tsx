@@ -34,7 +34,6 @@ import { reloadSignedIn, replaceOrganisation, useSignedIn } from '../../src/sign
 import { tokens } from '../../src/theme/tokens.ts';
 import { PANE_TITLE, paneTitle } from '../../src/components/topTitle.ts';
 
-/** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
 /** While the pill names a paused organisation, its row opens the paused page, and nothing of the organisation is read (sc-86077). */
 export default function OrganisationRoute() {
   const { pausedIn } = useSignedIn();
@@ -42,6 +41,7 @@ export default function OrganisationRoute() {
   return pausedIn == null ? <Organisation /> : <PausedSettingsSection open="organisation" />;
 }
 
+/** Settings > Organisation as its demo draws it (sc-30412): the card, the details, joining, then ownership and leaving. */
 function Organisation() {
   const { t } = useTranslation();
   const backToSettings = useBackToSettings();
