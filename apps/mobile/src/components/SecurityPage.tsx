@@ -860,6 +860,8 @@ function ProofStep({
         if (outcome.kind === 'proved') {
           const said = await onProved(outcome.proof, outcome.codeSpent);
           if (said?.limitedUntil == null || tripVia == null) return said;
+          // The passed proof is spent: the button that comes back makes the trip again.
+          proving.startOver();
           setLimitedUntil(said.limitedUntil);
 
           return { password: null, code: null, checked: false };

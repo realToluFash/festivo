@@ -31,6 +31,19 @@ export function codeBeforeTrip(via: ReturnType<typeof proveWith>, twoFactorOn: b
   return twoFactorOn && via === 'password';
 }
 
+/** Where a trip starts over: once its proof is spent or lapsed, the next press opens Google or Apple again (sc-22601). */
+export function tripStartsOver(
+  via: ReturnType<typeof proveWith>,
+  twoFactorOn: boolean,
+): { returned: null; kept: null; signedIn: null; codeAsked: boolean } {
+  return {
+    returned: null,
+    kept: null,
+    signedIn: null,
+    codeAsked: codeBeforeTrip(via, twoFactorOn),
+  };
+}
+
 /** A refusal of the trip itself (the wrong account, a sign-in too old, or a kept one lapsed): only then is it made again. */
 export function tripRefused(error: unknown): boolean {
   return (

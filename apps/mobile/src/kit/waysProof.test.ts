@@ -12,6 +12,7 @@ import {
   signedInWith,
   transferSentKept,
   tripRefused,
+  tripStartsOver,
   unlinkProofLapsed,
 } from './waysProof.ts';
 
@@ -41,6 +42,17 @@ describe('proving it is you, from Security', () => {
     expect(codeBeforeTrip('google', true)).toBe(false);
     expect(codeBeforeTrip('apple', true)).toBe(false);
     expect(codeBeforeTrip('password', false)).toBe(false);
+  });
+
+  it('starts a spent trip over, so the next press opens Google or Apple and asks no code first (sc-22601)', () => {
+    expect(tripStartsOver('google', true)).toEqual({
+      returned: null,
+      kept: null,
+      signedIn: null,
+      codeAsked: false,
+    });
+    expect(tripStartsOver('apple', false).codeAsked).toBe(false);
+    expect(tripStartsOver('password', true).codeAsked).toBe(true);
   });
 
   it('says a refused provider proof on the screen, not on a password field it does not show', () => {

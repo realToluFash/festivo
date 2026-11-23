@@ -19,6 +19,7 @@ import {
   type SignedIn,
   signedInWith,
   tripRefused,
+  tripStartsOver,
 } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { holdProof } from '../recentProof.ts';
@@ -42,6 +43,14 @@ export function useProof(via: 'password' | Provider | null, twoFactorOn: boolean
   const [signedIn, setSignedIn] = useState<SignedIn | null>(null);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<ProofRefusal | null>(null);
+
+  function startOver() {
+    const fresh = tripStartsOver(via, twoFactorOn);
+    returned.current = fresh.returned;
+    kept.current = fresh.kept;
+    setSignedIn(fresh.signedIn);
+    setCodeAsked(fresh.codeAsked);
+  }
 
   async function submit(password: string, code: string): Promise<ProofOutcome> {
     keysStayDown();
@@ -73,9 +82,7 @@ export function useProof(via: 'password' | Provider | null, twoFactorOn: boolean
       }
 
       if (via !== 'password' && keptProofRanOut(error, sentKept)) {
-        kept.current = null;
-        returned.current = null;
-        setCodeAsked(codeBeforeTrip(via, twoFactorOn));
+        startOver();
         setExpired({});
 
         return { kind: 'expired' };
@@ -97,5 +104,5 @@ export function useProof(via: 'password' | Provider | null, twoFactorOn: boolean
     }
   }
 
-  return { codeAsked, expired, signedIn, checking, refusal, setRefusal, submit };
+  return { codeAsked, expired, signedIn, checking, refusal, setRefusal, submit, startOver };
 }
