@@ -1,6 +1,8 @@
 import type { ViewInstance } from 'react-native';
 
 let focused: ViewInstance | null = null;
+let owed: ViewInstance | null = null;
+let arriving = false;
 const watchers = new Set<() => void>();
 let checking = false;
 const checkWatchers = new Set<(field: ViewInstance, inView?: () => void, jump?: boolean) => void>();
@@ -12,7 +14,10 @@ export function focusedField(): ViewInstance | null {
 
 export function fieldFocused(field: ViewInstance | null): void {
   focused = field;
+  arriving = field != null && field === owed;
+  if (arriving) owed = null;
   watchers.forEach((moved) => moved());
+  arriving = false;
   if (checking && field != null) {
     checking = false;
     checkWatchers.forEach((checked) => checked(field));
@@ -21,6 +26,15 @@ export function fieldFocused(field: ViewInstance | null): void {
 
 export function fieldLeft(field: ViewInstance | null): void {
   if (focused === field) focused = null;
+}
+
+/** A field that focuses itself as it opens, however late its data lets it mount: its focus arriving is the screen landing, not moving on (sc-80944). Returns how it stops being owed, unmounted before it came. */
+export function focusOwed(field: ViewInstance | null): () => void {
+  owed = field;
+
+  return () => {
+    if (owed === field) owed = null;
+  };
 }
 
 const reshapes = new Set<() => void>();
@@ -99,7 +113,8 @@ export function watchControlTaken(taken: () => void): () => void {
 export function watchMovedOn(moved: () => void): { settled(): void; stop(): void } {
   let landed: ViewInstance | null | undefined;
   const unwatchFocus = watchFocusedField(() => {
-    if (landed !== undefined && focused !== landed) moved();
+    if (arriving) landed = focused;
+    else if (landed !== undefined && focused !== landed) moved();
   });
   const unwatchTaken = watchControlTaken(() => {
     if (landed !== undefined) moved();
