@@ -74,6 +74,34 @@ export function startProxy({
   });
 }
 
+const usage =
+  'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--port n] [--host addr]';
+
+export class UsageError extends Error {}
+
+export function proxyConfig(values, read = (file) => readFileSync(file, 'utf8')) {
+  if (!values.target) throw new UsageError(usage);
+  const answers = values.status !== undefined || values.body !== undefined;
+  const delay = Number(values.delay ?? (answers ? 0 : 5000));
+  let status;
+  if (values.status !== undefined) {
+    status = Number(values.status);
+    if (!/^\d{3}$/.test(values.status) || status < 100 || status > 599) {
+      throw new UsageError(`qa-slow-proxy: --status ${values.status} is not 100–599\n${usage}`);
+    }
+  }
+  let body;
+  if (values.body !== undefined) {
+    body = read(values.body);
+    try {
+      JSON.parse(body);
+    } catch (error) {
+      throw new UsageError(`qa-slow-proxy: ${values.body} is not JSON: ${error.message}`);
+    }
+  }
+  return { answers, delay, status, body };
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
@@ -87,16 +115,15 @@ async function main() {
       host: { type: 'string', default: '127.0.0.1' },
     },
   });
-  if (!values.target) {
-    console.error(
-      'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--port n] [--host addr]',
-    );
+  let config;
+  try {
+    config = proxyConfig(values);
+  } catch (error) {
+    if (!(error instanceof UsageError)) throw error;
+    console.error(error.message);
     process.exit(2);
   }
-  const answers = values.status !== undefined || values.body !== undefined;
-  const delay = Number(values.delay ?? (answers ? 0 : 5000));
-  const status = values.status === undefined ? undefined : Number(values.status);
-  const body = values.body === undefined ? undefined : readFileSync(values.body, 'utf8');
+  const { answers, delay, status, body } = config;
   const server = await startProxy({
     target: values.target,
     delay,

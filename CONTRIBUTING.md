@@ -102,8 +102,7 @@ else at once; `--path` takes another route as a regular expression. To see a fai
 stack cannot reach, `--status <code>` answers each matching request with that status instead of
 forwarding it, and `--body <file>` answers it with that file as JSON (200 unless `--status` names
 another): save the API's real answer, edit it, and serve the edit. Either one waits only as long
-as `--delay` says. Pass `--clear` with it, or
-Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
+as `--delay` says. Pass `--clear` when starting `ios` or `android`, or Metro keeps the last bundle's API URL. Name the proxy as `http://127.0.0.1:<n>`: `android`
 reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
 127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
 put that address in `QA_API_URL`. Every matching GET is held, the first load

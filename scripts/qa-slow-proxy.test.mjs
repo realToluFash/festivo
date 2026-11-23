@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { holds, startProxy } from './qa-slow-proxy.mjs';
+import { holds, proxyConfig, startProxy, UsageError } from './qa-slow-proxy.mjs';
 
 const guests = /^\/api\/events\/[^/]+\/guests$/;
 
@@ -20,6 +20,55 @@ describe('which requests the proxy holds', () => {
   it('holds the method it was given instead of GET', () => {
     expect(holds('POST', '/api/events/ev1/guests', guests, 'POST')).toBe(true);
     expect(holds('GET', '/api/events/ev1/guests', guests, 'POST')).toBe(false);
+  });
+});
+
+describe('what the options ask the proxy to do', () => {
+  const target = 'http://127.0.0.1:8080';
+  const read = (files) => (file) => files[file];
+
+  it('holds for five seconds and forwards when it is only holding', () => {
+    expect(proxyConfig({ target })).toEqual({
+      answers: false,
+      delay: 5000,
+      status: undefined,
+      body: undefined,
+    });
+  });
+
+  it('answers at once when given a status or a body without a delay', () => {
+    expect(proxyConfig({ target, status: '503' })).toMatchObject({
+      answers: true,
+      delay: 0,
+      status: 503,
+    });
+    expect(
+      proxyConfig({ target, body: 'a.json' }, read({ 'a.json': '{"guests":[]}' })),
+    ).toMatchObject({
+      answers: true,
+      delay: 0,
+      body: '{"guests":[]}',
+    });
+  });
+
+  it('waits as long as --delay says when answering', () => {
+    expect(proxyConfig({ target, status: '500', delay: '2000' }).delay).toBe(2000);
+  });
+
+  it('refuses a status that is not a three-digit code from 100 to 599', () => {
+    for (const status of ['abc', '5OO', '99', '600', '2000', '']) {
+      expect(() => proxyConfig({ target, status })).toThrow(UsageError);
+    }
+  });
+
+  it('refuses a body that is not JSON, naming the file', () => {
+    expect(() =>
+      proxyConfig({ target, body: 'edit.json' }, read({ 'edit.json': '{"guests":[1,]}' })),
+    ).toThrow(/edit\.json is not JSON/);
+  });
+
+  it('refuses to start without a target', () => {
+    expect(() => proxyConfig({})).toThrow(UsageError);
   });
 });
 
