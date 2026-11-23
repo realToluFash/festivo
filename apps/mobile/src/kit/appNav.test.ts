@@ -9,7 +9,9 @@ import {
   INTERIM_HREF,
   SECTION_HREF,
   destinationOf,
+  dataAndControlListed,
   destinations,
+  listedFor,
   settingsGroups,
 } from './appNav.ts';
 
@@ -102,6 +104,20 @@ describe('"Sign out" on the Settings list', () => {
 });
 
 describe('the Settings list', () => {
+  it('lists the paused organisation’s Organisation and Sign-in rules alone, whatever the role in use (sc-86077)', () => {
+    const owner = {
+      name: 'Ìrè Events',
+      permissions: ['members.read', 'members.manage', 'organisation.manage'],
+    };
+    const listed = listedFor(owner, { name: 'Casa Lumen Eventos' });
+
+    expect(listed?.name).toBe('Casa Lumen Eventos');
+    expect(settingsGroups(listed)[1]?.sections).toEqual(['organisation', 'signInRules']);
+    expect(dataAndControlListed(listed)).toBe(false);
+    expect(settingsGroups(listedFor(null, { name: 'Casa Lumen Eventos' }))).toHaveLength(2);
+    expect(listedFor(owner, null)).toBe(owner);
+  });
+
   it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
       {
