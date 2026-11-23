@@ -1,5 +1,6 @@
 import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -179,7 +180,13 @@ export function SettingsHome({
   if (held != null)
     return (
       <PausedHere.Provider value={held === 'paused'}>
-        <HeldSettings held={held} back={back} onSignOut={onSignOut} />
+        <HeldSettings
+          held={held}
+          back={back}
+          onSignOut={onSignOut}
+          title={held === 'overdue' ? title : null}
+          cap={titleCap.cap}
+        />
       </PausedHere.Provider>
     );
 
@@ -248,26 +255,39 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). */
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused draws no page title, and on its side the bell alone heads the content's right; it has no Search in any layout (sc-82858). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). Overdue keeps the page's title above its card, on its side with the bell, as the product does (sc-85006). */
 function HeldSettings({
   held,
   back,
   onSignOut,
+  title,
+  cap,
 }: {
   held: Held;
   back?: (() => void) | undefined;
   onSignOut: () => void;
+  title: ReactNode;
+  cap: number | null;
 }) {
   const shell = useShell();
   const search = held !== 'paused';
   const insets = useSafeAreaInsets();
-  const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
+  const standIn = (
+    <TitleCap.Provider value={title == null ? null : cap}>
+      <HeldStandIn held={held} onSignOut={onSignOut} />
+    </TitleCap.Provider>
+  );
 
   if (shell.layout === 'landscape')
     return (
       <Landscape column={null} search={search}>
         <View style={styles.heldSide}>
-          {held === 'paused' && (
+          {title != null ? (
+            <View style={styles.heldSideHead}>
+              <View style={styles.grow}>{title}</View>
+              <Bell tell={shell.tell} />
+            </View>
+          ) : (
             <View style={styles.heldSideTop}>
               <Bell tell={shell.tell} />
             </View>
@@ -286,6 +306,7 @@ function HeldSettings({
             <Back onPress={back} testID="settings.held.back" />
           </View>
         )}
+        {title != null && <View style={styles.heldUprightTitle}>{title}</View>}
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
@@ -321,6 +342,11 @@ function HeldSettings({
               ) : (
                 <Bell tell={shell.tell} />
               )}
+            </View>
+          )}
+          {title != null && (
+            <View style={styles.titleRow}>
+              <View style={styles.grow}>{title}</View>
             </View>
           )}
         </View>
@@ -392,6 +418,20 @@ const styles = StyleSheet.create({
   // Upright, ‹ shares the pill's, the bell's and the card's 28pt edge (sc-85022).
   heldBack: { flexDirection: 'row', paddingHorizontal: tokens.space4xl },
   heldSide: { flex: 1, paddingHorizontal: 30 },
+  // The product's side header with the page's title: the title, then the bell at the content's top right (sc-85006).
+  heldSideHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceLg,
+    paddingTop: 26,
+    paddingBottom: tokens.spaceLg,
+  },
+  // Upright, the title under the tabs on the pill's 28pt edge, as the product's header (sc-85006).
+  heldUprightTitle: {
+    paddingHorizontal: tokens.space4xl,
+    paddingTop: tokens.spaceXl,
+    paddingBottom: tokens.spaceXl,
+  },
   // The product's side header with no title: the bell alone at the content's top right (sc-83881).
   heldSideTop: {
     flexDirection: 'row',

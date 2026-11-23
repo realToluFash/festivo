@@ -57,13 +57,26 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     );
   });
 
-  it('draws no page title on the held page, and the bell on its side', () => {
+  it('draws no page title on the paused page, and the bell on its side', () => {
     const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
     const side = held.slice(0, held.indexOf("shell.layout === 'portrait'"));
 
     expect(held).not.toMatch(/<Title\b|accessibilityRole="header"|settings\.title/u);
+    expect(bodyOf('SettingsHome.tsx', 'SettingsHome')).toContain(
+      "title={held === 'overdue' ? title : null}",
+    );
     expect(side).toContain("shell.layout === 'landscape'");
     expect(side).toContain('<Bell tell={shell.tell} />');
+  });
+
+  it('keeps the page title above the overdue card in every layout, as the product (sc-85006)', () => {
+    const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
+
+    expect(held.match(/\{title\}/gu)).toHaveLength(3);
+    expect(held).toContain('<View style={styles.heldUprightTitle}>{title}</View>');
+    expect(held).toMatch(
+      /styles\.heldSideHead\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>\s*<Bell/u,
+    );
   });
 
   it('pads the held page once: the stand-in keeps its own inset, and only the header rows pad (sc-85022)', () => {
