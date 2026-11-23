@@ -202,6 +202,7 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     ['/app/account', 'Your account'],
     ['/app/account/security', 'Security'],
     ['/app/account/notifications', 'Notification settings'],
+    ['/app/account/personalisation', 'Personalisation'],
   ])('%s says so in the amber box above its title, with Try again', async (path, title) => {
     signedIn();
     const soirely = { reachable: true };
@@ -216,17 +217,6 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     const box = boxAbove(heading);
     expect(within(box).getByText(/^Offline · as of /)).toBeDefined();
     expect(within(box).getByRole('button', { name: 'Try again' })).toBeDefined();
-  });
-
-  it('keeps Personalisation, which loads nothing from Soirely, to the one box above its title', async () => {
-    signedIn();
-    serving({ reachable: true });
-    open('/app/account/personalisation');
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
-
-    goOffline();
-
-    boxAbove(heading);
   });
 
   it('puts the box over a person opened beside the Members list', async () => {
