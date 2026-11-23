@@ -418,6 +418,18 @@ describe('the menu changed after you picked (sc-3913)', () => {
     expect(heading()).toContain(PW.pickNew('Main'));
   });
 
+  it('words an allergen added, naming only the one the person has recorded', SLOW, async () => {
+    await party('menuChangedAllergen');
+    expect(heading()).toContain(PW.pickNew('Main'));
+    expect(
+      screen.getByText(`[${CHIDI} picked Pounded yam and egusi, which now contains milk.]`),
+    ).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pounded yam and egusi/ })).toHaveProperty(
+      'checked',
+      false,
+    );
+  });
+
   it('refuses Send my changes while a pick is still Menu changed', SLOW, async () => {
     await party('menuChangedCheck');
     const theirs = screen.getByRole('region', { name: `${CHIDI}’s meals` });

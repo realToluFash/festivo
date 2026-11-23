@@ -1,5 +1,5 @@
 import type { Allergen } from './guestKitchenWords.ts';
-import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS } from './menuLibrary.ts';
+import { type Diet, type DishAllergen, type Lang, DISH_ALLERGENS, listOf } from './menuLibrary.ts';
 import { allergenList } from './mealStep.ts';
 import { coursesAt } from './menuCourses.ts';
 import { type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
@@ -40,9 +40,12 @@ export type PartyAnswer =
   | { kind: 'host' }
   | MenuChanged;
 
-/** sc-3913: the host changed the menu after this pick. The course is asked again, and the pick is kept by the dish's name as picked. */
+/** sc-3913: the host changed the menu after this pick. The course is asked again, and the pick is kept by the dish's name as picked. An allergen added names only the added ones this person has recorded. */
 export type MenuChanged = { kind: 'changed'; dish: string } & (
-  { why: 'removed' } | { why: 'ways'; ways: number } | { why: 'choices' }
+  | { why: 'removed' }
+  | { why: 'ways'; ways: number }
+  | { why: 'choices' }
+  | { why: 'allergen'; allergens: readonly DishAllergen[] }
 );
 
 export const isChanged = (answer: PartyAnswer | undefined): answer is MenuChanged =>
@@ -256,6 +259,8 @@ export const PW = {
       return `${who} picked ${answer.dish}, which is no longer on the menu.${end}`;
     if (answer.why === 'ways')
       return `${who} picked ${answer.dish}, which now comes ${answer.ways} ways.${end}`;
+    if (answer.why === 'allergen')
+      return `${who} picked ${answer.dish}, which now contains ${allergenList(answer.allergens, 'en', listOf)}.${end}`;
 
     return `${who} picked ${answer.dish}, and its choices have changed.${end}`;
   },
@@ -843,6 +848,22 @@ export const MENU_CHANGED_STATES = {
       note: 'You picked Jollof rice, and its choices changed (a choice added, removed, or its Guests pick exactly changed, sc-3904). Your Main is asked with nothing chosen. Its choices are sc-3904’s step, shown on the single-person meal step demo.',
       answers: { ...PICKED, 'me|main': { kind: 'changed', dish: 'Jollof rice', why: 'choices' } },
       view: at('me', 'main'),
+    }),
+  menuChangedAllergen: () =>
+    comeBack({
+      name: 'Menu changed, an allergen added',
+      note: 'Chidi Okonkwo-Williams has milk recorded and picked Pounded yam and egusi; the host then added milk to its Contains. Only his Main is asked, headed Pick a new main, with the line naming the added allergen he has recorded. The dish is greyed for him with the allergen notice, as any dish with his allergen is. On Your picks the row reads Menu changed with the same line. The host also sees him in Needs the host (sc-3909); the guest is not told that.',
+      recorded: MILK,
+      answers: {
+        ...PICKED,
+        'chidi|main': {
+          kind: 'changed',
+          dish: 'Pounded yam and egusi',
+          why: 'allergen',
+          allergens: ['milk'],
+        },
+      },
+      view: at('chidi', 'main'),
     }),
   menuChangedCheck: () =>
     comeBack({
