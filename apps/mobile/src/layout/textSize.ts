@@ -143,12 +143,7 @@ export const LABEL_LINE = 1.22;
 const SPACE = 0.3;
 
 /** The lines words `widths` wide at `start` take at `at`, broken between words in `inside`. */
-function linesAt(
-  widths: readonly number[],
-  start: number,
-  at: number,
-  inside: number,
-): number {
+function linesAt(widths: readonly number[], start: number, at: number, inside: number): number {
   let lines = 1;
   let line = 0;
   for (const width of widths.map((measured) => (measured * at) / start)) {
