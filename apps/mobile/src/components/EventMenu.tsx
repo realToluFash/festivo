@@ -7,9 +7,9 @@ import type {
   PicksRow,
 } from '@soirely/api-client';
 import { clockOf, defaultPick, hostCount, menuCourseOf, waitingSplit } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, StyleSheet, View, type ViewInstance } from 'react-native';
+import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
@@ -76,37 +76,51 @@ export function EventMenu({
   const [opened, setOpened] = useState<Opened | null>(null);
   const [said, setSaid] = useState<Said>([]);
   const opener = useRef<ViewInstance | null>(null);
-  const [tick, setTick] = useState(0);
+  const asked = useRef(0);
+  const out = useRef(false);
 
-  useEffect(() => {
-    let current = true;
+  const drop = () => {
+    asked.current += 1;
+    out.current = false;
+  };
+
+  const read = useCallback(() => {
+    const mine = ++asked.current;
+    out.current = true;
+    const landed = () => {
+      if (mine !== asked.current) return false;
+      out.current = false;
+      setPulling(false);
+
+      return true;
+    };
     Promise.all([api.menuPicks(event.id), api.menu(event.id)]).then(
       ([picks, menu]) => {
-        if (!current) return;
-        setLoad({ kind: 'loaded', picks, menu, stale: false });
-        setPulling(false);
+        if (landed()) setLoad({ kind: 'loaded', picks, menu, stale: false });
       },
       () => {
-        if (!current) return;
-        setLoad((was) => (was.kind === 'loaded' ? { ...was, stale: true } : { kind: 'failed' }));
-        setPulling(false);
+        if (landed())
+          setLoad((was) => (was.kind === 'loaded' ? { ...was, stale: true } : { kind: 'failed' }));
       },
     );
-
-    return () => {
-      current = false;
-    };
-  }, [event.id, tick]);
+  }, [event.id]);
 
   useEffect(() => {
-    const timer = setInterval(() => setTick((n) => n + 1), POLL_MS);
+    read();
+    const timer = setInterval(() => {
+      if (!out.current && AppState.currentState === 'active') read();
+    }, POLL_MS);
 
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      clearInterval(timer);
+      asked.current += 1;
+      out.current = false;
+    };
+  }, [read]);
 
   const pull = () => {
     setPulling(true);
-    setTick((n) => n + 1);
+    read();
   };
 
   const shareSheet = async () => {
@@ -128,12 +142,12 @@ export function EventMenu({
   const heading = (
     <View style={styles.bar}>
       <View style={parts.flex}>
-        <BodyTitle size={PAGE_TITLE} accessibilityRole="header" ref={titleRef} style={pageTitle}>
-          {t('eventNav.menu')}
-        </BodyTitle>
         <Text size={15} style={parts.secondary} numberOfLines={2}>
           {event.name}
         </Text>
+        <BodyTitle size={PAGE_TITLE} accessibilityRole="header" ref={titleRef} style={pageTitle}>
+          {t('eventNav.menu')}
+        </BodyTitle>
       </View>
       {hasMenu && (
         <KitchenSheetPill
@@ -162,7 +176,7 @@ export function EventMenu({
               label={t('menuPicks.tryAgain')}
               onPress={() => {
                 setLoad({ kind: 'loading' });
-                setTick((n) => n + 1);
+                read();
               }}
               testID="menu.retry"
             />
@@ -209,6 +223,7 @@ export function EventMenu({
       ? picks?.courses.find((one) => one.id === opened.courseId)
       : undefined;
   const onSaved = (next: EventPicks, lines: Said) => {
+    drop();
     setLoad((was) => (was.kind === 'loaded' ? { ...was, picks: next, stale: false } : was));
     setSaid(lines);
   };
@@ -340,11 +355,6 @@ function Picks({
       {picks.held > 0 && (
         <Text size={15} style={parts.secondary} testID="menu.held">
           {t('menuPicks.held', { count: picks.held, room: picks.room })}
-        </Text>
-      )}
-      {picks.allIn && (
-        <Text size={15} style={parts.secondary} testID="menu.allIn">
-          {t('menuPicks.allIn')}
         </Text>
       )}
     </View>
@@ -570,11 +580,6 @@ function Picks({
     </>
   );
 
-  const counts = !names ? (
-    <Text size={15} style={parts.secondary} testID="menu.countsOnly">
-      {t('menuPicks.needsRead')}
-    </Text>
-  ) : null;
   const next = (
     <Text size={15} style={parts.secondary} testID="menu.next">
       {t('menuPicks.nextStep')}
@@ -608,7 +613,6 @@ function Picks({
           <View style={styles.side}>
             {host}
             {waiting}
-            {counts}
             {next}
           </View>
         </View>
@@ -617,7 +621,6 @@ function Picks({
           {host}
           {courses(kind === 'tabletPortrait')}
           {waiting}
-          {counts}
           {next}
         </View>
       )}
