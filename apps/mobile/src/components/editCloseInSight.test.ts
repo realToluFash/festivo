@@ -50,10 +50,14 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
     expect(screen).toContain('opener={editing.saved === true ? nobody : editing.opener}');
     expect(inSight).toContain('landedOr(scroll, rest.to, rested);');
     expect(inSight).toContain('if (rest == null || scroll == null) return rested();');
-    expect(inSight).toContain(
-      "setTimeout(() => focusOnceStill(still, closed, 'settled'), SETTLED_MS)",
-    );
+    expect(inSight).toContain("focusOnceStill(still, closed, 'settled');");
     expect(inSight).toContain('moveScreenReaderFocus(of.opener.current);');
+  });
+
+  it('still sends focus back when no rest starts, because the toast’s top never came for this close', () => {
+    expect(inSight).toContain('if (still.current?.of === closed) still.current.resting = true;');
+    expect(inSight).toContain('if (still.current?.of === closed && !still.current.resting) {');
+    expect(inSight).toContain('clearTimeout(unrested);');
   });
 
   it('takes away the room at the page’s foot as the toast goes', () => {

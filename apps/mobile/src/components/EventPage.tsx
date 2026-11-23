@@ -484,7 +484,7 @@ interface Closed {
   saved?: boolean;
 }
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). */
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). A rest that never starts, because the toast's top never comes for this close, hands focus back SETTLED_MS after the edit has gone, keeping sc-48600's guarantee. */
 function useOpenerInSight(
   closed: Closed | null,
   toast: { top: number; over: Closed | null } | null,
@@ -500,10 +500,21 @@ function useOpenerInSight(
 
   useEffect(() => {
     if (closed?.saved !== true) return;
-    still.current = { of: closed, settled: false, rested: false };
-    const settle = setTimeout(() => focusOnceStill(still, closed, 'settled'), SETTLED_MS);
+    still.current = { of: closed, settled: false, rested: false, resting: false };
+    let unrested: ReturnType<typeof setTimeout> | undefined;
+    const settle = setTimeout(() => {
+      focusOnceStill(still, closed, 'settled');
+      unrested = setTimeout(() => {
+        if (still.current?.of === closed && !still.current.resting) {
+          focusOnceStill(still, closed, 'rested');
+        }
+      }, SETTLED_MS);
+    }, SETTLED_MS);
 
-    return () => clearTimeout(settle);
+    return () => {
+      clearTimeout(settle);
+      clearTimeout(unrested);
+    };
   }, [closed]);
 
   useEffect(() => {
@@ -523,6 +534,7 @@ function useOpenerInSight(
   useEffect(() => {
     if (over == null || closed == null || closed === seen.current) return;
     seen.current = closed;
+    if (still.current?.of === closed) still.current.resting = true;
 
     const current = () => seen.current === closed;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
@@ -564,6 +576,7 @@ interface Still {
   of: Closed;
   settled: boolean;
   rested: boolean;
+  resting: boolean;
 }
 
 /** Sends focus to the saved row once both its edit has gone and the page has come to rest. */
