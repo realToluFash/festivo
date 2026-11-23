@@ -387,7 +387,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
         }),
       ).toBeDefined();
       expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
-      expect(screen.getByText(/“Your access to single events is not affected\.”/u)).toBeDefined();
+      expect(screen.getByText('Your access to single events is not affected.')).toBeDefined();
     },
   );
 
