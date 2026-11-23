@@ -15,7 +15,6 @@ identity="$(realpath "${2:?usage: deploy/restore.sh <YYYY-MM-DD> <identity file>
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$here/.."
-crontab="$root/services/api/config/crontab"
 
 # A rehearsal on the QA stack names that stack's compose project and files here
 # (deploy/README.md, Rehearsed); a production restore leaves them alone.
@@ -42,8 +41,10 @@ started="$(date +%s)"
 encrypted="$(mktemp)"
 trap 'rm -f "$encrypted"' EXIT
 
+# Passed by name, so the values never reach a command line that ps can read.
+export AWS_ACCESS_KEY_ID="$RESTORE_KEY" AWS_SECRET_ACCESS_KEY="$RESTORE_SECRET"
 fetch=(docker run --rm --network "$network" "${backup_env[@]}"
-  --env AWS_ACCESS_KEY_ID="$RESTORE_KEY" --env AWS_SECRET_ACCESS_KEY="$RESTORE_SECRET" "$image")
+  --env AWS_ACCESS_KEY_ID --env AWS_SECRET_ACCESS_KEY "$image")
 open=(docker run --rm -i --network none --volume "$identity:/run/backup/identity:ro" "$image")
 
 echo "Fetching the backup of $date and checking it opens, before anything closes."
@@ -64,14 +65,16 @@ echo "Replacing the database with the backup of $date."
   | "${compose[@]}" exec -T postgres sh -c \
     'pg_restore --exit-on-error --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
-# Every prune the scheduler runs, read from its crontab so a new one is never missed:
-# what a night's prune removed after the backup was taken is removed again.
-steps="php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
-for prune in $(grep -oE 'app:prune-[a-z-]+' "$crontab" | sort -u); do
-  steps+=" && echo 'Running $prune.' && php bin/console $prune --no-interaction"
-done
-echo "Migrating the restored database to this commit's schema, then pruning it."
-"${compose[@]}" run --rm --no-deps api sh -c "$steps"
+# Every prune and erasure the scheduler runs, read from the crontab in the image that
+# is about to serve, so a new one is never missed and none it lacks is asked for: what
+# was removed or erased after the backup was taken goes again.
+steps='php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+test -f config/crontab
+for command in $(grep -oE "app:(prune|erase)-[a-z-]+" config/crontab | sort -u); do
+  echo "Running $command." && php bin/console "$command" --no-interaction
+done'
+echo "Migrating the restored database to this commit's schema, then pruning and erasing it."
+"${compose[@]}" run --rm --no-deps api sh -ec "$steps"
 
 # Replaying the record of erasures belongs here, before the API serves. It arrives
 # with sc-30193's erasure (sc-30204, 'Stories not yet merged').

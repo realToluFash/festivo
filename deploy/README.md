@@ -102,15 +102,15 @@ approval. Once approved, ops creates the organisation, adds the shipper here, an
 proves each alert with a forced failure on a non-production environment
 (sc-86645). Until then this section is the list the alerts are made from.
 
-| Story    | The line's message                                                                                                                                                                                                           | Alert                        |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| sc-117   | `The revoked-session list is unreachable; ended sessions last until their access tokens expire` (`RevokedSessions::UNREACHABLE`), once per failed check                                                                      | on every line                |
-| sc-4332  | `Email bounces are at …` / `Email complaints are at …`, from the hourly `app:mail:check-rates` (over 2% bounces or 0.08% complaints in 24 hours)                                                                             | on every line                |
-| sc-104   | `Notifications have stopped: …`, `Notifications are behind: …`, `Notifications are failing: …`, from `app:notifications:check` every minute                                                                                  | on every line                |
-| sc-45470 | `Meta refused a WhatsApp message for the account's payment (131042).`                                                                                                                                                        | one alert for a run of lines |
-| sc-46367 | `WhatsAppSubsidy::CAP_REACHED`, with the month and its USD total in its context, once in a month                                                                                                                             | on the line                  |
-| sc-30204 | `The database backup of <date> failed: …`, `The database backup of <date> is … bytes, less than half of the previous one (…)` and `No database backup for <date> is in the bucket by 06:00 UTC`, from the `backup` container | on every line                |
-| sc-80876 | `Anthropic refused an assistant request: the workspace's monthly spend limit is reached.`                                                                                                                                    | one alert for a run of lines |
+| Story    | The line's message                                                                                                                                                                                                                                                                           | Alert                        |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| sc-117   | `The revoked-session list is unreachable; ended sessions last until their access tokens expire` (`RevokedSessions::UNREACHABLE`), once per failed check                                                                                                                                      | on every line                |
+| sc-4332  | `Email bounces are at …` / `Email complaints are at …`, from the hourly `app:mail:check-rates` (over 2% bounces or 0.08% complaints in 24 hours)                                                                                                                                             | on every line                |
+| sc-104   | `Notifications have stopped: …`, `Notifications are behind: …`, `Notifications are failing: …`, from `app:notifications:check` every minute                                                                                                                                                  | on every line                |
+| sc-45470 | `Meta refused a WhatsApp message for the account's payment (131042).`                                                                                                                                                                                                                        | one alert for a run of lines |
+| sc-46367 | `WhatsAppSubsidy::CAP_REACHED`, with the month and its USD total in its context, once in a month                                                                                                                                                                                             | on the line                  |
+| sc-30204 | `The database backup of <date> failed: …`, `The database backup of <date> is … bytes, less than half of the previous one (…)`, `No database backup for <date> is in the bucket by 06:00 UTC` and `No database backup could be found for <date> by 06:00 UTC: …`, from the `backup` container | on every line                |
+| sc-80876 | `Anthropic refused an assistant request: the workspace's monthly spend limit is reached.`                                                                                                                                                                                                    | one alert for a run of lines |
 
 ## Backups
 
@@ -150,8 +150,9 @@ RESTORE_KEY=… RESTORE_SECRET=… deploy/restore.sh <YYYY-MM-DD> <identity file
 2. Stops `proxy`, `api`, `notification-worker`, `scheduler` and `backup`: no request is
    served from here until the last step.
 3. Drops the database and restores the backup into a new one.
-4. Runs the migrations, then every `app:prune-*` in `services/api/config/crontab`, read
-   from it, so nothing whose window has closed (sc-3592, sc-68) is served again.
+4. Runs the migrations, then every `app:prune-*` and `app:erase-*` in
+   `services/api/config/crontab`, read from the API image about to serve, so nothing whose window has closed
+   (sc-3592, sc-68) and no guest or staff contact whose erasure is due is served again.
 5. Starts what it stopped and waits for every health check.
 
 A step that fails stops the script with the API still closed, and says so. The record
