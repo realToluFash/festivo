@@ -218,6 +218,7 @@ function DemoTodayScreen() {
               waiting={read.shown}
               onTab={onTab}
               onRetry={read.retry}
+              switched={read.switched}
               notices={notices}
             />
           ) : shownRun != null ? (

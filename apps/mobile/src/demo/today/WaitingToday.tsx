@@ -30,7 +30,8 @@ export function useTodayRead(
   start: Waiting | null,
   ends: 'loaded' | 'failed',
   placeId: string | undefined,
-): { shown: Waiting | 'loaded'; retry: () => void } {
+): { shown: Waiting | 'loaded'; retry: () => void; switched: boolean } {
+  const [openedOn] = useState(placeId);
   const [shown, setShown] = useState<Waiting | 'loaded'>(start ?? 'loaded');
   const [reads, setReads] = useState(0);
   const [readFor, setReadFor] = useState(placeId);
@@ -53,7 +54,7 @@ export function useTodayRead(
     setReads((n) => n + 1);
   }, []);
 
-  return { shown, retry };
+  return { shown, retry, switched: placeId !== openedOn };
 }
 
 /** Today while its events load or after they did not (sc-87600): the cover, Search, the bell and the tabs stay, and only the body waits. */
@@ -62,12 +63,14 @@ export function WaitingTodayScreen({
   waiting,
   onTab,
   onRetry,
+  switched,
   notices,
 }: {
   moment: Moment;
   waiting: Waiting;
   onTab: (tab: Tab) => void;
   onRetry: () => void;
+  switched: boolean;
   notices: ReactNode;
 }) {
   const { kind } = useLayout();
@@ -81,7 +84,7 @@ export function WaitingTodayScreen({
     );
 
   return kind === 'tabletLandscape' ? (
-    <Landscape moment={moment} onTab={onTab} notices={notices}>
+    <Landscape moment={moment} onTab={onTab} switched={switched} notices={notices}>
       {body}
     </Landscape>
   ) : (
@@ -106,12 +109,6 @@ function Upright({
 }) {
   const insets = useSafeAreaInsets();
   const foot = tabBarFoot(insets.bottom);
-  const tabs = useCallback(
-    (tab: Tab) => {
-      if (tab !== 'Today') onTab(tab);
-    },
-    [onTab],
-  );
 
   return (
     <View style={styles.page}>
@@ -125,7 +122,7 @@ function Upright({
           moment={moment}
           layout={phone ? 'phone' : 'portrait'}
           top={insets.top}
-          onTab={tabs}
+          onTab={onTab}
         />
         <View
           style={[
@@ -140,22 +137,24 @@ function Upright({
       {phone && (
         <>
           <TabBarFade />
-          <PhoneTabBar bottom={foot} onTab={tabs} />
+          <PhoneTabBar bottom={foot} onTab={onTab} />
         </>
       )}
     </View>
   );
 }
 
-/** On its side the sidebar lists what its own read last listed: nothing on a first open (`?sidebar=` as on a loaded Today), or the four from before with `?sidebar=kept`. */
+/** On its side the sidebar lists what its own read last listed: nothing on a first open (`?sidebar=` as on a loaded Today), or the four from before with `?sidebar=kept`, until a pick in the switcher moves to another organisation. */
 function Landscape({
   moment,
   onTab,
+  switched,
   notices,
   children,
 }: {
   moment: Moment;
   onTab: (tab: Tab) => void;
+  switched: boolean;
   notices: ReactNode;
   children: ReactNode;
 }) {
@@ -164,7 +163,7 @@ function Landscape({
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
-      <DemoSidebar events={sidebar === 'kept' ? SIDEBAR_EVENTS : []} onTab={onTab} />
+      <DemoSidebar events={sidebar === 'kept' && !switched ? SIDEBAR_EVENTS : []} onTab={onTab} />
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
           <TodayCover moment={moment} layout="landscape" top={0} onTab={onTab} />
