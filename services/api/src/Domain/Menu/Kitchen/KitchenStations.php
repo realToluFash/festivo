@@ -21,15 +21,9 @@ use Psl\Iter;
 use Psl\Vec;
 
 /**
- * sc-34244's By station: each course's items under the station that serves them (sc-3910), the Pass first and then the walking order, each counted on the plates that hold it (sc-4005's order rules).
- *
  * @phpstan-import-type Course from PicksMenu
  * @phpstan-import-type Spot from PicksMenu
  * @phpstan-import-type SheetStation from KitchenSheet
- *
- * @phpstan-type Plate array{chefs: bool, keys: list<string>}
- * @phpstan-type Stop array{id: string, name: string}
- * @phpstan-type Dished array{name: string, key: string, stop: string}
  */
 final readonly class KitchenStations
 {
@@ -72,7 +66,10 @@ final readonly class KitchenStations
 
                 return ['name' => $name, 'key' => $key, 'stop' => $servedFrom[$course['id']][$key] ?? $pass];
             });
-            $by[$course['id']] = self::usesItems($one['course'], $items, $dishes, $pass)
+            $uses = [] !== $one['course']->getOwnItems()
+                || Iter\any($dishes, static fn (MenuDish $dish): bool => $dish->getCourse() === $one['course'] && [] !== $dish->getItems())
+                || Iter\any($items, static fn (array $item): bool => $pass !== $item['stop']);
+            $by[$course['id']] = $uses
                 ? self::stations($one['course'], $items, $stops, Vec\values($spots[$course['id']] ?? []), $dishes, $variants, $options)
                 : null;
         }
@@ -81,29 +78,53 @@ final readonly class KitchenStations
     }
 
     /**
-     * @param list<Dished>            $items
-     * @param array<string, MenuDish> $dishes
-     */
-    private static function usesItems(MenuCourse $course, array $items, array $dishes, string $pass): bool
-    {
-        return [] !== $course->getOwnItems()
-            || Iter\any($dishes, static fn (MenuDish $dish): bool => $dish->getCourse() === $course && [] !== $dish->getItems())
-            || Iter\any($items, static fn (array $item): bool => $pass !== $item['stop']);
-    }
-
-    /**
-     * @param list<Dished>                          $items
-     * @param non-empty-list<Stop>                  $stops    the Pass first
-     * @param list<Spot>                            $spots
-     * @param array<string, MenuDish>               $dishes
-     * @param array<string, MenuDishVariant>        $variants
-     * @param array<string, list<MenuChoiceOption>> $options  by choice id
+     * @param list<array{name: string, key: string, stop: string}> $items
+     * @param non-empty-list<array{id: string, name: string}>      $stops    the Pass first
+     * @param list<Spot>                                           $spots
+     * @param array<string, MenuDish>                              $dishes
+     * @param array<string, MenuDishVariant>                       $variants
+     * @param array<string, list<MenuChoiceOption>>                $options  by choice id
      *
-     * @return list<SheetStation> Chef's choice the Pass's last line, when not zero
+     * @return list<SheetStation>
      */
     private static function stations(MenuCourse $course, array $items, array $stops, array $spots, array $dishes, array $variants, array $options): array
     {
-        $plates = Vec\filter_nulls(Vec\map($spots, static fn (array $spot): ?array => self::plate($course, $spot, $dishes, $variants, $options)));
+        /** @param Spot $spot */
+        $plate = static function (array $spot) use ($course, $dishes, $variants, $options): ?array {
+            if ('skipped' === $spot['state']) {
+                return null;
+            }
+
+            $own = Vec\map($course->getOwnItems(), NameNormaliser::key(...));
+            $dish = $dishes[$spot['dish'] ?? ''] ?? null;
+
+            if (null === $dish || $dish->getCourse() !== $course || !Iter\contains(['dish', 'defaulted'], $spot['state'])) {
+                return ['chefs' => true, 'keys' => $own];
+            }
+
+            if ([] === $dish->getItems()) {
+                return ['chefs' => false, 'keys' => [NameNormaliser::key($dish->getName()), ...$own]];
+            }
+
+            $chefs = false;
+            $names = [];
+
+            foreach ($dish->getItems() as $item) {
+                if ('fixed' === $item['kind']) {
+                    $names[] = $item['name'];
+                } elseif ('variants' === $item['kind']) {
+                    $variant = $variants[$spot['variant'] ?? ''] ?? null;
+                    $names = null !== $variant && $variant->getDish() === $dish ? [...$names, $variant->getName()] : $names;
+                } else {
+                    $picked = Vec\filter($options[$item['choiceId']] ?? [], static fn (MenuChoiceOption $one): bool => Iter\contains($spot['options'] ?? [], $one->getId()->toRfc4122()));
+                    $chefs = $chefs || ([] === $picked && 'defaulted' === $spot['state']);
+                    $names = [...$names, ...Vec\map($picked, static fn (MenuChoiceOption $one): string => $one->getName())];
+                }
+            }
+
+            return ['chefs' => $chefs, 'keys' => [...Vec\map($names, NameNormaliser::key(...)), ...$own]];
+        };
+        $plates = Vec\filter_nulls(Vec\map($spots, $plate));
         $chefs = Iter\count(Vec\filter($plates, static fn (array $plate): bool => $plate['chefs']));
         $countOf = static fn (string $key): int => Iter\count(Vec\filter($plates, static fn (array $plate): bool => Iter\contains($plate['keys'], $key)));
         $stations = [];
@@ -124,51 +145,5 @@ final readonly class KitchenStations
         }
 
         return $stations;
-    }
-
-    /**
-     * One guest's tray on the course, by item key; null for a guest who skipped it. A guest with no dish is Chef's choice and holds the course's own items. A guest's own pick answers every choice, an optional one with None for me; a default names only the required ones (sc-1362), so a defaulted guest with no answer to a choice item is Chef's choice too.
-     *
-     * @param Spot                                  $spot
-     * @param array<string, MenuDish>               $dishes
-     * @param array<string, MenuDishVariant>        $variants
-     * @param array<string, list<MenuChoiceOption>> $options  by choice id
-     *
-     * @return ?Plate
-     */
-    private static function plate(MenuCourse $course, array $spot, array $dishes, array $variants, array $options): ?array
-    {
-        if ('skipped' === $spot['state']) {
-            return null;
-        }
-
-        $own = Vec\map($course->getOwnItems(), NameNormaliser::key(...));
-        $dish = $dishes[$spot['dish'] ?? ''] ?? null;
-
-        if (null === $dish || $dish->getCourse() !== $course || !Iter\contains(['dish', 'defaulted'], $spot['state'])) {
-            return ['chefs' => true, 'keys' => $own];
-        }
-
-        if ([] === $dish->getItems()) {
-            return ['chefs' => false, 'keys' => [NameNormaliser::key($dish->getName()), ...$own]];
-        }
-
-        $chefs = false;
-        $names = [];
-
-        foreach ($dish->getItems() as $item) {
-            if ('fixed' === $item['kind']) {
-                $names[] = $item['name'];
-            } elseif ('variants' === $item['kind']) {
-                $variant = $variants[$spot['variant'] ?? ''] ?? null;
-                $names = null !== $variant && $variant->getDish() === $dish ? [...$names, $variant->getName()] : $names;
-            } else {
-                $picked = Vec\filter($options[$item['choiceId']] ?? [], static fn (MenuChoiceOption $one): bool => Iter\contains($spot['options'] ?? [], $one->getId()->toRfc4122()));
-                $chefs = $chefs || ([] === $picked && 'defaulted' === $spot['state']);
-                $names = [...$names, ...Vec\map($picked, static fn (MenuChoiceOption $one): string => $one->getName())];
-            }
-        }
-
-        return ['chefs' => $chefs, 'keys' => [...Vec\map($names, NameNormaliser::key(...)), ...$own]];
     }
 }
