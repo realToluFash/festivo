@@ -166,7 +166,7 @@ export function whereOf(state: SwitcherState | null): Where {
           : state === 'joined'
             ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
             : POPULATED,
-    current: IRE.id,
+    current: state === 'paused-alone' ? PAUSED.id : IRE.id,
     paused: state === 'paused' || state === 'paused-alone',
     overdue: state === 'overdue' || state === 'overdue-alone',
     invitations: alone ? [] : INVITATIONS,

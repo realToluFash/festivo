@@ -8,7 +8,7 @@ import { LayersContext, useDeskLayers } from '../layers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { VIEWERS } from './settings.ts';
 import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
-import { inNone, isFresh, useSwitcherStart, useWhere } from './switcher.ts';
+import { inNone, isFresh, useHeld, useSwitcherStart, useWhere } from './switcher.ts';
 import {
   EVENTS,
   INVITES_NOT_SENT,
@@ -55,6 +55,7 @@ const SEARCHERS = new Map<SearchStart['reach'], DeskPerson>([
 export function Today({ search = null }: { search?: SearchStart | null }) {
   useSwitcherStart();
   const where = useWhere();
+  const held = useHeld();
   const [params] = useSearchParams();
   const raw = params.get('moment');
   // A role without Create events: Events' firstAsk, on Today (sc-30413, #36412).
@@ -147,7 +148,7 @@ export function Today({ search = null }: { search?: SearchStart | null }) {
           />
           <main id="content" ref={page} className="today-main" inert={covered}>
             <Switched />
-            {where.paused || where.overdue ? (
+            {held ? (
               <HeldStandIn />
             ) : (
               <>

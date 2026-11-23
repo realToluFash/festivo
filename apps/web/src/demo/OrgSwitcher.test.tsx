@@ -377,7 +377,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     SLOW,
     async () => {
       open('/demo/today?switcher=paused-alone');
-      await opener();
+      await opener(/^Organisation: Casa Lumen Eventos/);
       fireEvent.keyDown(document.body, { key: 'Escape' });
 
       expect(
