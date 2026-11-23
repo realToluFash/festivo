@@ -13,9 +13,11 @@ appId: host.exp.Exponent
     visible: '{{t:any:todayScreen.tab.today}}|{{t:any:home.signedInTo}}|{{t:any:noOrganisation.title}}|{{t:any:eventNav.more}}|{{t:any:eventNav.overview}}|{{t:any:steps.organisationTitle}}|{{t:any:steps.invitedTitle}}|{{t:any:signInRules.overdueTitle}}|{{t:any:accessPaused.badge}}'
     timeout: 30000
     optional: true
+# The paused page shows Today too, and has no Settings. sc-86367.
 - runFlow:
     when:
       visible: '{{t:any:todayScreen.tab.today}}'
+      notVisible: '{{t:any:accessPaused.badge}}'
     file: to-settings.yaml
 # An account in no organisation that holds an event from outside lands inside it, which names
 # no account: Settings does. sc-68438.

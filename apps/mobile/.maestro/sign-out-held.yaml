@@ -15,10 +15,20 @@ appId: host.exp.Exponent
     timeout: 30000
 - tapOn:
     text: '.*{{t:any:security.thisDevice}}.*'
+- waitForAnimationToEnd
 - runFlow:
     file: scroll-tap.yaml
     env:
       ID: 'security.device.here.signOut'
+# On a phone the tap can land while the row is still opening, and nothing happens. sc-86367.
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: 'security.device.here.signOut'
+    commands:
+      - tapOn:
+          id: 'security.device.here.signOut'
 - extendedWaitUntil:
     visible:
       id: 'welcome.email'
