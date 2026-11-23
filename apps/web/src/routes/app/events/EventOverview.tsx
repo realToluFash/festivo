@@ -6,6 +6,7 @@ import {
   currencyLabel,
   formatEventRange,
   hostsLine,
+  nextStep,
   positionPart,
   rememberTabHolding,
   repliesClosed,
@@ -18,7 +19,7 @@ import {
 import { Fragment, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 
 import {
   Broken,
@@ -33,7 +34,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, Head, TextAction } from '../../../components/SettingsParts.tsx';
 import { Toast } from '../../../components/Toast.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
-import { listEventOf, shownEvent } from '../../../eventsList.ts';
+import { cardStep, listEventOf, shownEvent } from '../../../eventsList.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, outsideOn, useSessionState } from '../../../session.ts';
@@ -269,6 +270,7 @@ export function Overview({
         sending={resume.state === 'pending' ? t('eventPause.resuming') : null}
         takes={(action) => takesCardStep(event, action)}
         onStep={onStep}
+        nextUp={ownNextUp(card, now) == null ? null : <OwnNextUp card={card} now={now} />}
       />
       <PhaseChange key={loadedAt.getTime()} phase={phase} />
       {resume.state === 'failed' && (
@@ -627,4 +629,44 @@ function createdLine(guests: number | null, t: TFunction): string {
   return guests == null
     ? created
     : `${created} ${t('eventDuplicate.guestsCopied', { count: guests })}`;
+}
+
+/** Next up when it is the reader's own milestone (sc-30812): You, Overdue once passed, and its action as the card's one step. */
+function ownNextUp(card: ReturnType<typeof shownEvent>, now: Date) {
+  const step = nextStep(card, card.phase, now);
+
+  return step?.kind === 'nextUp' && step.milestone.owner === 'you' ? step.milestone : null;
+}
+
+function OwnNextUp({ card, now }: { card: ReturnType<typeof shownEvent>; now: Date }) {
+  const { t } = useTranslation();
+  const milestone = ownNextUp(card, now);
+  const shown = cardStep(card, now, dateLocale(), t);
+
+  if (milestone == null || shown.kind !== 'next') return null;
+
+  return (
+    <>
+      <ul className="ev-card-marks">
+        <li className="desk-glass">
+          <Glyph name="user" size={14} weight={2.4} />
+          {t('timeline.owner_you')}
+        </li>
+        {Date.parse(milestone.at) < now.getTime() && (
+          <li className="desk-glass">
+            <Glyph name="alert" size={14} weight={2.4} />
+            {t('timeline.overdue')}
+          </li>
+        )}
+      </ul>
+      <p className="ev-card-next">{shown.title}</p>
+      <p className="desk-on-card">{shown.line}</p>
+      {milestone.action != null && (
+        <Link className="desk-step" to={milestone.action.link}>
+          {milestone.action.label}
+          <Glyph name="arrow" size={16} weight={2.4} />
+        </Link>
+      )}
+    </>
+  );
 }
