@@ -237,6 +237,8 @@
     "optional": "Optional",
     "venueAddress": "Address",
     "venueAddressHint": "Type at least 3 characters to see suggestions. You can also type any address.",
+    "creditStadia": "Stadia Maps",
+    "creditOsm": "OpenStreetMap contributors",
     "venueSuggestions": "Address suggestions",
     "venueSuggestionsFound_one": "{{count, number}} suggestion. Use the up and down arrows to choose it.",
     "venueSuggestionsFound_other": "{{count, number}} suggestions. Use the up and down arrows to choose one.",

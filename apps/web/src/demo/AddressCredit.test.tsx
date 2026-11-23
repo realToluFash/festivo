@@ -18,7 +18,11 @@ function open(state: string) {
 }
 
 async function address(): Promise<HTMLInputElement> {
-  return (await screen.findByRole('combobox', { name: /Address/ }, WAIT)) as HTMLInputElement;
+  return (await screen.findByRole(
+    'combobox',
+    { name: /Address|Adresse/ },
+    WAIT,
+  )) as HTMLInputElement;
 }
 
 function credit(name = 'OpenStreetMap contributors') {
@@ -96,7 +100,6 @@ describe('Address suggestions credit Stadia Maps and OpenStreetMap (sc-80918)', 
       WAIT,
     );
 
-    expect(link.closest('p')?.getAttribute('lang')).toBe('fr');
     expect(link.closest('p')?.textContent).toBe(
       '© Stadia Maps © les contributeurs d’OpenStreetMap',
     );

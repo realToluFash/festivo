@@ -252,6 +252,8 @@
     "optional": "Opcional",
     "venueAddress": "Dirección",
     "venueAddressHint": "Escriba al menos 3 caracteres para ver sugerencias. También puede escribir cualquier dirección.",
+    "creditStadia": "Stadia Maps",
+    "creditOsm": "OpenStreetMap contributors",
     "venueSuggestions": "Sugerencias de direcciones",
     "venueSuggestionsFound_one": "{{count, number}} sugerencia. Use las flechas arriba y abajo para elegirla.",
     "venueSuggestionsFound_other": "{{count, number}} sugerencias. Use las flechas arriba y abajo para elegir una.",
