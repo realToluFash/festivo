@@ -116,9 +116,7 @@ fi
 
 HEADERS="${SOIRELY_HEADERS_FILE:-/etc/nginx/soirely-security-headers.conf}"
 
-# Google Fonts is the one third party the page loads: the stylesheet comes from
-# fonts.googleapis.com and the font files it names come from fonts.gstatic.com.
-# Self-hosting the two families would remove both and is the better end state.
+# The page loads nothing from a third party, its fonts included (sc-80882).
 #
 # style-src has no 'unsafe-inline'. That also governs inline style attributes,
 # so a `style={{…}}` prop anywhere in apps/web stops rendering — the eslint rule
@@ -128,7 +126,7 @@ HEADERS="${SOIRELY_HEADERS_FILE:-/etc/nginx/soirely-security-headers.conf}"
 # so it belongs on the terminator, where the max-age commitment is visible next
 # to the certificate it depends on.
 cat > "$HEADERS" <<CONF
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src ${IMG}; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src ${IMG}; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy \$soirely_referrer_policy always;
 add_header X-Robots-Tag \$soirely_robots always;

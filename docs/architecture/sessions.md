@@ -132,10 +132,9 @@ Two things to know before changing it:
   deployed build while working perfectly in `vite dev`, where no policy is served. The
   `react/forbid-dom-props` rule in `eslint.config.mjs` is what keeps that from being
   found in production instead of at commit time.
-- **Google Fonts is the one third party the page loads** — the stylesheet from
-  `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
-  Instrument Sans would remove both sources and is the better end
-  state.
+- **The page loads no third party, its fonts included.** Instrument Sans and Google Sans
+  are served from the web client's own origin (`apps/web/src/fonts.css`), so `style-src`
+  and `font-src` are `'self'` alone (sc-80882).
 - The object store's public origin is in `connect-src`, because the browser uploads a cover
   or avatar with a `PUT` to it, and in `img-src` beside `'self' data: blob:`, because it
   serves them. The container takes it from `SOIRELY_STORAGE_URL` (compose passes
