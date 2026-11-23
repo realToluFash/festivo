@@ -886,3 +886,27 @@ export const menuStateOf = (raw: string | undefined): MenuStateName =>
   isMenuState(raw) ? raw : 'populated';
 
 export const menuStart = (name: MenuStateName): MenuStart => STATES[name]();
+
+export function firstSuitable(course: Course, person: Person): Pick | null {
+  for (const found of course.dishes) {
+    const ways = found.variants.length === 0 ? [null] : found.variants.map((one) => one.id);
+    const way = ways.find((id) => ruledOut(person, containsOf(found, id)).length === 0);
+    if (way !== undefined) return dishPick(found.id, way, found.sides[0]?.id ?? null);
+  }
+
+  return null;
+}
+
+export function guestSends(world: MenuWorld): { world: MenuWorld; name: string } | null {
+  const next = whoHasnt(world)[0]?.people[0];
+  if (next == null) return null;
+  const sent = next.courses.reduce((now, course) => {
+    const pick = firstSuitable(course, next.person);
+    return pick == null ? now : choose(now, course.id, next.person.id, pick);
+  }, world);
+
+  return { world: sent, name: next.person.name };
+}
+
+export const hasChanged = (world: MenuWorld): boolean =>
+  world.courses.some((course) => courseFigures(world, course).changed > 0);

@@ -11,6 +11,7 @@ import {
   courseFigures,
   courseOf,
   draftPick,
+  guestSends,
   header,
   headerClose,
   hostCounts,
@@ -161,5 +162,17 @@ describe('Choose for them', () => {
     expect(checkDraft(course('k1'), person('kwame-asante'), { kind: 'kitchen' })).toEqual({
       kind: 'ok',
     });
+  });
+});
+
+describe('the counts move while the screen is open', () => {
+  it('fills the next waiting guest’s courses with what suits them', () => {
+    const sent = guestSends(world)!;
+    expect(sent.name).toBe('Bea Mensah');
+    expect(whoHasnt(sent.world)[0]!.people.map((one) => one.person.name)).toEqual([
+      'Kofi Mensah',
+      'Ama Mensah',
+    ]);
+    expect(header(sent.world)).toContain('41 of 48 picks in');
   });
 });
