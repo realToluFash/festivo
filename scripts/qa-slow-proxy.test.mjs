@@ -17,6 +17,21 @@ describe('which requests the proxy holds', () => {
     expect(holds('GET', '/api/events/ev1', guests)).toBe(false);
   });
 
+  it('holds only a request whose query matches --query, when one is given', () => {
+    const events = /^\/api\/orgs\/[^/]+\/events$/;
+    const past = /(^|&)finished=true(&|$)/;
+    expect(holds('GET', '/api/orgs/o1/events?finished=true&page=1', events, 'GET', past)).toBe(
+      true,
+    );
+    expect(holds('GET', '/api/orgs/o1/events?finished=false&page=1', events, 'GET', past)).toBe(
+      false,
+    );
+    expect(holds('GET', '/api/orgs/o1/events', events, 'GET', past)).toBe(false);
+    expect(holds('GET', '/api/orgs/o1/events/hosts?finished=true', events, 'GET', past)).toBe(
+      false,
+    );
+  });
+
   it('holds the method it was given instead of GET', () => {
     expect(holds('POST', '/api/events/ev1/guests', guests, 'POST')).toBe(true);
     expect(holds('GET', '/api/events/ev1/guests', guests, 'POST')).toBe(false);
@@ -141,6 +156,14 @@ describe('forwarding through the proxy', () => {
     expect(answer.status).toBe(200);
     expect(answer.headers.get('content-type')).toBe('application/json');
     expect(await answer.json()).toEqual({ paused: ['org1'] });
+  });
+
+  it('answers only the request whose query matches, forwarding the same path with another', async () => {
+    const base = await stack(0, 'GET', { status: 500, query: /(^|&)page=2(&|$)/ });
+    expect((await fetch(`${base}/api/events/ev1/guests?page=2`)).status).toBe(500);
+    const other = await fetch(`${base}/api/events/ev1/guests?page=1`);
+    expect(other.status).toBe(201);
+    expect(await other.text()).toBe('GET /api/events/ev1/guests?page=1 ');
   });
 
   it('holds an answer of its own for the delay too', async () => {

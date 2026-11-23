@@ -98,7 +98,8 @@ lives in the worktree's `.qa/browser-host`, so `checkout` keeps it.
 To hold a loading state on screen, start `ios` or `android` with `QA_API_URL` naming a slow proxy
 in front of the tester's API: `node scripts/qa-slow-proxy.mjs --target <API url> --port <n>
 --delay 5000` holds each `GET /api/events/{id}/guests` for five seconds and forwards everything
-else at once; `--path` takes another route as a regular expression. To see a failure or a state the
+else at once; `--path` takes another route as a regular expression, matched against the path alone, and
+`--query` a regular expression the query string must match too (`finished=true` for Events' Past). To see a failure or a state the
 stack cannot reach, `--status <code>` answers each matching request with that status instead of
 forwarding it, and `--body <file>` answers it with that file as JSON (200 unless `--status` names
 another): save the API's real answer, edit it, and serve the edit. Either one waits only as long
