@@ -223,6 +223,25 @@ final class MenuPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function anOtherAllergyAloneRulesOutNoPlateThatNeverStatedItsAllergens(): void
+    {
+        $this->coming([]);
+        $bisi = $this->personId('Bisi Adewale');
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no main');
+        $suya = new MenuDish($main, null, 'Suya', null, null, [], 3);
+        self::em()->persist($suya);
+        self::em()->flush();
+        $this->hostRecords($bisi, ['other'], 'Kiwi');
+
+        $people = Type\vec(Type\mixed_dict())->coerce($this->picks()['people']);
+        self::assertSame([[]], Vec\map(Vec\filter($people, static fn (array $one): bool => $bisi === $one['id']), static fn (array $one): mixed => $one['allergens']));
+
+        $this->chooseFor($bisi, $this->main, ['answer' => 'chosen', 'dish' => $this->id($suya)]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([], $this->picks()['needsHost']);
+    }
+
+    #[Test]
     public function onACourseThatAsksNothingARuledOutPersonNeedsTheHostUntilChosenForOrTheAllergyGoes(): void
     {
         $this->coming([['fullName' => 'Chidi Okonkwo'], ['fullName' => 'Ada Obi']]);
@@ -414,11 +433,11 @@ final class MenuPicksTest extends ApiTestCase
     }
 
     /** @param list<string> $allergies */
-    private function hostRecords(string $guestId, array $allergies): void
+    private function hostRecords(string $guestId, array $allergies, ?string $other = null): void
     {
         $person = self::em()->find(Guest::class, Uuid::fromString($guestId)) ?? self::fail('no guest');
         $needs = GuestNeeds::none();
-        self::service(GuestNeedsRecord::class)->write($person, new GuestNeeds([...$needs->codes, NeedKind::Allergen->value => $allergies], $needs->others, null), $this->owner);
+        self::service(GuestNeedsRecord::class)->write($person, new GuestNeeds([...$needs->codes, NeedKind::Allergen->value => $allergies], [...$needs->others, NeedKind::Allergen->value => $other], null), $this->owner);
         self::em()->flush();
     }
 
