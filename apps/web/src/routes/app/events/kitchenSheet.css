@@ -235,6 +235,15 @@
 
 /* From 320 px: the people table reads as one block per person, each cell under its heading. */
 @media (width <= 640px) {
+  .shell-content:has(.ks.desk-page) {
+    padding-inline: var(--spaceSm);
+  }
+
+  .ks.desk-page {
+    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
+    overflow: visible;
+  }
+
   .ks-people thead {
     position: absolute;
     width: 1px;
@@ -274,6 +283,10 @@
   padding: var(--space3xl);
   background: var(--colorNeutralFill);
   font-family: var(--fontFamily);
+}
+
+.ks-paper-page.is-print {
+  display: none;
 }
 
 .ks-paper-bar {
@@ -378,16 +391,25 @@
 }
 
 @media print {
-  body * {
+  body:has(.ks-paper-page) * {
     visibility: hidden;
   }
 
-  .ks-paper-page,
-  .ks-paper-page * {
+  body:has(.ks-paper-page) .ks-paper-page,
+  body:has(.ks-paper-page) .ks-paper-page * {
     visibility: visible;
   }
 
-  .ks-paper-page {
+  /* Ctrl+P on the sheet page prints the same paper sheets as Print, footer and all. */
+  .ks-paper-page.is-print {
+    display: flex;
+  }
+
+  .ks .ev-wide > :not(.ks-paper-page) {
+    display: none;
+  }
+
+  body:has(.ks-paper-page) .ks-paper-page {
     position: absolute;
     top: 0;
     left: 0;

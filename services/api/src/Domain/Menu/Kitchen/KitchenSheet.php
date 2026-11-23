@@ -14,6 +14,7 @@ use App\Entity\Guest;
 use App\Enum\NeedKind;
 use App\Enum\Paper;
 use Closure;
+use Collator;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
@@ -99,8 +100,10 @@ final readonly class KitchenSheet
         });
         $named = Vec\filter($rows, static fn (array $row): bool => [] !== $row['allergens'] || Iter\any($row['cells'], static fn (array $cell): bool => 'never' === $cell['kind']));
 
-        return Vec\sort($named, static function (array $a, array $b): int {
-            $byName = Str\Byte\compare_ci($a['name'], $b['name']);
+        $collator = new Collator('root');
+
+        return Vec\sort($named, static function (array $a, array $b) use ($collator): int {
+            $byName = (int) $collator->compare($a['name'], $b['name']);
 
             return 0 !== $byName ? $byName : Str\Byte\compare($a['id'], $b['id']);
         });

@@ -44,10 +44,6 @@ export function handoffPage(pathname: string): HandoffPage | null {
   const picks = matchPath('/app/events/:eventId/menu/picks', pathname)?.params.eventId;
   if (picks != null) return { kind: 'event', eventId: picks, area: 'menu', needs: PAGE_NEEDS.menu };
 
-  const kitchen = matchPath('/app/events/:eventId/menu/kitchen', pathname)?.params.eventId;
-  if (kitchen != null)
-    return { kind: 'event', eventId: kitchen, area: 'menu', needs: PAGE_NEEDS.menu };
-
   const part = matchPath('/app/events/:eventId/:part', pathname)?.params;
   const eventId = part?.eventId;
   const name = part?.part ?? '';

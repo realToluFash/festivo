@@ -156,13 +156,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const onScreen = { ignore: '[hidden] *, script, style' };
+
 describe('The kitchen sheet (sc-3911)', () => {
   it('puts allergies first, by person, then diets, then each course with its counts', async () => {
     onSheet({ [SHEET]: () => json(sheetOf()) });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Kitchen sheet' })).toBeDefined();
-    expect(screen.getByText(/^As of Sunday.* · 19:42$/)).toBeDefined();
-    expect(screen.getByText('4 coming · 2 people with allergies · 1 course')).toBeDefined();
+    expect(screen.getByText(/^As of Sunday.* · 19:42$/, onScreen)).toBeDefined();
+    expect(
+      screen.getByText('4 coming · 2 people with allergies · 1 course', onScreen),
+    ).toBeDefined();
     const headings = screen.getAllByRole('heading', { level: 2 }).map((one) => one.textContent);
     const at = ['Allergies', 'Diets', 'Main'].map((name) => headings.indexOf(name));
     expect(at.every((index) => index >= 0)).toBe(true);
@@ -188,7 +192,7 @@ describe('The kitchen sheet (sc-3911)', () => {
   it('counts allergies with no names without Guests manage', async () => {
     onSheet({ [SHEET]: () => json(sheetOf({ names: false, allergic: null })) });
 
-    expect(await screen.findByText('Names need Guests manage.')).toBeDefined();
+    expect(await screen.findByText('Names need Guests manage.', onScreen)).toBeDefined();
     const allergies = screen.getByRole('region', { name: 'Allergies' });
     expect(within(allergies).getByRole('rowheader', { name: 'Celery' })).toBeDefined();
     expect(screen.queryByText('Ada Obi')).toBeNull();
@@ -199,7 +203,9 @@ describe('The kitchen sheet (sc-3911)', () => {
       [SHEET]: () => json(sheetOf({ allergicCount: 0, allergic: [], allergyCounts: [] })),
     });
 
-    expect(await screen.findByText('No allergies recorded for anyone coming.')).toBeDefined();
+    expect(
+      await screen.findByText('No allergies recorded for anyone coming.', onScreen),
+    ).toBeDefined();
   });
 
   it('after the close, names those never given the default and who was', async () => {
@@ -253,7 +259,9 @@ describe('The kitchen sheet (sc-3911)', () => {
         ),
     });
 
-    expect(await screen.findByText('No allergies recorded for anyone coming.')).toBeDefined();
+    expect(
+      await screen.findByText('No allergies recorded for anyone coming.', onScreen),
+    ).toBeDefined();
     const row = (name: string) => screen.getByRole('rowheader', { name }).closest('tr')!;
     expect(within(row('Bea Mensah')).getByText('No allergy · Vegan')).toBeDefined();
     expect(within(row('Nadia Petrova')).getByText('No allergy · No garlic (other)')).toBeDefined();
@@ -261,7 +269,7 @@ describe('The kitchen sheet (sc-3911)', () => {
     expect(
       within(row('Bea Mensah')).getByText('Not chosen, never given the default'),
     ).toBeDefined();
-    expect(screen.getByText(/0 people with allergies/)).toBeDefined();
+    expect(screen.getByText(/0 people with allergies/, onScreen)).toBeDefined();
     expect(screen.getByRole('rowheader', { name: 'Other diet' })).toBeDefined();
   });
 
@@ -324,6 +332,22 @@ describe('The kitchen sheet (sc-3911)', () => {
         ),
       ).toBeDefined();
     expect(screen.queryByText(/₦|NGN/)).toBeNull();
+  });
+
+  it('keeps the paper sheets on the sheet page for Ctrl+P, each with the health footer', async () => {
+    onSheet({ [SHEET]: () => json(sheetOf()) });
+
+    expect(await screen.findByRole('button', { name: 'Download PDF' })).toBeDefined();
+    const pages = screen.getAllByRole('article', { hidden: true });
+    expect(pages).toHaveLength(2);
+    for (const page of pages) {
+      expect(page.closest('[hidden]')).not.toBeNull();
+      expect(
+        within(page).getByText(
+          'This sheet holds guests’ health information. Keep it with the kitchen and dispose of it after the event.',
+        ),
+      ).toBeDefined();
+    }
   });
 
   it('is refused without Menu read', async () => {

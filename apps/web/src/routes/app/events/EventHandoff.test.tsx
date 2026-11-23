@@ -275,6 +275,7 @@ describe('which pages hand over', () => {
       { kind: 'event', eventId: 'e1', area: 'budget', needs: 'budget.read' },
     ],
     ['/app/events/e1/reports', { kind: 'event', eventId: 'e1', area: 'reports', needs: null }],
+    ['/app/events/e1/menu/kitchen', null],
     ['/app/events/e1/nothing', null],
     ['/app/events/e1/staff/nothing', null],
     ['/app/events', null],

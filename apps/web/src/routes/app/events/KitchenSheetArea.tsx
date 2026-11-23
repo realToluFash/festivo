@@ -299,6 +299,9 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
           </section>
         ))}
       </div>
+      <div className="ks-paper-page is-print" hidden>
+        <PaperSheets event={event} sheet={sheet} paper={sheet.paper} />
+      </div>
     </>
   );
 }
@@ -527,7 +530,7 @@ function SheetPaper({
   sheet: KitchenSheet;
   paper: Paper;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const other: Paper = paper === 'a4' ? 'letter' : 'a4';
 
   return (
@@ -553,6 +556,24 @@ function SheetPaper({
           {t('kitchenSheet.printNow')}
         </button>
       </div>
+      <PaperSheets event={event} sheet={sheet} paper={paper} />
+    </div>
+  );
+}
+
+function PaperSheets({
+  event,
+  sheet,
+  paper,
+}: {
+  event: OrganisationEvent;
+  sheet: KitchenSheet;
+  paper: Paper;
+}) {
+  const { t, i18n } = useTranslation();
+
+  return (
+    <>
       <Page n={1} m={2} paper={paper}>
         <header className="ks-paper-head">
           <h1>{t('kitchenSheet.title')}</h1>
@@ -574,7 +595,7 @@ function SheetPaper({
           </section>
         ))}
       </Page>
-    </div>
+    </>
   );
 }
 
