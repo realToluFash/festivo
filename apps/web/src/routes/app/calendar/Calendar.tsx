@@ -137,7 +137,7 @@ function CalendarOf({
     <DeskPage layers={layers}>
       <CalendarFrameContext value={frame}>
         <div className="ev cal-page" inert={covered}>
-          {desk.offline}
+          <div className="rn-stack">{desk.above}</div>
           <CalendarTop
             titleRef={title}
             subscribe={subscribe}
