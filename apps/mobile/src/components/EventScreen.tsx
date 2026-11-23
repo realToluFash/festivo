@@ -91,6 +91,7 @@ import { useSidebarCard } from './sidebarCard.ts';
 import { backToEvents, eventTop } from '../kit/eventTop.ts';
 import { BACK_KEY, eventBack, overviewGivesWay } from '../kit/eventBack.ts';
 import { SEARCH_HREF, SEARCH_OPENED_WITH } from '../kit/searchLinks.ts';
+import { toastOverPage } from '../kit/savedRowFocus.ts';
 import { EdgeSwipeBack } from './useEdgeSwipeBack.ts';
 import { useSystemBack } from './useSystemBack.ts';
 
@@ -186,11 +187,13 @@ export function EventScreen({
     eventId: string;
     area: EventPlace;
     words: string;
+    id?: string | undefined;
     action?: ToastAction | null | undefined;
     /** The Save it says, whose row rests above it with a screen reader on (sc-86228). */
     over?: Editing | undefined;
   } | null>(null);
   const [toastAt, setToastAt] = useState<ToastAt | null>(null);
+  const saves = useRef(0);
   const withdrawToastAction = useCallback(
     () => setToast((was) => (was == null ? null : { ...was, action: null })),
     [],
@@ -385,8 +388,8 @@ export function EventScreen({
             partRef={partRef}
             closedOnto={editing?.open === false ? editing : null}
             toast={
-              toast?.eventId === eventId && toast.area === area && toastAt?.words === toast.words
-                ? { top: toastAt.top, over: toast.over ?? null }
+              toast?.eventId === eventId && toast.area === area
+                ? toastOverPage(toast, toastAt)
                 : null
             }
             onDuplicate={onDuplicate}
@@ -673,7 +676,14 @@ export function EventScreen({
             if (editing.part === 'cover') setCoverRefused(null);
             const closed = { ...editing, open: false, opener: partRef(editing.part), saved: true };
             setEditing(closed);
-            setToast({ eventId, area, words: said ?? t('eventEdit.saved'), over: closed });
+            saves.current += 1;
+            setToast({
+              eventId,
+              area,
+              words: said ?? t('eventEdit.saved'),
+              id: `saved-${saves.current}`,
+              over: closed,
+            });
           }}
           onLatest={(latest) => {
             change(latest);
@@ -685,6 +695,7 @@ export function EventScreen({
       {toast?.eventId === eventId && toast.area === area && (
         <PageToast
           words={toast.words}
+          id={toast.id}
           action={toast.action}
           onClose={() => setToast(null)}
           onAt={setToastAt}

@@ -31,6 +31,7 @@ import {
 import { type CardStep, type StepAction, listEventOf, shownEvent } from '../kit/eventsList.ts';
 import { PHASE_WORD } from '../kit/makeLive.ts';
 import { replyByRow } from '../kit/replyBy.ts';
+import { type SavedRowFocus, savedRowFocus } from '../kit/savedRowFocus.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -479,12 +480,15 @@ const MANAGE_ITEM: Record<ManageKey, (t: TFunction) => ManageItem<ManageKey>> = 
   }),
 };
 
+/** The latest focus goes back to a saved row, however its rest went. */
+const SAVED_FOCUS_LATEST_MS = SETTLED_MS * 3;
+
 interface Closed {
   opener: RefObject<ScreenReaderTarget | null>;
   saved?: boolean;
 }
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). A rest that never starts, because the toast's top never comes for this close, brings the row into sight SETTLED_MS after the edit has gone and hands focus back from its landing, keeping sc-48600's guarantee. */
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). When it goes is savedRowFocus's: the edit counts as gone SETTLED_MS after this close's own toast was laid out, since counted from the commit a heavy Save's window could still be going and TalkBack, as it went, put its focus on the header's back button. */
 function useOpenerInSight(
   closed: Closed | null,
   toast: { top: number; over: Closed | null } | null,
@@ -496,33 +500,39 @@ function useOpenerInSight(
   const laidOut = useRef<(() => void) | null>(null);
   const over = toast != null && closed?.saved === true && toast.over === closed ? toast.top : null;
   const shows = toast != null;
-  const still = useRef<Still | null>(null);
+  const focus = useRef<{ of: Closed; timing: SavedRowFocus } | null>(null);
+  const restedOnto = (of: Closed) => () => {
+    if (focus.current?.of === of) focus.current.timing.rested();
+  };
 
   useEffect(() => {
     if (closed?.saved !== true) return;
-    still.current = { of: closed, settled: false, rested: false, resting: false };
-    let unrested: ReturnType<typeof setTimeout> | undefined;
-    const settle = setTimeout(() => {
-      focusOnceStill(still, closed, 'settled');
-      unrested = setTimeout(() => {
-        if (still.current?.of === closed && !still.current.resting) {
-          still.current.resting = true;
-          const rested = () => focusOnceStill(still, closed, 'rested');
-          void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-            if (!on) return rested();
-            bringIntoView(scroll, closed.opener.current, false, {}, (found) =>
-              found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),
-            );
-          });
-        }
-      }, SETTLED_MS);
-    }, SETTLED_MS);
+    const timing = savedRowFocus({
+      settledMs: SETTLED_MS,
+      latestMs: SAVED_FOCUS_LATEST_MS,
+      move: () => moveScreenReaderFocus(closed.opener.current),
+      bringIntoSight: (rested) => {
+        void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+          if (!on) return rested();
+          bringIntoView(scroll, closed.opener.current, false, {}, (found) =>
+            found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),
+          );
+        });
+      },
+    });
+    focus.current = { of: closed, timing };
 
     return () => {
-      clearTimeout(settle);
-      clearTimeout(unrested);
+      timing.stop();
+      if (focus.current?.timing === timing) focus.current = null;
     };
   }, [closed, scroll]);
+
+  const toastShown = over != null;
+  useEffect(() => {
+    if (toastShown && closed != null && focus.current?.of === closed)
+      focus.current.timing.toastLaidOut();
+  }, [closed, toastShown]);
 
   useEffect(() => {
     if (closed == null || closed === seen.current || closed.saved === true) return;
@@ -541,23 +551,23 @@ function useOpenerInSight(
   useEffect(() => {
     if (over == null || closed == null || closed === seen.current) return;
     seen.current = closed;
-    if (still.current?.of === closed) still.current.resting = true;
 
     const current = () => seen.current === closed;
     void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
       if (!on || !current()) return;
       restOverToast(scroll, closed.opener.current, over, roomNow.current, (rest) => {
         if (!current()) return;
-        const rested = () => focusOnceStill(still, closed, 'rested');
+        const rested = restedOnto(closed);
         if (rest == null || scroll == null) return rested();
         const go = () => {
           if (rest.to != null) scroll.ref.current?.scrollTo({ y: rest.to, animated: false });
           landedOr(scroll, rest.to, rested);
         };
-        if (rest.room === roomNow.current) return go();
-        roomNow.current = rest.room;
+        const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);
+        if (wanted === roomNow.current) return go();
+        roomNow.current = wanted;
         laidOut.current = go;
-        setRoom(rest.room);
+        setRoom(wanted);
       });
     });
   }, [closed, over, scroll]);
@@ -577,23 +587,6 @@ function useOpenerInSight(
       then?.();
     },
   };
-}
-
-interface Still {
-  of: Closed;
-  settled: boolean;
-  rested: boolean;
-  resting: boolean;
-}
-
-/** Sends focus to the saved row once both its edit has gone and the page has come to rest. */
-function focusOnceStill(still: RefObject<Still | null>, of: Closed, part: 'settled' | 'rested') {
-  const now = still.current;
-  if (now?.of !== of) return;
-  now[part] = true;
-  if (!now.settled || !now.rested) return;
-  still.current = null;
-  moveScreenReaderFocus(of.opener.current);
 }
 
 /** Calls `then` once, as the scroll lands on `to` or after SETTLED_MS, whichever comes first, so a scroll that stops short still lets focus go. */

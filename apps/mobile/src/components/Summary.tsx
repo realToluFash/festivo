@@ -94,18 +94,22 @@ const hidden = {
 
 export interface PageToastProps {
   words: string;
+  /** Tells this toast from an earlier one with the same words, so its box is laid out again. */
+  id?: string | undefined;
   action?: ToastAction | null | undefined;
   onClose: () => void;
 }
 
-/** Where a page's toast shows: the top of its box in the window, for the words it shows. */
+/** Where a page's toast shows: the top of its box in the window, for the toast it shows. */
 export interface ToastAt {
   words: string;
+  id?: string | undefined;
   top: number;
 }
 
 export function PageToast({
   words,
+  id,
   action,
   onClose,
   bottom,
@@ -128,9 +132,11 @@ export function PageToast({
     <TitleCap.Provider value={null}>
       <View style={[styles.toast, { bottom }]}>
         <View
-          key={words}
+          key={id ?? words}
           ref={box}
-          onLayout={() => box.current?.measureInWindow((_x, top) => at.current?.({ words, top }))}
+          onLayout={() =>
+            box.current?.measureInWindow((_x, top) => at.current?.({ words, id, top }))
+          }
         >
           <Toast words={words} action={action} onClose={onClose} />
         </View>

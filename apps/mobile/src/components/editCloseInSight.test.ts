@@ -32,10 +32,10 @@ describe('an edit a link opened closes with its row in sight, where focus goes b
 
 describe('after Save, the row rests 12pt above the saved toast, with a screen reader on (sc-86228)', () => {
   it('hands the page the toast’s top for the Save it says', () => {
-    expect(screen).toContain(
-      "setToast({ eventId, area, words: said ?? t('eventEdit.saved'), over: closed });",
-    );
+    expect(screen).toContain('id: `saved-${saves.current}`,');
+    expect(screen).toContain('over: closed,');
     expect(screen).toContain('onAt={setToastAt}');
+    expect(screen).toContain('? toastOverPage(toast, toastAt)');
   });
 
   it('rests the row against that toast, at once and only with a screen reader on', () => {
@@ -50,18 +50,20 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
     expect(screen).toContain('opener={editing.saved === true ? nobody : editing.opener}');
     expect(inSight).toContain('landedOr(scroll, rest.to, rested);');
     expect(inSight).toContain('if (rest == null || scroll == null) return rested();');
-    expect(inSight).toContain("focusOnceStill(still, closed, 'settled');");
-    expect(inSight).toContain('moveScreenReaderFocus(of.opener.current);');
+    expect(inSight).toContain('move: () => moveScreenReaderFocus(closed.opener.current),');
   });
 
-  it('still sends focus back when no rest starts, because the toast’s top never came for this close', () => {
-    expect(inSight).toContain('if (still.current?.of === closed) still.current.resting = true;');
-    expect(inSight).toContain('if (still.current?.of === closed && !still.current.resting) {');
-    expect(inSight).toContain('clearTimeout(unrested);');
+  it('times focus by savedRowFocus, told of this close’s own toast layout (kit/savedRowFocus.test.ts)', () => {
+    expect(inSight).toContain('latestMs: SAVED_FOCUS_LATEST_MS,');
+    expect(inSight).toContain('focus.current.timing.toastLaidOut();');
+    expect(inSight).toContain('timing.stop();');
+  });
+
+  it('asks no room under a point, which lays out nothing and would hold the rest', () => {
+    expect(inSight).toContain('const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);');
   });
 
   it('brings that row into sight before focus goes back to it, as a close without Save does', () => {
-    expect(inSight).toContain('still.current.resting = true;');
     expect(inSight).toContain(
       'found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),',
     );
