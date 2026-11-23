@@ -500,16 +500,26 @@ function Courses({
         ? {
             ...was,
             failed:
-              error instanceof ApiError && error.status === 403 ? t('eventMenu.forbidden') : words,
+              pastDate(error) ??
+              (error instanceof ApiError && error.status === 403
+                ? t('eventMenu.forbidden')
+                : words),
           }
         : was,
     );
     focusAfter.current = `mc-ask-failed-${id}`;
   }
 
+  /** sc-3913: once the event's date has passed, every menu edit is refused with this line. */
+  function pastDate(error: unknown): string | null {
+    return error instanceof ApiError && error.is('menu_event_over')
+      ? t('menuChange.pastDate', { event: event.name, day: closeWords(event.startsAt) })
+      : null;
+  }
+
   function failedLine(error: unknown, button: string): string {
-    if (error instanceof ApiError && error.is('menu_event_over'))
-      return t('menuChange.pastDate', { event: event.name, day: closeWords(event.startsAt) });
+    const over = pastDate(error);
+    if (over != null) return over;
     if (error instanceof ApiError && error.is('menu_change_asks')) return error.problem.title;
 
     return error instanceof ApiError && error.status === 403
@@ -560,10 +570,7 @@ function Courses({
         setChanging(null);
         return;
       }
-      const refused =
-        error instanceof ApiError && error.is('menu_event_over')
-          ? t('menuChange.pastDate', { event: event.name, day: closeWords(event.startsAt) })
-          : failedLine(error, t('menuChange.go'));
+      const refused = failedLine(error, t('menuChange.go'));
       setChanging((then) => (then == null ? then : { ...then, busy: false, refused }));
     }
   }
@@ -927,9 +934,10 @@ function Courses({
         return;
       }
       tellFailed(
-        error instanceof ApiError && error.status === 403
-          ? t('eventMenu.forbidden')
-          : t('eventMenu.failedChange'),
+        pastDate(error) ??
+          (error instanceof ApiError && error.status === 403
+            ? t('eventMenu.forbidden')
+            : t('eventMenu.failedChange')),
       );
     }
   }
@@ -1147,9 +1155,10 @@ function Courses({
       if (gone(error)) return;
       setSaid({
         words:
-          error instanceof ApiError && error.status === 403
+          pastDate(error) ??
+          (error instanceof ApiError && error.status === 403
             ? t('eventMenu.forbidden')
-            : t('eventMenu.failedMove', { name: course.name, n: at + 1, count: courses.length }),
+            : t('eventMenu.failedMove', { name: course.name, n: at + 1, count: courses.length })),
         tone: 'fail',
       });
     }
