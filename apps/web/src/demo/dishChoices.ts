@@ -513,26 +513,26 @@ export function choice(
   return { id, question, options, pick: 1, required: true, noneAnswers: 0, ...more };
 }
 
-/** "And a side?", answered: 41 plantain, 33 garden salad, 12 moi moi; 2 who picked garden salad have celery recorded, 3 who picked moi moi crustaceans, nobody milk. */
+/** "And a side?", answered once by each of the 45 who picked Jollof rice: 21 plantain, 16 garden salad, 8 moi moi; 2 who picked garden salad have celery recorded, 3 who picked moi moi crustaceans, nobody milk. */
 export function sideChoice(picked = true, id = 'c-side'): Choice {
   return choice(id, 'And a side?', [
     option(
       `${id}-plantain`,
       'Plantain',
       'none',
-      picked ? [...many(2, ['mustard']), ...many(39)] : [],
+      picked ? [...many(2, ['mustard']), ...many(19)] : [],
     ),
     option(
       `${id}-salad`,
       'Garden salad',
       ['mustard'],
-      picked ? [...many(2, ['celery']), ['other'], ...many(30)] : [],
+      picked ? [...many(2, ['celery']), ['other'], ...many(13)] : [],
     ),
     option(
       `${id}-moimoi`,
       'Moi moi',
       ['eggs'],
-      picked ? [['crustaceans', 'sesame'], ...many(2, ['crustaceans']), ...many(9)] : [],
+      picked ? [['crustaceans', 'sesame'], ...many(2, ['crustaceans']), ...many(5)] : [],
     ),
   ]);
 }
@@ -549,8 +549,18 @@ export function sauceChoice(id = 'c-sauce'): Choice {
   );
 }
 
+/** "And a side?" optional: 4 of the 45 answered None for me, so Plantain has 17. */
 export function optionalSide(): Choice {
-  return { ...sideChoice(true), required: false, noneAnswers: 4 };
+  const side = sideChoice(true);
+
+  return {
+    ...side,
+    required: false,
+    noneAnswers: 4,
+    options: side.options.map((one, at) =>
+      at === 0 ? { ...one, pickers: one.pickers.slice(0, -4) } : one,
+    ),
+  };
 }
 
 export function draftChoice(id = 'c-draft', question = ''): Choice {
