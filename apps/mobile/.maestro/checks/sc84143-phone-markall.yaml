@@ -21,7 +21,9 @@ appId: host.exp.Exponent
     visible:
       id: frame.bell
     timeout: 20000
-- assertNotVisible: '.*1 sin leer.*'
+- assertNotVisible:
+    id: frame.bell
+    text: '(?:Notifications|Notificaciones|Notificações), [0-9]+ (?:unread|sin leer|non lues?|por ler)'
 - takeScreenshot: bell-phone-markall-bell
 - openLink: ${METRO_URL}/--/settings/notifications
 - waitForAnimationToEnd
