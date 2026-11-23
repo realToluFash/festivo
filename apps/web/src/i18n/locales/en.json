@@ -6110,7 +6110,7 @@
     "pickedDish_other": "{{count, number}} guests picked this dish. They’ll be asked to pick again for {{course}}.",
     "pickedVariant_one": "{{count, number}} guest picked this variant. They’ll be asked to pick again for {{course}}.",
     "pickedVariant_other": "{{count, number}} guests picked this variant. They’ll be asked to pick again for {{course}}.",
-    "allComing_one": "All {{count, number}} guest coming will be asked to pick for {{course}}.",
+    "allComing_one": "The {{count, number}} guest coming will be asked to pick for {{course}}.",
     "allComing_other": "All {{count, number}} guests coming will be asked to pick for {{course}}.",
     "pickedWith_one": "{{count, number}} guest who picked this dish has {{allergens}} recorded. They’ll be asked to pick again for {{course}}, and will appear in Needs the host.",
     "pickedWith_other": "{{count, number}} guests who picked this dish have {{allergens}} recorded. They’ll be asked to pick again for {{course}}, and will appear in Needs the host.",
@@ -6158,6 +6158,6 @@
     "doneChoice_one": "“{{question}}” saved. {{count, number}} guest will be asked to pick again.",
     "doneChoice_other": "“{{question}}” saved. {{count, number}} guests will be asked to pick again.",
     "refusedWord": "Not changed",
-    "pastDate": "{{event}} was on {{day}}. Its menu can’t change after the date. Nothing was changed."
+    "pastDate": "{{event}} was on {{day}}. Its menu cannot change after the date. Nothing was changed."
   }
 }
