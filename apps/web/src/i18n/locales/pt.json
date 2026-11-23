@@ -4034,7 +4034,7 @@
       "chooseBy": "Escolha o que vai querer de {{course}} até {{date}}. Se não escolher até lá, fica com {{dish}}.",
       "chooseByFor": "Escolha o que {{name}} vai querer de {{course}} até {{date}}. Se nada for escolhido até lá, {{name}} fica com {{dish}}.",
       "neverChose": "Não escolheu a tempo, por isso fica com este prato de {{course}}.",
-      "neverChoseFor": "Não foi escolhido nada a tempo para {{name}}, por isso fica com este prato de {{course}}.",
+      "neverChoseFor": "Como {{name}} não escolheu a tempo, {{name}} fica com este prato de {{course}}.",
       "hostInTouch": "Não escolheu a tempo o que queria de {{course}}. O anfitrião vai entrar em contacto consigo.",
       "hostInTouchFor": "Não foi escolhido a tempo o que {{name}} queria de {{course}}. O anfitrião vai entrar em contacto consigo."
     }
