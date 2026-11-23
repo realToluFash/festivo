@@ -210,12 +210,10 @@ describe('the kitchen sheet (sc-3911)', () => {
 describe('By station under each course (sc-34244)', () => {
   const course = (name: string) => screen.getByRole('region', { name });
   const station = (block: HTMLElement, name: string) =>
-    within(block)
-      .getByRole('list', { name })
-      .querySelectorAll('li')
-      .values()
-      .map((one) => one.textContent)
-      .toArray();
+    Array.from(
+      within(block).getByRole('list', { name }).querySelectorAll('li'),
+      (one) => one.textContent,
+    );
 
   it(
     'puts By station under the Main, the Pass first and Chef’s choice its last line',
