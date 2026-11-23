@@ -215,4 +215,11 @@ export function changeLead(change: 'remove' | 'addPasskey' | 'addApp'): string {
   }
 }
 
+/** The app's step when two-factor is already on with passkeys (pm, 23 Nov): today's controls, words that are true. */
+export const ADD_APP = {
+  title: 'Add an authenticator app',
+  verb: 'Add the app',
+  help: 'The app is added only once the code matches. Your passkeys keep working.',
+} as const;
+
 export const PASSKEY_ON = 'Two-factor is on. Every sign-in now asks for your passkey.';

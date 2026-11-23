@@ -72,6 +72,7 @@ export const SECURITY_STATES = [
   'removeProof',
   'confirmPasskey',
   'confirmRefused',
+  'addApp',
 ] as const;
 
 export type SecurityState = (typeof SECURITY_STATES)[number];
@@ -135,6 +136,8 @@ export interface SecurityStart {
   keyRefused: boolean;
   /** The factor Remove… was pressed on. */
   removing: string | null;
+  /** The setup step opens as Add an authenticator app, two-factor already on with passkeys. */
+  addsApp: boolean;
 }
 
 const ORG = SAMPLE.organisation;
@@ -286,6 +289,7 @@ export function securityStart(state: SecurityState): SecurityStart {
     sheet: false,
     keyRefused: false,
     removing: null,
+    addsApp: false,
   };
   const off: Factors = { app: null, passkeys: [] };
   const both: Factors = { app: APP_ON, passkeys: samplePasskeys(2) };
@@ -409,6 +413,14 @@ export function securityStart(state: SecurityState): SecurityStart {
         screen: 'passkey',
         sheet: state === 'confirmPasskey',
         keyRefused: state === 'confirmRefused',
+      };
+    case 'addApp':
+      return {
+        ...start,
+        factors: { app: null, passkeys: samplePasskeys(2) },
+        screen: 'setup',
+        fetched: 1,
+        addsApp: true,
       };
     default:
       return start;

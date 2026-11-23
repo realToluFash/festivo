@@ -862,6 +862,11 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=cardPasskeys',
       },
       {
+        title: 'Passkeys · Add an authenticator app',
+        what: 'Today’s step, titled for adding: Add the app, the passkeys keep working',
+        href: '/demo/settings/security?state=addApp',
+      },
+      {
         title: 'Passkeys · card, both',
         what: 'Remove… on each, Turn off at the end',
         href: '/demo/settings/security?state=cardBoth',

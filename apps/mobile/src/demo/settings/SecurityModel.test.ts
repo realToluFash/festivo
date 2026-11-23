@@ -69,7 +69,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(40);
+    expect(SECURITY_STATES).toHaveLength(41);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -232,6 +232,12 @@ describe('the passkey states (sc-86888)', () => {
       sheet: false,
     });
     expect(securityStart('chooseSheet')).toMatchObject({ keyMode: 'choose', sheet: true });
+  });
+
+  it('open the app’s step as Add an authenticator app beside passkeys', () => {
+    expect(securityStart('addApp')).toMatchObject({ screen: 'setup', addsApp: true });
+    expect(securityStart('addApp').factors?.app).toBeNull();
+    expect(securityStart('setup').addsApp).toBe(false);
   });
 
   it('draw the card with the app only, passkeys only, both, and at 10', () => {

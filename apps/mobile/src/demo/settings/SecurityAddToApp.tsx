@@ -27,6 +27,7 @@ import { typedCodeProblem } from '../../kit/twoFactor.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { SAMPLE } from '../samples.ts';
+import { ADD_APP } from './PasskeysModel.ts';
 import { keyCode } from './SecuritySample.ts';
 
 /** The enrolment with the link the API already sends beside the secret and the QR. */
@@ -64,7 +65,7 @@ export function DemoTwoFactorScreen({
   startTyped?: string;
   startError?: string | null;
   startHanded?: boolean;
-  /** Adding the app beside passkeys: an accepted code finishes here, with no new recovery codes. */
+  /** Adding the app beside passkeys: titled Add an authenticator app, and an accepted code finishes here with no new recovery codes. */
   onAdded?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -122,9 +123,9 @@ export function DemoTwoFactorScreen({
   return (
     <FocusedScreen
       open={open}
-      title={t('security.setupTitle')}
+      title={onAdded == null ? t('security.setupTitle') : ADD_APP.title}
       verb={{
-        label: t('security.setupVerb'),
+        label: onAdded == null ? t('security.setupVerb') : ADD_APP.verb,
         on: ready != null,
         busy: checking,
         onPress: () => void turnOn(),
@@ -187,7 +188,7 @@ export function DemoTwoFactorScreen({
           <Field
             label={t('twoFactorCard.enterCode')}
             error={error}
-            help={t('twoFactorCard.staysOff')}
+            help={onAdded == null ? t('twoFactorCard.staysOff') : ADD_APP.help}
           >
             <CodeField
               ref={field}

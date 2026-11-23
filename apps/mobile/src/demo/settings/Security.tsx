@@ -145,7 +145,9 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const [screen, setScreen] = useState<SecurityScreen | null>(start.screen);
   const [proof, setProof] = useState<Proof | null>(start.proof);
   const [proved, setProved] = useState(false);
-  const [codesFor, setCodesFor] = useState<'setup' | 'newCodes' | 'passkey' | 'addApp'>('setup');
+  const [codesFor, setCodesFor] = useState<'setup' | 'newCodes' | 'passkey' | 'addApp'>(
+    start.addsApp ? 'addApp' : 'setup',
+  );
   const [factors, setFactors] = useState(start.factors);
   const [keyMode, setKeyMode] = useState(start.keyMode);
   const [stage, setStage] = useState<'password' | 'code' | null>(null);
