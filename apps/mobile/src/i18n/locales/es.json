@@ -1086,6 +1086,7 @@
     "overdueTitle": "Active la verificación en dos pasos para continuar",
     "overdueBody": "{{organisation}} exige la verificación en dos pasos y el plazo para activarla ha terminado.",
     "overdueElsewhere": "Sus demás organizaciones y su acceso a eventos concretos no se ven afectados.",
+    "overdueSingleEvents": "Your single-event access is not affected.",
     "overdueTurnOn": "Activar la verificación en dos pasos",
     "overdueSignOut": "Cerrar sesión"
   },
@@ -1396,6 +1397,7 @@
     "since": "En pausa desde el {{when}}.",
     "kept": "Su trabajo en {{organisation}} se conserva y sigue figurando a su nombre.",
     "untouched": "Sus otras organizaciones y su acceso a eventos concretos no se ven afectados.",
+    "untouchedSingleEvents": "Your access to single events is not affected.",
     "removedBy": "Si nadie restablece su acceso antes del {{when}}, dejará de formar parte de {{organisation}}.",
     "stillOnlyOwner": "Sigue siendo la única persona con el rol Propietario en {{organisation}}, así que no sale de la organización.",
     "nextTitle": "Qué ocurre ahora",

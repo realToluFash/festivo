@@ -14,11 +14,6 @@ export function aloneOf(switcher: string | undefined): boolean {
   return switcherStateOf(switcher) === 'one';
 }
 
-export const ALONE_SAYS: Readonly<Record<Held, string>> = {
-  paused: 'Your access to single events is not affected.',
-  overdue: 'Your single-event access is not affected.',
-};
-
 // AccessPaused reads only how many others there are, to choose between switching and the switcher.
 const OTHERS = [
   { id: 'org-casa-lumen', name: 'Casa Lumen Eventos' },
@@ -27,11 +22,4 @@ const OTHERS = [
 
 export function othersOf(alone: boolean): readonly Membership[] {
   return alone ? [] : OTHERS;
-}
-
-/** Until sc-85006 is built, the product's card still names other organisations; the demo's box says what it reads instead, and only when there are none. */
-export function aloneNoteOf(held: Held, alone: boolean): string | null {
-  return alone
-    ? `sc-85006: with no other organisation in the switcher, the card says “${ALONE_SAYS[held]}” in place of the sentence naming other organisations.`
-    : null;
 }

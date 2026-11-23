@@ -1053,6 +1053,7 @@
     "overdueTitle": "Turn on two-factor to carry on",
     "overdueBody": "{{organisation}} requires two-factor, and the time to turn it on has passed.",
     "overdueElsewhere": "Your other organisations and single-event access are not affected.",
+    "overdueSingleEvents": "Your single-event access is not affected.",
     "overdueTurnOn": "Turn on two-factor",
     "overdueSignOut": "Sign out"
   },
@@ -1350,6 +1351,7 @@
     "since": "Paused since {{when}}.",
     "kept": "Your work in {{organisation}} is kept and still attributed to you.",
     "untouched": "Your other organisations and your access to single events are not affected.",
+    "untouchedSingleEvents": "Your access to single events is not affected.",
     "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
     "stillOnlyOwner": "You are still the only owner of {{organisation}}, so you are not removed.",
     "nextTitle": "What happens next",

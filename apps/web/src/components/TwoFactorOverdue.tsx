@@ -6,7 +6,14 @@ import { StillSignedIn } from './StillSignedIn.tsx';
 import { useSignOut } from '../signOut.ts';
 
 /** In place of every page of an organisation whose deadline for two-factor has passed (sc-609). */
-export function TwoFactorOverdue({ organisation }: { organisation: Membership }) {
+export function TwoFactorOverdue({
+  organisation,
+  othersListed,
+}: {
+  organisation: Membership;
+  /** Whether the switcher lists an organisation besides this one (sc-85006). */
+  othersListed: boolean;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -18,7 +25,9 @@ export function TwoFactorOverdue({ organisation }: { organisation: Membership })
       <p className="two-factor-overdue-reason">
         {t('signInRules.overdueBody', { organisation: organisation.name })}
       </p>
-      <p className="muted">{t('signInRules.overdueElsewhere')}</p>
+      <p className="muted">
+        {t(othersListed ? 'signInRules.overdueElsewhere' : 'signInRules.overdueSingleEvents')}
+      </p>
       {unreached && <StillSignedIn />}
       <div className="two-factor-overdue-actions">
         <Link className="button button-primary" to="/app/account/security">

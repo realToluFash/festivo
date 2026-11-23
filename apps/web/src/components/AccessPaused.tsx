@@ -40,7 +40,9 @@ export function AccessPaused<T extends Other>({
         {t('accessPaused.since', { when: suspension.since.written })}
       </p>
       <p>{t('accessPaused.kept', named)}</p>
-      <p>{t('accessPaused.untouched')}</p>
+      <p>
+        {t(others.length > 0 ? 'accessPaused.untouched' : 'accessPaused.untouchedSingleEvents')}
+      </p>
       {suspension.onlyOwner ? (
         <Notice kind="quiet" standing>
           {t('accessPaused.stillOnlyOwner', named)}

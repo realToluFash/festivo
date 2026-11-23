@@ -55,7 +55,9 @@ export function AccessPaused({
           {t('accessPaused.since', { when: suspension.since.written })}
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
-        <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t(others.length > 0 ? 'accessPaused.untouched' : 'accessPaused.untouchedSingleEvents')}
+        </Text>
         {suspension.onlyOwner ? (
           <Notice
             tone="quiet"

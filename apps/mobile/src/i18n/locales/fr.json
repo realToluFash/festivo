@@ -1086,6 +1086,7 @@
     "overdueTitle": "Activez la double authentification pour continuer",
     "overdueBody": "{{organisation}} exige la double authentification, et le délai pour l’activer est passé.",
     "overdueElsewhere": "Vos autres organisations et vos accès à des événements précis ne sont pas concernés.",
+    "overdueSingleEvents": "Your single-event access is not affected.",
     "overdueTurnOn": "Activer la double authentification",
     "overdueSignOut": "Se déconnecter"
   },
@@ -1396,6 +1397,7 @@
     "since": "En pause depuis le {{when}}.",
     "kept": "Votre travail dans {{organisation}} est conservé et vous reste attribué.",
     "untouched": "Vos autres organisations et votre accès à des événements individuels ne sont pas concernés.",
+    "untouchedSingleEvents": "Your access to single events is not affected.",
     "removedBy": "Si personne ne rétablit votre accès d’ici le {{when}}, vous ne ferez plus partie de l’organisation {{organisation}}.",
     "stillOnlyOwner": "Vous êtes toujours la seule personne ayant le rôle Propriétaire dans {{organisation}} : vous en restez donc membre.",
     "nextTitle": "La suite",

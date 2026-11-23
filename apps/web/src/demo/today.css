@@ -190,17 +190,3 @@
   background: var(--colorAccentTint);
   color: var(--colorAccentText);
 }
-
-.held-demo-only {
-  max-width: 40rem;
-  margin-top: var(--spaceLg);
-  padding: var(--spaceMd) var(--spaceLg);
-  border: var(--borderAdd);
-  border-radius: var(--radiusRow);
-  color: var(--colorInkSecondary);
-  font: var(--typeBody);
-}
-
-.held-demo-only p {
-  margin: 0;
-}
