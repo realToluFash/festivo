@@ -60,6 +60,13 @@ describe('after Save, the row rests 12pt above the saved toast, with a screen re
     expect(inSight).toContain('clearTimeout(unrested);');
   });
 
+  it('brings that row into sight before focus goes back to it, as a close without Save does', () => {
+    expect(inSight).toContain('still.current.resting = true;');
+    expect(inSight).toContain(
+      'found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),',
+    );
+  });
+
   it('takes away the room at the page’s foot as the toast goes', () => {
     expect(inSight).toContain('laidOut.current = () => keepInsideEnd(scroll);');
   });
