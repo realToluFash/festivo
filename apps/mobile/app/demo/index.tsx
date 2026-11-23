@@ -827,6 +827,81 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=factorLoadingSignedOut',
       },
       {
+        title: 'Passkeys · Turn on two-factor',
+        what: 'How: this device’s wording',
+        href: '/demo/settings/security?state=choose',
+      },
+      {
+        title: 'Passkeys · the choice, Face ID',
+        what: 'Use Face ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseFaceId',
+      },
+      {
+        title: 'Passkeys · the choice, Touch ID',
+        what: 'Use Touch ID or an authenticator app',
+        href: '/demo/settings/security?state=chooseTouchId',
+      },
+      {
+        title: 'Passkeys · the choice, a passkey',
+        what: 'Android, or no Face ID or Touch ID',
+        href: '/demo/settings/security?state=choosePasskey',
+      },
+      {
+        title: 'Passkeys · the sheet open',
+        what: 'Over the choice; cancel goes back',
+        href: '/demo/settings/security?state=chooseSheet',
+      },
+      {
+        title: 'Passkeys · card, the app only',
+        what: 'Add a passkey under it',
+        href: '/demo/settings/security?state=cardApp',
+      },
+      {
+        title: 'Passkeys · card, passkeys only',
+        what: 'Add an authenticator app',
+        href: '/demo/settings/security?state=cardPasskeys',
+      },
+      {
+        title: 'Passkeys · Add an authenticator app',
+        what: 'Today’s step, titled for adding: Add the app, the passkeys keep working',
+        href: '/demo/settings/security?state=addApp',
+      },
+      {
+        title: 'Passkeys · card, both',
+        what: 'Remove… on each, Turn off at the end',
+        href: '/demo/settings/security?state=cardBoth',
+      },
+      {
+        title: 'Passkeys · card at 10',
+        what: 'No Add a passkey',
+        href: '/demo/settings/security?state=cardTen',
+      },
+      {
+        title: 'Passkeys · remove a passkey?',
+        what: 'Stays in the password manager',
+        href: '/demo/settings/security?state=removePasskey',
+      },
+      {
+        title: 'Passkeys · remove the app?',
+        what: 'The Ask over Authenticator app',
+        href: '/demo/settings/security?state=removeApp',
+      },
+      {
+        title: 'Passkeys · removing, the sheet',
+        what: 'The current factor, a passkey',
+        href: '/demo/settings/security?state=removeProof',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you',
+        what: 'After the password, the sheet',
+        href: '/demo/settings/security?state=confirmPasskey',
+      },
+      {
+        title: 'Passkeys · Confirm it’s you, refused',
+        what: 'The server refused the passkey',
+        href: '/demo/settings/security?state=confirmRefused',
+      },
+      {
         title: 'Notifications',
         what: 'How you hear, a row per kind',
         href: '/demo/settings/notifications',
@@ -2777,6 +2852,36 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     page: 'Onboarding · two-factor',
     boards: [
       { title: 'Enter your code', what: 'The authenticator’s code', href: '/demo/two-factor' },
+      {
+        title: 'Use your passkey',
+        what: 'The sheet over the waiting state',
+        href: '/demo/passkey',
+      },
+      {
+        title: 'Use your passkey · sheet cancelled',
+        what: 'Back to waiting, no error',
+        href: '/demo/passkey?sheet=closed',
+      },
+      {
+        title: 'Use your passkey · refused',
+        what: 'The server refused it',
+        href: '/demo/passkey?refused=1',
+      },
+      {
+        title: 'Use your passkey · passkeys only',
+        what: 'A code instead is a recovery code',
+        href: '/demo/passkey?only=1',
+      },
+      {
+        title: 'Use your passkey · from sign-in',
+        what: 'The password, then the passkey',
+        href: '/demo/sign-in?after=passkey',
+      },
+      {
+        title: 'Reset · use your passkey',
+        what: 'The reset link’s code step',
+        href: '/demo/passkey?step=reset',
+      },
       {
         title: 'Enter a recovery code',
         what: 'The dash goes in by itself',

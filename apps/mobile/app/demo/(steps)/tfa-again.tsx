@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { PrimaryButton, QuietButton } from '../../../src/components/Buttons.tsx';
 import { DemoScreen, finish } from '../../../src/demo/DemoScreen.tsx';
 import { Heading, Plain } from '../../../src/steps/Lines.tsx';
@@ -11,7 +13,7 @@ export default function TwoFactorAgain() {
         <>
           <PrimaryButton
             label="Set up two-factor"
-            onPress={() => finish('In the build, this opens Set up two-factor.')}
+            onPress={() => router.replace('/demo/settings/security?state=choose')}
             testID="demo.setUp"
           />
           <QuietButton label="Not now" onPress={() => finish()} testID="demo.notNow" />

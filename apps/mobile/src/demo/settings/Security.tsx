@@ -1,7 +1,7 @@
 import type { Provider } from '@soirely/api-client';
 import { router, useLocalSearchParams } from 'expo-router';
 import { createRef, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
-import { type ScrollViewInstance, StyleSheet, type ViewInstance } from 'react-native';
+import { Platform, type ScrollViewInstance, StyleSheet, type ViewInstance } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -77,6 +77,20 @@ import {
 } from './SecuritySample.ts';
 import { type DemoEnrolment, DemoTwoFactorScreen } from './SecurityAddToApp.tsx';
 import { AloneLine } from '../../components/SecurityAlone.tsx';
+import {
+  addedLine,
+  changeLead,
+  codeInstead,
+  factorRows,
+  madeHere,
+  PASSKEY_ON,
+  passkeyLead,
+  RECOVERY_INSTEAD,
+  removeAsk,
+  removedLine,
+  withoutFactor,
+} from './PasskeysModel.ts';
+import { PasskeyFactorsSection, PasskeyScreen } from './SecurityPasskeys.tsx';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
@@ -91,7 +105,9 @@ type Target =
   | 'turnOff'
   | 'newCodes'
   | 'signOut'
-  | 'everywhere';
+  | 'everywhere'
+  | 'remove'
+  | 'add';
 
 const EVERYWHERE = 'everywhere';
 const QR_MODULES = 21;
@@ -131,7 +147,14 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const [screen, setScreen] = useState<SecurityScreen | null>(start.screen);
   const [proof, setProof] = useState<Proof | null>(start.proof);
   const [proved, setProved] = useState(false);
-  const [codesFor, setCodesFor] = useState<'setup' | 'newCodes'>('setup');
+  const [codesFor, setCodesFor] = useState<'setup' | 'newCodes' | 'passkey' | 'addApp'>(
+    start.addsApp ? 'addApp' : 'setup',
+  );
+  const [factors, setFactors] = useState(start.factors);
+  const [keyMode, setKeyMode] = useState(start.keyMode);
+  const [stage, setStage] = useState<'password' | 'code' | null>(null);
+  const [removing, setRemoving] = useState(start.removing);
+  const unlock = start.unlock ?? (Platform.OS === 'ios' ? 'faceId' : 'passkey');
   const [visit, setVisit] = useState(0);
   const scroll = useRef<ScrollViewInstance>(null);
   const blocks = useRef<Partial<Record<string, ViewInstance | null>>>({});
@@ -147,6 +170,8 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     newCodes: createRef<ViewInstance>(),
     signOut: createRef<ViewInstance>(),
     everywhere: createRef<ViewInstance>(),
+    remove: createRef<ViewInstance>(),
+    add: createRef<ViewInstance>(),
   }));
   const from = useRef<Target>(startTarget(start));
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -266,7 +291,39 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   function prove(next: Proof, target: Target): void {
     setAsk(null);
     setProof(next);
-    show('confirm', target);
+    setStage(null);
+    if (factors == null || factors.passkeys.length === 0) {
+      show('confirm', target);
+      return;
+    }
+    const first = proofAsks(next, provider, sample, twoFactor, t);
+    if (first.password || first.instead != null) {
+      setStage('password');
+      show('confirm', target);
+      return;
+    }
+    setKeyMode('proof');
+    show('passkey', target);
+  }
+
+  function toPasskey(): void {
+    setStage(null);
+    setKeyMode('proof');
+    show('passkey', from.current);
+  }
+
+  function made(): void {
+    const passkey = madeHere(Platform.OS === 'ios', new Date(), visit);
+    if (keyMode === 'add' && factors != null) {
+      setFactors({ ...factors, passkeys: [passkey, ...factors.passkeys] });
+      done(addedLine('passkey', SAMPLE.email));
+      return;
+    }
+    setFactors({ app: null, passkeys: [passkey] });
+    setTwoFactor(true);
+    setCodesLeft(RECOVERY_CODES.length);
+    setCodesFor('passkey');
+    show('recovery', 'step');
   }
 
   function asking(question: SecurityAsk, block: string, target: Target): void {
@@ -317,6 +374,11 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   }
 
   function setUp(target: Target): void {
+    if (factors != null && screen !== 'passkey') {
+      setKeyMode('choose');
+      show('passkey', target);
+      return;
+    }
     setCodesFor('setup');
     setEnrol('loading');
     show('setup', target);
@@ -335,6 +397,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         done(everywhereDone(signOutOthers(), t));
         return;
       case 'turnOff':
+        if (factors != null) setFactors({ app: null, passkeys: [] });
         setTwoFactor(false);
         done(t('security.twoFactorOff', { email: SAMPLE.email }));
         return;
@@ -343,10 +406,32 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         setCodesFor('newCodes');
         show('recovery', 'newCodes');
         return;
+      case 'remove': {
+        if (factors == null || removing == null) return;
+        const row = factorRows(factors, locale).find((each) => each.id === removing);
+        setFactors(withoutFactor(factors, removing));
+        setRemoving(null);
+        done(row == null ? '' : removedLine(row, SAMPLE.email));
+        return;
+      }
+      case 'addPasskey':
+        setKeyMode('add');
+        show('passkey', 'add');
+        return;
+      case 'addApp':
+        setCodesFor('addApp');
+        setEnrol('loading');
+        show('setup', 'add');
+        return;
       case null:
         return;
     }
   }
+
+  const removingRow =
+    factors == null || removing == null
+      ? null
+      : (factorRows(factors, locale).find((each) => each.id === removing) ?? null);
 
   const question = askOf(ask, {
     unlink:
@@ -355,6 +440,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     newCodes: newCodesAsk(t),
     signOut: openedDevice == null ? null : signOutAsk(openedDevice.name, t),
     everywhere: others.length > 0 ? everywhereAsk(others.length, true, t) : null,
+    remove: removingRow == null ? null : removeAsk(removingRow, SAMPLE.email),
   });
 
   function confirmAsk(): void {
@@ -377,12 +463,37 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       case 'everywhere':
         prove('everywhere', 'everywhere');
         return;
+      case 'remove':
+        prove('remove', 'remove');
+        return;
       case null:
         return;
     }
   }
 
-  const asks = proofAsks(proof ?? 'link', provider, sample, twoFactor, t);
+  const proofs = proofAsks(proof ?? 'link', provider, sample, twoFactor, t);
+  const changing = proof === 'remove' || proof === 'addPasskey' || proof === 'addApp';
+  const asks = changing ? { ...proofs, lead: changeLead(proof) } : proofs;
+  const confirmAsks =
+    stage === 'password'
+      ? { ...asks, code: false }
+      : stage === 'code'
+        ? {
+            ...asks,
+            password: false,
+            code: true,
+            instead: null,
+            ...(factors != null && codeInstead(factors) === 'recovery'
+              ? {
+                  lead: changing ? asks.lead : RECOVERY_INSTEAD.lead,
+                  codeHelp:
+                    proof === 'turnOff'
+                      ? [RECOVERY_INSTEAD.help, asks.codeHelp].flat()
+                      : RECOVERY_INSTEAD.help,
+                }
+              : {}),
+          }
+        : asks;
 
   return (
     <>
@@ -441,7 +552,30 @@ function SecurityPage({ start }: { start: SecurityStart }) {
             )}
           </Section>
         )}
-        {factor === 'ready' && (
+        {factor === 'ready' && factors != null && twoFactor && (
+          <PasskeyFactorsSection
+            factors={factors}
+            codesLeft={codesLeft}
+            email={SAMPLE.email}
+            locale={locale}
+            opened={opened}
+            removeRef={targets.remove}
+            turnOffRef={targets.turnOff}
+            newCodesRef={targets.newCodes}
+            addRef={targets.add}
+            onBlock={onBlock}
+            onToggle={toggle}
+            onRemove={(row) => {
+              setRemoving(row.id);
+              asking('remove', row.id, 'remove');
+            }}
+            onTurnOff={() => asking('turnOff', opened ?? 'codes', 'turnOff')}
+            onNewCodes={() => asking('newCodes', 'codes', 'newCodes')}
+            onAddPasskey={() => prove('addPasskey', 'add')}
+            onAddApp={() => prove('addApp', 'add')}
+          />
+        )}
+        {factor === 'ready' && (factors == null || !twoFactor) && (
           <TwoFactorSection
             on={twoFactor}
             codesLeft={codesLeft}
@@ -531,13 +665,15 @@ function SecurityPage({ start }: { start: SecurityStart }) {
       <ConfirmScreen
         key={`confirm.${visit}`}
         open={screen === 'confirm' && proof != null}
-        asks={asks}
+        asks={confirmAsks}
         opener={opener}
         onClose={() => {
           setScreen(null);
           setProof(null);
         }}
-        onContinue={(password, code) => sampleContinue(asks, proven)(password, code)}
+        onContinue={(password, code) =>
+          sampleContinue(confirmAsks, stage === 'password' ? toPasskey : proven)(password, code)
+        }
         testID="security.confirm"
       />
       <DemoTwoFactorScreen
@@ -564,9 +700,49 @@ function SecurityPage({ start }: { start: SecurityStart }) {
 
           return Promise.resolve({ codes: RECOVERY_CODES });
         }}
-        onFinished={() =>
-          done(codesFor === 'setup' ? t('security.twoFactorOn') : t('security.newCodesDone'))
+        onAdded={
+          codesFor === 'addApp' && factors != null
+            ? () => {
+                setFactors({ ...factors, app: new Date() });
+                done(addedLine('app', SAMPLE.email));
+              }
+            : undefined
         }
+        onFinished={() =>
+          done(
+            codesFor === 'passkey'
+              ? PASSKEY_ON
+              : codesFor === 'newCodes'
+                ? t('security.newCodesDone')
+                : t('security.twoFactorOn'),
+          )
+        }
+      />
+      <PasskeyScreen
+        key={`passkey.${visit}`}
+        open={screen === 'passkey'}
+        mode={keyMode}
+        unlock={unlock}
+        lead={passkeyLead(proof ?? 'link', SAMPLE.email)}
+        startSheet={visit === 0 ? start.sheet : keyMode !== 'choose'}
+        startRefused={visit === 0 && start.keyRefused}
+        opener={opener}
+        onCancel={() => {
+          setScreen(null);
+          setProof(null);
+          setStage(null);
+        }}
+        onApp={() => {
+          setCodesFor('setup');
+          setEnrol('loading');
+          show('setup', from.current);
+        }}
+        onMade={made}
+        onAccepted={proven}
+        onCodeInstead={() => {
+          setStage('code');
+          show('confirm', from.current);
+        }}
       />
     </>
   );
@@ -608,6 +784,10 @@ function startTarget(start: SecurityStart): Target {
       return 'link';
     case 'setup':
       return 'step';
+    case 'passkey':
+      if (start.keyMode === 'choose') return 'step';
+
+      return start.proof === 'remove' ? 'remove' : 'card';
     case 'recovery':
     case null:
       return 'card';
