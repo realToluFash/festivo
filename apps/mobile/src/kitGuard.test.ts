@@ -785,7 +785,7 @@ describe('a button or link taking keyboard focus moves on from the landing toast
 describe('Your organisation mounts once it knows whether it lists invitations (sc-41296)', () => {
   it('so Organisation name never takes focus on a step that then drops it', () => {
     const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
-    const waits = text.indexOf('if (!loaded.read || !offersRead) return null;');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
 
     expect(waits).toBeGreaterThan(0);
     expect(waits).toBeLessThan(text.indexOf('<StepScreen nav={nav} foot={foot}>'));
