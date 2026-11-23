@@ -358,6 +358,32 @@ describe("a paused member's pill (sc-85513)", () => {
     expect(await screen.findByRole('dialog', { name: 'Create an organisation' })).toBeDefined();
   });
 
+  it('with nowhere else to go, creating an organisation leaves the paused page for the new one', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    const created = membership({ id: 'org_9', name: 'Lagos Supper Club' });
+    pausedIn([]);
+    creating(() => json({ organisation: created }, 201));
+    const { container } = at('/app');
+    expect(container.querySelector('.access-paused')).not.toBeNull();
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+    const walk = await screen.findByRole('dialog', { name: 'Create an organisation' });
+    fireEvent.change(within(walk).getByLabelText('Organisation name'), {
+      target: { value: 'Lagos Supper Club' },
+    });
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+
+    expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
+    expect(container.querySelector('.access-paused')).toBeNull();
+    expect(screen.queryByRole('button', { name: PAUSED_PILL })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
+    ).toBeDefined();
+  });
+
   it('opens the same switcher from the card’s Switch organisation', () => {
     pausedIn([IRE, OKAFOR]);
     at('/app');
