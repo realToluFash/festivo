@@ -28,7 +28,7 @@ appId: host.exp.Exponent
         id: 'switcher\..+'
     commands:
       - tapOn:
-          point: '3%,50%'
+          point: '50%,80%'
       - extendedWaitUntil:
           notVisible:
             id: 'switcher\..+'
