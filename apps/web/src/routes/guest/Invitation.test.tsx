@@ -2494,11 +2494,52 @@ describe('a meal for each person coming, the close and the allergy rules (sc-390
     expect(screen.getByText('The kitchen will choose')).toBeDefined();
     expect(screen.queryByText('Jollof rice')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Change main for you' })).toBeNull();
+    expect(screen.queryByText('Your other changes are saved.')).toBeNull();
     expect(sent.map(({ path }) => path)).toEqual([
       '/api/guest-links/page',
       '/api/guest-links/meals',
       '/api/guest-links/page',
     ]);
+  });
+
+  it('says the other changes are saved when a send changes a closed course and one still open', async () => {
+    const before = [
+      saved('main', { answer: 'chefsChoice' }),
+      saved('dessert', { answer: 'skipped' }),
+    ];
+    const after = [saved('main', { answer: 'chefsChoice' }), saved('dessert', { dish: 'cake' })];
+    api({
+      '/api/guest-links/page': [
+        { status: 200, body: comingBack([MAIN, DESSERT], before) },
+        { status: 200, body: comingBack([{ ...MAIN, picksClose: CLOSED_CLOSE }, DESSERT], after) },
+      ],
+      '/api/guest-links/meals': [
+        {
+          status: 409,
+          body: {
+            type: 'https://soirely.com/errors/meal_picks_closed',
+            title: 'Picks closed',
+            status: 409,
+            courses: ['main'],
+          },
+        },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change main for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Change dessert for you' }));
+    fireEvent.click(screen.getByRole('radio', { name: /Coconut cake/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send my changes' }));
+
+    await screen.findByText(/^Picks for Main closed on .*, so your change was not saved\.$/);
+    expect(
+      screen.getByText('Your other changes are saved.').closest('[role="status"]'),
+    ).not.toBeNull();
+    expect(screen.getByText('Coconut cake')).toBeDefined();
   });
 
   it('puts the refused alert only on the rows the send changed, after their close line', async () => {
