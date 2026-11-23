@@ -127,13 +127,12 @@ function CountRow({
   const allergens = useAllergens();
   const ref = useRef<ViewInstance>(null);
   const inset = row.kind !== 'dish';
-  const lead =
+  const name =
     row.kind === 'variant'
-      ? `${t('menuPicks.variant')} `
+      ? t('menuPicks.variantOf', { name: row.name })
       : row.kind === 'option'
-        ? `${t('menuPicks.side')} `
-        : '';
-  const name = `${lead}${row.name}`;
+        ? t('menuPicks.sideOf', { name: row.name })
+        : row.name;
   const children = row.for === 'children';
   const contains =
     row.allergens.length === 0

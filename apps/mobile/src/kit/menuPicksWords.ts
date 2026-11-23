@@ -71,13 +71,18 @@ export function defaultLine(
     : t('menuPicks.defaultLineGiven', { pick, date, count });
 }
 
-/** Why a person is never given a course's default: "allergy", "Other diet", or the unmet diet by name. */
-export function excludedWord(t: TFunction, excluded: Pick<PicksExcluded, 'reason'>): string {
+/** A course a person is never given the default on, with why: "Main course · allergy", "· Other diet", or the unmet diet by name. */
+export function excludedOn(
+  t: TFunction,
+  course: string,
+  excluded: Pick<PicksExcluded, 'reason'>,
+): string {
   const kind = excludedOf(excluded.reason);
-  if (kind === 'allergy') return t('menuPicks.allergy');
-  if (kind === 'other') return t('menuPicks.otherDiet');
+  if (kind === 'allergy') return t('menuPicks.excludedAllergy', { course });
+  const diet =
+    kind === 'other' ? t('menuPicks.otherDiet') : t(`guestNeeds.dietName.${excluded.reason}`);
 
-  return t(`guestNeeds.dietName.${excluded.reason}`);
+  return t('menuPicks.excludedDiet', { course, diet });
 }
 
 /** "Not chosen: Main course · Vegetarian and Dessert": a waiting person's courses, each never-given one with its reason. */
@@ -92,9 +97,7 @@ export function openWords(
       person.courses.map((id) => {
         const excluded = person.excluded.find((one) => one.course === id);
 
-        return excluded == null
-          ? courseName(id)
-          : t('menuPicks.excludedOn', { course: courseName(id), why: excludedWord(t, excluded) });
+        return excluded == null ? courseName(id) : excludedOn(t, courseName(id), excluded);
       }),
     ),
   });

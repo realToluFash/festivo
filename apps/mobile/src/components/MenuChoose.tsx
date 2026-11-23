@@ -478,17 +478,16 @@ export function ChooseWho({
             names: list(asking.map((one) => one.name)),
             variant: row.name,
           })}
-          body={t('menuPicks.overrideWhoBody', {
-            lines: asking
-              .map((one) =>
-                t('menuPicks.overrideWhoLine', {
-                  variant: row.name,
-                  allergens: allergens(ruledFor(one)),
-                  name: one.name,
-                }),
-              )
-              .join(' '),
-          })}
+          body={[
+            ...asking.map((one) =>
+              t('menuPicks.overrideWhoLine', {
+                variant: row.name,
+                allergens: allergens(ruledFor(one)),
+                name: one.name,
+              }),
+            ),
+            t('menuPicks.overrideWhoBody'),
+          ].join(' ')}
           keep={t('menuPicks.leaveOut')}
           go={t('menuPicks.giveAnyway')}
           onKeep={() => {
