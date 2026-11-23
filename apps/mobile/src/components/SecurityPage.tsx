@@ -674,7 +674,14 @@ export function SecurityPage({
             try {
               if (proof === 'turnOff') {
                 await api.disableTwoFactor(code);
-                setStatus({ kind: 'ready', value: { on: false, recoveryCodesLeft: 0 } });
+                setStatus((now) =>
+                  now.kind === 'ready'
+                    ? {
+                        kind: 'ready',
+                        value: { ...now.value, on: false, recoveryCodesLeft: 0, factors: [] },
+                      }
+                    : now,
+                );
                 done(t('security.twoFactorOff', { email }));
               } else {
                 const codes = await api.newRecoveryCodes(code);
@@ -712,7 +719,19 @@ export function SecurityPage({
         onTurnOn={async (code) => {
           try {
             const codes = await api.activateTwoFactor(cleanCode(code));
-            setStatus({ kind: 'ready', value: { on: true, recoveryCodesLeft: codes.length } });
+            setStatus((now) =>
+              now.kind === 'ready'
+                ? {
+                    kind: 'ready',
+                    value: {
+                      ...now.value,
+                      on: true,
+                      recoveryCodesLeft: codes.length,
+                      factors: [{ kind: 'app', addedAt: new Date().toISOString() }],
+                    },
+                  }
+                : now,
+            );
             void onChanged();
 
             return { codes };
