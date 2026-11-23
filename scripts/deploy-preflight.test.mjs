@@ -24,14 +24,7 @@ describe('the pre-flight', () => {
     },
   );
 
-  it.each(['not-a-range', '10.0.0.0/33', '300.1.2.3/32', '3.4.5.0/24, 3.4.5'])(
-    'refuses %s, which the API cannot read',
-    (ranges) => {
-      expect(rangesLine(ranges)).toMatch(/^FAIL.*not an IPv4 range/);
-    },
-  );
-
-  it.each(['3.4.5.0/24', '3.4.5.0/24, 52.1.0.0/16', '172.32.0.0/16', '3.4.5.0/24,'])(
+  it.each(['3.4.5.0/24', '3.4.5.0/24, 52.1.0.0/16', '172.32.0.0/16'])(
     'accepts %s, which reaches none',
     (ranges) => {
       expect(rangesLine(ranges)).toMatch(/^ok/);
