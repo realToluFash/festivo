@@ -22,6 +22,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '../api.ts';
 import { useShownLanguage } from '../i18n/index.ts';
+import { whoChanges } from '../kit/menuPicksWords.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { FailureLine } from './FailureLine.tsx';
@@ -337,9 +338,7 @@ export function ChooseWho({
 
   const save = async (confirmed: boolean) => {
     if (busy || refused) return;
-    const ruled = people.filter(
-      (one) => ticked.has(one.id) && !holders.includes(one.id) && ruledFor(one).length > 0,
-    );
+    const { ruled } = whoChanges(row, ticked, people);
     if (ruled.length > 0 && !confirmed) return setAsking(ruled);
     setAsking(null);
     setError(null);

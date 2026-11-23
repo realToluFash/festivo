@@ -1,5 +1,12 @@
-import type { EventMenu, PicksCourse, PicksExcluded } from '@soirely/api-client';
+import type {
+  EventMenu,
+  EventPicks,
+  PicksCourse,
+  PicksExcluded,
+  PicksRoomPerson,
+} from '@soirely/api-client';
 import {
+  against,
   defaultPick,
   defaultedOn,
   excludedOf,
@@ -91,4 +98,32 @@ export function openWords(
       }),
     ),
   });
+}
+
+/** What the screen offers (sc-3909): Choose for them and Choose who gets it with guests.manage, names with guests.read, else counts alone. */
+export function picksAccess(
+  picks: Pick<EventPicks, 'canChoose' | 'people'>,
+): 'manage' | 'read' | 'counts' {
+  if (picks.people == null) return 'counts';
+
+  return picks.canChoose ? 'manage' : 'read';
+}
+
+/** What a save on Choose who gets it changes: who newly given it it rules out, asked about first, and who had it and goes back. */
+export function whoChanges(
+  row: { holders: readonly string[] | null; allergens: readonly string[] },
+  ticked: ReadonlySet<string>,
+  people: readonly PicksRoomPerson[],
+): { ruled: PicksRoomPerson[]; leaving: string[] } {
+  const holders = row.holders ?? [];
+
+  return {
+    ruled: people.filter(
+      (one) =>
+        ticked.has(one.id) &&
+        !holders.includes(one.id) &&
+        against(row.allergens, one.allergens).length > 0,
+    ),
+    leaving: holders.filter((id) => !ticked.has(id)),
+  };
 }

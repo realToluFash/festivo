@@ -3372,7 +3372,6 @@
     }
   },
   "menuPicks": {
-    "back": "Back to the event",
     "kitchenSheet": "Kitchen sheet",
     "downloading": "Downloading",
     "downloadingLine": "The share sheet opens when the PDF is ready.",
@@ -3421,9 +3420,6 @@
     "kitchen": "Kitchen’s choice",
     "skipped": "Skipped",
     "notChosen": "Not chosen",
-    "theRoom": "The room",
-    "noSkip": "This course cannot be skipped.",
-    "perPick": "Options are counted per pick, so they add up to the dish, not to the room.",
     "asksNothing": "Guests are asked nothing on this course. Everyone coming gets {{dish}}, except the people you give a children’s variant and anyone it rules out, who wait under Needs the host.",
     "defaultLine": "Default: {{pick}}. Given on {{date}} to anyone coming who hasn’t answered.",
     "defaultLineGiven_one": "Default: {{pick}}. Given on {{date}} to {{count, number}} guest who hadn’t answered.",

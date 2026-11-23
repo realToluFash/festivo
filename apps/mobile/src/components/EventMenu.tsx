@@ -13,7 +13,7 @@ import { RefreshControl, StyleSheet, View, type ViewInstance } from 'react-nativ
 
 import { api } from '../api.ts';
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import { headerClose, openWords } from '../kit/menuPicksWords.ts';
+import { headerClose, openWords, picksAccess } from '../kit/menuPicksWords.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { Confirmed } from '../steps/Lines.tsx';
@@ -294,8 +294,9 @@ function Picks({
   const { t } = useTranslation();
   const language = useShownLanguage();
   const allergens = useAllergens();
-  const manage = picks.canChoose;
-  const names = picks.people != null;
+  const access = picksAccess(picks);
+  const manage = access === 'manage';
+  const names = access !== 'counts';
   const at = clockOf(picks.updatedAt);
   const courseName = (id: string) => picks.courses.find((one) => one.id === id)?.name ?? '';
   const close = headerClose(t, menu, event.timeZone, dateLocale());
