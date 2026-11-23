@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -87,16 +87,13 @@ export function InsideField({
   const box = useRef<ViewInstance>(null);
   const [focusesItself] = useState(rest.autoFocus === true);
 
+  useLayoutEffect(() => (focusesItself ? focusOwed(box.current) : undefined), [focusesItself]);
+
   useEffect(() => {
     const mounted = box.current;
 
-    const unowed = focusesItself ? focusOwed(mounted) : undefined;
-
-    return () => {
-      unowed?.();
-      fieldLeft(mounted);
-    };
-  }, [focusesItself]);
+    return () => fieldLeft(mounted);
+  }, []);
 
   useEffect(() => {
     const run = glide(lift, raised ? 1 : 0, tokens.motionFast);
