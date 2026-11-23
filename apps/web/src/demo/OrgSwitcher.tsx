@@ -144,7 +144,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
     const shown = menu.current;
     if (!open || !into || shown == null || shown.querySelector('[role="option"]') != null) return;
 
-    shown.querySelector<HTMLElement>('.sw-cell')?.focus();
+    shown.querySelector<HTMLElement>('.sw-cell.is-create')?.focus();
   }, [open, into]);
 
   useLayoutEffect(() => {

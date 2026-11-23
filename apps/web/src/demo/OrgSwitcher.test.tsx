@@ -474,9 +474,22 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
 
       fireEvent.click(create);
 
+      const dialog = await screen.findByRole('dialog', { name: 'Create an organisation' }, WAIT);
+      fireEvent.change(screen.getByLabelText('Organisation name'), {
+        target: { value: 'Lumen Feiras' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Create organisation' }));
+
+      expect(await screen.findByText('Now working in Lumen Feiras.', {}, WAIT)).toBeDefined();
+      expect(screen.queryByRole('heading', { level: 1, name: /is paused/ })).toBeNull();
       expect(
-        await screen.findByRole('dialog', { name: 'Create an organisation' }, WAIT),
+        screen.getByRole('button', { name: /^Organisation: Lumen Feiras, your role Owner/ }),
       ).toBeDefined();
+      expect(
+        screen.queryByRole('button', { name: /^Organisation: Casa Lumen Eventos/ }),
+      ).toBeNull();
     },
   );
 
