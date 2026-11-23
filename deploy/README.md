@@ -9,14 +9,15 @@ and moving it here is a switch-over the owner schedules.
 
 ## The server
 
-| Fact                  | Value                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| Environments          | _none yet: one row per environment as each is created_                              |
-| Checkout              | a full clone of the repository (not shallow), owned by the deploying user           |
-| Docker                | Engine with the compose plugin, v2.24 or later (`--wait`, `env_file` interpolation) |
-| Open ports            | 80 and 443 (TCP), 443 (UDP, HTTP/3). Nothing else is published                      |
-| `deploy/.env`         | filled from `deploy/env.example`, mode 600, never committed                         |
-| `deploy/secrets/jwt/` | `private.pem` and `public.pem`, readable by uid 1000, never committed               |
+| Fact                  | Value                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| Environments          | _none yet: one row per environment as each is created_                                           |
+| Checkout              | a full clone of the repository (not shallow), owned by the deploying user                        |
+| Docker                | Engine with the compose plugin, v2.24 or later (`--wait`, `env_file` interpolation)              |
+| Open ports            | 80 and 443 (TCP), 443 (UDP, HTTP/3). Nothing else is published                                   |
+| `deploy/.env`         | filled from `deploy/env.example`, mode 600, never committed                                      |
+| `deploy/backup.env`   | filled from `deploy/backup.env.example`, mode 600, never committed: the backup container's alone |
+| `deploy/secrets/jwt/` | `private.pem` and `public.pem`, readable by uid 1000, never committed                            |
 
 ## Deploying
 
@@ -41,6 +42,7 @@ deploy/deploy.sh <sha>
 | `api`                          | the API's prod image                                                                                                                                        |
 | `notification-worker`          | `app:notifications:work`, the notification pipeline (sc-104)                                                                                                |
 | `scheduler`                    | every line of `services/api/config/crontab` through supercronic, the checks below among them, and `app:two-factor-recovery:expire` every 5 minutes (sc-509) |
+| `backup`                       | the nightly database backup at 04:00 UTC and its check at 06:00 UTC (`deploy/backup/crontab`; Backups, below)                                               |
 | `web`                          | the web client's image                                                                                                                                      |
 | `postgres`, `redis`, `mercure` | the stores and the realtime hub, on the internal network only                                                                                               |
 
@@ -100,14 +102,82 @@ approval. Once approved, ops creates the organisation, adds the shipper here, an
 proves each alert with a forced failure on a non-production environment
 (sc-86645). Until then this section is the list the alerts are made from.
 
-| Story    | The line's message                                                                                                                                      | Alert                        |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| sc-117   | `The revoked-session list is unreachable; ended sessions last until their access tokens expire` (`RevokedSessions::UNREACHABLE`), once per failed check | on every line                |
-| sc-4332  | `Email bounces are at …` / `Email complaints are at …`, from the hourly `app:mail:check-rates` (over 2% bounces or 0.08% complaints in 24 hours)        | on every line                |
-| sc-104   | `Notifications have stopped: …`, `Notifications are behind: …`, `Notifications are failing: …`, from `app:notifications:check` every minute             | on every line                |
-| sc-45470 | `Meta refused a WhatsApp message for the account's payment (131042).`                                                                                   | one alert for a run of lines |
-| sc-46367 | `WhatsAppSubsidy::CAP_REACHED`, with the month and its USD total in its context, once in a month                                                        | on the line                  |
-| sc-80876 | `Anthropic refused an assistant request: the workspace's monthly spend limit is reached.`                                                               | one alert for a run of lines |
+| Story    | The line's message                                                                                                                                                                                                           | Alert                        |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| sc-117   | `The revoked-session list is unreachable; ended sessions last until their access tokens expire` (`RevokedSessions::UNREACHABLE`), once per failed check                                                                      | on every line                |
+| sc-4332  | `Email bounces are at …` / `Email complaints are at …`, from the hourly `app:mail:check-rates` (over 2% bounces or 0.08% complaints in 24 hours)                                                                             | on every line                |
+| sc-104   | `Notifications have stopped: …`, `Notifications are behind: …`, `Notifications are failing: …`, from `app:notifications:check` every minute                                                                                  | on every line                |
+| sc-45470 | `Meta refused a WhatsApp message for the account's payment (131042).`                                                                                                                                                        | one alert for a run of lines |
+| sc-46367 | `WhatsAppSubsidy::CAP_REACHED`, with the month and its USD total in its context, once in a month                                                                                                                             | on the line                  |
+| sc-30204 | `The database backup of <date> failed: …`, `The database backup of <date> is … bytes, less than half of the previous one (…)` and `No database backup for <date> is in the bucket by 06:00 UTC`, from the `backup` container | on every line                |
+| sc-80876 | `Anthropic refused an assistant request: the workspace's monthly spend limit is reached.`                                                                                                                                    | one alert for a run of lines |
+
+## Backups
+
+The whole database, every night at **04:00 UTC**, after the last nightly prune in
+`services/api/config/crontab` (sc-30204). A backup is beyond use: nothing reads one but
+a restore of the environment it was taken from. No report, export or test is made from
+one, and none is restored to the QA stack or a local stack.
+
+- **Encrypted on the server** with [age](https://age-encryption.org) to `BACKUP_RECIPIENT`,
+  the public half of the backup key, before it leaves. The identity that opens it is in
+  the production secret store and never on the server or in the bucket.
+- **Its own bucket**, in sc-558's account and region, made by `deploy/backup/bucket.sh`
+  with all four block-public-access settings, encryption at rest, and the one lifecycle
+  rule in `deploy/backup/lifecycle.json`: each backup is deleted 35 days after it was
+  taken. Versioning is never on, and an old version or an unfinished upload goes in a day.
+  Run it once per environment, with credentials that may administer the bucket:
+
+  ```sh
+  docker run --rm --env-file <admin env> -e BACKUP_BUCKET=… -e BACKUP_REGION=… soirely-backup:<sha> /backup/bucket.sh
+  ```
+
+- **Named `<YYYY-MM-DD>.dump.age`**, written once: the upload refuses a key already there.
+- **Credentials.** The backup job's (`deploy/backup.env`) list the bucket and write a new
+  backup; they cannot read, overwrite or delete one. The API's cannot reach the bucket.
+  The restore credentials and the backup identity are in the production secret store,
+  held by the owner and ops; they are brought to the server for a restore and taken away
+  after it. sc-558 creates all three and shows the refusals in production.
+
+### Restoring
+
+```sh
+RESTORE_KEY=… RESTORE_SECRET=… deploy/restore.sh <YYYY-MM-DD> <identity file>
+```
+
+1. Fetches that night's backup and checks it opens with the identity. Nothing has
+   closed yet, so a missing or unreadable backup changes nothing.
+2. Stops `proxy`, `api`, `notification-worker`, `scheduler` and `backup`: no request is
+   served from here until the last step.
+3. Drops the database and restores the backup into a new one.
+4. Runs the migrations, then every `app:prune-*` in `services/api/config/crontab`, read
+   from it, so nothing whose window has closed (sc-3592, sc-68) is served again.
+5. Starts what it stopped and waits for every health check.
+
+A step that fails stops the script with the API still closed, and says so. The record
+of erasures, and replaying it before step 5, arrives with sc-30193's erasure; until then
+a restore has no erasures to replay.
+
+### Rehearsed
+
+| Date        | Stack                           | Backup            | Restore took |
+| ----------- | ------------------------------- | ----------------- | ------------ |
+| 23 Nov 2026 | ops's own stack, its localstack | 290 kB, encrypted | 148 s        |
+
+The rehearsal the story asks for is on the QA stack, in QA: the same commands, with the
+stack named. Make a throwaway key with `age-keygen`, then:
+
+```sh
+docker build -t soirely-backup:rehearsal deploy/backup
+# backup.env for the stack: its localstack (http://storage:4566) and keys, PGHOST=postgres and its database user
+docker run --rm --network soirely-qa_default --env-file backup.env soirely-backup:rehearsal /backup/bucket.sh
+docker run --rm --network soirely-qa_default --env-file backup.env soirely-backup:rehearsal /backup/backup.sh
+RESTORE_KEY=… RESTORE_SECRET=… RESTORE_PROJECT=soirely-qa RESTORE_COMPOSE_FILE=../soirely-qa/compose.yaml \
+  RESTORE_IMAGE=soirely-backup:rehearsal BACKUP_BUCKET=… BACKUP_REGION=… BACKUP_ENDPOINT=http://storage:4566 \
+  deploy/restore.sh <today> <identity file>
+```
+
+The identity file must be under a path Docker can mount (on Docker Desktop, not `/tmp`).
 
 ## The first deploy's pre-flight
 
@@ -123,3 +193,5 @@ Each line of sc-1612, ticked on the first deploy:
 - [ ] A test webhook from the mail provider is recorded.
 - [ ] Each alert above fires on a forced failure in a non-production environment
       (sc-86645, which waits on the owner's approval of the log destination).
+- [ ] `deploy/backup/bucket.sh` has made the backup bucket, and its settings print back as above.
+- [ ] After the first night, `docker compose -p soirely logs backup` shows the backup and the 06:00 check finding it.

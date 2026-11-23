@@ -39,7 +39,18 @@ for service in "${serving[@]}"; do
 done
 
 started="$(date +%s)"
-trap 'echo "The restore of $date stopped part way. The API stays closed: ${present[*]} are stopped." >&2' ERR
+encrypted="$(mktemp)"
+trap 'rm -f "$encrypted"' EXIT
+
+fetch=(docker run --rm --network "$network" "${backup_env[@]}"
+  --env AWS_ACCESS_KEY_ID="$RESTORE_KEY" --env AWS_SECRET_ACCESS_KEY="$RESTORE_SECRET" "$image")
+open=(docker run --rm -i --network none --volume "$identity:/run/backup/identity:ro" "$image")
+
+echo "Fetching the backup of $date and checking it opens, before anything closes."
+"${fetch[@]}" /backup/fetch.sh "$date" >"$encrypted"
+"${open[@]}" sh -c 'age --decrypt --identity /run/backup/identity | pg_restore --list >/dev/null' <"$encrypted"
+
+trap 'rm -f "$encrypted"; echo "The restore of $date stopped part way. The API stays closed: ${present[*]} are stopped." >&2' ERR
 
 echo "Closing ${present[*]}."
 "${compose[@]}" stop "${present[@]}"
@@ -49,24 +60,18 @@ echo "Replacing the database with the backup of $date."
   'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres \
      -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\" WITH (FORCE)" \
      -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\""'
-docker run --rm --network "$network" "${backup_env[@]}" \
-  --env AWS_ACCESS_KEY_ID="$RESTORE_KEY" --env AWS_SECRET_ACCESS_KEY="$RESTORE_SECRET" \
-  --volume "$identity:/run/backup/identity:ro" \
-  "$image" /backup/fetch.sh "$date" \
+"${open[@]}" age --decrypt --identity /run/backup/identity <"$encrypted" \
   | "${compose[@]}" exec -T postgres sh -c \
     'pg_restore --exit-on-error --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
-echo "Migrating the restored database to this commit's schema."
-"${compose[@]}" run --rm --no-deps api \
-  php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-
 # Every prune the scheduler runs, read from its crontab so a new one is never missed:
 # what a night's prune removed after the backup was taken is removed again.
-prunes="$(grep -oE 'app:prune-[a-z-]+' "$crontab" | sort -u)"
-for prune in $prunes; do
-  echo "Running $prune."
-  "${compose[@]}" run --rm --no-deps api php bin/console "$prune" --no-interaction
+steps="php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration"
+for prune in $(grep -oE 'app:prune-[a-z-]+' "$crontab" | sort -u); do
+  steps+=" && echo 'Running $prune.' && php bin/console $prune --no-interaction"
 done
+echo "Migrating the restored database to this commit's schema, then pruning it."
+"${compose[@]}" run --rm --no-deps api sh -c "$steps"
 
 # Replaying the record of erasures belongs here, before the API serves. It arrives
 # with sc-30193's erasure (sc-30204, 'Stories not yet merged').
@@ -74,4 +79,5 @@ done
 echo "Opening ${present[*]}."
 "${compose[@]}" up -d --wait "${present[@]}"
 trap - ERR
+rm -f "$encrypted"
 echo "Restored the backup of $date in $(( $(date +%s) - started )) s."

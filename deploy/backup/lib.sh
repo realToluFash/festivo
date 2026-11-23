@@ -19,6 +19,6 @@ s3api() {
 # Every backup in the bucket, "<key> <size>" one per line, oldest first. Listing
 # needs no read of any backup, so the writer's credentials can do it.
 backups() {
-  s3api list-objects-v2 --bucket "$BACKUP_BUCKET" \
-    --query 'Contents[].[Key,Size]' --output text | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.dump\.age' | sort
+  listed="$(s3api list-objects-v2 --bucket "$BACKUP_BUCKET" --query 'Contents[].[Key,Size]' --output text)" || return 1
+  printf '%s\n' "$listed" | grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.dump\.age[[:space:]]' | sort || true
 }
