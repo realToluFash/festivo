@@ -521,7 +521,7 @@ function Details({
       });
 
       const landsIn = joined ?? firstJoined;
-      if (landsIn != null) await rememberOrganisation(landsIn);
+      if (landsIn != null) await rememberOrganisation(saved.account.id, landsIn);
       // The number is saved on a step of its own, which Skip passes; a request to join waits after it.
       if (saved.account.waitingFor != null || awaiting(saved.account) == null) {
         router.replace('/phone?from=onboarding');

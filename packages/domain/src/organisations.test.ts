@@ -6,6 +6,8 @@ import {
   choosePaused,
   pausedSwitch,
   pausedReasonKey,
+  rememberedEntry,
+  rememberedFor,
   organisationChanges,
   newOrganisationProblem,
   organisationProblem,
@@ -33,6 +35,23 @@ describe('chooseOrganisation', () => {
 
   it('is in no organisation when the account has none', () => {
     expect(chooseOrganisation([], 'org_ire')).toBeNull();
+  });
+});
+
+describe('rememberedFor', () => {
+  it('gives back the organisation the same account left', () => {
+    expect(rememberedFor(rememberedEntry('usr_x', 'org_ire'), 'usr_x')).toBe('org_ire');
+  });
+
+  it('gives nothing to another account signing in on the same device', () => {
+    expect(rememberedFor(rememberedEntry('usr_x', 'org_ire'), 'usr_y')).toBeNull();
+  });
+
+  it('gives nothing for an empty slot or one it cannot read', () => {
+    expect(rememberedFor(null, 'usr_x')).toBeNull();
+    expect(rememberedFor('org_ire', 'usr_x')).toBeNull();
+    expect(rememberedFor('null', 'usr_x')).toBeNull();
+    expect(rememberedFor('{"account":"usr_x"}', 'usr_x')).toBeNull();
   });
 });
 

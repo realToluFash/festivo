@@ -1,5 +1,6 @@
 import type { InvitationPreview } from '@soirely/api-client';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { rememberedEntry } from '@soirely/domain';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
   me: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('expo-router', () => ({ router }));
 const storage = vi.hoisted(() => ({
   getItem: vi.fn(async () => null),
   setItem: vi.fn(async () => {}),
+  removeItem: vi.fn(async () => {}),
   getAllKeys: vi.fn(async (): Promise<string[]> => []),
   multiRemove: vi.fn(async () => {}),
 }));
@@ -601,11 +603,14 @@ describe('the organisation this phone was last in, paused there (sc-86056)', () 
     await launched(null, [organisation, other], []);
 
     expect(useSignedIn().organisation?.id).toBe('org_1');
-    expect(storage.setItem).toHaveBeenCalledWith('soirely.organisation', 'org_1');
+    expect(storage.setItem).toHaveBeenCalledWith(
+      'soirely.organisation',
+      rememberedEntry('usr_1', 'org_1'),
+    );
   });
 
   it('opens its paused page at the next launch, and keeps it remembered', async () => {
-    await launched('org_1', [other], [paused]);
+    await launched(rememberedEntry('usr_1', 'org_1'), [other], [paused]);
 
     expect(useSignedIn().pausedIn?.id).toBe('org_1');
     expect(storage.setItem).not.toHaveBeenCalled();
@@ -616,7 +621,10 @@ describe('the organisation this phone was last in, paused there (sc-86056)', () 
 
     expect(useSignedIn().organisation?.id).toBe('org_2');
     expect(useSignedIn().pausedIn).toBeNull();
-    expect(storage.setItem).toHaveBeenCalledWith('soirely.organisation', 'org_2');
+    expect(storage.setItem).toHaveBeenCalledWith(
+      'soirely.organisation',
+      rememberedEntry('usr_1', 'org_2'),
+    );
   });
 
   it('keeps the paused one remembered when it pauses while the app is open', async () => {
@@ -628,5 +636,115 @@ describe('the organisation this phone was last in, paused there (sc-86056)', () 
 
     expect(useSignedIn().pausedIn?.id).toBe('org_1');
     expect(storage.setItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('a phone shared by several accounts (sc-86373)', () => {
+  const alpha = { ...organisation, id: 'org_a', name: 'Alpha' };
+  const beta = { ...organisation, id: 'org_b', name: 'Beta' };
+  const pausedAlpha = {
+    ...alpha,
+    suspension: {
+      reason: 'domain_closed' as const,
+      domain: 'alpha.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday 16 Oct at 08:40 GMT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday 15 Nov at 08:40 GMT' },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  };
+  let kept: string | null = null;
+
+  beforeEach(() => {
+    kept = null;
+    storage.getItem.mockImplementation(async () => kept as never);
+    storage.setItem.mockImplementation(async (...args: unknown[]) => {
+      kept = String(args[1]);
+    });
+    storage.removeItem.mockImplementation(async () => {
+      kept = null;
+    });
+  });
+
+  afterEach(() => {
+    storage.getItem.mockImplementation(async () => null);
+    storage.setItem.mockImplementation(async () => {});
+    storage.removeItem.mockImplementation(async () => {});
+  });
+
+  const signsIn = async (
+    id: string,
+    organisations: (typeof organisation)[],
+    paused: (typeof pausedAlpha)[] = [],
+  ) => {
+    api.me.mockResolvedValue({ ...account, id });
+    api.organisationsWithPaused.mockResolvedValue({ organisations, paused });
+    await reloadSignedIn();
+    await settle();
+  };
+
+  const xChoosesAlpha = async () => {
+    await signsIn('usr_x', [beta, alpha]);
+    switchOrganisation('org_a');
+    await settle();
+  };
+
+  it('opens Y in Beta, Y’s own, after X chose Alpha', async () => {
+    await xChoosesAlpha();
+
+    await signsIn('usr_y', [beta, alpha]);
+    const y = useSignedIn();
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta with no paused card when Y’s access to Alpha is paused', async () => {
+    await xChoosesAlpha();
+
+    await signsIn('usr_y', [beta], [pausedAlpha]);
+    const y = useSignedIn();
+
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens Y in Beta after Z opened Alpha by default', async () => {
+    await signsIn('usr_z', [alpha]);
+
+    await signsIn('usr_y', [beta, alpha]);
+    expect(useSignedIn().organisation?.id).toBe('org_b');
+    await signsIn('usr_z', [alpha]);
+    await signsIn('usr_y', [beta], [pausedAlpha]);
+    const y = useSignedIn();
+    expect(y.organisation?.id).toBe('org_b');
+    expect(y.pausedIn).toBeNull();
+  });
+
+  it('opens X in Beta again once Y has signed in between', async () => {
+    await xChoosesAlpha();
+    await signsIn('usr_y', [beta, alpha]);
+
+    await signsIn('usr_x', [beta, alpha]);
+    expect(useSignedIn().organisation?.id).toBe('org_b');
+  });
+
+  it('lets X’s Alpha go even when Y signs in to a paused page alone', async () => {
+    await xChoosesAlpha();
+    await signsIn('usr_y', [], [pausedAlpha]);
+    expect(useSignedIn().pausedIn?.id).toBe('org_a');
+
+    await signsIn('usr_x', [beta, alpha]);
+    expect(useSignedIn().organisation?.id).toBe('org_b');
+  });
+
+  it('keeps X’s Alpha for X, and shows its paused page once X is paused there', async () => {
+    await xChoosesAlpha();
+
+    await signsIn('usr_x', [beta, alpha]);
+    expect(useSignedIn().organisation?.id).toBe('org_a');
+    await signsIn('usr_x', [beta], [pausedAlpha]);
+    const paused = useSignedIn();
+    expect(paused.pausedIn?.id).toBe('org_a');
   });
 });
