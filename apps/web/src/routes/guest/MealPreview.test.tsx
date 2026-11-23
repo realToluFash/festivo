@@ -151,11 +151,7 @@ function signedIn(): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
-function onMenu(
-  picksClose: object | null,
-  permissions = OWNER_PERMISSIONS,
-  preview: object = PREVIEW,
-): string[] {
+function onMenu(picksClose: object | null, permissions = OWNER_PERMISSIONS): string[] {
   const sent: string[] = [];
   signedIn();
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -164,7 +160,7 @@ function onMenu(
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions } });
     if (line === 'GET /api/events/ev_1/menu')
       return json({ menu: { courses: [menuCourse(picksClose)] } });
-    if (line === 'GET /api/events/ev_1/menu/preview') return json(preview);
+    if (line === 'GET /api/events/ev_1/menu/preview') return json(PREVIEW);
     if (line === 'GET /api/orgs/org_1/dishes')
       return json({ dishes: [], canManage: true, seesPrices: false });
 
@@ -241,38 +237,17 @@ describe('Preview as guest (sc-3907)', () => {
     expect((screen.getByRole('radio', { name: /Egusi/ }) as HTMLInputElement).disabled).toBe(true);
   });
 
-  it('copies with Same as within the preview and sends nothing, where the preview has a party (sc-17283)', async () => {
-    const party = {
-      ...PREVIEW,
-      guest: {
-        ...PREVIEW.guest,
-        places: 1,
-        companions: [
-          {
-            id: 'c1',
-            fullName: 'Tom Adeyemi',
-            coming: true,
-            namedByGuest: false,
-            needs: PREVIEW.guest.needs,
-          },
-        ],
-      },
-    };
-    const sent = onMenu(CLOSE, OWNER_PERMISSIONS, party);
+  it('shows no Same as button, being the host alone (sc-17283)', async () => {
+    onMenu(CLOSE);
     await openPreview();
+
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
 
     fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Same as mine, for Tom Adeyemi' }));
 
-    expect(screen.getByRole('heading', { name: 'For Tom Adeyemi' })).toBe(document.activeElement);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
-
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close preview' })[1] as HTMLElement);
-
-    expect(await screen.findByText('Nothing was saved.')).toBeDefined();
-    expect(sent.filter((line) => !line.startsWith('GET '))).toEqual([]);
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
   });
 
   it('shows to a role that can only read the menu', async () => {
