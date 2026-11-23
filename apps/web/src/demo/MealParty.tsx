@@ -42,7 +42,7 @@ import {
   screenAt,
   screensOf,
 } from './mealParty.ts';
-import { Refused } from './MealParts.tsx';
+import { PickMark, Refused } from './MealParts.tsx';
 import { allergenList } from './mealStep.ts';
 import { type DishAllergen, type Lang, allergenName, dietName } from './menuLibrary.ts';
 import { PCW, closeOf, dayWords } from './picksClose.ts';
@@ -659,48 +659,15 @@ function CourseScreen({
   );
 }
 
-function ForkKnife() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
-      <path
-        d="M4 1.5v4.5a1.5 1.5 0 0 0 1.5 1.5v7M7 1.5v4.5a1.5 1.5 0 0 1-1.5 1.5M5.5 1.5v4M11.5 14.5V1.5c-1.7.8-2.5 2.6-2.5 5v2h2.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 function Pick({ answer, course }: { answer: PartyAnswer | undefined; course: PartyCourse }) {
   if (answer == null) return <p className="mx-pick">{MSW.notChosen}</p>;
   if (answer.kind === 'chosen')
     return <p className="mx-pick">{dishOf(course.key, answer.dishId)?.name ?? MSW.notChosen}</p>;
-  const shape =
-    answer.kind === 'kitchen'
-      ? { ring: 'is-kitchen', mark: <ForkKnife />, words: PW.kitchenChooses }
-      : answer.kind === 'skipped'
-        ? {
-            ring: 'is-skipped',
-            mark: <Glyph name="minus" size={13} weight={2.6} />,
-            words: PW.skipped(course.name),
-          }
-        : {
-            ring: 'is-host',
-            mark: <Glyph name="message" size={13} weight={2.4} />,
-            words: PW.hostInTouch,
-          };
+  if (answer.kind === 'kitchen') return <PickMark shape="kitchen" words={PW.kitchenChooses} />;
+  if (answer.kind === 'skipped')
+    return <PickMark shape="skipped" words={PW.skipped(course.name)} />;
 
-  return (
-    <p className="mx-pick pc-shape">
-      <span className={`pc-ring ${shape.ring}`} aria-hidden="true">
-        {shape.mark}
-      </span>
-      <span>{shape.words}</span>
-    </p>
-  );
+  return <PickMark shape="host" words={PW.hostInTouch} />;
 }
 
 function CopiedCard({
