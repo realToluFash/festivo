@@ -19,9 +19,9 @@ appId: host.exp.Exponent
             - tapOn:
                 id: 'createWalk.discard'
       - waitForAnimationToEnd
-# The switcher's scrim closes it. A tap on its side margin: the top edge is the status bar, where iOS
-# takes a tap as scroll-to-top. 3% is inside the 20-point padding on a phone, and wider screens stop the
-# sheet at 480 points, centred.
+# The switcher's scrim closes it: below the panel, which hangs from the opener at the top, and off the
+# status bar, where iOS takes a tap as scroll-to-top. 80% clears the panel only while it holds a few tiles;
+# a fuller one reaches about 88% and this tap would pick a tile instead of closing it.
 - runFlow:
     when:
       visible:
