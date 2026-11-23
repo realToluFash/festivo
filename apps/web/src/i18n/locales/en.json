@@ -3807,7 +3807,15 @@
     "refusedClosed": "Picks for {{course}} closed on {{date}}, so your change was not saved.",
     "askHosts": "To change a pick now, ask {{hosts}}.",
     "preview": "Preview. Nothing is saved.",
-    "closePreview": "Close preview"
+    "closePreview": "Close preview",
+    "sameAsMine": "Same as mine",
+    "sameAsName": "Same as {{name}}",
+    "sameAsFor": "{{label}}, for {{name}}",
+    "cantCopyYours": "Your {{course}} can’t be picked for {{name}}.",
+    "cantCopyName": "{{from}}’s {{course}} can’t be picked for {{name}}.",
+    "copiedYours": "Copied from your picks. Change anything that should be different.",
+    "copiedName": "Copied from {{from}}. Change anything that should be different.",
+    "continue": "Continue"
   },
   "eventReplyBy": {
     "replyBy": "Reply by",

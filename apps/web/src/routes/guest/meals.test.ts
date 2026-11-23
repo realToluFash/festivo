@@ -4,10 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
   against,
   cardParts,
+  copyPlates,
+  copyable,
   dishRuled,
   markOf,
   nothingSafe,
   partsAllergens,
+  keyOf,
   picksOf,
   plateAllergens,
   refusalOf,
@@ -203,5 +206,100 @@ describe('the dish card once picked', () => {
 
   it('reads not stated when any part never stated its allergens', () => {
     expect(partsAllergens([{ allergens: [] }, { allergens: null }])).toBeNull();
+  });
+});
+
+describe('Same as an earlier person (sc-17283)', () => {
+  const chosen = (dishId: string, variant: string | null = null, options = {}) => ({
+    kind: 'chosen' as const,
+    dish: dishId,
+    variant,
+    options,
+  });
+  const kind = (one: 'chefsChoice' | 'skipped' | 'needsHost') => ({
+    kind: one,
+    dish: null,
+    variant: null,
+    options: {},
+  });
+  const starter = (over: Partial<MealCourse> = {}): MealCourse => ({
+    ...course([dish({ id: 'soup', name: 'Pepper soup', allergens: [] })]),
+    id: 'starter',
+    name: 'Starter',
+    skippable: true,
+    ...over,
+  });
+  const main = course([
+    dish({ allergens: [], variants: WAYS, choices: [SIDE] }),
+    dish({ id: 'yam', name: 'Pounded yam', allergens: null }),
+    dish({ id: 'stew', name: 'Stew', allergens: ['milk'] }),
+  ]);
+
+  it('copies a pick whose dish, way and every option can be picked by hand, and no other', () => {
+    const pick = chosen('rice', 'chicken', { side: ['plantain'] });
+    expect(copyable(pick, main, [])).toBe(true);
+    expect(copyable(pick, main, ['celery'])).toBe(false);
+    expect(copyable(chosen('rice', 'chicken', { side: ['beans'] }), main, ['milk'])).toBe(false);
+    expect(copyable(chosen('yam'), main, ['milk'])).toBe(false);
+    expect(copyable(chosen('yam'), main, ['other'])).toBe(true);
+    expect(copyable(chosen('stew'), main, ['milk'])).toBe(false);
+    expect(copyable(chosen('rice', 'children', { side: ['plantain'] }), main, [])).toBe(false);
+  });
+
+  it('copies chef’s choice unless nothing is safe, skipped where the course can be skipped, and never needs the host', () => {
+    const only = course([dish({ allergens: ['milk'] })]);
+    expect(copyable(kind('chefsChoice'), main, ['milk'])).toBe(true);
+    expect(copyable(kind('chefsChoice'), only, ['milk'])).toBe(false);
+    expect(copyable(kind('skipped'), starter(), [])).toBe(true);
+    expect(copyable(kind('skipped'), main, [])).toBe(false);
+    expect(copyable(kind('needsHost'), main, [])).toBe(false);
+    expect(copyable({ ...chosen('rice'), kind: 'needsHost' }, main, [])).toBe(false);
+    expect(copyable(undefined, main, [])).toBe(false);
+  });
+
+  it('replaces what the person had, clears and asks what can’t be copied in course order, and skips a closed course', () => {
+    const closed = {
+      ...starter(),
+      id: 'dessert',
+      picksClose: { ...main.picksClose, closed: true },
+    };
+    const courses = [starter(), main, closed];
+    const plates = {
+      [keyOf('you', 'starter')]: kind('skipped'),
+      [keyOf('you', 'main')]: chosen('stew'),
+      [keyOf('you', 'dessert')]: kind('chefsChoice'),
+      [keyOf('tom', 'starter')]: chosen('soup'),
+      [keyOf('tom', 'main')]: chosen('rice', 'fish', { side: ['plantain'] }),
+      [keyOf('tom', 'dessert')]: kind('skipped'),
+    };
+    const result = copyPlates(plates, 'you', 'tom', courses, ['milk']);
+    expect(result.asked).toEqual(['main']);
+    expect(result.plates[keyOf('tom', 'starter')]).toEqual(kind('skipped'));
+    expect(result.plates[keyOf('tom', 'main')]).toBeUndefined();
+    expect(result.plates[keyOf('tom', 'dessert')]).toEqual(kind('skipped'));
+    expect(result.plates[keyOf('you', 'main')]).toEqual(chosen('stew'));
+  });
+
+  it('is a copy, not a link: changing the earlier person’s pick afterwards leaves the copy as it was', () => {
+    const plates = { [keyOf('you', 'main')]: chosen('rice', 'chicken', { side: ['plantain'] }) };
+    const copied = copyPlates(plates, 'you', 'tom', [main], []).plates;
+    const source = copied[keyOf('you', 'main')];
+    const copy = copied[keyOf('tom', 'main')];
+    expect(copy).toEqual(source);
+    expect(copy).not.toBe(source);
+    expect(copy?.options.side).not.toBe(source?.options.side);
+    const changed = { ...copied, [keyOf('you', 'main')]: chosen('yam') };
+    expect(changed[keyOf('tom', 'main')]).toEqual(
+      chosen('rice', 'chicken', { side: ['plantain'] }),
+    );
+  });
+
+  it('sends a copied pick exactly as one picked by hand', () => {
+    const pick = chosen('rice', 'chicken', { side: ['plantain'] });
+    const eaters = [{ key: 'tom', id: 'tom-id', name: 'Tom', you: false }];
+    const copied = copyPlates({ [keyOf('you', 'main')]: pick }, 'you', 'tom', [main], []).plates;
+    expect(picksOf(copied, eaters, [main], (key) => (key === 'tom' ? 'tom-id' : null))).toEqual(
+      picksOf({ [keyOf('tom', 'main')]: pick }, eaters, [main], () => 'tom-id'),
+    );
   });
 });

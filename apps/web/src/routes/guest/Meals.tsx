@@ -202,6 +202,9 @@ export function MealScreen({
   cleared,
   refusal,
   timeZone,
+  earlier = [],
+  copiedFrom = null,
+  onSameAs,
   onPlate,
   onBack,
   onNext,
@@ -218,6 +221,11 @@ export function MealScreen({
   cleared: Cleared | null;
   refusal: Refusal;
   timeZone: string;
+  /** sc-17283: the people already answered, each a Same as button, on a later person's first course. */
+  earlier?: readonly Eater[];
+  /** sc-17283: whose answer on this course a Same as press couldn't copy, on the course it asks. */
+  copiedFrom?: Eater | null;
+  onSameAs?: (from: Eater) => void;
   onPlate: (plate: Plate) => void;
   onBack: () => void;
   onNext: () => void;
@@ -297,6 +305,7 @@ export function MealScreen({
     safe &&
     [...(dishes ?? []), ...(ways ?? []), ...(options ?? [])].some((one) => one.reason != null);
   const describedBy = [
+    copiedFrom != null && 'pc-asked',
     said != null && 'ms-refused',
     other != null && 'pc-other',
     cleared != null && 'pc-cleared',
@@ -334,6 +343,25 @@ export function MealScreen({
           {t('guestMeal.picksClose', { date: closeDate })}
         </p>
       </div>
+      {earlier.length > 0 && (
+        <div className="pc-same">
+          {earlier.map((one) => {
+            const label = sameAsLabel(one, t);
+
+            return (
+              <button
+                key={one.key}
+                type="button"
+                className="gp-outlined pc-same-button"
+                aria-label={t('guestMeal.sameAsFor', { label, name })}
+                onClick={() => onSameAs?.(one)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {course.answer === 'same' && first && dish != null && (
         <div className="ms-dish">
           <p className="ms-option-name">{dish.name}</p>
@@ -366,6 +394,22 @@ export function MealScreen({
             </span>
           )}
         </legend>
+        {copiedFrom != null && (
+          <p id="pc-asked" className="pc-inset pc-asked">
+            <span className="pc-info" aria-hidden="true">
+              <Glyph name="info" size={14} weight={2.4} />
+            </span>
+            <span>
+              {copiedFrom.you
+                ? t('guestMeal.cantCopyYours', { course: lower(course.name), name })
+                : t('guestMeal.cantCopyName', {
+                    from: copiedFrom.name ?? '',
+                    course: lower(course.name),
+                    name,
+                  })}
+            </span>
+          </p>
+        )}
         {other != null && (
           <p id="pc-other" className="pc-inset">
             <AllergyMark />
@@ -528,6 +572,10 @@ export function MealScreen({
   );
 }
 
+function sameAsLabel(from: Eater, t: Translate): string {
+  return from.you ? t('guestMeal.sameAsMine') : t('guestMeal.sameAsName', { name: from.name });
+}
+
 const blankOf = (kind: 'chefsChoice' | 'skipped'): Plate => ({
   kind,
   dish: null,
@@ -649,78 +697,186 @@ export function MealCards({
             {eater.you ? t('guestMeal.yourMeals') : t('guestMeal.theirMeals', { name: eater.name })}
           </h3>
           <ul className="mx-rows">
-            {courses.map((course) => {
-              const key = keyOf(eater.key, course.id);
-              const shut = course.picksClose.closed || refused.has(course.id);
-              const mark = reasonOf(markOf(course, plates[key], allergies(eater.key)), eater, t);
-              const date = dayOf(course.picksClose.at, timeZone);
-
-              return (
-                <li key={key} className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
-                  <div className="mx-words">
-                    <p className="mx-course">{course.name}</p>
-                    <Pick plate={plates[key]} course={course} />
-                    {pending(key) && !shut && !locked && (
-                      <p className="mx-pending">{t('guestMeal.notSent')}</p>
-                    )}
-                    {(!single || locked) && (
-                      <p className="mx-close">
-                        <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
-                        {shut
-                          ? t('guestMeal.picksClosed', { date })
-                          : t('guestMeal.picksClose', { date })}
-                      </p>
-                    )}
-                    {unsaved.has(key) && (
-                      <p
-                        className="desk-error ms-refused"
-                        role="alert"
-                        tabIndex={-1}
-                        data-focus={`refused-${key}`}
-                      >
-                        <Glyph name="alert" size={16} weight={2.2} />
-                        {t('guestMeal.refusedClosed', { course: course.name, date })}
-                      </p>
-                    )}
-                    {mark != null && (
-                      <p className="ms-out-line">
-                        <AllergyMark />
-                        <span id={`meal-reason-${key.replace('|', '-')}`}>{mark}</span>
-                      </p>
-                    )}
-                    {mark != null && shut && (
-                      <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>
-                    )}
-                  </div>
-                  {!shut && !locked && (
-                    <button
-                      type="button"
-                      className="gp-text is-ink"
-                      data-focus={changeFocus(key)}
-                      aria-label={
-                        eater.you
-                          ? t('guestMeal.changeYou', { course: lower(course.name) })
-                          : t('guestMeal.changeName', {
-                              course: lower(course.name),
-                              name: eater.name,
-                            })
-                      }
-                      aria-describedby={
-                        mark == null ? undefined : `meal-reason-${key.replace('|', '-')}`
-                      }
-                      {...offButton(busy, { dim: false })}
-                      onClick={() => onChange(key)}
-                    >
-                      <span>{t('guest.changeShort')}</span>
-                    </button>
-                  )}
-                </li>
-              );
-            })}
+            {courses.map((course) => (
+              <MealRow
+                key={keyOf(eater.key, course.id)}
+                eater={eater}
+                course={course}
+                plates={plates}
+                allergies={allergies(eater.key)}
+                timeZone={timeZone}
+                single={single}
+                busy={busy}
+                pending={pending(keyOf(eater.key, course.id))}
+                refused={refused.has(course.id)}
+                unsaved={unsaved.has(keyOf(eater.key, course.id))}
+                locked={locked}
+                onChange={onChange}
+              />
+            ))}
           </ul>
         </section>
       ))}
     </div>
+  );
+}
+
+/** One course's row on a person's card, shared by Check your meal picks and the copied card. */
+function MealRow({
+  eater,
+  course,
+  plates,
+  allergies,
+  timeZone,
+  single,
+  busy,
+  pending,
+  refused,
+  unsaved,
+  locked,
+  onChange,
+}: {
+  eater: Eater;
+  course: MealCourse;
+  plates: Plates;
+  allergies: readonly string[];
+  timeZone: string;
+  single: boolean;
+  busy: boolean;
+  pending: boolean;
+  refused: boolean;
+  unsaved: boolean;
+  locked: boolean;
+  onChange: (key: string) => void;
+}) {
+  const { t } = useTranslation();
+  const key = keyOf(eater.key, course.id);
+  const shut = course.picksClose.closed || refused;
+  const mark = reasonOf(markOf(course, plates[key], allergies), eater, t);
+  const date = dayOf(course.picksClose.at, timeZone);
+
+  return (
+    <li className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
+      <div className="mx-words">
+        <p className="mx-course">{course.name}</p>
+        <Pick plate={plates[key]} course={course} />
+        {pending && !shut && !locked && <p className="mx-pending">{t('guestMeal.notSent')}</p>}
+        {(!single || locked) && (
+          <p className="mx-close">
+            <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
+            {shut ? t('guestMeal.picksClosed', { date }) : t('guestMeal.picksClose', { date })}
+          </p>
+        )}
+        {unsaved && (
+          <p
+            className="desk-error ms-refused"
+            role="alert"
+            tabIndex={-1}
+            data-focus={`refused-${key}`}
+          >
+            <Glyph name="alert" size={16} weight={2.2} />
+            {t('guestMeal.refusedClosed', { course: course.name, date })}
+          </p>
+        )}
+        {mark != null && (
+          <p className="ms-out-line">
+            <AllergyMark />
+            <span id={`meal-reason-${key.replace('|', '-')}`}>{mark}</span>
+          </p>
+        )}
+        {mark != null && shut && <p className="gk-text">{t('guestMeal.hostInTouchLine')}</p>}
+      </div>
+      {!shut && !locked && (
+        <button
+          type="button"
+          className="gp-text is-ink"
+          data-focus={changeFocus(key)}
+          aria-label={
+            eater.you
+              ? t('guestMeal.changeYou', { course: lower(course.name) })
+              : t('guestMeal.changeName', {
+                  course: lower(course.name),
+                  name: eater.name,
+                })
+          }
+          aria-describedby={mark == null ? undefined : `meal-reason-${key.replace('|', '-')}`}
+          {...offButton(busy, { dim: false })}
+          onClick={() => onChange(key)}
+        >
+          <span>{t('guest.changeShort')}</span>
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** {name}'s card after Same as (sc-17283): the person's picks in Check your meal picks' rows, each with Change, then Back and Continue. */
+export function CopiedCard({
+  eater,
+  from,
+  courses,
+  plates,
+  allergies,
+  timeZone,
+  onChange,
+  onBack,
+  onContinue,
+}: {
+  eater: Eater;
+  from: Eater;
+  courses: readonly MealCourse[];
+  plates: Plates;
+  allergies: readonly string[];
+  timeZone: string;
+  onChange: (key: string) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation();
+  const name = eater.name ?? '';
+  const single = oneCloseDay(courses, (at) => dayOf(at, timeZone)) != null;
+
+  return (
+    <section className="gk ms pc-check" aria-labelledby="pc-for-h" aria-describedby="pc-copied">
+      <h2 id="pc-for-h" className="gp-h2 gk-h2" tabIndex={-1} data-focus="copiedHead">
+        {t('guestMeal.forName', { name })}
+      </h2>
+      <p id="pc-copied" className="pc-saved">
+        <Glyph name="copy" size={16} weight={2.2} />
+        <span>
+          {from.you
+            ? t('guestMeal.copiedYours')
+            : t('guestMeal.copiedName', { from: from.name ?? '' })}
+        </span>
+      </p>
+      <ul className="mx-rows">
+        {courses.map((course) => (
+          <MealRow
+            key={keyOf(eater.key, course.id)}
+            eater={eater}
+            course={course}
+            plates={plates}
+            allergies={allergies}
+            timeZone={timeZone}
+            single={single}
+            busy={false}
+            pending={false}
+            refused={false}
+            unsaved={false}
+            locked={false}
+            onChange={onChange}
+          />
+        ))}
+      </ul>
+      <div className="pc-footer">
+        <button type="button" className="gp-outlined" onClick={onBack}>
+          {t('guest.back')}
+        </button>
+        <Filled busy={false} focus="copiedContinue" onClick={onContinue}>
+          {t('guestMeal.continue')}
+        </Filled>
+      </div>
+    </section>
   );
 }
 
