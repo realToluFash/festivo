@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Integrations\Redis;
 
 use Redis;
+use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class RedisFactory
@@ -14,7 +15,8 @@ final readonly class RedisFactory
         private string $host,
         #[Autowire('%env(int:REDIS_PORT_INTERNAL)%')]
         private int $port,
-        #[\SensitiveParameter] #[Autowire('%env(REDIS_PASSWORD)%')]
+        #[SensitiveParameter]
+        #[Autowire('%env(REDIS_PASSWORD)%')]
         private string $password,
     ) {
     }
