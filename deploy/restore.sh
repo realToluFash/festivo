@@ -31,10 +31,13 @@ else
   image="soirely-backup:$DEPLOY_SHA"
 fi
 
-serving=(proxy api notification-worker scheduler backup)
+# Read once and matched in bash: a pipe into grep -q under pipefail fails whenever
+# grep's early exit breaks compose's pipe, and the service is silently left open.
+services=$'\n'"$("${compose[@]}" config --services)"$'\n'
+[[ "$services" == *$'\n'api$'\n'* ]] || { echo "The compose project has no api service, so nothing could be closed." >&2; exit 1; }
 present=()
-for service in "${serving[@]}"; do
-  "${compose[@]}" config --services | grep -qx "$service" && present+=("$service")
+for service in proxy api notification-worker scheduler backup; do
+  if [[ "$services" == *$'\n'"$service"$'\n'* ]]; then present+=("$service"); fi
 done
 
 started="$(date +%s)"

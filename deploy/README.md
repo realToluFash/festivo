@@ -56,9 +56,9 @@ route is given 60 s. The realtime hub has none, as it streams.
 ranges are checked against it; a proxy in front of this one (a CDN, a load balancer)
 would make every webhook a 401 until its address is trusted too.
 
-A server set up before the network had its `ip_range` keeps the old network, which hands
-`172.30.0.2` to whichever service starts first, and the proxy then fails to start. On such
-a server, once, before `deploy/deploy.sh`: `docker compose --project-directory deploy
+A server set up before the network had its `ip_range` keeps the old network: Compose
+replaces it under the running containers, the stores lose their service names, and the API
+never turns healthy. On such a server, once, before `deploy/deploy.sh`: `docker compose --project-directory deploy
 --env-file deploy/.env -f deploy/compose.yaml down`. The volumes stay.
 
 ## Sets
@@ -89,8 +89,9 @@ port and `REDIS_PASSWORD`; this path does not set it.
   and the web client's own pages. Set explicitly in every environment, even when it is
   the default `support@soirely.com`.
 - **`MAIL_WEBHOOK_SECRET` and `MAIL_WEBHOOK_ALLOWED_RANGES`** (sc-4332): the
-  provider's published ranges, set beside the secret, never the local stacks' private
-  ranges (the pre-flight refuses those). A refused bounce never reaches the rate check,
+  provider's published ranges, set beside the secret. The pre-flight refuses an item it
+  cannot read as an address or range, and any range, IPv4 or IPv6, that reaches an
+  address no internet caller comes from (sc-87247). A refused bounce never reaches the rate check,
   so the rate alert cannot catch a wrong value: **after each deploy, send a test webhook
   from the provider and confirm it is recorded.**
 - Every other provider's credentials are in `deploy/env.example`, one per line. A
@@ -169,8 +170,10 @@ a restore has no erasures to replay.
 | Date        | Stack                                                       | Backup            | Restore took |
 | ----------- | ----------------------------------------------------------- | ----------------- | ------------ |
 | 23 Nov 2026 | the QA stack (`soirely-qa`) at main 44f2772, its localstack | 286 kB, encrypted | 312 s        |
+| 23 Nov 2026 | the ops stack (`soirely-ops`) at 20561c5, its localstack    | 284 kB, encrypted | 152 s        |
 
-Taken from that stack's own backup. A guest renamed after the backup came back with the
+Each taken from that stack's own backup. At 20561c5 the script reads the services to close
+once, and the API answered nothing from close to open. A guest renamed after the backup came back with the
 name the backup held, and a guest added after it was gone. Every `app:prune-*` and
 `app:erase-*` in the crontab ran before the API opened, and it answered `/api/health`.
 
@@ -189,6 +192,15 @@ RESTORE_KEY=… RESTORE_SECRET=… RESTORE_PROJECT=soirely-qa RESTORE_COMPOSE_FI
 ```
 
 The identity file must be under a path Docker can mount (on Docker Desktop, not `/tmp`).
+
+## Writing the scripts
+
+- Never pipe a command into `grep -q` under `set -o pipefail`. `grep -q` exits at its
+  first match, the command writing into it dies of a broken pipe, and the pipeline
+  fails though the line was there, on some runs and not others. Read the output once
+  into a variable and match it in bash (`deploy/restore.sh`, the services it closes).
+- Under `set -u`, bash 3.2 (macOS) treats `"${list[*]}"` of an empty array as unbound.
+  Refuse the empty case before using the list.
 
 ## The first deploy's pre-flight
 
