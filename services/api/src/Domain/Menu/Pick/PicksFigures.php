@@ -80,6 +80,7 @@ final readonly class PicksFigures
                         'reason' => $spot['reason'] ?? 'nothing',
                         'pick' => $spot['pick'] ?? null,
                         'allergens' => $spot['allergens'] ?? [],
+                        'notStated' => $spot['notStated'] ?? false,
                     ];
                 }
 
