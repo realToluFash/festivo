@@ -4018,14 +4018,14 @@
     "askHosts": "Para cambiar una elección ahora, hable con {{hosts}}.",
     "preview": "Vista previa. No se guarda nada.",
     "closePreview": "Cerrar la vista previa",
-    "sameAsMine": "Same as mine",
-    "sameAsName": "Same as {{name}}",
-    "sameAsFor": "{{label}}, for {{name}}",
-    "cantCopyYours": "Your {{course}} can’t be picked for {{name}}.",
-    "cantCopyName": "{{from}}’s {{course}} can’t be picked for {{name}}.",
-    "copiedYours": "Copied from your picks. Change anything that should be different.",
-    "copiedName": "Copied from {{from}}. Change anything that should be different.",
-    "continue": "Continue"
+    "sameAsMine": "Lo mismo que yo",
+    "sameAsName": "Lo mismo que {{name}}",
+    "sameAsFor": "{{label}}, para {{name}}",
+    "cantCopyYours": "Lo que usted ha elegido de {{course}} no está disponible para {{name}}.",
+    "cantCopyName": "Lo que ha elegido {{from}} de {{course}} no está disponible para {{name}}.",
+    "copiedYours": "Se han copiado sus elecciones. Cambie lo que deba ser distinto.",
+    "copiedName": "Se han copiado las elecciones de {{from}}. Cambie lo que deba ser distinto.",
+    "continue": "Continuar"
   },
   "eventReplyBy": {
     "replyBy": "Plazo de respuesta",
