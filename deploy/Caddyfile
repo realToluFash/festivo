@@ -1,0 +1,35 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_HOST} {
+	encode zstd gzip
+	reverse_proxy web:80
+}
+
+{$API_HOST} {
+	encode zstd gzip
+
+	handle /.well-known/mercure* {
+		reverse_proxy mercure:80 {
+			flush_interval -1
+		}
+	}
+
+	# Seating and floor plan take up to 180 s with the fallback (sc-3987).
+	handle /api/assistant/* {
+		reverse_proxy api:80 {
+			transport http {
+				response_header_timeout 200s
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy api:80 {
+			transport http {
+				response_header_timeout 60s
+			}
+		}
+	}
+}
