@@ -511,7 +511,7 @@ describe('A dish whose allergens were never stated, on See picks (sc-87421)', ()
 
     expect(
       await screen.findByText(
-        'Main: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+        'Main: their pick, Puff-puff, has no allergens stated, and their allergy to celery was recorded after they picked it.',
       ),
     ).toBeDefined();
     expect(

@@ -3402,7 +3402,7 @@
     "needsHostBody": "No se decide nada para estas personas en estos pases hasta que usted intervenga.",
     "nothingFor": "{{course}}: no hay nada en este pase que se pueda elegir para esta persona.",
     "allergyFor": "{{course}}: eligió {{dish}}, pero después se anotó una alergia que lo descarta: {{allergens}}.",
-    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and {{allergens}} was recorded after they picked it.",
+    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and their allergy to {{allergens}} was recorded after they picked it.",
     "hostCount_one": "{{course}} · {{count, number}} persona",
     "hostCount_other": "{{course}} · {{count, number}} personas",
     "hostCount_many": "{{course}} · {{count, number}} personas",

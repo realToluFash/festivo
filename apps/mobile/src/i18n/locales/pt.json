@@ -3402,7 +3402,7 @@
     "needsHostBody": "Nada fica decidido para estas pessoas nestes serviços até que intervenha.",
     "nothingFor": "{{course}}: nada neste serviço pode ser escolhido para esta pessoa.",
     "allergyFor": "{{course}}: escolheu {{dish}}, mas depois foi registada uma alergia que o exclui: {{allergens}}.",
-    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and {{allergens}} was recorded after they picked it.",
+    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and their allergy to {{allergens}} was recorded after they picked it.",
     "hostCount_one": "{{course}} · {{count, number}} pessoa",
     "hostCount_other": "{{course}} · {{count, number}} pessoas",
     "hostCount_many": "{{course}} · {{count, number}} pessoas",

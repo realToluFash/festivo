@@ -246,7 +246,7 @@ describe('a plate whose allergens were never stated, on Menu picks (sc-87421)', 
     };
 
     expect(hostLine(t, inSentence, line, 'Dessert')).toBe(
-      'Dessert: their pick, Puff-puff, has no allergens stated, and peanuts was recorded after they picked it.',
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to peanuts was recorded after they picked it.',
     );
     expect(
       hostLine(t, inSentence, { ...line, pick: 'Chin-chin', notStated: false }, 'Dessert'),

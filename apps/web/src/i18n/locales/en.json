@@ -5884,7 +5884,7 @@
     "needsHostBody": "Nothing is decided for these people on these courses until you step in.",
     "nothingFor": "{{course}}: nothing on this course can be picked for them.",
     "allergyFor": "{{course}}: their pick, {{dish}}, contains {{allergens}}, recorded after they picked it.",
-    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and {{allergens}} was recorded after they picked it.",
+    "allergyForNotStated": "{{course}}: their pick, {{dish}}, has no allergens stated, and their allergy to {{allergens}} was recorded after they picked it.",
     "hostCount_one": "{{course}} · {{count, number}} person",
     "hostCount_other": "{{course}} · {{count, number}} people",
     "answered": "{{n, number}} of {{room, number}} answered",
