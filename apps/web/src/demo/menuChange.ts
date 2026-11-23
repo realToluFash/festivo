@@ -211,7 +211,6 @@ export const startsAsking = (
 ): boolean =>
   course.answer === 'same' && anyPicked(courses) && !asksGuests(before) && asksGuests(after);
 
-/** Who has answered a dish: those who picked it, or on a course everyone gets, those who answered its choices. */
 const answeredDish = (dish: EvDish): number =>
   Math.max(pickedBy(dish), ...choicesOf(dish).map(answeredBy));
 
