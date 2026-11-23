@@ -143,7 +143,7 @@ export function GuestsScreen({
   filterFrom: ListFilter | null;
   /** sc-4331: the last look the bell's item counts from, taken before it marked the item read. */
   sinceFrom?: string | null;
-  /** Upright on an iPad, ‹ above the list when it is not Events: Overview over another event's page from the bell (sc-84453). */
+  /** Upright, ‹ above the list names the screen the event was opened over, as at its other areas: Event over another event's page from the bell (sc-84453). */
   behind?: { label: string; onPress: () => void } | undefined;
   onWrite: () => void;
   onConversation: (guest: string) => void;
