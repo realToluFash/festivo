@@ -228,7 +228,9 @@
     "messagesCounts:audit.field.format",
     "messagesCounts:audit.value.invitation",
     "messagesCounts:guestReplies.push.title",
-    "web:seePicks.side"
+    "web:seePicks.side",
+    "web:kitchenSheet.allergies",
+    "messagesCounts:kitchen_sheet.allergies"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
