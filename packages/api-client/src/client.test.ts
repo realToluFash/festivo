@@ -4022,6 +4022,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     },
     phase: 'live',
     started: false,
+    onTheDay: false,
     answersOpen: true,
   };
 
@@ -4048,6 +4049,13 @@ describe("the guest's calendar on their page (sc-3627)", () => {
 
   test('has none when the API gives none', async () => {
     expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test("reads the event's day as the API sends it, and an older API's silence as not the day", async () => {
+    const { onTheDay: _omitted, ...older } = PAGE;
+
+    expect((await answering({ ...PAGE, onTheDay: true }).guestPage('tok')).onTheDay).toBe(true);
+    expect((await answering(older).guestPage('tok')).onTheDay).toBe(false);
   });
 
   test('refuses a feed that is not a path', async () => {
