@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AccessibilityInfo, StyleSheet, View, type ViewInstance } from 'react-native';
+import { AccessibilityInfo, Keyboard, StyleSheet, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -62,6 +62,7 @@ import { SwitchedNotice } from './SwitchedNotice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { SETTLED_MS, bringIntoView, keepInsideEnd, restOverToast, whenLanded } from './intoView.ts';
 import { ScreenScroll, type ScreenScrollView } from './Screen.tsx';
+import { useKeysUp } from './keyboardWatch.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
 import { TextAction } from './Summary.tsx';
@@ -79,6 +80,7 @@ export function EventPage({
   partRef,
   closedOnto = null,
   toast = null,
+  toastClosed = null,
   onDuplicate,
   onDeleted,
   onGuests,
@@ -109,6 +111,8 @@ export function EventPage({
   closedOnto?: Closed | null;
   /** The toast over the page's foot, where its top shows in the window and the close by Save it says. */
   toast?: { top: number; over: Closed | null } | null;
+  /** A new one each time × closes a saved toast, naming the Save it said. */
+  toastClosed?: { of: Closed } | null;
   /** Absent for a role without events.create (sc-22145); opens Duplicate over the page, focus going back to `opener`. */
   onDuplicate?: ((opener: RefObject<ScreenReaderTarget | null>) => void) | undefined;
   /** Absent for a role without events.create (sc-3592). */
@@ -162,7 +166,7 @@ export function EventPage({
     opener: deleteOpener,
   });
   const mute = useEventMute(event.id);
-  const toastRoom = useOpenerInSight(closedOnto, toast);
+  const toastRoom = useOpenerInSight(closedOnto, toast, toastClosed);
 
   // A change of phase on an open page is said politely, never on arrival (WCAG 2.2 §4.1.3).
   useEffect(() => {
@@ -488,22 +492,59 @@ interface Closed {
   saved?: boolean;
 }
 
-/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). When it goes is savedRowFocus's: the edit counts as gone SETTLED_MS after this close's own toast was laid out, since counted from the commit a heavy Save's window could still be going and TalkBack, as it went, put its focus on the header's back button. */
+/** How long the saved toast's top holds still, with the keys down, before the row rests above it: a Save made with the keys up lays the toast out over them first, and it moves down only as the window grows back (sc-86228). */
+const TOAST_STILL_MS = 150;
+
+/** A link opens the page at its top, and TalkBack cannot take focus to a row out of sight, so the row an edit closes onto comes into sight before focus goes back to it (sc-48600). After Save it rests wholly in sight 12pt above the saved toast, the page's foot given blank room under it while the toast shows where the page cannot scroll that far, and focus goes back to it from here once the page is still and the edit has gone, not on the edit's own timer (sc-86228). When it goes is savedRowFocus's: the edit counts as gone SETTLED_MS after this close's own toast was laid out, since counted from the commit a heavy Save's window could still be going and TalkBack, as it went, put its focus on the header's back button. The rest waits for the keys to be down and the toast to hold still, and the latest moment rests above the toast too where its top is known. Closing the toast with × sends focus back to the latest Save's row once the room has gone. */
 function useOpenerInSight(
   closed: Closed | null,
   toast: { top: number; over: Closed | null } | null,
+  toastClosed: { of: Closed } | null,
 ): { room: number; onLayout: () => void } {
   const scroll = useContext(ScreenScroll);
+  const keysUp = useKeysUp();
   const seen = useRef(closed);
   const [room, setRoom] = useState(0);
   const roomNow = useRef(0);
   const laidOut = useRef<(() => void) | null>(null);
+  const roomGoing = useRef(false);
+  const roomGone = useRef<(() => void) | null>(null);
+  const closedSeen = useRef(toastClosed);
   const over = toast != null && closed?.saved === true && toast.over === closed ? toast.top : null;
+  const overNow = useRef(over);
   const shows = toast != null;
   const focus = useRef<{ of: Closed; timing: SavedRowFocus } | null>(null);
-  const restedOnto = (of: Closed) => () => {
-    if (focus.current?.of === of) focus.current.timing.rested();
-  };
+
+  useEffect(() => {
+    overNow.current = over;
+  }, [over]);
+
+  /** Brings `row` wholly into sight by the least scroll, then calls `then`. */
+  const bringInto = useRef<(row: Closed, then: () => void) => void>(() => {});
+  /** Rests `row` 12pt above the toast's `top`, giving the foot the room it needs, then says whether it could be measured. */
+  const restAbove = useRef<(row: Closed, top: number, then: (rested: boolean) => void) => void>(
+    () => {},
+  );
+
+  useEffect(() => {
+    bringInto.current = (row, then) =>
+      bringIntoView(scroll, row.opener.current, false, {}, (found) =>
+        found == null || scroll == null ? then() : landedOr(scroll, found.to, then),
+      );
+    restAbove.current = (row, top, then) =>
+      restOverToast(scroll, row.opener.current, top, roomNow.current, (rest) => {
+        if (rest == null || scroll == null) return then(false);
+        const go = () => {
+          if (rest.to != null) scroll.ref.current?.scrollTo({ y: rest.to, animated: false });
+          landedOr(scroll, rest.to, () => then(true));
+        };
+        const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);
+        if (wanted === roomNow.current) return go();
+        roomNow.current = wanted;
+        laidOut.current = go;
+        setRoom(wanted);
+      });
+  }, [scroll]);
 
   useEffect(() => {
     if (closed?.saved !== true) return;
@@ -514,8 +555,12 @@ function useOpenerInSight(
       bringIntoSight: (rested) => {
         void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
           if (!on) return rested();
-          bringIntoView(scroll, closed.opener.current, false, {}, (found) =>
-            found == null || scroll == null ? rested() : landedOr(scroll, found.to, rested),
+          const top = overNow.current;
+          if (seen.current === closed || top == null || Keyboard.isVisible())
+            return bringInto.current(closed, rested);
+          seen.current = closed;
+          restAbove.current(closed, top, (measured) =>
+            measured ? rested() : bringInto.current(closed, rested),
           );
         });
       },
@@ -549,35 +594,71 @@ function useOpenerInSight(
   }, [closed, scroll]);
 
   useEffect(() => {
-    if (over == null || closed == null || closed === seen.current) return;
-    seen.current = closed;
+    if (over == null || closed == null || closed === seen.current || keysUp) return;
 
-    const current = () => seen.current === closed;
-    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
-      if (!on || !current()) return;
-      restOverToast(scroll, closed.opener.current, over, roomNow.current, (rest) => {
-        if (!current()) return;
-        const rested = restedOnto(closed);
-        if (rest == null || scroll == null) return rested();
-        const go = () => {
-          if (rest.to != null) scroll.ref.current?.scrollTo({ y: rest.to, animated: false });
-          landedOr(scroll, rest.to, rested);
-        };
-        const wanted = rest.room < 1 ? 0 : Math.ceil(rest.room);
-        if (wanted === roomNow.current) return go();
-        roomNow.current = wanted;
-        laidOut.current = go;
-        setRoom(wanted);
+    const still = setTimeout(() => {
+      if (closed === seen.current) return;
+      seen.current = closed;
+      const current = () => seen.current === closed;
+      const rested = () => {
+        if (current() && focus.current?.of === closed) focus.current.timing.rested();
+      };
+      void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+        if (!on || !current()) return;
+        restAbove.current(closed, over, (measured) => {
+          if (!current()) return;
+          if (measured) rested();
+          else bringInto.current(closed, rested);
+        });
       });
-    });
-  }, [closed, over, scroll]);
+    }, TOAST_STILL_MS);
+
+    return () => clearTimeout(still);
+  }, [closed, over, keysUp]);
 
   useEffect(() => {
     if (shows || roomNow.current === 0) return;
     roomNow.current = 0;
-    laidOut.current = () => keepInsideEnd(scroll);
+    roomGoing.current = true;
+    laidOut.current = () =>
+      keepInsideEnd(scroll, (to) => {
+        const gone = () => {
+          roomGoing.current = false;
+          const then = roomGone.current;
+          roomGone.current = null;
+          then?.();
+        };
+        if (to == null || scroll == null) gone();
+        else landedOr(scroll, to, gone);
+      });
     setRoom(0);
   }, [shows, scroll]);
+
+  useEffect(() => {
+    if (toastClosed == null || toastClosed === closedSeen.current) return;
+    closedSeen.current = toastClosed;
+
+    let gone = false;
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const row = toastClosed.of;
+    const back = () => {
+      if (gone) return;
+      bringInto.current(row, () => {
+        // TalkBack puts its own focus on the header as × goes, and a move asked before that is lost.
+        if (!gone) settle = setTimeout(() => moveScreenReaderFocus(row.opener.current), SETTLED_MS);
+      });
+    };
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!on || gone) return;
+      if (roomGoing.current) roomGone.current = back;
+      else back();
+    });
+
+    return () => {
+      gone = true;
+      clearTimeout(settle);
+    };
+  }, [toastClosed]);
 
   return {
     room,
