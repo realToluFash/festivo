@@ -868,7 +868,8 @@ export function Card({
       (draft.kind !== 'chosen' ||
         stepsOf(course, draft).every((step, at) => refusalOf(step, draft, at === 0) == null));
     const plates = done ? { ...meal.plates, [key]: draft } : meal.plates;
-    if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
+    if (view.asked === true) openMeal(view.eater, 0, view.from, 'flow', plates);
+    else if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
     else if (view.eater > 0)
       openMeal(view.eater - 1, courses.length - 1, view.from, 'flow', plates);
     else {
@@ -1179,6 +1180,8 @@ export function Card({
         from={source}
         courses={courses}
         plates={meal.plates}
+        allergies={allergies(eater.key)}
+        timeZone={event.timeZone}
         onChange={(key) => {
           const course = courses.findIndex((one) => key.endsWith(`|${one.id}`));
           if (course >= 0) openMeal(at, course, from, 'card');

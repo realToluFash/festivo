@@ -2394,6 +2394,26 @@ describe('Same as an earlier person (sc-17283)', () => {
       true,
     );
   });
+
+  it('takes Back on a course Same as couldn’t copy to the person’s first course with the buttons, keeping the copy’s sequence', async () => {
+    api({ '/api/guest-links/page': [{ status: 200, body: PARTY_PAGE }] });
+    open();
+    await screen.findByRole('button', { name: 'Yes, I’ll be there' });
+    toMeals();
+    mine(/Pounded yam and egusi/);
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+    expect(screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('heading', { name: /Which main\?/ })).toBe(document.activeElement);
+    expect(screen.queryByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: `Same as mine, for ${CHIDI_NAME}` }));
+    expect(screen.getByText(`Your main can’t be picked for ${CHIDI_NAME}.`)).toBeDefined();
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('heading', { name: `For ${CHIDI_NAME}` })).toBe(document.activeElement);
+  });
 });
 
 describe('a meal for each person coming, the close and the allergy rules (sc-3907)', () => {
