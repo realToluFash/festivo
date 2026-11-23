@@ -2787,7 +2787,7 @@ describe('Show this at the door (sc-1301)', () => {
 
     expect(heading).toBeDefined();
     expect(
-      screen.getByText('It lets you and your companions in. A screenshot works too.'),
+      screen.getByText('It lets you and anyone coming with you in. A screenshot works too.'),
     ).toBeDefined();
     expect(code.getAttribute('src')).toBe(
       `data:image/svg+xml;charset=utf-8,${encodeURIComponent(CODE.qrSvg)}`,
@@ -2813,7 +2813,7 @@ describe('Show this at the door (sc-1301)', () => {
       const { unmount } = open();
 
       expect(await screen.findByText('A screenshot works too.')).toBeDefined();
-      expect(screen.queryByText(/companions in/u)).toBeNull();
+      expect(screen.queryByText(/coming with you in/u)).toBeNull();
       unmount();
       vi.restoreAllMocks();
     }
