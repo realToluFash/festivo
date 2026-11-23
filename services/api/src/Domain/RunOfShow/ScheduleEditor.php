@@ -113,10 +113,10 @@ final readonly class ScheduleEditor
         return $item;
     }
 
-    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time (sc-3895). One taken sends its track's card (sc-66580). */
+    /** A press that changes nothing is still kept, so a late earlier press can make it count, unless it would have changed another item on its track; the same key answers as the first time and changes and publishes nothing (sc-3895, sc-83209). One taken sends its track's card (sc-66580). */
     public function press(Event $event, ScheduleItem $item, PressKind $kind, DateTimeImmutable $pressedAt, string $key, string $fingerprint, User $by, bool $fromCard = false): void
     {
-        $loss = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by, $fromCard): ?PressLoss {
+        [$loss, $sentAgain] = $this->locked($event, function () use ($event, $item, $kind, $pressedAt, $key, $fingerprint, $by, $fromCard): array {
             $sent = $this->schedulePressRepository->findOneByKey($by, $key);
 
             if (null !== $sent) {
@@ -125,10 +125,10 @@ final readonly class ScheduleEditor
                 }
 
                 if ($sent->isSetAside()) {
-                    return new PressLoss(ErrorCode::TrackBusy, $sent->getSetAsideFor());
+                    return [new PressLoss(ErrorCode::TrackBusy, $sent->getSetAsideFor()), true];
                 }
 
-                return $this->replayed($event)->losses[$sent->getId()->toRfc4122()] ?? self::answered($sent);
+                return [$this->replay($event)->losses[$sent->getId()->toRfc4122()] ?? self::answered($sent), true];
             }
 
             $press = new SchedulePress($event, $item, $kind, $this->clamped($event, $pressedAt), $key, $fingerprint, $by, $by->getName(), $fromCard);
@@ -141,7 +141,7 @@ final readonly class ScheduleEditor
                 $press->setAside($overreach->to);
                 $press->setAnswer($overreach->code->value);
 
-                return $overreach;
+                return [$overreach, false];
             }
 
             $replayed = $this->replayed($event);
@@ -153,10 +153,12 @@ final readonly class ScheduleEditor
                 $this->runOfShowCards->pressed($event, $press);
             }
 
-            return $loss;
+            return [$loss, false];
         });
 
-        $this->published($event);
+        if (!$sentAgain) {
+            $this->published($event);
+        }
 
         if (null !== $loss) {
             $zone = new DateTimeZone($event->getTimeZone());
@@ -215,6 +217,11 @@ final readonly class ScheduleEditor
         $at = $pressedAt > $latest ? $latest : $pressedAt;
 
         return ($at < $earliest ? $earliest : $at)->setTimezone(new DateTimeZone('UTC'));
+    }
+
+    private function replay(Event $event): Replayed
+    {
+        return PressReplay::of($this->scheduleItemRepository->findOnEvent($event), $this->schedulePressRepository->findStandingOnEvent($event));
     }
 
     /** Writes each item's state as the event's presses now leave it. */
