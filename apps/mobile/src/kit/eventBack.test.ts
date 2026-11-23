@@ -26,6 +26,7 @@ describe('an event’s ‹ names the screen behind it (sc-83008)', () => {
     ['notifications', 'notifications'],
     ['settings/data-and-control/audit-log', 'auditLog'],
     ['settings/data-and-control/audit-entry', 'entry'],
+    ['events/[id]/index', 'event'],
   ])('over %s reads %s and goes back to it', (route, screen) => {
     expect(over(route)).toEqual({ screen, way: 'back' });
   });

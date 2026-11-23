@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { appPlace } from './notificationPlace.ts';
+import { appPlace, sameEventParams } from './notificationPlace.ts';
 
 describe("a bell item's place in the app (sc-3980)", () => {
   it("opens the app's screen for the web's path", () => {
@@ -27,5 +27,31 @@ describe("a bell item's place in the app (sc-3980)", () => {
   it('stays in the bell for a place the app has no screen for, or none', () => {
     expect(appPlace('/app/events/e1/guests')).toBeNull();
     expect(appPlace(null)).toBeNull();
+  });
+});
+
+describe('a notification for the event already open opens it in place (sc-84453)', () => {
+  it('shows the guests it names on the open page', () => {
+    expect(sameEventParams('/events/e1?area=guests&filter=changed&since=t0', '/events/e1')).toEqual(
+      {
+        area: 'guests',
+        filter: 'changed',
+        since: 't0',
+      },
+    );
+  });
+
+  it('shows Overview for the rest, clearing the area that was open', () => {
+    expect(sameEventParams('/events/e1', '/events/e1')).toEqual({
+      area: undefined,
+      filter: undefined,
+      since: undefined,
+    });
+  });
+
+  it('pushes another event, and anything not an event', () => {
+    expect(sameEventParams('/events/e2', '/events/e1')).toBeNull();
+    expect(sameEventParams('/events', '/events')).toBeNull();
+    expect(sameEventParams('/events/e1/night?track=a', '/events/e1')).toBeNull();
   });
 });
