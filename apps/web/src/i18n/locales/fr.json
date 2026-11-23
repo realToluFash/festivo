@@ -2529,7 +2529,7 @@
     "emailNotSaved": "Le réglage des e-mails n’a pas été enregistré. Réessayez.",
     "couldNotLoad": "Vos paramètres de notification n’ont pas pu être chargés.",
     "tryAgain": "Réessayer",
-    "loading": "Loading your notification settings…",
+    "loading": "Chargement de vos paramètres de notification…",
     "pushBlocked": "Les notifications push sont désactivées dans ce navigateur : elles ne vous parviendront pas ici. Activez-les dans les paramètres du navigateur.",
     "quietHours": "De {{start}} à {{end}} (votre heure locale), seules les notifications push « Jour de l’événement » vous parviennent.",
     "category": {
