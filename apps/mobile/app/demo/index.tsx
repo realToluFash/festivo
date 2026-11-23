@@ -58,6 +58,7 @@ import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
+import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
   STAFF_LINK_BOARDS,
@@ -2499,6 +2500,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',
     boards: REQUEST_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Menu and dietary · the event’s Menu and its picks (sc-3914) · phone, tablet portrait and landscape',
+    boards: MENU_PICKS_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
