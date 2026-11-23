@@ -2,8 +2,17 @@
 	email {$ACME_EMAIL}
 }
 
-{$APP_HOST} {
+{$APP_HOST} {$RP_HOST} {
 	encode zstd gzip
+
+	# On RP_HOST, the passkeys' relying party, only the files that let the
+	# app use its passkeys are served; everything else goes to APP_HOST.
+	@elsewhere {
+		not host {$APP_HOST}
+		not path /.well-known/apple-app-site-association /.well-known/assetlinks.json
+	}
+	redir @elsewhere https://{$APP_HOST}{uri} 308
+
 	reverse_proxy web:80
 }
 

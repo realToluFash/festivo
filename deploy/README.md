@@ -38,7 +38,7 @@ deploy/deploy.sh <sha>
 
 | Container                      | What it runs                                                                                                                                                |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `proxy`                        | Caddy: TLS for `APP_HOST` and `API_HOST`, certificates from Let's Encrypt                                                                                   |
+| `proxy`                        | Caddy: TLS for `APP_HOST`, `API_HOST` and `RP_HOST` (passkey files only), Let's Encrypt                                                                     |
 | `api`                          | the API's prod image                                                                                                                                        |
 | `notification-worker`          | `app:notifications:work`, the notification pipeline (sc-104)                                                                                                |
 | `scheduler`                    | every line of `services/api/config/crontab` through supercronic, the checks below among them, and `app:two-factor-recovery:expire` every 5 minutes (sc-509) |
