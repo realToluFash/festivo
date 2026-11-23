@@ -175,7 +175,7 @@ function SheetScreen({ event, first, now }: { event: SampleEvent; first: SheetSt
           </h1>
           <p className="ks-event">{event.name}</p>
           <p className="ks-event">{rangeOf(event, now)}</p>
-          <p className="ks-as-of">{asOfLine(now, event.timeZone)}</p>
+          {load === 'loaded' && <p className="ks-as-of">{asOfLine(now, event.timeZone)}</p>}
         </div>
         {load === 'loaded' && (
           <div className="ks-acts">
