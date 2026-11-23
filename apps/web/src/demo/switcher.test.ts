@@ -79,6 +79,12 @@ describe('the organisation switcher’s sample (sc-30323)', () => {
     expect(whereOf('offer-asked').offer).toBe('asked');
     expect(whereOf('offer-unavailable').offer).toBe('unavailable');
     expect(whereOf('paused').paused).toBe(true);
+    expect(whereOf('paused-alone').places.map((one) => one.id)).toEqual([PAUSED.id]);
+    expect(whereOf('paused-alone').current).toBe(PAUSED.id);
+    expect(whereOf('overdue').overdue).toBe(true);
+    expect(whereOf('overdue').places.length).toBeGreaterThan(1);
+    expect(whereOf('overdue-alone').places.map((one) => one.name)).toEqual(['Ire Events']);
+    expect(whereOf('overdue-alone').paused).toBe(false);
   });
 
   it('opens each state with its panel and its search', () => {

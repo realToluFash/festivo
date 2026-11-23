@@ -1,4 +1,4 @@
-import type { Membership } from '@soirely/api-client';
+import { useLocalSearchParams } from 'expo-router';
 import { useRef } from 'react';
 import type { ViewInstance } from 'react-native';
 
@@ -6,25 +6,19 @@ import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { useShownLanguage } from '../../i18n/index.ts';
+import { DemoOnly } from '../../steps/Lines.tsx';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
+import { type Held, aloneNoteOf, aloneOf, othersOf } from './HeldModel.ts';
 import { pausedIn } from './PausedSample.ts';
 import { YOU } from './sample.ts';
 
-/** What stands in place of Settings while the organisation holds the account: paused access (sc-564) or two-factor overdue (sc-609). */
-export type Held = 'paused' | 'overdue';
-
-export function heldOf(value: string | undefined): Held | null {
-  return value === 'paused' || value === 'overdue' ? value : null;
+/** The demo's box under the card, carrying sc-85006's sentence until the product says it. */
+function AloneSays({ note }: { note: string }) {
+  return <DemoOnly title={note}>{null}</DemoOnly>;
 }
 
-// AccessPaused reads only how many others there are, to choose between switching and the switcher.
-const OTHERS = [
-  { id: 'org-casa-lumen', name: 'Casa Lumen Eventos' },
-  { id: 'org-harbourlight', name: 'Harbour Light Weddings' },
-] as unknown as Membership[];
-
 /** The product's paused screen on sample data; Switch organisation opens the demo's switcher. */
-function Paused() {
+function Paused({ alone }: { alone: boolean }) {
   const opener = useRef<ViewInstance>(null);
   const org = useOrgOpener(opener, false);
   const language = useShownLanguage();
@@ -32,7 +26,7 @@ function Paused() {
   return (
     <AccessPaused
       paused={pausedIn(language)}
-      others={OTHERS}
+      others={othersOf(alone)}
       onSwitch={() => org.onPress()}
       onChoose={() => org.onPress()}
     />
@@ -54,5 +48,16 @@ function Overdue({ onSignOut }: { onSignOut: () => void }) {
 }
 
 export function HeldStandIn({ held, onSignOut }: { held: Held; onSignOut: () => void }) {
-  return held === 'paused' ? <Paused /> : <Overdue onSignOut={onSignOut} />;
+  const alone = aloneOf(useLocalSearchParams<{ switcher?: string }>().switcher);
+  const card = held === 'paused' ? <Paused alone={alone} /> : <Overdue onSignOut={onSignOut} />;
+  const note = aloneNoteOf(held, alone);
+
+  return note == null ? (
+    card
+  ) : (
+    <>
+      {card}
+      <AloneSays note={note} />
+    </>
+  );
 }

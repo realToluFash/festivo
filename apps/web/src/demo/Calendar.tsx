@@ -45,9 +45,9 @@ import {
 import { EventsShell } from './EventParts.tsx';
 import { CLOCKS, REUNION, TODAY_IDS, resetSample, sampleEvent, sampleEvents } from './events.ts';
 import { FirstRun } from './Events.tsx';
-import { AccessPaused, Switched } from './OrgSwitcher.tsx';
+import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
 import { SIDEBAR_EVENTS } from './settings.ts';
-import { usePaused, useSwitcherStart, useWhere } from './switcher.ts';
+import { useHeld, useSwitcherStart, useWhere } from './switcher.ts';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { isLong, nameSample } from './longName.ts';
 
@@ -68,7 +68,7 @@ export function Calendar() {
 }
 
 function CalendarAt({ raw }: { raw: string | null }) {
-  const paused = usePaused();
+  const held = useHeld();
   const [start] = useState(() => {
     if (raw != null) resetSample();
 
@@ -93,10 +93,10 @@ function CalendarAt({ raw }: { raw: string | null }) {
       )}
     >
       {(tell) =>
-        paused ? (
+        held ? (
           <div className="desk-page">
             <Switched />
-            <AccessPaused />
+            <HeldStandIn />
           </div>
         ) : (
           <CalendarPage start={start} tell={tell} />

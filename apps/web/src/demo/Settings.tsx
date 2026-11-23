@@ -24,7 +24,7 @@ import { LayersContext } from '../layers.ts';
 import { Members } from './Members.tsx';
 import { Notifications } from './Notifications.tsx';
 import { PaymentReminders } from './Payments.tsx';
-import { AccessPaused } from './OrgSwitcher.tsx';
+import { HeldStandIn } from './OrgSwitcher.tsx';
 import { Personalisation } from './Personalisation.tsx';
 import { PersonalTile } from './SchemeArt.tsx';
 import { underSavedName, useSavedNames } from './savedName.ts';
@@ -41,7 +41,7 @@ import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
 import { usePhoneWidth } from '../phoneWidth.ts';
 import { reachOfRole } from './search.ts';
-import { usePaused, useSwitcherStart } from './switcher.ts';
+import { useHeld, useSwitcherStart } from './switcher.ts';
 import './today.css';
 import './phone.css';
 import '../components/SettingsParts.css';
@@ -81,7 +81,7 @@ export function Settings({
   const names = useSavedNames();
   const seen = useMemo(() => underSavedName(viewer, names), [viewer, names]);
   useSwitcherStart();
-  const paused = usePaused();
+  const held = useHeld();
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const [stack, setStack] = useState<readonly string[]>([]);
@@ -121,9 +121,9 @@ export function Settings({
                 viewer={seen}
                 tell={tell}
               />
-              {paused && !YOURS.includes(open) ? (
+              {held && !YOURS.includes(open) ? (
                 <div className="desk-page">
-                  <AccessPaused />
+                  <HeldStandIn />
                 </div>
               ) : open === 'account' ? (
                 <Account key={`${viewer.key}:${state}`} viewer={viewer} state={state} tell={tell} />
@@ -194,7 +194,7 @@ export function Settings({
   );
 }
 
-/** Your account's own sections: they stay open while access to the organisation is paused, as in the product. */
+/** Your account's own sections: they stay open while access to the organisation is paused or two-factor is overdue, as in the product. */
 const YOURS: readonly Drawn[] = ['account', 'security', 'notifications', 'personalisation'];
 
 /** Members or Vendors for a role without their read permission, as the product's shared Forbidden page refuses it. */
