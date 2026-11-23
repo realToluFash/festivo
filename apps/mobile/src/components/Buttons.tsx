@@ -4,6 +4,7 @@ import { Animated, Pressable, StyleSheet, View, type ViewInstance } from 'react-
 import { tokens } from '../theme/tokens.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
 import { controlTaken } from './focusedField.ts';
+import { useOneHeight } from './OneHeight.tsx';
 import { Text } from './Text.tsx';
 
 const PressFade = Animated.createAnimatedComponent(Pressable);
@@ -49,6 +50,7 @@ export function PrimaryButton({
 }) {
   const inactive = busy || off;
   const fade = usePressFade();
+  const oneHeight = useOneHeight();
 
   return (
     <PressFade
@@ -57,8 +59,10 @@ export function PrimaryButton({
         styles.primary,
         off && styles.primaryOff,
         grow && styles.grow,
+        oneHeight.style,
         { opacity: fade.opacity },
       ]}
+      onLayout={oneHeight.onLayout}
       onPressIn={inactive ? undefined : fade.onPressIn}
       onPressOut={fade.onPressOut}
       onPress={busy ? undefined : onPress}

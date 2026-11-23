@@ -23,6 +23,7 @@ import { api, meAtLaunch } from '../../src/api.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { focusChecked, keysStayDown } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { OneHeight } from '../../src/components/OneHeight.tsx';
 import { OrgTile } from '../../src/components/OrgTile.tsx';
 import { ProviderButtons } from '../../src/components/ProviderSignIn.tsx';
 import { ReadOut } from '../../src/components/ReadOut.tsx';
@@ -179,7 +180,7 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
               takesFocus
             />
           )}
-          <View style={styles.buttons}>
+          <OneHeight style={styles.buttons}>
             <PrimaryButton
               label={t('welcome.withEmail')}
               onPress={() => void go('/sign-in')}
@@ -189,7 +190,7 @@ function SignedOut({ token, organisation }: { token: string; organisation: strin
               before={() => holdLink(token)}
               onFailed={(provider) => setFailed({ provider })}
             />
-          </View>
+          </OneHeight>
           <QuietButton
             label={t('signIn.createAccount')}
             onPress={() => void go('/register')}
