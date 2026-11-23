@@ -574,7 +574,7 @@ const DEFAULT_STATES = {
   excludedAfter: () =>
     back({
       name: 'Excluded, after the date',
-      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: read-only with the padlock, no dish, no Change, and the host will be in touch.',
+      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: no dish: the needs-the-host mark and “The host will be in touch about it.” in its place, then the padlock and closed line, and no Change.',
       today: '2026-10-17',
       saved: UNANSWERED,
       person: SESAME,

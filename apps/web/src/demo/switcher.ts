@@ -75,6 +75,7 @@ export const OFFER = { id: 'org-ire-weddings', name: 'Ire Weddings', domain: 'ir
 export const PAUSED = {
   id: 'org-casa-lumen',
   name: 'Casa Lumen Eventos',
+  initials: 'CL',
   domain: 'casalumen.es',
   since: '2026-11-02',
 };
@@ -304,6 +305,11 @@ export function useHeld(): boolean {
   const where = useWhere();
 
   return where.paused || where.overdue;
+}
+
+/** While the pill names a paused organisation, Settings and the person follow it, and hold no role (sc-86077). */
+export function usePaused(): boolean {
+  return useWhere().paused;
 }
 
 export function isFresh(where: Where): boolean {

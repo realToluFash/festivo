@@ -1,6 +1,6 @@
 import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +23,7 @@ import {
 import { Back } from '../../components/SettingsParts.tsx';
 import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { HeldStandIn } from './Held.tsx';
-import type { Held } from './HeldModel.ts';
+import { type Held, pausedGroups } from './HeldModel.ts';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { dataHref } from './DataModel.ts';
@@ -48,11 +48,13 @@ type Listed = Exclude<ShellSection, 'account'>;
 const DATA_ROW = 'dataAndControl';
 
 /** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
-function groupsFor(viewer: Viewer) {
-  return demoGroups(viewer).map(({ heading, sections }) => ({
+function groupsFor(viewer: Viewer, paused: boolean) {
+  const groups = demoGroups(viewer);
+
+  return (paused ? pausedGroups(groups) : groups).map(({ heading, sections }) => ({
     heading,
     sections: sections.filter((section): section is Listed => section !== 'account'),
-    data: heading === 'organisationHeading' && managesOrganisation(viewer),
+    data: heading === 'organisationHeading' && managesOrganisation(viewer) && !paused,
   }));
 }
 
@@ -137,7 +139,8 @@ function useDemoList(
   const rowOf = useSectionRows(YOU.organisation, useHeldChoice());
   const dataRow = useDataRow(dense);
   const side = rowSide(dense);
-  const groups = groupsFor(shell.viewer).map(({ heading, sections, data }) => {
+  const paused = useContext(PausedHere);
+  const groups = groupsFor(shell.viewer, paused).map(({ heading, sections, data }) => {
     const rows = sections.map((section) => rowOf(section, side));
 
     return { heading: t(`settings.${heading}`), rows: data ? [...rows, dataRow.row] : rows };
@@ -164,13 +167,14 @@ function useDemoList(
   };
 }
 
-/** Settings itself: on a phone one column; upright your account's group beside the organisation's. */
+/** Settings itself: on a phone one column; upright your account's group beside the organisation's. While paused the list stays Settings' home, and `over` is the paused page a row of the organisation's opened (sc-86077). */
 export function SettingsHome({
   onSignOut,
   onDemo,
   held = null,
   back,
-}: Handlers & { held?: Held | null; back?: (() => void) | undefined }) {
+  over = false,
+}: Handlers & { held?: Held | null; back?: (() => void) | undefined; over?: boolean }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -187,7 +191,9 @@ export function SettingsHome({
     </Title>
   );
 
-  if (held != null)
+  const paused = held === 'paused';
+
+  if (held === 'overdue' || (paused && (over || shell.layout === 'landscape')))
     return (
       <PausedHere.Provider value={held === 'paused'}>
         <HeldSettings
@@ -206,7 +212,7 @@ export function SettingsHome({
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={shell.listColumn}>
+      <Landscape column={shell.listColumn} search={!paused}>
         <TitleCap.Provider value={titleCap.cap}>
           <ChooseASection />
         </TitleCap.Provider>
@@ -230,7 +236,7 @@ export function SettingsHome({
           <View style={styles.orgRow}>
             {backToNone || <OrgPill />}
             <View style={styles.grow} />
-            {backToNone ? (
+            {backToNone || paused ? (
               <Bell tell={shell.tell} />
             ) : (
               <SearchAndBell tell={shell.tell} role={shell.looking.role} />
@@ -253,7 +259,7 @@ export function SettingsHome({
 
   return (
     <View style={styles.page}>
-      <PortraitTop at="Settings" />
+      <PortraitTop at="Settings" search={!paused} />
       {backToNone !== false && <View style={styles.portraitBack}>{backToNone}</View>}
       <ScrollView
         style={styles.grow}
@@ -311,13 +317,14 @@ function HeldSettings({
     </TitleCap.Provider>
   );
 
+  // Paused sits beside the Settings list, where Choose a section sits otherwise, and the list's column carries the bell (sc-86077).
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null} search={search}>
+      <Landscape column={held === 'paused' ? shell.listColumn : null} search={search}>
         <View style={styles.heldSide}>
           <View style={styles.heldSideTop}>
             {title != null && <View style={styles.grow}>{title}</View>}
-            <Bell tell={shell.tell} />
+            {held !== 'paused' && <Bell tell={shell.tell} />}
           </View>
           {standIn}
         </View>
