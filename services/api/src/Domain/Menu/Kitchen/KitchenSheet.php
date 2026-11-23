@@ -25,12 +25,14 @@ use Psl\Vec;
  * The kitchen sheet (sc-3911): who must not eat what, then the diets, then what to cook. Every count is See picks' own (sc-3909), so the two agree at the same moment.
  *
  * @phpstan-import-type Course from PicksMenu
+ * @phpstan-import-type Spot from PicksMenu
  *
  * @phpstan-type Cell array{kind: string, text?: string}
  * @phpstan-type Allergic array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, diets: list<string>, otherDiet: ?string, cells: list<Cell>}
  * @phpstan-type Row array{id: string, kind: string, name: string, count: int}
  * @phpstan-type Counted array{id: string, rows: list<array{id: string, kind: string, name: string, chosen: int, defaulted: int}>, kitchen: int, skipped: int, needsHost: int, notChosen: int, room: int, closed: bool}
- * @phpstan-type SheetCourse array{id: string, name: string, rows: list<Row>, kitchen: int, skipped: int, needsHost: int, notChosen: int, never: bool, room: int, given: ?array{count: int, plate: string}, sides: bool}
+ * @phpstan-type SheetStation array{id: string, name: string, lines: list<array{name: string, count: int, chefs: bool}>}
+ * @phpstan-type SheetCourse array{id: string, name: string, rows: list<Row>, kitchen: int, skipped: int, needsHost: int, notChosen: int, never: bool, room: int, given: ?array{count: int, plate: string}, sides: bool, stations: ?list<SheetStation>}
  * @phpstan-type Sheet array{asOf: string, paper: Paper, names: bool, coming: int, allergicCount: int, allergic: ?list<Allergic>, allergyCounts: list<array{code: string, count: int}>, dietCounts: list<array{code: string, count: int}>, courses: list<SheetCourse>}
  */
 final readonly class KitchenSheet
@@ -40,6 +42,7 @@ final readonly class KitchenSheet
         private PicksMenu $picksMenu,
         private PickSpots $pickSpots,
         private GuestNeedsRecord $guestNeedsRecord,
+        private KitchenStations $kitchenStations,
     ) {
     }
 
@@ -49,6 +52,8 @@ final readonly class KitchenSheet
         $figures = $this->picksFigures->of($event, false);
         $room = $this->picksFigures->room($event);
         $courses = $this->picksMenu->courses($event);
+        $spots = $this->pickSpots->of($event, $room, $courses);
+        $stations = $this->kitchenStations->of($event, $courses, $spots);
         $needs = $this->guestNeedsRecord->of($room);
         $needsOf = static fn (Guest $person): GuestNeeds => $needs[$person->getId()->toRfc4122()] ?? GuestNeeds::none();
         $allergic = Vec\filter($room, static fn (Guest $person): bool => [] !== $needsOf($person)->codesOf(NeedKind::Allergen));
@@ -67,23 +72,23 @@ final readonly class KitchenSheet
             'names' => $names,
             'coming' => Iter\count($room),
             'allergicCount' => Iter\count($allergic),
-            'allergic' => $names ? $this->named($event, $room, $courses, $needsOf) : null,
+            'allergic' => $names ? self::named($room, $courses, $spots, $needsOf) : null,
             'allergyCounts' => $counts(NeedKind::Allergen),
             'dietCounts' => $counts(NeedKind::Diet),
-            'courses' => Vec\map($courses, static fn (array $course): array => KitchenCourse::of($course, $counted[$course['id']])),
+            'courses' => Vec\map($courses, static fn (array $course): array => KitchenCourse::of($course, $counted[$course['id']], $stations[$course['id']] ?? null)),
         ];
     }
 
     /**
-     * @param list<Guest>                $room
-     * @param list<Course>               $courses
-     * @param Closure(Guest): GuestNeeds $needsOf
+     * @param list<Guest>                        $room
+     * @param list<Course>                       $courses
+     * @param array<string, array<string, Spot>> $spots   by course, then person
+     * @param Closure(Guest): GuestNeeds         $needsOf
      *
      * @return list<Allergic> by name: everyone with an allergen, and everyone sc-1362 never gave a closed course's default, a diet alone included
      */
-    private function named(Event $event, array $room, array $courses, Closure $needsOf): array
+    private static function named(array $room, array $courses, array $spots, Closure $needsOf): array
     {
-        $spots = $this->pickSpots->of($event, $room, $courses);
         $rows = Vec\map($room, static function (Guest $person) use ($spots, $courses, $needsOf): array {
             $id = $person->getId()->toRfc4122();
             $needs = $needsOf($person);

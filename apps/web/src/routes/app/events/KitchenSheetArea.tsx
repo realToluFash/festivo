@@ -296,6 +296,7 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
               {course.name}
             </h2>
             <Course course={course} />
+            <ByStation course={course} at="ks" />
           </section>
         ))}
       </div>
@@ -571,10 +572,12 @@ function PaperSheets({
   paper: Paper;
 }) {
   const { t, i18n } = useTranslation();
+  const pages = coursePages(sheet.courses, paper);
+  const m = pages.length + 1;
 
   return (
     <>
-      <Page n={1} m={2} paper={paper}>
+      <Page n={1} m={m} paper={paper}>
         <header className="ks-paper-head">
           <h1>{t('kitchenSheet.title')}</h1>
           <p>{event.name}</p>
@@ -587,16 +590,91 @@ function PaperSheets({
         <h2>{t('kitchenSheet.diets')}</h2>
         <Diets sheet={sheet} />
       </Page>
-      <Page n={2} m={2} paper={paper}>
-        {sheet.courses.map((course) => (
-          <section key={course.id} aria-labelledby={`ksp-${course.id}`}>
-            <h2 id={`ksp-${course.id}`}>{course.name}</h2>
-            <Course course={course} />
-          </section>
-        ))}
-      </Page>
+      {pages.map((courses, at) => (
+        <Page key={courses[0]?.id ?? at} n={at + 2} m={m} paper={paper}>
+          {courses.map((course) => (
+            <section key={course.id} aria-labelledby={`ksp-${course.id}`}>
+              <h2 id={`ksp-${course.id}`}>{course.name}</h2>
+              <Course course={course} />
+              <ByStation course={course} at="ksp" />
+            </section>
+          ))}
+        </Page>
+      ))}
     </>
   );
+}
+
+/** sc-34244's By station: a heading, then each station by its name with its lines, the Pass first and Chef's choice its last line. A list per station, so it reads the same on the page and in print. */
+function ByStation({ course, at }: { course: KitchenCourse; at: string }) {
+  const { t } = useTranslation();
+  if (course.stations == null) return null;
+  const id = `${at}-${course.id}-stations`;
+
+  return (
+    <div className="ks-stations">
+      <h3 id={id} className="ks-sub-head">
+        {t('kitchenSheet.byStation')}
+      </h3>
+      <div className="ks-station-grid">
+        {course.stations.map((station) => (
+          <div key={station.id} className="ks-station">
+            <h4 id={`${id}-${station.id}`} className="ks-station-head">
+              {station.name}
+            </h4>
+            <ul className="ks-station-lines" aria-labelledby={`${id}-${station.id}`}>
+              {station.lines.map((line) => (
+                <li
+                  key={line.chefs ? '' : line.name}
+                  className={line.chefs ? 'is-chefs' : undefined}
+                >
+                  <span className="ks-station-item">
+                    {line.chefs ? t('kitchenSheet.chefsChoice') : line.name}
+                  </span>
+                  <span className="ks-sep"> · </span>
+                  <span className="ks-n">{line.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const SHEET_PX: Record<Paper, number> = { a4: 1123, letter: 1056 };
+const PADDING_AND_FOOT_PX = 133;
+const STATIONS_PER_ROW = 3;
+
+/** How tall a course stands on paper, near enough to choose its page: a course is never split across two. */
+function paperHeight(course: KitchenCourse): number {
+  const table =
+    50 + 28 * (course.rows.length + 2) + (course.given == null ? 0 : 24) + (course.sides ? 24 : 0);
+  if (course.stations == null) return table;
+
+  const rows: number[] = [];
+  course.stations.forEach((station, at) => {
+    const row = Math.floor(at / STATIONS_PER_ROW);
+    rows[row] = Math.max(rows[row] ?? 0, 26 + 24 * station.lines.length);
+  });
+
+  return table + 40 + rows.reduce((sum, row) => sum + row, 0) + 10 * (rows.length - 1);
+}
+
+/** The pages after the first. sc-3911's menu keeps every course on one page; with By station, courses fill a page in order and the next starts a new one. */
+function coursePages(courses: readonly KitchenCourse[], paper: Paper): KitchenCourse[][] {
+  if (courses.every((one) => one.stations == null)) return [[...courses]];
+  const room = SHEET_PX[paper] - PADDING_AND_FOOT_PX;
+
+  return courses.reduce<KitchenCourse[][]>((pages, course) => {
+    const last = pages.at(-1);
+    const used = (last ?? []).reduce((sum, one) => sum + paperHeight(one), 0);
+    if (last != null && used + paperHeight(course) <= room) last.push(course);
+    else pages.push([course]);
+
+    return pages;
+  }, []);
 }
 
 function Page({

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -355,5 +355,174 @@ describe('The kitchen sheet (sc-3911)', () => {
 
     expect(await screen.findByText('You cannot open the kitchen sheet')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Back to the event' })).toBeDefined();
+  });
+});
+
+const STATIONS = [
+  {
+    id: 's_pass',
+    name: 'Pass',
+    lines: [
+      { name: 'Pepper sauce', count: 4, chefs: false },
+      { name: '', count: 2, chefs: true },
+    ],
+  },
+  {
+    id: 's_kitchen',
+    name: 'Kitchen',
+    lines: [
+      { name: 'Jollof rice', count: 2, chefs: false },
+      { name: 'Fried yam', count: 0, chefs: false },
+    ],
+  },
+  { id: 's_grill', name: 'Grill', lines: [{ name: 'Chicken', count: 1, chefs: false }] },
+];
+
+const STARTER = { ...MAIN, id: 'c_starter', name: 'Starter' };
+
+describe('By station on the kitchen sheet (sc-34244)', () => {
+  it('lists each station under its course in the order given, the Pass ending in Chef’s choice', async () => {
+    onSheet({
+      [SHEET]: () => json(sheetOf({ courses: [STARTER, { ...MAIN, stations: STATIONS }] })),
+    });
+
+    const main = await screen.findByRole('region', { name: 'Main' });
+    expect(within(main).getByRole('heading', { level: 3, name: 'By station' })).toBeDefined();
+    expect(
+      within(main)
+        .getAllByRole('heading', { level: 4 })
+        .map((one) => one.textContent),
+    ).toEqual(['Pass', 'Kitchen', 'Grill']);
+    const pass = within(main).getByRole('list', { name: 'Pass' });
+    expect(
+      within(pass)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual(['Pepper sauce · 4', 'Chef’s choice · 2']);
+    const kitchen = within(main).getByRole('list', { name: 'Kitchen' });
+    expect(within(kitchen).getByText('Fried yam')).toBeDefined();
+    expect(within(main).getByRole('rowheader', { name: 'The room' })).toBeDefined();
+
+    const starter = screen.getByRole('region', { name: 'Starter' });
+    expect(within(starter).queryByRole('heading', { name: 'By station' })).toBeNull();
+  });
+
+  it('carries By station on paper, a course with it starting a page of its own when it does not fit', async () => {
+    const big = Array.from({ length: 20 }, (_, at) => ({
+      name: `Item ${at}`,
+      count: at,
+      chefs: false,
+    }));
+    onSheet(
+      {
+        [SHEET]: () =>
+          json(
+            sheetOf({
+              courses: [
+                { ...MAIN, stations: STATIONS },
+                {
+                  ...MAIN,
+                  id: 'c_dessert',
+                  name: 'Dessert',
+                  stations: [{ id: 's_pastry', name: 'Pastry', lines: big }],
+                },
+              ],
+            }),
+          ),
+      },
+      '/app/events/ev_1/menu/kitchen?paper=a4',
+    );
+
+    expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+    const pages = screen.getAllByRole('article');
+    expect(pages.map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Page 1 of 3',
+      'Page 2 of 3',
+      'Page 3 of 3',
+    ]);
+    expect(
+      within(pages[1] as HTMLElement).getByRole('heading', { level: 3, name: 'By station' }),
+    ).toBeDefined();
+    expect(within(pages[2] as HTMLElement).getByRole('list', { name: 'Pastry' })).toBeDefined();
+  });
+
+  it('counts a fourth station’s row, so a course from four stations leaves no room the same course from three would', async () => {
+    const lines = (n: number) =>
+      Array.from({ length: n }, (_, at) => ({ name: `Item ${at}`, count: at, chefs: false }));
+    const station = (id: string, name: string) => ({ id, name, lines: lines(8) });
+    const three = [
+      station('s_pass', 'Pass'),
+      station('s_kitchen', 'Kitchen'),
+      station('s_grill', 'Grill'),
+    ];
+    const dessert = {
+      ...MAIN,
+      id: 'c_dessert',
+      name: 'Dessert',
+      stations: [station('s_cold', 'Cold')],
+    };
+    const pagesWith = async (stations: typeof three) => {
+      onSheet(
+        { [SHEET]: () => json(sheetOf({ courses: [{ ...MAIN, stations }, dessert] })) },
+        '/app/events/ev_1/menu/kitchen?paper=a4',
+      );
+      expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+      const labels = screen.getAllByRole('article').map((one) => one.getAttribute('aria-label'));
+      cleanup();
+
+      return labels;
+    };
+
+    expect(await pagesWith(three)).toEqual(['Page 1 of 2', 'Page 2 of 2']);
+    expect(await pagesWith([...three, station('s_pastry', 'Pastry')])).toEqual([
+      'Page 1 of 3',
+      'Page 2 of 3',
+      'Page 3 of 3',
+    ]);
+  });
+
+  it('measures the pages against the paper chosen, Letter being shorter than A4', async () => {
+    const lines = (n: number) =>
+      Array.from({ length: n }, (_, at) => ({ name: `Item ${at}`, count: at, chefs: false }));
+    const courses = [
+      {
+        ...MAIN,
+        stations: [
+          { id: 's_pass', name: 'Pass', lines: lines(8) },
+          { id: 's_kitchen', name: 'Kitchen', lines: lines(8) },
+        ],
+      },
+      {
+        ...MAIN,
+        id: 'c_dessert',
+        name: 'Dessert',
+        stations: [{ id: 's_cold', name: 'Cold', lines: lines(11) }],
+      },
+    ];
+    const pagesOn = async (paper: string) => {
+      onSheet(
+        { [SHEET]: () => json(sheetOf({ courses })) },
+        `/app/events/ev_1/menu/kitchen?paper=${paper}`,
+      );
+      expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+      const count = screen.getAllByRole('article').length;
+      cleanup();
+
+      return count;
+    };
+
+    expect(await pagesOn('a4')).toBe(2);
+    expect(await pagesOn('letter')).toBe(3);
+  });
+
+  it('keeps sc-3911’s two pages when no course has By station', async () => {
+    onSheet(
+      { [SHEET]: () => json(sheetOf({ courses: [STARTER, MAIN] })) },
+      '/app/events/ev_1/menu/kitchen?paper=a4',
+    );
+
+    expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: 'By station' })).toBeNull();
   });
 });

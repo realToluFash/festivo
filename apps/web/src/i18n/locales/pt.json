@@ -6389,6 +6389,8 @@
     "given_other": "{{count, number}} pessoas receberam o prato predefinido, {{dish}}, no fecho da escolha. Já estão incluídas na contagem desse prato.",
     "given_many": "{{count, number}} de pessoas receberam o prato predefinido, {{dish}}, no fecho da escolha. Já estão incluídas na contagem desse prato.",
     "sides": "As opções contam-se por escolha, por isso somam o total do seu prato, não o da sala.",
+    "byStation": "By station",
+    "chefsChoice": "Chef’s choice",
     "loading": "A carregar a folha da cozinha…",
     "cannotReach": "Não foi possível carregar a folha da cozinha.",
     "refused": "Não pode abrir a folha da cozinha",

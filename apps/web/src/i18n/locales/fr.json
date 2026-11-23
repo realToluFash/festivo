@@ -6389,6 +6389,8 @@
     "given_other": "{{count, number}} personnes ont reçu le plat par défaut, {{dish}}, à la clôture des choix. Elles sont comptées avec ce plat.",
     "given_many": "{{count, number}} de personnes ont reçu le plat par défaut, {{dish}}, à la clôture des choix. Elles sont comptées avec ce plat.",
     "sides": "Les options sont comptées par choix : leur total est celui de leur plat, pas celui de la salle.",
+    "byStation": "By station",
+    "chefsChoice": "Chef’s choice",
     "loading": "Chargement de la fiche cuisine…",
     "cannotReach": "Impossible de charger la fiche cuisine.",
     "refused": "Vous ne pouvez pas ouvrir la fiche cuisine",

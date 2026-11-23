@@ -493,6 +493,8 @@
     "kitchen_sheet.room": "The room",
     "kitchen_sheet.given": "{count, plural, one {{count, number, ::group-auto} given the default, {dish}, when picks closed. They are in its count.} other {{count, number, ::group-auto} given the default, {dish}, when picks closed. They are in its count.}}",
     "kitchen_sheet.sides": "Sides are counted per pick, so they add up to their dish, not to the room.",
+    "kitchen_sheet.by_station": "By station",
+    "kitchen_sheet.chefs_choice": "Chef’s choice",
     "kitchen_sheet.health": "This sheet holds guests’ health information. Keep it with the kitchen and dispose of it after the event.",
     "kitchen_sheet.page": "Page {n} of {m}"
 }

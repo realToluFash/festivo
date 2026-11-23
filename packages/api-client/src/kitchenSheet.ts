@@ -27,6 +27,21 @@ export interface KitchenRow {
   count: number;
 }
 
+export interface KitchenStationLine {
+  /** The item, as the event names it; empty on Chef's choice. */
+  name: string;
+  count: number;
+  /** Chef's choice, the Pass's last line. */
+  chefs: boolean;
+}
+
+/** sc-34244: one station's lines on a course, the Pass first, then the walking order. */
+export interface KitchenStation {
+  id: string;
+  name: string;
+  lines: KitchenStationLine[];
+}
+
 export interface KitchenCourse {
   id: string;
   name: string;
@@ -40,6 +55,8 @@ export interface KitchenCourse {
   room: number;
   given: { count: number; plate: string } | null;
   sides: boolean;
+  /** By station; null on a course that uses neither items nor stations. */
+  stations: KitchenStation[] | null;
 }
 
 export interface KitchenSheet {
@@ -78,6 +95,20 @@ const asCount = (raw: unknown): KitchenCount => ({
   count: num(record(raw).count),
 });
 
+function asStation(raw: unknown): KitchenStation {
+  const one = record(raw);
+
+  return {
+    id: str(one.id),
+    name: str(one.name),
+    lines: list(one.lines).map((line) => {
+      const it = record(line);
+
+      return { name: str(it.name), count: num(it.count), chefs: it.chefs === true };
+    }),
+  };
+}
+
 function asCourse(raw: unknown): KitchenCourse {
   const one = record(raw);
   const given = one.given == null ? null : record(one.given);
@@ -103,6 +134,7 @@ function asCourse(raw: unknown): KitchenCourse {
     room: num(one.room),
     given: given == null ? null : { count: num(given.count), plate: str(given.plate) },
     sides: one.sides === true,
+    stations: Array.isArray(one.stations) ? one.stations.map(asStation) : null,
   };
 }
 
