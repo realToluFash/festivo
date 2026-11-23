@@ -1,7 +1,14 @@
 import type { MenuDish, PicksCourse, PicksWaiting } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { defaultedOn, goesBackTo, showsDefaulted, waitingSplit } from './menuPicks.ts';
+import {
+  courseHostCount,
+  defaultedOn,
+  goesBackTo,
+  hostCount,
+  showsDefaulted,
+  waitingSplit,
+} from './menuPicks.ts';
 
 const course = (over: Partial<PicksCourse> = {}): PicksCourse => ({
   id: 'main',
@@ -16,6 +23,7 @@ const course = (over: Partial<PicksCourse> = {}): PicksCourse => ({
   needsHost: 0,
   notChosen: 0,
   menuChanged: 0,
+  menuChangedAllergen: 0,
   room: 48,
   answered: 0,
   ...over,
@@ -31,6 +39,15 @@ const row = (id: string, kind: 'dish' | 'variant', chosen: number, defaulted: nu
   chosen,
   defaulted,
   holders: null,
+});
+
+describe('Needs the host', () => {
+  it('counts a person a menu change flagged for an added allergen, though the course counts them as Menu changed', () => {
+    const main = course({ needsHost: 1, menuChanged: 2, menuChangedAllergen: 1 });
+
+    expect(courseHostCount(main)).toBe(2);
+    expect(hostCount({ courses: [main, course({ id: 'starter' })] } as never)).toBe(2);
+  });
 });
 
 describe('a course with a default', () => {

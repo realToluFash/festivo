@@ -161,6 +161,7 @@ final class MenuPicksTest extends ApiTestCase
         $main = self::course($picks, 'Main');
 
         self::assertSame([1, 0, 2, 1, 3], [self::row($main, 'Jollof rice')['chosen'], self::row($main, 'Pounded yam and egusi')['chosen'], $main['menuChanged'], $main['answered'], self::sum($main) + Type\int()->coerce($main['menuChanged'])]);
+        self::assertSame([0, 1], [$main['needsHost'], $main['menuChangedAllergen']], 'Chidi counts once in the course, as Menu changed, and is still flagged for the host');
         self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->main), 'reason' => 'allergy', 'pick' => 'Pounded yam and egusi', 'allergens' => ['sesame'], 'notStated' => false]], $picks['needsHost']);
         self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [
             ['id' => $bisi, 'name' => 'Bisi Adewale', 'courses' => [], 'changed' => [['course' => $this->id($this->main), 'picked' => 'Jollof rice']], 'excluded' => []],

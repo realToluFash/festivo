@@ -6,7 +6,14 @@ import type {
   PicksCourse,
   PicksRow,
 } from '@soirely/api-client';
-import { clockOf, defaultPick, hostCount, menuCourseOf, waitingSplit } from '@soirely/domain';
+import {
+  clockOf,
+  courseHostCount,
+  defaultPick,
+  hostCount,
+  menuCourseOf,
+  waitingSplit,
+} from '@soirely/domain';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'react-native';
@@ -398,10 +405,13 @@ function Picks({
         {picks.needsHost == null ? (
           <>
             {picks.courses
-              .filter((course) => course.needsHost > 0)
+              .filter((course) => courseHostCount(course) > 0)
               .map((course) => (
                 <Text key={course.id} size={16} style={styles.line}>
-                  {t('menuPicks.hostCount', { course: course.name, count: course.needsHost })}
+                  {t('menuPicks.hostCount', {
+                    course: course.name,
+                    count: courseHostCount(course),
+                  })}
                 </Text>
               ))}
             <Text size={15} style={parts.secondary}>

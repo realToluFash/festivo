@@ -13,6 +13,7 @@ import {
 import {
   against,
   clockOf,
+  courseHostCount,
   defaultPick,
   defaultedOn,
   dishRuledOut,
@@ -450,10 +451,13 @@ function Picks({
           ) : (
             <ul className="pk-lines">
               {picks.courses
-                .filter((course) => course.needsHost > 0)
+                .filter((course) => courseHostCount(course) > 0)
                 .map((course) => (
                   <li key={course.id}>
-                    {t('seePicks.hostCount', { course: course.name, count: course.needsHost })}
+                    {t('seePicks.hostCount', {
+                      course: course.name,
+                      count: courseHostCount(course),
+                    })}
                   </li>
                 ))}
             </ul>
