@@ -76,6 +76,17 @@ import {
 } from './MenuPicks.tsx';
 import { KSW, sheetAt } from './kitchenSheet.ts';
 import { samplePicks } from './seePicks.ts';
+import {
+  type MenuChange,
+  addedAllergens,
+  asksAtFirstDish,
+  changeAsks,
+  MCW,
+  pickedWithAdded,
+} from './menuChange.ts';
+import { MenuChangeDialog } from './MenuChangeDialog.tsx';
+import { sampleEvent } from './events.ts';
+import { MENU_EVENT } from './menuServed.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
 import { EventsShell } from './EventParts.tsx';
@@ -629,6 +640,11 @@ function Courses({
   const [open, setOpen] = useState<Open | null>(() => openOf(first, lang));
   const [asking, setAsking] = useState(first.asking);
   const [refused, setRefused] = useState(first.refused);
+  const [changing, setChanging] = useState<{ change: MenuChange; back: string | null } | null>(
+    first.changing == null ? null : { change: first.changing, back: first.changingBack ?? null },
+  );
+  const [changeRefused, setChangeRefused] = useState<string | null>(null);
+  const coming = useState(() => samplePicks().people.length)[0];
   const location = useLocation();
   const [params] = useSearchParams();
   const backFromPreview = params.get('told') === 'preview';
@@ -699,6 +715,62 @@ function Courses({
   function settle() {
     setRefused(null);
     setAsking(null);
+  }
+
+  /** sc-3913: once it is built, a change that asks guests again opens the MenuChange dialog instead of sc-3902's refusal. */
+  function askChange(change: MenuChange) {
+    setChangeRefused(null);
+    setChanging({ change, back: null });
+  }
+
+  function cancelChange() {
+    setChanging(null);
+    setChangeRefused(null);
+  }
+
+  function makeChange() {
+    if (changing == null) return;
+    const { change } = changing;
+    const asks = changeAsks(change, courses, coming, lang);
+    if (asks == null) return;
+    if (first.pastDate === true) {
+      const event = sampleEvent(MENU_EVENT)?.name ?? '';
+      setChangeRefused(MCW.pastDate(event, dayWords(picks.start, lang)));
+      return;
+    }
+    const course = courses.find((one) => one.id === change.courseId);
+    if (course == null) return;
+    if (change.kind === 'dish') {
+      const { course: next } = withDishes(
+        course,
+        course.dishes.filter((one) => one.id !== change.dishId),
+      );
+      changeCourse(course.id, () => next);
+      if (open?.kind === 'editDish' && open.dishId === change.dishId) setOpen(null);
+    } else if (change.kind === 'variant') {
+      const dish = course.dishes.find((one) => one.id === change.dishId);
+      const variant =
+        dish == null ? null : variantsOf(dish).find((one) => one.id === change.variantId);
+      if (dish == null || variant == null) return;
+      const staying = variantsOf(dish).length > 2 ? null : stayingAfter(dish, variant);
+      if (staying == null) {
+        changeDish(course, removeVariant(dish, variant));
+      } else {
+        const folded = foldInto(dish, staying);
+        changeDish(course, { ...folded.dish, cost: folded.price, pickers: staying.pickers });
+      }
+      if (open?.kind === 'variants' && open.dishId === dish.id) setOpen(null);
+    } else if (change.kind === 'firstDish') {
+      const { course: next } = withDishes(course, [change.dish]);
+      changeCourse(course.id, () => next);
+      setOpen(null);
+    } else {
+      changeDish(course, change.next);
+      setOpen(null);
+    }
+    setChanging(null);
+    setSaid({ words: asks.done, more: null });
+    focusAfter.current = `mc-c-${course.id}`;
   }
 
   function failsNow(): 'none' | 'network' | 'forbidden' {
@@ -901,6 +973,10 @@ function Courses({
     if (open?.kind !== 'addDish') return;
     const libDish = library.find((one) => one.id === libraryId);
     if (libDish == null) return;
+    if (first.asksAgain === true && asksAtFirstDish(courses, course)) {
+      askChange({ kind: 'firstDish', courseId: course.id, dish: copyOf(libDish) });
+      return;
+    }
     const { course: next, said: also } = withDishes(course, [...course.dishes, copyOf(libDish)]);
     changeCourse(course.id, () => next);
     setOpen({
@@ -933,6 +1009,10 @@ function Courses({
       return;
     }
     const dish = newDish(open.form, open.onlyEvent);
+    if (first.asksAgain === true && asksAtFirstDish(courses, openCourse)) {
+      askChange({ kind: 'firstDish', courseId: openCourse.id, dish });
+      return;
+    }
     const { course: next, said: also } = withDishes(openCourse, [...openCourse.dishes, dish]);
     changeCourse(openCourse.id, () => next);
     setOpen(null);
@@ -973,6 +1053,13 @@ function Courses({
       contains,
       diets: keeps ? dish.diets : open.form.diets.slice(),
     };
+    if (
+      first.asksAgain === true &&
+      pickedWithAdded(dish, addedAllergens(dish.contains, contains)) > 0
+    ) {
+      askChange({ kind: 'allergen', courseId: openCourse.id, dishId: dish.id, next });
+      return;
+    }
     changeCourse(openCourse.id, (one) => ({
       ...one,
       dishes: one.dishes.map((d) => (d.id === dish.id ? next : d)),
@@ -1074,6 +1161,14 @@ function Courses({
       return;
     }
     const outcome = removeOutcome(dish, variant, 'event');
+    if (
+      first.asksAgain === true &&
+      outcome.kind === 'refused' &&
+      outcome.lines.every((line) => line === 'picked')
+    ) {
+      askChange({ kind: 'variant', courseId: course.id, dishId: dish.id, variantId: variant.id });
+      return;
+    }
     if (outcome.kind === 'refused') {
       setAsking({
         kind: 'variant',
@@ -1287,7 +1382,9 @@ function Courses({
       return;
     }
     if (isPicked(dish)) {
-      setRefused({ kind: 'dish', dishId: dish.id });
+      if (first.asksAgain === true)
+        askChange({ kind: 'dish', courseId: course.id, dishId: dish.id });
+      else setRefused({ kind: 'dish', dishId: dish.id });
       return;
     }
     setAsking({ kind: 'dish', dishId: dish.id });
@@ -1734,6 +1831,19 @@ function Courses({
       {open?.kind === 'editCourse' && open.move != null && (
         <MoveDialog move={open.move} lang={lang} onCancel={cancelMove} onMove={confirmMove} />
       )}
+      {changing != null && changeAsks(changing.change, courses, coming, lang) != null && (
+        <MenuChangeDialog
+          asks={
+            changeAsks(changing.change, courses, coming, lang) as NonNullable<
+              ReturnType<typeof changeAsks>
+            >
+          }
+          refused={changeRefused}
+          back={changing.back}
+          onCancel={cancelChange}
+          onGo={makeChange}
+        />
+      )}
     </>
   );
 }
@@ -1951,7 +2061,9 @@ function CourseCard({
         )}
         <div className="mn-course-names">
           <p className="mn-eyebrow">{courseLine(index, all, course.servedAt)}</p>
-          <h2 id={`mc-c-${course.id}`}>{course.name}</h2>
+          <h2 id={`mc-c-${course.id}`} tabIndex={-1}>
+            {course.name}
+          </h2>
           <p className={ready ? 'mc-state is-ready' : 'mc-state is-empty'}>
             <span className={ready ? 'mc-ring is-ready' : 'mc-ring is-empty'} aria-hidden="true">
               {ready && <Glyph name="tick" size={12} weight={3} />}

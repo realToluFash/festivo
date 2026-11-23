@@ -53,6 +53,7 @@ import { type CourseDefault, type DefaultForm, type Given, DFW } from './courseD
 import { MENU_EVENT, moved } from './menuServed.ts';
 import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
+import type { MenuChange } from './menuChange.ts';
 
 /** sc-3902's event Menu at a desk and in a narrow web window (board Menu, page e32): courses in order, and the dishes on each. */
 export const COURSE_MAX = 10;
@@ -713,6 +714,13 @@ export interface CoursesStart {
   picksMoveTo?: string;
   /** sc-3909: each dish row and variant inset shows its picks, See picks sits on each course, and the picks summary beside the menu. */
   showPicks?: boolean;
+  /** sc-3913 built: a change that asks guests again opens the MenuChange dialog in place of sc-3902's refusals. */
+  asksAgain?: boolean;
+  /** sc-3913: the state opens on the MenuChange dialog, focus going back to `changingBack` on Cancel. */
+  changing?: MenuChange | null;
+  changingBack?: string | null;
+  /** sc-3913: the event's date has passed, so Change and ask them gets the 409. */
+  pastDate?: boolean;
 }
 
 function start(over: Partial<CoursesStart> & { name: string; note: string }): CoursesStart {
@@ -1031,6 +1039,80 @@ const STATES = {
       name: 'Remove dish, guests have picked it',
       note: 'Refused at once until sc-3913 is built; nothing changes.',
       refused: { kind: 'dish', dishId: 'k2-jollof' },
+    }),
+  changeMenu: () =>
+    start({
+      name: 'The menu, with sc-3913 built',
+      note: 'Remove… on Jollof rice, an allergen on it, or a first dish for Late-night bites opens the MenuChange dialog; a change that asks nobody saves as before.',
+      asksAgain: true,
+    }),
+  changeRemoveDish: () =>
+    start({
+      name: 'MenuChange: a picked dish removed',
+      note: 'Remove… on Jollof rice, which 45 guests picked. Change and ask them removes it, the note counts them, and focus goes to Main; Cancel or Escape goes back to Remove….',
+      asksAgain: true,
+      changing: { kind: 'dish', courseId: MAIN, dishId: 'k2-jollof' },
+      changingBack: 'mc-remove-k2-jollof',
+    }),
+  changeRemoveVariant: () =>
+    start({
+      name: 'MenuChange: a picked variant removed',
+      note: 'Remove… on Children’s portion, which 9 guests picked. The other two ways of Jollof rice stay.',
+      courses: variantCourses(),
+      asksAgain: true,
+      changing: { kind: 'variant', courseId: MAIN, dishId: 'k2-jollof', variantId: 'v-kids' },
+      changingBack: 'mc-vremove-v-kids',
+    }),
+  changeFirstDish: () =>
+    start({
+      name: 'MenuChange: a course’s first dish',
+      note: 'Add on Beef suya skewers for Late-night bites, which had no dishes and so was hidden from guests. Everyone coming is asked for it.',
+      asksAgain: true,
+      opened: { kind: 'addDish', courseId: 'k4', tab: 'library' },
+      changing: { kind: 'firstDish', courseId: 'k4', dish: from('d-suya', 'k4-suya') },
+    }),
+  changeAllergen: () => {
+    const jollof = sampleCourses()[1]?.dishes[0] as EvDish;
+
+    return start({
+      name: 'MenuChange: an allergen added to a picked dish',
+      note: 'Sesame ticked on Jollof rice. 4 of the guests who picked it have Sesame recorded; the one with an Other allergy is not matched. They also appear in Needs the host.',
+      asksAgain: true,
+      opened: {
+        kind: 'editDish',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        form: { allergens: ['celery', 'sesame'] },
+      },
+      changing: {
+        kind: 'allergen',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        next: { ...jollof, contains: ['celery', 'sesame'] },
+      },
+    });
+  },
+  changeNobody: () =>
+    start({
+      name: 'MenuChange: nobody affected',
+      note: 'Crustaceans ticked on Jollof rice, which nobody who picked it has recorded. Save changes saves at once with the usual note, and opens no dialog.',
+      asksAgain: true,
+      opened: {
+        kind: 'editDish',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        form: { allergens: ['celery', 'crustaceans'] },
+      },
+    }),
+  changePastDate: () =>
+    start({
+      name: 'MenuChange: the event’s date has passed',
+      note: 'Change and ask them gets the 409: the refusal inside the dialog, in red with its mark and a word, and only Close.',
+      asksAgain: true,
+      pastDate: true,
+      picks: { ...SAMPLE_PICKS, today: '2026-11-16' },
+      changing: { kind: 'dish', courseId: MAIN, dishId: 'k2-jollof' },
+      changingBack: 'mc-remove-k2-jollof',
     }),
   picksOneDate: () =>
     start({
@@ -2127,6 +2209,20 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'removeDishPicked',
         'deleteCourse',
         'deleteCoursePicked',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'A menu change asks again (sc-3913): the MenuChange dialog',
+    states: (
+      [
+        'changeMenu',
+        'changeRemoveDish',
+        'changeRemoveVariant',
+        'changeFirstDish',
+        'changeAllergen',
+        'changeNobody',
+        'changePastDate',
       ] as const
     ).map(link),
   },
