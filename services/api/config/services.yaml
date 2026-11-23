@@ -175,6 +175,13 @@ services:
     App\Domain\User\Registration\RegistrationMail:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Passkey\PasskeyProviders:
+        arguments:
+            $listFile: '%kernel.project_dir%/config/passkey-providers.json'
+    App\WebAuthn\RelyingParty:
+        arguments:
+            $relyingPartyId: '%env(WEBAUTHN_RP_ID)%'
+            $origin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Recovery\RecoveryMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

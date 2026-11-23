@@ -31,6 +31,11 @@ export function TwoFactorSignIn() {
           )
         }
         lostBoth={{ to: '/two-factor/recovery', state: challenge }}
+        factors={challenge.factors}
+        passkey={{
+          lead: t('passkey.signInLead', { email: challenge.email }),
+          options: () => api.signInPasskeyOptions(challenge.challenge),
+        }}
         onExpired={() =>
           navigate('/sign-in', {
             replace: true,

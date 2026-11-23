@@ -135,6 +135,7 @@ export function stackConfig(
     SOIRELY_API_URL: browser.api,
     SOIRELY_MERCURE_URL: browser.mercure,
     CORS_WEB_ORIGIN: urls.web,
+    WEBAUTHN_RP_ID: browserHost ?? address,
     CORS_EXPO_WEB_ORIGIN: `${BUNDLER}:${ports.METRO_PORT}`,
     MAILPIT_URL: urls.mailpit,
   };

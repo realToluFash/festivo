@@ -37,6 +37,7 @@ final readonly class SignInResponse
             'twoFactorChallenge' => $admission->token,
             'challengeExpiresAt' => $admission->expiresAt->format(\DATE_ATOM),
             'email' => $user->getPrimaryEmailAddress()?->getAddress(),
+            'factors' => $admission->factors,
         ], Response::HTTP_ACCEPTED);
     }
 }

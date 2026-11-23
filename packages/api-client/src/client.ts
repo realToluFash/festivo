@@ -218,6 +218,13 @@ export interface TwoFactorChallenge {
   expiresAt: string;
   /** The address the code is for, shown as "the 6-digit code for <address>". */
   email: string;
+  /** What the account holds, so the step opens on a passkey or a code (sc-86885). */
+  factors: HeldFactors;
+}
+
+export interface HeldFactors {
+  app: boolean;
+  passkeys: boolean;
 }
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
@@ -387,7 +394,28 @@ export interface PendingRegistration {
 export interface TwoFactorStatus {
   on: boolean;
   recoveryCodesLeft: number;
+  /** False where this deployment has no relying party, or the browser could not make one anyway. */
+  passkeysOffered: boolean;
+  mostPasskeys: number;
+  /** Newest first. */
+  factors: TwoFactorFactor[];
 }
+
+export type TwoFactorFactor =
+  | { kind: 'app'; addedAt: string }
+  | { kind: 'passkey'; id: string; provider: string | null; synced: boolean; addedAt: string };
+
+/** A `PublicKeyCredential` as its `toJSON()` writes it. */
+export type PasskeyAnswer = Record<string, unknown>;
+
+/** The options a passkey sheet opens with, as the API writes them for `navigator.credentials`. */
+export type PasskeyOptions = Record<string, unknown>;
+
+/** The signed-in steps a passkey answers, each with its own challenge. */
+export type PasskeyStep = 'proof' | 'add' | 'add_app' | 'remove' | 'new_codes' | 'turn_off';
+
+/** An app code, a recovery code, or a passkey: what a signed-in change asks for once two-factor is on. */
+export type CurrentFactor = { code: string } | { passkey: PasskeyAnswer };
 
 export interface TwoFactorEnrolment {
   secret: string;
@@ -395,7 +423,7 @@ export interface TwoFactorEnrolment {
   qrSvg: string;
 }
 
-export type SecondFactor = { code: string } | { recoveryCode: string };
+export type SecondFactor = { code: string } | { recoveryCode: string } | { passkey: PasskeyAnswer };
 
 export type Provider = 'google' | 'apple';
 
@@ -1299,13 +1327,57 @@ export class ApiClient {
     );
   }
 
-  async twoFactorStatus(): Promise<TwoFactorStatus> {
-    return this.get<TwoFactorStatus>('/api/auth/two-factor');
+  /** The sheet's options at the sign-in step, a new challenge each time it opens. */
+  async signInPasskeyOptions(challenge: string): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>(
+      '/api/auth/two-factor/passkey-options',
+      { challenge },
+      {
+        anonymous: true,
+      },
+    );
   }
 
-  /** A new secret, off until `activateTwoFactor` is sent a code it made. */
-  async enrolTwoFactor(): Promise<TwoFactorEnrolment> {
-    return this.post<TwoFactorEnrolment>('/api/auth/two-factor/enrol');
+  async twoFactorStatus(): Promise<TwoFactorStatus> {
+    const body = await this.get<Partial<TwoFactorStatus>>('/api/auth/two-factor');
+
+    return {
+      on: body.on === true,
+      recoveryCodesLeft: typeof body.recoveryCodesLeft === 'number' ? body.recoveryCodesLeft : 0,
+      passkeysOffered: body.passkeysOffered === true,
+      mostPasskeys: typeof body.mostPasskeys === 'number' ? body.mostPasskeys : 10,
+      factors: Array.isArray(body.factors) ? body.factors : [],
+    };
+  }
+
+  /** A new secret, off until `activateTwoFactor` is sent a code it made; beside passkeys it takes one. */
+  async enrolTwoFactor(current?: CurrentFactor): Promise<TwoFactorEnrolment> {
+    return this.post<TwoFactorEnrolment>('/api/auth/two-factor/enrol', current);
+  }
+
+  /** To make a passkey: none asked while two-factor is off, the current factor once it is on. */
+  async passkeyCreationOptions(current?: CurrentFactor): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/two-factor/passkeys/options', {
+      make: true,
+      ...current,
+    });
+  }
+
+  /** To use a passkey at a signed-in step. */
+  async passkeyOptions(step: PasskeyStep): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/two-factor/passkeys/options', { step });
+  }
+
+  /** @returns the recovery codes when this passkey turned two-factor on, none when it joined */
+  async addPasskey(passkey: PasskeyAnswer): Promise<string[]> {
+    return (
+      await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/passkeys', { passkey })
+    ).recoveryCodes;
+  }
+
+  /** `factor` is `app` or a passkey's id; the last one is refused as `two_factor_last_factor`. */
+  async removeTwoFactorFactor(factor: string, current: CurrentFactor): Promise<void> {
+    await this.post('/api/auth/two-factor/remove', { factor, ...current });
   }
 
   /** @returns the recovery codes, which the API shows this once */
@@ -1315,14 +1387,20 @@ export class ApiClient {
   }
 
   /** Takes an app code or an unused recovery code; every earlier recovery code stops working. */
-  async newRecoveryCodes(code: string): Promise<string[]> {
+  async newRecoveryCodes(current: string | CurrentFactor): Promise<string[]> {
     return (
-      await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/recovery-codes', { code })
+      await this.post<{ recoveryCodes: string[] }>(
+        '/api/auth/two-factor/recovery-codes',
+        typeof current === 'string' ? { code: current } : current,
+      )
     ).recoveryCodes;
   }
 
-  async disableTwoFactor(code: string): Promise<void> {
-    await this.post('/api/auth/two-factor/disable', { code });
+  async disableTwoFactor(current: string | CurrentFactor): Promise<void> {
+    await this.post(
+      '/api/auth/two-factor/disable',
+      typeof current === 'string' ? { code: current } : current,
+    );
   }
 
   /** The ID token a provider issued, and the nonce whose hash went to the provider with the request. */
@@ -1381,7 +1459,7 @@ export class ApiClient {
       | { password: string }
       | { provider: Provider; signIn: ProviderSignInAttempt }
       | { pendingProof: string },
-    code?: string,
+    code?: string | { passkey: PasskeyAnswer },
   ): Promise<RecentProof> {
     const body = await this.post<{ proof?: unknown; expiresAt?: unknown }>('/api/auth/proof', {
       ...('password' in first
@@ -1389,7 +1467,7 @@ export class ApiClient {
         : 'pendingProof' in first
           ? { pendingProof: first.pendingProof }
           : { provider: first.provider, providerSignIn: first.signIn }),
-      ...(code == null ? {} : { code }),
+      ...(code == null ? {} : typeof code === 'string' ? { code } : code),
     });
 
     return {
@@ -1434,16 +1512,30 @@ export class ApiClient {
   }
 
   /** Whose reset link this is; refused as `reset_link_invalid`, `reset_link_used` or `reset_link_expired`. */
-  async checkResetLink(token: string): Promise<{ email: string; twoFactor: boolean }> {
-    const body = await this.post<{ email?: unknown; twoFactor?: unknown }>(
-      '/api/auth/password/reset/check',
-      { token },
-    );
+  async checkResetLink(token: string): Promise<{
+    email: string;
+    twoFactor: boolean;
+    factors: HeldFactors;
+    passkeysOffered: boolean;
+  }> {
+    const body = await this.post<{
+      email?: unknown;
+      twoFactor?: unknown;
+      factors?: unknown;
+      passkeysOffered?: unknown;
+    }>('/api/auth/password/reset/check', { token });
 
     return {
       email: typeof body?.email === 'string' ? body.email : '',
       twoFactor: body?.twoFactor === true,
+      factors: asHeldFactors(body?.factors),
+      passkeysOffered: body?.passkeysOffered === true,
     };
+  }
+
+  /** The sheet's options at the reset link's code step. */
+  async resetPasskeyOptions(token: string): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/password/reset/passkey-options', { token });
   }
 
   /** With two-factor on, the code comes before the new password; nothing changes until it passes. */
@@ -5681,7 +5773,7 @@ export class ApiClient {
   }
 
   /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
-  private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
+  private sendTokenRequest(path: string, body: Record<string, unknown>): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
 
     return doFetch(this.url(path), {
@@ -5716,7 +5808,7 @@ export class ApiClient {
   /** Tokens and the account, or, with two-factor on, the challenge the code answers. */
   private async signedIn(
     path: string,
-    credentials: Record<string, string>,
+    credentials: Record<string, unknown>,
     controller: string,
   ): Promise<SignInOutcome> {
     this.session += 1;
@@ -5740,7 +5832,7 @@ export class ApiClient {
   /** A way in that never asks for a second factor: registering, or the code that just passed. */
   private async signedInOnly(
     path: string,
-    credentials: Record<string, string>,
+    credentials: Record<string, unknown>,
     controller: string,
   ): Promise<SignedIn> {
     this.session += 1;
@@ -7213,7 +7305,14 @@ function asChallenge(raw: unknown): TwoFactorChallenge | null {
     challenge: twoFactorChallenge,
     expiresAt: challengeExpiresAt,
     email: typeof email === 'string' ? email : '',
+    factors: asHeldFactors(body.factors),
   };
+}
+
+function asHeldFactors(raw: unknown): HeldFactors {
+  const held = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+
+  return { app: held.app !== false, passkeys: held.passkeys === true };
 }
 
 function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {

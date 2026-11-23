@@ -641,7 +641,7 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
             purpose={dialog.purpose}
             email={you.email}
             start={{ typed: dialog.second, tried: dialog.tried }}
-            submit={sampleFactor}
+            submit={(current) => sampleFactor('code' in current ? current.code : '')}
             onClose={() => setDialog(null)}
             onDone={() => dialog.purpose != null && provedFor(dialog.purpose, null)}
             onKept={() => setDialog(null)}

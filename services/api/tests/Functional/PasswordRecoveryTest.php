@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Controller\PasswordRecoveryController;
+use App\Domain\User\Http\SecondFactorInput;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Recovery\PasswordRecovery;
+use App\Domain\User\TwoFactor\Passkey\Passkeys;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Domain\User\UserRegistrar;
 use App\Entity\PasswordResetToken;
 use App\Entity\ProviderIdentity;
@@ -15,7 +18,6 @@ use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\AfterResponse;
-use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordResetTokenRepository;
 use App\Tests\ApiTestCase;
@@ -195,7 +197,9 @@ final class PasswordRecoveryTest extends ApiTestCase
             self::service(SignInResponse::class),
             self::serviceById('limiter.password_reset_address', RateLimiterFactoryInterface::class),
             self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class),
-            self::service(CodeField::class),
+            self::service(SecondFactorInput::class),
+            self::service(SecondFactors::class),
+            self::service(Passkeys::class),
         );
         $sent = self::serviceById('mailer.message_logger_listener', MessageLoggerListener::class);
         self::drainNotifications();
@@ -236,7 +240,7 @@ final class PasswordRecoveryTest extends ApiTestCase
         $open = self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$address, $ip]) {
-            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(AfterResponse::class), self::service(SignInResponse::class), $address, $ip, self::service(CodeField::class));
+            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(AfterResponse::class), self::service(SignInResponse::class), $address, $ip, self::service(SecondFactorInput::class), self::service(SecondFactors::class), self::service(Passkeys::class));
 
             try {
                 $controller->forgot(Request::create('/api/auth/password/forgot', 'POST', content: Json\encode(['email' => 'anybody@example.com'])));
