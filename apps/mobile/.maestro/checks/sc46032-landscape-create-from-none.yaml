@@ -1,0 +1,9 @@
+# sc-46032: Create an organisation from No organisation upright (the country list will not scroll on its side), then turn the tablet and shoot Today with Now working in ‹name›.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- runFlow: sc46032-create-from-none.yaml
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: land-created-product
