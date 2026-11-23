@@ -1,21 +1,5 @@
 # sc-3914 r4: opens Choose who gets it for ${VARIANT} and ticks ${P1}, leaving the sheet open.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
-- extendedWaitUntil:
-    visible:
-      id: 'menu.header'
-    timeout: 30000
-- scrollUntilVisible:
-    element:
-      id: 'menu.who.${VARIANT}'
-    centerElement: true
-- tapOn:
-    id: 'menu.who.${VARIANT}'
-- extendedWaitUntil:
-    visible:
-      id: 'menu.who.save'
-    timeout: 10000
-- tapOn:
-    id: 'menu.who.tick.${P1}'
+- runFlow: sc3914r4/who-open-tick.yaml
 - takeScreenshot: ticked

@@ -1,6 +1,0 @@
-appId: host.exp.Exponent
----
-- tapOn:
-    id: '${SAVE_ID}'
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
-- takeScreenshot: refused

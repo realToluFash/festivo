@@ -1,0 +1,12 @@
+# sc-3914 r4: with the save refused, ticks ${P1} for ${VARIANT}, taps Save and fails unless the refused line shows.
+appId: host.exp.Exponent
+---
+- runFlow: sc3914r4/who-open-tick.yaml
+- tapOn:
+    id: 'menu.who.save'
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.refused'
+    timeout: 10000
+- takeScreenshot: refused
