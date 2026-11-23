@@ -31,3 +31,11 @@ describe('sc-82858: the paused page has no Search', () => {
     );
   });
 });
+
+describe('sc-46032: the phone Settings top has Search, as the product does (sc-39534)', () => {
+  it('puts Search before the bell unless the page leads back to no organisation', () => {
+    expect(source('SettingsHome.tsx')).toMatch(
+      /backToNone \? \(\s*<Bell tell=\{shell\.tell\} \/>\s*\) : \(\s*<SearchAndBell tell=\{shell\.tell\} role=\{shell\.looking\.role\} \/>/u,
+    );
+  });
+});
