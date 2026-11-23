@@ -310,7 +310,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
 
   const scrollWeeks = (index: number, toToday: boolean) => {
     const to = offsets[index] ?? 0;
-    if (toToday) setTodayRuns(true);
+    setTodayRuns(toToday);
     weekAsked.current = { from: weekY.current, to };
     glide(weekY.current, to, toWeekY, () => {
       weekAsked.current = { from: to, to };
@@ -320,7 +320,7 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
   const scrollAgenda = (key: string, toToday: boolean) => {
     const to = places.current.get(key);
     if (to == null) return;
-    if (toToday) setTodayRuns(true);
+    setTodayRuns(toToday);
     glide(agendaY.current, to, toAgendaY, () => setTodayRuns(false));
   };
   const onStep = (step: -1 | 1) => {
