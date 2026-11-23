@@ -884,6 +884,7 @@ export function CopiedCard({
   plates,
   allergies,
   timeZone,
+  lineOf,
   onChange,
   onBack,
   onContinue,
@@ -894,6 +895,7 @@ export function CopiedCard({
   plates: Plates;
   allergies: readonly string[];
   timeZone: string;
+  lineOf: (eater: Eater, course: MealCourse, shut: boolean) => DefaultLine;
   onChange: (key: string) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -930,6 +932,7 @@ export function CopiedCard({
             refused={false}
             unsaved={false}
             locked={false}
+            lineOf={lineOf}
             onChange={onChange}
           />
         ))}

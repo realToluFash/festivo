@@ -2,7 +2,7 @@ import type { GuestMeals, MealCourse } from '@soirely/api-client';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { MealCards, MealScreen } from './Meals.tsx';
+import { CopiedCard, MealCards, MealScreen } from './Meals.tsx';
 import { type Eater, type Plates, defaultLine, defaultName, keyOf } from './meals.ts';
 
 const STARTER: MealCourse = {
@@ -152,5 +152,37 @@ describe('a course’s default on the guest page (sc-1362)', () => {
     ).toBeTruthy();
     expect(screen.queryByText(/so this is your starter/)).toBeNull();
     expect(screen.queryByRole('button', { name: /Change/ })).toBeNull();
+  });
+
+  it('says the same on the card copied with Same as, defaulted or left to the host', () => {
+    const MAIN: MealCourse = { ...STARTER, id: 'main', name: 'Main', default: null };
+    const given = { kind: 'defaulted' as const, dish: 'canape', variant: 'tray', options: {} };
+    const copied = (plates: Plates, excluded: GuestMeals['excluded'] = {}) =>
+      render(
+        <CopiedCard
+          eater={CHIDI}
+          from={YOU}
+          courses={[CLOSED, MAIN]}
+          plates={plates}
+          allergies={[]}
+          timeZone="Africa/Lagos"
+          lineOf={(eater, one, shut) =>
+            defaultLine(meals(excluded), one, eater, plates[keyOf(eater.key, one.id)], shut)
+          }
+          onChange={() => {}}
+          onBack={() => {}}
+          onContinue={() => {}}
+        />,
+      );
+
+    const { unmount } = copied({ [keyOf('g_chidi', 'starter')]: given });
+    expect(
+      screen.getByText('Chidi Okonkwo had not chosen by then, so this is Chidi Okonkwo’s starter.'),
+    ).toBeTruthy();
+    unmount();
+
+    copied({}, { g_chidi: [{ course: 'starter', reason: 'vegan' }] });
+    expect(screen.getByText(/The host will be in touch about it/)).toBeTruthy();
+    expect(screen.queryByText('Not chosen')).toBeNull();
   });
 });
