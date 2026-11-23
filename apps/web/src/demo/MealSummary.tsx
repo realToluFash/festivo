@@ -24,6 +24,8 @@ import { MW, PERSON, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
 import { dayWords } from './picksClose.ts';
 
+import './mealParty.css';
+
 const CHIDI: Person = { name: PERSON, companion: false, allergies: [], diets: [] };
 
 const defaultName = (id: CourseId): string =>
@@ -139,13 +141,17 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
             <li key={one.id} className={close.closed ? 'mx-row is-closed' : 'mx-row'}>
               <div className="mx-words">
                 <p className="mx-course">{one.course.name}</p>
-                {line !== 'hostInTouch' && <p className="mx-pick">{shown ?? MSW.notChosen}</p>}
+                {line === 'hostInTouch' ? (
+                  <HostInTouch words={after} />
+                ) : (
+                  <p className="mx-pick">{shown ?? MSW.notChosen}</p>
+                )}
                 {pending && <p className="mx-pending">{MSW.notSent}</p>}
                 <p className="mx-close">
                   <Glyph name={close.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
                   {closeWords(line, one.course.name, day, defaultName(one.id), person)}
                 </p>
-                {after != null && <p className="mx-close mx-default">{after}</p>}
+                {line === 'defaulted' && <p className="mx-close mx-default">{after}</p>}
                 {refused.includes(one.id) && (
                   <p
                     id={`mx-refused-${one.id}`}
@@ -186,6 +192,17 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
         </div>
       )}
     </section>
+  );
+}
+
+function HostInTouch({ words }: { words: string | null }) {
+  return (
+    <p className="mx-pick pc-shape">
+      <span className="pc-ring is-host" aria-hidden="true">
+        <Glyph name="message" size={13} weight={2.4} />
+      </span>
+      <span>{words}</span>
+    </p>
   );
 }
 
@@ -234,7 +251,11 @@ function CourseScreen({
           <h2 id="ms-h" className="gp-h2 gk-h2" tabIndex={-1}>
             {MSW.yourCourse(course.name)}
           </h2>
-          {after != null && <p className="gk-text">{after}</p>}
+          {line === 'hostInTouch' ? (
+            <HostInTouch words={after} />
+          ) : (
+            after != null && <p className="gk-text">{after}</p>
+          )}
           {dish == null ? (
             line !== 'hostInTouch' && <p className="gk-text">{MSW.notChosen}</p>
           ) : (
