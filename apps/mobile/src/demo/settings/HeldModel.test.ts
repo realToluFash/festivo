@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aloneOf,
   heldOf,
+  inAnOrganisation,
   opensWhilePaused,
   othersOf,
   pausedGroups,
@@ -31,6 +32,14 @@ describe('sc-85006: the held pages for a member of one organisation', () => {
   it('draws no Switch organisation on the paused page when there is no other organisation', () => {
     expect(pausedSwitch(othersOf(true))).toBeNull();
     expect(pausedSwitch(othersOf(false))).toBe('switcher');
+  });
+
+  it('holds Today and Settings only while paused in the only organisation, as the product (sc-39471)', () => {
+    expect(inAnOrganisation(false, 'paused', true)).toBe(false);
+    expect(inAnOrganisation(false, 'paused', false)).toBe(true);
+    expect(inAnOrganisation(false, 'overdue', true)).toBe(true);
+    expect(inAnOrganisation(false, null, false)).toBe(true);
+    expect(inAnOrganisation(true, null, false)).toBe(false);
   });
 
   it('feeds both cards their others', () => {
