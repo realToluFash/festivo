@@ -4018,14 +4018,14 @@
     "askHosts": "Pour modifier un choix maintenant, adressez-vous à {{hosts}}.",
     "preview": "Aperçu. Rien n’est enregistré.",
     "closePreview": "Fermer l’aperçu",
-    "sameAsMine": "Same as mine",
-    "sameAsName": "Same as {{name}}",
-    "sameAsFor": "{{label}}, for {{name}}",
-    "cantCopyYours": "Your {{course}} can’t be picked for {{name}}.",
-    "cantCopyName": "{{from}}’s {{course}} can’t be picked for {{name}}.",
-    "copiedYours": "Copied from your picks. Change anything that should be different.",
-    "copiedName": "Copied from {{from}}. Change anything that should be different.",
-    "continue": "Continue"
+    "sameAsMine": "Comme moi",
+    "sameAsName": "Comme {{name}}",
+    "sameAsFor": "{{label}}, pour {{name}}",
+    "cantCopyYours": "Votre choix en {{course}} n’est pas possible pour {{name}}.",
+    "cantCopyName": "Ce que {{from}} a choisi en {{course}} n’est pas possible pour {{name}}.",
+    "copiedYours": "Ce que vous avez choisi a été copié. Modifiez ce qui doit être différent.",
+    "copiedName": "Ce que {{from}} a choisi a été copié. Modifiez ce qui doit être différent.",
+    "continue": "Continuer"
   },
   "eventReplyBy": {
     "replyBy": "Date limite de réponse",
