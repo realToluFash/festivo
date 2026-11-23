@@ -285,6 +285,10 @@
   font-family: var(--fontFamily);
 }
 
+.ks-paper-page.is-print {
+  display: none;
+}
+
 .ks-paper-bar {
   display: flex;
   flex-wrap: wrap;
