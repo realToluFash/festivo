@@ -16,6 +16,7 @@ use Psl\Vec;
  * @phpstan-import-type Cell from KitchenSheet
  * @phpstan-import-type Counted from KitchenSheet
  * @phpstan-import-type SheetCourse from KitchenSheet
+ * @phpstan-import-type SheetStation from KitchenSheet
  */
 final readonly class KitchenCourse
 {
@@ -35,12 +36,13 @@ final readonly class KitchenCourse
     }
 
     /**
-     * @param Course  $course
-     * @param Counted $counted
+     * @param Course              $course
+     * @param Counted             $counted
+     * @param ?list<SheetStation> $stations sc-34244's By station, null where the course has none
      *
      * @return SheetCourse a dish's count is its chosen and its defaulted together, as See picks counts it
      */
-    public static function of(array $course, array $counted): array
+    public static function of(array $course, array $counted, ?array $stations): array
     {
         $rows = Vec\map($counted['rows'], static fn (array $row): array => [
             'id' => $row['id'],
@@ -69,6 +71,7 @@ final readonly class KitchenCourse
                 ? ['count' => $defaulted, 'plate' => PicksMenu::plateName($course, $default['dish'], $default['variant'], $default['options'])]
                 : null,
             'sides' => Iter\any($counted['rows'], static fn (array $row): bool => 'option' === $row['kind']),
+            'stations' => $stations,
         ];
     }
 

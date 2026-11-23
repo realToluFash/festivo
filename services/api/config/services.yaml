@@ -265,6 +265,7 @@ services:
     App\Domain\Event\Interfaces\ActiveEventsLimitInterface: '@App\Domain\Event\UnlimitedActiveEvents'
 
     App\Domain\Menu\Interfaces\MenuPicksInterface: '@App\Domain\Menu\Pick\StoredMenuPicks'
+    App\Domain\Menu\Interfaces\ServingStationsInterface: '@App\Domain\Staff\Station\ServingStations'
 
     App\Domain\Messaging\Interfaces\NotificationPreferencesInterface: '@App\Domain\Messaging\StoredNotificationPreferences'
 

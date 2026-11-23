@@ -6062,6 +6062,8 @@
     "given_one": "{{count, number}} given the default, {{dish}}, when picks closed. They are in its count.",
     "given_other": "{{count, number}} given the default, {{dish}}, when picks closed. They are in its count.",
     "sides": "Sides are counted per pick, so they add up to their dish, not to the room.",
+    "byStation": "By station",
+    "chefsChoice": "Chef’s choice",
     "loading": "Loading the kitchen sheet…",
     "cannotReach": "The kitchen sheet could not be loaded.",
     "refused": "You cannot open the kitchen sheet",

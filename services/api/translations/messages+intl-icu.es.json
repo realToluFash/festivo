@@ -493,6 +493,8 @@
     "kitchen_sheet.room": "Toda la sala",
     "kitchen_sheet.given": "{count, plural, one {A {count, number, ::group-auto} persona se le asignó el plato por defecto, {dish}, al cerrarse la elección. Ya figura en el recuento de ese plato.} many {A {count, number, ::group-auto} de personas se les asignó el plato por defecto, {dish}, al cerrarse la elección. Ya figuran en el recuento de ese plato.} other {A {count, number, ::group-auto} personas se les asignó el plato por defecto, {dish}, al cerrarse la elección. Ya figuran en el recuento de ese plato.}}",
     "kitchen_sheet.sides": "Las opciones se cuentan por elección, así que suman el total de su plato, no el de la sala.",
+    "kitchen_sheet.by_station": "By station",
+    "kitchen_sheet.chefs_choice": "Chef’s choice",
     "kitchen_sheet.health": "Esta hoja contiene información de salud de los invitados. Guárdela en la cocina y destrúyala después del evento.",
     "kitchen_sheet.page": "Página {n} de {m}"
 }

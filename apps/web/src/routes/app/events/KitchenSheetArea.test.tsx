@@ -357,3 +357,103 @@ describe('The kitchen sheet (sc-3911)', () => {
     expect(screen.getByRole('link', { name: 'Back to the event' })).toBeDefined();
   });
 });
+
+const STATIONS = [
+  {
+    id: 's_pass',
+    name: 'Pass',
+    lines: [
+      { name: 'Pepper sauce', count: 4, chefs: false },
+      { name: '', count: 2, chefs: true },
+    ],
+  },
+  {
+    id: 's_kitchen',
+    name: 'Kitchen',
+    lines: [
+      { name: 'Jollof rice', count: 2, chefs: false },
+      { name: 'Fried yam', count: 0, chefs: false },
+    ],
+  },
+  { id: 's_grill', name: 'Grill', lines: [{ name: 'Chicken', count: 1, chefs: false }] },
+];
+
+const STARTER = { ...MAIN, id: 'c_starter', name: 'Starter' };
+
+describe('By station on the kitchen sheet (sc-34244)', () => {
+  it('lists each station under its course in the order given, the Pass ending in Chef’s choice', async () => {
+    onSheet({
+      [SHEET]: () => json(sheetOf({ courses: [STARTER, { ...MAIN, stations: STATIONS }] })),
+    });
+
+    const main = await screen.findByRole('region', { name: 'Main' });
+    expect(within(main).getByRole('heading', { level: 3, name: 'By station' })).toBeDefined();
+    expect(
+      within(main)
+        .getAllByRole('heading', { level: 4 })
+        .map((one) => one.textContent),
+    ).toEqual(['Pass', 'Kitchen', 'Grill']);
+    const pass = within(main).getByRole('list', { name: 'Pass' });
+    expect(
+      within(pass)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual(['Pepper sauce · 4', 'Chef’s choice · 2']);
+    const kitchen = within(main).getByRole('list', { name: 'Kitchen' });
+    expect(within(kitchen).getByText('Fried yam')).toBeDefined();
+    expect(within(main).getByRole('rowheader', { name: 'The room' })).toBeDefined();
+
+    const starter = screen.getByRole('region', { name: 'Starter' });
+    expect(within(starter).queryByRole('heading', { name: 'By station' })).toBeNull();
+  });
+
+  it('carries By station on paper, a course with it starting a page of its own when it does not fit', async () => {
+    const big = Array.from({ length: 20 }, (_, at) => ({
+      name: `Item ${at}`,
+      count: at,
+      chefs: false,
+    }));
+    onSheet(
+      {
+        [SHEET]: () =>
+          json(
+            sheetOf({
+              courses: [
+                { ...MAIN, stations: STATIONS },
+                {
+                  ...MAIN,
+                  id: 'c_dessert',
+                  name: 'Dessert',
+                  stations: [{ id: 's_pastry', name: 'Pastry', lines: big }],
+                },
+              ],
+            }),
+          ),
+      },
+      '/app/events/ev_1/menu/kitchen?paper=a4',
+    );
+
+    expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+    const pages = screen.getAllByRole('article');
+    expect(pages.map((one) => one.getAttribute('aria-label'))).toEqual([
+      'Page 1 of 3',
+      'Page 2 of 3',
+      'Page 3 of 3',
+    ]);
+    expect(
+      within(pages[1] as HTMLElement).getByRole('heading', { level: 3, name: 'By station' }),
+    ).toBeDefined();
+    expect(within(pages[2] as HTMLElement).getByRole('list', { name: 'Pastry' })).toBeDefined();
+  });
+
+  it('keeps sc-3911’s two pages when no course has By station', async () => {
+    onSheet(
+      { [SHEET]: () => json(sheetOf({ courses: [STARTER, MAIN] })) },
+      '/app/events/ev_1/menu/kitchen?paper=a4',
+    );
+
+    expect(await screen.findByRole('button', { name: 'Print this page' })).toBeDefined();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.queryByRole('heading', { name: 'By station' })).toBeNull();
+  });
+});

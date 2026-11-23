@@ -21,6 +21,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  *
  * @phpstan-import-type Sheet from KitchenSheet
  * @phpstan-import-type SheetCourse from KitchenSheet
+ * @phpstan-import-type SheetStation from KitchenSheet
  * @phpstan-import-type Allergic from KitchenSheet
  * @phpstan-import-type Cell from KitchenSheet
  */
@@ -48,6 +49,15 @@ final readonly class KitchenSheetDocument
         .mark.never, .mark.notYet { border-style: dashed; }
         .mark.skipped { background: linear-gradient(#000, #000) center / 5pt 1px no-repeat; }
         .foot { position: running(foot); font-size: 8pt; }
+        .course.whole { break-inside: avoid; }
+        h3 { font-size: 11pt; margin: 8pt 0 4pt; break-after: avoid; }
+        .station { display: inline-block; vertical-align: top; width: 31%%; margin: 0 2%% 6pt 0; break-inside: avoid; }
+        h4 { font-size: 10pt; margin: 0; padding-bottom: 2pt; border-bottom: 2px solid #000; }
+        .station ul { list-style: none; margin: 0; padding: 0; }
+        .station li { padding: 2pt 0; border-bottom: 1px solid #000; }
+        .station li.chefs { font-weight: 700; }
+        .station .n { float: right; width: auto; }
+        .sep { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
         CSS;
 
     public function __construct(
@@ -168,14 +178,31 @@ final readonly class KitchenSheetDocument
         ];
         $given = $course['given'];
 
-        return '<section><h2>' . self::e($course['name']) . '</h2>'
+        return '<section class="' . (null === $course['stations'] ? 'course' : 'course whole') . '"><h2>' . self::e($course['name']) . '</h2>'
             . '<table><thead><tr><th scope="col">' . self::e($this->word('dish', $locale)) . '</th><th scope="col" class="n">' . self::e($this->word('people', $locale)) . '</th></tr></thead><tbody>'
             . Str\join([...$rows, ...$states], '')
             . $this->countRow($this->word('room', $locale), $course['room'], 'room')
             . '</tbody></table>'
             . (null === $given ? '' : $this->line($this->word('given', $locale, ['count' => $given['count'], 'dish' => $given['plate']])))
             . ($course['sides'] ? $this->line($this->word('sides', $locale)) : '')
+            . (null === $course['stations'] ? '' : $this->byStation($course['stations'], $locale))
             . '</section>';
+    }
+
+    /**
+     * sc-34244's By station: each station a heading over a list of its lines, the Pass first and Chef's choice its last line. A course with By station is kept on one page.
+     *
+     * @param list<SheetStation> $stations
+     */
+    private function byStation(array $stations, string $locale): string
+    {
+        $chefs = $this->word('chefs_choice', $locale);
+        $station = static fn (array $one): string => '<div class="station"><h4>' . self::e($one['name']) . '</h4><ul>'
+            . Str\join(Vec\map($one['lines'], static fn (array $line): string => ($line['chefs'] ? '<li class="chefs">' : '<li>')
+                . self::e($line['chefs'] ? $chefs : $line['name']) . '<span class="sep"> · </span><span class="n">' . $line['count'] . '</span></li>'), '')
+            . '</ul></div>';
+
+        return '<h3>' . self::e($this->word('by_station', $locale)) . '</h3>' . Str\join(Vec\map($stations, $station), '');
     }
 
     /** @param list<array{string, int}> $rows */
