@@ -1,0 +1,42 @@
+# sc-3914: on ${EVENT_ID}'s Menu, Choose who gets it for variant ${VARIANT}: ticks ${P1} and ${P2}, saves, answers the override question with ${ANSWER}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- tapOn:
+    id: 'menu.who.${VARIANT}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- takeScreenshot: who-open
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.tick.${P1}'
+- tapOn:
+    id: 'menu.who.tick.${P1}'
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.tick.${P2}'
+- tapOn:
+    id: 'menu.who.tick.${P2}'
+- takeScreenshot: who-ticked
+- tapOn:
+    id: 'menu.who.save'
+- runFlow:
+    when:
+      visible:
+        id: 'menu.override'
+    commands:
+      - takeScreenshot: who-override
+      - tapOn:
+          id: 'menu.override.${ANSWER}'
+- waitForAnimationToEnd
+- takeScreenshot: who-after

@@ -1,0 +1,16 @@
+# sc-3914: presses Kitchen sheet on ${EVENT_ID}'s Menu and screenshots the share sheet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- tapOn:
+    id: 'menu.kitchenSheet'
+- takeScreenshot: kitchen-pressed
+- extendedWaitUntil:
+    visible: 'Copy|Save to Files|Kopieren|Guardar.*|AirDrop|Mail'
+    timeout: 20000
+    optional: true
+- takeScreenshot: kitchen-share

@@ -192,6 +192,24 @@ services:
     logging: *logging
     restart: unless-stopped
 
+  # The nightly backup and its 06:00 check (deploy/backup/crontab). Its own env file
+  # holds the bucket's write-only credentials, which no other container is given.
+  backup:
+    build:
+      context: ./backup
+    image: soirely-backup:${DEPLOY_SHA:?}
+    env_file: ${BACKUP_ENV_FILE:-backup.env}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: ${POSTGRES_DB:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+
   web:
     build:
       context: ..
