@@ -197,7 +197,7 @@ export function switchOrganisation(id: string, landed?: () => void): boolean {
   const go = (): void => {
     forgetEventsTab();
     set({ ...state, organisation, pausedIn: null });
-    void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+    void rememberOrganisation(id);
     landed?.();
   };
 
@@ -265,8 +265,7 @@ function rememberWorkingIn(
   organisation: Membership | null,
   pausedIn: PausedOrganisation | null,
 ): void {
-  if (organisation != null && pausedIn == null)
-    void AsyncStorage.setItem(REMEMBERED, organisation.id).catch(() => {});
+  if (organisation != null && pausedIn == null) void rememberOrganisation(organisation.id);
 }
 
 async function remembered(): Promise<string | null> {
