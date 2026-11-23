@@ -49,9 +49,7 @@ final readonly class DefaultRules
 
     /**
      * @param SentDefault          $sent
-     * @param array<string, mixed> $served the course as MenuSerialiser serves it
-     *
-     * @return ?CourseDefaultDetails null when both are cleared
+     * @param array<string, mixed> $served the course as MenuSerialiser serves it, and null back when both are cleared
      */
     public function details(Event $event, MenuCourse $course, array $served, array $sent): ?CourseDefaultDetails
     {
