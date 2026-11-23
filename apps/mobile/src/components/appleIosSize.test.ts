@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
-import { besideGlyph } from '../layout/textSize.ts';
+import { besideGlyph, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { APPLE_IOS_CHROME, appleIosGlyph, appleIosSize } from './appleIosSize.ts';
 
 describe('appleIosSize', () => {
@@ -29,8 +29,6 @@ describe('appleIosSize', () => {
   });
 });
 
-const CONTROL_TEXT_SIZE = 16;
-
 describe('appleIosGlyph', () => {
   const room = 375 - 2 * tokens.spaceXxl - APPLE_IOS_CHROME;
   const continuer = 5;
@@ -48,6 +46,6 @@ describe('appleIosGlyph', () => {
   });
 
   it('leaves a Continuer-wide word at its size at Accessibility Large', () => {
-    expect(words(1.94)).toBe(CONTROL_TEXT_SIZE * 1.94);
+    expect(words(2.14)).toBe(CONTROL_TEXT_SIZE * 2.14);
   });
 });
