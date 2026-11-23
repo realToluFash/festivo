@@ -1105,10 +1105,23 @@ describe('The event’s Menu (sc-3902)', () => {
     });
 
     it('asks first to change how many guests pick on an answered choice', async () => {
+      const three = course('c_main', 'Main', [
+        dish('d_asun', 'Asun', {
+          choices: [
+            side({
+              options: [
+                option('o_plantain', 'Plantain', [], 41),
+                option('o_salad', 'Garden salad', ['mustard'], 33),
+                option('o_moimoi', 'Moi moi', ['eggs'], 0),
+              ],
+            }),
+          ],
+        }),
+      ]);
       await onMenu({
-        'GET /api/events/ev_1/menu': menuOf(ANSWERED),
+        'GET /api/events/ev_1/menu': menuOf(three),
         'PUT /api/events/ev_1/menu/choices/ch_side': asksFirst(asksMain(74), {
-          menu: { courses: [ANSWERED] },
+          menu: { courses: [three] },
           choiceId: 'ch_side',
         }),
       });
