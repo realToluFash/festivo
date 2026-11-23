@@ -21,8 +21,7 @@ use Psr\Clock\ClockInterface;
  *
  * @phpstan-import-type GuestDish from GuestMenu
  * @phpstan-import-type Course from PicksMenu
- *
- * @phpstan-type Spot array{state: string, dish?: string, variant?: ?string, options?: list<string>, reason?: string, pick?: string, allergens?: list<string>}
+ * @phpstan-import-type Spot from PicksMenu
  */
 final readonly class PicksFigures
 {
@@ -41,7 +40,7 @@ final readonly class PicksFigures
         return Vec\filter($this->headcountCalculator->coming($event), static fn (Guest $person): bool => null !== $person->getFullName());
     }
 
-    /** @return array<string, mixed> `names` is false without guests.read: Needs the host and Who hasn't picked are left out, and each course keeps its counts */
+    /** @return array<string, mixed> `names` is false without guests.read: Needs the host, Who hasn't picked and Given the default are left out, and each course keeps its counts */
     public function of(Event $event, bool $names): array
     {
         $coming = $this->headcountCalculator->coming($event);
@@ -63,10 +62,13 @@ final readonly class PicksFigures
         )));
         $needsHost = [];
         $waiting = [];
+        $given = [];
 
         foreach ($room as $person) {
             $id = $person->getId()->toRfc4122();
             $open = [];
+            $excluded = [];
+            $defaulted = [];
 
             foreach ($courses as $course) {
                 $spot = $spots[$course['id']][$id];
@@ -83,13 +85,32 @@ final readonly class PicksFigures
 
                 if ('none' === $spot['state']) {
                     $open[] = $course['id'];
+
+                    if (isset($spot['excluded'])) {
+                        $excluded[] = ['course' => $course['id'], 'reason' => $spot['excluded']];
+                    }
+                }
+
+                if ('defaulted' === $spot['state']) {
+                    $defaulted[] = ['course' => $course['id'], 'dish' => $spot['dish'] ?? '', 'variant' => $spot['variant'] ?? null, 'options' => $spot['options'] ?? []];
                 }
             }
 
+            $party = self::partyOf($person)->getId()->toRfc4122();
+
             if ([] !== $open) {
-                $waiting[self::partyOf($person)->getId()->toRfc4122()][] = [...self::person($person), 'courses' => $open];
+                $waiting[$party][] = [...self::person($person), 'courses' => $open, 'excluded' => $excluded];
+            }
+
+            if ([] !== $defaulted) {
+                $given[$party][] = [...self::person($person), 'courses' => $defaulted];
             }
         }
+
+        $byParty = static fn (array $people): array => Vec\map(
+            Vec\filter($parties, static fn (array $party): bool => isset($people[$party['id']])),
+            static fn (array $party): array => [...$party, 'people' => $people[$party['id']]],
+        );
 
         return [
             'updatedAt' => $this->clock->now()->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
@@ -100,10 +121,8 @@ final readonly class PicksFigures
             'allIn' => [] === $needsHost && $answered === $roomSize,
             'courses' => Vec\map($courses, fn (array $course): array => $this->course($course, $spots[$course['id']], $roomSize, $names)),
             'needsHost' => $names ? $needsHost : null,
-            'waiting' => $names ? Vec\map(
-                Vec\filter($parties, static fn (array $party): bool => isset($waiting[$party['id']])),
-                static fn (array $party): array => [...$party, 'people' => $waiting[$party['id']]],
-            ) : null,
+            'waiting' => $names ? $byParty($waiting) : null,
+            'given' => $names ? $byParty($given) : null,
             'people' => $names ? Vec\map($room, static fn (Guest $person): array => [
                 ...self::person($person),
                 'party' => self::partyOf($person)->getId()->toRfc4122(),
@@ -171,6 +190,7 @@ final readonly class PicksFigures
             'asksNothing' => PicksMenu::asksNothing($course),
             'skippable' => $course['skippable'],
             'closed' => $course['picksClose']['closed'] ?? false,
+            'default' => $course['default'],
             'rows' => $rows,
             'kitchen' => $count(static fn (array $spot): bool => 'kitchen' === $spot['state']),
             'skipped' => $count(static fn (array $spot): bool => 'skipped' === $spot['state']),

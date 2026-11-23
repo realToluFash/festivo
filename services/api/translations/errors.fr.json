@@ -151,5 +151,7 @@
     "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité.",
     "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine.",
     "audit_export_too_many": "Trop d’entrées à exporter.",
-    "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné."
+    "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné.",
+    "menu_is_default": "This is part of the course’s default. Choose another default first.",
+    "menu_default_move": "Changing the default moves the guests given it. Confirm to change it."
 }

@@ -11,12 +11,14 @@ use Psl\Type;
 use Psl\Vec;
 
 /**
+ * @phpstan-import-type CourseDefault from MealDefault
+ *
  * @phpstan-type Sent array{person: string, course: string, answer: string, dish?: ?string, variant?: ?string, options?: list<string>}
  * @phpstan-type GuestOption array{id: string, name: string, allergens: list<string>}
  * @phpstan-type GuestChoice array{id: string, question: string, pick: int, required: bool, options: list<GuestOption>}
  * @phpstan-type GuestVariant array{id: string, name: string, allergens: list<string>, diets: list<string>}
  * @phpstan-type GuestDish array{id: string, name: string, description: ?string, allergens: ?list<string>, diets: list<string>, variants: list<GuestVariant>, choices: list<GuestChoice>}
- * @phpstan-type GuestCourse array{id: string, name: string, answer: string, skippable: bool, picksClose: array{at: string, source: string, closed: bool}, dishes: list<GuestDish>}
+ * @phpstan-type GuestCourse array{id: string, name: string, answer: string, skippable: bool, picksClose: array{at: string, source: string, closed: bool}, default: ?CourseDefault, dishes: list<GuestDish>}
  */
 final readonly class GuestMenu
 {
@@ -34,6 +36,7 @@ final readonly class GuestMenu
             'answer' => Type\string(),
             'skippable' => Type\bool(),
             'picksClose' => Type\nullable(Type\shape(['at' => Type\string(), 'source' => Type\string(), 'closed' => Type\bool()])),
+            'default' => Type\nullable(PicksMenu::defaultType()),
             'dishes' => Type\vec(Type\mixed_dict()),
         ], true))->coerce($this->menuSerialiser->menu($event)['courses']);
         $dishShape = Type\shape([
@@ -116,6 +119,7 @@ final readonly class GuestMenu
                 'answer' => $course['answer'],
                 'skippable' => $course['skippable'],
                 'picksClose' => $close,
+                'default' => $course['default'],
                 'dishes' => $dishes,
             ];
         }

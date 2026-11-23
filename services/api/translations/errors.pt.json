@@ -151,5 +151,7 @@
     "plan_required": "O plano da organização não inclui esta funcionalidade.",
     "email_domain_taken": "Outra organização já verificou este domínio.",
     "audit_export_too_many": "Há demasiados registos para exportar.",
-    "door_code_invalid": "Esse código não funciona. Confirme-o com quem lho deu."
+    "door_code_invalid": "Esse código não funciona. Confirme-o com quem lho deu.",
+    "menu_is_default": "This is part of the course’s default. Choose another default first.",
+    "menu_default_move": "Changing the default moves the guests given it. Confirm to change it."
 }
