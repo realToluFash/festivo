@@ -28,7 +28,7 @@ import {
 } from '../../components/settingsShell.ts';
 import { Back } from '../../components/SettingsParts.tsx';
 import { Bell as ProductBell } from '../../components/BellButton.tsx';
-import { PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
+import { PortraitRow, PortraitTop as ProductPortraitTop } from '../../components/ListTop.tsx';
 import { useSideFrame } from '../../components/listFrame.ts';
 import { usePillFit } from '../../components/usePillFit.tsx';
 import { useWayBackToNone } from '../../components/wayBackToNone.ts';
@@ -283,32 +283,50 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
   );
 }
 
-/** The product's upright row: the pill, the tabs and the bell, with Search before it unless `search` is false (sc-82858). */
-export function PortraitTop({ at = 'Settings', search = true }: { at?: Tab; search?: boolean }) {
+/** The demo's pill, tabs and bell for the product's upright row, with Search before the bell unless `search` is false (sc-82858). */
+function usePortraitRow(at: Tab, search: boolean) {
   const { t } = useTranslation();
   const shell = useShell();
   const tabs = tabsFor(shell.viewer);
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
+
+  return {
+    renderPill: (room: number | undefined, givesWay: boolean) => (
+      <OrgPill room={room} givesWay={givesWay} />
+    ),
+    bell: search ? (
+      <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+    ) : (
+      <Bell tell={shell.tell} />
+    ),
+    tabLabels: tabs.map(([tab, glyph]) => say(tab, glyph)),
+    renderTabs: (labelSize: number) => (
+      <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
+    ),
+  };
+}
+
+/** The product's upright row: the pill, the tabs and the bell. */
+export function PortraitTop({ at = 'Settings', search = true }: { at?: Tab; search?: boolean }) {
+  const row = usePortraitRow(at, search);
   const insets = useSafeAreaInsets();
   const fromNone = useWayBackToNone();
 
   if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 
+  return <ProductPortraitTop {...row} />;
+}
+
+/** Upright, a held page's top as the product's frame draws it: the pill, the tabs and the bell 28pt in, in line with the card, and what follows them (‹ Settings, or the overdue page's title) in the same band (sc-85022). */
+export function HeldPortraitTop({ search, children }: { search: boolean; children?: ReactNode }) {
+  const row = usePortraitRow('Settings', search);
+  const insets = useSafeAreaInsets();
+
   return (
-    <ProductPortraitTop
-      renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
-      bell={
-        search ? (
-          <SearchAndBell tell={shell.tell} role={shell.looking.role} />
-        ) : (
-          <Bell tell={shell.tell} />
-        )
-      }
-      tabLabels={tabs.map(([tab, glyph]) => say(tab, glyph))}
-      renderTabs={(labelSize) => (
-        <WhiteCapsule tabs={tabs} at={at} onTab={shell.onTab} say={say} labelSize={labelSize} />
-      )}
-    />
+    <View style={[styles.heldTop, { paddingTop: insets.top + tokens.spaceXxs }]}>
+      <PortraitRow {...row} tabsCentred />
+      {children}
+    </View>
   );
 }
 
@@ -325,4 +343,9 @@ const styles = StyleSheet.create({
   task: { paddingHorizontal: tokens.space3xl, gap: tokens.spaceXl },
   taskTablet: { width: '100%', maxWidth: 560, alignSelf: 'center' },
   taskHead: { gap: tokens.spaceMd, paddingTop: tokens.spaceMd, paddingBottom: tokens.spaceSm },
+  heldTop: {
+    gap: tokens.spaceXl,
+    paddingHorizontal: tokens.space4xl,
+    paddingBottom: tokens.spaceXl,
+  },
 });

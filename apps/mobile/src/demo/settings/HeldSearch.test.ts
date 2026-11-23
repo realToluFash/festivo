@@ -15,7 +15,7 @@ describe('sc-82858: the paused page has no Search', () => {
 
   it('drops the sidebar row on its side and the button upright', () => {
     expect(home).toContain('<Landscape column={null} search={search}>');
-    expect(home).toContain('<PortraitTop at="Settings" search={search} />');
+    expect(home).toContain('<HeldPortraitTop search={search}>');
   });
 
   it('keeps Search on the phone only while overdue', () => {
