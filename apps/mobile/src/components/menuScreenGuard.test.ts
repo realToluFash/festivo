@@ -60,6 +60,12 @@ describe('the Menu as its demo draws it (sc-3914)', () => {
     expect(screen.match(/t\('menuPicks\.allIn'\)/gu)).toHaveLength(1);
   });
 
+  it("shows a row's count as the number alone", () => {
+    const row = parts.split('function CountRow(')[1]?.split('\nexport ')[0] ?? '';
+    const count = row.split('style={split ? styles.countSplit : styles.count}>')[1] ?? '';
+    expect(count.split('</Text>')[0]?.trim()).toBe("{t('menuPicks.number', { n: row.chosen })}");
+  });
+
   it('says names need Guests read once, inside Needs the host', () => {
     expect(screen.match(/t\('menuPicks\.needsRead'\)/gu)).toHaveLength(1);
   });
