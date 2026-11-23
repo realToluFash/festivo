@@ -15,6 +15,7 @@ use App\Enum\ErrorCode;
 use App\Enum\NotificationAudienceKind;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
+use App\Repository\KitchenCopyRepository;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\ArrayParameterType;
@@ -42,6 +43,7 @@ final readonly class GuestRemovals
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
         private ClockInterface $clock,
+        private KitchenCopyRepository $kitchenCopyRepository,
     ) {
     }
 
@@ -233,7 +235,7 @@ final readonly class GuestRemovals
         return $erased;
     }
 
-    /** @param list<Guest> $hosts their companions and needs go by the cascade; one audit entry, with the counts when removed together */
+    /** @param list<Guest> $hosts their companions and needs go by the cascade, their rows in the kitchen's copies with them (sc-30812); one audit entry, with the counts when removed together */
     private function eraseNow(array $hosts, string $action): void
     {
         if ([] === $hosts) {
@@ -255,6 +257,7 @@ final readonly class GuestRemovals
             ['guest' => NotificationAudienceKind::Guest->value, 'ids' => $people],
             ['ids' => ArrayParameterType::STRING],
         );
+        $this->kitchenCopyRepository->forget($first->getEvent(), $people);
         $this->connection->executeStatement('DELETE FROM guests WHERE id IN (:ids)', ['ids' => Vec\map($hosts, static fn (Guest $host): string => $host->getId()->toRfc4122())], ['ids' => ArrayParameterType::STRING]);
 
         foreach (Vec\flatten($parties) as $person) {
