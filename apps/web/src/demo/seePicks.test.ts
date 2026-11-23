@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   type PicksWorld,
   PICKS_PAGES,
+  PUFF_PUFF,
+  SW,
   asksNothing,
   chooseFor,
+  containsOf,
   courseFigures,
   defaultedOn,
   giveVariant,
@@ -19,6 +22,8 @@ import {
   openWords,
   percentOf,
   picksStart,
+  ruledOut,
+  ruledWords,
   samplePicks,
   shownCourses,
   spotOf,
@@ -395,5 +400,65 @@ describe('a course’s default (sc-1362)', () => {
 
   it('opens Choose for them on the courses the person was defaulted on', () => {
     expect(picksStart('chooseForDefaulted').opened).toMatchObject({ given: true });
+  });
+});
+
+describe('a dish whose allergens were never stated (sc-87421)', () => {
+  const list = (codes: readonly string[]) => codes.join(' and ');
+  const base = person(samplePicks(), 'kwame-asante');
+  const someone = (allergies: PicksWorld['people'][number]['allergies']) => ({
+    ...base,
+    allergies,
+  });
+  const words = (who: PicksWorld['people'][number]) => {
+    const contains = containsOf(PUFF_PUFF, null, []);
+    return ruledWords(ruledOut(who, contains), contains == null, who.name, list);
+  };
+
+  it('is ruled out, with these words, for a person with one of the 14', () => {
+    expect(containsOf(PUFF_PUFF, null, [])).toBeNull();
+    expect(ruledOut(base, null)).toEqual(['peanuts', 'celery']);
+    expect(words(base)).toBe('Allergens not stated. You can still pick it.');
+  });
+
+  it('is not ruled out for a person with no allergy, or only an Other one', () => {
+    expect(words(someone([]))).toBeNull();
+    expect(words(someone(['other']))).toBeNull();
+  });
+
+  it('words a stated dish as before, including one stated as holding none of the 14', () => {
+    const world = samplePicks();
+    const chinchin = course(world, 'k3').dishes.find((one) => one.id === 'k3-chinchin')!;
+    const ada = person(world, 'ada-obi');
+    const contains = containsOf(chinchin, null, []);
+    expect(ruledWords(ruledOut(ada, contains), contains == null, ada.name, list)).toBe(
+      'Contains milk, which Ada Obi is allergic to. You can still pick it.',
+    );
+    expect(ruledOut(base, containsOf({ ...PUFF_PUFF, contains: 'none' }, null, []))).toEqual([]);
+  });
+
+  it('words the override body and the saved line without a claim about the dish', () => {
+    expect(SW.overrideBodyNotStated('Puff-puff', 'Kwame Asante')).toBe(
+      'Nobody has stated what’s in Puff-puff. If you know it is safe for Kwame Asante, the pick is saved with your name and the time you confirmed it.',
+    );
+    expect(SW.savedOverrideNotStated('Kwame Asante', 'Puff-puff')).toBe(
+      'Recorded as your pick for Kwame Asante, though nobody has stated what’s in Puff-puff.',
+    );
+  });
+
+  it('holds a never-stated pick under Needs the host, saying so', () => {
+    const world = picksStart('picksNotStatedHost').world;
+    const kojo = needsHost(world).find(
+      (one) => one.person.id === 'kojo-asante' && one.course.id === 'k3',
+    );
+    expect(kojo?.reason).toEqual({
+      kind: 'allergy',
+      dish: 'Puff-puff',
+      allergens: ['celery'],
+      notStated: true,
+    });
+    expect(SW.allergyForNotStated('Dessert', 'Puff-puff', 'celery')).toBe(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and celery was recorded after they picked it.',
+    );
   });
 });
