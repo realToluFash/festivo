@@ -397,7 +397,7 @@ final class PaymentRemindersTest extends ApiTestCase
     #[Test]
     public function aLateReminderOnAnotherEventJoinsTheHeldOneAndEachLeadHearsOfTheirOwn(): void
     {
-        $otherEvent = $this->newEvent();
+        $otherEvent = $this->newEvent('Autumn party');
         $otherQuote = $this->quote($otherEvent);
         $lead = $this->member('lead@bloom.events', 'Lola Lead', SeededRole::Member, EventRole::Lead);
         $otherLead = $this->member('other@bloom.events', 'Obi Other', SeededRole::Member, null);
@@ -414,7 +414,7 @@ final class PaymentRemindersTest extends ApiTestCase
         $messages = $this->inApp();
         self::assertSame(['2 payments due in the next 3 days across 2 events'], $messages[$this->owner->getId()->toRfc4122()] ?? []);
         self::assertSame(['1 payment due in the next 3 days on Summer wedding'], $messages[$lead->getId()->toRfc4122()] ?? []);
-        self::assertSame(['1 payment due in the next 3 days on Summer wedding'], $messages[$otherLead->getId()->toRfc4122()] ?? []);
+        self::assertSame(['1 payment due in the next 3 days on Autumn party'], $messages[$otherLead->getId()->toRfc4122()] ?? []);
     }
 
     #[Test]
@@ -449,6 +449,21 @@ final class PaymentRemindersTest extends ApiTestCase
         $this->as($this->owner, 'PUT', $this->payments($payment), ['description' => 'Deposit', 'amount' => '900', 'currency' => 'GBP', 'dueOn' => '2027-03-10']);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame('2027-03-07 09:00:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+    }
+
+    #[Test]
+    public function aHeldPaymentLeavesTheHoldWhenFewerDaysBringItsDayBack(): void
+    {
+        $payment = $this->payment('Deposit', '2027-03-06');
+
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 10]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-01 10:15:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:05:00Z'));
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 3]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-03 09:00:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
     }
 
     #[Test]
@@ -538,10 +553,10 @@ final class PaymentRemindersTest extends ApiTestCase
         return Vec\filter($payments, static fn (array $one): bool => $description === $one['description'])[0]['id'] ?? self::fail('no payment');
     }
 
-    private function newEvent(): string
+    private function newEvent(string $name = 'Summer wedding'): string
     {
         $body = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', [
-            'name' => 'Summer wedding',
+            'name' => $name,
             'type' => 'wedding',
             'startsAt' => '2027-06-12T14:00',
             'endsAt' => '2027-06-13T01:00',

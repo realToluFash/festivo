@@ -124,7 +124,7 @@ final readonly class PaymentReminders
         }
 
         $organisationId = $event->getOrganisation()->getId()->toRfc4122();
-        $this->connection->executeStatement('SELECT pg_advisory_xact_lock(hashtext(:hold))', ['hold' => self::HOLD . ':' . $organisationId]);
+        $this->connection->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:hold, 0))', ['hold' => self::HOLD . ':' . $organisationId]);
 
         $pending = $this->connection->fetchOne(
             'SELECT trigger FROM scheduled_notifications WHERE cancellation_key = :key AND status = :pending',
