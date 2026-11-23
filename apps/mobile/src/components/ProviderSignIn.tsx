@@ -11,7 +11,13 @@ import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { drawnSize } from '../layout/textSize.ts';
 import type { WeightName } from '../theme/fonts.ts';
-import { appleIosSize } from './appleIosSize.ts';
+import {
+  APPLE_IOS_CHROME,
+  APPLE_IOS_LOGO_HEIGHT,
+  APPLE_IOS_LOGO_WIDTH,
+  appleIosGlyph,
+  appleIosSize,
+} from './appleIosSize.ts';
 import { CONTROL_TEXT_SIZE } from './Field.tsx';
 import { OneHeight, useOneHeight } from './OneHeight.tsx';
 import { useGrownLabel } from './SettingsParts.tsx';
@@ -20,8 +26,6 @@ import { Text } from './Text.tsx';
 const appleOnIos = Platform.OS === 'ios';
 // The glyph is centred at 20 units; a band ending at 40.8 centres it at 20.4, putting the glyph 0.3pt above the fill's centre, as on iOS's own.
 const APPLE_IOS_LOGO_BAND = 40.8;
-const APPLE_IOS_LOGO_WIDTH = 15.46;
-const APPLE_IOS_LOGO_HEIGHT = 19;
 
 /** Away from welcome, a failure is said there; on it, the screen says it itself. */
 function failedElsewhere(provider: string): void {
@@ -205,16 +209,15 @@ function AppleMark() {
 /** The iPhone Apple button's words as drawn at the text size, the logo and its gap in proportion to them (sc-84920); stepped down only as far as keeps its longest word whole beside the logo (sc-13496). */
 export function useAppleIosSize(label: string, weight: WeightName, on = true) {
   const { fontScale } = useWindowDimensions();
-  const perPoint = appleIosSize(1);
   const grown = useGrownLabel({
     on,
     label,
     size: CONTROL_TEXT_SIZE,
     weight,
     family: 'system',
-    glyph: (perPoint.logoHeight * APPLE_IOS_LOGO_WIDTH) / APPLE_IOS_LOGO_HEIGHT + perPoint.gap,
+    glyph: appleIosGlyph(),
     beside: 0,
-    chrome: 2 * (tokens.spaceXxl + 1),
+    chrome: APPLE_IOS_CHROME,
   });
 
   return {
