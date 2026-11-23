@@ -38,6 +38,7 @@ import {
   SAVING_MS,
   type System,
   UPDATED_AT,
+  type WhoOpened,
   allergenWords,
   checkDraft,
   choose,
@@ -45,6 +46,7 @@ import {
   dishAllergens,
   draftPick,
   draftWords,
+  givenDefault,
   guestSends,
   hasChanged,
   header,
@@ -53,10 +55,15 @@ import {
   menuStart,
   menuStateOf,
   needsHost,
+  neverGiven,
+  openWords,
   partySize,
   personOf,
+  settle,
+  startDraft,
   whoHasnt,
 } from './menuPicksModel.ts';
+import { ChooseWho } from './MenuPicksWho.tsx';
 import {
   Card,
   CardTitle,
@@ -89,11 +96,13 @@ const NOW = '19:45';
 function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }) {
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
-  const [world, setWorld] = useState<MenuWorld | null>(start.world);
+  const [settled] = useState(() => settle(start));
+  const [world, setWorld] = useState<MenuWorld | null>(settled.world);
   const [system, setSystem] = useState<System | null>(start.system);
   const [download, setDownload] = useState<Download>(start.download);
-  const [opened, setOpened] = useState<Opened | null>(start.opened);
-  const [said, setSaid] = useState<string | null>(null);
+  const [opened, setOpened] = useState<Opened | null>(settled.opened);
+  const [who, setWho] = useState<WhoOpened | null>(settled.who);
+  const [said, setSaid] = useState<string[]>(settled.said);
   const opener = useRef<ViewInstance | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const access = start.access;
@@ -117,11 +126,22 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
     setDownload('downloading');
     later(DOWNLOAD_MS, () => setDownload('shared'));
   };
-  const open = (personId: string, from: ViewInstance | null, courseId?: string) => {
+  const open = (
+    personId: string,
+    from: ViewInstance | null,
+    courseId?: string,
+    given?: boolean,
+  ) => {
     opener.current = from;
-    setSaid(null);
-    setOpened(courseId == null ? { personId } : { personId, courseId });
+    setSaid([]);
+    setOpened({ personId, ...(courseId == null ? {} : { courseId }), ...(given ? { given } : {}) });
   };
+  const openWho =
+    (courseId: string) => (dishId: string, variantId: string, from: ViewInstance | null) => {
+      opener.current = from;
+      setSaid([]);
+      setWho({ courseId, dishId, variantId });
+    };
 
   const hasMenu = world != null && world.courses.length > 0;
   const loading = system === 'loading' || world == null;
@@ -260,7 +280,9 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
           </Text>
         </DemoOnly>
       )}
-      {said != null && <Confirmed words={said} />}
+      {said.map((line) => (
+        <Confirmed key={line} words={line} />
+      ))}
       {world.held > 0 && (
         <Text size={15} style={parts.secondary} testID="menu.held">
           {MW.held(world.held, world.people.length)}
@@ -296,7 +318,12 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
 
   const host = <NeedsHost world={world} access={access} onChoose={open} />;
   const waiting =
-    access === 'counts' ? null : <WhoHasnt world={world} access={access} onChoose={open} />;
+    access === 'counts' ? null : (
+      <>
+        <WhoHasnt world={world} access={access} onChoose={open} />
+        <GivenDefault world={world} access={access} onChoose={open} />
+      </>
+    );
   const next = (
     <Text size={15} style={parts.secondary} testID="menu.next">
       {MW.nextStep}
@@ -306,7 +333,12 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
     <View style={two ? styles.twoAcross : styles.column}>
       {world.courses.map((course) => (
         <View key={course.id} style={two ? styles.half : null}>
-          <CourseCard world={world} course={course} />
+          <CourseCard
+            world={world}
+            course={course}
+            access={access}
+            onChooseWho={openWho(course.id)}
+          />
         </View>
       ))}
     </View>
@@ -340,23 +372,38 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
         </>,
       )}
       <Sheet
-        open={opened != null && person != null}
-        onClose={() => setOpened(null)}
+        open={(opened != null && person != null) || who != null}
+        onClose={() => {
+          setOpened(null);
+          setWho(null);
+        }}
         scrimLabel={MW.cancel}
         opener={opener}
         docked={kind === 'tabletLandscape'}
         headingTakesFocus
         testID="menu.chooseFor"
       >
-        {opened != null && person != null && (
+        {who != null && (
+          <ChooseWho
+            key={`${who.courseId}.${who.variantId}`}
+            world={world}
+            opened={who}
+            onSaved={(next, lines) => {
+              setWorld(next);
+              setSaid(lines);
+            }}
+            onClose={() => setWho(null)}
+          />
+        )}
+        {who == null && opened != null && person != null && (
           <ChooseFor
-            key={`${opened.personId}.${opened.courseId ?? ''}`}
+            key={`${opened.personId}.${opened.courseId ?? ''}.${opened.given === true ? 'given' : ''}`}
             world={world}
             person={person}
             opened={opened}
             onSaved={(course, pick, words) => {
               setWorld((now) => (now == null ? now : choose(now, course.id, person.id, pick)));
-              setSaid(words);
+              setSaid([words]);
             }}
             onClose={() => setOpened(null)}
           />
@@ -437,11 +484,41 @@ function WhoHasnt({
   onChoose: (personId: string, from: ViewInstance | null) => void;
 }) {
   const groups = whoHasnt(world);
+  const never = neverGiven(world);
 
   return (
     <Card testID="menu.whoHasnt">
       <CardTitle words={MW.whoHasnt} />
-      {groups.length === 0 && (
+      {never.length > 0 && (
+        <View style={styles.group} testID="menu.neverGiven">
+          <View style={parts.markLine}>
+            <Glyph name="alert" size={16} ink={tokens.colorAttentionText} />
+            <Text size={15} weight="semibold" accessibilityRole="header">
+              {MW.neverGiven(never.length)}
+            </Text>
+          </View>
+          <Text size={15} style={parts.secondary}>
+            {MW.neverGivenBody}
+          </Text>
+          {never.map(({ person, open }) => (
+            <View key={person.id} style={styles.line}>
+              <Text size={17} weight="semibold">
+                {person.name}
+              </Text>
+              <Text size={15} style={parts.secondary}>
+                {openWords(open)}
+              </Text>
+              <ChooseButton
+                name={person.name}
+                access={access}
+                onPress={(from) => onChoose(person.id, from)}
+                testID={`menu.never.${person.id}`}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+      {groups.length === 0 && never.length === 0 && (
         <Text size={15} style={parts.secondary}>
           {world.courses.length > 0 && needsHost(world).length === 0 ? MW.allIn : MW.whoHasntNone}
         </Text>
@@ -469,7 +546,66 @@ function WhoHasnt({
           ))}
         </View>
       ))}
-      {access === 'read' && groups.length > 0 && (
+      {access === 'read' && groups.length + never.length > 0 && (
+        <Text size={15} style={parts.secondary}>
+          {MW.needsManage}
+        </Text>
+      )}
+    </Card>
+  );
+}
+
+/** Given the default (sc-1362): shown only while someone is defaulted, by who replied. */
+function GivenDefault({
+  world,
+  access,
+  onChoose,
+}: {
+  world: MenuWorld;
+  access: Access;
+  onChoose: (
+    personId: string,
+    from: ViewInstance | null,
+    courseId?: string,
+    given?: boolean,
+  ) => void;
+}) {
+  const groups = givenDefault(world);
+  const count = groups.reduce((sum, group) => sum + group.people.length, 0);
+  if (count === 0) return null;
+
+  return (
+    <Card testID="menu.given">
+      <CardTitle words={MW.given(count)} />
+      <Text size={15} style={parts.secondary}>
+        {MW.givenBody}
+      </Text>
+      {groups.map((group) => (
+        <View key={group.party.id} style={styles.group}>
+          <Text size={15} weight="semibold" style={parts.secondary}>
+            {MW.replied(group.party.replier, partySize(world, group.party))}
+          </Text>
+          {group.people.map(({ person, courses }) => (
+            <View key={person.id} style={styles.line}>
+              <Text size={17} weight="semibold">
+                {person.name}
+              </Text>
+              {courses.map(({ course, pick }) => (
+                <Text key={course.id} size={15} style={parts.secondary}>
+                  {MW.givenOn(course.name, pick)}
+                </Text>
+              ))}
+              <ChooseButton
+                name={person.name}
+                access={access}
+                onPress={(from) => onChoose(person.id, from, undefined, true)}
+                testID={`menu.given.${person.id}`}
+              />
+            </View>
+          ))}
+        </View>
+      ))}
+      {access === 'read' && (
         <Text size={15} style={parts.secondary}>
           {MW.needsManage}
         </Text>
@@ -502,9 +638,15 @@ function ChooseFor({
   onSaved: (course: Course, pick: ReturnType<typeof draftPick>, words: string) => void;
   onClose: () => void;
 }) {
-  const [courses] = useState(() => chooseCourses(world, person, opened.courseId));
+  const [courses] = useState(() => chooseCourses(world, person, opened.courseId, opened.given));
   const [at, setAt] = useState(0);
-  const [draft, setDraft] = useState<Draft>(opened.draft ?? null);
+  const [draft, setDraft] = useState<Draft>(() =>
+    opened.draft !== undefined
+      ? opened.draft
+      : courses[0] == null
+        ? null
+        : startDraft(world, courses[0], person),
+  );
   const first = courses[0] == null ? null : firstCheck(courses[0], person, opened);
   const [blank, setBlank] = useState<string | null>(first?.kind === 'blank' ? first.words : null);
   const [asking, setAsking] = useState<DraftCheck | null>(
@@ -543,8 +685,9 @@ function ChooseFor({
       onSaved(course, draftPick(draft, override, NOW), words);
       if (last) onClose();
       else {
+        const next = courses[at + 1];
         setAt(at + 1);
-        setDraft(null);
+        setDraft(next == null ? null : startDraft(world, next, person));
         setBlank(null);
       }
     }, SAVING_MS);
@@ -620,9 +763,12 @@ function ChooseFor({
                   key={way.id}
                   on={draft.variantId === way.id}
                   title={way.name}
-                  lines={
-                    way.contains.length === 0 ? [] : [MW.contains(allergenWords(way.contains))]
-                  }
+                  lines={[
+                    ...(way.children === true ? [MW.childrenOnly] : []),
+                    ...(way.contains.length === 0
+                      ? []
+                      : [MW.contains(allergenWords(way.contains))]),
+                  ]}
                   allergy={
                     ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)
                   }

@@ -103,29 +103,93 @@ export function CardTitle({ words }: { words: string }) {
   );
 }
 
-function CountRow({ row, room }: { row: FigureRow; room: number }) {
+function CountRow({
+  row,
+  dish,
+  room,
+  split,
+  chooseWho,
+}: {
+  row: FigureRow;
+  dish: string;
+  room: number;
+  split: boolean;
+  chooseWho: ((from: ViewInstance | null) => void) | null;
+}) {
+  const ref = useRef<ViewInstance>(null);
   const inset = row.kind !== 'dish';
   const lead = row.kind === 'variant' ? `${MW.variant} ` : row.kind === 'side' ? `${MW.side} ` : '';
   const contains = row.contains.length === 0 ? null : MW.contains(allergenWords(row.contains));
-  const said = [`${lead}${row.name}`, contains, `${row.count} of ${room}`]
+  const figure = split ? MW.rowSaid(row.chosen, row.defaulted) : `${row.chosen} of ${room}`;
+  const said = [`${lead}${row.name}`, row.children ? MW.childrenOnly : null, contains, figure]
     .filter(Boolean)
     .join(', ');
+  const size = inset ? 15 : 17;
 
   return (
-    <View style={[styles.row, inset && styles.inset]} accessible accessibilityLabel={said}>
-      <View style={styles.flex}>
-        <Text size={inset ? 15 : 17} weight={inset ? 'regular' : 'semibold'}>
-          {`${lead}${row.name}`}
+    <View style={[styles.rowWrap, inset && styles.inset]}>
+      <View style={styles.rowLine} accessible accessibilityLabel={said}>
+        <View style={styles.flex}>
+          <Text size={size} weight={inset ? 'regular' : 'semibold'}>
+            {`${lead}${row.name}`}
+          </Text>
+          {row.children && (
+            <Text size={15} style={styles.secondary}>
+              {MW.childrenOnly}
+            </Text>
+          )}
+          {contains != null && (
+            <Text size={15} style={styles.secondary}>
+              {contains}
+            </Text>
+          )}
+        </View>
+        <Text size={size} weight="semibold" style={split ? styles.countSplit : styles.count}>
+          {row.chosen}
         </Text>
-        {contains != null && (
-          <Text size={15} style={styles.secondary}>
-            {contains}
+        {split && (
+          <Text size={size} weight="semibold" style={styles.countSplit}>
+            {row.defaulted}
           </Text>
         )}
       </View>
-      <Text size={inset ? 15 : 17} weight="semibold" style={styles.count}>
-        {row.count}
+      {chooseWho != null && (
+        <View style={styles.choose}>
+          <SecondaryButton
+            ref={ref}
+            label={MW.chooseWho}
+            accessibilityLabel={MW.chooseWhoLabel(row.name, dish)}
+            onPress={() => chooseWho(ref.current)}
+            testID={`menu.who.${row.id}`}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** The column heads over a course with a default: Defaulted beside Chosen, never inside it. */
+function SplitHead({ left, right }: { left: string; right: readonly string[] }) {
+  return (
+    <View
+      style={styles.splitHead}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Text size={13} weight="semibold" accessible={false} style={[styles.secondary, styles.flex]}>
+        {left}
       </Text>
+      {right.map((one) => (
+        <Text
+          key={one}
+          size={13}
+          weight="semibold"
+          accessible={false}
+          style={[styles.secondary, styles.countSplit]}
+        >
+          {one}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -146,8 +210,19 @@ function StateRow({ words, count, mark }: { words: string; count: number; mark?:
   );
 }
 
-export function CourseCard({ world, course }: { world: MenuWorld; course: Course }) {
+export function CourseCard({
+  world,
+  course,
+  access,
+  onChooseWho,
+}: {
+  world: MenuWorld;
+  course: Course;
+  access: Access;
+  onChooseWho: (dishId: string, variantId: string, from: ViewInstance | null) => void;
+}) {
   const figures = courseFigures(world, course);
+  const dishName = (id: string) => course.dishes.find((one) => one.id === id)?.name ?? '';
   const room = world.people.length;
   const close = courseClose(world, course);
 
@@ -167,10 +242,33 @@ export function CourseCard({ world, course }: { world: MenuWorld; course: Course
           {close.words}
         </Text>
       </View>
+      {figures.asksNothingLine != null && (
+        <Text size={15} style={styles.secondary} testID={`menu.course.${course.id}.asksNothing`}>
+          {figures.asksNothingLine}
+        </Text>
+      )}
+      {figures.defaultLine != null && (
+        <Text size={15} style={styles.ink} testID={`menu.course.${course.id}.default`}>
+          {figures.defaultLine}
+        </Text>
+      )}
       <View style={styles.rows}>
+        {figures.hasDefault && <SplitHead left={MW.dish} right={[MW.chosen, MW.defaulted]} />}
         {figures.rows.map((row) => (
-          <CountRow key={row.id} row={row} room={room} />
+          <CountRow
+            key={row.id}
+            row={row}
+            dish={dishName(row.dishId)}
+            room={room}
+            split={figures.hasDefault}
+            chooseWho={
+              row.children && access === 'manage'
+                ? (from) => onChooseWho(row.dishId, row.id, from)
+                : null
+            }
+          />
         ))}
+        {figures.hasDefault && <SplitHead left={MW.everyoneElse} right={[MW.peopleHead]} />}
         {figures.kitchen > 0 && <StateRow words={MW.kitchen} count={figures.kitchen} />}
         {figures.skipped > 0 && <StateRow words={MW.skipped} count={figures.skipped} />}
         {figures.host > 0 && <StateRow words={MW.hostRow} count={figures.host} mark />}
@@ -267,11 +365,15 @@ export function Choice({
 export function OverrideAlert({
   title,
   body,
+  keep = MW.chooseAnother,
+  go = MW.pickAnyway,
   onAnother,
   onAnyway,
 }: {
   title: string;
   body: string;
+  keep?: string;
+  go?: string;
   onAnother: () => void;
   onAnyway: () => void;
 }) {
@@ -301,15 +403,11 @@ export function OverrideAlert({
           <View style={styles.alertActions}>
             <PrimaryButton
               ref={another}
-              label={MW.chooseAnother}
+              label={keep}
               onPress={onAnother}
               testID="menu.override.another"
             />
-            <SecondaryButton
-              label={MW.pickAnyway}
-              onPress={onAnyway}
-              testID="menu.override.anyway"
-            />
+            <SecondaryButton label={go} onPress={onAnyway} testID="menu.override.anyway" />
           </View>
         </View>
       </View>
@@ -362,6 +460,32 @@ export const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   rows: { marginTop: tokens.spaceSm },
+  rowWrap: {
+    paddingVertical: tokens.spaceSm,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
+  rowLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  splitHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: tokens.spaceSm,
+    paddingBottom: tokens.spaceXs,
+  },
+  countSplit: { minWidth: 72, flexShrink: 1, textAlign: 'right' },
+  tick: {
+    flexDirection: 'row',
+    gap: tokens.spaceMd,
+    alignItems: 'flex-start',
+    minHeight: tokens.sizeHit,
+    paddingVertical: tokens.spaceSm,
+  },
+  allergyLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceXs,
+    flexWrap: 'wrap',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',

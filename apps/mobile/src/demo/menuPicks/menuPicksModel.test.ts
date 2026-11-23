@@ -11,18 +11,29 @@ import {
   courseFigures,
   courseOf,
   draftPick,
+  givenDefault,
+  goesBackWords,
   guestSends,
+  hasVariant,
   header,
   headerClose,
   hostCounts,
   hostLineWords,
   menuStart,
   needsHost,
+  neverGiven,
+  openWords,
   personOf,
   sampleMenu,
+  setStarter,
+  settle,
   spotOf,
+  startDraft,
   sumOf,
+  tickedOf,
   whoHasnt,
+  whoOutcome,
+  withDefaults,
 } from './menuPicksModel.ts';
 
 const world = sampleMenu();
@@ -174,5 +185,143 @@ describe('the counts move while the screen is open', () => {
       'Ama Mensah',
     ]);
     expect(header(sent.world)).toContain('41 of 48 picks in');
+  });
+});
+
+describe('a course’s default (sc-1362)', () => {
+  const before = withDefaults(sampleMenu());
+  const after = withDefaults(sampleMenu(TODAY.allClosed));
+  const both = withDefaults(sampleMenu(TODAY.allClosed), true);
+  const main = (shown = after) => courseOf(shown, 'k2')!;
+
+  it('names the default under the course, before and after its close', () => {
+    expect(courseFigures(before, main(before)).defaultLine).toBe(
+      'Default: Jollof rice, Chicken. Given on Friday, May 28 to anyone coming who hasn’t answered.',
+    );
+    expect(courseFigures(after, main()).defaultLine).toBe(
+      'Default: Jollof rice, Chicken. Given on Friday, May 28 to 2 guests who hadn’t answered.',
+    );
+  });
+
+  it('counts the defaulted beside the chosen, never inside them', () => {
+    const jollof = courseFigures(after, main()).rows.find((row) => row.id === 'v-chicken')!;
+    const without = courseFigures(sampleMenu(TODAY.allClosed), main()).rows.find(
+      (row) => row.id === 'v-chicken',
+    )!;
+    expect(jollof).toMatchObject({ chosen: without.chosen, defaulted: 2 });
+    expect(sumOf(courseFigures(after, main()))).toBe(48);
+  });
+
+  it('lists the people never given the default first, with the reason', () => {
+    expect(neverGiven(before).map(({ person, open }) => [person.name, openWords(open)])).toEqual([
+      ['Bea Mensah', 'Not chosen: Starters, Main course · Vegetarian and Dessert'],
+      ['Kwame Asante', 'Not chosen: Main course · allergy'],
+      ['Nadia Petrova', 'Not chosen: Starters, Main course · Other diet and Dessert'],
+    ]);
+    const rest = whoHasnt(before).flatMap((group) => group.people.map((one) => one.person.id));
+    expect(rest).not.toContain('bea-mensah');
+    expect(rest).toContain('kofi-mensah');
+  });
+
+  it('keeps the people never given it after the close, when everyone else is defaulted', () => {
+    expect(neverGiven(both).map((one) => one.person.name)).toEqual([
+      'Bea Mensah',
+      'Kwame Asante',
+      'Nadia Petrova',
+    ]);
+  });
+
+  it('lists Given the default by party, and only while someone is defaulted', () => {
+    expect(givenDefault(before)).toEqual([]);
+    expect(
+      givenDefault(both).flatMap((group) =>
+        group.people.map(({ person, courses }) => [
+          person.name,
+          courses.map((one) => `${one.course.name}: ${one.pick}`),
+        ]),
+      ),
+    ).toEqual([
+      ['Bea Mensah', ['Dessert: Zobo sorbet']],
+      ['Kofi Mensah', ['Main course: Jollof rice, Chicken', 'Dessert: Zobo sorbet']],
+      ['Ama Mensah', ['Dessert: Zobo sorbet']],
+      ['Ivan Petrov', ['Main course: Jollof rice, Chicken']],
+    ]);
+  });
+
+  it('opens Choose for them at the default, and saving takes the person off for that course', () => {
+    const kofi = personOf(after, 'kofi-mensah')!;
+    expect(startDraft(after, main(), kofi)).toEqual({
+      kind: 'dish',
+      dishId: 'k2-jollof',
+      variantId: 'v-chicken',
+      sideId: null,
+    });
+    const saved = settle(menuStart('chooseForDefaultedSaved'));
+    expect(saved.said).toEqual(['Main course chosen for Kofi Mensah: Suya wrap, Beef.']);
+    expect(givenDefault(saved.world!).flatMap((g) => g.people.map((one) => one.person.id))).toEqual(
+      ['ivan-petrov'],
+    );
+  });
+});
+
+describe('Choose who gets it, on a Children only variant (sc-3909)', () => {
+  const kids = { courseId: 'k2', dishId: 'k2-jollof', variantId: 'v-kids' } as const;
+
+  it('ticks whoever has the variant now', () => {
+    expect([...tickedOf(world, kids)]).toEqual(['tobi-bello', 'ife-adeyemi']);
+  });
+
+  it('asks the override question for anyone newly ticked it rules out', () => {
+    const ticked = new Set(['tobi-bello', 'ife-adeyemi', 'kojo-asante']);
+    expect(whoOutcome(world, kids, ticked, false, '19:45')).toMatchObject({
+      kind: 'ask',
+      title: 'Kojo Asante: give Children’s portion anyway?',
+    });
+  });
+
+  it('gives it as the host’s pick, recorded despite the record when confirmed', () => {
+    const saved = settle(menuStart('chooseWhoSaved'));
+    expect(saved.said).toEqual([
+      'Children’s portion, Jollof rice: 3 people now.',
+      'Kojo Asante recorded as your pick despite the record.',
+    ]);
+    expect(saved.world!.picks.k2?.['kojo-asante']).toMatchObject({
+      variantId: 'v-kids',
+      override: { by: HOST },
+    });
+  });
+
+  it('sends an unticked person to not chosen on a course guests choose', () => {
+    const out = whoOutcome(world, kids, new Set(['tobi-bello']), false, '19:45');
+    if (out.kind !== 'saved') throw new Error(out.kind);
+    expect(spotOf(out.next, course('k2'), person('ife-adeyemi')).kind).toBe('none');
+    expect(goesBackWords(course('k2'), person('ife-adeyemi'))).toBe('Goes back to not chosen.');
+  });
+
+  it('sends an unticked person back to the Everyone variant on a course that asks nothing', () => {
+    const set = setStarter(world);
+    const starter = courseOf(set, 'k1')!;
+    const small = { courseId: 'k1', dishId: 'k1-pepper', variantId: 'v-small' } as const;
+    const out = whoOutcome(set, small, new Set(['tobi-bello', 'ife-adeyemi']), false, '19:45');
+    if (out.kind !== 'saved') throw new Error(out.kind);
+    expect(hasVariant(out.next, starter, person('sasha-petrova'), 'v-small')).toBe(false);
+    expect(spotOf(out.next, starter, person('sasha-petrova'))).toMatchObject({
+      kind: 'dish',
+      variantId: 'v-full',
+    });
+    expect(goesBackWords(starter, person('sasha-petrova'))).toBe('Goes back to Full bowl.');
+    expect(goesBackWords(starter, person('kojo-asante'))).toBe('Goes back to Needs the host.');
+  });
+
+  it('refuses with a 403 and saves nothing', () => {
+    const ticked = tickedOf(world, { ...kids, toggle: ['ife-adeyemi'] });
+    expect(whoOutcome(world, { ...kids, refuses: true }, ticked, false, '19:45')).toEqual({
+      kind: 'refused',
+    });
+  });
+
+  it('is never offered to a guest picking for themselves', () => {
+    const sent = guestSends(world)!;
+    expect(sent.world.picks.k2?.['bea-mensah']).toMatchObject({ variantId: 'v-chicken' });
   });
 });
