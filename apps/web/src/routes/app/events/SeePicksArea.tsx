@@ -14,13 +14,17 @@ import {
   against,
   clockOf,
   defaultPick,
+  defaultedOn,
   dishRuledOut,
   excludedOf,
+  goesBackTo,
   hostCount,
   listFormat,
   mealPickName,
   menuCourseOf,
   plateOf,
+  showsDefaulted,
+  waitingSplit,
 } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -307,18 +311,14 @@ function Picks({
       </>
     );
 
-  const asked = (picks.waiting ?? [])
-    .map((party) => ({
+  const { never, parties: waiting } = waitingSplit(
+    (picks.waiting ?? []).map((party) => ({
       ...party,
       people: party.people.filter(
         (person) => askedFor == null || person.courses.includes(askedFor),
       ),
-    }))
-    .filter((party) => party.people.length > 0);
-  const never = asked.flatMap((party) => party.people.filter((one) => one.excluded.length > 0));
-  const waiting = asked
-    .map((party) => ({ ...party, people: party.people.filter((one) => one.excluded.length === 0) }))
-    .filter((party) => party.people.length > 0);
+    })),
+  );
   const given = picks.given ?? [];
   const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
   const openWords = (person: (typeof never)[number]) =>
@@ -637,15 +637,13 @@ function CourseCard({
   const { t, i18n } = useTranslation();
   const titleId = `pk-course-${course.id}`;
   const options = course.rows.some((row) => row.kind === 'option');
-  const defaults = course.default != null || course.rows.some((row) => row.defaulted > 0);
+  const defaults = showsDefaulted(course);
   const defaultLine = (() => {
     if (course.default == null || menuCourse == null) return null;
     const pick = defaultPick({ courses: [menuCourse] }, { course: course.id, ...course.default });
     const date = closeDay(`${course.default.chooseBy}T12:00:00Z`, 'UTC', i18n.language);
     if (!course.closed) return t('seePicks.defaultLine', { pick, date });
-    const count = course.rows
-      .filter((row) => row.kind === 'dish')
-      .reduce((sum, row) => sum + row.defaulted, 0);
+    const count = defaultedOn(course);
 
     return count === 0
       ? t('seePicks.defaultLineNobody', { pick, date })
@@ -1195,13 +1193,12 @@ function ChooseWho({
   const dishName = dish?.name ?? '';
   const ruledFor = (person: PicksRoomPerson) => against(row.allergens, person.allergens);
   const goesBack = (person: PicksRoomPerson): string => {
-    if (!course.asksNothing || dish == null) return t('seePicks.goesBackNone');
-    const everyone = dish.variants.find((one) => one.for === 'everyone');
-    const plate = everyone == null ? dish.allergens : everyone.allergens;
-    if (against(plate, person.allergens).length > 0)
-      return t('seePicks.goesBack', { to: t('seePicks.needsHost') });
+    const to = goesBackTo(course, dish, person);
+    if (to.kind === 'notChosen') return t('seePicks.goesBackNone');
 
-    return t('seePicks.goesBack', { to: everyone?.name ?? dish.name });
+    return t('seePicks.goesBack', {
+      to: to.kind === 'needsHost' ? t('seePicks.needsHost') : to.name,
+    });
   };
 
   const save = async (confirmed: boolean) => {

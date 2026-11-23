@@ -254,13 +254,6 @@ export const variantLeavesDefault = (
       (course.dishes.find((one) => one.id === dishId)?.variants.length ?? 0) === 0
     : forChildren && isDefaultVariant(course, dishId, variantId));
 
-/** The defaulted people See picks counts on a course: each person once, on the default's dish row. */
-export function givenOn(
-  rows: readonly { kind: string; dish: string | null; id: string; defaulted: number }[],
-): number {
-  return rows.filter((row) => row.kind === 'dish').reduce((sum, row) => sum + row.defaulted, 0);
-}
-
 export function dayWords(date: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     weekday: 'long',
