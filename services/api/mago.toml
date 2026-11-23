@@ -189,6 +189,7 @@ health = ["App\\Health\\**"]
 app_version = ["App\\AppVersion\\**"]
 locale = ["App\\Locale\\**"]
 storage = ["App\\Storage\\**"]
+pdf = ["App\\Pdf\\**"]
 realtime = ["App\\Realtime\\**"]
 translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
@@ -220,6 +221,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:deletion"
 [[guard.perimeter.rules]]
 namespace = "App\\Doctrine\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:doctrine"]
+
+# The PDF maker (sc-3911): HTML in, a tagged PDF out, by WeasyPrint on the image (sc-5821).
+[[guard.perimeter.rules]]
+namespace = "App\\Pdf\\"
+permit = ["@layer:native", "@layer:external", "@layer:pdf"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\AppVersion\\"
@@ -425,6 +431,7 @@ permit = [
     "@layer:audit",
     "@layer:realtime",
     "@layer:locale",
+    "@layer:pdf",
 ]
 
 # Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
