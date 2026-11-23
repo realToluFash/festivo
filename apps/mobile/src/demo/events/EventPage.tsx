@@ -134,7 +134,7 @@ import {
   isIn,
   peopleOn,
 } from '../guests/GuestsModel.ts';
-import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
+import { lastLooked, markLooked, resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
@@ -257,8 +257,8 @@ export function EventScreen({
   people?: CardState | null;
   /** People's own query, when People opens in this frame from its own page (sc-67665). */
   peopleParams?: PeopleParams | undefined;
-  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
-  guestsFrom?: FilterKey | null;
+  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786); the bell's Guest replies item over another event opens Changed since you looked (sc-84453). */
+  guestsFrom?: ListFilter | null;
   without?: AreaKey | undefined;
   origin?: OriginState | null;
   /** Opened from its link (sc-80863): a move into the event's organisation is said at the head of Overview, until the person leaves it. */
@@ -303,7 +303,12 @@ export function EventScreen({
   });
   const [peopleAt, setPeopleAt] = useState<PeopleParams>(peopleParams ?? {});
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
-  const [sinceFrom, setSinceFrom] = useState<string | null>(null);
+  const [sinceFrom, setSinceFrom] = useState<string | null>(() =>
+    figureOpens === 'changed' ? lastLooked() : null,
+  );
+  useEffect(() => {
+    if (figureOpens === 'changed') markLooked(now);
+  }, [figureOpens, now]);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (isTellKind(messages)) {
@@ -560,6 +565,7 @@ export function EventScreen({
     setGuestsFrom('changed');
     setAt('guests');
   };
+  const areaBehind = top.up(() => setAt('overview')) ?? top.behind;
   const bell = useEventBell({
     eventId: event.id,
     startOpen: openedOver?.bell === true,
@@ -798,6 +804,7 @@ export function EventScreen({
         badge={messagesHere && messagesSeen ? badgeFor(m) : null}
         filterFrom={guestsFrom}
         sinceFrom={sinceFrom}
+        behind={top.up(() => setAt('overview'))}
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
@@ -917,7 +924,7 @@ export function EventScreen({
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       without={without}
-      behind={top.behind}
+      behind={at === 'overview' ? top.behind : areaBehind}
       besideBack={at === 'overview' ? top.besideBack : undefined}
       toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
@@ -1036,10 +1043,15 @@ function useBehind(opened: Opened | undefined) {
 
   return {
     behind: upright ? { label: words(BACK_KEY[screen]), onPress: leave } : undefined,
+    /** Over another event's page from the bell, an area's ‹ reads Overview, as any area's does, and Overview's reads Event (sc-84453). */
+    up: (onOverview: () => void) =>
+      upright && screen === 'event'
+        ? { label: words('eventNav.overview'), onPress: onOverview }
+        : undefined,
     besideBack: upright && node != null ? { node, onPlaced: setBeside } : undefined,
     ownLine: upright && node != null && !beside ? <View style={styles.ownLine}>{node}</View> : null,
     picker: upright ? (
-      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. On an iPad, another event's page from the bell reads Event and goes back to that event at its Guests, filtered to Coming; deleted meanwhile, that page reads This event is not available. The bell on this page opens over it: a notification for another event opens that event over this page, one for this event opens here. Nothing is sent.">
+      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. On an iPad, another event's page from the bell reads Event and goes back to that event at its Guests, filtered to Coming; deleted meanwhile, that page reads This event is not available. The bell on this page opens over it: a notification for another event opens that event over this page (its Guest replies at Guests, Changed since you looked, where ‹ reads Overview), one for this event opens here. Nothing is sent.">
         <Choices
           heading="Opened over"
           options={openersFor(shell.layout).map((key) => ({

@@ -127,6 +127,7 @@ export function GuestsScreen({
   badge,
   filterFrom,
   sinceFrom = null,
+  behind,
   onWrite,
   onConversation,
   onMakeLive,
@@ -142,6 +143,8 @@ export function GuestsScreen({
   filterFrom: ListFilter | null;
   /** sc-4331: the last look the bell's item counts from, taken before it marked the item read. */
   sinceFrom?: string | null;
+  /** Upright on an iPad, ‹ above the list when it is not Events: Overview over another event's page from the bell (sc-84453). */
+  behind?: { label: string; onPress: () => void } | undefined;
   onWrite: () => void;
   onConversation: (guest: string) => void;
   onMakeLive: () => void;
@@ -819,6 +822,7 @@ export function GuestsScreen({
             ? { label: W.guests, onPress: closeGuest }
             : null
       }
+      behind={behind}
       phoneBack={
         refreshing != null && inPortuguese
           ? { label: portuguese('eventNav.overview'), onPress: () => onArea('overview') }
