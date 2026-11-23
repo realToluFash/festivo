@@ -7,7 +7,7 @@ import {
   allergenName,
   listOf,
 } from './menuLibrary.ts';
-import { variantsOf } from './dishVariants.ts';
+import { hasVariants, variantsOf } from './dishVariants.ts';
 import type { EvCourse, EvDish, Picker } from './menuCourses.ts';
 
 /** sc-3913's MenuChange dialog (boards MenuChange-*, page e32): a change to a menu guests have picked from asks the host first, naming who it asks again and for which course. */
@@ -65,9 +65,7 @@ type Picked = Pick<EvDish, 'pickers' | 'variants'>;
 
 /** Everyone on the dish, with the allergies they recorded: on its variants when it has them. */
 export const pickersOf = (dish: Picked): readonly Picker[] =>
-  dish.variants != null && dish.variants.length > 0
-    ? dish.variants.flatMap((one) => one.pickers)
-    : dish.pickers;
+  hasVariants(dish) ? variantsOf(dish).flatMap((one) => one.pickers) : dish.pickers;
 
 export const pickedBy = (dish: Picked): number => pickersOf(dish).length;
 

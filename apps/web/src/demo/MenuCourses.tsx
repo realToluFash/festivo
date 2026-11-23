@@ -1875,9 +1875,7 @@ function panelTitle(open: Open, dish: EvDish | null): string {
     const name = dish?.name ?? '';
     if (open.mode === 'addFirst') return VW.addFirstTitle(name);
     if (open.mode === 'add') return VW.addTitle(name);
-    const variant = variantsOf(dish ?? { name, contains: null, diets: [] }).find(
-      (one) => one.id === open.variantId,
-    );
+    const variant = variantsOf(dish ?? {}).find((one) => one.id === open.variantId);
 
     return VW.editTitle(variant?.name ?? '');
   }
