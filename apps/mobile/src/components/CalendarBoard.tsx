@@ -107,13 +107,14 @@ function lookOf(big: boolean, phone: boolean): GridLook {
   return LOOKS[big ? 'big' : phone ? 'phone' : 'wide'];
 }
 
-/** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion. */
+/** A scroll the page drives itself, over motionSlow with motionEase, or at once under Reduce Motion; a glide the next one stops never calls its done. */
 function useGlide(reduced: boolean) {
   const running = useRef<Animated.CompositeAnimation | null>(null);
 
   return useCallback(
     (from: number, to: number, apply: (y: number) => void, done: () => void) => {
       running.current?.stop();
+      running.current = null;
       if (reduced || Math.abs(to - from) < 1) {
         apply(to);
         done();
@@ -127,9 +128,9 @@ function useGlide(reduced: boolean) {
         easing: motionEase,
         useNativeDriver: false,
       });
-      running.current.start(() => {
+      running.current.start(({ finished }) => {
         value.removeListener(heard);
-        done();
+        if (finished) done();
       });
     },
     [reduced],
