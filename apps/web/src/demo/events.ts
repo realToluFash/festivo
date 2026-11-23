@@ -1600,6 +1600,11 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       list('emptyDrafts', 'No drafts'),
       list('emptyPast', 'Nothing on Past'),
       list('offline', 'Offline'),
+      {
+        to: '/demo/events?notice=gate,changed',
+        name: 'The sign-in rules’ notices above the title',
+      },
+      { to: '/demo/events?state=offline&notice=due', name: 'Offline, then two-factor due' },
       list('noGuests', 'Nobody invited yet, the guest counts at 0'),
       list('replyLands', 'A reply lands: 97 coming, 24 haven’t replied, in place'),
       list('tileInvited', 'Guests invited chosen: the events with invited guests, and Clear'),

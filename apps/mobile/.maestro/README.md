@@ -134,6 +134,8 @@ A check is written like a flow, and also:
 A check that needs one request held, not the whole API, runs with `QA_API_URL` pointed at
 `node scripts/qa-slow-proxy.mjs --target <api url> --path <regex> [--method POST] [--delay ms]`,
 which holds requests of that method (GET unless told) whose path matches, and names the command in its header.
+With `--status <code>` or `--body <file>` it answers those requests itself, a failure or an
+edited copy of the API's answer, instead of forwarding them.
 
 A check that needs the API held asks the harness through `batch/helper.js` with
 `ASK: /api?to=paused`, `/api?to=stopped` or `/api?to=up`. It answers once the QA stack's `api`

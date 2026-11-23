@@ -167,13 +167,14 @@ a restore has no erasures to replay.
 
 ### Rehearsed
 
-| Date        | Stack                                                       | Backup            | Restore took |
-| ----------- | ----------------------------------------------------------- | ----------------- | ------------ |
-| 23 Nov 2026 | the QA stack (`soirely-qa`) at main 44f2772, its localstack | 286 kB, encrypted | 312 s        |
-| 23 Nov 2026 | the ops stack (`soirely-ops`) at 20561c5, its localstack    | 284 kB, encrypted | 152 s        |
+| Date        | Stack                                                                       | Backup            | Restore took                     |
+| ----------- | --------------------------------------------------------------------------- | ----------------- | -------------------------------- |
+| 23 Nov 2026 | the QA stack (`soirely-qa`) at main 44f2772, its localstack                 | 286 kB, encrypted | 312 s                            |
+| 23 Nov 2026 | the ops stack (`soirely-ops`) at 20561c5, its localstack                    | 284 kB, encrypted | 152 s                            |
+| 23 Nov 2026 | the QA stack (`soirely-qa3`) at main 9069ada (with 97b11b1), its localstack | 288 kB, encrypted | 44 s (41 s, 41 s on two re-runs) |
 
 Each taken from that stack's own backup. At 20561c5 the script reads the services to close
-once, and the API answered nothing from close to open. A guest renamed after the backup came back with the
+once, and the API answered nothing from close to open; at 9069ada `/api/health` answered 000 on every half-second poll from closing to opening, on all three runs. A guest renamed after the backup came back with the
 name the backup held, and a guest added after it was gone. Every `app:prune-*` and
 `app:erase-*` in the crontab ran before the API opened, and it answered `/api/health`.
 

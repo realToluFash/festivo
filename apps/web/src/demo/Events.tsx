@@ -66,6 +66,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 import { isLong, nameSample } from './longName.ts';
 import { HeldStandIn, Switched } from './OrgSwitcher.tsx';
+import { DemoRuleNotices } from './RuleNotices.tsx';
 import { SIDEBAR_EVENTS, VIEWERS } from './settings.ts';
 import type { EventKey } from './today.ts';
 import { isFresh, useHeld, useSwitcherStart, useWhere } from './switcher.ts';
@@ -282,6 +283,7 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
     <div className="desk-page">
       <div className="ev-column">
         {offline && <OfflineBox onRetry={() => setOffline(false)} />}
+        <DemoRuleNotices />
         <div>
           <ListTop tell={tell} creates={!start.reads} />
           {summary != null && <p className="desk-line">{summary}</p>}
