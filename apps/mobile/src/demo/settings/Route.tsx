@@ -211,14 +211,15 @@ export function SettingsRoute({
           ? SingleSignOnSection
           : PAGES[shown];
   const home = <SettingsHome {...handlers} held={held} />;
-  // A section pushed while paused: the paused page stands in for it under ‹ Settings, which goes back to the paused Settings (sc-83881).
+  // An organisation's row opened while paused: the paused page stands in for it, under ‹ Settings back to the list, or beside the list on its side (sc-86077).
   const pausedOver = held === 'paused' &&
     Page != null &&
     !opensWhilePaused(dataShown == null ? shown : null) && (
       <SettingsHome
         {...handlers}
         held={held}
-        back={layout === 'landscape' ? undefined : () => router.replace(settingsHome)}
+        over
+        back={layout === 'landscape' ? undefined : toSettings}
       />
     );
 

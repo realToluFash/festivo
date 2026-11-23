@@ -167,13 +167,14 @@ function useDemoList(
   };
 }
 
-/** Settings itself: on a phone one column; upright your account's group beside the organisation's. */
+/** Settings itself: on a phone one column; upright your account's group beside the organisation's. While paused the list stays Settings' home, and `over` is the paused page a row of the organisation's opened (sc-86077). */
 export function SettingsHome({
   onSignOut,
   onDemo,
   held = null,
   back,
-}: Handlers & { held?: Held | null; back?: (() => void) | undefined }) {
+  over = false,
+}: Handlers & { held?: Held | null; back?: (() => void) | undefined; over?: boolean }) {
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -190,7 +191,9 @@ export function SettingsHome({
     </Title>
   );
 
-  if (held != null)
+  const paused = held === 'paused';
+
+  if (held === 'overdue' || (paused && (over || shell.layout === 'landscape')))
     return (
       <PausedHere.Provider value={held === 'paused'}>
         <HeldSettings
@@ -209,7 +212,7 @@ export function SettingsHome({
 
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={shell.listColumn}>
+      <Landscape column={shell.listColumn} search={!paused}>
         <TitleCap.Provider value={titleCap.cap}>
           <ChooseASection />
         </TitleCap.Provider>
@@ -233,7 +236,7 @@ export function SettingsHome({
           <View style={styles.orgRow}>
             {backToNone || <OrgPill />}
             <View style={styles.grow} />
-            {backToNone ? (
+            {backToNone || paused ? (
               <Bell tell={shell.tell} />
             ) : (
               <SearchAndBell tell={shell.tell} role={shell.looking.role} />
@@ -256,7 +259,7 @@ export function SettingsHome({
 
   return (
     <View style={styles.page}>
-      <PortraitTop at="Settings" />
+      <PortraitTop at="Settings" search={!paused} />
       {backToNone !== false && <View style={styles.portraitBack}>{backToNone}</View>}
       <ScrollView
         style={styles.grow}
@@ -314,13 +317,14 @@ function HeldSettings({
     </TitleCap.Provider>
   );
 
+  // Paused sits beside the Settings list, where Choose a section sits otherwise, and the list's column carries the bell (sc-86077).
   if (shell.layout === 'landscape')
     return (
-      <Landscape column={null} search={search}>
+      <Landscape column={held === 'paused' ? shell.listColumn : null} search={search}>
         <View style={styles.heldSide}>
           <View style={styles.heldSideTop}>
             {title != null && <View style={styles.grow}>{title}</View>}
-            <Bell tell={shell.tell} />
+            {held !== 'paused' && <Bell tell={shell.tell} />}
           </View>
           {standIn}
         </View>
