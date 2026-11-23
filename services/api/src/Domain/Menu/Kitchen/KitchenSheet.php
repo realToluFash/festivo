@@ -26,7 +26,7 @@ use Psl\Vec;
  * @phpstan-import-type Course from PicksMenu
  *
  * @phpstan-type Cell array{kind: string, text?: string}
- * @phpstan-type Allergic array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, cells: list<Cell>}
+ * @phpstan-type Allergic array{id: string, name: string, allergens: list<string>, otherAllergy: ?string, diets: list<string>, otherDiet: ?string, cells: list<Cell>}
  * @phpstan-type Row array{id: string, kind: string, name: string, count: int}
  * @phpstan-type Counted array{id: string, rows: list<array{id: string, kind: string, name: string, chosen: int, defaulted: int}>, kitchen: int, skipped: int, needsHost: int, notChosen: int, room: int, closed: bool}
  * @phpstan-type SheetCourse array{id: string, name: string, rows: list<Row>, kitchen: int, skipped: int, needsHost: int, notChosen: int, never: bool, room: int, given: ?array{count: int, plate: string}, sides: bool}
@@ -66,7 +66,7 @@ final readonly class KitchenSheet
             'names' => $names,
             'coming' => Iter\count($room),
             'allergicCount' => Iter\count($allergic),
-            'allergic' => $names ? $this->allergic($event, $room, $allergic, $courses, $needsOf) : null,
+            'allergic' => $names ? $this->named($event, $room, $courses, $needsOf) : null,
             'allergyCounts' => $counts(NeedKind::Allergen),
             'dietCounts' => $counts(NeedKind::Diet),
             'courses' => Vec\map($courses, static fn (array $course): array => KitchenCourse::of($course, $counted[$course['id']])),
@@ -75,22 +75,15 @@ final readonly class KitchenSheet
 
     /**
      * @param list<Guest>                $room
-     * @param list<Guest>                $allergic
      * @param list<Course>               $courses
      * @param Closure(Guest): GuestNeeds $needsOf
      *
-     * @return list<Allergic> by name
+     * @return list<Allergic> by name: everyone with an allergen, and everyone sc-1362 never gave a closed course's default, a diet alone included
      */
-    private function allergic(Event $event, array $room, array $allergic, array $courses, Closure $needsOf): array
+    private function named(Event $event, array $room, array $courses, Closure $needsOf): array
     {
         $spots = $this->pickSpots->of($event, $room, $courses);
-        $sorted = Vec\sort($allergic, static function (Guest $a, Guest $b): int {
-            $byName = Str\Byte\compare_ci($a->getFullName() ?? '', $b->getFullName() ?? '');
-
-            return 0 !== $byName ? $byName : Str\Byte\compare($a->getId()->toRfc4122(), $b->getId()->toRfc4122());
-        });
-
-        return Vec\map($sorted, static function (Guest $person) use ($spots, $courses, $needsOf): array {
+        $rows = Vec\map($room, static function (Guest $person) use ($spots, $courses, $needsOf): array {
             $id = $person->getId()->toRfc4122();
             $needs = $needsOf($person);
 
@@ -99,8 +92,17 @@ final readonly class KitchenSheet
                 'name' => $person->getFullName() ?? '',
                 'allergens' => $needs->codesOf(NeedKind::Allergen),
                 'otherAllergy' => $needs->otherOf(NeedKind::Allergen),
+                'diets' => $needs->codesOf(NeedKind::Diet),
+                'otherDiet' => $needs->otherOf(NeedKind::Diet),
                 'cells' => Vec\map($courses, static fn (array $course): array => KitchenCourse::cell($course, $spots[$course['id']][$id])),
             ];
+        });
+        $named = Vec\filter($rows, static fn (array $row): bool => [] !== $row['allergens'] || Iter\any($row['cells'], static fn (array $cell): bool => 'never' === $cell['kind']));
+
+        return Vec\sort($named, static function (array $a, array $b): int {
+            $byName = Str\Byte\compare_ci($a['name'], $b['name']);
+
+            return 0 !== $byName ? $byName : Str\Byte\compare($a['id'], $b['id']);
         });
     }
 }

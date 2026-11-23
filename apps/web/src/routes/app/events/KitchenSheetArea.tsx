@@ -306,7 +306,10 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
 function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: boolean }) {
   const { t } = useTranslation();
 
-  if (sheet.allergicCount === 0) return <p className="ks-line">{t('kitchenSheet.noAllergies')}</p>;
+  const none =
+    sheet.allergicCount === 0 ? <p className="ks-line">{t('kitchenSheet.noAllergies')}</p> : null;
+
+  if (none != null && (sheet.allergic ?? []).length === 0) return none;
 
   if (sheet.allergic == null)
     return (
@@ -335,6 +338,7 @@ function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: bo
 
   return (
     <>
+      {none}
       <table className={screen ? 'ks-table ks-people' : 'ks-table'}>
         <thead>
           <tr>
@@ -361,13 +365,15 @@ function Allergies({ sheet, screen = false }: { sheet: KitchenSheet; screen?: bo
           ))}
         </tbody>
       </table>
-      <p className="ks-line">
-        {sheet.allergyCounts
-          .map(({ code, count }) =>
-            t('kitchenSheet.perAllergen', { allergen: allergenName(t, code), count }),
-          )
-          .join(' · ')}
-      </p>
+      {none == null && (
+        <p className="ks-line">
+          {sheet.allergyCounts
+            .map(({ code, count }) =>
+              t('kitchenSheet.perAllergen', { allergen: allergenName(t, code), count }),
+            )
+            .join(' · ')}
+        </p>
+      )}
     </>
   );
 }

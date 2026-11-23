@@ -8,6 +8,9 @@ export interface KitchenAllergic {
   /** Codes in Annex II order, `other` among them. */
   allergens: string[];
   otherAllergy: string | null;
+  /** Diet codes, `other` among them; read only when `allergens` is empty: someone listed because a diet alone kept them from the default. */
+  diets: string[];
+  otherDiet: string | null;
   /** One per course, in the sheet's course order. */
   cells: KitchenCell[];
 }
@@ -45,7 +48,7 @@ export interface KitchenSheet {
   names: boolean;
   coming: number;
   allergicCount: number;
-  /** Null without guests.manage. */
+  /** By name: everyone with an allergen, and after the close everyone never given a default. Null without guests.manage. */
   allergic: KitchenAllergic[] | null;
   allergyCounts: KitchenCount[];
   dietCounts: KitchenCount[];
@@ -122,6 +125,8 @@ export function asKitchenSheet(raw: unknown): KitchenSheet | null {
             name: str(who.name),
             allergens: strings(who.allergens),
             otherAllergy: typeof who.otherAllergy === 'string' ? who.otherAllergy : null,
+            diets: strings(who.diets),
+            otherDiet: typeof who.otherDiet === 'string' ? who.otherDiet : null,
             cells: list(who.cells).map(asCell),
           };
         })

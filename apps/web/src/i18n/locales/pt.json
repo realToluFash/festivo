@@ -6358,6 +6358,7 @@
     "noAllergies": "No allergies recorded for anyone coming.",
     "name": "Name",
     "allergicTo": "Allergic to",
+    "noAllergy": "No allergy · {{diets}}",
     "allergen": "Allergen",
     "people": "People",
     "perAllergen": "{{allergen}} {{count, number}}",

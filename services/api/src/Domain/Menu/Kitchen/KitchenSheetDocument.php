@@ -90,8 +90,10 @@ final readonly class KitchenSheetDocument
     {
         $head = '<section class="allergies"><h2>' . self::e($this->word('allergies', $locale)) . '</h2>';
 
-        if (0 === $sheet['allergicCount']) {
-            return $head . $this->line($this->word('no_allergies', $locale)) . '</section>';
+        $none = 0 === $sheet['allergicCount'] ? $this->line($this->word('no_allergies', $locale)) : '';
+
+        if ('' !== $none && [] === ($sheet['allergic'] ?? [])) {
+            return $head . $none . '</section>';
         }
 
         $perAllergen = Vec\map($sheet['allergyCounts'], fn (array $one): array => [$this->allergen($one['code'], null, $locale), $one['count']]);
@@ -105,16 +107,19 @@ final readonly class KitchenSheetDocument
         $line = Str\join(Vec\map($perAllergen, fn (array $one): string => $this->word('per_allergen', $locale, ['allergen' => $one[0], 'count' => $one[1]])), ' · ');
 
         return $head
+            . $none
             . '<table><thead><tr><th scope="col">' . self::e($this->word('name', $locale)) . '</th><th scope="col">' . self::e($this->word('allergic_to', $locale)) . '</th>' . Str\join($columns, '') . '</tr></thead>'
             . '<tbody>' . Str\join($rows, '') . '</tbody></table>'
-            . $this->line($line)
+            . ('' === $none ? $this->line($line) : '')
             . '</section>';
     }
 
     /** @param Allergic $person */
     private function allergicRow(array $person, string $locale): string
     {
-        $allergens = Str\join(Vec\map($person['allergens'], fn (string $code): string => $this->allergen($code, $person['otherAllergy'], $locale)), ', ');
+        $allergens = [] === $person['allergens']
+            ? $this->word('no_allergy', $locale, ['diets' => Str\join(Vec\map($person['diets'], fn (string $code): string => $this->diet($code, $person['otherDiet'], $locale)), ', ')])
+            : Str\join(Vec\map($person['allergens'], fn (string $code): string => $this->allergen($code, $person['otherAllergy'], $locale)), ', ');
         $cells = Vec\map($person['cells'], fn (array $cell): string => '<td>' . $this->cell($cell, $locale) . '</td>');
 
         return '<tr><th scope="row">' . self::e($person['name']) . '</th><td>' . self::e($allergens) . '</td>' . Str\join($cells, '') . '</tr>';
@@ -140,7 +145,7 @@ final readonly class KitchenSheetDocument
         }
 
         $rows = Vec\map($sheet['dietCounts'], fn (array $one): array => [
-            'other' === $one['code'] ? $this->word('other_diet', $locale) : $this->translator->trans('guest_export.diet.' . $one['code'], [], 'messages', $locale),
+            $this->diet($one['code'], null, $locale),
             $one['count'],
         ]);
 
@@ -203,6 +208,16 @@ final readonly class KitchenSheetDocument
         return 'other' === $code && null !== $other
             ? $this->word('other_allergy', $locale, ['what' => $other])
             : $this->translator->trans('guest_export.allergen.' . $code, [], 'messages', $locale);
+    }
+
+    /** An Other diet reads as the guest gave it, "No garlic (other)", where it has words; counts carry none, so they read "Other diet". */
+    private function diet(string $code, ?string $other, string $locale): string
+    {
+        if ('other' !== $code) {
+            return $this->translator->trans('guest_export.diet.' . $code, [], 'messages', $locale);
+        }
+
+        return null === $other ? $this->word('other_diet', $locale) : $this->word('other_allergy', $locale, ['what' => $other]);
     }
 
     /** @param array<string, int|string> $parameters */

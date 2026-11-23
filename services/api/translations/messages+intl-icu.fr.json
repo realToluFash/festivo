@@ -467,6 +467,7 @@
     "kitchen_sheet.no_allergies": "No allergies recorded for anyone coming.",
     "kitchen_sheet.name": "Name",
     "kitchen_sheet.allergic_to": "Allergic to",
+    "kitchen_sheet.no_allergy": "No allergy · {diets}",
     "kitchen_sheet.allergen": "Allergen",
     "kitchen_sheet.people": "People",
     "kitchen_sheet.per_allergen": "{allergen} {count, number, ::group-auto}",

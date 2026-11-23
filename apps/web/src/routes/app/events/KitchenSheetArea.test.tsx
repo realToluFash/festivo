@@ -98,6 +98,8 @@ function sheetOf(more: Record<string, unknown> = {}) {
           name: 'Ada Obi',
           allergens: ['milk', 'other'],
           otherAllergy: 'Kiwi',
+          diets: [],
+          otherDiet: null,
           cells: [{ kind: 'skipped' }],
         },
         {
@@ -105,6 +107,8 @@ function sheetOf(more: Record<string, unknown> = {}) {
           name: 'Kwame Mensah',
           allergens: ['celery'],
           otherAllergy: null,
+          diets: [],
+          otherDiet: null,
           cells: [{ kind: 'dish', text: 'Egusi' }],
         },
       ],
@@ -217,6 +221,48 @@ describe('The kitchen sheet (sc-3911)', () => {
         '2 given the default, Jollof rice, Plate, when picks closed. They are in its count.',
       ),
     ).toBeDefined();
+  });
+
+  it('after the close, names those a diet alone kept from the default under the no-allergies line', async () => {
+    const dietOnly = (id: string, name: string, diets: string[], otherDiet: string | null) => ({
+      id,
+      name,
+      allergens: [],
+      otherAllergy: null,
+      diets,
+      otherDiet,
+      cells: [{ kind: 'never' }],
+    });
+    onSheet({
+      [SHEET]: () =>
+        json(
+          sheetOf({
+            allergicCount: 0,
+            allergyCounts: [],
+            allergic: [
+              dietOnly('g_bea', 'Bea Mensah', ['vegan'], null),
+              dietOnly('g_nadia', 'Nadia Petrova', ['other'], 'No garlic'),
+              dietOnly('g_ola', 'Ola Ade', ['other'], null),
+            ],
+            dietCounts: [
+              { code: 'vegan', count: 1 },
+              { code: 'other', count: 2 },
+            ],
+            courses: [{ ...MAIN, never: true }],
+          }),
+        ),
+    });
+
+    expect(await screen.findByText('No allergies recorded for anyone coming.')).toBeDefined();
+    const row = (name: string) => screen.getByRole('rowheader', { name }).closest('tr')!;
+    expect(within(row('Bea Mensah')).getByText('No allergy · Vegan')).toBeDefined();
+    expect(within(row('Nadia Petrova')).getByText('No allergy · No garlic (other)')).toBeDefined();
+    expect(within(row('Ola Ade')).getByText('No allergy · Other diet')).toBeDefined();
+    expect(
+      within(row('Bea Mensah')).getByText('Not chosen, never given the default'),
+    ).toBeDefined();
+    expect(screen.getByText(/0 people with allergies/)).toBeDefined();
+    expect(screen.getByRole('rowheader', { name: 'Other diet' })).toBeDefined();
   });
 
   it('makes the PDF when pressed and names the file the server gave', async () => {

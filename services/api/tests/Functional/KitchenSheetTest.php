@@ -107,9 +107,9 @@ final class KitchenSheetTest extends ApiTestCase
         self::assertSame('2026-10-03T10:00:00+01:00', $sheet['asOf'], 'the snapshot, in the event’s time zone');
         self::assertSame([4, 2, true, 'a4'], [$sheet['coming'], $sheet['allergicCount'], $sheet['names'], $sheet['paper']]);
         self::assertSame([
-            ['id' => $ada, 'name' => 'Ada Obi', 'allergens' => ['milk', 'other'], 'otherAllergy' => 'Kiwi', 'cells' => [['kind' => 'dish', 'text' => 'Catfish pepper soup, Full bowl'], ['kind' => 'skipped']]],
-            ['id' => $chidi, 'name' => 'Chidi Okonkwo', 'allergens' => ['celery'], 'otherAllergy' => null, 'cells' => [['kind' => 'host'], ['kind' => 'kitchen']]],
-        ], $sheet['allergic']);
+            ['id' => $ada, 'name' => 'Ada Obi', 'allergens' => ['milk', 'other'], 'otherAllergy' => 'Kiwi', 'diets' => [], 'otherDiet' => null, 'cells' => [['kind' => 'dish', 'text' => 'Catfish pepper soup, Full bowl'], ['kind' => 'skipped']]],
+            ['id' => $chidi, 'name' => 'Chidi Okonkwo', 'allergens' => ['celery'], 'otherAllergy' => null, 'diets' => [], 'otherDiet' => null, 'cells' => [['kind' => 'host'], ['kind' => 'kitchen']]],
+        ], $sheet['allergic'], 'Kojo, vegan with no allergy, can still choose before any close, so is not named');
         self::assertSame([['code' => 'milk', 'count' => 1], ['code' => 'celery', 'count' => 1], ['code' => 'other', 'count' => 1]], $sheet['allergyCounts']);
         self::assertSame([['code' => 'vegan', 'count' => 1]], $sheet['dietCounts']);
         self::assertSame(['Starter', 'Main'], Vec\map(self::courses($sheet), static fn (array $course): mixed => $course['name']));
@@ -169,6 +169,40 @@ final class KitchenSheetTest extends ApiTestCase
         $html = self::service(ScriptedPdfMaker::class)->html ?? self::fail('no html');
         self::assertStringContainsString('1 not chosen, never given the default', $html);
         self::assertStringContainsString('2 given the default, Jollof rice, when picks closed. They are in its count.', $html);
+    }
+
+    #[Test]
+    public function afterTheCloseThoseADietAloneKeptFromTheDefaultAreNamedOutsideTheAllergyCounts(): void
+    {
+        $token = $this->coming([['fullName' => 'Kojo Asante'], ['fullName' => 'Ada Obi']]);
+        [$bisi, $kojo, $ada] = [$this->personId('Bisi Adewale'), $this->personId('Kojo Asante'), $this->personId('Ada Obi')];
+        $this->records($kojo, [], ['vegan']);
+        $this->records($ada, [], ['other'], otherDiet: 'No garlic');
+        $this->meals($token, [['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->egusi)]]);
+        $this->as('PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $this->id($this->main), ['name' => 'Main', 'answer' => 'choose', 'skippable' => true, 'default' => ['dish' => $this->id($this->jollof), 'chooseBy' => '2026-10-10']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([], $this->sheet()['allergic'], 'before the close they can still choose');
+
+        self::mockTime(new DateTimeImmutable('2026-10-11T09:00:00+00:00'));
+        $sheet = $this->sheet();
+
+        self::assertSame([
+            ['id' => $ada, 'name' => 'Ada Obi', 'allergens' => [], 'otherAllergy' => null, 'diets' => ['other'], 'otherDiet' => 'No garlic', 'cells' => [['kind' => 'dish', 'text' => 'Catfish pepper soup, Full bowl'], ['kind' => 'never']]],
+            ['id' => $kojo, 'name' => 'Kojo Asante', 'allergens' => [], 'otherAllergy' => null, 'diets' => ['vegan'], 'otherDiet' => null, 'cells' => [['kind' => 'dish', 'text' => 'Catfish pepper soup, Full bowl'], ['kind' => 'never']]],
+        ], $sheet['allergic']);
+        self::assertSame([0, []], [$sheet['allergicCount'], $sheet['allergyCounts']], 'a diet is not an allergy');
+        self::assertSame(2, self::course($sheet, 'Main')['notChosen']);
+        $this->assertSameAsSeePicks($sheet);
+
+        self::service(ScriptedPdfMaker::class)->answer('%PDF-1.7');
+        $this->as('POST', $this->sheetPath() . '/pdf');
+        $html = self::service(ScriptedPdfMaker::class)->html ?? self::fail('no html');
+        self::assertStringContainsString('<p class="line">No allergies recorded for anyone coming.</p><table>', $html, 'the line stands, with them listed under it');
+        self::assertStringContainsString('<th scope="row">Ada Obi</th><td>No allergy · No garlic (other)</td>', $html);
+        self::assertStringContainsString('<th scope="row">Kojo Asante</th><td>No allergy · Vegan</td>', $html);
+        self::assertStringContainsString('Not chosen, never given the default', $html);
+        self::assertStringContainsString('<th scope="row">Other diet</th>', $html, 'the counts keep the label, not the words');
+        self::assertCount(2, Str\split($html, 'No garlic'), 'the words reach the named row only');
     }
 
     #[Test]
@@ -342,11 +376,11 @@ final class KitchenSheetTest extends ApiTestCase
      * @param list<string> $allergies
      * @param list<string> $diets
      */
-    private function records(string $guestId, array $allergies, array $diets = [], ?string $other = null): void
+    private function records(string $guestId, array $allergies, array $diets = [], ?string $other = null, ?string $otherDiet = null): void
     {
         $person = self::em()->find(Guest::class, Uuid::fromString($guestId)) ?? self::fail('no guest');
         $none = GuestNeeds::none();
-        $needs = new GuestNeeds([...$none->codes, NeedKind::Allergen->value => $allergies, NeedKind::Diet->value => $diets], [...$none->others, NeedKind::Allergen->value => $other], null);
+        $needs = new GuestNeeds([...$none->codes, NeedKind::Allergen->value => $allergies, NeedKind::Diet->value => $diets], [...$none->others, NeedKind::Allergen->value => $other, NeedKind::Diet->value => $otherDiet], null);
         self::service(GuestNeedsRecord::class)->write($person, $needs, $this->owner);
         self::em()->flush();
     }

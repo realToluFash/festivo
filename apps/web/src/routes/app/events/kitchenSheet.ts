@@ -31,11 +31,22 @@ export function allergenName(t: TFunction, code: string, other: string | null = 
     : t(`guestNeeds.allergen.${code}`);
 }
 
+/** "Peanuts, Celery", or for someone a diet alone kept from the default, "No allergy · Vegan" or "No allergy · No garlic (other)". */
 export const allergensOf = (t: TFunction, person: KitchenAllergic): string =>
-  person.allergens.map((code) => allergenName(t, code, person.otherAllergy)).join(', ');
+  person.allergens.length > 0
+    ? person.allergens.map((code) => allergenName(t, code, person.otherAllergy)).join(', ')
+    : t('kitchenSheet.noAllergy', {
+        diets: person.diets.map((code) => dietName(t, code, person.otherDiet)).join(', '),
+      });
 
-export const dietName = (t: TFunction, code: string): string =>
-  code === 'other' ? t('kitchenSheet.otherDiet') : t(`guestNeeds.dietName.${code}`);
+/** A diet as the guest record names it; a named Other diet reads as the guest typed it, as an Other allergy does. */
+export function dietName(t: TFunction, code: string, other: string | null = null): string {
+  if (code !== 'other') return t(`guestNeeds.dietName.${code}`);
+
+  return other == null
+    ? t('kitchenSheet.otherDiet')
+    : t('kitchenSheet.otherAllergy', { what: other });
+}
 
 export function saveSheet(bytes: Uint8Array<ArrayBuffer>, name: string): void {
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
