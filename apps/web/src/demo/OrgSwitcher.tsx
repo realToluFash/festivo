@@ -141,6 +141,13 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   }, [open]);
 
   useLayoutEffect(() => {
+    const shown = menu.current;
+    if (!open || !into || shown == null || shown.querySelector('[role="option"]') != null) return;
+
+    shown.querySelector<HTMLElement>('.sw-cell')?.focus();
+  }, [open, into]);
+
+  useLayoutEffect(() => {
     if (open || !back.current) return;
 
     back.current = false;
@@ -177,7 +184,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
   }, [open, close]);
 
   function pick(place: Place): void {
-    const stays = where.paused ? place.id === PAUSED.id : place.id === where.current;
+    const stays = !where.paused && place.id === where.current;
 
     close(true);
     if (stays) return;
@@ -206,7 +213,7 @@ function PlacesSwitcher({ tell, toast }: { tell: Tell; toast: boolean }) {
         ref={button}
         id={current.id}
         name={current.name}
-        label={openerLabel(current, count)}
+        label={openerLabel(current, count, where.paused)}
         waiting={count > 0 ? invitationsLine(count) : null}
         open={open}
         overTile={
@@ -435,12 +442,10 @@ const PAUSED_SAMPLE: PausedOrganisation = {
 /** The product's AccessPaused, standing in for the page while access to the organisation is paused. */
 function AccessPaused() {
   const where = useWhere();
-  const others = where.places.filter((place) => place.id !== PAUSED.id);
-
   return (
     <ProductAccessPaused
       paused={PAUSED_SAMPLE}
-      others={others}
+      others={where.places}
       account="/demo/settings/account"
       onSwitch={askToOpen}
       onChoose={askToOpen}
