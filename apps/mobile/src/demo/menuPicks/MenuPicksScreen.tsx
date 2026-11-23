@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   top: { gap: tokens.spaceXs },
   column: { gap: tokens.spaceLg },
   twoAcross: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceLg },
-  half: { flexBasis: '47%', flexGrow: 1 },
+  half: { flexBasis: '48%', flexGrow: 0 },
   sides: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXl },
   main: { flex: 3, gap: tokens.spaceLg },
   side: { flex: 2, gap: tokens.spaceLg },
