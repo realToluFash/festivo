@@ -218,65 +218,56 @@ describe('switching organisation', () => {
   });
 });
 
-describe('switching away from a paused organisation (sc-564)', () => {
-  function pausedInLagos(organisations: Membership[]): void {
-    const {
-      id,
-      name,
-      countryCode,
-      currency,
-      timezone,
-      contactAddress,
-      locale,
-      plan,
-      subscription,
-    } = membership({
+function pausedIn(organisations: Membership[]): void {
+  const { id, name, countryCode, currency, timezone, contactAddress, locale, plan, subscription } =
+    membership({
       id: 'org_3',
       name: 'Lagos Weddings',
     });
-    __setSessionState({
-      status: 'signedIn',
-      session: {
-        name: 'Folake Adeyemi',
-        email: 'folake@ire.events',
-        verified: true,
-        complete: true,
-        awaiting: null,
-        providers: [],
-        userId: 'u1',
-        needsOrganisation: false,
-        hasPassword: true,
-        organisation: IRE,
-        organisations,
-        organisationCountry: null,
-        timezone: null,
-        waitingFor: null,
-        pausedIn: {
-          id,
-          name,
-          countryCode,
-          currency,
-          timezone,
-          contactAddress,
-          plan,
-          subscription,
-          locale,
-          suspension: {
-            reason: 'address_gone',
-            domain: 'lagosweddings.ng',
-            since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
-            removesAt: null,
-            onlyOwner: false,
-          },
-          ownerClaim: null,
+  __setSessionState({
+    status: 'signedIn',
+    session: {
+      name: 'Folake Adeyemi',
+      email: 'folake@ire.events',
+      verified: true,
+      complete: true,
+      awaiting: null,
+      providers: [],
+      userId: 'u1',
+      needsOrganisation: false,
+      hasPassword: true,
+      organisation: organisations[0] ?? null,
+      organisations,
+      organisationCountry: null,
+      timezone: null,
+      waitingFor: null,
+      pausedIn: {
+        id,
+        name,
+        countryCode,
+        currency,
+        timezone,
+        contactAddress,
+        plan,
+        subscription,
+        locale,
+        suspension: {
+          reason: 'address_gone',
+          domain: 'lagosweddings.ng',
+          since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+          removesAt: null,
+          onlyOwner: false,
         },
+        ownerClaim: null,
       },
-    });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
-  }
+    },
+  });
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+}
 
+describe('switching away from a paused organisation (sc-564)', () => {
   it('opens the switcher with nothing marked current, then works in the one chosen', () => {
-    pausedInLagos([IRE, OKAFOR]);
+    pausedIn([IRE, OKAFOR]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -296,7 +287,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
   });
 
   it('with one other organisation, works in it and takes focus to the line that says so', () => {
-    pausedInLagos([IRE]);
+    pausedIn([IRE]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -304,6 +295,135 @@ describe('switching away from a paused organisation (sc-564)', () => {
     const switched = screen.getByText('Now working in Ìrè Events.');
     expect(document.activeElement).toBe(switched.closest('.sw-notice'));
     expect(screen.queryByRole('status')).toBeNull();
+  });
+});
+
+describe("a paused member's pill (sc-85513)", () => {
+  const PAUSED_PILL = 'Organisation: Lagos Weddings, access paused. Switch organisation';
+
+  function pill(): HTMLElement {
+    return screen.getByRole('button', { name: PAUSED_PILL });
+  }
+
+  it.each(['/app', '/app/events', '/app/calendar', '/app/settings', '/app/account'])(
+    'names the paused organisation, not the one the session falls back on, at %s',
+    (path) => {
+      pausedIn([IRE, OKAFOR]);
+      at(path);
+
+      expect(pill().textContent).toContain('Lagos Weddings');
+      expect(screen.queryByRole('button', { name: /Organisation: Ìrè Events/ })).toBeNull();
+    },
+  );
+
+  it('opens on Down arrow without listing the paused organisation, none current, and works in the one chosen', async () => {
+    pausedIn([IRE, OKAFOR]);
+    at('/app');
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+
+    const options = within(
+      screen.getByRole('listbox', { name: 'Your organisations' }),
+    ).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      expect.stringContaining('Ìrè Events'),
+      expect.stringContaining('Okafor Family'),
+    ]);
+    expect(options.map((option) => option.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'false',
+    ]);
+
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+
+    expect(screen.getByRole('status').textContent).toMatch(/Now working in Okafor Family\./);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /Organisation: Okafor Family, your role Member/ }),
+      ).toBeDefined(),
+    );
+  });
+
+  it('with nowhere else to go, still draws the pill, and the switcher lists none and ends with Create an organisation', async () => {
+    pausedIn([]);
+    at('/app');
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    const create = screen.getByRole('button', { name: 'Create an organisation' });
+    expect(document.activeElement).toBe(create);
+
+    fireEvent.click(create);
+    expect(await screen.findByRole('dialog', { name: 'Create an organisation' })).toBeDefined();
+  });
+
+  it('with nowhere else to go, creating an organisation leaves the paused page for the new one', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    const created = membership({ id: 'org_9', name: 'Lagos Supper Club' });
+    pausedIn([]);
+    creating(() => json({ organisation: created }, 201));
+    const { container } = at('/app');
+    expect(container.querySelector('.access-paused')).not.toBeNull();
+
+    fireEvent.keyDown(pill(), { key: 'ArrowDown' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+    const walk = await screen.findByRole('dialog', { name: 'Create an organisation' });
+    fireEvent.change(within(walk).getByLabelText('Organisation name'), {
+      target: { value: 'Lagos Supper Club' },
+    });
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
+    fireEvent.click(within(walk).getByRole('button', { name: 'Create organisation' }));
+
+    expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
+    expect(container.querySelector('.access-paused')).toBeNull();
+    expect(screen.queryByRole('button', { name: PAUSED_PILL })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
+    ).toBeDefined();
+  });
+
+  it('opens the same switcher from the card’s Switch organisation', () => {
+    pausedIn([IRE, OKAFOR]);
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    expect(pill().getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('listbox', { name: 'Your organisations' })).toBeDefined();
+  });
+
+  it.each([
+    [1, `${PAUSED_PILL}. 1 invitation waiting`],
+    [2, `${PAUSED_PILL}. 2 invitations waiting`],
+  ])('with %i invitations waiting, ends its label with them', (count, label) => {
+    const invitation = (n: number) => ({
+      id: `inv_${n}`,
+      organisation: { id: `org_i${n}`, name: `Invited ${n}` },
+      role: null,
+    });
+    const waiting = {
+      invitations: Array.from({ length: count }, (_, n) => invitation(n)),
+      outcomes: {},
+      firstJoined: null,
+      answer: vi.fn(),
+    } as unknown as WaitingInvitations;
+
+    render(
+      <MemoryRouter>
+        <OrganisationSwitcher
+          current={IRE}
+          paused={{ id: 'org_3', name: 'Lagos Weddings' }}
+          organisations={[IRE]}
+          waiting={waiting}
+          onSwitch={() => {}}
+          onCreate={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: label })).toBeDefined();
   });
 });
 

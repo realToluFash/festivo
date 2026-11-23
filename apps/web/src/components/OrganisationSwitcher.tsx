@@ -1,4 +1,9 @@
-import type { InvitationPreview, Membership, OutsideEvent } from '@soirely/api-client';
+import type {
+  InvitationPreview,
+  Membership,
+  Organisation,
+  OutsideEvent,
+} from '@soirely/api-client';
 import {
   type InvitationOutcome,
   formatDay,
@@ -36,20 +41,20 @@ export function OrganisationSwitcher({
   waiting,
   offer = null,
   email = '',
-  paused = false,
+  paused = null,
   opened = 0,
   outside = [],
   onSwitch,
   onOutside = () => undefined,
   onCreate,
 }: {
-  current: Membership;
+  current: Membership | null;
   organisations: readonly Membership[];
   waiting: WaitingInvitations;
   offer?: DomainOffer | null;
   email?: string;
-  /** While the account's access is paused, the organisation the session falls back on is not the one on screen. */
-  paused?: boolean;
+  /** In use while the account's access to it is paused: the pill names it on every page, and the menu marks none current (sc-85513). */
+  paused?: Pick<Organisation, 'id' | 'name'> | null;
   /** Each change opens the menu from outside it: the paused screen's Switch organisation (sc-564). */
   opened?: number;
   /** The events the account holds on other organisations' events, each opening at its level (sc-68438). */
@@ -64,7 +69,8 @@ export function OrganisationSwitcher({
   const container = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
-  const role = roleName(t, current.role);
+  const named = paused ?? current;
+  const namedId = named?.id ?? null;
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
   const [seen, setSeen] = useState(opened);
@@ -92,7 +98,7 @@ export function OrganisationSwitcher({
   }
 
   useLayoutEffect(() => {
-    if (open || returnTo.current !== current.id) return;
+    if (open || returnTo.current !== namedId) return;
 
     returnTo.current = null;
     focusStep(button.current);
@@ -131,7 +137,7 @@ export function OrganisationSwitcher({
           ? event.key === 'Escape'
           : !container.current?.contains(event.target as Node)
       ) {
-        closeTo(event instanceof KeyboardEvent ? current.id : null);
+        closeTo(event instanceof KeyboardEvent ? namedId : null);
       }
     };
 
@@ -142,11 +148,11 @@ export function OrganisationSwitcher({
       document.removeEventListener('mousedown', close);
       document.removeEventListener('keydown', close);
     };
-  }, [open, current.id]);
+  }, [open, namedId]);
 
   function pick(id: string): void {
     const organisation = organisations.find((one) => one.id === id);
-    const stays = !paused && id === current.id;
+    const stays = paused == null && id === current?.id;
 
     closeTo(id);
     if (organisation != null && !stays) onSwitch(organisation);
@@ -211,6 +217,18 @@ export function OrganisationSwitcher({
     );
   }
 
+  if (named == null) return null;
+
+  const role = paused == null && current != null ? roleName(t, current.role) : null;
+  const label =
+    role == null
+      ? count > 0
+        ? t('switcher.labelPausedWaiting', { name: named.name, count })
+        : t('switcher.labelPaused', { name: named.name })
+      : count > 0
+        ? t('switcher.labelSwitchWaiting', { name: named.name, role, count })
+        : t('switcher.labelSwitch', { name: named.name, role });
+
   return (
     <div
       className="org-switcher"
@@ -222,13 +240,9 @@ export function OrganisationSwitcher({
     >
       <OrgPill
         ref={button}
-        id={current.id}
-        name={current.name}
-        label={
-          count > 0
-            ? t('switcher.labelSwitchWaiting', { name: current.name, role, count })
-            : t('switcher.labelSwitch', { name: current.name, role })
-        }
+        id={named.id}
+        name={named.name}
+        label={label}
         waiting={count > 0 ? t('invitations.count', { count }) : null}
         open={open}
         onClick={() => {
@@ -250,7 +264,7 @@ export function OrganisationSwitcher({
           menu={menu}
           anchor={button}
           places={places}
-          current={paused ? null : current.id}
+          current={paused != null ? null : namedId}
           others={others}
           into={into}
           answer={answer}
