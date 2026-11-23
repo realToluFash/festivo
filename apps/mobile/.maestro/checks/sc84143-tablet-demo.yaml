@@ -1,0 +1,19 @@
+# sc-84143 on a tablet: the app's demo of bellUnknown in its popover, upright then on its side.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellUnknown
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Ana Souza added a note to the event'
+    timeout: 20000
+- takeScreenshot: bell-tabletportrait-unknown-demo
+- setOrientation: LANDSCAPE
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellUnknown
+- extendedWaitUntil:
+    visible: 'Ana Souza added a note to the event'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: bell-tabletlandscape-unknown-demo
+- setOrientation: PORTRAIT

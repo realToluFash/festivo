@@ -1085,3 +1085,9 @@ startedToday|calledOffOn|showMore|moreShown|moreFailed`, `eventsScreen.*` the sa
   around it describe the screen, "your authenticator app". Kept as the AC names it. It opens the
   device's authenticator with the key, so "Add", never "Open" or "Copy".
 - **13 Nov 2026. The host's guest list and Add guest** (sc-43267 for sc-1468, `web:guestList.*`, `eventDelete.removesGuests_*`, the API's `validation.guest_*`, `guest.already_listed`, `errors:guest_already_listed`). Kept as dev1 wrote it. A companion with no name yet is "Guest of {{host}}", and "Guest of {{host}} · {{nth}}" from the second. A refused add starts "Not added." and says nothing was saved, as "Not saved." does. A limit is the same sentence on the screen and from the API. The duplicate panel's "{{name}} is already on the list" has no full stop, as a panel heading.
+- **23 Nov 2026. The single-events line for a member of one organisation** (sc-85143 for sc-85006,
+  `web|mobile:accessPaused.untouchedSingleEvents`, `signInRules.overdueSingleEvents`). Each is its
+  sibling (`untouched`, `overdueElsewhere`) with the other organisations taken out, so each keeps its
+  sibling's phrasing: "your access to single events" on the paused card, "single-event access" on the
+  overdue page. Kept as sc-85006 built them; `AccessPaused.test.tsx`, `SignInRules.test.tsx` and
+  `demo/OrgSwitcher.test.tsx` pin both.

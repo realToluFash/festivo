@@ -267,11 +267,13 @@ jobs:
 
       - name: Create a throwaway database and migrate it
         # Drops and recreates, so a removed migration is actually gone — the
-        # only way to be sure of that.
-        run: npm run test:db
+        # only way to be sure of that. One more for each ParaTest process.
+        run: npm run test:db -- --processes 4
 
       - name: Tests
-        run: npm run test:api
+        # Four processes, one per core of the runner: in one process the suite
+        # took seven to ten minutes.
+        run: npm run test:api:parallel
 
       - name: The clients' topics match the API's
         run: npm run check-topics --workspace @soirely/api-client

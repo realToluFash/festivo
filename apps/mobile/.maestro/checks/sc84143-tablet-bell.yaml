@@ -1,0 +1,40 @@
+# sc-84143 on a tablet: the bell's popover over an event's page holds the unknown-category item, upright then on its side.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible: '${TITLE}'
+    timeout: 20000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- waitForAnimationToEnd
+- takeScreenshot: bell-tabletportrait-unknown-product
+- setOrientation: LANDSCAPE
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'frame.bell'
+- extendedWaitUntil:
+    visible: '${TITLE}'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: bell-tabletlandscape-unknown-product
+- setOrientation: PORTRAIT

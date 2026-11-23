@@ -1139,7 +1139,7 @@ const BOARD_ENGLISH = {
   tellThanksOther:
     'Thank you. {{hosts}} have been told and will look into it. You can close this page.',
   doorTitle: 'Show this at the door',
-  doorLine: 'It lets you and your companions in. A screenshot works too.',
+  doorLine: 'It lets you and anyone coming with you in. A screenshot works too.',
   doorLineAlone: 'A screenshot works too.',
   doorCode: 'Your code for the door. It holds no name.',
   calendarTitle: 'Add to calendar',
