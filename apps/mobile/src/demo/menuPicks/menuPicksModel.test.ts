@@ -7,6 +7,7 @@ import {
   checkDraft,
   choose,
   chooseCourses,
+  containsWords,
   courseClose,
   courseFigures,
   courseOf,
@@ -358,5 +359,16 @@ describe('Choose who gets it, on a Children only variant (sc-3909)', () => {
   it('is never offered to a guest picking for themselves', () => {
     const sent = guestSends(world)!;
     expect(sent.world.picks.k2?.['bea-mensah']).toMatchObject({ variantId: 'v-chicken' });
+  });
+});
+
+describe('a dish whose allergens were never stated (lead, #3654)', () => {
+  it('says so in its Contains line, apart from a dish with none of the 14', () => {
+    const rows = courseFigures(world, course('k3')).rows;
+    const row = (id: string) => rows.find((one) => one.id === id)!;
+
+    expect(row('k3-puff').contains).toBeNull();
+    expect(containsWords(row('k3-puff').contains)).toBe('Allergens not stated');
+    expect(containsWords(row('k3-zobo').contains)).toBeNull();
   });
 });

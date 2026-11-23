@@ -44,6 +44,7 @@ import {
   checkDraft,
   choose,
   chooseCourses,
+  containsWords,
   dishAllergens,
   draftPick,
   draftWords,
@@ -747,9 +748,7 @@ function ChooseFor({
                 key={dish.id}
                 on={draft?.kind === 'dish' && draft.dishId === dish.id}
                 title={dish.name}
-                lines={
-                  dish.contains.length === 0 ? [] : [MW.contains(allergenWords(dish.contains))]
-                }
+                lines={[containsWords(dish.contains)].filter((one) => one != null)}
                 allergy={ruled.length === 0 ? null : MW.ruledOut(allergenWords(ruled), person.name)}
                 onPress={() => pickDish(dish.id)}
                 testID={`menu.choose.${dish.id}`}
