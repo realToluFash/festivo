@@ -158,6 +158,10 @@ import {
   lanProxy,
   lanAddress,
   qaConfig,
+  browserHostOf,
+  defaultBrowserHost,
+  savedBrowserHost,
+  BROWSER_HOST_FILE,
   qrPng,
   APP_SERVICES,
   launchVideo,
@@ -397,6 +401,78 @@ describe('the stack a person tests on', () => {
       expect(app.EXPO_PUBLIC_API_URL).toMatch(/^http:\/\/127\.0\.0\.1:/);
       expect(overrides.COMPOSE_FILE).toBeUndefined();
     }
+  });
+
+  it('moves what a browser reaches to the browser host, and leaves the app on 127.0.0.1', () => {
+    for (const tester of TESTERS) {
+      const host = defaultBrowserHost(tester);
+      const { ports, urls, browser, overrides, app } = qaConfig(tester, undefined, {
+        browserHost: host,
+      });
+      const named = (port) => `http://${host}:${ports[port]}`;
+      const address = (port) => `http://127.0.0.1:${ports[port]}`;
+
+      expect(urls.web).toBe(named('WEB_PORT'));
+      expect(overrides.CORS_WEB_ORIGIN).toBe(named('WEB_PORT'));
+      expect(overrides.SOIRELY_API_URL).toBe(named('API_PORT'));
+      expect(browser.api).toBe(named('API_PORT'));
+      expect(overrides.SOIRELY_MERCURE_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_PUBLIC_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_CORS_ORIGINS.split(' ')).toEqual([
+        named('WEB_PORT'),
+        address('METRO_PORT'),
+      ]);
+      expect(overrides.SOIRELY_GOOGLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/google/authorize`);
+      expect(overrides.SOIRELY_APPLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/apple/authorize`);
+      for (const provider of ['google', 'apple']) {
+        const issuers = overrides[`OAUTH_${provider.toUpperCase()}_ISSUERS`].split(',');
+        expect(issuers).toContain(`${named('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`${address('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`http://oidc:8080/${provider}`);
+      }
+
+      expect(urls.api).toBe(address('API_PORT'));
+      expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(address('STORAGE_PORT'));
+      expect(overrides.OAUTH_APPLE_RETURN_URI).toMatch(new RegExp(`^${address('API_PORT')}/`));
+      expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(address('METRO_PORT'));
+      for (const value of Object.values(app)) expect(value).not.toContain(host);
+      expect(app).toEqual(qaConfig(tester).app);
+    }
+  });
+
+  it('changes nothing for a stack with no browser host', () => {
+    for (const tester of TESTERS) {
+      const { overrides, browser } = qaConfig(tester);
+      expect(Object.values(overrides).join(' ')).not.toContain('localhost');
+      expect(browser.api).toBe(qaConfig(tester).urls.api);
+      expect(overrides.OAUTH_GOOGLE_ISSUERS).toBe(
+        `http://127.0.0.1:${qaConfig(tester).ports.OIDC_PORT}/google,http://oidc:8080/google`,
+      );
+    }
+  });
+
+  it('takes localhost or a name under it as the browser host, and nothing else', () => {
+    expect(defaultBrowserHost(3)).toBe('qa3.localhost');
+    expect(browserHostOf(' QA2.localhost\n')).toBe('qa2.localhost');
+    expect(browserHostOf('localhost')).toBe('localhost');
+    for (const bad of ['127.0.0.1', 'qa2.example.com', 'localhost.evil', 'qa2..localhost', '']) {
+      expect(() => browserHostOf(bad), bad).toThrow(/not localhost/);
+    }
+    expect(() => qaConfig(LAN, '192.168.1.40', { browserHost: 'qa.localhost' })).toThrow(
+      /no browser host/,
+    );
+  });
+
+  it('reads the browser host a tester turned on from the worktree, and none when unset', () => {
+    const files = { [`/qa2/${BROWSER_HOST_FILE}`]: 'qa2.localhost\n' };
+    const read = (path) => {
+      if (path in files) return files[path];
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    expect(savedBrowserHost('/qa2', read)).toBe('qa2.localhost');
+    expect(savedBrowserHost('/qa3', read)).toBeNull();
+    files[`/qa4/${BROWSER_HOST_FILE}`] = 'qa4.example.com';
+    expect(() => savedBrowserHost('/qa4', read)).toThrow(/not localhost/);
   });
 
   it('puts the proxy on every proxied port and takes those ports off the services', () => {
