@@ -215,6 +215,23 @@ export function changeLead(change: 'remove' | 'addPasskey' | 'addApp'): string {
   }
 }
 
+/** Confirm it's you with passkeys: every proof names the passkey, the changes their own lead (lead, 23 Nov). */
+export function passkeyLead(
+  proof:
+    'link' | 'unlink' | 'everywhere' | 'turnOff' | 'newCodes' | 'remove' | 'addPasskey' | 'addApp',
+  email: string,
+): string {
+  return proof === 'remove' || proof === 'addPasskey' || proof === 'addApp'
+    ? changeLead(proof)
+    : waitingWords('confirm', email).intro;
+}
+
+/** Use a code instead with passkeys and no app: the code a member has is a recovery code (lead, 23 Nov). */
+export const RECOVERY_INSTEAD = {
+  lead: 'Enter one of your recovery codes.',
+  help: 'One of the codes you saved when you turned on two-factor. Each works once.',
+} as const;
+
 /** The app's step when two-factor is already on with passkeys (pm, 23 Nov): today's controls, words that are true. */
 export const ADD_APP = {
   title: 'Add an authenticator app',

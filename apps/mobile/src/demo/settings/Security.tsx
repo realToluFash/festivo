@@ -80,12 +80,14 @@ import { AloneLine } from '../../components/SecurityAlone.tsx';
 import {
   addedLine,
   changeLead,
+  codeInstead,
   factorRows,
   madeHere,
   PASSKEY_ON,
+  passkeyLead,
+  RECOVERY_INSTEAD,
   removeAsk,
   removedLine,
-  waitingWords,
   withoutFactor,
 } from './PasskeysModel.ts';
 import { PasskeyFactorsSection, PasskeyScreen } from './SecurityPasskeys.tsx';
@@ -476,7 +478,21 @@ function SecurityPage({ start }: { start: SecurityStart }) {
     stage === 'password'
       ? { ...asks, code: false }
       : stage === 'code'
-        ? { ...asks, password: false, code: true, instead: null }
+        ? {
+            ...asks,
+            password: false,
+            code: true,
+            instead: null,
+            ...(factors != null && codeInstead(factors) === 'recovery'
+              ? {
+                  lead: changing ? asks.lead : RECOVERY_INSTEAD.lead,
+                  codeHelp:
+                    proof === 'turnOff'
+                      ? [RECOVERY_INSTEAD.help, asks.codeHelp].flat()
+                      : RECOVERY_INSTEAD.help,
+                }
+              : {}),
+          }
         : asks;
 
   return (
@@ -707,11 +723,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         open={screen === 'passkey'}
         mode={keyMode}
         unlock={unlock}
-        lead={
-          asks.password || asks.instead != null
-            ? waitingWords('confirm', SAMPLE.email).intro
-            : asks.lead
-        }
+        lead={passkeyLead(proof ?? 'link', SAMPLE.email)}
         startSheet={visit === 0 ? start.sheet : keyMode !== 'choose'}
         startRefused={visit === 0 && start.keyRefused}
         opener={opener}

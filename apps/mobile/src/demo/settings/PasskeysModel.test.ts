@@ -9,6 +9,7 @@ import {
   offersAddPasskey,
   PASSKEY_CAP,
   passkeyChoice,
+  passkeyLead,
   samplePasskeys,
   secondStep,
   unlockOf,
@@ -75,5 +76,21 @@ describe('after the first factor', () => {
   it('sends Use a code instead to Enter a recovery code with passkeys only', () => {
     expect(codeInstead(both)).toBe('code');
     expect(codeInstead(passkeysOnly)).toBe('recovery');
+  });
+});
+
+describe('Confirm it’s you with a passkey', () => {
+  it('names the passkey for Turn off and Make new codes, never an app the member may not have', () => {
+    for (const proof of ['turnOff', 'newCodes', 'everywhere'] as const)
+      expect(passkeyLead(proof, 'sam@example.com')).toBe(
+        'Use your passkey to confirm this change.',
+      );
+  });
+
+  it('keeps each change its own lead', () => {
+    expect(passkeyLead('remove', 'sam@example.com')).toBe('Confirm it’s you before you remove it.');
+    expect(passkeyLead('addApp', 'sam@example.com')).toBe(
+      'Confirm it’s you before you add an authenticator app.',
+    );
   });
 });
