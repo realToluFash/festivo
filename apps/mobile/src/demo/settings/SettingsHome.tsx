@@ -224,7 +224,11 @@ export function SettingsHome({
           <View style={styles.orgRow}>
             {backToNone || <OrgPill />}
             <View style={styles.grow} />
-            <Bell tell={shell.tell} />
+            {backToNone ? (
+              <Bell tell={shell.tell} />
+            ) : (
+              <SearchAndBell tell={shell.tell} role={shell.looking.role} />
+            )}
           </View>
           <View style={styles.titleRow}>
             <View style={styles.grow}>{title}</View>

@@ -168,12 +168,16 @@ class ScheduleItem
     /** Written only by replaying the item's presses (sc-3895). */
     public function setStartedAt(?DateTimeImmutable $startedAt): void
     {
-        $this->startedAt = $startedAt;
+        if (!self::sameInstant($this->startedAt, $startedAt)) {
+            $this->startedAt = $startedAt;
+        }
     }
 
     public function setEndedAt(?DateTimeImmutable $endedAt): void
     {
-        $this->endedAt = $endedAt;
+        if (!self::sameInstant($this->endedAt, $endedAt)) {
+            $this->endedAt = $endedAt;
+        }
     }
 
     public function isSkipped(): bool
@@ -213,5 +217,11 @@ class ScheduleItem
         $this->fixedTime = $fixedTime;
         $this->showToGuests = $showToGuests;
         $this->changedBy = $by;
+    }
+
+    /** Doctrine takes another instance as a change even at the same instant, and that would bump the version of an item a press left as it was (sc-83209). */
+    private static function sameInstant(?DateTimeImmutable $one, ?DateTimeImmutable $other): bool
+    {
+        return $one?->format('U.u') === $other?->format('U.u');
     }
 }

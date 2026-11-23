@@ -43,6 +43,8 @@ import { SchedulePage } from './Schedule.tsx';
 import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
+import { WalletPassPage } from './Wallet.tsx';
+import { WALLET_PAGES } from './wallet.ts';
 import { MealStepPage } from './MealStep.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
@@ -359,6 +361,7 @@ export default function Demo() {
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="wallet-pass" element={<WalletPassPage />} />
       <Route path="guest/meal" element={<MealStepPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
@@ -467,6 +470,11 @@ function DemoHome({ from }: { from: string }) {
           desk
         </h3>
         <BoardPages pages={GUEST_TABLE_PAGES} />
+        <h3>
+          Keep the check-in code in Apple or Google Wallet (sc-9956) · phone, tablet portrait,
+          tablet landscape and desk
+        </h3>
+        <BoardPages pages={WALLET_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
