@@ -139,6 +139,81 @@ export function besideGlyph(
 
 export const LABEL_LINE = 1.22;
 
+// A space in the faces drawn in pills is under 0.3 of their size; reckoned wider, a line breaks sooner and the words stay inside.
+const SPACE = 0.3;
+
+/** The lines words `widths` wide at `start` take at `at`, broken between words in `inside`. */
+function linesAt(
+  widths: readonly number[],
+  start: number,
+  at: number,
+  inside: number,
+): number {
+  let lines = 1;
+  let line = 0;
+  for (const width of widths.map((measured) => (measured * at) / start)) {
+    const next = line === 0 ? width : line + SPACE * at + width;
+    if (line !== 0 && next > inside) {
+      lines += 1;
+      line = width;
+    } else line = next;
+  }
+
+  return lines;
+}
+
+/** How far a round-ended pill's outline cuts into its side at the top and foot of words `block` deep, `pad` inside its outline edge above and below them. */
+function pillCut(block: number, pad: number, ring: number): number {
+  const radius = block / 2 + pad;
+
+  return radius - Math.sqrt(Math.max(0, (radius - ring) ** 2 - (block / 2) ** 2));
+}
+
+/** As `besideGlyph`, in a pill whose round ends narrow the room at its words' top and foot lines: reckoned at the pill's own height, the lowest it can be, so a word fits inside its outline wherever it wraps to (sc-84920). */
+export function besideGlyphInPill({
+  size,
+  start,
+  widths,
+  glyph,
+  beside,
+  width,
+  sides,
+  pad,
+  ring,
+}: {
+  size: number;
+  start: number;
+  /** Each word's width at `start`, in order. */
+  widths: readonly number[];
+  glyph: number;
+  beside: number;
+  /** The pill's width, outline to outline. */
+  width: number;
+  /** The pill's side padding and ring. */
+  sides: number;
+  /** Its padding and ring above and below the words. */
+  pad: number;
+  ring: number;
+}): number {
+  const widest = Math.max(...widths);
+  const fits = (at: number): boolean => {
+    const straight = width - beside - glyph * at;
+    let lines = linesAt(widths, start, at, straight - 2 * sides);
+    for (;;) {
+      const cut = pillCut(lines * Math.ceil(at * LABEL_LINE), pad, ring);
+      const inside = straight - 2 * Math.max(sides, cut);
+      const again = linesAt(widths, start, at, inside);
+      if (again <= lines) return (widest * at) / start <= inside;
+      lines = again;
+    }
+  };
+
+  if (fits(start)) return start;
+  for (let at = Math.floor(start); at > size; at -= 1) if (fits(at)) return at;
+
+  return size;
+}
+
 /** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). `drawn` must be the size iOS draws at: under a `TitleCap` that lowers it, pass the capped size, or the line is a fraction again. */
 export function wholeLineHeight(size: number, drawn: number): number {
   return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;

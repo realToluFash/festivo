@@ -26,7 +26,13 @@ import {
 } from '../layout/focusedHeader.ts';
 import type { Family, WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
+import {
+  besideGlyphInPill,
+  capInDisc,
+  capUnderTitle,
+  grownPad,
+  wordsIn,
+} from '../layout/textSize.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
@@ -147,6 +153,8 @@ export function Pill({
     glyph: busy || glyph == null ? 0 : PILL_GLYPH_SIZE / textSize,
     beside: busy ? TURNING_SIDE + tokens.spaceSm : glyph == null ? 0 : tokens.spaceSm,
     chrome: 2 * (tokens.spaceXxl + ring),
+    pad: grownPad(height, textSize, ring) + ring,
+    ring,
   });
 
   return (
@@ -205,6 +213,8 @@ export function useGrownLabel({
   glyph,
   beside,
   chrome,
+  pad,
+  ring,
 }: {
   on: boolean;
   label: string;
@@ -217,6 +227,9 @@ export function useGrownLabel({
   beside: number;
   /** The pill's sides and ring. */
   chrome: number;
+  /** Its padding and ring above and below the words. */
+  pad: number;
+  ring: number;
 }) {
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
@@ -233,13 +246,20 @@ export function useGrownLabel({
   const drawn =
     !on || width == null || !known
       ? start
-      : besideGlyph(
+      : besideGlyphInPill({
           size,
           start,
-          Math.max(...words.map((word) => widths[word] ?? 0)),
+          widths: label
+            .split(/\s+/u)
+            .filter((word) => word !== '')
+            .map((word) => widths[word] ?? 0),
           glyph,
-          width - chrome - beside,
-        );
+          beside,
+          width,
+          sides: chrome / 2,
+          pad,
+          ring,
+        });
 
   return {
     measure: on ? (
