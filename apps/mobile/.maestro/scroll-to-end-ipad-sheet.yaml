@@ -1,0 +1,15 @@
+# Swipes Sign in's sheet to the end of its scroll, keys down. sc-67886.
+#
+# The swipes start on the address field, inside the scroll; one would start under the docked foot and move nothing.
+appId: host.exp.Exponent
+---
+- swipe:
+    from:
+      id: 'signIn.email'
+    direction: UP
+- swipe:
+    from:
+      id: 'signIn.email'
+    direction: UP
+- waitForAnimationToEnd:
+    timeout: 3000

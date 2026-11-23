@@ -5,7 +5,8 @@
 #   node .qa/bin/qa-env.mjs maestro sc67886-ipad-sheet-text-size
 #
 # Set the size and turn the iPad to landscape first: the flow relaunches Expo Go, so the sheet shows at that size.
-# Each field, the eye and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
+# `qa-env ios` sets the size back to large as it starts the bundler, so set it after that.
+# Each field and Forgot your password? are tapped at their foot, where Sign in drew over them (QA #67877):
 # a tap there that reaches Sign in instead leaves the typed text out of the field, or shows a refusal. The password is
 # tapped again once the keys have gone down (QA #68774), and Forgot your password? is reached with the keys down both
 # before the refusal and after it.
@@ -35,14 +36,10 @@ appId: host.exp.Exponent
 - assertNotVisible: 'Enter your password.'
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-typed
-# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line. It is scrolled
-# only until visible, never centred, so it is tapped where a floating Sign in would cover it (lead review).
-- scrollUntilVisible:
-    element:
-      id: 'signIn.forgot'
-    centerElement: false
-- waitForAnimationToEnd:
-    timeout: 3000
+# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line, past the scroll's
+# foot under Sign in. Maestro counts the half-shown link as visible, so the scroll is swiped to its end, where the link
+# is its last row and its foot clears Sign in: the tap at that foot reaching Sign in would never open recovery.
+- runFlow: scroll-to-end-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-forgot-keys-down
 - tapOn:
     id: 'signIn.forgot'
@@ -65,9 +62,9 @@ appId: host.exp.Exponent
     id: 'signIn.password'
     point: '50%,92%'
 - inputText: 'not-the-password'
+# The eye sits inside the field, which the keys' cover has lifted above the docked foot: tapped by its id.
 - tapOn:
     id: 'signIn.password.reveal'
-    point: '50%,92%'
 - waitForAnimationToEnd:
     timeout: 3000
 - assertVisible:
@@ -93,12 +90,7 @@ appId: host.exp.Exponent
     visible: 'That email and password do not match. Check both, or reset your password.'
     timeout: 10000
 - runFlow: keys-down-ipad-sheet.yaml
-- scrollUntilVisible:
-    element:
-      id: 'signIn.forgot'
-    centerElement: false
-- waitForAnimationToEnd:
-    timeout: 3000
+- runFlow: scroll-to-end-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-scrolled
 - tapOn:
     id: 'signIn.forgot'
