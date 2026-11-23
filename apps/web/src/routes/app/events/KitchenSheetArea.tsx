@@ -572,7 +572,7 @@ function PaperSheets({
   paper: Paper;
 }) {
   const { t, i18n } = useTranslation();
-  const pages = coursePages(sheet.courses);
+  const pages = coursePages(sheet.courses, paper);
   const m = pages.length + 1;
 
   return (
@@ -643,25 +643,34 @@ function ByStation({ course, at }: { course: KitchenCourse; at: string }) {
   );
 }
 
-const PAGE_PX = 990;
+const SHEET_PX: Record<Paper, number> = { a4: 1123, letter: 1056 };
+const PADDING_AND_FOOT_PX = 133;
+const STATIONS_PER_ROW = 3;
 
 /** How tall a course stands on paper, near enough to choose its page: a course is never split across two. */
 function paperHeight(course: KitchenCourse): number {
   const table =
     50 + 28 * (course.rows.length + 2) + (course.given == null ? 0 : 24) + (course.sides ? 24 : 0);
-  const lines = Math.max(0, ...(course.stations ?? []).map((one) => one.lines.length));
+  if (course.stations == null) return table;
 
-  return table + (course.stations == null ? 0 : 66 + 24 * lines);
+  const rows: number[] = [];
+  course.stations.forEach((station, at) => {
+    const row = Math.floor(at / STATIONS_PER_ROW);
+    rows[row] = Math.max(rows[row] ?? 0, 26 + 24 * station.lines.length);
+  });
+
+  return table + 40 + rows.reduce((sum, row) => sum + row, 0) + 10 * (rows.length - 1);
 }
 
 /** The pages after the first. sc-3911's menu keeps every course on one page; with By station, courses fill a page in order and the next starts a new one. */
-function coursePages(courses: readonly KitchenCourse[]): KitchenCourse[][] {
+function coursePages(courses: readonly KitchenCourse[], paper: Paper): KitchenCourse[][] {
   if (courses.every((one) => one.stations == null)) return [[...courses]];
+  const room = SHEET_PX[paper] - PADDING_AND_FOOT_PX;
 
   return courses.reduce<KitchenCourse[][]>((pages, course) => {
     const last = pages.at(-1);
     const used = (last ?? []).reduce((sum, one) => sum + paperHeight(one), 0);
-    if (last != null && used + paperHeight(course) <= PAGE_PX) last.push(course);
+    if (last != null && used + paperHeight(course) <= room) last.push(course);
     else pages.push([course]);
 
     return pages;
