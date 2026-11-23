@@ -792,6 +792,25 @@ describe('Your organisation mounts once it knows whether it lists invitations (s
   });
 });
 
+describe('a step still reading is not a landing the landing toast is said over (sc-87539)', () => {
+  it('Your organisation waits as waiting', () => {
+    const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
+
+    expect(text.indexOf('<StepScreen nav={nav} waiting>', waits)).toBe(
+      text.indexOf('<StepScreen', waits),
+    );
+  });
+
+  it('StepScreen registers the step only once it is no longer waiting', () => {
+    const text = readFileSync(join('src', 'steps', 'StepScreen.tsx'), 'utf8');
+    const holds = text.indexOf('if (waiting) return undefined;');
+
+    expect(holds).toBeGreaterThan(0);
+    expect(holds).toBeLessThan(text.indexOf('const step = stepShown();'));
+  });
+});
+
 describe('a step lifts inside its own StepScreen (sc-29069)', () => {
   it('in every component that renders a StepScreen', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
