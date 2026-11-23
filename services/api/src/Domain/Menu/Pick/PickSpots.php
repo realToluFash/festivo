@@ -116,7 +116,7 @@ final readonly class PickSpots
             MealAnswerKind::Defaulted => $onPlate('defaulted'),
             MealAnswerKind::Chosen => [] === ($since = $this->servedMeals->recordedSince($answer, $allergens, $options))
                 ? $onPlate('dish')
-                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since],
+                : [...$onPlate('host'), 'reason' => 'allergy', 'pick' => self::pickName($answer, $course), 'allergens' => $since, 'notStated' => ServedMeals::notStated($answer)],
         };
     }
 
