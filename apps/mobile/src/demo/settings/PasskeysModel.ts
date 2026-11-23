@@ -236,7 +236,7 @@ export const RECOVERY_INSTEAD = {
 export const ADD_APP = {
   title: 'Add an authenticator app',
   verb: 'Add the app',
-  help: 'The app is added only once the code matches. Your passkeys keep working.',
+  help: 'The app is added only once the code matches. Your passkeys keep working either way.',
 } as const;
 
 export const PASSKEY_ON = 'Two-factor is on. Every sign-in now asks for your passkey.';
