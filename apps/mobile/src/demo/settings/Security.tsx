@@ -69,6 +69,7 @@ import {
   DEVICES,
   type Device,
   enrolledKey,
+  linkedProviders,
   otpauthLink,
   PROOF_MINUTES,
   PROVIDER_NAME,
@@ -91,6 +92,8 @@ import {
   withoutFactor,
 } from './PasskeysModel.ts';
 import { PasskeyFactorsSection, PasskeyScreen } from './SecurityPasskeys.tsx';
+import { ProviderProofScreen } from './ProviderProof.tsx';
+import { LIMIT_MS } from './ProviderProofModel.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { SECURITY_STATES } from './SecurityModel.ts';
@@ -154,6 +157,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
   const [keyMode, setKeyMode] = useState(start.keyMode);
   const [stage, setStage] = useState<'password' | 'code' | null>(null);
   const [removing, setRemoving] = useState(start.removing);
+  const [limitedUntil] = useState(() => (start.limited ? Date.now() + LIMIT_MS : null));
   const unlock = start.unlock ?? (Platform.OS === 'ios' ? 'faceId' : 'passkey');
   const [visit, setVisit] = useState(0);
   const scroll = useRef<ScrollViewInstance>(null);
@@ -494,6 +498,7 @@ function SecurityPage({ start }: { start: SecurityStart }) {
               : {}),
           }
         : asks;
+  const via = confirmAsks.instead == null ? null : (linkedProviders(sample)[0] ?? null);
 
   return (
     <>
@@ -662,9 +667,30 @@ function SecurityPage({ start }: { start: SecurityStart }) {
         opener={opener}
         onClose={() => setScreen(null)}
       />
+      {via != null && (
+        <ProviderProofScreen
+          key={`provider.${visit}`}
+          open={screen === 'confirm' && proof != null}
+          provider={via}
+          lead={confirmAsks.lead}
+          note={confirmAsks.note}
+          codeHelp={confirmAsks.codeHelp}
+          codeWrong={confirmAsks.codeWrong}
+          twoFactor={twoFactor}
+          limitedUntil={proof === 'everywhere' ? limitedUntil : null}
+          startStage={visit === 0 && start.codeStep ? 'code' : 'trip'}
+          opener={opener}
+          onClose={() => {
+            setScreen(null);
+            setProof(null);
+          }}
+          onProved={stage === 'password' ? toPasskey : proven}
+          testID="security.confirm"
+        />
+      )}
       <ConfirmScreen
         key={`confirm.${visit}`}
-        open={screen === 'confirm' && proof != null}
+        open={screen === 'confirm' && proof != null && via == null}
         asks={confirmAsks}
         opener={opener}
         onClose={() => {

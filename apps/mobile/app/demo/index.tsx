@@ -46,6 +46,7 @@ import { NEXT_BOARDS, QUEUE_BOARDS } from '../../src/demo/queue/QueueBoards.ts';
 import { SERVICE_BOARDS, SERVICE_NEXT_BOARDS } from '../../src/demo/service/HowItsGoingBoards.ts';
 import { REQUEST_BOARDS } from '../../src/demo/service/RequestsBoards.ts';
 import { ROOM_BOARDS } from '../../src/demo/service/ServiceRoomBoards.ts';
+import { FLOOR_BOARDS } from '../../src/demo/floor/FloorBoards.ts';
 import { RUN_OUT_TRAY_BOARDS } from '../../src/demo/runOut/RunOutTrayBoards.ts';
 import { BELL_GROUP, isBellState } from '../../src/demo/messages/BellStates.ts';
 import { MESSAGES_BOARDS } from '../../src/demo/messages/MessagesBoards.ts';
@@ -832,6 +833,41 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings/security?state=everywhere',
       },
       {
+        title: "Security · confirm it's you, Google",
+        what: 'No password: Google’s own button, no header verb',
+        href: '/demo/settings/security?state=proveGoogle',
+      },
+      {
+        title: "Security · confirm it's you, Apple",
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/security?state=proveApple',
+      },
+      {
+        title: 'Security · everywhere else, Google',
+        what: 'After Sign them out: Google’s button',
+        href: '/demo/settings/security?state=everywhereGoogle',
+      },
+      {
+        title: 'Security · everywhere else, Apple',
+        what: 'After Sign them out: Apple’s button',
+        href: '/demo/settings/security?state=everywhereApple',
+      },
+      {
+        title: 'Security · everywhere else, two-factor',
+        what: 'Google, then the code and Continue',
+        href: '/demo/settings/security?state=everywhereGoogleCode',
+      },
+      {
+        title: 'Security · everywhere else, too many tries',
+        what: 'Google’s button off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimited',
+      },
+      {
+        title: 'Security · too many tries at the code',
+        what: 'Continue off until the time, 45 s',
+        href: '/demo/settings/security?state=everywhereLimitedCode',
+      },
+      {
         title: 'Security · reset your password',
         what: 'From Forgot it?',
         href: '/demo/settings/security?state=forgot',
@@ -1055,6 +1091,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'Organisation · the only owner',
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
+      },
+      {
+        title: 'Organisation · transfer, Google',
+        what: 'No password: Google’s own button, Transfer off until then',
+        href: '/demo/settings/organisation?state=transferGoogle',
+      },
+      {
+        title: 'Organisation · transfer, Apple',
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/organisation?state=transferApple',
+      },
+      {
+        title: 'Organisation · transfer, two-factor',
+        what: 'Google, then the code and Transfer',
+        href: '/demo/settings/organisation?state=transferGoogleCode',
       },
       { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
       {
@@ -2601,6 +2652,10 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       what,
       href: href as Href,
     })),
+  },
+  {
+    page: 'Service · Floor, every table and what each one needs (sc-4021) · phone, tablet portrait and landscape',
+    boards: FLOOR_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
     page: 'Service · guest requests from the table (sc-4023) · phone, tablet portrait and landscape',

@@ -173,7 +173,7 @@ function ListRoute({
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863), ?from= for what it was opened over, ?pushed=1 when that screen is under it and ?q= for Search's term, with ?lang=es and ?refreshing=1 (sc-83008); with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863), ?from= for what it was opened over, ?pushed=1 when that screen is under it and ?q= for Search's term, with ?lang=es and ?refreshing=1 (sc-83008), and ?bell=open for an iPad's bell open over it (sc-84453); with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -190,6 +190,7 @@ export function EventRoute() {
     q?: string;
     lang?: string;
     refreshing?: string;
+    bell?: string;
   }>();
   const link = linkStateOf(params.link);
   const opened: Opened = {
@@ -198,6 +199,7 @@ export function EventRoute() {
     term: params.q ?? null,
     spanish: params.lang === 'es',
     refreshing: params.refreshing === '1',
+    bell: params.bell === 'open',
   };
   const area = areaOf(params.area);
   const staff = area === 'staff' ? rosterStateOf(params.staff) : null;

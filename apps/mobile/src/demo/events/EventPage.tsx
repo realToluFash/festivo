@@ -30,7 +30,15 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, BellRow, EventFrame, type EventToast, backToEvents } from './EventFrame.tsx';
+import {
+  AreaPage,
+  BellRow,
+  EventBellAt,
+  EventFrame,
+  type EventToast,
+  backToEvents,
+} from './EventFrame.tsx';
+import { useEventBell } from './EventBell.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -134,10 +142,11 @@ import { RefreshingWords } from '../guests/RefreshingWords.tsx';
 import {
   BACK_HREF,
   BACK_KEY,
-  OPENERS,
   type Opened,
   type Opener,
   backScreenOf,
+  bellOpens,
+  openersFor,
   openerWords,
   wayBack,
 } from './opener.ts';
@@ -551,6 +560,14 @@ export function EventScreen({
     setGuestsFrom('changed');
     setAt('guests');
   };
+  const bell = useEventBell({
+    eventId: event.id,
+    startOpen: openedOver?.bell === true,
+    onHere: (key) => {
+      if (bellOpens(key) === 'guests') openChanged();
+      else setAt('overview');
+    },
+  });
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -698,9 +715,13 @@ export function EventScreen({
         };
 
   if (linked && at !== 'overview' && !leftOverview) setLeftOverview(true);
+  // Every area's frame opens the page's bell, the areas drawn by their own screen included (sc-84453).
+  const lend = (node: ReactNode) => (
+    <EventBellAt.Provider value={bell}>{node}</EventBellAt.Provider>
+  );
 
   if (state === 'loading' || failed != null)
-    return (
+    return lend(
       <EventFrame
         event={shown}
         now={now}
@@ -718,11 +739,11 @@ export function EventScreen({
         ) : (
           <EventsFailed words={W.failedLoadEvent} onRetry={failed} testID="event.link.retry" />
         )}
-      </EventFrame>
+      </EventFrame>,
     );
 
   if (at === 'people')
-    return (
+    return lend(
       <PeopleInEvent.Provider
         value={{
           event: shown,
@@ -735,11 +756,11 @@ export function EventScreen({
         }}
       >
         <PeopleSection params={peopleAt} />
-      </PeopleInEvent.Provider>
+      </PeopleInEvent.Provider>,
     );
 
   if (at === 'seating' && messagesHere)
-    return (
+    return lend(
       <SeatingScreen
         state={seating}
         event={shown}
@@ -747,7 +768,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   const writeToThem = () => {
@@ -765,7 +786,7 @@ export function EventScreen({
   };
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
-    return (
+    return lend(
       <GuestsScreen
         key={guestsFrom ?? ''}
         state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
@@ -780,11 +801,11 @@ export function EventScreen({
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
-      />
+      />,
     );
 
   if (at === 'budget' && messagesHere)
-    return (
+    return lend(
       <BudgetScreen
         state={budget}
         event={shown}
@@ -793,11 +814,11 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   if (at === 'messages' && messagesHere)
-    return (
+    return lend(
       <MessagesScreen
         m={m}
         dispatch={dispatch}
@@ -818,7 +839,7 @@ export function EventScreen({
             messages === 'typedBraces',
         }}
         extra={tell}
-      />
+      />,
     );
 
   let page: ReactNode;
@@ -886,7 +907,7 @@ export function EventScreen({
       />
     );
 
-  return (
+  return lend(
     <EventFrame
       event={shown}
       now={now}
@@ -988,7 +1009,7 @@ export function EventScreen({
       }
     >
       {page}
-    </EventFrame>
+    </EventFrame>,
   );
 }
 
@@ -1018,10 +1039,13 @@ function useBehind(opened: Opened | undefined) {
     besideBack: upright && node != null ? { node, onPlaced: setBeside } : undefined,
     ownLine: upright && node != null && !beside ? <View style={styles.ownLine}>{node}</View> : null,
     picker: upright ? (
-      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. Nothing is sent.">
+      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. On an iPad, another event's page from the bell reads Event and goes back to that event at its Guests, filtered to Coming; deleted meanwhile, that page reads This event is not available. The bell on this page opens over it: a notification for another event opens that event over this page, one for this event opens here. Nothing is sent.">
         <Choices
           heading="Opened over"
-          options={OPENERS.map((key) => ({ key, label: openerWords(key, shell.layout) }))}
+          options={openersFor(shell.layout).map((key) => ({
+            key,
+            label: openerWords(key, shell.layout),
+          }))}
           chosen={over}
           onChoose={setOver}
           id="opener"
