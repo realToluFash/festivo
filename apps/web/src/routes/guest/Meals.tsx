@@ -9,6 +9,7 @@ import { offButton } from '../../offButton.ts';
 import { Filled, Notice, TextAction, dayOf } from './GuestParts.tsx';
 import {
   type Cleared,
+  type DefaultLine,
   type Eater,
   type Plate,
   type Plates,
@@ -25,6 +26,7 @@ import {
   against,
   cardParts,
   changeFocus,
+  defaultName,
   dishContains,
   partsAllergens,
 } from './meals.ts';
@@ -68,6 +70,22 @@ function refusalWords(refusal: Refusal, course: MealCourse, eater: Eater, t: Tra
     case 'count':
       return t('guestMeal.wrongCount', { pick: refusal.pick, had: refusal.had });
   }
+}
+
+/** The close line for a person's course, or sc-1362's in its place while the default waits for them. */
+function closeWords(
+  line: DefaultLine,
+  course: MealCourse,
+  eater: Eater,
+  date: string,
+  t: Translate,
+) {
+  if (line !== 'chooseBy') return null;
+  const words = { course: lower(course.name), date, dish: defaultName(course) };
+
+  return eater.you
+    ? t('guestMeal.default.chooseBy', words)
+    : t('guestMeal.default.chooseByFor', { ...words, name: eater.name });
 }
 
 function AllergyMark() {
@@ -202,6 +220,7 @@ export function MealScreen({
   cleared,
   refusal,
   timeZone,
+  line = null,
   earlier = [],
   copiedFrom = null,
   onSameAs,
@@ -221,6 +240,7 @@ export function MealScreen({
   cleared: Cleared | null;
   refusal: Refusal;
   timeZone: string;
+  line?: DefaultLine;
   /** sc-17283: the people already answered, each a Same as button, on a later person's first course. */
   earlier?: readonly Eater[];
   /** sc-17283: whose answer on this course a Same as press couldn't copy, on the course it asks. */
@@ -340,7 +360,8 @@ export function MealScreen({
         </p>
         <p id="ms-close" className="gk-text is-quiet ms-close">
           <Glyph name="clock" size={15} weight={2.4} />
-          {t('guestMeal.picksClose', { date: closeDate })}
+          {closeWords(line, course, eater, closeDate, t) ??
+            t('guestMeal.picksClose', { date: closeDate })}
         </p>
       </div>
       {earlier.length > 0 && (
@@ -601,10 +622,13 @@ function ForkKnife() {
 /** A dish with its way and choices under it ("Fish · Plantain"), or the shape for chef's choice, skipped and needs the host. */
 function Pick({ plate, course }: { plate: Plate | undefined; course: MealCourse }) {
   const { t } = useTranslation();
-  if (plate == null || plate.kind === 'defaulted')
-    return <p className="mx-pick">{t('guestMeal.notChosen')}</p>;
+  if (plate == null) return <p className="mx-pick">{t('guestMeal.notChosen')}</p>;
   const dish = plateDish(course, plate);
-  if (plate.kind === 'chosen' || (plate.kind === 'needsHost' && plate.dish != null)) {
+  if (
+    plate.kind === 'chosen' ||
+    plate.kind === 'defaulted' ||
+    (plate.kind === 'needsHost' && plate.dish != null)
+  ) {
     const way = dish?.variants.find((one) => one.id === plate.variant);
     const parts = [
       ...((dish?.variants.length ?? 0) >= 2 && way != null ? [way.name] : []),
@@ -622,10 +646,23 @@ function Pick({ plate, course }: { plate: Plate | undefined; course: MealCourse 
       </>
     );
   }
+  return <Shape kind={plate.kind} course={course} />;
+}
+
+function Shape({
+  kind,
+  course,
+  words,
+}: {
+  kind: Plate['kind'];
+  course: MealCourse;
+  words?: string;
+}) {
+  const { t } = useTranslation();
   const shape =
-    plate.kind === 'chefsChoice'
+    kind === 'chefsChoice'
       ? { ring: 'is-kitchen', mark: <ForkKnife />, words: t('guestMeal.kitchenChooses') }
-      : plate.kind === 'skipped'
+      : kind === 'skipped'
         ? {
             ring: 'is-skipped',
             mark: <Glyph name="minus" size={13} weight={2.6} />,
@@ -634,7 +671,7 @@ function Pick({ plate, course }: { plate: Plate | undefined; course: MealCourse 
         : {
             ring: 'is-host',
             mark: <Glyph name="message" size={13} weight={2.4} />,
-            words: t('guestMeal.hostInTouch'),
+            words: words ?? t('guestMeal.hostInTouch'),
           };
 
   return (
@@ -661,6 +698,7 @@ export function MealCards({
   refused,
   unsaved,
   locked = false,
+  lineOf = () => null,
   onChange,
 }: {
   eaters: readonly Eater[];
@@ -676,6 +714,7 @@ export function MealCards({
   unsaved: ReadonlySet<string>;
   /** Paused: every row read-only with its own close line, open courses too. */
   locked?: boolean;
+  lineOf?: (eater: Eater, course: MealCourse, shut: boolean) => DefaultLine;
   onChange: (key: string) => void;
 }) {
   const { t } = useTranslation();
@@ -711,6 +750,7 @@ export function MealCards({
                 refused={refused.has(course.id)}
                 unsaved={unsaved.has(keyOf(eater.key, course.id))}
                 locked={locked}
+                lineOf={lineOf}
                 onChange={onChange}
               />
             ))}
@@ -734,6 +774,7 @@ function MealRow({
   refused,
   unsaved,
   locked,
+  lineOf = () => null,
   onChange,
 }: {
   eater: Eater;
@@ -747,6 +788,7 @@ function MealRow({
   refused: boolean;
   unsaved: boolean;
   locked: boolean;
+  lineOf?: (eater: Eater, course: MealCourse, shut: boolean) => DefaultLine;
   onChange: (key: string) => void;
 }) {
   const { t } = useTranslation();
@@ -754,19 +796,43 @@ function MealRow({
   const shut = course.picksClose.closed || refused;
   const mark = reasonOf(markOf(course, plates[key], allergies), eater, t);
   const date = dayOf(course.picksClose.at, timeZone);
+  const line = lineOf(eater, course, shut);
+  const waiting = closeWords(line, course, eater, date, t);
+  const words = { course: lower(course.name), name: eater.name };
+  const after =
+    line === 'defaulted'
+      ? eater.you
+        ? t('guestMeal.default.neverChose', words)
+        : t('guestMeal.default.neverChoseFor', words)
+      : null;
 
   return (
     <li className={shut ? 'mx-row pc-row is-closed' : 'mx-row pc-row'}>
       <div className="mx-words">
         <p className="mx-course">{course.name}</p>
-        <Pick plate={plates[key]} course={course} />
+        {line === 'hostInTouch' ? (
+          <Shape
+            kind="needsHost"
+            course={course}
+            words={
+              eater.you
+                ? t('guestMeal.default.hostInTouch', words)
+                : t('guestMeal.default.hostInTouchFor', words)
+            }
+          />
+        ) : (
+          <Pick plate={plates[key]} course={course} />
+        )}
         {pending && !shut && !locked && <p className="mx-pending">{t('guestMeal.notSent')}</p>}
-        {(!single || locked) && (
+        {(!single || locked || waiting != null) && (
           <p className="mx-close">
             <Glyph name={shut ? 'lock' : 'clock'} size={15} weight={2.4} />
-            {shut ? t('guestMeal.picksClosed', { date }) : t('guestMeal.picksClose', { date })}
+            {shut
+              ? t('guestMeal.picksClosed', { date })
+              : (waiting ?? t('guestMeal.picksClose', { date }))}
           </p>
         )}
+        {after != null && <p className="mx-close">{after}</p>}
         {unsaved && (
           <p
             className="desk-error ms-refused"
@@ -818,6 +884,7 @@ export function CopiedCard({
   plates,
   allergies,
   timeZone,
+  lineOf,
   onChange,
   onBack,
   onContinue,
@@ -828,6 +895,7 @@ export function CopiedCard({
   plates: Plates;
   allergies: readonly string[];
   timeZone: string;
+  lineOf: (eater: Eater, course: MealCourse, shut: boolean) => DefaultLine;
   onChange: (key: string) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -864,6 +932,7 @@ export function CopiedCard({
             refused={false}
             unsaved={false}
             locked={false}
+            lineOf={lineOf}
             onChange={onChange}
           />
         ))}

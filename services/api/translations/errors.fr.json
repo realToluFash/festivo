@@ -151,5 +151,7 @@
     "plan_required": "Le forfait de l’organisation n’inclut pas cette fonctionnalité.",
     "email_domain_taken": "Une autre organisation a déjà vérifié ce domaine.",
     "audit_export_too_many": "Trop d’entrées à exporter.",
-    "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné."
+    "door_code_invalid": "Ce code ne fonctionne pas. Vérifiez-le auprès de la personne qui vous l’a donné.",
+    "menu_is_default": "Cela fait partie du plat par défaut du service. Choisissez d’abord un autre plat par défaut.",
+    "menu_default_move": "Changer le plat par défaut déplace les invités qui l’ont reçu. Confirmez pour le changer."
 }

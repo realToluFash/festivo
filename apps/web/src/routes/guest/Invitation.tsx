@@ -6,6 +6,7 @@ import {
   type GuestCalendarLink,
   type GuestPage,
   type GuestPagePhase,
+  type MealCourse,
   realtimeTopic,
 } from '@soirely/api-client';
 import { formatEventClock, hostsLine, listFormat, wallDay } from '@soirely/domain';
@@ -77,6 +78,7 @@ import {
   changeFocus,
   clearRuledOut,
   eatersOf,
+  defaultLine,
   keyOf,
   markOf,
   markedOpen,
@@ -1109,6 +1111,8 @@ export function Card({
   const saved = savedPlates(page.meals, eaters);
   const paused = page.phase === 'paused' && !page.started;
   const marked = markedOpen(meal.plates, eaters, courses, allergies).length;
+  const lineOf = (eater: Eater, course: MealCourse, shut: boolean) =>
+    defaultLine(page.meals, course, eater, meal.plates[keyOf(eater.key, course.id)], shut);
   const cards = (head: 'check' | 'back') => (
     <MealCards
       eaters={eaters}
@@ -1123,6 +1127,7 @@ export function Card({
       refused={meal.refused}
       unsaved={meal.unsaved}
       locked={head === 'back' && paused}
+      lineOf={lineOf}
       onChange={changeMeal}
     />
   );
@@ -1149,6 +1154,13 @@ export function Card({
         cleared={meal.cleared[keyOf(eater.key, course.id)] ?? null}
         refusal={meal.pressed ? refusalOf(step, meal.draft, view.step === 0) : null}
         timeZone={event.timeZone}
+        line={defaultLine(
+          page.meals,
+          course,
+          eater,
+          meal.draft ?? meal.plates[keyOf(eater.key, course.id)],
+          course.picksClose.closed,
+        )}
         earlier={
           view.to === 'flow' && view.asked !== true && view.course === 0 && view.step === 0
             ? eaters.slice(0, view.eater)
@@ -1182,6 +1194,7 @@ export function Card({
         plates={meal.plates}
         allergies={allergies(eater.key)}
         timeZone={event.timeZone}
+        lineOf={lineOf}
         onChange={(key) => {
           const course = courses.findIndex((one) => key.endsWith(`|${one.id}`));
           if (course >= 0) openMeal(at, course, from, 'card');

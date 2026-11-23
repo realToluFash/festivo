@@ -126,7 +126,7 @@ final class MenuPicksTest extends ApiTestCase
         $main = self::course($picks, 'Main');
         self::assertSame([1, 1, 1, 1], [self::row($main, 'Jollof rice')['chosen'], $main['kitchen'], $main['skipped'], $main['notChosen']]);
         self::assertSame([['person' => ['id' => $chidi, 'name' => 'Chidi Okonkwo'], 'course' => $this->id($this->starter), 'reason' => 'nothing', 'pick' => null, 'allergens' => []]], $picks['needsHost']);
-        self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)]]]]], $picks['waiting']);
+        self::assertSame([['id' => $bisi, 'replier' => 'Bisi Adewale', 'people' => [['id' => $kojo, 'name' => 'Kojo Asante', 'courses' => [$this->id($this->main)], 'excluded' => []]]]], $picks['waiting']);
     }
 
     #[Test]

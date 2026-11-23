@@ -43,6 +43,7 @@ import {
   removeVariantOutcome,
   variantDetailsOf,
   variantFormOf,
+  variantPrefix,
   variantProblems,
   dishDetailsOf,
   dishProblems,
@@ -85,6 +86,7 @@ import {
   coursePicked,
   firstCourseProblem,
   menuClose,
+  menuCloseFrom,
   menuCounts,
   moveTarget,
   servedTime,
@@ -108,6 +110,26 @@ import {
 } from './MenuParts.tsx';
 import { type ShownVariant, type VariantAsk, VariantFields } from '../menu/VariantParts.tsx';
 import { useHubTopics } from './useHubTopics.ts';
+import {
+  type DefaultDates,
+  type DefaultForm,
+  checkDefault,
+  choiceLeavesDefault,
+  dayIn,
+  dayWords,
+  defaultForm,
+  firstDefaultProblem,
+  hasDefaultProblem,
+  isDefaultDish,
+  isDefaultOption,
+  isDefaultVariant,
+  type Move,
+  moveWords,
+  pickWords,
+  sentDefault,
+  variantLeavesDefault,
+} from './courseDefault.ts';
+import { DefaultFields, MoveDialog } from './MenuDefault.tsx';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -124,6 +146,9 @@ type Open =
       from: string;
       form: CourseForm;
       own: FixedRow[];
+      /** sc-1362's default and choose-by date; null on a course that asks guests nothing. */
+      pair: DefaultForm | null;
+      move: Move | null;
       pressed: boolean;
       failed: string | null;
       full: boolean;
@@ -182,7 +207,7 @@ type ChoiceOpen = Extract<Open, { kind: 'choice' }>;
 type Asking = { kind: 'dish' | 'course'; id: string; failed: string | null };
 
 type Refusal =
-  | { kind: 'dish'; id: string }
+  | { kind: 'dish' | 'defaultDish'; id: string }
   | { kind: 'course'; id: string }
   | { kind: 'limit'; at: 'top' | 'end' };
 
@@ -532,6 +557,8 @@ function Courses({
       from: at === 'top' ? 'mc-add-course' : 'mc-add-course-end',
       form: { name: '', servedAt: '' },
       own: [],
+      pair: null,
+      move: null,
       pressed: false,
       failed: null,
       full: false,
@@ -549,6 +576,8 @@ function Courses({
       from: `mc-edit-${course.id}`,
       form: { name: course.name, servedAt: course.servedAt ?? '' },
       own: ownRowsOf(course.ownItems),
+      pair: course.picksClose == null ? null : defaultForm(course),
+      move: null,
       pressed: false,
       failed: null,
       full: false,
@@ -600,12 +629,37 @@ function Courses({
     focusAfter.current = 'mc-panel-title';
   }
 
-  async function saveCourse() {
+  function datesOf(course: MenuCourse): DefaultDates {
+    const stored = course.default?.chooseBy ?? null;
+
+    return {
+      today: dayIn(new Date(), event.timeZone),
+      event: dayIn(new Date(event.startsAt), event.timeZone),
+      stored,
+      locked:
+        stored != null && course.picksClose?.source === 'chooseBy' && course.picksClose.closed,
+    };
+  }
+
+  const day = (date: string): string => dayWords(date, dateLocale());
+
+  async function saveCourse(confirmMove = false) {
     if (open == null || (open.kind !== 'addCourse' && open.kind !== 'editCourse') || open.busy)
       return;
+    const pairCourse = open.kind === 'editCourse' ? openCourse : null;
+    const pairErrors =
+      open.pair == null || pairCourse == null
+        ? null
+        : checkDefault(open.pair, pairCourse, datesOf(pairCourse), t, day);
     const problem =
       firstCourseProblem(courseProblems(open.form)) ??
-      firstItemProblem(open.own, ownItemProblems(open.own), true);
+      firstItemProblem(open.own, ownItemProblems(open.own), true) ??
+      (pairErrors != null &&
+      hasDefaultProblem(pairErrors) &&
+      open.pair != null &&
+      pairCourse != null
+        ? firstDefaultProblem(pairErrors, open.pair, pairCourse)
+        : null);
     if (problem != null) {
       setOpen({ ...open, pressed: true, failed: null, full: false });
       focusAfter.current = problem;
@@ -614,6 +668,8 @@ function Courses({
     const adding = open.kind === 'addCourse';
     const details = { name: open.form.name.trim(), servedAt: servedTime(open.form.servedAt) };
     setOpen({ ...open, pressed: true, busy: true, failed: null, full: false });
+    const sent =
+      open.pair == null || pairCourse == null ? undefined : sentDefault(open.pair, pairCourse);
 
     try {
       if (adding) {
@@ -632,12 +688,45 @@ function Courses({
         answer: course.answer,
         skippable: course.skippable,
         ownItems: open.own.map((one) => one.name.trim()),
+        ...(sent == null ? {} : { default: sent }),
+        ...(confirmMove ? { confirmMove } : {}),
       });
       onMenu(changed.menu);
       setOpen(null);
-      tellDone(t('eventMenu.saved', { name: details.name }));
+      tellDone(
+        open.move != null && confirmMove
+          ? moveWords(t, open.move).done
+          : t('eventMenu.saved', { name: details.name }),
+      );
     } catch (error) {
       if (gone(error)) return;
+      if (error instanceof ApiError && error.is('menu_default_move') && sent?.dish != null) {
+        const course = openCourse;
+        const was = course?.default ?? null;
+        const problem = error.problem;
+        if (course != null && was != null) {
+          setOpen((now) =>
+            now == null || now.kind !== 'editCourse'
+              ? now
+              : {
+                  ...now,
+                  busy: false,
+                  move: {
+                    move: problem?.move ?? 0,
+                    back: problem?.back ?? 0,
+                    from: pickWords(course, was),
+                    to: pickWords(course, {
+                      dish: sent.dish ?? '',
+                      variant: sent.variant ?? null,
+                      options: sent.options ?? [],
+                    }),
+                    on: day(was.chooseBy),
+                  },
+                },
+          );
+          return;
+        }
+      }
       if (error instanceof ApiError && error.is('menu_course_limit')) {
         setOpen((now) => (now == null ? now : { ...now, busy: false, full: true }));
         focusAfter.current = 'mc-form-full';
@@ -871,6 +960,11 @@ function Courses({
   function askRemove(dish: MenuDish) {
     settle();
     setSaid(null);
+    const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+    if (course != null && isDefaultDish(course, dish.id)) {
+      setRefused({ kind: 'defaultDish', id: dish.id });
+      return;
+    }
     if (dishPicked(dish)) {
       setRefused({ kind: 'dish', id: dish.id });
       return;
@@ -890,6 +984,12 @@ function Courses({
       if (error instanceof ApiError && error.is('menu_dish_picked')) {
         setAsking(null);
         setRefused({ kind: 'dish', id: dish.id });
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        setAsking(null);
+        setRefused({ kind: 'defaultDish', id: dish.id });
+        api.menu(event.id).then(onMenu, () => undefined);
         return;
       }
       if (gone(error)) {
@@ -930,10 +1030,10 @@ function Courses({
 
   function addVariant(course: MenuCourse, dish: MenuDish) {
     const outcome = addVariantOutcome(dish.variants, dish.picked);
-    if (outcome !== 'open') {
+    if (outcome !== 'open' || variantLeavesDefault(course, dish.id, null, false)) {
       settle();
       setSaid(null);
-      setAddRefused({ dishId: dish.id, outcome });
+      setAddRefused({ dishId: dish.id, outcome: outcome === 'open' ? 'default' : outcome });
       return;
     }
     openVariant(course, dish, dish.variants.length === 0 ? 'addFirst' : 'add', null);
@@ -957,6 +1057,19 @@ function Courses({
     if (hasProblem(problems)) {
       setOpen({ ...open, pressed: true, failed: null });
       focusAfter.current = firstVariantProblem(problems, open.forms);
+      return;
+    }
+    if (
+      open.variantId != null &&
+      variantLeavesDefault(
+        openCourse,
+        open.dishId,
+        open.variantId,
+        open.forms[0]?.for === 'children',
+      )
+    ) {
+      setOpen({ ...open, pressed: true, failed: null });
+      focusAfter.current = `${variantPrefix(0)}for-children`;
       return;
     }
     const details = open.forms.map((form) => variantDetailsOf(form, 'event', language, prices));
@@ -1012,6 +1125,17 @@ function Courses({
         setAddRefused({ dishId: open.dishId, outcome: 'limit' });
         return;
       }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        api.menu(event.id).then(onMenu, () => undefined);
+        if (open.variantId == null) {
+          setOpen(null);
+          setAddRefused({ dishId: open.dishId, outcome: 'default' });
+          return;
+        }
+        setOpen((then) => (then?.kind === 'variant' ? { ...then, busy: false } : then));
+        focusAfter.current = `${variantPrefix(0)}for-children`;
+        return;
+      }
       setOpen((then) =>
         then?.kind === 'variant'
           ? { ...then, busy: false, failed: failedLine(error, button) }
@@ -1032,6 +1156,16 @@ function Courses({
   function askRemoveVariant(dish: MenuDish, variant: ShownVariant) {
     settle();
     setSaid(null);
+    const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+    if (course != null && isDefaultVariant(course, dish.id, variant.id)) {
+      setVariantAsk({
+        variantId: variant.id,
+        kind: 'refused',
+        lines: [],
+        said: t('courseDefault.refuseVariant', { variant: variant.name, course: course.name }),
+      });
+      return;
+    }
     const outcome = removeVariantOutcome(dish.variants, variant);
     if (outcome.kind === 'refused') {
       setVariantAsk({ variantId: variant.id, kind: 'refused', lines: outcome.lines });
@@ -1062,6 +1196,20 @@ function Courses({
     } catch (error) {
       if (error instanceof ApiError && error.is('variant_picked')) {
         setVariantAsk({ variantId: variant.id, kind: 'refused', lines: ['picked'] });
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+        setVariantAsk({
+          variantId: variant.id,
+          kind: 'refused',
+          lines: [],
+          said: t('courseDefault.refuseVariant', {
+            variant: variant.name,
+            course: course?.name ?? '',
+          }),
+        });
+        api.menu(event.id).then(onMenu, () => undefined);
         return;
       }
       if (error instanceof ApiError && error.is('variant_last_everyone')) {
@@ -1140,7 +1288,9 @@ function Courses({
   function pressBin(now: ChoiceOpen, key: string) {
     const option = now.form.options.find((one) => one.key === key);
     const saved = openChoice?.options.find((one) => one.id === option?.id);
-    if (saved != null && optionPicked(saved)) {
+    const isDefault =
+      openCourse != null && saved != null && isDefaultOption(openCourse, now.dishId, saved.id);
+    if (saved != null && (isDefault || optionPicked(saved))) {
       setOpen({ ...now, binRefused: key, optionsFull: false });
       focusAfter.current = `ch-${key}-bin`;
       return;
@@ -1194,6 +1344,12 @@ function Courses({
         openKey: problem?.open ?? open.openKey,
       });
       focusAfter.current = problem?.id ?? null;
+      return;
+    }
+    const leaves = choiceLeavesDefault(openCourse, open.dishId, open.form, was, problems);
+    if (leaves != null) {
+      setOpen({ ...open, pressed: true, failed: null, binRefused: null });
+      focusAfter.current = defaultControl(leaves, open.form, was);
       return;
     }
     const details = choiceDetailsOf(open.form, was);
@@ -1375,7 +1531,9 @@ function Courses({
                 <Glyph name={headClose.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
                 {headClose.closed
                   ? t('eventMenu.picksHeadClosed', { date: closeWords(headClose.at) })
-                  : t('eventMenu.picksHead', { date: closeWords(headClose.at) })}
+                  : t(menuCloseFrom(courses) ? 'eventMenu.picksHeadFrom' : 'eventMenu.picksHead', {
+                      date: closeWords(headClose.at),
+                    })}
               </span>
             )}
             {refreshing && <Refreshing />}
@@ -1472,7 +1630,7 @@ function Courses({
                   }
                   askFailed={asking?.failed ?? null}
                   refused={
-                    refused == null || refused.kind === 'limit'
+                    refused == null || refused.kind === 'limit' || refused.kind === 'defaultDish'
                       ? null
                       : refused.kind === 'course'
                         ? refused.id === course.id
@@ -1480,6 +1638,7 @@ function Courses({
                           : null
                         : refused.id
                   }
+                  defaultRefused={refused?.kind === 'defaultDish' ? refused.id : null}
                   dragging={dragging === course.id}
                   onDragStart={() => setDragging(course.id)}
                   onDragEnd={() => setDragging(null)}
@@ -1535,9 +1694,14 @@ function Courses({
             closeLine={
               headClose == null
                 ? null
-                : t(headClose.closed ? 'eventMenu.picksClosed' : 'eventMenu.picksClose', {
-                    date: closeWords(headClose.at),
-                  })
+                : t(
+                    headClose.closed
+                      ? 'eventMenu.picksClosed'
+                      : menuCloseFrom(courses)
+                        ? 'eventMenu.picksCloseFrom'
+                        : 'eventMenu.picksClose',
+                    { date: closeWords(headClose.at) },
+                  )
             }
           />
         )}
@@ -1584,6 +1748,32 @@ function Courses({
                   onPatch={(next) =>
                     setOpen({ ...open, form: { ...open.form, ...next }, full: false })
                   }
+                />
+              )}
+              {open.kind === 'editCourse' && open.pair != null && openCourse != null && (
+                <DefaultFields
+                  course={openCourse}
+                  form={open.pair}
+                  dates={datesOf(openCourse)}
+                  errors={
+                    open.pressed
+                      ? checkDefault(open.pair, openCourse, datesOf(openCourse), t, day)
+                      : null
+                  }
+                  zone={zoneCity(event.timeZone)}
+                  day={day}
+                  onPatch={(pair) => setOpen({ ...open, pair, move: null })}
+                />
+              )}
+              {open.kind === 'editCourse' && open.move != null && (
+                <MoveDialog
+                  move={open.move}
+                  busy={open.busy}
+                  onCancel={() => {
+                    setOpen({ ...open, move: null });
+                    focusAfter.current = 'mc-panel-save';
+                  }}
+                  onMove={() => void saveCourse(true)}
                 />
               )}
               {open.kind === 'addDish' && openCourse != null && (
@@ -1656,6 +1846,12 @@ function Courses({
                   ways={openDish.variants.length}
                   openKey={open.openKey}
                   binRefused={open.binRefused}
+                  binWords={binDefaultWords(t, open, openCourse, openChoice)}
+                  defaultLine={
+                    open.pressed
+                      ? choiceDefaultLine(t, open, openCourse, openDish, openChoice)
+                      : null
+                  }
                   optionsFull={open.optionsFull}
                   intro={
                     <ChoiceIntro
@@ -1788,6 +1984,53 @@ function Courses({
   );
 }
 
+/** The Edit choice panel's status line for a bin refused because the option is part of the course's default (sc-1362). */
+function binDefaultWords(
+  t: TFunction,
+  open: ChoiceOpen,
+  course: MenuCourse | null,
+  choice: MenuDishChoice | null,
+): string | null {
+  const key = open.binRefused;
+  const id = open.form.options.find((one) => one.key === key)?.id;
+  const option = choice?.options.find((one) => one.id === id);
+  if (course == null || option == null || !isDefaultOption(course, open.dishId, option.id))
+    return null;
+
+  return t('courseDefault.refuseOption', { option: option.name, course: course.name });
+}
+
+/** The Edit choice panel's line for an edit that would leave the course's default unfinished (sc-1362). */
+function choiceDefaultLine(
+  t: TFunction,
+  open: ChoiceOpen,
+  course: MenuCourse | null,
+  dish: MenuDish,
+  choice: MenuDishChoice | null,
+): { at: 'pick' | 'required' | 'draft'; words: string } | null {
+  const at = choiceLeavesDefault(
+    course,
+    open.dishId,
+    open.form,
+    choice,
+    choiceProblems(open.form, choice),
+  );
+  if (at == null || course == null) return null;
+
+  return { at, words: t('courseDefault.refuseDish', { dish: dish.name, course: course.name }) };
+}
+
+function defaultControl(
+  at: 'pick' | 'required' | 'draft',
+  form: ChoiceForm,
+  was: MenuDishChoice | null,
+): string {
+  if (at === 'pick') return was != null && form.pick > was.pick ? 'ch-fewer' : 'ch-more';
+  if (at === 'required') return 'ch-required';
+
+  return form.question.trim() === '' ? 'ch-question' : 'ch-add-option';
+}
+
 function sharedLine(t: TFunction, name: string, archivedOnly: boolean): string {
   return t(archivedOnly ? 'menuLibrary.duplicateArchived' : 'menuLibrary.duplicate', { name });
 }
@@ -1826,6 +2069,13 @@ function VariantPanel({
       dish={dish}
       forms={open.forms}
       problems={open.pressed ? variantProblems(open.forms, others(dish), language, prices) : null}
+      forRefused={
+        open.pressed &&
+        variant != null &&
+        variantLeavesDefault(course, dish.id, variant.id, open.forms[0]?.for === 'children')
+          ? t('courseDefault.refuseDish', { dish: dish.name, course: course.name })
+          : null
+      }
       where="event"
       prices={prices}
       language={language}

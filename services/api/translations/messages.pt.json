@@ -492,7 +492,6 @@
     "email_domains.only_ours_unproved": "«Só a nossa organização» exige um domínio verificado por esta organização.",
     "validation.payment_reminder_days": "Introduza um número inteiro de dias de 1 a 30.",
     "staff.link_needs_mobile": "Adicione um número de telemóvel para enviar uma ligação.",
-    "access.plan_required": "Disponível no plano Enterprise. Para alterar esta definição, contacte a Soirely sobre o plano Enterprise.",
     "door_codes.role": "Um código de acesso só permite ver o evento ou registar a entrada dos convidados, nunca editar.",
     "door_codes.use_cap_required": "Indique quantas pessoas podem usar este código.",
     "door_codes.use_cap_range": "Use um número inteiro de 1 a 500.",
@@ -500,5 +499,19 @@
     "door_codes.not_made": "O código de acesso não foi criado. Verifique a ligação e tente novamente.",
     "door_codes.invalid": "Esse código não funciona. Confirme-o com quem lho deu.",
     "door_codes.too_many": "Demasiadas tentativas. Tente novamente a partir de {when}.",
-    "door_codes.member": "Já é membro de {organisation}. Os membros abrem um evento a partir da página Pessoas do evento. Peça à pessoa responsável pelo evento ou a um administrador para adicionar a sua conta."
+    "door_codes.member": "Já é membro de {organisation}. Os membros abrem um evento a partir da página Pessoas do evento. Peça à pessoa responsável pelo evento ou a um administrador para adicionar a sua conta.",
+    "validation.course_default_not_asked": "Only a course that asks guests something can have a default.",
+    "validation.course_default_dish_needed": "Choose a default dish, or clear the choose-by date.",
+    "validation.course_choose_by_needed": "Enter a choose-by date, or set the default to No default.",
+    "validation.course_choose_by_invalid": "Enter a date, like 2026-10-16.",
+    "validation.course_choose_by_after_event": "Choose a date before the event.",
+    "validation.course_choose_by_past": "That date has passed. Choose today or later.",
+    "validation.course_choose_by_locked": "The choose-by date has passed, so the date is locked.",
+    "validation.course_default_variant": "Choose the default’s variant.",
+    "validation.course_default_answer": "Answer “{question}” for the default.",
+    "validation.course_default_choose": "Choose {pick} for “{question}”.",
+    "menu.default_dish": "{dish} is {course}’s default. Choose another default first, in Edit course.",
+    "menu.default_variant": "{variant} is {course}’s default variant. Choose another default first, in Edit course.",
+    "menu.default_option": "{option} is part of {course}’s default. Choose another default first, in Edit course.",
+    "menu.default_move": "Changing the default moves the guests given it. Confirm to change it."
 }

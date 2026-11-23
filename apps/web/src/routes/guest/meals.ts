@@ -472,3 +472,30 @@ export function oneCloseDay(
     ? day
     : null;
 }
+
+/** sc-1362's line for a person's course: the default waiting for them while it is open, the default they were given, or the host in touch for someone it would never be given. */
+export type DefaultLine = 'chooseBy' | 'defaulted' | 'hostInTouch' | null;
+
+export function defaultLine(
+  meals: GuestMeals,
+  course: MealCourse,
+  eater: Eater,
+  plate: Plate | null | undefined,
+  shut: boolean,
+): DefaultLine {
+  if (course.default == null) return null;
+  if (plate?.kind === 'defaulted') return 'defaulted';
+  if (plate != null) return null;
+  const excluded = (meals.excluded[eater.id] ?? []).some((one) => one.course === course.id);
+  if (shut) return excluded ? 'hostInTouch' : null;
+
+  return excluded ? null : 'chooseBy';
+}
+
+/** The default's dish, with its variant's name where it has variants. */
+export function defaultName(course: MealCourse): string {
+  const dish = dishIn(course, course.default?.dish ?? null);
+  const way = dish?.variants.find((one) => one.id === course.default?.variant);
+
+  return [dish?.name, way?.name].filter((one) => one != null).join(', ');
+}

@@ -224,7 +224,7 @@ final readonly class GuestPageController
             'meals' => [
                 'you' => $guest->getId()->toRfc4122(),
                 'courses' => $this->guestMenu->menu($event),
-                'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
+                ...$this->servedMeals->of([$guest, ...$named]),
             ],
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],

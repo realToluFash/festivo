@@ -413,10 +413,12 @@ export interface MealCourse {
   answer: 'choose' | 'same';
   skippable: boolean;
   picksClose: { at: string; source: string; closed: boolean };
+  /** Given at `chooseBy` to each person coming with no answer whom it can't harm (sc-1362). */
+  default: { dish: string; variant: string | null; options: string[]; chooseBy: string } | null;
   dishes: MealDish[];
 }
 
-/** Not answered is no answer; `defaulted` is set only by sc-1362. */
+/** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
 export type MealAnswerKind = 'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted';
 
 export interface MealAnswer {
@@ -433,6 +435,8 @@ export interface GuestMeals {
   you: string;
   courses: MealCourse[];
   answers: Record<string, MealAnswer[]>;
+  /** By person: the courses whose default they are never given (sc-1362), each with `allergy` or the unmet diet's code. */
+  excluded: Record<string, { course: string; reason: string }[]>;
 }
 
 export interface MealPick {

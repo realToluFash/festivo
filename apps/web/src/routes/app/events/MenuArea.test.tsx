@@ -1179,4 +1179,314 @@ describe('The event’s Menu (sc-3902)', () => {
       expect(screen.queryByRole('button', { name: 'Edit Jollof rice' })).toBeNull();
     });
   });
+
+  describe('a course’s default and choose-by date (sc-1362)', () => {
+    const open = { at: '2030-11-15T18:00:00+01:00', source: 'start', closed: false };
+    const STEW = dish('d_stew', 'Rice and stew', {
+      variants: [
+        { id: 'v_plate', name: 'Plate', for: 'everyone', allergens: [], diets: [], picked: false },
+        {
+          id: 'v_kids',
+          name: 'Kids plate',
+          for: 'children',
+          allergens: [],
+          diets: [],
+          picked: false,
+        },
+      ],
+    });
+    const ASKING = course('c_main', 'Main', [JOLLOF, STEW], { picksClose: open });
+    const GIVEN = {
+      ...ASKING,
+      picksClose: { at: '2030-11-10T23:59:59+01:00', source: 'chooseBy', closed: false },
+      default: { dish: 'd_jollof', variant: null, options: [], chooseBy: '2030-11-10' },
+    };
+
+    it('refuses only one of the pair beside its field, and sends nothing', async () => {
+      const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(ASKING) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Main' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit course' });
+      fireEvent.click(within(panel).getByRole('radio', { name: 'Jollof rice' }));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(
+        within(panel).getByText('Enter a choose-by date, or set the default to No default.'),
+      ).toBeDefined();
+      expect(sent.some((one) => one.line.startsWith('PUT'))).toBe(false);
+    });
+
+    it('offers only a dish’s Everyone variants, and saves the whole pick with its date', async () => {
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(ASKING),
+        'PUT /api/events/ev_1/menu/courses/c_main': () =>
+          json({ menu: { courses: [ASKING] }, courseId: 'c_main' }),
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Main' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit course' });
+      fireEvent.click(within(panel).getByRole('radio', { name: 'Rice and stew' }));
+      expect(within(panel).queryByRole('radio', { name: 'Kids plate' })).toBeNull();
+      expect(within(panel).getByRole('radio', { name: 'Plate' })).toHaveProperty('checked', true);
+      fireEvent.change(within(panel).getByLabelText('Choose by'), {
+        target: { value: '2030-11-10' },
+      });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      expect(await screen.findByText('Main saved.')).toBeDefined();
+      expect(
+        sent.find((one) => one.line === 'PUT /api/events/ev_1/menu/courses/c_main')?.body,
+      ).toEqual(
+        expect.objectContaining({
+          default: { dish: 'd_stew', variant: 'v_plate', options: [], chooseBy: '2030-11-10' },
+        }),
+      );
+    });
+
+    it('names the default on the course card, and where its close comes from', async () => {
+      await onMenu({ 'GET /api/events/ev_1/menu': menuOf(GIVEN) });
+
+      const card = await screen.findByRole('listitem', { name: 'Main' });
+      expect(card.textContent).toContain(
+        'Set by Main’s own choose-by date. Closes at 23:59, Lagos time.',
+      );
+      expect(card.textContent).toContain(
+        'Default: Jollof rice. Given on Sunday, Nov 10 to anyone coming who hasn’t answered.',
+      );
+    });
+
+    it('refuses Remove… on the default dish at once, saying to choose another default first', async () => {
+      const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(GIVEN) });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove Jollof rice…' }));
+      expect(screen.queryByText('Guests have picked this dish.')).toBeNull();
+
+      expect(
+        await screen.findByText(
+          'Jollof rice is Main’s default. Choose another default first, in Edit course.',
+        ),
+      ).toBeDefined();
+      expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    });
+
+    describe('an edit that would leave the default unfinished (Decided, 23 Nov)', () => {
+      const option = (id: string, name: string) => ({ id, name, allergens: [], picks: 0 });
+      const HEAT = {
+        id: 'ch_heat',
+        question: 'How hot?',
+        pick: 1,
+        required: true,
+        draft: false,
+        noneAnswers: 0,
+        options: [option('o_mild', 'Mild'), option('o_hot', 'Hot'), option('o_very', 'Very hot')],
+      };
+      const SIDE = {
+        ...HEAT,
+        id: 'ch_side',
+        question: 'And a side?',
+        required: false,
+        options: [option('o_plantain', 'Plantain'), option('o_salad', 'Salad')],
+      };
+      const OFADA = dish('d_ofada', 'Ofada rice', { choices: [HEAT, SIDE] });
+      const SET = course('c_main', 'Main', [OFADA, STEW], {
+        picksClose: { at: '2030-11-10T23:59:59+01:00', source: 'chooseBy', closed: false },
+        default: { dish: 'd_ofada', variant: null, options: ['o_mild'], chooseBy: '2030-11-10' },
+      });
+      const LINE = 'Ofada rice is Main’s default. Choose another default first, in Edit course.';
+      const nothingSent = (sent: { line: string }[]) =>
+        expect(sent.some((one) => one.line.startsWith('PUT') || one.line.startsWith('POST'))).toBe(
+          false,
+        );
+
+      it('refuses the bin on a default option in Edit choice, in its status line', async () => {
+        await onMenu({ 'GET /api/events/ev_1/menu': menuOf(SET) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit “How hot?”' }));
+        const panel = await screen.findByRole('complementary', { name: 'Edit “How hot?”' });
+        fireEvent.click(within(panel).getByRole('button', { name: 'Remove Mild' }));
+
+        expect(
+          within(panel).getByText(
+            'Mild is part of Main’s default. Choose another default first, in Edit course.',
+          ),
+        ).toBeDefined();
+        expect(within(panel).getAllByLabelText('Name')).toHaveLength(3);
+      });
+
+      it('refuses Required turned on beside Required, and sends nothing', async () => {
+        const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(SET) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit “And a side?”' }));
+        const panel = await screen.findByRole('complementary', { name: 'Edit “And a side?”' });
+        fireEvent.click(within(panel).getByLabelText('Required'));
+        fireEvent.click(within(panel).getByRole('button', { name: 'Save choice' }));
+
+        expect(within(panel).getByText(LINE).id).toBe('ch-required-error');
+        await waitFor(() => expect(document.activeElement?.id).toBe('ch-required'));
+        nothingSent(sent);
+      });
+
+      it('refuses a new Guests pick exactly on a required choice beside the stepper', async () => {
+        const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(SET) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit “How hot?”' }));
+        const panel = await screen.findByRole('complementary', { name: 'Edit “How hot?”' });
+        fireEvent.click(within(panel).getByRole('button', { name: 'One more' }));
+        fireEvent.click(within(panel).getByRole('button', { name: 'Save choice' }));
+
+        expect(within(panel).getByText(LINE).closest('#ch-pick-error')).not.toBeNull();
+        nothingSent(sent);
+      });
+
+      it('refuses a choice saved as a draft in its status, and a required choice added', async () => {
+        const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(SET) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Add a choice to Ofada rice' }));
+        let panel = await screen.findByRole('complementary', { name: 'Add a choice' });
+        fireEvent.click(within(panel).getByRole('button', { name: 'Save as a draft' }));
+        expect(within(panel).getByText(LINE).closest('#ch-stays')).not.toBeNull();
+
+        fireEvent.change(within(panel).getByLabelText('Question guests see'), {
+          target: { value: 'A drink?' },
+        });
+        const names = within(panel).getAllByLabelText('Name');
+        fireEvent.change(names[0]!, { target: { value: 'Water' } });
+        fireEvent.change(names[1]!, { target: { value: 'Zobo' } });
+        for (const set of within(panel).getAllByRole('button', { name: 'Set allergens' })) {
+          fireEvent.click(set);
+          fireEvent.click(within(panel).getByLabelText('Contains none of these'));
+        }
+        fireEvent.click(within(panel).getByRole('button', { name: 'Add choice' }));
+        panel = screen.getByRole('complementary', { name: 'Add a choice' });
+        expect(within(panel).getByText(LINE).id).toBe('ch-required-error');
+        nothingSent(sent);
+      });
+
+      it('saves a finished optional choice on the default as usual', async () => {
+        const sent = await onMenu({
+          'GET /api/events/ev_1/menu': menuOf(SET),
+          'POST /api/events/ev_1/menu/dishes/d_ofada/choices': () =>
+            json({ menu: { courses: [SET] }, choiceId: 'ch_new' }, 201),
+        });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Add a choice to Ofada rice' }));
+        const panel = await screen.findByRole('complementary', { name: 'Add a choice' });
+        fireEvent.change(within(panel).getByLabelText('Question guests see'), {
+          target: { value: 'A drink?' },
+        });
+        const names = within(panel).getAllByLabelText('Name');
+        fireEvent.change(names[0]!, { target: { value: 'Water' } });
+        fireEvent.change(names[1]!, { target: { value: 'Zobo' } });
+        for (const set of within(panel).getAllByRole('button', { name: 'Set allergens' })) {
+          fireEvent.click(set);
+          fireEvent.click(within(panel).getByLabelText('Contains none of these'));
+        }
+        fireEvent.click(within(panel).getByLabelText('Required'));
+        fireEvent.click(within(panel).getByRole('button', { name: 'Add choice' }));
+
+        expect(await screen.findByText('“A drink?” added to Ofada rice.')).toBeDefined();
+        expect(
+          sent.find((one) => one.line === 'POST /api/events/ev_1/menu/dishes/d_ofada/choices')
+            ?.body,
+        ).toEqual(expect.objectContaining({ required: false }));
+      });
+
+      it('refuses Add variant on a default dish with none under its row, opening nothing', async () => {
+        const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(SET) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Add variant to Ofada rice' }));
+
+        expect(await screen.findByText(LINE)).toBeDefined();
+        expect(
+          screen.queryByRole('complementary', { name: 'Add variants to Ofada rice' }),
+        ).toBeNull();
+        nothingSent(sent);
+      });
+
+      it('refuses the default variant’s For turned to Children only beside For', async () => {
+        const party = {
+          id: 'v_party',
+          name: 'Party plate',
+          for: 'everyone',
+          allergens: [],
+          diets: [],
+          picked: false,
+        };
+        const stewed = {
+          ...SET,
+          dishes: [OFADA, { ...STEW, variants: [...(STEW.variants as unknown[]), party] }],
+          default: { dish: 'd_stew', variant: 'v_plate', options: [], chooseBy: '2030-11-10' },
+        };
+        const sent = await onMenu({ 'GET /api/events/ev_1/menu': menuOf(stewed) });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Edit Plate' }));
+        const panel = await screen.findByRole('complementary', { name: 'Edit Plate' });
+        fireEvent.click(within(panel).getByLabelText('Children only'));
+        fireEvent.click(within(panel).getByRole('button', { name: 'Save variant' }));
+
+        expect(
+          within(panel).getByText(
+            'Rice and stew is Main’s default. Choose another default first, in Edit course.',
+          ).id,
+        ).toBe('vb0-for-error');
+        await waitFor(() => expect(document.activeElement?.id).toBe('vb0-for-children'));
+        nothingSent(sent);
+      });
+    });
+
+    it('asks before moving the people given the default after the date, and moves them once confirmed', async () => {
+      const closed = {
+        ...GIVEN,
+        picksClose: { ...GIVEN.picksClose, closed: true },
+      };
+      let asked = 0;
+      const sent = await onMenu({
+        'GET /api/events/ev_1/menu': menuOf(closed),
+        'PUT /api/events/ev_1/menu/courses/c_main': (body) => {
+          if ((body as { confirmMove?: boolean }).confirmMove !== true) {
+            asked += 1;
+
+            return new Response(
+              JSON.stringify({
+                type: 'https://soirely.com/errors/menu_default_move',
+                title: 'menu_default_move',
+                status: 409,
+                move: 21,
+                back: 2,
+              }),
+              { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+            );
+          }
+
+          return json({ menu: { courses: [closed] }, courseId: 'c_main' });
+        },
+      });
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Edit Main' }));
+      const panel = await screen.findByRole('complementary', { name: 'Edit course' });
+      expect(within(panel).queryByRole('radio', { name: 'No default' })).toBeNull();
+      expect(
+        within(panel).getByText('Sunday, Nov 10 has passed, so the date is locked.'),
+      ).toBeDefined();
+      fireEvent.click(within(panel).getByRole('radio', { name: 'Rice and stew' }));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Save changes' }));
+
+      const dialog = await screen.findByRole('alertdialog', {
+        name: 'Move 21 guests to Rice and stew, Plate?',
+      });
+      expect(dialog.textContent).toContain('2 go back to not chosen');
+      expect(document.activeElement?.textContent).toBe('Cancel');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Move 21 guests' }));
+
+      expect(
+        await screen.findByText(
+          '21 guests moved to Rice and stew, Plate. 2 are back to not chosen.',
+        ),
+      ).toBeDefined();
+      expect(asked).toBe(1);
+      expect(
+        sent.filter((one) => one.line === 'PUT /api/events/ev_1/menu/courses/c_main').at(-1)?.body,
+      ).toEqual(expect.objectContaining({ confirmMove: true }));
+    });
+  });
 });

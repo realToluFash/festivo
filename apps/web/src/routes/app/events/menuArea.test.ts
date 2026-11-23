@@ -8,8 +8,10 @@ import {
   closeTime,
   courseProblems,
   coursePicked,
+  dayEndTime,
   firstCourseProblem,
   menuClose,
+  menuCloseFrom,
   menuCounts,
   moveTarget,
   servedTime,
@@ -40,6 +42,7 @@ const course = (id: string, dishes: MenuDish[] = []): MenuCourse => ({
   ownItems: [],
   items: [],
   picksClose: null,
+  default: null,
 });
 
 describe('the course form', () => {
@@ -132,6 +135,34 @@ describe('the menu', () => {
     expect(closeDay(at, 'Africa/Lagos', 'pt-BR')).toBe('segunda-feira, 19 de out.');
     expect(closeTime(at, 'Africa/Lagos', 'en-US')).toBe('23:59');
     expect(closeTime('2026-11-14T16:00:00+01:00', 'Africa/Lagos', 'en-US')).toBe('16:00');
+  });
+
+  it('writes a choose-by date’s 23:59 as each locale writes a time', () => {
+    expect(dayEndTime('en-US')).toBe('23:59');
+    expect(dayEndTime('fr-FR')).toBe('23:59');
+    expect(dayEndTime('pt-BR')).toBe('23:59');
+  });
+
+  it('reads "close from" only while the open courses close on different dates', () => {
+    const closing = (id: string, at: string, closed: boolean): MenuCourse => ({
+      ...course(id),
+      picksClose: { at, source: 'chooseBy', closed },
+    });
+    const starter = (closed: boolean) => closing('starter', '2026-10-05T23:59:59+01:00', closed);
+    const main = (closed: boolean) => closing('main', '2026-10-10T23:59:59+01:00', closed);
+
+    expect(menuCloseFrom([starter(false), main(false)])).toBe(true);
+    expect(menuClose([main(false), starter(false)])?.at).toBe('2026-10-05T23:59:59+01:00');
+
+    expect(menuCloseFrom([starter(true), main(false)])).toBe(false);
+    expect(menuClose([starter(true), main(false)])).toEqual(main(false).picksClose);
+
+    expect(menuCloseFrom([starter(true), main(true)])).toBe(false);
+    expect(menuClose([starter(true), main(true)])).toEqual(main(true).picksClose);
+
+    expect(
+      menuCloseFrom([starter(false), closing('dessert', '2026-10-05T23:59:59+01:00', false)]),
+    ).toBe(false);
   });
 
   it('heads the Menu with the earliest close still open, or the last once all have closed', () => {
