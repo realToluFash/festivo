@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Answers,
   NO_ALLERGIES,
+  changedRoute,
   SCREENS,
   clearRuledOut,
   copyAnswers,
@@ -135,5 +136,31 @@ describe('what Same as copies (sc-17283)', () => {
     const changed = { ...result.answers, 'me|main': { kind: 'skipped' } } as const;
     expect(changed['tom|main']).toEqual({ kind: 'kitchen' });
     expect(copyable(undefined, courseOf('main'), [])).toBe(false);
+  });
+});
+
+describe('what a Menu changed visit asks (sc-3913)', () => {
+  const removed = { kind: 'changed', dish: 'Suya skewers', why: 'removed' } as const;
+  const answers: Answers = {
+    'me|starter': removed,
+    'me|main': { kind: 'kitchen' },
+    'chidi|starter': removed,
+    'chidi|main': { kind: 'changed', dish: 'Sea bass', why: 'removed' },
+  };
+
+  it('walks only the changed courses that are still open, in party order', () => {
+    expect(changedRoute(answers, SCREENS, () => false)).toEqual([
+      screenAt('me', 'starter'),
+      screenAt('chidi', 'starter'),
+      screenAt('chidi', 'main'),
+    ]);
+    expect(changedRoute(answers, SCREENS, (course) => course === 'main')).toEqual([
+      screenAt('me', 'starter'),
+      screenAt('chidi', 'starter'),
+    ]);
+  });
+
+  it('never copies a Menu changed answer to another person', () => {
+    expect(copyable(removed, courseOf('starter'), [])).toBe(false);
   });
 });
