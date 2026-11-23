@@ -384,6 +384,23 @@ final class EventMenuTest extends ApiTestCase
     }
 
     #[Test]
+    public function aSkippableChoosingCoursesFirstDishAsksEveryoneComingToo(): void
+    {
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->picks($jollof['id'], $this->guest('Tolu Adeyemi', []));
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
+        $dessert = $this->course('Dessert');
+        $this->change($dessert['id'], ['name' => 'Dessert', 'skippable' => true]);
+        self::assertSame(200, $this->statusCode());
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([2, 'everyone'], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null]);
+    }
+
+    #[Test]
     public function anAllergenAddedToAPickedDishAsksAgainOnlyThoseWhoPickedItWithItRecorded(): void
     {
         $jollof = $this->pickedJollof();
@@ -438,8 +455,12 @@ final class EventMenuTest extends ApiTestCase
     {
         $main = $this->course('Main');
         $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->picks($jollof['id'], $this->guest('Bisi Ola', []));
+        self::em()->flush();
         self::service(Connection::class)->executeStatement("UPDATE events SET starts_at = '2020-06-12 16:00:00', ends_at = '2020-06-13 01:00:00' WHERE id = :id", ['id' => $this->eventId]);
 
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null, 'the host is asked first, so the refusal shows in the dialog');
         $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id'] . '?askAgain=1'));
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::MenuEventOver->type(), $this->last()['type'] ?? null);
