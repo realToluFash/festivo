@@ -1,7 +1,18 @@
-# sc-6476: End now with a line while the API hangs (Ending…) and then is gone (Not ended.). Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}.
+# sc-6476: End now with a line while the API hangs (Ending…) and then is gone (Not ended.). Needs ${METRO_URL}, ${EV_END}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
 ---
 - setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
 - openLink: ${METRO_URL}/--/events/${EV_END}
 - extendedWaitUntil:
     visible:
@@ -19,14 +30,23 @@ appId: host.exp.Exponent
 - inputText: 'Thank you for dancing with us and for every kind word.'
 - hideKeyboard
 - waitForAnimationToEnd
-- evalScript: "${http.get(HELPER_URL + '/api?to=paused').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
 - tapOn:
     id: 'events.endYes'
 - takeScreenshot: endNowEnding
-- evalScript: "${http.get(HELPER_URL + '/api?to=stopped').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
 - waitForAnimationToEnd:
     timeout: 15000
 - takeScreenshot: endNowNotEnded
-- evalScript: "${http.get(HELPER_URL + '/api?to=up').body}"
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
 - tapOn:
     id: 'events.endNo'

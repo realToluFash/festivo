@@ -1,7 +1,13 @@
-# sc-6476: a Finished event's thank-you card on the app, through Add, Save, Edit, over the limit, discard and remove. Needs ${METRO_URL}, ${EV_NONE}, ${ORIENT}.
+# sc-6476: a Finished event's thank-you card on the app, through Add, Save, Edit, over the limit, discard and remove. Needs ${METRO_URL}, ${EV_NONE}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
 - openLink: ${METRO_URL}/--/events/${EV_NONE}
 - extendedWaitUntil:
     visible:
