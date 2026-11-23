@@ -24,6 +24,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import {
   type Access,
+  type ChangedCourse,
   type Course,
   DOWNLOAD_MS,
   type Download,
@@ -500,7 +501,7 @@ function WhoHasnt({
           <Text size={15} style={parts.secondary}>
             {MW.neverGivenBody}
           </Text>
-          {never.map(({ person, open }) => (
+          {never.map(({ person, open, changed }) => (
             <View key={person.id} style={styles.line}>
               <Text size={17} weight="semibold">
                 {person.name}
@@ -508,6 +509,7 @@ function WhoHasnt({
               <Text size={15} style={parts.secondary}>
                 {openWords(open)}
               </Text>
+              <ChangedLines changed={changed} />
               <ChooseButton
                 name={person.name}
                 access={access}
@@ -528,14 +530,17 @@ function WhoHasnt({
           <Text size={15} weight="semibold" style={parts.secondary}>
             {MW.replied(group.party.replier, partySize(world, group.party))}
           </Text>
-          {group.people.map(({ person, courses }) => (
+          {group.people.map(({ person, open, changed }) => (
             <View key={person.id} style={styles.line}>
               <Text size={17} weight="semibold">
                 {person.name}
               </Text>
-              <Text size={15} style={parts.secondary}>
-                {MW.notChosenOn(courseList(courses))}
-              </Text>
+              {open.length > 0 && (
+                <Text size={15} style={parts.secondary}>
+                  {MW.notChosenOn(courseList(open.map((one) => one.course)))}
+                </Text>
+              )}
+              <ChangedLines changed={changed} />
               <ChooseButton
                 name={person.name}
                 access={access}
@@ -553,6 +558,18 @@ function WhoHasnt({
       )}
     </Card>
   );
+}
+
+/** sc-3913: each Menu changed course with the pick the person kept, marked as the course's Menu changed row is. */
+function ChangedLines({ changed }: { changed: readonly ChangedCourse[] }) {
+  return changed.map(({ course, picked }) => (
+    <View key={course.id} style={parts.markLine}>
+      <Glyph name="alert" size={16} ink={tokens.colorAttentionText} />
+      <Text size={15} style={parts.secondary}>
+        {MW.changedOn(course.name, picked)}
+      </Text>
+    </View>
+  ));
 }
 
 /** Given the default (sc-1362): shown only while someone is defaulted, by who replied. */

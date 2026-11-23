@@ -122,6 +122,28 @@ describe('Who hasn’t picked', () => {
   it('is empty once everyone is in', () => {
     expect(whoHasnt(menuStart('allIn').world!)).toEqual([]);
   });
+
+  it('lists Menu changed under the party with the course and the pick they kept, and opens Choose for them there (sc-3913)', () => {
+    const changed = menuStart('menuChanged').world!;
+    const listed = whoHasnt(changed)
+      .flatMap((w) => w.people)
+      .filter((one) => one.changed.length > 0);
+
+    expect(listed.map((one) => one.person.id)).toEqual([
+      'lucia-ruiz',
+      'louis-martin',
+      'femi-adeyemi',
+    ]);
+    expect(listed[0]!.changed.map((one) => [one.course.id, one.picked])).toEqual([
+      ['k3', 'Puff puff'],
+    ]);
+    expect(listed[0]!.open).toEqual([]);
+    expect(listed[0]!.courses.map((one) => one.id)).toEqual(['k3']);
+    expect(chooseCourses(changed, personOf(changed, 'lucia-ruiz')!).map((one) => one.id)).toEqual([
+      'k3',
+    ]);
+    expect(courseFigures(changed, courseOf(changed, 'k3')!).changed).toBe(3);
+  });
 });
 
 describe('Choose for them', () => {

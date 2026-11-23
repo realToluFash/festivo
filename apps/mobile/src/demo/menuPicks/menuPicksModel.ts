@@ -61,7 +61,13 @@ export interface DishPick {
   override?: { by: string; at: string };
 }
 
-export type Pick = DishPick | { kind: 'kitchen' } | { kind: 'skipped' } | { kind: 'changed' };
+/** sc-3913's Menu changed: the course is asked again, and the pick they had is kept by name. */
+export interface Changed {
+  kind: 'changed';
+  picked: string;
+}
+
+export type Pick = DishPick | { kind: 'kitchen' } | { kind: 'skipped' } | Changed;
 
 export interface MenuWorld {
   courses: readonly Course[];
@@ -81,7 +87,7 @@ export type Spot =
   | (Omit<DishPick, 'override'> & { kind: 'dish'; defaulted: boolean })
   | { kind: 'kitchen' }
   | { kind: 'skipped' }
-  | { kind: 'changed' }
+  | Changed
   | { kind: 'none'; excluded: Excluded | null }
   | { kind: 'host'; reason: HostReason };
 
@@ -225,6 +231,7 @@ export const MW = {
   whoHasntNone: 'Everyone coming has picked every course, or is with the host above.',
   replied: (name: string, n: number) => `Replied by ${name} · ${people(n)}`,
   notChosenOn: (courses: string) => `Not chosen: ${courses}`,
+  changedOn: (course: string, dish: string) => `Menu changed: ${course} · picked ${dish}`,
   chooseFor: 'Choose for them',
   chooseForLabel: (name: string) => `Choose for ${name}`,
   needsManage: 'Choosing for a guest needs Guests manage.',
@@ -571,7 +578,7 @@ export function spotOf(world: MenuWorld, course: Course, person: Person): Spot {
   if (pick.kind !== 'dish') return pick;
 
   const found = course.dishes.find((one) => one.id === pick.dishId);
-  if (found == null) return { kind: 'changed' };
+  if (found == null) return { kind: 'changed', picked: pick.dishId };
 
   const allergens = ruledOut(person, containsOf(found, pick.variantId));
   if (allergens.length > 0 && pick.override == null)
@@ -772,10 +779,17 @@ export interface OpenCourse {
   excluded: Excluded | null;
 }
 
+export interface ChangedCourse {
+  course: Course;
+  picked: string;
+}
+
 export interface WaitingPerson {
   person: Person;
+  /** Every course Choose for them opens on: not chosen, then Menu changed, in menu order. */
   courses: Course[];
   open: OpenCourse[];
+  changed: ChangedCourse[];
 }
 
 export interface Waiting {
@@ -784,12 +798,18 @@ export interface Waiting {
 }
 
 function waitingOf(world: MenuWorld, person: Person): WaitingPerson {
-  const open = world.courses.flatMap((course): OpenCourse[] => {
-    const spot = spotOf(world, course, person);
-    return spot.kind === 'none' ? [{ course, excluded: spot.excluded }] : [];
-  });
+  const spots = world.courses.map((course) => ({ course, spot: spotOf(world, course, person) }));
+  const open = spots.flatMap(({ course, spot }): OpenCourse[] =>
+    spot.kind === 'none' ? [{ course, excluded: spot.excluded }] : [],
+  );
+  const changed = spots.flatMap(({ course, spot }): ChangedCourse[] =>
+    spot.kind === 'changed' ? [{ course, picked: spot.picked }] : [],
+  );
+  const courses = spots
+    .filter(({ spot }) => spot.kind === 'none' || spot.kind === 'changed')
+    .map(({ course }) => course);
 
-  return { person, courses: open.map((one) => one.course), open };
+  return { person, courses, open, changed };
 }
 
 const isExcluded = (one: WaitingPerson): boolean =>
@@ -1107,7 +1127,7 @@ function allInMenu(): MenuWorld {
 
 function changedMenu(): MenuWorld {
   return ['lucia-ruiz', 'louis-martin', 'femi-adeyemi'].reduce(
-    (world, id) => choose(world, 'k3', id, dishPick('k3-puffpuff')),
+    (world, id) => choose(world, 'k3', id, { kind: 'changed', picked: 'Puff puff' }),
     sampleMenu(),
   );
 }
@@ -1260,7 +1280,7 @@ const STATES = {
   menuChanged: () =>
     start({
       name: 'Menu changed',
-      note: 'Three Dessert picks whose dish came off, counted as Menu changed and not in.',
+      note: 'Three Dessert picks of Puff puff, which came off: counted as Menu changed and not in, and listed in Who hasn’t picked under their party with the pick they kept. Choose for them opens on Dessert.',
       world: changedMenu(),
     }),
   chooseFor: () =>
