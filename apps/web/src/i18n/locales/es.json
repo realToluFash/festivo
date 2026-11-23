@@ -4017,6 +4017,7 @@
     "sendChanges": "Enviar mis cambios",
     "nothingToSend": "No ha cambiado nada, así que no hay nada que enviar.",
     "changesSaved": "Sus cambios se han guardado.",
+    "otherChangesSaved": "Your other changes are saved.",
     "notSaved": "No se ha enviado. Compruebe su conexión e inténtelo de nuevo.",
     "refusedClosed": "La elección en «{{course}}» se cerró el {{date}}, así que su cambio no se ha guardado.",
     "askHosts": "Para cambiar una elección ahora, hable con {{hosts}}.",
