@@ -125,7 +125,7 @@ export const GUEST_DAY_STATES = {
     },
   },
   onTheDayStartedKitchenSaved: {
-    name: 'On the day, from the start, the kitchen needs saved: the note stays, the pencil goes',
+    name: 'On the day, from the start, the kitchen needs saved: the note and the pencil go',
     starts: {
       ...STARTED,
       ...COMING,

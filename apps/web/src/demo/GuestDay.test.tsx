@@ -137,11 +137,11 @@ describe('the guest’s page on the event’s day (sc-24381)', () => {
     ).toBeDefined();
   });
 
-  it('keeps the kitchen’s saved note under Your answer after the start, without the pencil', async () => {
+  it('drops the kitchen’s saved note and the pencil from Your answer once the event has started', async () => {
     await guest('onTheDayStartedKitchenSaved');
     const answer = screen.getByRole('heading', { name: 'Your answer' }).closest('section')!;
 
-    expect(within(answer).getByText('Saved. The kitchen will see this.')).toBeDefined();
+    expect(within(answer).queryByText('Saved. The kitchen will see this.')).toBeNull();
     expect(
       within(answer).queryByRole('button', { name: /what the kitchen should know/iu }),
     ).toBeNull();

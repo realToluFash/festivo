@@ -91,7 +91,7 @@ export function DayAnswer({
   if (recorded == null) return null;
   const on = dayOf(recorded.on, lang);
   const closed = view.kind === 'closed';
-  const saved = closed && visit.kitchen?.saved === true;
+  const saved = closed && !started && visit.kitchen?.saved === true;
 
   return (
     <section className="gp-day-block" aria-labelledby="gp-day-answer-h">

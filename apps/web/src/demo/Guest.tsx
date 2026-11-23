@@ -914,7 +914,7 @@ export function Closed({
   }
 
   const by = dayOf(visit.replyBy ?? '', lang);
-  const saved = visit.kitchen?.saved === true;
+  const saved = !visit.started && visit.kitchen?.saved === true;
   const line =
     visit.started || !answersClosedByDate(visit)
       ? words.closed
