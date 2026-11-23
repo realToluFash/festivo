@@ -260,7 +260,7 @@ describe('The bell in the B frame (sc-83081)', () => {
     const source = parts();
 
     expect(source).toMatch(
-      /<View\s+style=\{styles\.tile\}\s+accessibilityElementsHidden\s+importantForAccessibility="no-hide-descendants"\s*>\s*<Glyph name=\{mark\}/u,
+      /<View\s+style=\{styles\.tile\}\s+accessibilityElementsHidden\s+importantForAccessibility="no-hide-descendants"\s*>\s*<Glyph name=\{markOf\(row\.category\)\}/u,
     );
     expect(source).toMatch(
       /tile: \{\s*width: 40,\s*height: 40,[\s\S]*?backgroundColor: tokens\.colorInset,/u,

@@ -1295,7 +1295,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
         name: /^Ana Souza added a note to the event/u,
       });
 
-      expect(item.querySelector('.bell-glyph')).toBeNull();
+      expect(item.querySelector('.bell-glyph svg')).not.toBeNull();
       expect(within(item).getByText('Unread')).toBeDefined();
       expect(within(item).getByText('Muted')).toBeDefined();
       expect(

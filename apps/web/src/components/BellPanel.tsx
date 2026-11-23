@@ -184,16 +184,13 @@ function BellItem({
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const mark = markOf(row.category);
 
   return (
     <li className="bell-row">
       <button type="button" data-notification={row.id} className="bell-item" onClick={onPick}>
-        {mark != null && (
-          <span className="bell-glyph" aria-hidden="true">
-            <Glyph name={mark} size={20} />
-          </span>
-        )}
+        <span className="bell-glyph" aria-hidden="true">
+          <Glyph name={markOf(row.category)} size={20} />
+        </span>
         <span className="bell-words">
           <span className={row.unread ? 'bell-title is-unread' : 'bell-title'}>{row.title}</span>
           {row.lines.map((line, index) => (
