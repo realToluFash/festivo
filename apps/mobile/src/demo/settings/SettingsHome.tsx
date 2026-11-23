@@ -1,6 +1,6 @@
 import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +23,7 @@ import {
 import { Back } from '../../components/SettingsParts.tsx';
 import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { HeldStandIn } from './Held.tsx';
-import type { Held } from './HeldModel.ts';
+import { type Held, pausedGroups } from './HeldModel.ts';
 import { useHeldChoice } from './PersonalisationModel.ts';
 import { SettingsDemoRow } from './SettingsDemoRow.tsx';
 import { dataHref } from './DataModel.ts';
@@ -48,11 +48,13 @@ type Listed = Exclude<ShellSection, 'account'>;
 const DATA_ROW = 'dataAndControl';
 
 /** The sections a viewer sees; Your account is the card at the top. Data and control follows Sign-in rules for whoever manages the organisation (sc-560). */
-function groupsFor(viewer: Viewer) {
-  return demoGroups(viewer).map(({ heading, sections }) => ({
+function groupsFor(viewer: Viewer, paused: boolean) {
+  const groups = demoGroups(viewer);
+
+  return (paused ? pausedGroups(groups) : groups).map(({ heading, sections }) => ({
     heading,
     sections: sections.filter((section): section is Listed => section !== 'account'),
-    data: heading === 'organisationHeading' && managesOrganisation(viewer),
+    data: heading === 'organisationHeading' && managesOrganisation(viewer) && !paused,
   }));
 }
 
@@ -137,7 +139,8 @@ function useDemoList(
   const rowOf = useSectionRows(YOU.organisation, useHeldChoice());
   const dataRow = useDataRow(dense);
   const side = rowSide(dense);
-  const groups = groupsFor(shell.viewer).map(({ heading, sections, data }) => {
+  const paused = useContext(PausedHere);
+  const groups = groupsFor(shell.viewer, paused).map(({ heading, sections, data }) => {
     const rows = sections.map((section) => rowOf(section, side));
 
     return { heading: t(`settings.${heading}`), rows: data ? [...rows, dataRow.row] : rows };

@@ -580,6 +580,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings?held=paused&switcher=one',
       },
       {
+        title: 'Settings · access paused, Your account',
+        what: 'Organisation and Sign-in rules only, no role (sc-86077)',
+        href: '/demo/settings/account?held=paused',
+      },
+      {
+        title: 'Settings · access paused, Your account, no other organisation',
+        what: 'The same list for a member of it alone (sc-86077)',
+        href: '/demo/settings/account?held=paused&switcher=one',
+      },
+      {
         title: 'Settings · two-factor overdue',
         what: 'Turn on two-factor, Sign out',
         href: '/demo/settings?held=overdue',

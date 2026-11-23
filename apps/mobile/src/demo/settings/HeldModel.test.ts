@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { pausedSwitch } from '@soirely/domain';
 import { describe, expect, it } from 'vitest';
 
-import { aloneOf, heldOf, othersOf } from './HeldModel.ts';
+import { aloneOf, heldOf, opensWhilePaused, othersOf, pausedGroups } from './HeldModel.ts';
+import { demoGroups } from './sample.ts';
 
 const held = readFileSync(join(import.meta.dirname, 'Held.tsx'), 'utf8');
 
@@ -26,5 +27,33 @@ describe('sc-85006: the held pages for a member of one organisation', () => {
   it('feeds both cards their others', () => {
     expect(held).toContain('others={othersOf(alone)}');
     expect(held.match(/others=\{othersOf\(alone\)\}/g)).toHaveLength(2);
+  });
+});
+
+describe('sc-86077: Settings while the organisation is paused', () => {
+  it('lists Organisation then Sign-in rules, whatever the role elsewhere', () => {
+    expect(pausedGroups(demoGroups('owner'))).toEqual([
+      {
+        heading: 'yourAccount',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
+      { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] },
+    ]);
+    expect(pausedGroups(demoGroups('member'))[1]?.sections).toEqual([
+      'organisation',
+      'signInRules',
+    ]);
+  });
+
+  it('keeps your account’s four sections open, and stands the paused page in for the organisation’s', () => {
+    expect(
+      ['account', 'security', 'notifications', 'personalisation'].every((one) =>
+        opensWhilePaused(one as never),
+      ),
+    ).toBe(true);
+    expect(opensWhilePaused('organisation')).toBe(false);
+    expect(opensWhilePaused('members')).toBe(false);
+    expect(opensWhilePaused('signInRules')).toBe(false);
+    expect(opensWhilePaused(null)).toBe(false);
   });
 });
