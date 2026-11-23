@@ -283,7 +283,7 @@ export function SettingsTabBar({ bottom }: { bottom: number }) {
   );
 }
 
-/** The demo's pill, tabs and bell for the product's upright row, with Search before the bell unless `search` is false (sc-82858). */
+/** The demo's tabs and bell for the product's upright row, with Search before the bell unless `search` is false (sc-82858). */
 function usePortraitRow(at: Tab, search: boolean) {
   const { t } = useTranslation();
   const shell = useShell();
@@ -291,9 +291,6 @@ function usePortraitRow(at: Tab, search: boolean) {
   const say = (_: Tab, glyph: GlyphName) => t(`todayScreen.tab.${glyph}`);
 
   return {
-    renderPill: (room: number | undefined, givesWay: boolean) => (
-      <OrgPill room={room} givesWay={givesWay} />
-    ),
     bell: search ? (
       <SearchAndBell tell={shell.tell} role={shell.looking.role} />
     ) : (
@@ -314,7 +311,12 @@ export function PortraitTop({ at = 'Settings', search = true }: { at?: Tab; sear
 
   if (fromNone != null) return <View style={{ height: insets.top + tokens.spaceXl }} />;
 
-  return <ProductPortraitTop {...row} />;
+  return (
+    <ProductPortraitTop
+      {...row}
+      renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
+    />
+  );
 }
 
 /** Upright, a held page's top as the product's frame draws it: the pill, the tabs and the bell 28pt in, in line with the card, and what follows them (‹ Settings, or the overdue page's title) in the same band (sc-85022). */
@@ -324,7 +326,11 @@ export function HeldPortraitTop({ search, children }: { search: boolean; childre
 
   return (
     <View style={[styles.heldTop, { paddingTop: insets.top + tokens.spaceXxs }]}>
-      <PortraitRow {...row} tabsCentred />
+      <PortraitRow
+        {...row}
+        renderPill={(room, givesWay) => <OrgPill room={room} givesWay={givesWay} />}
+        tabsCentred
+      />
       {children}
     </View>
   );
