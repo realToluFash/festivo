@@ -35,6 +35,7 @@ import { SummaryPage } from './SummaryPage.tsx';
 import { SAMPLE } from '../samples.ts';
 import { ledEvents } from './MembersHandover.ts';
 import { HandoverAsk } from './MembersHandover.tsx';
+import { ProviderTransferScreen } from './ProviderTransfer.tsx';
 
 /** The board's mismatch: Delete pressed with a lowercase e. */
 const MISTYPED = 'Ire events';
@@ -79,6 +80,8 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
   const [toast, setToast] = useState<string | null>(null);
   const scroll = useRef<ScrollViewInstance>(null);
   const cardStep = useRef<ViewInstance>(null);
+  const transferOpener = useRef<ViewInstance>(null);
+  const [providerTransfer, setProviderTransfer] = useState(start.transferVia != null);
   const opening: DetailsOpening =
     editVisit === 0
       ? {
@@ -176,6 +179,26 @@ function OrganisationPage({ start, manages }: { start: OrganisationStart; manage
           onGone={() => router.replace('/demo/today')}
         />
       </SummaryPage>
+      {start.transferVia != null && (
+        <ProviderTransferScreen
+          open={providerTransfer}
+          provider={start.transferVia}
+          twoFactor={start.transferTwoFactor}
+          organisation={ORGANISATION.name}
+          candidates={CANDIDATES.map((member) => ({
+            id: member.initials,
+            name: member.name,
+            role: member.role,
+          }))}
+          opener={transferOpener}
+          onClose={() => setProviderTransfer(false)}
+          onDone={(to) => {
+            setProviderTransfer(false);
+            setRole('Admin');
+            setSaid({ kind: 'transferred', to });
+          }}
+        />
+      )}
       {handsOver && (
         <HandoverAsk
           key={`leave.${leaveVisit}`}

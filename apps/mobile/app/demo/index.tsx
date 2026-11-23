@@ -1091,6 +1091,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         what: 'Leave asks you to transfer first',
         href: '/demo/settings/organisation?state=onlyOwner',
       },
+      {
+        title: 'Organisation · transfer, Google',
+        what: 'No password: Google’s own button, Transfer off until then',
+        href: '/demo/settings/organisation?state=transferGoogle',
+      },
+      {
+        title: 'Organisation · transfer, Apple',
+        what: 'No password: Apple’s own button, fades while open',
+        href: '/demo/settings/organisation?state=transferApple',
+      },
+      {
+        title: 'Organisation · transfer, two-factor',
+        what: 'Google, then the code and Transfer',
+        href: '/demo/settings/organisation?state=transferGoogleCode',
+      },
       { title: 'Members', what: 'Requests, people, roles', href: '/demo/settings/members' },
       {
         title: 'Members · read only',
