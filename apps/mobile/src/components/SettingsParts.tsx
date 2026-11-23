@@ -31,7 +31,9 @@ import {
   capInDisc,
   capUnderTitle,
   grownPad,
+  piecesIn,
   wordsIn,
+  wrapOf,
 } from '../layout/textSize.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
@@ -235,24 +237,30 @@ export function useGrownLabel({
   const cap = useContext(TitleCap);
   const start = size * capUnderTitle(cap ?? Infinity, size, fontScale);
   const key = `${start}|${label}`;
-  const words = wordsIn([label]);
+  const words = [...new Set([...wordsIn([label]), ...piecesIn([label])])];
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
     key: '',
     widths: {},
   });
   const [width, setWidth] = useState<number | null>(null);
   const widths = measured.key === key ? measured.widths : {};
-  const known = words.every((word) => widths[word] != null);
+  const whole = widths[`\n${label}`];
+  const known = whole != null && words.every((word) => widths[word] != null);
+  const keep = (name: string, measuredWidth: number) =>
+    setMeasured((now) => {
+      const kept = now.key === key ? now.widths : {};
+
+      return kept[name] === measuredWidth
+        ? now
+        : { key, widths: { ...kept, [name]: measuredWidth } };
+    });
   const drawn =
     !on || width == null || !known
       ? start
       : besideGlyphInPill({
           size,
           start,
-          widths: label
-            .split(/\s+/u)
-            .filter((word) => word !== '')
-            .map((word) => widths[word] ?? 0),
+          wrap: wrapOf(label, widths, whole),
           glyph,
           beside,
           width,
@@ -263,22 +271,24 @@ export function useGrownLabel({
 
   return {
     measure: on ? (
-      <MeasuredWords
-        words={words.filter((word) => widths[word] == null)}
-        size={size}
-        weight={weight}
-        family={family}
-        maxFontSizeMultiplier={start / size}
-        onWidth={(word, measuredWidth) =>
-          setMeasured((now) => {
-            const kept = now.key === key ? now.widths : {};
-
-            return kept[word] === measuredWidth
-              ? now
-              : { key, widths: { ...kept, [word]: measuredWidth } };
-          })
-        }
-      />
+      <>
+        <MeasuredWords
+          words={words.filter((word) => widths[word] == null)}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={keep}
+        />
+        <MeasuredWords
+          words={whole == null ? [label] : []}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={(_, measuredWidth) => keep(`\n${label}`, measuredWidth)}
+        />
+      </>
     ) : null,
     multiplier: drawn / size,
     glyphScale: on ? Math.max(1, Math.min(drawn / size, fontScale)) : 1,
