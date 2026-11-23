@@ -261,3 +261,9 @@
 .pc-footer > * {
   flex: 1 1 0;
 }
+
+.pc-ring.is-changed {
+  background: var(--colorAttentionTint);
+  box-shadow: inset 0 0 0 1.5px var(--colorAttention);
+  color: var(--colorAttentionText);
+}
