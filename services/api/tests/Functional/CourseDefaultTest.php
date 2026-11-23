@@ -10,8 +10,10 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MenuChoiceOption;
 use App\Entity\MenuCourse;
 use App\Entity\MenuDish;
+use App\Entity\MenuDishChoice;
 use App\Entity\MenuDishVariant;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -230,12 +232,169 @@ final class CourseDefaultTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDefaultOptionCannotBeRemovedThroughItsChoice(): void
+    {
+        $hot = $this->choice($this->stew, 'How hot?', true, ['Mild', 'Hot', 'Very hot']);
+        [$mild, $spicy, $very] = $this->optionIds($hot);
+        $this->changeMain(['dish' => $this->id($this->stew), 'variant' => $this->plate->getId()->toRfc4122(), 'options' => [$mild], 'chooseBy' => '2026-10-10']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as('PUT', $this->choicePath($hot), self::asked('How hot?', [[$spicy, 'Hot'], [$very, 'Very hot'], [null, 'Medium']], required: true));
+        self::assertSame([409, 'https://soirely.com/errors/menu_is_default', 'Mild is part of Main’s default. Choose another default first, in Edit course.'], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null]);
+
+        $this->as('DELETE', $this->choicePath($hot));
+        self::assertSame([409, 'https://soirely.com/errors/menu_is_default'], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertCount(3, $this->optionIds($hot), 'nothing is removed');
+    }
+
+    #[Test]
+    public function anEditThatLeavesTheDefaultUnfinishedIsRefused(): void
+    {
+        self::em()->persist(new MenuDishVariant($this->stew, 'Party plate', false, [], ['halal'], null, 2));
+        self::em()->flush();
+        $side = $this->choice($this->jollof, 'And a side?', false, ['Plantain', 'Salad']);
+        [$plantain, $salad] = $this->optionIds($side);
+        $this->changeMain(['dish' => $this->id($this->jollof), 'chooseBy' => '2026-10-10']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $sides = [[$plantain, 'Plantain'], [$salad, 'Salad']];
+        $refused = [
+            'Required turned on' => ['PUT', $this->choicePath($side), self::asked('And a side?', $sides, required: true)],
+            'a choice saved as a draft' => ['PUT', $this->choicePath($side), self::asked('And a side?', [[$plantain, 'Plantain']], required: false)],
+            'a required choice added' => ['POST', $this->dishPath($this->jollof) . '/choices', self::asked('A drink?', [[null, 'Water'], [null, 'Zobo']], required: true)],
+            'a draft choice added' => ['POST', $this->dishPath($this->jollof) . '/choices', self::asked('', [], required: false)],
+            'variants added to the default' => ['POST', $this->dishPath($this->jollof) . '/variants', ['variants' => [self::variant('Plate', 'everyone'), self::variant('Kids plate', 'children')]]],
+        ];
+
+        foreach ($refused as $edit => [$method, $path, $body]) {
+            $this->as($method, $path, $body);
+            self::assertSame([409, 'https://soirely.com/errors/menu_is_default', 'Jollof rice is Main’s default. Choose another default first, in Edit course.'], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null], $edit);
+        }
+
+        $jollof = $this->dishOf($this->menu(), $this->jollof);
+        self::assertSame([[], 1], [$jollof['variants'], Iter\count(Type\vec(Type\mixed())->coerce($jollof['choices']))], 'nothing is saved');
+
+        $hot = $this->choice($this->stew, 'How hot?', true, ['Mild', 'Hot', 'Very hot']);
+        [$mild, $spicy, $very] = $this->optionIds($hot);
+        $this->changeMain(['dish' => $this->id($this->stew), 'variant' => $this->plate->getId()->toRfc4122(), 'options' => [$mild], 'chooseBy' => '2026-10-10']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $heat = [[$mild, 'Mild'], [$spicy, 'Hot'], [$very, 'Very hot']];
+
+        $this->as('PUT', $this->choicePath($hot), self::asked('How hot?', [...$heat, [null, 'Extra hot']], required: true, pick: 2));
+        self::assertSame([409, 'https://soirely.com/errors/menu_is_default'], [$this->statusCode(), $this->last()['type'] ?? null], 'a new Guests pick exactly');
+        $this->as('PUT', '/api/events/' . $this->eventId . '/menu/variants/' . $this->plate->getId()->toRfc4122(), self::variant('Plate', 'children'));
+        self::assertSame([409, 'https://soirely.com/errors/menu_is_default'], [$this->statusCode(), $this->last()['type'] ?? null], 'the default variant made Children only');
+
+        $saved = [
+            'a finished optional choice added' => ['POST', $this->dishPath($this->stew) . '/choices', self::asked('A sauce?', [[null, 'Ata dindin'], [null, 'Ofada']], required: false)],
+            'a new option and a rename' => ['PUT', $this->choicePath($hot), self::asked('How spicy?', [...$heat, [null, 'Extra hot']], required: true)],
+            'Required turned off' => ['PUT', $this->choicePath($hot), self::asked('How spicy?', [...$heat], required: false)],
+            'a rename of the default variant' => ['PUT', '/api/events/' . $this->eventId . '/menu/variants/' . $this->plate->getId()->toRfc4122(), self::variant('Big plate', 'everyone')],
+        ];
+
+        foreach ($saved as $edit => [$method, $path, $body]) {
+            $this->as($method, $path, $body);
+            self::assertContains($this->statusCode(), [200, 201], $edit . ': ' . Json\encode($this->last()));
+        }
+
+        self::assertSame(['dish' => $this->id($this->stew), 'variant' => $this->plate->getId()->toRfc4122(), 'options' => [$mild], 'chooseBy' => '2026-10-10'], $this->mainOf($this->menu())['default']);
+    }
+
+    #[Test]
+    public function aSendAcrossAClosedCourseAndAnOpenOneSavesTheOpenOne(): void
+    {
+        $this->starter->setGuestsChoose(true);
+        self::em()->persist(new MenuDish($this->starter, null, 'Puff-puff', null, [], [], 1));
+        self::em()->flush();
+        $soup = $this->id($this->starter, 0);
+        $this->as('PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $this->id($this->starter), ['name' => 'Starter', 'answer' => 'choose', 'skippable' => false, 'default' => ['dish' => $soup, 'chooseBy' => '2026-10-05']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->changeMain(['dish' => $this->id($this->jollof), 'chooseBy' => '2026-10-10']);
+        $token = $this->coming([]);
+        $bisi = $this->personId('Bisi Adewale');
+
+        self::mockTime(new DateTimeImmutable('2026-10-06T09:00:00+00:00'));
+        $closes = Vec\map(Type\vec(Type\shape(['picksClose' => Type\shape(['closed' => Type\bool()], true)], true))->coerce(Type\mixed_dict()->coerce($this->menu()['menu'] ?? null)['courses'] ?? null), static fn (array $course): bool => $course['picksClose']['closed']);
+        self::assertSame([true, false], $closes);
+
+        $this->meals($token, [
+            ['person' => $bisi, 'course' => $this->id($this->starter), 'answer' => 'chosen', 'dish' => $this->id($this->starter, 1)],
+            ['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->suya)],
+        ]);
+
+        self::assertSame([409, 'https://soirely.com/errors/meal_picks_closed', [$this->id($this->starter)]], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['courses'] ?? null]);
+        $this->anonymous('/api/guest-links/page', ['token' => $token]);
+        $answers = Type\shape(['answers' => Type\dict(Type\string(), Type\vec(Type\shape(['course' => Type\string(), 'answer' => Type\string(), 'dish' => Type\nullable(Type\string())], true)))], true)->coerce($this->last()['meals'] ?? null)['answers'][$bisi] ?? [];
+        $main = Iter\search($answers, fn (array $one): bool => $this->id($this->main) === $one['course']);
+        self::assertSame(['chosen', $this->id($this->suya)], [$main['answer'] ?? null, $main['dish'] ?? null], 'the open course is saved');
+    }
+
+    #[Test]
     public function aCourseThatAsksNothingTakesNoDefault(): void
     {
         $soup = $this->id($this->starter, 0);
         $this->as('PUT', '/api/events/' . $this->eventId . '/menu/courses/' . $this->id($this->starter), ['name' => 'Starter', 'answer' => 'same', 'skippable' => false, 'default' => ['dish' => $soup, 'chooseBy' => '2026-10-10']]);
 
         self::assertSame(422, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** @param list<string> $names */
+    private function choice(MenuDish $dish, string $question, bool $required, array $names): MenuDishChoice
+    {
+        $choice = new MenuDishChoice(self::em()->find(MenuDish::class, $dish->getId()) ?? self::fail('no dish'), $question, 1, $required, 0);
+        self::em()->persist($choice);
+
+        foreach ($names as $at => $name) {
+            self::em()->persist(new MenuChoiceOption($choice, $name, [], $at));
+        }
+
+        self::em()->flush();
+
+        return $choice;
+    }
+
+    /** @return list<string> in the choice's order */
+    private function optionIds(MenuDishChoice $choice): array
+    {
+        return Type\vec(Type\string())->coerce(self::service(Connection::class)->fetchFirstColumn('SELECT id FROM menu_choice_options WHERE choice_id = :choice ORDER BY position', ['choice' => $choice->getId()->toRfc4122()]));
+    }
+
+    /**
+     * @param list<array{?string, string}> $options each an id, or null for a new one, and its name
+     *
+     * @return array<string, mixed>
+     */
+    private static function asked(string $question, array $options, bool $required, int $pick = 1): array
+    {
+        return [
+            'question' => $question,
+            'options' => Vec\map($options, static fn (array $one): array => [...(null === $one[0] ? [] : ['id' => $one[0]]), 'name' => $one[1], 'allergens' => [], 'containsNone' => true]),
+            'pick' => $pick,
+            'required' => $required,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function variant(string $name, string $for): array
+    {
+        return ['name' => $name, 'for' => $for, 'allergens' => [], 'containsNone' => true, 'diets' => ['halal']];
+    }
+
+    private function choicePath(MenuDishChoice $choice): string
+    {
+        return '/api/events/' . $this->eventId . '/menu/choices/' . $choice->getId()->toRfc4122();
+    }
+
+    private function dishPath(MenuDish $dish): string
+    {
+        return '/api/events/' . $this->eventId . '/menu/dishes/' . $this->id($dish);
+    }
+
+    /** @return array<string, mixed> */
+    private function dishOf(mixed $menu, MenuDish $dish): array
+    {
+        $dishes = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->mainOf($menu)['dishes'] ?? null);
+
+        return Iter\search($dishes, fn (array $one): bool => $this->id($dish) === ($one['id'] ?? null)) ?? self::fail('no dish');
     }
 
     /** @return array<string, mixed> */

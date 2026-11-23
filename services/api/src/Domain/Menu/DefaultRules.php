@@ -82,30 +82,11 @@ final readonly class DefaultRules
         $options = [];
 
         if (null !== $dish) {
-            $everyone = Vec\filter($dish['variants'], static fn (array $one): bool => 'everyone' === $one['for']);
-
-            if ([] !== $dish['variants']) {
-                $variant = Iter\search($everyone, static fn (array $one): bool => $one['id'] === ($sent['variant'] ?? null));
-
-                if (null === $variant) {
-                    $violations[] = $this->violation('default.variant', 'validation.course_default_variant');
-                }
-            }
-
             $sentOptions = $sent['options'] ?? [];
+            ['gaps' => $gaps, 'variant' => $variant, 'options' => $options] = self::pickOf($dish, $sent['variant'] ?? null, $sentOptions);
 
-            foreach (Vec\filter(PicksMenu::choices($dish), static fn (array $choice): bool => $choice['required'] && !$choice['draft']) as $choice) {
-                $picked = Vec\filter($choice['options'], static fn (array $option): bool => Iter\contains($sentOptions, $option['id']));
-
-                if (Iter\count($picked) !== $choice['pick']) {
-                    $violations[] = 1 === $choice['pick']
-                        ? $this->violation('default.options.' . $choice['id'], 'validation.course_default_answer', $choice['question'])
-                        : $this->violation('default.options.' . $choice['id'], 'validation.course_default_choose', $choice['question'], $choice['pick']);
-                }
-
-                foreach ($picked as $option) {
-                    $options[] = $option['id'];
-                }
+            foreach ($gaps as $gap) {
+                $violations[] = $this->violation($gap['path'], $gap['key'], $gap['question'], $gap['pick']);
             }
 
             if (Iter\count($options) !== Iter\count(Vec\unique($sentOptions))) {
@@ -132,14 +113,71 @@ final readonly class DefaultRules
             throw ApiException::validation($violations);
         }
 
-        $variantId = $variant['id'] ?? null;
-
         return new CourseDefaultDetails(
             $this->menuDishRepository->find($dish['id']) ?? throw ApiException::notFound('access.not_found'),
-            null === $variantId ? null : $this->menuDishVariantRepository->find($variantId),
+            null === $variant ? null : $this->menuDishVariantRepository->find($variant),
             $options,
             $chooseBy,
         );
+    }
+
+    /**
+     * Whether the course's default is still a whole pick of a dish guests can see, after an edit to that dish (Decided, 23 Nov).
+     *
+     * @param array<string, mixed> $served the course as MenuSerialiser serves it
+     */
+    public function whole(array $served, MenuCourse $course): bool
+    {
+        $stored = $course->getDefaultDish();
+
+        if (null === $stored) {
+            return true;
+        }
+
+        $dish = $this->offered($served, $stored->getId()->toRfc4122());
+
+        return null !== $dish && [] === self::pickOf($dish, $course->getDefaultVariant()?->getId()->toRfc4122(), $course->getDefaultOptions())['gaps'];
+    }
+
+    /**
+     * @param array{variants: list<array{id: string, for: string, ...}>, choices: list<array<array-key, mixed>>, ...} $dish
+     * @param list<string>                                                                                            $sent
+     *
+     * @return array{gaps: list<array{path: string, key: string, question: string, pick: int}>, variant: ?string, options: list<string>}
+     */
+    private static function pickOf(array $dish, ?string $variantId, array $sent): array
+    {
+        $gaps = [];
+        $variant = null;
+        $options = [];
+
+        if ([] !== $dish['variants']) {
+            $everyone = Vec\filter($dish['variants'], static fn (array $one): bool => 'everyone' === $one['for']);
+            $variant = Iter\search($everyone, static fn (array $one): bool => $one['id'] === $variantId)['id'] ?? null;
+
+            if (null === $variant) {
+                $gaps[] = ['path' => 'default.variant', 'key' => 'validation.course_default_variant', 'question' => '', 'pick' => 0];
+            }
+        }
+
+        foreach (Vec\filter(PicksMenu::choices($dish), static fn (array $choice): bool => $choice['required'] && !$choice['draft']) as $choice) {
+            $picked = Vec\filter($choice['options'], static fn (array $option): bool => Iter\contains($sent, $option['id']));
+
+            if (Iter\count($picked) !== $choice['pick']) {
+                $gaps[] = [
+                    'path' => 'default.options.' . $choice['id'],
+                    'key' => 1 === $choice['pick'] ? 'validation.course_default_answer' : 'validation.course_default_choose',
+                    'question' => $choice['question'],
+                    'pick' => $choice['pick'],
+                ];
+            }
+
+            foreach ($picked as $option) {
+                $options[] = $option['id'];
+            }
+        }
+
+        return ['gaps' => $gaps, 'variant' => $variant, 'options' => $options];
     }
 
     private static function day(string $date, DateTimeZone $zone): ?DateTimeImmutable

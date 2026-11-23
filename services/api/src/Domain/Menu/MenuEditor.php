@@ -208,6 +208,23 @@ final readonly class MenuEditor
         }
     }
 
+    /** Run after an edit to a dish, before its lock is released: an edit that leaves the course's default no longer a whole pick is refused with the Remove… line (Decided, 23 Nov). */
+    private function refuseUnfinishedDefault(Event $event, MenuDish $dish): void
+    {
+        $course = $dish->getCourse();
+
+        if ($course->getDefaultDish() !== $dish) {
+            return;
+        }
+
+        $this->entityManager->flush();
+        $served = Iter\search($this->menuSerialiser->menu($event)['courses'], static fn (array $one): bool => $one['id'] === $course->getId()->toRfc4122()) ?? throw ApiException::notFound('access.not_found');
+
+        if (!$this->defaultRules->whole($served, $course)) {
+            throw new ApiException(ErrorCode::MenuIsDefault, 'menu.default_dish', parameters: ['{dish}' => $dish->getName(), '{course}' => $course->getName()]);
+        }
+    }
+
     public function moveCourse(Event $event, MenuCourse $course, int $to, User $by): void
     {
         $this->locked($event, function () use ($event, $course, $to, $by): void {
@@ -366,6 +383,8 @@ final readonly class MenuEditor
                 $this->entityManager->persist($variant);
                 $this->audit(self::VARIANT_ADDED, 'MenuDishVariant', $variant->getId(), $by, Auditor::diff([], self::recordedVariant($variant)));
             }
+
+            $this->refuseUnfinishedDefault($event, $dish);
         });
 
         $this->menuPublisher->published($event);
@@ -391,6 +410,8 @@ final readonly class MenuEditor
             if ([] !== $changes) {
                 $this->audit(self::VARIANT_CHANGED, 'MenuDishVariant', $variant->getId(), $by, $changes);
             }
+
+            $this->refuseUnfinishedDefault($event, $variant->getDish());
 
             return [] === $added ? null : $this->unwarned($this->menuPicks->pickersOfVariant($variant), $added);
         });
@@ -445,7 +466,7 @@ final readonly class MenuEditor
     /** @param array{question: string, options: list<array{id?: string, name: string, allergens?: list<string>, containsNone?: bool}>, pick: int, required: bool} $sent refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913 */
     public function addChoice(Event $event, MenuDish $dish, array $sent, User $by): MenuDishChoice
     {
-        $choice = $this->locked($event, function () use ($dish, $sent, $by): MenuDishChoice {
+        $choice = $this->locked($event, function () use ($event, $dish, $sent, $by): MenuDishChoice {
             $this->entityManager->refresh($dish);
             $choices = $this->menuDishChoiceRepository->findOnDish($dish);
 
@@ -468,6 +489,8 @@ final readonly class MenuEditor
 
             $this->audit(self::CHOICE_ADDED, 'MenuDishChoice', $choice->getId(), $by, Auditor::diff([], self::recordedChoice($choice, $details->options)));
 
+            $this->refuseUnfinishedDefault($event, $dish);
+
             return $choice;
         });
 
@@ -483,7 +506,7 @@ final readonly class MenuEditor
      */
     public function changeChoice(Event $event, MenuDishChoice $choice, array $sent, User $by): array
     {
-        $unwarned = $this->locked($event, function () use ($choice, $sent, $by): array {
+        $unwarned = $this->locked($event, function () use ($event, $choice, $sent, $by): array {
             $this->entityManager->refresh($choice);
             $options = $this->menuChoiceOptionRepository->findOnChoice($choice);
             $details = $this->choiceRules->details($sent, $choice, $options, $this->answersTo($choice, $options));
@@ -524,6 +547,8 @@ final readonly class MenuEditor
             if ([] !== $changes) {
                 $this->audit(self::CHOICE_CHANGED, 'MenuDishChoice', $choice->getId(), $by, $changes);
             }
+
+            $this->refuseUnfinishedDefault($event, $choice->getDish());
 
             return $lines;
         });
