@@ -46,6 +46,7 @@ export function DemoTwoFactorScreen({
   startTyped = '',
   startError = null,
   startHanded = false,
+  onAdded,
 }: {
   open: boolean;
   /** Null while it is fetched; once it could not be, its failure takes the key's and the field's place. */
@@ -63,6 +64,8 @@ export function DemoTwoFactorScreen({
   startTyped?: string;
   startError?: string | null;
   startHanded?: boolean;
+  /** Adding the app beside passkeys: an accepted code finishes here, with no new recovery codes. */
+  onAdded?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const [codes, setCodes] = useState<readonly string[] | null>(startCodes);
@@ -86,7 +89,8 @@ export function DemoTwoFactorScreen({
     const answer = await onTurnOn(code.current);
     setChecking(false);
     if ('codes' in answer) {
-      setCodes(answer.codes);
+      if (onAdded == null) setCodes(answer.codes);
+      else onAdded();
       return;
     }
     setError(answer.error);
