@@ -7,7 +7,7 @@ import {
   allergenName,
   listOf,
 } from './menuLibrary.ts';
-import { hasVariants, variantsOf } from './dishVariants.ts';
+import { hasVariants, isForEveryone, variantsOf } from './dishVariants.ts';
 import { type Choice, type ChoiceOption, choicesOf } from './dishChoices.ts';
 import type { EvCourse, EvDish, Picker } from './menuCourses.ts';
 
@@ -18,6 +18,8 @@ export type MenuChange =
   | { kind: 'firstDish'; courseId: string; dish: EvDish }
   | { kind: 'allergen'; courseId: string; dishId: string; next: EvDish }
   | { kind: 'firstVariant'; courseId: string; dishId: string; next: EvDish }
+  /** Another variant on a dish that has some: asks nobody, unless an Everyone gets the same course starts asking with it. */
+  | { kind: 'variantAdded'; courseId: string; dishId: string; next: EvDish }
   | { kind: 'variantAllergen'; courseId: string; dishId: string; variantId: string; next: EvDish }
   /** A choice added (`choiceId` null), removed, or saved changed (sc-3904); `next` is the dish after it. */
   | { kind: 'choice'; courseId: string; dishId: string; choiceId: string | null; next: EvDish };
@@ -66,6 +68,9 @@ export const MCW = {
   firstVariants: (dish: string, k: number) => `Make ${dish} come ${k} ways?`,
   variantAllergens: (allergens: string, variant: string, dish: string) =>
     `Add ${allergens} to ${variant} in ${dish}?`,
+  addVariant: (variant: string, dish: string) => `Add ${variant} to ${dish}?`,
+  answeredDish: (n: number, dish: string, course: string) =>
+    `${n === 1 ? '1 guest answered' : `${n} guests answered`} the choices on ${dish}. They’ll be asked to pick again for ${course}.`,
   addChoice: (question: string, dish: string) => `Add “${question}” to ${dish}?`,
   removeChoice: (question: string, dish: string) => `Remove “${question}” from ${dish}?`,
   pickCount: (n: number, question: string) =>
@@ -86,6 +91,8 @@ export const MCW = {
     `${dish} saved. ${guests(n)} will be asked to pick again.`,
   doneWays: (dish: string, k: number, n: number) =>
     `${dish} now comes ${k} ways. ${guests(n)} will be asked to pick again.`,
+  doneVariantAdded: (variant: string, dish: string, n: number) =>
+    `${variant} added to ${dish}. ${guests(n)} will be asked to pick.`,
   doneChoiceAdded: (question: string, dish: string, n: number, all: boolean) =>
     `“${question}” added to ${dish}. ${guests(n)} will be asked to pick${all ? '' : ' again'}.`,
   doneChoiceRemoved: (question: string, dish: string, n: number) =>
@@ -138,7 +145,7 @@ export function asksAtFirstDish(courses: readonly EvCourse[], course: EvCourse):
   );
 }
 
-/** Each person names exactly `pick` options, so the people are the names over `pick`, and those who answered None for me. */
+/** Each person names exactly `pick` options, so the people are the names over `pick`, and those who answered None for me. A choice is answered by the people who picked its dish, so this never exceeds them. */
 export const answeredBy = (choice: Choice): number =>
   Math.round(
     choice.options.reduce((sum, one) => sum + one.pickers.length, 0) / Math.max(choice.pick, 1),
@@ -158,7 +165,7 @@ export interface ChoiceChange {
   allergen: ReturnType<typeof optionAdded>[];
 }
 
-/** An answered choice saved changed. With pick count changed everyone who answered is asked; otherwise those it reaches, each counted once (options are picked apart at one each). */
+/** An answered choice saved changed. With pick count changed everyone who answered is asked; otherwise those it reaches. The demo's answers carry no person, so the groups are summed: apart at Pick exactly 1, as every sample is, and never more than answered it. The API counts each guest once at any pick. */
 export function choiceChange(was: Choice, now: Choice): ChoiceChange {
   const pick = now.pick !== was.pick && answeredBy(was) > 0;
   const required = now.required && !was.required && was.noneAnswers > 0;
@@ -178,15 +185,35 @@ export function choiceChange(was: Choice, now: Choice): ChoiceChange {
   if (allergen.length > 0) kinds.push('allergen');
   const people = pick
     ? answeredBy(was)
-    : (required ? was.noneAnswers : 0) +
-      dropped.reduce((sum, one) => sum + one.pickers.length, 0) +
-      allergen.reduce((sum, one) => sum + one.counted.length, 0);
+    : Math.min(
+        answeredBy(was),
+        (required ? was.noneAnswers : 0) +
+          dropped.reduce((sum, one) => sum + one.pickers.length, 0) +
+          allergen.reduce((sum, one) => sum + one.counted.length, 0),
+      );
 
   return { kinds, people, dropped, allergen };
 }
 
 const anyPicked = (courses: readonly EvCourse[]): boolean =>
   courses.some((one) => one.dishes.some((dish) => pickedBy(dish) > 0));
+
+/** A dish asks guests something once it has a choice or a second Everyone variant (sc-3907); Children's portions alone ask nothing. */
+export const asksGuests = (dish: Picked & Pick<EvDish, 'choices'>): boolean =>
+  choicesOf(dish).length > 0 || variantsOf(dish).filter(isForEveryone).length > 1;
+
+/** An Everyone gets the same course whose dish starts asking guests something asks everyone coming, once the menu has picks. */
+export const startsAsking = (
+  courses: readonly EvCourse[],
+  course: EvCourse,
+  before: EvDish,
+  after: EvDish,
+): boolean =>
+  course.answer === 'same' && anyPicked(courses) && !asksGuests(before) && asksGuests(after);
+
+/** Who has answered a dish: those who picked it, or on a course everyone gets, those who answered its choices. */
+const answeredDish = (dish: EvDish): number =>
+  Math.max(pickedBy(dish), ...choicesOf(dish).map(answeredBy));
 
 /** The answers a confirmed change takes back, so the menu counts them no more: they are Menu changed now. */
 export function afterChange(change: MenuChange, dish: EvDish): EvDish {
@@ -304,9 +331,29 @@ export function changeAsks(
       lang,
     );
 
-  if (change.kind === 'firstVariant') {
-    const n = pickedBy(dish);
+  if (change.kind === 'firstVariant' || change.kind === 'variantAdded') {
     const k = variantsOf(change.next).length;
+    if (startsAsking(courses, course, dish, change.next)) {
+      const added = variantsOf(change.next).find(
+        (one) => !variantsOf(dish).some((other) => other.id === one.id),
+      );
+
+      return {
+        title:
+          change.kind === 'firstVariant' || added == null
+            ? MCW.firstVariants(dish.name, k)
+            : MCW.addVariant(added.name, dish.name),
+        count: MCW.allComing(coming, course.name),
+        stays: MCW.staysNew(course.name),
+        done:
+          change.kind === 'firstVariant' || added == null
+            ? MCW.doneWays(dish.name, k, coming)
+            : MCW.doneVariantAdded(added.name, dish.name, coming),
+        people: coming,
+      };
+    }
+    if (change.kind === 'variantAdded') return null;
+    const n = pickedBy(dish);
 
     return {
       title: MCW.firstVariants(dish.name, k),
@@ -364,13 +411,17 @@ function choiceAsks(
   if (change.choiceId == null) {
     const added = after.find((one) => !before.some((other) => other.id === one.id));
     if (added == null) return null;
-    /** An Everyone gets the same course that starts asking something asks everyone coming (sc-3907). */
-    const all = course.answer === 'same' && anyPicked(courses);
-    const n = all ? coming : pickedBy(dish);
+    const all = startsAsking(courses, course, dish, change.next);
+    const same = course.answer === 'same';
+    const n = all ? coming : same ? answeredDish(dish) : pickedBy(dish);
 
     return {
       title: MCW.addChoice(added.question, dish.name),
-      count: all ? MCW.allComing(n, course.name) : MCW.pickedDish(n, course.name),
+      count: all
+        ? MCW.allComing(n, course.name)
+        : same && pickedBy(dish) === 0
+          ? MCW.answeredDish(n, dish.name, course.name)
+          : MCW.pickedDish(n, course.name),
       stays: all ? MCW.staysNew(course.name) : again,
       done: MCW.doneChoiceAdded(added.question, dish.name, n, all),
       people: n,

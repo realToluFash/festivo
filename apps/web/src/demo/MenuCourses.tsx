@@ -1155,15 +1155,17 @@ function Courses({
       const change: MenuChange | null =
         open.mode === 'addFirst'
           ? { kind: 'firstVariant', courseId: openCourse.id, dishId: dish.id, next: saved.dish }
-          : open.mode === 'edit' && open.variantId != null
-            ? {
-                kind: 'variantAllergen',
-                courseId: openCourse.id,
-                dishId: dish.id,
-                variantId: open.variantId,
-                next: saved.dish,
-              }
-            : null;
+          : open.mode === 'add'
+            ? { kind: 'variantAdded', courseId: openCourse.id, dishId: dish.id, next: saved.dish }
+            : open.mode === 'edit' && open.variantId != null
+              ? {
+                  kind: 'variantAllergen',
+                  courseId: openCourse.id,
+                  dishId: dish.id,
+                  variantId: open.variantId,
+                  next: saved.dish,
+                }
+              : null;
       if (change != null && (changeAsks(change, courses, coming, lang)?.people ?? 0) > 0) {
         askChange(change);
         return;

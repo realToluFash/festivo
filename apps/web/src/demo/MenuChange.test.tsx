@@ -24,6 +24,8 @@ async function menu(state: CoursesStateName) {
 const dialog = (): HTMLElement => screen.getByRole('alertdialog');
 const card = (name: string): HTMLElement => screen.getByRole('listitem', { name });
 const said = (): string => document.getElementById('mc-said')?.textContent ?? '';
+const panel = (): HTMLElement => screen.getByRole('complementary');
+const byId = (id: string): HTMLElement => document.getElementById(id) as HTMLElement;
 
 beforeEach(() => {
   __setConfig({ ...tested, environment: 'development' });
@@ -149,16 +151,22 @@ describe('the MenuChange dialog (sc-3913)', () => {
       '“And a side?” added to Catfish pepper soup. 48 guests will be asked to pick.',
     ],
     [
+      'changeSameVariant',
+      'Add Light bowl to Catfish pepper soup?',
+      'All 48 guests coming will be asked to pick for Starter.',
+      'Light bowl added to Catfish pepper soup. 48 guests will be asked to pick.',
+    ],
+    [
       'changeRemoveChoice',
       'Remove “And a side?” from Jollof rice?',
-      '86 guests answered this choice. They’ll be asked to pick again for Main.',
-      '“And a side?” removed from Jollof rice. 86 guests will be asked to pick again.',
+      '45 guests answered this choice. They’ll be asked to pick again for Main.',
+      '“And a side?” removed from Jollof rice. 45 guests will be asked to pick again.',
     ],
     [
       'changePickCount',
       'Let guests pick 2 options in “And a side?”?',
-      '86 guests answered this choice. They’ll be asked to pick again for Main.',
-      '“And a side?” saved. 86 guests will be asked to pick again.',
+      '45 guests answered this choice. They’ll be asked to pick again for Main.',
+      '“And a side?” saved. 45 guests will be asked to pick again.',
     ],
     [
       'changeRequired',
@@ -169,8 +177,8 @@ describe('the MenuChange dialog (sc-3913)', () => {
     [
       'changeDropOption',
       'Remove Moi moi from “And a side?”?',
-      '12 guests picked this option. They’ll be asked to pick again for Main.',
-      '“And a side?” saved. 12 guests will be asked to pick again.',
+      '8 guests picked this option. They’ll be asked to pick again for Main.',
+      '“And a side?” saved. 8 guests will be asked to pick again.',
     ],
     [
       'changeOptionAllergen',
@@ -201,14 +209,14 @@ describe('the MenuChange dialog (sc-3913)', () => {
   });
 
   it(
-    'asks the 86 who answered on Remove… of an answered choice, not refusing it',
+    'asks the 45 who answered on Remove… of an answered choice, not refusing it',
     SLOW,
     async () => {
       await menu('changeRemoveChoice');
       fireEvent.click(within(dialog()).getByRole('button', { name: MCW.cancel }));
 
       fireEvent.click(screen.getByRole('button', { name: 'Remove “And a side?”…' }));
-      expect(within(dialog()).getByText(/^86 guests answered this choice/)).toBeTruthy();
+      expect(within(dialog()).getByText(/^45 guests answered this choice/)).toBeTruthy();
       expect(screen.queryByText(CHW.answered)).toBeNull();
     },
   );
@@ -221,6 +229,7 @@ describe('the MenuChange dialog (sc-3913)', () => {
     ['changeAddChoice', CHW.addChoiceSave, 'Add “And a side?” to Jollof rice?'],
     ['changeFirstVariant', VW.addVariants, 'Make Jollof rice come 2 ways?'],
     ['changeVariantAllergen', VW.saveVariant, 'Add Sesame to Chicken in Jollof rice?'],
+    ['changeSameVariant', VW.addVariant, 'Add Light bowl to Catfish pepper soup?'],
   ] as const)('%s: its panel’s save asks the same', SLOW, async (state, save, title) => {
     await menu(state);
     fireEvent.click(within(dialog()).getByRole('button', { name: MCW.cancel }));
@@ -228,5 +237,39 @@ describe('the MenuChange dialog (sc-3913)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: save }));
     expect(within(dialog()).getByRole('heading', { name: title })).toBeTruthy();
+  });
+  it.each([
+    [
+      'a rename',
+      () => fireEvent.change(byId('ch-question'), { target: { value: 'And a side dish?' } }),
+      'And a side dish?',
+    ],
+    [
+      'Required turned off',
+      () => fireEvent.click(screen.getByLabelText(CHW.required)),
+      'And a side?',
+    ],
+    [
+      'an option added',
+      () => {
+        fireEvent.click(byId('ch-add-option'));
+        const names = panel().querySelectorAll<HTMLInputElement>('input[id$="-name"]');
+        const added = names[names.length - 1] as HTMLInputElement;
+        fireEvent.change(added, { target: { value: 'Fried yam' } });
+        fireEvent.click(screen.getByRole('button', { name: CHW.setAllergens }));
+        const nones = panel().querySelectorAll<HTMLInputElement>('input[id$="-none"]');
+        fireEvent.click(nones[nones.length - 1] as HTMLElement);
+      },
+      'And a side?',
+    ],
+  ] as const)('%s on an answered choice asks nobody', SLOW, async (_, edit, question) => {
+    await menu('changePickCount');
+    fireEvent.click(within(dialog()).getByRole('button', { name: MCW.cancel }));
+    fireEvent.click(byId('ch-fewer'));
+
+    edit();
+    fireEvent.click(screen.getByRole('button', { name: CHW.saveChoice }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(said()).toContain(CHW.saved(question));
   });
 });

@@ -541,7 +541,7 @@ export function choiceCourses(choices: readonly Choice[] = [sideChoice(), sauceC
 
 function waysAndChoices(choices: readonly Choice[], picked: boolean): EvCourse[] {
   const two = twoWays().map((one, at) =>
-    picked ? { ...one, pickers: Array.from({ length: at === 0 ? 38 : 48 }, () => []) } : one,
+    picked ? { ...one, pickers: Array.from({ length: at === 0 ? 21 : 24 }, () => []) } : one,
   );
 
   return changed({ 'k2-jollof': asks(choices, two) });
@@ -1241,10 +1241,48 @@ const STATES = {
       },
     });
   },
+  changeSameVariant: () => {
+    const courses = variantCourses();
+    const pepper = dishIn(courses, 'k1-pepper') as EvDish;
+
+    return start({
+      name: 'MenuChange: an Everyone gets the same course gets a second Everyone variant',
+      note: 'Light bowl added to Catfish pepper soup, the Starter everyone gets as a Full bowl or a Children’s portion. A second Everyone variant starts asking, so everyone coming is asked for Starter. Another variant on a dish that already asks asks nobody.',
+      courses,
+      asksAgain: true,
+      opened: {
+        kind: 'variants',
+        courseId: 'k1',
+        dishId: 'k1-pepper',
+        mode: 'add',
+        forms: [
+          {
+            name: 'Light bowl',
+            for: 'everyone',
+            allergens: ['fish', 'celery'],
+            none: false,
+            diets: ['pescatarian'],
+          },
+        ],
+      },
+      changing: {
+        kind: 'variantAdded',
+        courseId: 'k1',
+        dishId: 'k1-pepper',
+        next: {
+          ...pepper,
+          variants: [
+            ...variantsOf(pepper),
+            variant('v-light', 'Light bowl', 'everyone', ['fish', 'celery'], ['pescatarian']),
+          ],
+        },
+      },
+    });
+  },
   changeRemoveChoice: () =>
     start({
       name: 'MenuChange: an answered choice removed',
-      note: 'Remove… on “And a side?”, which 86 guests answered. Change and ask them removes it and asks them again for Main.',
+      note: 'Remove… on “And a side?”, which the 45 who picked Jollof rice answered. Change and ask them removes it and asks them again for Main.',
       courses: choiceCourses(),
       asksAgain: true,
       changing: changedChoice('c-side', null),
@@ -1253,7 +1291,7 @@ const STATES = {
   changePickCount: () =>
     start({
       name: 'MenuChange: how many to pick, on an answered choice',
-      note: 'Guests pick exactly 2 on “And a side?”, which 86 guests answered: not refused now. Save choice asks all 86 again for Main.',
+      note: 'Guests pick exactly 2 on “And a side?”, which 45 guests answered: not refused now. Save choice asks all 45 again for Main.',
       courses: choiceCourses(),
       asksAgain: true,
       opened: {
@@ -1285,7 +1323,7 @@ const STATES = {
   changeDropOption: () =>
     start({
       name: 'MenuChange: a picked option removed',
-      note: 'The bin on Moi moi, which 12 guests picked, now takes it off the form; Save choice asks those 12 again for Main.',
+      note: 'The bin on Moi moi, which 8 guests picked, now takes it off the form; Save choice asks those 8 again for Main. The choice is Pick exactly 1, so the demo counts nobody twice; the API counts each guest once at any pick.',
       courses: choiceCourses(),
       asksAgain: true,
       opened: {
@@ -1301,7 +1339,7 @@ const STATES = {
   changeOptionAllergen: () =>
     start({
       name: 'MenuChange: an allergen added to a picked option',
-      note: 'Crustaceans ticked on Moi moi. 3 who picked it have Crustaceans recorded. They also appear in Needs the host.',
+      note: 'Crustaceans ticked on Moi moi. 3 who picked it have Crustaceans recorded. They also appear in Needs the host. The choice is Pick exactly 1, so the demo counts nobody twice; the API counts each guest once at any pick.',
       courses: choiceCourses(),
       asksAgain: true,
       opened: {
@@ -2431,6 +2469,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'changeVariantAllergen',
         'changeAddChoice',
         'changeSameChoice',
+        'changeSameVariant',
         'changeRemoveChoice',
         'changePickCount',
         'changeRequired',
