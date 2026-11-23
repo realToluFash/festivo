@@ -1,7 +1,7 @@
 import { PROVE_WORDS, WRONG_CODE, WRONG_FACTOR } from './account.ts';
 import { writtenTime } from './clock.ts';
 import { SAMPLE } from './rules.ts';
-import { APP_ON, PASSKEYS, type Passkey, TEN_PASSKEYS } from './passkeys.ts';
+import { APP_ON, PASSKEYS, PASSKEY_RESULTS, type Passkey, TEN_PASSKEYS } from './passkeys.ts';
 import { type DemoLink, VIEWERS, type Viewer, settingsPath } from './settings.ts';
 
 export type Provider = 'Google' | 'Apple';
@@ -768,7 +768,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
       return {
         ...REST,
         page: page({ app: null, passkeys: [icloud], unused: CODES_MADE }),
-        said: 'Two-factor is on. Every sign-in now asks for your passkey.',
+        said: PASSKEY_RESULTS.onPasskey,
       };
     case 'appOnlyOpen':
       return { ...REST, open: 'auth' };
@@ -806,7 +806,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
             ...PASSKEYS,
           ],
         }),
-        said: `Passkey added. We emailed ${email} to say so.`,
+        said: PASSKEY_RESULTS.passkeyAdded(email),
       };
     case 'addApp':
       return { ...REST, page: passkeysOnly, dialog: opening('addApp') };
@@ -814,7 +814,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
       return {
         ...REST,
         page: page({ app: new Date(2026, 10, 23, 9, 30), passkeys: PASSKEYS }),
-        said: `Authenticator app added. We emailed ${email} to say so.`,
+        said: PASSKEY_RESULTS.appAdded(email),
       };
     case 'remove':
       return { ...REST, page: both, open: icloud.id, ask: 'remove' };
@@ -831,7 +831,7 @@ export function securityStart(state: string, viewer: Viewer = VIEWERS.folake): S
       return {
         ...REST,
         page: page({ passkeys: PASSKEYS.slice(1) }),
-        said: `Passkey removed. It stays in ${icloud.provider ?? ''} until you delete it there. We emailed ${email} to say so.`,
+        said: PASSKEY_RESULTS.passkeyRemoved(icloud, email),
       };
     case 'passkeyCancelled':
       return {

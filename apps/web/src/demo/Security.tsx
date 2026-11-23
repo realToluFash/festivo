@@ -84,7 +84,7 @@ import type { Tell } from '../components/SettingsParts.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { useLater } from '../useLater.ts';
 import {
-  AddAppDialog,
+  AddAppWords,
   AddRow,
   ChoiceDialog,
   CodeStepDialog,
@@ -575,10 +575,15 @@ export function Security({ viewer, state, tell }: { viewer: Viewer; state: strin
         />
       )}
       {dialog?.kind === 'addApp' && (
-        <AddAppDialog
-          onClose={() => setDialog(null)}
-          onAdded={() => done(PR.appAdded(you.email), { app: new Date() })}
-        />
+        <AddAppWords>
+          <SetupDialog
+            start={dialog}
+            enrol={sampleEnrol}
+            activate={sampleActivate}
+            onClose={() => setDialog(null)}
+            onOn={() => done(PR.appAdded(you.email), { app: new Date() })}
+          />
+        </AddAppWords>
       )}
       {dialog?.kind === 'change' && (
         <ChangePasswordDialog

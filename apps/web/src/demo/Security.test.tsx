@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { SAMPLE } from './rules.ts';
+import { PASSKEY_WORDS as P } from './passkeys.ts';
+import { SAMPLE, TRIES } from './rules.ts';
 import { NEW_PASSWORD, SECURITY_STATES, WEB_MOMENTS } from './security.ts';
 
 const tested = config();
@@ -479,5 +480,44 @@ describe('Security at a desk (sc-30223)', () => {
     expect(within(dialog()).getByText('This browser can’t use passkeys.')).toBeDefined();
     expect(within(dialog()).getByRole('textbox', { name: /Recovery code/ })).toBeDefined();
     expect(within(dialog()).queryByRole('button', { name: /passkey/i })).toBeNull();
+  });
+
+  it('says a refused passkey until Use a passkey, and pauses after the fifth with a code still offered (sc-86885)', async () => {
+    await security('/demo/settings/security?state=passkeyRefused');
+    const step = dialog();
+    expect(within(step).getByText(P.refused).closest('[role="alert"]')).not.toBeNull();
+
+    fireEvent.click(within(step).getByRole('button', { name: P.usePasskey }));
+    expect(within(step).queryByText(P.refused)).toBeNull();
+
+    for (let refusal = 2; refusal <= TRIES; refusal += 1) {
+      fireEvent.click(
+        within(step).getByRole('button', { name: 'Demo: a passkey that does not work' }),
+      );
+      if (refusal < TRIES) {
+        expect(within(step).getByText(P.refused)).toBeDefined();
+        fireEvent.click(within(step).getByRole('button', { name: P.usePasskey }));
+      }
+    }
+
+    expect(
+      within(step)
+        .getByText(/^Too many tries\. Two-factor is paused until/)
+        .closest('[role="alert"]'),
+    ).not.toBeNull();
+    expect(within(step).queryByText(P.refused)).toBeNull();
+    expect(within(step).getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
+    expect(within(step).getByRole('button', { name: P.useCode })).toBeDefined();
+  });
+
+  it('adds the app beside passkeys with today’s setup step, its words true for two-factor already on (sc-86885)', async () => {
+    await security('/demo/settings/security?state=addApp');
+    expect(screen.getByRole('dialog', { name: P.addApp })).toBeDefined();
+    expect(within(dialog()).getByText(P.addAppLine)).toBeDefined();
+    expect(within(dialog()).queryByText(/stays off/)).toBeNull();
+
+    type('Enter the 6-digit code the app shows', SAMPLE.authenticator);
+    fireEvent.click(within(dialog()).getByRole('button', { name: P.addAppVerb }));
+    expect(await screen.findByText(/^Authenticator app added\./, {}, WAIT)).toBeDefined();
   });
 });

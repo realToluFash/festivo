@@ -8,6 +8,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { demoOpens } from './gate.ts';
+import { PASSKEY_WORDS as P } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
 
 const tested = config();
@@ -1067,6 +1068,28 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+
+  it('says a refused passkey until Use a passkey, and pauses after the fifth with a code still offered (sc-86885)', async () => {
+    await page('?page=passkey&state=refused', P.waitTitle);
+    expect(screen.getByText(P.refused).closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+    expect(screen.queryByText(P.refused)).toBeNull();
+
+    for (let refusal = 2; refusal <= TRIES; refusal += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Demo: a passkey that does not work' }));
+      if (refusal < TRIES) {
+        expect(screen.getByText(P.refused)).toBeDefined();
+        fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+      }
+    }
+
+    expect(screen.getByText(P.pausedTitle)).toBeDefined();
+    expect(screen.queryByText(P.refused)).toBeNull();
+    expect(screen.getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
   });
 });
 

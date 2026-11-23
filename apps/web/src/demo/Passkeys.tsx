@@ -1,6 +1,7 @@
-import { type TwoFactorEnrolment } from '@soirely/api-client';
-import { cleanCode, codeProblem, keyInGroups } from '@soirely/domain';
+import { cleanCode } from '@soirely/domain';
+import i18next from 'i18next';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { I18nextProvider } from 'react-i18next';
 
 import { Lead } from '../components/AccountParts.tsx';
 import { Glyph } from '../components/Glyph.tsx';
@@ -10,7 +11,6 @@ import { DemoOnly } from './SingleSignOnParts.tsx';
 import { Notice, useBusy } from './parts.tsx';
 import { type CodeStep, type FactorRow, PASSKEY_WORDS as P, passkeyName } from './passkeys.ts';
 import { LOCK_MS, SAMPLE, TRIES, timeOfDay } from './rules.ts';
-import { sampleActivate, sampleEnrol } from './securitySamples.ts';
 import './passkeys.css';
 
 /** Synced or This device only, from the BS flag: a shape with its word, never colour alone. */
@@ -503,81 +503,19 @@ export function MakeDialog({
   );
 }
 
-export function AddAppDialog({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [enrolment, setEnrolment] = useState<TwoFactorEnrolment | null>(null);
-  const [typed, setTyped] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let live = true;
-    void sampleEnrol().then((made) => live && setEnrolment(made));
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  async function add(): Promise<void> {
-    if (busy || enrolment == null) return;
-    const problem = codeProblem(typed);
-    if (problem != null) {
-      setError(
-        problem === 'blank' ? 'Enter the 6-digit code from your app.' : 'The code is 6 digits.',
-      );
-      return input.current?.focus();
+/** sc-86885: adding the app beside passkeys is today's setup step; only its title, verb and help line read true for two-factor already on. */
+export function AddAppWords({ children }: { children: ReactNode }) {
+  const [words] = useState(() => {
+    const local = i18next.cloneInstance({ forkResourceStore: true });
+    for (const language of local.languages) {
+      local.addResource(language, 'translation', 'security.setupTitle', P.addApp);
+      local.addResource(language, 'translation', 'security.setupVerb', P.addAppVerb);
+      local.addResource(language, 'translation', 'twoFactorCard.staysOff', P.addAppLine);
     }
-    setBusy(true);
-    try {
-      await sampleActivate(cleanCode(typed));
-      onAdded();
-    } catch {
-      setBusy(false);
-      setError('That code did not match. Enter the code your app shows now.');
-      input.current?.focus();
-    }
-  }
+    return local;
+  });
 
-  return (
-    <Dialog
-      title={P.addApp}
-      verb={P.addAppVerb}
-      on={enrolment != null && !busy}
-      locked={busy}
-      first={input}
-      onDismiss={onClose}
-      onConfirm={() => void add()}
-    >
-      <p className="security-scan">Scan this code with your authenticator app</p>
-      <span className="security-qr">
-        {enrolment != null && (
-          <img
-            src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(enrolment.qrSvg)}`}
-            alt="QR code for your authenticator app"
-          />
-        )}
-      </span>
-      <Note>Can’t scan it? Enter this key in the app instead.</Note>
-      <p className="security-key" aria-label="Setup key">
-        {enrolment == null ? ' ' : keyInGroups(enrolment.secret)}
-      </p>
-      <div className="desk-fields security-fields">
-        <Field
-          label="Enter the 6-digit code the app shows"
-          value={typed}
-          help={P.addAppLine}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          inputRef={input}
-          error={error}
-          onChange={(value) => {
-            setTyped(value);
-            setError(null);
-          }}
-        />
-      </div>
-    </Dialog>
-  );
+  return <I18nextProvider i18n={words}>{children}</I18nextProvider>;
 }
 
 export function PasskeyStep({
