@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   type PicksWorld,
   PICKS_PAGES,
+  SW,
   asksNothing,
   chooseFor,
+  containsOf,
   courseFigures,
   defaultedOn,
   giveVariant,
@@ -19,6 +21,7 @@ import {
   openWords,
   percentOf,
   picksStart,
+  ruledOut,
   samplePicks,
   shownCourses,
   spotOf,
@@ -395,5 +398,56 @@ describe('a course’s default (sc-1362)', () => {
 
   it('opens Choose for them on the courses the person was defaulted on', () => {
     expect(picksStart('chooseForDefaulted').opened).toMatchObject({ given: true });
+  });
+});
+
+describe('a dish whose allergens were never stated (sc-87421)', () => {
+  const world = picksStart('picksNotStated').world;
+  const main = course(world, 'k2');
+  const asun = main.dishes.find((one) => one.id === 'k2-asun') as (typeof main.dishes)[number];
+
+  it('is ruled out for anyone with one of the 14, and for nobody else', () => {
+    const leila = person(world, 'leila-haddad');
+    const bea = person(world, 'bea-mensah');
+    const other = { ...bea, allergies: ['other'] as const };
+
+    expect(containsOf(asun, null, [])).toBeNull();
+    expect(ruledOut(leila, containsOf(asun, null, []))).toEqual(['sesame']);
+    expect(ruledOut(bea, containsOf(asun, null, []))).toEqual([]);
+    expect(ruledOut(other, containsOf(asun, null, []))).toEqual([]);
+  });
+
+  it('counts as the pick of someone with no allergy, and sends them to the host once one is recorded', () => {
+    expect(spotOf(world, main, person(world, 'segun-bello'))).toMatchObject({
+      kind: 'dish',
+      dishId: 'k2-asun',
+    });
+
+    const after = picksStart('picksNotStatedHost').world;
+    expect(spotOf(after, course(after, 'k2'), person(after, 'segun-bello'))).toEqual({
+      kind: 'host',
+      reason: { kind: 'allergy', dish: 'Asun', allergens: ['peanuts'], notStated: true },
+    });
+    expect(SW.allergyForNotStated('Main', 'Asun', 'peanuts')).toBe(
+      'Main: their pick, Asun, has no allergens stated, and peanuts was recorded after they picked it.',
+    );
+  });
+
+  it('keeps a stated dish’s reason, including one stated as none of the 14', () => {
+    const coconut = main.dishes.find((one) => one.id === 'k2-coconut') as typeof asun;
+    expect(containsOf(coconut, 'v-chicken2', [])).not.toBeNull();
+    expect(
+      spotOf(
+        chooseFor(world, 'k2', 'ada-obi', {
+          kind: 'dish',
+          dishId: 'ev-wrap',
+          variantId: 'v-beef',
+          optionIds: [],
+          how: 'guest',
+        }),
+        main,
+        { ...person(world, 'ada-obi'), allergies: ['sesame'] },
+      ),
+    ).toMatchObject({ kind: 'host', reason: { allergens: ['sesame'], notStated: false } });
   });
 });

@@ -62,8 +62,10 @@ export interface PicksWorld {
 
 export type Excluded = { kind: 'allergy' } | { kind: 'diet'; diet: Diet | 'other' };
 
+/** `notStated`: the pick was never stated, so it is ruled out for any of the 14 they have (sc-87421). */
 export type HostReason =
-  { kind: 'nothing' } | { kind: 'allergy'; dish: string; allergens: readonly DishAllergen[] };
+  | { kind: 'nothing' }
+  | { kind: 'allergy'; dish: string; allergens: readonly DishAllergen[]; notStated: boolean };
 
 export type Spot =
   | {
@@ -104,6 +106,8 @@ export const SW = {
   nothingFor: (course: string) => `${course}: nothing on this course can be picked for them.`,
   allergyFor: (course: string, dish: string, allergens: string) =>
     `${course}: their pick, ${dish}, contains ${allergens}, recorded after they picked it.`,
+  allergyForNotStated: (course: string, dish: string, allergens: string) =>
+    `${course}: their pick, ${dish}, has no allergens stated, and ${allergens} was recorded after they picked it.`,
   hostCount: (course: string, n: number) => `${course} · ${people(n)}`,
   answered: (n: string, room: string) => `${n} of ${room} answered`,
   dish: 'Dish',
@@ -149,6 +153,7 @@ export const SW = {
   allergyMark: 'Allergy',
   ruledOut: (allergens: string, who: string) =>
     `Contains ${allergens}, which ${who} is allergic to. You can still pick it.`,
+  ruledOutNotStated: 'Allergens not stated. You can still pick it.',
   ruledOutWho: (allergens: string, who: string) =>
     `Contains ${allergens}, which ${who} is allergic to.`,
   blank: (course: string, who: string) =>
@@ -163,6 +168,8 @@ export const SW = {
     `${who}’s record says ${allergens}. Pick it anyway?`,
   overrideBody: (dish: string, allergens: string, who: string) =>
     `${dish} contains ${allergens}. If ${who}’s record is out of date, the pick is saved with your name and the time you confirmed it.`,
+  overrideBodyNotStated: (dish: string, who: string) =>
+    `Nobody has stated what’s in ${dish}. If you know it is safe for ${who}, the pick is saved with your name and the time you confirmed it.`,
   chooseAnother: 'Choose another dish',
   pickAnyway: 'Pick it anyway',
   overrideWhoTitle: (names: string, variant: string) => `${names}: give ${variant} anyway?`,
@@ -175,6 +182,8 @@ export const SW = {
   savedFor: (course: string, who: string, what: string) => `${course} chosen for ${who}: ${what}.`,
   savedOverride: (who: string, dish: string, allergens: string) =>
     `Recorded as your pick for ${who}, despite the record: ${dish} contains ${allergens}.`,
+  savedOverrideNotStated: (who: string, dish: string) =>
+    `Recorded as your pick for ${who}, though nobody has stated what’s in ${dish}.`,
   whoTitle: (variant: string) => `Choose who gets ${variant}`,
   whoSub: (dish: string, course: string) => `${dish} · ${course}`,
   whoHelp:
@@ -225,13 +234,16 @@ function optionsOf(dish: EvDish): readonly ChoiceOption[] {
   return (dish.choices ?? []).flatMap((choice: Choice) => choice.options);
 }
 
+/** null when the plate never stated its allergens, as the product's `plateOf`: a dish with variants is judged by its variant. */
 export function containsOf(
   dish: EvDish,
   variantId: string | null,
   optionIds: readonly string[],
-): DishAllergen[] {
+): DishAllergen[] | null {
   const variant = variantsOf(dish).find((one) => one.id === variantId);
-  const own = hasVariants(dish) ? codes(variant?.contains ?? null) : codes(dish.contains);
+  const plate = hasVariants(dish) ? (variant?.contains ?? 'none') : dish.contains;
+  if (plate == null) return null;
+  const own = codes(plate);
   const options = optionsOf(dish)
     .filter((one) => optionIds.includes(one.id))
     .flatMap((one) => codes(one.contains));
@@ -239,8 +251,12 @@ export function containsOf(
   return DISH_ALLERGENS.filter((code) => own.includes(code) || options.includes(code));
 }
 
-export function ruledOut(person: Person, contains: readonly DishAllergen[]): DishAllergen[] {
-  return contains.filter((code) => person.allergies.includes(code as Allergen));
+/** A plate never stated holds any of the 14 (sc-3907), so it rules out every one of theirs; an Other allergy is never matched. */
+export function ruledOut(person: Person, contains: readonly DishAllergen[] | null): DishAllergen[] {
+  return DISH_ALLERGENS.filter(
+    (code) =>
+      person.allergies.includes(code as Allergen) && (contains == null || contains.includes(code)),
+  );
 }
 
 /** Nothing a guest may pick themselves is safe for this person: every dish, or every Everyone variant of it, contains one of their allergies. */
@@ -249,8 +265,8 @@ export function nothingFor(course: EvCourse, person: Person): boolean {
     hasVariants(dish)
       ? variantsOf(dish)
           .filter(isForEveryone)
-          .every((variant) => ruledOut(person, codes(variant.contains)).length > 0)
-      : ruledOut(person, codes(dish.contains)).length > 0,
+          .every((variant) => ruledOut(person, containsOf(dish, variant.id, [])).length > 0)
+      : ruledOut(person, containsOf(dish, null, [])).length > 0,
   );
 }
 
@@ -314,9 +330,13 @@ export function spotOf(world: PicksWorld, course: EvCourse, person: Person): Spo
   const dish = course.dishes.find((one) => one.id === pick.dishId);
   if (dish == null) return noPick(world, course, person);
 
-  const allergens = ruledOut(person, containsOf(dish, pick.variantId, pick.optionIds));
+  const plate = containsOf(dish, pick.variantId, pick.optionIds);
+  const allergens = ruledOut(person, plate);
   if (allergens.length > 0 && pick.override == null)
-    return { kind: 'host', reason: { kind: 'allergy', dish: pickName(dish, pick), allergens } };
+    return {
+      kind: 'host',
+      reason: { kind: 'allergy', dish: pickName(dish, pick), allergens, notStated: plate == null },
+    };
 
   return {
     kind: 'dish',
@@ -909,6 +929,32 @@ function changedPicks(): PicksWorld {
   );
 }
 
+/** The library's Asun, whose allergens were never stated, added to Main (sc-87421). */
+const ASUN: EvDish = {
+  id: 'k2-asun',
+  name: 'Asun',
+  desc: 'Spiced grilled goat.',
+  contains: null,
+  diets: ['halal', 'no_pork', 'no_beef'],
+  libraryId: 'd-asun',
+  pickers: [],
+};
+
+/** Main offers Asun, and Segun Bello picked it; with `peanuts`, his peanut allergy was recorded after. */
+function notStatedPicks(peanuts = false): PicksWorld {
+  const world = samplePicks();
+  const courses = world.courses.map((course) =>
+    course.id === 'k2' ? { ...course, dishes: [...course.dishes, ASUN] } : course,
+  );
+  const people = world.people.map((person) =>
+    peanuts && person.id === 'segun-bello'
+      ? { ...person, allergies: ['peanuts'] as const }
+      : person,
+  );
+
+  return chooseFor({ ...world, courses, people }, 'k2', 'segun-bello', dishPick(ASUN.id, null));
+}
+
 export type System = 'loading' | 'refreshing' | 'stale';
 
 export type Opened =
@@ -1064,6 +1110,52 @@ const STATES = {
         courseId: 'k2',
         dishId: 'k2-jollof',
         variantId: 'v-chicken',
+        press: true,
+        confirm: true,
+      },
+    }),
+  picksNotStated: () =>
+    start({
+      name: 'A dish never stated (sc-87421)',
+      note: 'Main offers Asun, whose allergens were never stated. Segun picked it, with no allergy recorded, so it counts as his pick.',
+      world: notStatedPicks(),
+    }),
+  picksNotStatedHost: () =>
+    start({
+      name: 'A dish never stated, then an allergy recorded (sc-87421)',
+      note: 'Segun’s peanut allergy was recorded after he picked Asun: he waits under Needs the host, and the line says nobody stated its allergens rather than that it contains peanuts.',
+      world: notStatedPicks(true),
+    }),
+  chooseForNotStated: () =>
+    start({
+      name: 'Choose for them, a dish never stated (sc-87421)',
+      note: 'Kojo Asante, celery recorded and no Main yet: Asun carries the Allergy mark and Allergens not stated. You can still pick it.',
+      world: notStatedPicks(),
+      opened: { kind: 'chooseFor', personId: 'kojo-asante', courseId: 'k2', dishId: ASUN.id },
+    }),
+  chooseForNotStatedOverride: () =>
+    start({
+      name: 'The override question, a dish never stated (sc-87421)',
+      note: 'Kojo picked Asun: the title names her record, and the body says nothing about what Asun contains.',
+      world: notStatedPicks(),
+      opened: {
+        kind: 'chooseFor',
+        personId: 'kojo-asante',
+        courseId: 'k2',
+        dishId: ASUN.id,
+        press: true,
+      },
+    }),
+  chooseForNotStatedSaved: () =>
+    start({
+      name: 'Picked anyway, a dish never stated (sc-87421)',
+      note: 'The green line after Pick it anyway: recorded as yours, though nobody has stated what’s in Asun.',
+      world: notStatedPicks(),
+      opened: {
+        kind: 'chooseFor',
+        personId: 'kojo-asante',
+        courseId: 'k2',
+        dishId: ASUN.id,
         press: true,
         confirm: true,
       },
@@ -1224,6 +1316,18 @@ export const PICKS_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'chooseForOverride',
         'chooseForOverridden',
         'chooseForRefused',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'A dish whose allergens were never stated (sc-87421)',
+    states: (
+      [
+        'picksNotStated',
+        'picksNotStatedHost',
+        'chooseForNotStated',
+        'chooseForNotStatedOverride',
+        'chooseForNotStatedSaved',
       ] as const
     ).map(link),
   },

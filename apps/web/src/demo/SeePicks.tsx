@@ -228,7 +228,7 @@ function Picks({ first }: { first: PicksStart }) {
                     <span>
                       {one.reason.kind === 'nothing'
                         ? SW.nothingFor(one.course.name)
-                        : SW.allergyFor(
+                        : (one.reason.notStated ? SW.allergyForNotStated : SW.allergyFor)(
                             one.course.name,
                             one.reason.dish,
                             allergensOf(one.reason.allergens),
@@ -656,8 +656,8 @@ function outcomeFor(
       words: SW.blankOption(unanswered.question, who),
       focus: 'pk-for-option',
     };
-  const allergens =
-    dish == null ? [] : ruledOut(person, containsOf(dish, choice.variantId, choice.optionIds));
+  const plate = dish == null ? [] : containsOf(dish, choice.variantId, choice.optionIds);
+  const allergens = ruledOut(person, plate);
   if (allergens.length > 0 && !confirmed) return { kind: 'ask', allergens };
   if (refuses) return { kind: 'refused' };
   const pick: DishPick | { kind: 'kitchen' } =
@@ -677,7 +677,12 @@ function outcomeFor(
     kind: 'saved',
     pick,
     line: SW.savedFor(course.name, who, what),
-    overridden: allergens.length > 0 ? SW.savedOverride(who, what, allergensOf(allergens)) : null,
+    overridden:
+      allergens.length === 0
+        ? null
+        : plate == null
+          ? SW.savedOverrideNotStated(who, what)
+          : SW.savedOverride(who, what, allergensOf(allergens)),
   };
 }
 
@@ -847,6 +852,7 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     allergens={dishAllergens(one, person)}
+                    notStated={!hasVariants(one) && containsOf(one, null, []) == null}
                     who={who}
                     onPick={() => pickDish(one.id)}
                   />
@@ -875,6 +881,7 @@ function ChooseFor({
                       childrenOnly={!isForEveryone(variant)}
                       checked={choice.variantId === variant.id}
                       allergens={ruledOut(person, containsOf(dish, variant.id, []))}
+                      notStated={containsOf(dish, variant.id, []) == null}
                       who={who}
                       onPick={() => {
                         setChoice({ ...choice, variantId: variant.id });
@@ -946,11 +953,7 @@ function ChooseFor({
       {asking != null && dish != null && (
         <Override
           title={SW.overrideTitle(who, allergensOf(asking))}
-          body={SW.overrideBody(
-            pickName(dish, { kind: 'dish', ...choice, dishId: dish.id, how: 'host' }),
-            allergensOf(asking),
-            who,
-          )}
+          body={overrideBody(dish, choice, asking, who)}
           keep={SW.chooseAnother}
           go={SW.pickAnyway}
           onKeep={() => {
@@ -962,6 +965,19 @@ function ChooseFor({
       )}
     </>
   );
+}
+
+function overrideBody(
+  dish: EvDish,
+  choice: { variantId: string | null; optionIds: readonly string[] },
+  asking: readonly DishAllergen[],
+  who: string,
+): string {
+  const name = pickName(dish, { kind: 'dish', ...choice, dishId: dish.id, how: 'host' });
+
+  return containsOf(dish, choice.variantId, choice.optionIds) == null
+    ? SW.overrideBodyNotStated(name, who)
+    : SW.overrideBody(name, allergensOf(asking), who);
 }
 
 /** A dish's own allergens, or, with variants, those every variant guests may pick shares. */
@@ -980,6 +996,7 @@ function DishOption({
   label,
   checked,
   allergens,
+  notStated = false,
   who,
   childrenOnly = false,
   onPick,
@@ -989,6 +1006,7 @@ function DishOption({
   label: string;
   checked: boolean;
   allergens: readonly DishAllergen[];
+  notStated?: boolean;
   who: string;
   childrenOnly?: boolean;
   onPick: () => void;
@@ -1016,7 +1034,7 @@ function DishOption({
               <Triangle />
               {SW.allergyMark}
             </span>
-            {SW.ruledOut(allergensOf(allergens), who)}
+            {notStated ? SW.ruledOutNotStated : SW.ruledOut(allergensOf(allergens), who)}
           </span>
         )}
       </span>

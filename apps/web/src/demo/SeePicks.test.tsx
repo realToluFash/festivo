@@ -165,6 +165,56 @@ describe('See picks (sc-3909)', () => {
   });
 });
 
+describe('a dish whose allergens were never stated, on See picks (sc-87421)', () => {
+  it('marks it for a person with one of the 14 without saying what it contains', SLOW, async () => {
+    await picks('chooseForNotStated');
+    const asun = document.getElementById('pk-for-k2-asun-ruled');
+    expect(asun?.textContent).toBe(`${SW.allergyMark}${SW.ruledOutNotStated}`);
+    expect(document.getElementById('pk-for-dish-ruled')?.textContent).toContain(
+      'Contains celery, which Kojo Asante is allergic to.',
+    );
+  });
+
+  it(
+    'asks the override question about nobody stating it, and saves it as the host’s',
+    SLOW,
+    async () => {
+      await picks('chooseForNotStatedOverride');
+      const ask = screen.getByRole('alertdialog');
+      expect(
+        within(ask).getByText('Kojo Asante’s record says celery. Pick it anyway?'),
+      ).toBeTruthy();
+      expect(
+        within(ask).getByText(
+          'Nobody has stated what’s in Asun. If you know it is safe for Kojo Asante, the pick is saved with your name and the time you confirmed it.',
+        ),
+      ).toBeTruthy();
+
+      fireEvent.click(within(ask).getByRole('button', { name: SW.pickAnyway }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(said()).toContain(
+        'Recorded as your pick for Kojo Asante, though nobody has stated what’s in Asun.',
+      );
+    },
+  );
+
+  it('says under Needs the host that it has no allergens stated', SLOW, async () => {
+    await picks('picksNotStatedHost');
+    expect(
+      screen.getByText(
+        'Main: their pick, Asun, has no allergens stated, and peanuts was recorded after they picked it.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('keeps a stated dish’s words', SLOW, async () => {
+    await picks('chooseForOverride');
+    expect(
+      within(screen.getByRole('alertdialog')).getByText(/^Jollof rice, Chicken contains celery\./),
+    ).toBeTruthy();
+  });
+});
+
 describe('the picks on the Menu’s rows (sc-3909)', () => {
   it(
     'shows each dish’s and variant’s picks from See picks’ figures, and See picks on each course',
