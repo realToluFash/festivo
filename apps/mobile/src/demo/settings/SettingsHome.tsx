@@ -273,7 +273,6 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused draws no page title, and on its side the bell alone heads the content's right; it has no Search in any layout (sc-82858, sc-83881). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). Overdue keeps the page's title above its card, on its side with the bell, as the product does (sc-85006). Every layout pads the card once, at the product's inset (sc-85022). */
 /** The overdue page's title as the product's frame draws it, which is not the unheld Settings title: 30 on a tablet or a small phone, 34 on a phone, untracked (sc-85022). */
 function HeldTitle({ children, onDrawn }: { children: string; onDrawn: (size: number) => void }) {
   const { kind, width, height } = useLayout();
@@ -289,6 +288,7 @@ function HeldTitle({ children, onDrawn }: { children: string; onDrawn: (size: nu
   );
 }
 
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused draws no page title, and on its side the bell alone heads the content's right; it has no Search in any layout (sc-82858, sc-83881). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). Overdue keeps the page's title above its card, on its side with the bell, as the product does (sc-85006). Every layout pads the card once, at the product's inset (sc-85022). */
 function HeldSettings({
   held,
   back,
