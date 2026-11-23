@@ -7,6 +7,7 @@ namespace App\Domain\Menu\Pick;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Menu\DishRules;
 use App\Entity\Guest;
 use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
@@ -32,7 +33,7 @@ final readonly class ServedMeals
     /**
      * @param non-empty-list<Guest> $people one party, the guest first
      *
-     * @return array{answers: array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>, changed: ?array{picked: string, why: string, ways: ?int}}>>, excluded: array<string, list<array{course: string, reason: string}>>} each by the person's id; `changed` on an answer a menu change asked again (sc-3913); `excluded` names the courses whose default the person is never given, and why
+     * @return array{answers: array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>, changed: ?array{picked: string, why: string, ways: ?int, allergens: list<string>}}>>, excluded: array<string, list<array{course: string, reason: string}>>} each by the person's id; `changed` on an answer a menu change asked again (sc-3913); `excluded` names the courses whose default the person is never given, and why
      */
     public function of(array $people): array
     {
@@ -58,7 +59,7 @@ final readonly class ServedMeals
                 'variant' => $answer->getVariant()?->getId()->toRfc4122(),
                 'options' => $answer->getOptions(),
                 'changed' => MealAnswerKind::MenuChanged === $answer->getKind()
-                    ? ['picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'ways' => $answer->getChangedWays()]
+                    ? ['picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'ways' => $answer->getChangedWays(), 'allergens' => Vec\filter(DishRules::allergenCodes(), static fn (string $code): bool => Iter\contains($answer->getChangedAllergens(), $code))]
                     : null,
             ]);
 

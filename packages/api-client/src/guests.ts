@@ -427,6 +427,8 @@ export interface MealChanged {
   picked: string;
   why: 'removed' | 'ways' | 'choices' | 'allergen';
   ways: number | null;
+  /** On `allergen`: the added allergens this person has recorded, in Annex II order. */
+  allergens: string[];
 }
 
 export interface MealAnswer {

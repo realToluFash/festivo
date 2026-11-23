@@ -6412,12 +6412,15 @@ function asGuestPage(raw: unknown): GuestPage | null {
 /** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
 function asMealChanged(raw: unknown): MealChanged | null {
   if (typeof raw !== 'object' || raw == null) return null;
-  const { picked, why, ways } = raw as Record<string, unknown>;
+  const { picked, why, ways, allergens } = raw as Record<string, unknown>;
 
   return {
     picked: typeof picked === 'string' ? picked : '',
     why: why === 'ways' || why === 'choices' || why === 'allergen' ? why : 'removed',
     ways: typeof ways === 'number' ? ways : null,
+    allergens: Array.isArray(allergens)
+      ? allergens.filter((one): one is string => typeof one === 'string')
+      : [],
   };
 }
 

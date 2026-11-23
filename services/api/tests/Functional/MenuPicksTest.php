@@ -169,6 +169,33 @@ final class MenuPicksTest extends ApiTestCase
     }
 
     #[Test]
+    public function theGuestIsServedWhyEachPersonWasAskedAgainAndOnlyTheirAddedAllergensInAnnexIIOrder(): void
+    {
+        $token = $this->coming([['fullName' => 'Chidi Okonkwo']]);
+        [$bisi, $chidi] = [$this->personId('Bisi Adewale'), $this->personId('Chidi Okonkwo')];
+        $this->meals($token, [
+            ['person' => $bisi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->jollof)],
+            ['person' => $chidi, 'course' => $this->id($this->main), 'answer' => 'chosen', 'dish' => $this->id($this->egusi)],
+        ]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->answerOf($bisi, $this->main)->askAgain(MenuChangeWhy::Removed);
+        self::em()->flush();
+        $this->answerOf($chidi, $this->main)->askAgain(MenuChangeWhy::Allergen, null, ['sesame', 'milk']);
+        self::em()->flush();
+
+        $this->anonymous('/api/guest-links/page', ['token' => $token]);
+        $answers = Type\shape(['answers' => Type\dict(Type\string(), Type\vec(Type\mixed_dict()))], true)->coerce($this->last()['meals'] ?? null)['answers'];
+
+        self::assertSame(
+            [
+                ['answer' => 'menuChanged', 'dish' => null, 'changed' => ['picked' => 'Jollof rice', 'why' => 'removed', 'ways' => null, 'allergens' => []]],
+                ['answer' => 'menuChanged', 'dish' => null, 'changed' => ['picked' => 'Pounded yam and egusi', 'why' => 'allergen', 'ways' => null, 'allergens' => ['milk', 'sesame']]],
+            ],
+            Vec\map([$answers[$bisi][0] ?? [], $answers[$chidi][0] ?? []], static fn (array $one): array => ['answer' => $one['answer'] ?? null, 'dish' => $one['dish'] ?? null, 'changed' => $one['changed'] ?? null]),
+        );
+    }
+
+    #[Test]
     public function unnamedHeldPlacesAreCountedApartFromTheRoom(): void
     {
         $this->coming([['fullName' => 'Chidi Okonkwo'], ['fullName' => null]]);
