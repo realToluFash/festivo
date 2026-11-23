@@ -4017,7 +4017,15 @@
     "refusedClosed": "Le choix pour le service « {{course}} » a été clos le {{date}}, votre modification n’a donc pas été enregistrée.",
     "askHosts": "Pour modifier un choix maintenant, adressez-vous à {{hosts}}.",
     "preview": "Aperçu. Rien n’est enregistré.",
-    "closePreview": "Fermer l’aperçu"
+    "closePreview": "Fermer l’aperçu",
+    "sameAsMine": "Same as mine",
+    "sameAsName": "Same as {{name}}",
+    "sameAsFor": "{{label}}, for {{name}}",
+    "cantCopyYours": "Your {{course}} can’t be picked for {{name}}.",
+    "cantCopyName": "{{from}}’s {{course}} can’t be picked for {{name}}.",
+    "copiedYours": "Copied from your picks. Change anything that should be different.",
+    "copiedName": "Copied from {{from}}. Change anything that should be different.",
+    "continue": "Continue"
   },
   "eventReplyBy": {
     "replyBy": "Date limite de réponse",

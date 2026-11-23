@@ -4017,7 +4017,15 @@
     "refusedClosed": "Fim da escolha em «{{course}}»: {{date}}. A sua alteração não foi guardada.",
     "askHosts": "Para alterar uma escolha agora, fale com {{hosts}}.",
     "preview": "Pré-visualização. Nada é guardado.",
-    "closePreview": "Fechar a pré-visualização"
+    "closePreview": "Fechar a pré-visualização",
+    "sameAsMine": "Same as mine",
+    "sameAsName": "Same as {{name}}",
+    "sameAsFor": "{{label}}, for {{name}}",
+    "cantCopyYours": "Your {{course}} can’t be picked for {{name}}.",
+    "cantCopyName": "{{from}}’s {{course}} can’t be picked for {{name}}.",
+    "copiedYours": "Copied from your picks. Change anything that should be different.",
+    "copiedName": "Copied from {{from}}. Change anything that should be different.",
+    "continue": "Continue"
   },
   "eventReplyBy": {
     "replyBy": "Prazo de resposta",
