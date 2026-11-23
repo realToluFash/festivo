@@ -15,7 +15,13 @@ export default function Settings() {
   const { kind } = useLayout();
 
   return (
-    <AppFrame current="settings" top="scrolls" listUnderTabs title={t('settings.title')}>
+    <AppFrame
+      current="settings"
+      top="scrolls"
+      listUnderTabs
+      switchedAt={styles.switched}
+      title={t('settings.title')}
+    >
       <SettingsSplit open={null}>
         {settingsListBeside(kind) ? (
           <ChooseASection />
@@ -47,8 +53,9 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space6xl,
   },
   phoneTitle: { minHeight: 0, paddingTop: tokens.spaceXs, paddingBottom: 18 },
-  portraitTop: { paddingTop: 30, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
-  portraitTitle: { minHeight: 0 },
+  portraitTop: { paddingTop: 30 },
+  portraitTitle: { minHeight: 0, paddingBottom: 22, paddingHorizontal: tokens.spaceHair },
+  switched: { marginBottom: tokens.spaceXl },
 });
 
 const CONTENT: Record<LayoutKind, object> = {
