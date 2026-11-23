@@ -253,7 +253,7 @@
     "venueAddress": "Morada",
     "venueAddressHint": "Escreva pelo menos 3 caracteres para ver sugestões. Também pode escrever qualquer morada.",
     "creditStadia": "Stadia Maps",
-    "creditOsm": "OpenStreetMap contributors",
+    "creditOsm": "contribuidores do OpenStreetMap",
     "venueSuggestions": "Sugestões de moradas",
     "venueSuggestionsFound_one": "{{count, number}} sugestão. Use as setas para cima e para baixo para a escolher.",
     "venueSuggestionsFound_other": "{{count, number}} sugestões. Use as setas para cima e para baixo para escolher uma.",

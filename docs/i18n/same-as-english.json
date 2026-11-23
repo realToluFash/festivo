@@ -298,6 +298,8 @@
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
     "mobile:auditLog.jsonLines",
-    "messagesCounts:guestReplies.push.title"
+    "messagesCounts:guestReplies.push.title",
+    "web:eventForm.creditStadia",
+    "mobile:eventForm.creditStadia"
   ]
 }
