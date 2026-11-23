@@ -185,6 +185,14 @@ describe('a walk-in', () => {
     expect(listedAs(DOOR, '  ', 'en', t)).toBeNull();
   });
 
+  it('names the companion who matched, never the host shown above them (sc-85893, 23 Nov)', () => {
+    expect(listedAs(DOOR, 'Segun Eze', 'en', t)).toMatchObject({
+      id: 'd_o',
+      name: 'Olusegun Eze',
+      companion: true,
+    });
+  });
+
   it('names the guest with the same name before the first one a search finds', () => {
     const both: CheckIn = { ...DOOR, guests: [...DOOR.guests, guest('d_x', 'Aseun Bello')] };
     expect(listedAs(both, 'aseun bello', 'en', t)?.id).toBe('d_x');
