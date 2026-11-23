@@ -56,11 +56,16 @@ Two things to hold onto throughout:
 3. **`docs/design/tokens.mjs`** in this repository — the tokens, one source, with usage
    notes and four settled decisions.
 4. **The worked example: page `29 · Events` of Soirely — Redesign,
-   https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**: Events home and Event view, each
+   https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, now closed to new boards (see
+   **Step two**). Its `EventsHome` boards were gone from its live version on 22 Nov 2026;
+   where they are, read them as the example of finish. Events home and Event view, each
    as its three boards. Read `project/canvas.json`, then `EventsHome.dc.html`,
-   `EventsHome-fd.dc.html` and `EventsHome-App.dc.html`. **Match their style, their density,
-   and their level of finish.** Reading them will teach you more than this file can
-   describe. Your own epic's page is the next thing to read: its proposal boards are where
+   `EventsHome-fd.dc.html` and `EventsHome-App.dc.html`. Where the read is refused or finds
+   no such board, read page `32 · Menu` of the new artifact
+   (https://claude.ai/artifact/M2NtaKFfJZMku2AFZ28jBW) instead: `SeePicks.dc.html`,
+   `MenuPicksCard.dc.html` and `SeePicks-fd.dc.html`, drawn there on 22 Nov 2026 for
+   sc-3909. **Match their style, their density, and their level of finish.** Reading them
+   will teach you more than this file can describe. Your own epic's page is the next thing to read: its proposal boards are where
    your drawing starts.
 5. **`docs/design/claude-design-brief.md`**, section 5, for the area your epic covers. It
    says what somebody does there and what makes it hard.
@@ -83,10 +88,24 @@ building anything.**
 
 ## Step two: build the missing screens
 
-**Every epic lives in one artifact, Soirely — Redesign:
-https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx**, one page per epic. Add your boards to
-your own epic's page, and add that page first when the epic has none. The owner set this on
-30 Oct 2026. Inside the page, one artboard per screen, named for what it is
+**Every new board goes in one artifact: https://claude.ai/artifact/M2NtaKFfJZMku2AFZ28jBW**,
+one page per epic. Add your boards to your own epic's page, and add that page first when
+the epic has none. The owner set one artifact for every epic on 30 Oct 2026, and moved the
+work to this one on 22 Nov 2026. Its canvas is titled "Soirely Settings · Summary first";
+leave its title as it is.
+
+The one before it, Soirely — Redesign (https://claude.ai/artifact/5cRzwbgmEK6wqbxp4j1zqx),
+is closed to new boards: on 22 Nov 2026 its canvas held 512 files, the limit for one
+canvas, and some boards that Design sections still name were no longer in its live
+version. Links to it stay as they are. A board revised from it is drawn again in the new
+artifact, and the story's Design section then links the new one. **A story's Design section
+link wins over any artifact a skill names**, whether the skill names it as the place to
+draw or the place to read boards: `soirely-designer`, `screen-from-design` and
+`soirely-qa-tester` all still name the old one. A developer or tester reads the board in
+the artifact the Design section links, and only where that read is refused or finds no
+board is it a finding for `[ops]`.
+
+Inside the page, one artboard per screen, named for what it is
 (`SignIn.dc.html`, `GuestList.dc.html`). Several stories may share an artboard, and one
 story may need several.
 
