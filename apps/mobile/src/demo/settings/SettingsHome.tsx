@@ -290,16 +290,10 @@ function HeldSettings({
     return (
       <Landscape column={null} search={search}>
         <View style={styles.heldSide}>
-          {title != null ? (
-            <View style={styles.heldSideHead}>
-              <View style={styles.grow}>{title}</View>
-              <Bell tell={shell.tell} />
-            </View>
-          ) : (
-            <View style={styles.heldSideTop}>
-              <Bell tell={shell.tell} />
-            </View>
-          )}
+          <View style={styles.heldSideTop}>
+            {title != null && <View style={styles.grow}>{title}</View>}
+            <Bell tell={shell.tell} />
+          </View>
           {standIn}
         </View>
       </Landscape>
@@ -427,16 +421,7 @@ const styles = StyleSheet.create({
   // Upright, ‹ sits in the top's band, on the pill's, the bell's and the card's 28pt edge (sc-85022).
   heldBack: { flexDirection: 'row' },
   heldSide: { flex: 1 },
-  // The product's side header with the page's title: the title, then the bell at the content's top right (sc-85006). It pads itself 30pt in; the card keeps its own 32pt (sc-85022).
-  heldSideHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingTop: 26,
-    paddingHorizontal: 30,
-    paddingBottom: tokens.spaceLg,
-  },
-  // The product's side header with no title: the bell alone at the content's top right (sc-83881), 30pt in as the titled one (sc-85022).
+  // The product's side header, 30pt in: overdue's title then the bell, or paused's bell alone at the content's top right (sc-83881, sc-85006, sc-85022).
   heldSideTop: {
     flexDirection: 'row',
     alignItems: 'center',

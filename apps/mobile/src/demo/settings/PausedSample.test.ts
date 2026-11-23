@@ -69,17 +69,7 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(side).toContain('<Bell tell={shell.tell} />');
   });
 
-  it('keeps the page title above the overdue card in every layout, as the product (sc-85006)', () => {
-    const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
-
-    expect(held.match(/\{title\}/gu)).toHaveLength(3);
-    expect(held).toMatch(/\{title\}\s*<\/HeldPortraitTop>/u);
-    expect(held).toMatch(
-      /styles\.heldSideHead\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>\s*<Bell/u,
-    );
-  });
-
-  it('pads the held page once: the stand-in keeps its own inset, and only the header rows pad (sc-85022)', () => {
+  it('pads the held page once and titles overdue once per layout, in the product header shapes (sc-85006, sc-85022)', () => {
     const read = (file: string) => readFileSync(join(import.meta.dirname, file), 'utf8');
     const styleIn = (file: string) => (name: string) =>
       read(file).match(new RegExp(`^  ${name}: \\{[^}]*\\}`, 'mu'))?.[0];
@@ -90,10 +80,17 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(style('heldSide')).toBe('  heldSide: { flex: 1 }');
     expect(style('heldRows')).toContain('paddingHorizontal: tokens.spaceXxl');
     expect(style('heldSideTop')).toContain('paddingHorizontal: 30');
-    expect(style('heldSideHead')).toContain('paddingHorizontal: 30');
     expect(styleIn('Frame.tsx')('heldTop')).toContain('paddingHorizontal: tokens.space4xl');
 
     const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
+
+    expect(held.match(/\{title\}/gu)).toHaveLength(3);
+    expect(held).toMatch(/\{title\}\s*<\/HeldPortraitTop>/u);
+    expect(held).toMatch(
+      /styles\.heldSideTop\}>\s*\{title != null && <View style=\{styles\.grow\}>\{title\}<\/View>\}\s*<Bell/u,
+    );
+    expect(held).toMatch(/styles\.titleRow\}>\s*<View style=\{styles\.grow\}>\{title\}<\/View>/u);
+    expect(held).not.toContain('heldSideHead');
 
     expect(held).toMatch(/<View style=\{styles\.heldRows\}>[\s\S]*<\/View>\s*\{standIn\}/u);
     expect(held).toContain('<View style={styles.heldUpright}>{standIn}</View>');
