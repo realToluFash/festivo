@@ -15,7 +15,6 @@ use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Str;
 use Psl\Vec;
 
 /**
@@ -124,15 +123,8 @@ final readonly class PickSpots
     /** @param Course $course */
     private static function pickName(MealAnswer $answer, array $course): string
     {
-        $dish = Iter\search($course['dishes'], static fn (array $one): bool => $one['id'] === $answer->getDish()?->getId()->toRfc4122());
+        $dish = $answer->getDish()?->getId()->toRfc4122();
 
-        if (null === $dish) {
-            return '';
-        }
-
-        $variant = Iter\search($dish['variants'], static fn (array $one): bool => $one['id'] === $answer->getVariant()?->getId()->toRfc4122());
-        $picked = Vec\filter(Vec\flat_map(PicksMenu::choices($dish), static fn (array $choice): array => $choice['options']), static fn (array $option): bool => Iter\contains($answer->getOptions(), $option['id']));
-
-        return Str\join(Vec\filter_nulls([$dish['name'], $variant['name'] ?? null, ...Vec\map($picked, static fn (array $option): string => $option['name'])]), ', ');
+        return null === $dish ? '' : PicksMenu::plateName($course, $dish, $answer->getVariant()?->getId()->toRfc4122(), $answer->getOptions());
     }
 }

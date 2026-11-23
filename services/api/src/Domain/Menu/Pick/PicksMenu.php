@@ -7,6 +7,7 @@ namespace App\Domain\Menu\Pick;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Entity\Event;
 use Psl\Iter;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 
@@ -62,6 +63,26 @@ final readonly class PicksMenu
         $plate = null === $everyone ? $dish['allergens'] : $everyone['allergens'];
 
         return [] === MealAllergens::against($plate, $allergens) ? ['dish' => $dish['id'], 'variant' => $everyone['id'] ?? null] : null;
+    }
+
+    /**
+     * @param Course       $course
+     * @param list<string> $options
+     *
+     * @return string the dish, its variant and its picked options, as See picks names a plate; empty for a dish no longer on the course
+     */
+    public static function plateName(array $course, string $dish, ?string $variant, array $options): string
+    {
+        $onCourse = Iter\search($course['dishes'], static fn (array $one): bool => $one['id'] === $dish);
+
+        if (null === $onCourse) {
+            return '';
+        }
+
+        $way = Iter\search($onCourse['variants'], static fn (array $one): bool => $one['id'] === $variant);
+        $picked = Vec\filter(Vec\flat_map(self::choices($onCourse), static fn (array $choice): array => $choice['options']), static fn (array $option): bool => Iter\contains($options, $option['id']));
+
+        return Str\join(Vec\filter_nulls([$onCourse['name'], $way['name'] ?? null, ...Vec\map($picked, static fn (array $option): string => $option['name'])]), ', ');
     }
 
     /** @return list<Choice> */
