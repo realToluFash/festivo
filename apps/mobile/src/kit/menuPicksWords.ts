@@ -139,12 +139,12 @@ export function ruledOutWords(
   t: TFunction,
   allergens: InSentence,
   ruled: readonly string[],
-  notStated: boolean,
+  plate: readonly string[] | null,
   who: string,
 ): string | null {
   if (ruled.length === 0) return null;
 
-  return notStated
+  return plate == null
     ? t('menuPicks.ruledOutNotStated')
     : t('menuPicks.ruledOut', { allergens: allergens(ruled), name: who });
 }
@@ -154,10 +154,10 @@ export function overrideBody(
   allergens: InSentence,
   dish: string,
   asking: readonly string[],
-  notStated: boolean,
+  plate: readonly string[] | null,
   who: string,
 ): string {
-  return notStated
+  return plate == null
     ? t('menuPicks.overrideBodyNotStated', { dish, name: who })
     : t('menuPicks.overrideBody', { dish, allergens: allergens(asking), name: who });
 }
@@ -167,10 +167,10 @@ export function savedOverride(
   allergens: InSentence,
   dish: string,
   ruled: readonly string[],
-  notStated: boolean,
+  plate: readonly string[] | null,
   who: string,
 ): string {
-  return notStated
+  return plate == null
     ? t('menuPicks.savedOverrideNotStated', { name: who, dish })
     : t('menuPicks.savedOverride', { name: who, dish, allergens: allergens(ruled) });
 }

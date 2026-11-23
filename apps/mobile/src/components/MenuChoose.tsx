@@ -86,8 +86,8 @@ export function ChooseFor({
   const dish = course.dishes.find((one) => one.id === draft.dishId) ?? null;
   const questions = dish?.choices.filter((one) => !one.draft) ?? [];
   const saveLabel = last ? t('menuPicks.save') : t('menuPicks.saveNext');
-  const ruledWords = (ruled: readonly string[], notStated = false) =>
-    ruledOutWords(t, allergens, ruled, notStated, who);
+  const ruledWords = (ruled: readonly string[], plate: readonly string[] | null) =>
+    ruledOutWords(t, allergens, ruled, plate, who);
 
   const save = async (confirmed: boolean) => {
     if (busy || refused) return;
@@ -126,9 +126,7 @@ export function ChooseFor({
           : mealPickName(dish, draft.variantId, draft.optionIds);
       onSaved(next, [
         t('menuPicks.savedFor', { course: course.name, name: who, what }),
-        ...(ruled.length === 0
-          ? []
-          : [savedOverride(t, allergens, what, ruled, plate == null, who)]),
+        ...(ruled.length === 0 ? [] : [savedOverride(t, allergens, what, ruled, plate, who)]),
       ]);
       if (last) onClose();
       else {
@@ -181,7 +179,7 @@ export function ChooseFor({
                         ? []
                         : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
                   }
-                  allergy={ruledWords(dishRuledOut(one, person), plateOf(one, null, []) == null)}
+                  allergy={ruledWords(dishRuledOut(one, person), plateOf(one, null, []))}
                   onPress={() => pickDish(one.id)}
                   testID={`menu.choose.${one.id}`}
                 />
@@ -211,7 +209,7 @@ export function ChooseFor({
                         ? []
                         : [t('menuPicks.contains', { allergens: allergens(way.allergens) })]),
                     ]}
-                    allergy={ruledWords(against(way.allergens, person.allergens))}
+                    allergy={ruledWords(against(way.allergens, person.allergens), way.allergens)}
                     onPress={() => {
                       setError(null);
                       setDraft({ ...draft, variantId: way.id });
@@ -232,7 +230,10 @@ export function ChooseFor({
                     on={draft.optionIds.includes(option.id)}
                     title={option.name}
                     lines={[]}
-                    allergy={ruledWords(against(option.allergens, person.allergens))}
+                    allergy={ruledWords(
+                      against(option.allergens, person.allergens),
+                      option.allergens,
+                    )}
                     onPress={() => {
                       setError(null);
                       setDraft({
@@ -285,7 +286,7 @@ export function ChooseFor({
             allergens,
             mealPickName(dish, draft.variantId, draft.optionIds),
             asking,
-            plateOf(dish, draft.variantId, draft.optionIds) == null,
+            plateOf(dish, draft.variantId, draft.optionIds),
             who,
           )}
           keep={t('menuPicks.chooseAnother')}
