@@ -3289,7 +3289,6 @@
     "everyoneElse": "Everyone else",
     "people": "People",
     "number": "{{n, number}}",
-    "ofRoom": "{{n, number}} of {{room, number}}",
     "rowChosen": "{{name}}, {{chosen, number}} of {{room, number}}",
     "rowSaid": "{{name}}, {{chosen, number}} chosen, {{defaulted, number}} defaulted",
     "kitchen": "Kitchen’s choice",
