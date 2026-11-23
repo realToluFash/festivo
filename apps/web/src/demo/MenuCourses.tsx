@@ -74,6 +74,7 @@ import {
   SeePicksLink,
   useHasPicks,
 } from './MenuPicks.tsx';
+import { KSW, sheetAt } from './kitchenSheet.ts';
 import { samplePicks } from './seePicks.ts';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
@@ -1361,6 +1362,12 @@ function Courses({
           >
             <Glyph name="eye" size={16} weight={2.4} />
             {CW.previewAsGuest}
+          </Link>
+        )}
+        {first.showPicks === true && (
+          <Link className="gs-pill is-secondary mc-preview" to={sheetAt()}>
+            <Glyph name="page" size={16} weight={2.4} />
+            {KSW.title}
           </Link>
         )}
         {manage && courses.length > 0 && (

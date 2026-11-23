@@ -841,8 +841,11 @@ function withDefaults(world: PicksWorld, today: string, dessert = false): PicksW
   };
 }
 
+/** After every course's choose-by date (sc-1362): Main and Dessert defaulted, and the people never given a default left not chosen. sc-3911's sheet after the close. */
+export const picksAfterClose = (): PicksWorld => withDefaults(samplePicks(), AFTER_DATE, true);
+
 function allInPicks(): PicksWorld {
-  const world = withDefaults(samplePicks(), AFTER_DATE, true);
+  const world = picksAfterClose();
   const at = '18 Oct, 17:05';
   let next = world;
   for (const person of world.people)

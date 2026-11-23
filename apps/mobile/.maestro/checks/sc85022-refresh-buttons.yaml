@@ -1,0 +1,10 @@
+# sc-85022: move between tabs so the held page reads again, then scroll the card to its buttons. PAGE.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: sc85022-buttons.yaml

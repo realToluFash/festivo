@@ -66,9 +66,10 @@ import {
   skipped,
 } from './kitchen.ts';
 import { forgetStarted, markStarted, wasStarted } from './started.ts';
-import { MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
+import { CopiedCard, MarkedLine, MealCards, MealScreen, MealsSaved } from './Meals.tsx';
 import {
   type Cleared,
+  type Eater,
   type Plate,
   type Plates,
   allergiesOf,
@@ -85,6 +86,7 @@ import {
   otherOf,
   picksOf,
   refusalOf,
+  copyPlates,
   samePlate,
   savedPlates,
   stepsOf,
@@ -109,12 +111,15 @@ type View =
   | {
       kind: 'meal';
       from: 'answer' | 'changing';
-      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, or the picks saved. */
-      to: 'flow' | 'check' | 'saved';
+      /** Where Next at the end of the course, or Back on its first screen, returns: on through the step, Check and send, the picks saved, or the copied card. */
+      to: 'flow' | 'check' | 'saved' | 'card';
       eater: number;
       course: number;
       step: number;
+      /** A course a Same as press couldn't copy (sc-17283), asked straight after it. */
+      asked?: boolean;
     }
+  | { kind: 'copied'; from: 'answer' | 'changing'; eater: number }
   | { kind: 'kitchenAfter'; busy: boolean; failed: boolean }
   | {
       kind: 'check';
@@ -139,6 +144,8 @@ interface Meal {
   /** The rows of a refused course whose answer the send changed, which carry its alert. */
   unsaved: ReadonlySet<string>;
   busy: boolean;
+  /** The last Same as press (sc-17283): whose picks were copied to whom, and the courses it left to ask. */
+  copy: { to: string; from: string; asked: readonly string[] } | null;
 }
 
 const NO_MEAL: Meal = {
@@ -150,6 +157,7 @@ const NO_MEAL: Meal = {
   refused: new Set(),
   unsaved: new Set(),
   busy: false,
+  copy: null,
 };
 
 type Tell =
@@ -707,9 +715,10 @@ export function Card({
     eater: number,
     course: number,
     from: 'answer' | 'changing',
-    to: 'flow' | 'check' | 'saved',
+    to: 'flow' | 'check' | 'saved' | 'card',
     plates: Plates = meal.plates,
     mine = allergies,
+    asked = false,
   ): void {
     setMeal((was) => ({
       ...was,
@@ -718,8 +727,36 @@ export function Card({
       pressed: false,
       told: null,
     }));
-    setView({ kind: 'meal', from, to, eater, course, step: 0 });
+    setView({ kind: 'meal', from, to, eater, course, step: 0, ...(asked ? { asked } : {}) });
     focus('mealHead');
+  }
+
+  function toCopied(from: 'answer' | 'changing', eater: number, on = 'copiedHead'): void {
+    setView({ kind: 'copied', from, eater });
+    focus(on);
+  }
+
+  /** Same as {name} (sc-17283): copies what can be picked for this person, then asks the rest in course order, then shows their card. */
+  function sameAs(source: Eater): void {
+    if (view.kind !== 'meal') return;
+    const to = eaters[view.eater];
+    if (to == null) return;
+    const result = copyPlates(meal.plates, source.key, to.key, courses, allergies(to.key));
+    setMeal((was) => ({
+      ...was,
+      plates: result.plates,
+      cleared: Object.fromEntries(
+        Object.entries(was.cleared).filter(([one]) => !one.startsWith(`${to.key}|`)),
+      ),
+      copy: { to: to.key, from: source.key, asked: result.asked },
+    }));
+    const first = courses.findIndex((one) => result.asked.includes(one.id));
+    if (first < 0) {
+      setMeal((was) => ({ ...was, draft: null, pressed: false, told: null }));
+      toCopied(view.from, view.eater);
+      return;
+    }
+    openMeal(view.eater, first, view.from, 'flow', result.plates, allergies, true);
   }
 
   /** Next or Nothing to add on the kitchen note: on to the first meal screen, clearing a pick an allergy given there rules out, or back to Check and send. */
@@ -742,7 +779,16 @@ export function Card({
     openMeal(0, 0, from, 'flow', result.plates, mine);
   }
 
-  function leaveMeal(to: 'check' | 'saved', key: string, from: 'answer' | 'changing'): void {
+  function leaveMeal(
+    to: 'check' | 'saved' | 'card',
+    key: string,
+    from: 'answer' | 'changing',
+    eater: number,
+  ): void {
+    if (to === 'card') {
+      toCopied(from, eater, changeFocus(key));
+      return;
+    }
     setView(
       to === 'check'
         ? { kind: 'check', busy: false, failed: false, from }
@@ -784,7 +830,14 @@ export function Card({
     const cleared = Object.fromEntries(Object.entries(meal.cleared).filter(([one]) => one !== key));
     setMeal((was) => ({ ...was, plates, cleared, draft: null, pressed: false }));
     if (view.to !== 'flow') {
-      leaveMeal(view.to, key, view.from);
+      leaveMeal(view.to, key, view.from, view.eater);
+      return;
+    }
+    if (view.asked === true) {
+      const asked = meal.copy?.asked ?? [];
+      const after = courses.findIndex((one, at) => at > view.course && asked.includes(one.id));
+      if (after < 0) toCopied(view.from, view.eater);
+      else openMeal(view.eater, after, view.from, 'flow', plates, allergies, true);
       return;
     }
     if (view.course < courses.length - 1)
@@ -807,7 +860,7 @@ export function Card({
     }
     if (view.to !== 'flow') {
       setMeal((was) => ({ ...was, draft: null, pressed: false }));
-      leaveMeal(view.to, key, view.from);
+      leaveMeal(view.to, key, view.from, view.eater);
       return;
     }
     const { draft } = meal;
@@ -816,7 +869,8 @@ export function Card({
       (draft.kind !== 'chosen' ||
         stepsOf(course, draft).every((step, at) => refusalOf(step, draft, at === 0) == null));
     const plates = done ? { ...meal.plates, [key]: draft } : meal.plates;
-    if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
+    if (view.asked === true) openMeal(view.eater, 0, view.from, 'flow', plates);
+    else if (view.course > 0) openMeal(view.eater, view.course - 1, view.from, 'flow', plates);
     else if (view.eater > 0)
       openMeal(view.eater - 1, courses.length - 1, view.from, 'flow', plates);
     else {
@@ -1046,6 +1100,7 @@ export function Card({
 
   const stepping =
     view.kind === 'meal' ||
+    view.kind === 'copied' ||
     view.kind === 'check' ||
     view.kind === 'withYou' ||
     view.kind === 'kitchen' ||
@@ -1105,9 +1160,48 @@ export function Card({
           meal.draft ?? meal.plates[keyOf(eater.key, course.id)],
           course.picksClose.closed,
         )}
+        earlier={
+          view.to === 'flow' && view.asked !== true && view.course === 0 && view.step === 0
+            ? eaters.slice(0, view.eater)
+            : []
+        }
+        copiedFrom={
+          view.asked === true && view.step === 0
+            ? (eaters.find((one) => one.key === meal.copy?.from) ?? null)
+            : null
+        }
+        onSameAs={sameAs}
         onPlate={(plate) => setMeal((was) => ({ ...was, draft: plate, pressed: false }))}
         onBack={mealBack}
         onNext={mealNext}
+      />
+    );
+  })();
+  const copiedCard = (() => {
+    if (view.kind !== 'copied') return null;
+    const eater = eaters[view.eater];
+    const source = eaters.find((one) => one.key === meal.copy?.from);
+    if (eater == null || source == null) return null;
+    const at = view.eater;
+    const from = view.from;
+
+    return (
+      <CopiedCard
+        eater={eater}
+        from={source}
+        courses={courses}
+        plates={meal.plates}
+        allergies={allergies(eater.key)}
+        timeZone={event.timeZone}
+        onChange={(key) => {
+          const course = courses.findIndex((one) => key.endsWith(`|${one.id}`));
+          if (course >= 0) openMeal(at, course, from, 'card');
+        }}
+        onBack={() => openMeal(at, 0, from, 'flow')}
+        onContinue={() => {
+          if (at < eaters.length - 1) openMeal(at + 1, 0, from, 'flow');
+          else toCheck(from);
+        }}
       />
     );
   })();
@@ -1206,6 +1300,7 @@ export function Card({
               onCheckBack={checkBack}
               onCheckKitchen={checkKitchen}
               mealScreen={mealScreen}
+              copiedCard={copiedCard}
               checkMeals={checkMeals}
               comingBack={comingBack}
               onChoose={choose}
@@ -1480,6 +1575,7 @@ function Shown({
   onCheckBack,
   onCheckKitchen,
   mealScreen,
+  copiedCard,
   checkMeals,
   comingBack,
   onChoose,
@@ -1507,6 +1603,7 @@ function Shown({
   onCheckBack: () => void;
   onCheckKitchen: () => void;
   mealScreen: ReactNode;
+  copiedCard: ReactNode;
   checkMeals: ReactNode;
   comingBack: ReactNode;
   onChoose: (answer: GuestAnswer) => void;
@@ -1571,6 +1668,8 @@ function Shown({
       );
     case 'meal':
       return mealScreen;
+    case 'copied':
+      return copiedCard;
     case 'kitchenAfter':
       if (kitchen == null) return null;
 

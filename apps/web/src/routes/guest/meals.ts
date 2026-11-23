@@ -394,6 +394,72 @@ export function picksOf(
   });
 }
 
+/** Whether an answer could be picked by hand for this person on this course (sc-17283): needs the host never is, and a pick only with its dish, its way and every option allowed. */
+export function copyable(
+  plate: Plate | undefined,
+  course: MealCourse,
+  allergies: readonly string[],
+): boolean {
+  if (plate == null) return false;
+  switch (plate.kind) {
+    case 'chefsChoice':
+      return !nothingSafe(course, allergies);
+    case 'skipped':
+      return course.skippable;
+    case 'chosen':
+      break;
+    default:
+      return false;
+  }
+  const dish = plateDish(course, plate);
+  if (dish == null || dishRuled(dish, allergies) != null) return false;
+  const ways = dish.variants.length >= 2;
+  if (ways && !dish.variants.some((one) => one.id === plate.variant)) return false;
+  if (!ways && plate.variant != null && plate.variant !== dish.variants[0]?.id) return false;
+  const known = Object.entries(plate.options).every(([choice, ids]) => {
+    const one = dish.choices.find((each) => each.id === choice);
+
+    return one != null && ids.every((id) => one.options.some((option) => option.id === id));
+  });
+  const complete = stepsOf(course, plate).every(
+    (step, at) => refusalOf(step, plate, at === 0) == null,
+  );
+
+  return known && complete && against(plateAllergens(dish, plate), allergies) == null;
+}
+
+/** Same as {name}: every open course takes the earlier person's answer where it can be picked for this one, and is cleared where it can't. */
+export function copyPlates(
+  plates: Plates,
+  from: string,
+  to: string,
+  courses: readonly MealCourse[],
+  allergies: readonly string[],
+): { plates: Plates; asked: string[] } {
+  const next: Record<string, Plate> = { ...plates };
+  const asked: string[] = [];
+  for (const course of courses) {
+    if (course.picksClose.closed) continue;
+    const source = plates[keyOf(from, course.id)];
+    const key = keyOf(to, course.id);
+    if (source != null && copyable(source, course, allergies)) {
+      next[key] = {
+        kind: source.kind,
+        dish: source.dish,
+        variant: source.variant,
+        options: Object.fromEntries(
+          Object.entries(source.options).map(([choice, ids]) => [choice, [...ids]]),
+        ),
+      };
+      continue;
+    }
+    delete next[key];
+    asked.push(course.id);
+  }
+
+  return { plates: next, asked };
+}
+
 /** The day every course's picks close on, while all are open, so one line says it in place of a close line on each row. */
 export function oneCloseDay(
   courses: readonly MealCourse[],

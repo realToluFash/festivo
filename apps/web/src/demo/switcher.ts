@@ -60,6 +60,8 @@ export const SWITCHER_STATES = [
   'managed-closed',
   'managed-listed',
   'paused',
+  'paused-invitation',
+  'paused-invitations',
   'paused-alone',
   'overdue',
   'overdue-alone',
@@ -80,7 +82,14 @@ export const PAUSED = {
 const IRE: Place = { id: 'org-ire-events', name: 'Ire Events', role: 'Owner' };
 export const NEW_PLACE: Place = { ...NEW_ORG, role: 'Owner' };
 
+/** The paused membership: in use, named on the pill, never listed in the switcher (sc-85513). */
 const PAUSED_PLACE: Place = { id: PAUSED.id, name: PAUSED.name, role: 'Admin' };
+const PAUSED_STATES: readonly (SwitcherState | null)[] = [
+  'paused',
+  'paused-invitation',
+  'paused-invitations',
+  'paused-alone',
+];
 /** The states where Ire Events is the only organisation the switcher lists. */
 const ONE_ORG: readonly (SwitcherState | null)[] = ['outside-one-org', 'overdue-alone'];
 
@@ -153,6 +162,7 @@ export function whereOf(state: SwitcherState | null): Where {
               ? { [CELEBRACIONES]: 'managed', [BLUEBIRD]: 'managed' }
               : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
+  const paused = PAUSED_STATES.includes(state);
   const held = state === 'paused' || state === 'paused-alone' || state === 'overdue';
   const alone = state === 'one' || many || held || ONE_ORG.includes(state);
 
@@ -160,16 +170,19 @@ export function whereOf(state: SwitcherState | null): Where {
     places: many
       ? MANY
       : state === 'paused-alone'
-        ? [PAUSED_PLACE]
-        : state === 'one' || ONE_ORG.includes(state)
-          ? [IRE]
-          : state === 'joined'
-            ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
-            : POPULATED,
-    current: state === 'paused-alone' ? PAUSED.id : IRE.id,
-    paused: state === 'paused' || state === 'paused-alone',
+        ? []
+        : paused
+          ? POPULATED.filter((place) => place.id !== PAUSED.id)
+          : state === 'one' || ONE_ORG.includes(state)
+            ? [IRE]
+            : state === 'joined'
+              ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
+              : POPULATED,
+    current: paused ? PAUSED.id : IRE.id,
+    paused,
     overdue: state === 'overdue' || state === 'overdue-alone',
-    invitations: alone ? [] : INVITATIONS,
+    invitations:
+      state === 'paused-invitation' ? [CELEBRACIONES_INVITATION] : alone ? [] : INVITATIONS,
     answers,
     offer:
       state === 'offer'
@@ -240,7 +253,10 @@ export function waiting(where: Where): readonly Invitation[] {
   });
 }
 
+/** While paused the organisation in use is the paused one, which the switcher does not list. */
 export function currentPlace(where: Where): Place {
+  if (where.paused) return PAUSED_PLACE;
+
   return where.places.find((place) => place.id === where.current) ?? IRE;
 }
 
@@ -257,8 +273,9 @@ export function dayOf(date: string): string {
   }).format(new Date(`${date}T00:00Z`));
 }
 
-export function openerLabel(place: Place, count: number): string {
-  const named = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
+/** Paused (sc-85513, as the app's sc-83881): "access paused" in place of the role. */
+export function openerLabel(place: Place, count: number, paused = false): string {
+  const named = `Organisation: ${place.name}, ${paused ? 'access paused' : `your role ${place.role}`}. Switch organisation`;
 
   if (count === 0) return named;
 
@@ -294,7 +311,7 @@ export function isFresh(where: Where): boolean {
 }
 
 export function inNone(where: Where): boolean {
-  return where.places.length === 0;
+  return where.places.length === 0 && !where.paused;
 }
 
 export function change(next: (now: Where) => Where): void {
@@ -413,8 +430,13 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'Access paused',
     states: [
-      switcherLink('paused', 'Access paused, none current'),
-      switcherLink('paused-alone', 'Access paused, no other organisation (sc-85006)'),
+      switcherLink('paused', 'Access paused, the pill names it, none current (sc-85513)'),
+      switcherLink('paused-invitation', 'Access paused, 1 invitation waiting'),
+      switcherLink('paused-invitations', 'Access paused, 2 invitations waiting'),
+      switcherLink(
+        'paused-alone',
+        'Access paused, no other organisation: Create an organisation (sc-85006, sc-85513)',
+      ),
     ],
   },
   {

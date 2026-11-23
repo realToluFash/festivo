@@ -1,5 +1,6 @@
 import { roleName } from '@soirely/domain';
 import { type Href, router } from 'expo-router';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +9,15 @@ import { Text, TitleCap } from '../../components/Text.tsx';
 import { Title, useTitleCap } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { PHONE_TAB_BAR, TabBarFade } from '../../components/TodayCover.tsx';
-import { Bell, Landscape, OrgPill, PortraitTop, SearchAndBell, SettingsTabBar } from './Frame.tsx';
+import {
+  Bell,
+  HeldPortraitTop,
+  Landscape,
+  OrgPill,
+  PortraitTop,
+  SearchAndBell,
+  SettingsTabBar,
+} from './Frame.tsx';
 import { Back } from '../../components/SettingsParts.tsx';
 import { useWayBackToNone } from '../../components/wayBackToNone.ts';
 import { HeldStandIn } from './Held.tsx';
@@ -179,7 +188,13 @@ export function SettingsHome({
   if (held != null)
     return (
       <PausedHere.Provider value={held === 'paused'}>
-        <HeldSettings held={held} back={back} onSignOut={onSignOut} />
+        <HeldSettings
+          held={held}
+          back={back}
+          onSignOut={onSignOut}
+          title={held === 'overdue' ? title : null}
+          cap={titleCap.cap}
+        />
       </PausedHere.Provider>
     );
 
@@ -248,30 +263,37 @@ export function SettingsHome({
   );
 }
 
-/** Paused access or two-factor overdue in place of Settings, with no page title: the pill and the bell stay, so the switcher is a tap away, and on its side the bell heads the content's right. Paused has no Search in any layout (sc-82858). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). */
+/** Paused access or two-factor overdue in place of Settings: the pill and the bell stay, so the switcher is a tap away. Paused draws no page title, and on its side the bell alone heads the content's right; it has no Search in any layout (sc-82858, sc-83881). Over a pushed section, ‹ Settings stays, and on a phone the bell ends its row (sc-83881). Overdue keeps the page's title above its card, on its side with the bell, as the product does (sc-85006). Every layout pads the card once, at the product's inset (sc-85022). */
 function HeldSettings({
   held,
   back,
   onSignOut,
+  title,
+  cap,
 }: {
   held: Held;
   back?: (() => void) | undefined;
   onSignOut: () => void;
+  title: ReactNode;
+  cap: number | null;
 }) {
   const shell = useShell();
   const search = held !== 'paused';
   const insets = useSafeAreaInsets();
-  const standIn = <HeldStandIn held={held} onSignOut={onSignOut} />;
+  const standIn = (
+    <TitleCap.Provider value={title == null ? null : cap}>
+      <HeldStandIn held={held} onSignOut={onSignOut} />
+    </TitleCap.Provider>
+  );
 
   if (shell.layout === 'landscape')
     return (
       <Landscape column={null} search={search}>
         <View style={styles.heldSide}>
-          {held === 'paused' && (
-            <View style={styles.heldSideTop}>
-              <Bell tell={shell.tell} />
-            </View>
-          )}
+          <View style={styles.heldSideTop}>
+            {title != null && <View style={styles.grow}>{title}</View>}
+            <Bell tell={shell.tell} />
+          </View>
           {standIn}
         </View>
       </Landscape>
@@ -280,12 +302,14 @@ function HeldSettings({
   if (shell.layout === 'portrait')
     return (
       <View style={styles.page}>
-        <PortraitTop at="Settings" search={search} />
-        {back != null && (
-          <View style={styles.heldBack}>
-            <Back onPress={back} testID="settings.held.back" />
-          </View>
-        )}
+        <HeldPortraitTop search={search}>
+          {back != null && (
+            <View style={styles.heldBack}>
+              <Back onPress={back} testID="settings.held.back" />
+            </View>
+          )}
+          {title}
+        </HeldPortraitTop>
         <View style={styles.heldUpright}>{standIn}</View>
       </View>
     );
@@ -321,6 +345,11 @@ function HeldSettings({
               ) : (
                 <Bell tell={shell.tell} />
               )}
+            </View>
+          )}
+          {title != null && (
+            <View style={styles.titleRow}>
+              <View style={styles.grow}>{title}</View>
             </View>
           )}
         </View>
@@ -389,14 +418,17 @@ const styles = StyleSheet.create({
   // The pill and the bell at the header's edge; the stand-in keeps its own, as in the product (sc-85022).
   heldRows: { paddingHorizontal: tokens.spaceXxl },
   heldUpright: { flex: 1 },
-  // Upright, ‹ shares the pill's, the bell's and the card's 28pt edge (sc-85022).
-  heldBack: { flexDirection: 'row', paddingHorizontal: tokens.space4xl },
-  heldSide: { flex: 1, paddingHorizontal: 30 },
-  // The product's side header with no title: the bell alone at the content's top right (sc-83881).
+  // Upright, ‹ sits in the top's band, on the pill's, the bell's and the card's 28pt edge (sc-85022).
+  heldBack: { flexDirection: 'row' },
+  heldSide: { flex: 1 },
+  // The product's side header, 30pt in: overdue's title then the bell, or paused's bell alone at the content's top right (sc-83881, sc-85006, sc-85022).
   heldSideTop: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'flex-end',
+    gap: tokens.spaceLg,
     paddingTop: 26,
+    paddingHorizontal: 30,
     paddingBottom: tokens.spaceLg,
   },
   titleRow: {
