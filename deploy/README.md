@@ -161,16 +161,21 @@ a restore has no erasures to replay.
 
 ### Rehearsed
 
-| Date        | Stack                           | Backup            | Restore took |
-| ----------- | ------------------------------- | ----------------- | ------------ |
-| 23 Nov 2026 | ops's own stack, its localstack | 290 kB, encrypted | 148 s        |
+| Date        | Stack                                                       | Backup            | Restore took |
+| ----------- | ----------------------------------------------------------- | ----------------- | ------------ |
+| 23 Nov 2026 | the QA stack (`soirely-qa`) at main 44f2772, its localstack | 286 kB, encrypted | 312 s        |
 
-The rehearsal the story asks for is on the QA stack, in QA: the same commands, with the
-stack named. Make a throwaway key with `age-keygen`, then:
+Taken from that stack's own backup. A guest renamed after the backup came back with the
+name the backup held, and a guest added after it was gone. Every `app:prune-*` and
+`app:erase-*` in the crontab ran before the API opened, and it answered `/api/health`.
+
+To rehearse again, use the same commands with the stack named. Make a throwaway key
+with `age-keygen` (it is in the backup image), then:
 
 ```sh
 docker build -t soirely-backup:rehearsal deploy/backup
-# backup.env for the stack: its localstack (http://storage:4566) and keys, PGHOST=postgres and its database user
+# backup.env for the stack: its localstack (http://storage:4566) and keys, PGHOST=postgres and its database user,
+# with the password the API connects with (its DATABASE_URL), which can differ from the stack's .env
 docker run --rm --network soirely-qa_default --env-file backup.env soirely-backup:rehearsal /backup/bucket.sh
 docker run --rm --network soirely-qa_default --env-file backup.env soirely-backup:rehearsal /backup/backup.sh
 RESTORE_KEY=… RESTORE_SECRET=… RESTORE_PROJECT=soirely-qa RESTORE_COMPOSE_FILE=../soirely-qa/compose.yaml \
