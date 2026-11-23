@@ -570,6 +570,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/settings?as=noOrg',
       },
       {
+        title: 'Settings · access paused',
+        what: 'Two other organisations: Switch organisation',
+        href: '/demo/settings?held=paused',
+      },
+      {
+        title: 'Settings · access paused, no other organisation',
+        what: 'No Switch organisation; single events only (sc-85006)',
+        href: '/demo/settings?held=paused&switcher=one',
+      },
+      {
+        title: 'Settings · two-factor overdue',
+        what: 'Turn on two-factor, Sign out',
+        href: '/demo/settings?held=overdue',
+      },
+      {
+        title: 'Settings · two-factor overdue, no other organisation',
+        what: 'Single-event access only (sc-85006)',
+        href: '/demo/settings?held=overdue&switcher=one',
+      },
+      {
         title: 'Your account',
         what: 'You on the card, what is left to verify',
         href: '/demo/settings/account',

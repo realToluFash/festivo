@@ -944,6 +944,7 @@ describe('the guest tree', () => {
           },
           phase: 'live',
           started: false,
+          onTheDay: false,
           answersOpen: true,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },

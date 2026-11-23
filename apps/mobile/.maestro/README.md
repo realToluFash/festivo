@@ -164,6 +164,9 @@ and wait out the unhealthy status a long pause leaves before `up --wait`, which 
 it. The `sc17675-*` checks and the `sc59333-*-tablet` ones turn the device with `${ORIENT}`:
 pass `ORIENT=PORTRAIT` (`LANDSCAPE_LEFT` on a landscape-natural tablet), or Maestro reports the
 unset value as a driver crash.
+The `sc6476-*` checks also turn the tablet through the harness with `${ROT}`: the path `/portrait`
+or `/landscape`, never the bare word (the harness answers 404 and `helper.js` throws "the harness
+refused"), and the same way round as `ORIENT`.
 A picture at a held moment, which `takeScreenshot` would take only once the screen settles, is
 `ASK: /shot?name=<name>`: the harness screenshots the device at once and saves it with the
 batch's screenshots under the same check-and-language prefix, so `held-1` in an English batch

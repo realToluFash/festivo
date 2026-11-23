@@ -65,4 +65,19 @@ describe('sc-83881: the paused page in the reader language, its pill, the bell o
     expect(side).toContain("shell.layout === 'landscape'");
     expect(side).toContain('<Bell tell={shell.tell} />');
   });
+
+  it('pads the held page once: the stand-in keeps its own inset, and only the header rows pad (sc-85022)', () => {
+    const source = readFileSync(join(import.meta.dirname, 'SettingsHome.tsx'), 'utf8');
+    const style = (name: string) => source.match(new RegExp(`^  ${name}: \\{[^}]*\\}`, 'mu'))?.[0];
+
+    expect(style('heldPhone')).toBe('  heldPhone: { flex: 1 }');
+    expect(style('heldUpright')).toBe('  heldUpright: { flex: 1 }');
+    expect(style('heldRows')).toContain('paddingHorizontal: tokens.spaceXxl');
+    expect(style('heldBack')).toContain('paddingHorizontal: tokens.space4xl');
+
+    const held = bodyOf('SettingsHome.tsx', 'HeldSettings');
+
+    expect(held).toMatch(/<View style=\{styles\.heldRows\}>[\s\S]*<\/View>\s*\{standIn\}/u);
+    expect(held).toContain('<View style={styles.heldUpright}>{standIn}</View>');
+  });
 });

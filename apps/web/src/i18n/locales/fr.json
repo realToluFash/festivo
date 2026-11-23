@@ -615,6 +615,8 @@
     "tellThanks_other": "Merci. Nous avons prévenu {{hosts}}, qui vont s’en occuper. Vous pouvez fermer cette page.",
     "tellThanks_many": "Merci. Nous avons prévenu {{hosts}}, qui vont s’en occuper. Vous pouvez fermer cette page.",
     "yourAnswer": "Votre réponse",
+    "yourCode": "Votre code",
+    "where": "Lieu",
     "replyBy": "Merci de répondre au plus tard le {{date}}. D’ici là, vous pouvez modifier votre réponse à tout moment.",
     "yes": "Oui, je serai là",
     "no": "Hélas, je ne pourrai pas",

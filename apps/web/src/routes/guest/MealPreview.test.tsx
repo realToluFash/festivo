@@ -101,6 +101,7 @@ const PREVIEW = {
   },
   phase: 'live',
   started: false,
+  onTheDay: false,
   answersOpen: true,
   answersClosedOn: null,
   calendarFeed: null,

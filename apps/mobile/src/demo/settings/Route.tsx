@@ -28,7 +28,7 @@ import { holdChoice, schemeOf } from './PersonalisationModel.ts';
 import { lookingAs, managesOrganisation, memberLooking, SECTIONS, viewerOf } from './sample.ts';
 import { underSavedName, useSavedName } from './savedName.ts';
 import { SecuritySection } from './Security.tsx';
-import { heldOf } from './Held.tsx';
+import { heldOf } from './HeldModel.ts';
 import { WayBackToNone } from '../../components/wayBackToNone.ts';
 import { boardFrom, fromNoneOf, noOrgHome } from './fromNone.ts';
 import { SettingsColumn, SettingsHome, sectionsFor } from './SettingsHome.tsx';
