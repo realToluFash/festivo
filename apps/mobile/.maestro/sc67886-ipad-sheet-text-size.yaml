@@ -35,11 +35,12 @@ appId: host.exp.Exponent
 - assertNotVisible: 'Enter your password.'
 - runFlow: keys-down-ipad-sheet.yaml
 - takeScreenshot: sc67886-ipad-sheet-typed
-# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line (lead review).
+# With the keys down and an address typed, Forgot your password? wraps; its foot is the second line. It is scrolled
+# only until visible, never centred, so it is tapped where a floating Sign in would cover it (lead review).
 - scrollUntilVisible:
     element:
       id: 'signIn.forgot'
-    centerElement: true
+    centerElement: false
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: sc67886-ipad-sheet-forgot-keys-down
@@ -59,7 +60,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'signIn.password'
-    centerElement: true
+    centerElement: false
 - tapOn:
     id: 'signIn.password'
     point: '50%,92%'
@@ -79,7 +80,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'signIn.password'
-    centerElement: true
+    centerElement: false
 - tapOn:
     id: 'signIn.password'
     point: '50%,92%'
@@ -95,7 +96,7 @@ appId: host.exp.Exponent
 - scrollUntilVisible:
     element:
       id: 'signIn.forgot'
-    centerElement: true
+    centerElement: false
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: sc67886-ipad-sheet-scrolled
