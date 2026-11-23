@@ -106,7 +106,7 @@ export const SW = {
   allergyFor: (course: string, dish: string, allergens: string) =>
     `${course}: their pick, ${dish}, contains ${allergens}, recorded after they picked it.`,
   allergyForNotStated: (course: string, dish: string, allergens: string) =>
-    `${course}: their pick, ${dish}, has no allergens stated, and ${allergens} was recorded after they picked it.`,
+    `${course}: their pick, ${dish}, has no allergens stated, and their allergy to ${allergens} was recorded after they picked it.`,
   hostCount: (course: string, n: number) => `${course} · ${people(n)}`,
   answered: (n: string, room: string) => `${n} of ${room} answered`,
   dish: 'Dish',

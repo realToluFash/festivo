@@ -23,6 +23,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { api } from '../api.ts';
 import { useShownLanguage } from '../i18n/index.ts';
 import { whoChanges } from '../kit/menuPicksWords.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { FailureLine } from './FailureLine.tsx';
@@ -78,6 +79,7 @@ export function ChooseFor({
   const [asking, setAsking] = useState<string[] | null>(null);
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
+  const phone = useLayout().kind === 'phone';
 
   const course = courses[at];
   if (course == null) return null;
@@ -157,14 +159,25 @@ export function ChooseFor({
     });
   };
 
+  const saveButton = (
+    <PrimaryButton
+      label={saveLabel}
+      onPress={() => void save(false)}
+      busy={busy}
+      testID="menu.choose.save"
+    />
+  );
+
   return (
     <View style={styles.sheet}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-        {t('menuPicks.choosing', { name: who })}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {t('menuPicks.courseOf', { course: course.name, at: at + 1, all: courses.length })}
-      </Text>
+      <View style={styles.head}>
+        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+          {t('menuPicks.choosing', { name: who })}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {t('menuPicks.courseOf', { course: course.name, at: at + 1, all: courses.length })}
+        </Text>
+      </View>
       <SheetScrollView style={styles.list} contentContainerStyle={styles.scroll}>
         {refused ? (
           <FailureLine words={t('menuPicks.refused')} testID="menu.choose.refused" />
@@ -261,21 +274,19 @@ export function ChooseFor({
           <SecondaryButton
             label={t('menuPicks.close')}
             onPress={onClose}
+            stacked={phone}
             testID="menu.choose.close"
           />
         ) : (
           <>
+            {phone && saveButton}
             <SecondaryButton
               label={t('menuPicks.cancel')}
               onPress={onClose}
+              stacked={phone}
               testID="menu.choose.cancel"
             />
-            <PrimaryButton
-              label={saveLabel}
-              onPress={() => void save(false)}
-              busy={busy}
-              testID="menu.choose.save"
-            />
+            {!phone && saveButton}
           </>
         )}
       </SheetActions>
@@ -327,6 +338,7 @@ export function ChooseWho({
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
+  const phone = useLayout().kind === 'phone';
   const dishName = dish?.name ?? '';
   const ruledFor = (person: PicksRoomPerson) => against(row.allergens, person.allergens);
   const goesBack = (person: PicksRoomPerson): string => {
@@ -373,17 +385,28 @@ export function ChooseWho({
       return next;
     });
 
+  const saveButton = (
+    <PrimaryButton
+      label={t('menuPicks.save')}
+      onPress={() => void save(false)}
+      busy={busy}
+      testID="menu.who.save"
+    />
+  );
+
   return (
     <View style={styles.sheet}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-        {t('menuPicks.whoTitle', { variant: row.name })}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {t('menuPicks.whoSub', { dish: dishName, course: course.name })}
-      </Text>
-      <Text size={15} style={parts.secondary}>
-        {t('menuPicks.whoHelp')}
-      </Text>
+      <View style={styles.head}>
+        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+          {t('menuPicks.whoTitle', { variant: row.name })}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {t('menuPicks.whoSub', { dish: dishName, course: course.name })}
+        </Text>
+        <Text size={15} style={parts.secondary}>
+          {t('menuPicks.whoHelp')}
+        </Text>
+      </View>
       <SheetScrollView style={styles.list} contentContainerStyle={styles.scroll}>
         {refused ? (
           <FailureLine words={t('menuPicks.refused')} testID="menu.who.refused" />
@@ -457,20 +480,22 @@ export function ChooseWho({
       </SheetScrollView>
       <SheetActions>
         {refused ? (
-          <SecondaryButton label={t('menuPicks.close')} onPress={onClose} testID="menu.who.close" />
+          <SecondaryButton
+            label={t('menuPicks.close')}
+            onPress={onClose}
+            stacked={phone}
+            testID="menu.who.close"
+          />
         ) : (
           <>
+            {phone && saveButton}
             <SecondaryButton
               label={t('menuPicks.cancel')}
               onPress={onClose}
+              stacked={phone}
               testID="menu.who.cancel"
             />
-            <PrimaryButton
-              label={t('menuPicks.save')}
-              onPress={() => void save(false)}
-              busy={busy}
-              testID="menu.who.save"
-            />
+            {!phone && saveButton}
           </>
         )}
       </SheetActions>
@@ -515,6 +540,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },
+  head: { flexShrink: 0, gap: tokens.spaceMd },
   list: { flexShrink: 1 },
   scroll: { gap: tokens.spaceMd },
   choices: { gap: tokens.spaceSm },
