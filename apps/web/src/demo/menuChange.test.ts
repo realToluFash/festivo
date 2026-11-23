@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { MCW, addedAllergens, asksAtFirstDish, changeAsks, pickedWithAdded } from './menuChange.ts';
-import { type EvCourse, type EvDish, sampleCourses, variantCourses } from './menuCourses.ts';
+import {
+  type EvCourse,
+  type EvDish,
+  addedAllergenLine,
+  sampleCourses,
+  variantCourses,
+} from './menuCourses.ts';
 
 const main = (courses: readonly EvCourse[]): EvCourse => courses[1] as EvCourse;
 const jollof = (courses: readonly EvCourse[]): EvDish => main(courses).dishes[0] as EvDish;
@@ -32,6 +38,21 @@ describe('what a menu change asks (sc-3913)', () => {
     expect(asks?.people).toBe(9);
   });
 
+  it('asks again, for an allergen added to a dish with variants, the people on its variants', () => {
+    const courses = variantCourses();
+    const dish = jollof(courses);
+    const next: EvDish = { ...dish, contains: ['celery', 'sesame'] };
+    const asks = changeAsks(
+      { kind: 'allergen', courseId: 'k2', dishId: 'k2-jollof', next },
+      courses,
+      48,
+    );
+
+    expect(dish.pickers).toEqual([]);
+    expect(asks?.people).toBe(4);
+    expect(addedAllergenLine(dish, dish.contains, next.contains)).toMatch(/^4 guests/u);
+  });
+
   it('asks everyone coming at a course’s first dish, and only once somebody has picked', () => {
     const courses = sampleCourses();
     const bites = courses[3] as EvCourse;
@@ -56,8 +77,10 @@ describe('what a menu change asks (sc-3913)', () => {
     const added = addedAllergens(dish.contains, ['celery', 'sesame', 'peanuts']);
 
     expect(added).toEqual(['sesame', 'peanuts']);
-    expect(pickedWithAdded(dish, added)).toBe(4);
-    expect(pickedWithAdded(dish, addedAllergens(dish.contains, ['celery', 'crustaceans']))).toBe(0);
+    expect(pickedWithAdded(dish, added)).toHaveLength(4);
+    expect(
+      pickedWithAdded(dish, addedAllergens(dish.contains, ['celery', 'crustaceans'])),
+    ).toHaveLength(0);
     expect(addedAllergens(dish.contains, 'none')).toEqual([]);
     expect(addedAllergens(['celery', 'sesame'], ['celery'])).toEqual([]);
 

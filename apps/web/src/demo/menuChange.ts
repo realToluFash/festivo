@@ -3,11 +3,12 @@ import {
   type Contains,
   type DishAllergen,
   type Lang,
+  DISH_ALLERGENS,
   allergenName,
   listOf,
 } from './menuLibrary.ts';
-import { hasVariants, variantsOf } from './dishVariants.ts';
-import type { EvCourse, EvDish } from './menuCourses.ts';
+import { variantsOf } from './dishVariants.ts';
+import type { EvCourse, EvDish, Picker } from './menuCourses.ts';
 
 /** sc-3913's MenuChange dialog (boards MenuChange-*, page e32): a change to a menu guests have picked from asks the host first, naming who it asks again and for which course. */
 export type MenuChange =
@@ -60,11 +61,15 @@ export const MCW = {
     `${event} was on ${day}. Its menu can’t change after the date. Nothing was changed.`,
 };
 
-/** Everyone on the dish: on its variants when it has them. */
-export const pickedBy = (dish: EvDish): number =>
-  hasVariants(dish)
-    ? variantsOf(dish).reduce((sum, one) => sum + one.pickers.length, 0)
-    : dish.pickers.length;
+type Picked = Pick<EvDish, 'pickers' | 'variants'>;
+
+/** Everyone on the dish, with the allergies they recorded: on its variants when it has them. */
+export const pickersOf = (dish: Picked): readonly Picker[] =>
+  dish.variants != null && dish.variants.length > 0
+    ? dish.variants.flatMap((one) => one.pickers)
+    : dish.pickers;
+
+export const pickedBy = (dish: Picked): number => pickersOf(dish).length;
 
 /** The allergens just added to a dish's Contains; ticking Contains none of these, or removing one, adds none. */
 export function addedAllergens(before: Contains, after: Contains): DishAllergen[] {
@@ -74,9 +79,19 @@ export function addedAllergens(before: Contains, after: Contains): DishAllergen[
   return after.filter((code) => !had.includes(code));
 }
 
-/** The people who picked the dish and have one of the added allergens recorded, each once; an Other allergy is never matched. */
-export function pickedWithAdded(dish: EvDish, added: readonly DishAllergen[]): number {
-  return dish.pickers.filter((one) => added.some((code) => one.includes(code as Allergen))).length;
+/** The people who picked the dish, or one of its variants, and have one of the added allergens recorded, each once; an Other allergy is never matched. */
+export function pickedWithAdded(dish: Picked, added: readonly DishAllergen[]): readonly Picker[] {
+  return pickersOf(dish).filter((one) => added.some((code) => one.includes(code as Allergen)));
+}
+
+/** The added allergens somebody counted has recorded, in the house order. */
+export function recordedOf(
+  added: readonly DishAllergen[],
+  counted: readonly Picker[],
+): DishAllergen[] {
+  return DISH_ALLERGENS.filter(
+    (code) => added.includes(code) && counted.some((one) => one.includes(code as Allergen)),
+  );
 }
 
 /** A course's first dish asks everyone coming, once somebody has picked anything; before that a change asks nothing. */
@@ -139,19 +154,17 @@ export function changeAsks(
   }
 
   const added = addedAllergens(dish.contains, change.next.contains);
-  const n = pickedWithAdded(dish, added);
+  const counted = pickedWithAdded(dish, added);
+  const n = counted.length;
   const names = (codes: readonly DishAllergen[]) =>
     listOf(
       codes.map((code) => allergenName(code, lang)),
       lang,
     );
-  const recorded = added.filter((code) =>
-    dish.pickers.some((one) => one.includes(code as Allergen)),
-  );
 
   return {
     title: MCW.addAllergens(names(added), dish.name),
-    count: MCW.pickedWith(n, names(recorded), course.name),
+    count: MCW.pickedWith(n, names(recordedOf(added, counted)), course.name),
     stays: again,
     done: MCW.doneAllergens(change.next.name, n),
     people: n,

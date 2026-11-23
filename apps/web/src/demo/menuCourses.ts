@@ -7,7 +7,6 @@ import {
   type Lang,
   type LibDish,
   type Price,
-  DISH_ALLERGENS,
   SAMPLE_DISHES,
   allergenName,
   listOf,
@@ -53,7 +52,7 @@ import { type CourseDefault, type DefaultForm, type Given, DFW } from './courseD
 import { MENU_EVENT, moved } from './menuServed.ts';
 import { type Close, type PicksDates, SAMPLE_PICKS, closeOf } from './picksClose.ts';
 import type { DemoLink } from './settings.ts';
-import type { MenuChange } from './menuChange.ts';
+import { type MenuChange, addedAllergens, pickedWithAdded, recordedOf } from './menuChange.ts';
 
 /** sc-3902's event Menu at a desk and in a narrow web window (board Menu, page e32): courses in order, and the dishes on each. */
 export const COURSE_MAX = 10;
@@ -380,24 +379,17 @@ export function newDish(form: DishForm, onlyEvent: boolean): EvDish {
 export const onCourse = (course: EvCourse, libraryId: string): boolean =>
   course.dishes.some((one) => one.libraryId === libraryId);
 
-/** The line under Edit dish's confirmation, until sc-3913: the people who picked the dish and have one of the allergens just added recorded. Each person counts once, an Other allergy is never matched, and only the added allergens somebody counted has are named. */
+/** The line under Edit dish's confirmation, until sc-3913: the people who picked the dish, or one of its variants, and have one of the allergens just added recorded, counted as sc-3913's MenuChange counts them. */
 export function addedAllergenLine(
-  dish: Pick<EvDish, 'name' | 'pickers'>,
+  dish: Pick<EvDish, 'name' | 'pickers' | 'variants'>,
   before: Contains,
   after: Contains,
   lang: Lang = 'en',
 ): string | null {
-  if (!Array.isArray(after)) return null;
-  const had: readonly DishAllergen[] = Array.isArray(before) ? before : [];
-  const added = after.filter((code) => !had.includes(code));
-  if (added.length === 0) return null;
-  const counted = dish.pickers.filter((one) =>
-    added.some((code) => one.includes(code as Allergen)),
-  );
+  const added = addedAllergens(before, after);
+  const counted = pickedWithAdded(dish, added);
   if (counted.length === 0) return null;
-  const named = DISH_ALLERGENS.filter(
-    (code) => added.includes(code) && counted.some((one) => one.includes(code as Allergen)),
-  ).map((code) => allergenName(code, lang));
+  const named = recordedOf(added, counted).map((code) => allergenName(code, lang));
   const who =
     counted.length === 1
       ? `1 guest who picked ${dish.name} has`

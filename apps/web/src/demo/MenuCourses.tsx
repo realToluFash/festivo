@@ -1055,7 +1055,7 @@ function Courses({
     };
     if (
       first.asksAgain === true &&
-      pickedWithAdded(dish, addedAllergens(dish.contains, contains)) > 0
+      pickedWithAdded(dish, addedAllergens(dish.contains, contains)).length > 0
     ) {
       askChange({ kind: 'allergen', courseId: openCourse.id, dishId: dish.id, next });
       return;
@@ -1422,6 +1422,8 @@ function Courses({
 
   const limitLine = (at: 'top' | 'end') =>
     refused?.kind === 'limit' && refused.at === at ? CW.atLimit : '';
+
+  const changingAsks = changing == null ? null : changeAsks(changing.change, courses, coming, lang);
 
   return (
     <>
@@ -1831,13 +1833,9 @@ function Courses({
       {open?.kind === 'editCourse' && open.move != null && (
         <MoveDialog move={open.move} lang={lang} onCancel={cancelMove} onMove={confirmMove} />
       )}
-      {changing != null && changeAsks(changing.change, courses, coming, lang) != null && (
+      {changing != null && changingAsks != null && (
         <MenuChangeDialog
-          asks={
-            changeAsks(changing.change, courses, coming, lang) as NonNullable<
-              ReturnType<typeof changeAsks>
-            >
-          }
+          asks={changingAsks}
           refused={changeRefused}
           back={changing.back}
           onCancel={cancelChange}
