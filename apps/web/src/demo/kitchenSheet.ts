@@ -174,13 +174,24 @@ const allergenWords = (code: Allergen, person: Person): string => {
 const dietWords = (code: Person['diets'][number]): string =>
   code === 'other' ? KSW.otherDiet : NAMES.diets[code];
 
-/** "Peanuts, Celery", or for someone never given the default for a diet alone (Decided, 23 Nov), "No allergy · Vegetarian". */
+/** What an Other diet says, as the guest typed it (sc-3777 keeps `otherDiet`); a named row reads it as an Other allergy does (Decided, 23 Nov: an Other diet). Counts keep "Other diet". */
+const OTHER_DIET: Readonly<Record<string, string>> = { 'nadia-petrova': 'No garlic' };
+
+const namedDietWords = (code: Person['diets'][number], person: Person): string => {
+  const what = code === 'other' ? OTHER_DIET[person.id] : undefined;
+
+  return what == null ? dietWords(code) : filled(KSW.otherAllergy, { what });
+};
+
+/** "Peanuts, Celery", or for someone never given the default for a diet alone (Decided, 23 Nov), "No allergy · Vegetarian" or "No allergy · No garlic (other)". */
 const allergicTo = (person: Person): string =>
   person.allergies.length > 0
     ? ALLERGENS.filter((code) => person.allergies.includes(code))
         .map((code) => allergenWords(code, person))
         .join(', ')
-    : filled(KSW.noAllergy, { diets: person.diets.map(dietWords).join(', ') });
+    : filled(KSW.noAllergy, {
+        diets: person.diets.map((code) => namedDietWords(code, person)).join(', '),
+      });
 
 export type Cell =
   | { kind: 'dish'; text: string }

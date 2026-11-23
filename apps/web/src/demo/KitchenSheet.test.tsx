@@ -104,7 +104,7 @@ describe('the kitchen sheet (sc-3911)', () => {
 
     expect(within(allergies()).getByText(KSW.noAllergies)).toBeTruthy();
     const nadia = within(allergies()).getByRole('row', { name: /Nadia Petrova/u });
-    expect(within(nadia).getByText('No allergy · Other diet')).toBeTruthy();
+    expect(within(nadia).getByText('No allergy · No garlic (other)')).toBeTruthy();
   });
 
   it('says so when no allergies are recorded', SLOW, async () => {

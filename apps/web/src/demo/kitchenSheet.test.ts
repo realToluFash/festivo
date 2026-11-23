@@ -83,10 +83,12 @@ describe('sc-3911’s kitchen sheet, from See picks’ figures', () => {
     expect(before.allergic.every((one) => one.allergy)).toBe(true);
     expect(dietOnly.map((one) => [one.name, one.allergens])).toEqual([
       ['Bea Mensah', 'No allergy · Vegetarian'],
-      ['Nadia Petrova', 'No allergy · Other diet'],
+      ['Nadia Petrova', 'No allergy · No garlic (other)'],
     ]);
     for (const person of dietOnly)
       expect(person.cells.some((cell) => cell.kind === 'never')).toBe(true);
+    expect(after.dietCounts.map(([name]) => name)).toContain('Other diet');
+    expect(after.dietCounts.map(([name]) => name)).not.toContain('No garlic (other)');
     expect(after.withAllergies).toBe(before.withAllergies);
     expect(summaryLine(after)).toBe(summaryLine(before));
     expect(after.allergic.map((one) => one.name)).toEqual(
