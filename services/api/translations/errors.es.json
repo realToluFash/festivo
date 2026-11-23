@@ -153,5 +153,5 @@
     "audit_export_too_many": "Demasiadas entradas para exportar.",
     "door_code_invalid": "Ese código no funciona. Compruébelo con quien se lo dio.",
     "menu_is_default": "Forma parte del plato por defecto del pase. Elija antes otro plato por defecto.",
-    "menu_default_move": "Cambiar el plato por defecto mueve a los invitados que lo tienen. Confirme para cambiarlo."
+    "menu_default_move": "Cambiar el plato por defecto cambia también el de los invitados que lo recibieron. Confírmelo para continuar."
 }
