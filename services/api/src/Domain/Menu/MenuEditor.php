@@ -354,15 +354,14 @@ final readonly class MenuEditor
             $this->variantRules->refuseCount(Iter\count($variants), Iter\count($sent));
             $details = $this->variantRules->details($sent, $variants, $event->getCurrency());
             $course = $dish->getCourse();
-            $everyone = static fn (iterable $ways): int => Iter\count(Vec\filter($ways, static fn (MenuDishVariant|VariantDetails $one): bool => !($one instanceof MenuDishVariant ? $one->isForChildren() : $one->forChildren)));
+            $startsWays = !$course->guestsChoose() && self::oneWay($variants) && !self::oneWay([...$variants, ...$details]);
+            $chosen = [] !== $this->menuDishChoiceRepository->findOnDish($dish);
 
-            $oneWay = static fn (iterable $ways): bool => $everyone($ways) < 2;
-
-            if (!$course->guestsChoose() && $oneWay($variants) && !$oneWay([...$variants, ...$details])) {
+            if ($startsWays && !$chosen) {
                 $this->menuReasks->askEveryone($event, $course, $askAgain);
             }
 
-            if ([] === $variants) {
+            if ([] === $variants || ($startsWays && $chosen)) {
                 $this->menuReasks->ask($course, [['answers' => $this->menuReasks->naming($dish), 'why' => MenuChangeWhy::Ways, 'ways' => Iter\count($details)]], $askAgain);
             }
 
@@ -469,7 +468,7 @@ final readonly class MenuEditor
 
             $details = $this->choiceRules->details($sent, null, [], false);
 
-            if ($dish->getCourse()->guestsChoose()) {
+            if ($dish->getCourse()->guestsChoose() || [] !== $choices || !self::oneWay($this->menuDishVariantRepository->findOnDish($dish))) {
                 $this->menuReasks->ask($dish->getCourse(), [['answers' => $this->menuReasks->naming($dish), 'why' => MenuChangeWhy::Choices]], $askAgain);
             } else {
                 $this->menuReasks->askEveryone($event, $dish->getCourse(), $askAgain);
@@ -620,6 +619,12 @@ final readonly class MenuEditor
         }
 
         return $asked;
+    }
+
+    /** @param iterable<MenuDishVariant|VariantDetails> $ways a set course asks which way only from two ways for everyone */
+    private static function oneWay(iterable $ways): bool
+    {
+        return Iter\count(Vec\filter($ways, static fn (MenuDishVariant|VariantDetails $one): bool => !($one instanceof MenuDishVariant ? $one->isForChildren() : $one->forChildren))) < 2;
     }
 
     /** @return list<MealAnswer> */

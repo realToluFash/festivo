@@ -10,13 +10,16 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\MealAnswerKind;
 use App\Enum\MembershipStatus;
+use App\Enum\MenuChangeWhy;
 use App\Enum\NeedKind;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
@@ -219,17 +222,25 @@ final class DishChoicesTest extends ApiTestCase
     }
 
     #[Test]
-    public function aChoiceOnAPickedDishAsksItsPickersAndOnASetCourseAsksEveryoneComing(): void
+    public function aChoiceOnAPickedDishAsksItsPickersAndOnASetCourseThatAlreadyAsksThoseWhoAnsweredIt(): void
     {
         $jollof = $this->jollof();
         $this->as($this->owner, 'PUT', $this->path('/courses/' . $this->courseNamed('Main')), ['name' => 'Main', 'answer' => 'same', 'skippable' => false]);
 
         $this->addChoice($jollof, self::side());
-        $this->picks(self::optionId($this->choices()[0], 0), $this->guest('Tolu Adeyemi', []));
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks(self::optionId($this->choices()[0], 0), $tolu);
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
 
         $this->as($this->owner, 'POST', $this->choicesOf($jollof), [...self::side(), 'question' => 'And a sauce?']);
-        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 'everyone', 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
+        self::assertSame([409, ErrorCode::MenuChangeAsks->type(), 'picked', 1], [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
         self::assertCount(1, $this->choices());
+        $this->as($this->owner, 'POST', $this->choicesOf($jollof) . '?askAgain=1', [...self::side(), 'question' => 'And a sauce?']);
+        self::assertSame(201, $this->statusCode());
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => $tolu->getId()]) ?? self::fail('no answer');
+        self::assertSame([MealAnswerKind::MenuChanged, MenuChangeWhy::Choices], [$answer->getKind(), $answer->getChangedWhy()]);
 
         $starter = $this->courseNamed('Starter');
         $this->as($this->owner, 'POST', $this->path('/courses/' . $starter . '/dishes?askAgain=1'), ['name' => 'Asun', 'containsNone' => true, 'onlyForEvent' => true]);
@@ -239,6 +250,27 @@ final class DishChoicesTest extends ApiTestCase
         self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
         $this->as($this->owner, 'POST', $this->choicesOf($asun) . '?askAgain=1', self::side());
         self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function twoWaysOnASetDishThatAlreadyHasAChoiceAskThoseWhoAnsweredIt(): void
+    {
+        $jollof = $this->jollof();
+        $this->as($this->owner, 'PUT', $this->path('/courses/' . $this->courseNamed('Main')), ['name' => 'Main', 'answer' => 'same', 'skippable' => false]);
+        $this->addChoice($jollof, self::side());
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks(self::optionId($this->choices()[0], 0), $tolu);
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
+        $ways = ['variants' => [['name' => 'Chicken', 'for' => 'everyone', 'containsNone' => true], ['name' => 'Fish', 'for' => 'everyone', 'allergens' => ['fish']]]];
+
+        $this->as($this->owner, 'POST', $this->path('/dishes/' . $jollof . '/variants'), $ways);
+        self::assertSame([409, 'picked', 1], [$this->statusCode(), $this->last()['whom'] ?? null, $this->last()['count'] ?? null]);
+        $this->as($this->owner, 'POST', $this->path('/dishes/' . $jollof . '/variants?askAgain=1'), $ways);
+        self::assertSame(201, $this->statusCode());
+        self::em()->clear();
+        $answer = self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => $tolu->getId()]) ?? self::fail('no answer');
+        self::assertSame([MealAnswerKind::MenuChanged, MenuChangeWhy::Ways, 2], [$answer->getKind(), $answer->getChangedWhy(), $answer->getChangedWays()]);
     }
 
     #[Test]
