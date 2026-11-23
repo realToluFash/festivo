@@ -1167,13 +1167,13 @@ describe('the door code’s two lines (sc-1301, pm #31418)', () => {
   it('names the companions only when one counts as coming', async () => {
     await guest('coming');
     expect(
-      screen.getByText('It lets you and your companions in. A screenshot works too.'),
+      screen.getByText('It lets you and anyone coming with you in. A screenshot works too.'),
     ).toBeDefined();
     cleanup();
 
     await guest('comingAlone');
     expect(screen.getByText('A screenshot works too.')).toBeDefined();
-    expect(screen.queryByText(/your companions in/u)).toBeNull();
+    expect(screen.queryByText(/anyone coming with you in/u)).toBeNull();
     expect(screen.getByRole('heading', { name: 'Show this at the door' })).toBeDefined();
     expect(
       screen.getByText('Your calendar updates by itself if the date, time or place changes.'),

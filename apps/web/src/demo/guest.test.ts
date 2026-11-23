@@ -179,7 +179,9 @@ describe('the words and dates', () => {
     expect(en.calendarLine).toBe(
       'Your calendar updates by itself if the date, time or place changes.',
     );
-    expect(en.doorLine(2)).toBe('It lets you and your companions in. A screenshot works too.');
+    expect(en.doorLine(2)).toBe(
+      'It lets you and anyone coming with you in. A screenshot works too.',
+    );
     expect(en.doorLine(0)).toBe('A screenshot works too.');
     expect(en.messageCount(1042)).toBe('1,042 of 1,000 characters');
   });
