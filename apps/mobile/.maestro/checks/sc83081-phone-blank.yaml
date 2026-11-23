@@ -1,4 +1,4 @@
-# sc-83081 on a phone: Notifications opened by the bell on Events and on Today, shot at 1, 5 and 15 seconds, to see what fills the body while it loads.
+# sc-83081 on a phone: Notifications opened by the bell on Events and on Today, shot at 1, 5 and 15 seconds, to see what fills the body while it loads. Pass METRO_URL.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events

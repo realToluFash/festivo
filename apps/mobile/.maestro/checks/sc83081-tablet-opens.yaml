@@ -1,4 +1,4 @@
-# sc-83081 on a tablet at its current orientation (O names it): the bell's popover from Today, Events and an event's page (EVENT), closed by Android Back and by a tap outside.
+# sc-83081 on a tablet at its current orientation (O names it): the bell's popover from Today, Events and an event's page (EVENT), closed by Android Back and by a tap outside. Pass METRO_URL, O, EVENT, BELL=97%,4% and EVENT_BELL=93%,4% (upright Android tablet).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/
