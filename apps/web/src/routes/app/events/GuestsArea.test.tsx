@@ -2359,6 +2359,38 @@ describe('The wrong-person flag (sc-1526)', () => {
     );
   });
 
+  it('keeps focus on Replace link… when the heading was asked for while the dialog was up', async () => {
+    await openFlagged({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => new Response(null, { status: 204 }),
+    });
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((frame) => {
+      frames.push(frame);
+      return frames.length;
+    });
+    const notice = await within(guestColumn()).findByRole('region', { name: TITLE });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(screen.getByRole('link', { name: /^Ngozi Eze/u }));
+    await waitFor(() => expect(frames).not.toHaveLength(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    await within(guestColumn()).findByText(
+      'Link replaced. Ngozi Eze’s old link no longer works. Copy the new one and send it.',
+    );
+    const invitation = within(guestColumn()).getByRole('region', { name: 'Invitation' });
+    const replace = within(invitation).getByRole('button', { name: /^Replace link…/u });
+    await waitFor(() => expect(document.activeElement).toBe(replace));
+    for (let round = 0; round < 6; round++) {
+      await act(async () => {
+        frames.splice(0).forEach((frame) => frame(0));
+        await new Promise((done) => setTimeout(done, 0));
+      });
+    }
+
+    expect(document.activeElement).toBe(replace);
+  });
+
   it('keeps the notice when the replace fails, and says the old link still works', async () => {
     await openFlagged({
       'POST /api/events/ev_1/guests/g_1/link/replace': () => problem('internal_error', 500),
