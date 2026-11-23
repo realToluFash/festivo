@@ -34,6 +34,7 @@ import { AddVariantButton, RowLine, VariantFields, VariantInsets } from './DishV
 import {
   type Choice,
   type ChoiceAsk,
+  type ChoiceErrors,
   type ChoiceForm,
   type ChoiceMode,
   type OptionForm,
@@ -79,6 +80,7 @@ import { samplePicks } from './seePicks.ts';
 import {
   type MenuChange,
   addedAllergens,
+  afterChange,
   asksAtFirstDish,
   changeAsks,
   MCW,
@@ -549,7 +551,7 @@ function choiceOpen(o: Extract<CoursesStart['opened'], { kind: 'choice' }>, dish
   const options = Array.from({ length: Math.max(base.options.length, over.length) }, (_, at) => ({
     ...(base.options[at] ?? blankOption()),
     ...over[at],
-  }));
+  })).filter((_, at) => !(o.drop ?? []).includes(at));
   const form: ChoiceForm = { ...base, ...o.form, options };
   const pressed = o.press === true;
   const problem = pressed ? firstChoiceProblem(checkChoice(form, was), form, was) : null;
@@ -764,6 +766,16 @@ function Courses({
       const { course: next } = withDishes(course, [change.dish]);
       changeCourse(course.id, () => next);
       setOpen(null);
+    } else if (
+      change.kind === 'firstVariant' ||
+      change.kind === 'variantAllergen' ||
+      change.kind === 'choice'
+    ) {
+      const dish = course.dishes.find((one) => one.id === change.dishId);
+      if (dish == null) return;
+      changeDish(course, afterChange(change, dish));
+      setOpen(null);
+      setAsking(null);
     } else {
       changeDish(course, change.next);
       setOpen(null);
@@ -1079,7 +1091,7 @@ function Courses({
     settle();
     setSaid(null);
     const outcome = addOutcome(dish, isPicked(dish));
-    if (outcome !== 'open') {
+    if (outcome !== 'open' && !(outcome === 'picked' && first.asksAgain === true)) {
       setRefused({ kind: 'addVariant', dishId: dish.id, why: outcome });
       return;
     }
@@ -1139,6 +1151,24 @@ function Courses({
       return;
     }
     const saved = withSavedVariants(dish, open.mode, open.variantId, open.forms, how);
+    if (first.asksAgain === true) {
+      const change: MenuChange | null =
+        open.mode === 'addFirst'
+          ? { kind: 'firstVariant', courseId: openCourse.id, dishId: dish.id, next: saved.dish }
+          : open.mode === 'edit' && open.variantId != null
+            ? {
+                kind: 'variantAllergen',
+                courseId: openCourse.id,
+                dishId: dish.id,
+                variantId: open.variantId,
+                next: saved.dish,
+              }
+            : null;
+      if (change != null && (changeAsks(change, courses, coming, lang)?.people ?? 0) > 0) {
+        askChange(change);
+        return;
+      }
+    }
     changeDish(openCourse, saved.dish);
     setOpen(null);
     tellDone(saved.said, saved.more);
@@ -1221,7 +1251,7 @@ function Courses({
     settle();
     setSaid(null);
     const outcome = addChoiceOutcome(dish);
-    if (outcome !== 'open') {
+    if (outcome !== 'open' && !(outcome === 'picked' && first.asksAgain === true)) {
       setRefused({ kind: 'addChoice', dishId: dish.id, why: outcome });
       return;
     }
@@ -1272,7 +1302,7 @@ function Courses({
     const saved = was?.options.find((one) => one.id === option?.id);
     const isDefault =
       openCourse != null && saved != null && isDefaultOption(openCourse, now.dishId, saved.id);
-    if (saved != null && (isDefault || optionPicked(saved))) {
+    if (saved != null && (isDefault || (optionPicked(saved) && first.asksAgain !== true))) {
       setOpen({ ...now, binRefused: key, optionsFull: false });
       focusAfter.current = `ch-${key}-bin`;
       return;
@@ -1303,7 +1333,7 @@ function Courses({
     const dish = openCourse.dishes.find((one) => one.id === open.dishId);
     if (dish == null) return;
     const was = wasChoice(dish, open.choiceId);
-    const errors = checkChoice(open.form, was);
+    const errors = asksFirst(checkChoice(open.form, was), first.asksAgain === true);
     if (hasProblem(errors)) {
       const problem = firstChoiceProblem(errors, open.form, was);
       setOpen({
@@ -1330,6 +1360,19 @@ function Courses({
       return;
     }
     const saved = withSavedChoice(dish, open.mode, open.choiceId, open.form, lang);
+    if (first.asksAgain === true) {
+      const change: MenuChange = {
+        kind: 'choice',
+        courseId: openCourse.id,
+        dishId: dish.id,
+        choiceId: open.mode === 'edit' ? open.choiceId : null,
+        next: saved.dish,
+      };
+      if ((changeAsks(change, courses, coming, lang)?.people ?? 0) > 0) {
+        askChange(change);
+        return;
+      }
+    }
     changeDish(openCourse, saved.dish);
     setOpen(null);
     tellDone(saved.said, saved.more);
@@ -1338,6 +1381,17 @@ function Courses({
   function pressRemoveChoice(dish: EvDish, choice: Choice) {
     settle();
     setSaid(null);
+    const course = courses.find((one) => one.dishes.some((d) => d.id === dish.id));
+    if (first.asksAgain === true && course != null && removeChoiceOutcome(choice) === 'answered') {
+      askChange({
+        kind: 'choice',
+        courseId: course.id,
+        dishId: dish.id,
+        choiceId: choice.id,
+        next: removeChoice(dish, choice),
+      });
+      return;
+    }
     const ask: ChoiceAsk = { choiceId: choice.id, kind: removeChoiceOutcome(choice) };
     setAsking({ kind: 'choice', dishId: dish.id, ask });
     if (ask.kind === 'ask') focusAfter.current = `mc-chask-${choice.id}`;
@@ -1751,7 +1805,12 @@ function Courses({
                 <ChoiceFields
                   form={open.form}
                   errors={
-                    open.pressed ? checkChoice(open.form, wasChoice(openDish, open.choiceId)) : null
+                    open.pressed
+                      ? asksFirst(
+                          checkChoice(open.form, wasChoice(openDish, open.choiceId)),
+                          first.asksAgain === true,
+                        )
+                      : null
                   }
                   draft={
                     savesAsDraft(open.form, wasChoice(openDish, open.choiceId))
@@ -1844,6 +1903,17 @@ function Courses({
       )}
     </>
   );
+}
+
+/** sc-3913 built: changing how many to pick, or turning Required on, on an answered choice asks first instead of being refused. */
+function asksFirst(errors: ChoiceErrors, asks: boolean): ChoiceErrors {
+  if (!asks) return errors;
+
+  return {
+    ...errors,
+    pick: errors.pick === CHW.answered ? null : errors.pick,
+    required: errors.required === CHW.answered ? null : errors.required,
+  };
 }
 
 /** The bin on an option of the course's default says so; any other picked option keeps choices' own line. */

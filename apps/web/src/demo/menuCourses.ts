@@ -27,6 +27,7 @@ import {
   twoWays,
   variant,
   variantAllergenLine,
+  variantsOf,
 } from './dishVariants.ts';
 import {
   type Choice,
@@ -35,6 +36,7 @@ import {
   type ChoiceMode,
   type OptionForm,
   choiceForm,
+  choicesOf,
   courseHint,
   dishHidden,
   dishPicked,
@@ -43,6 +45,7 @@ import {
   optionalSide,
   sauceChoice,
   sideChoice,
+  removeChoice,
   thirdChoice,
   withSavedChoice,
   choice,
@@ -599,6 +602,35 @@ function sideSaved(contains: readonly (DishAllergen[] | null)[]) {
 const dishIn = (courses: readonly EvCourse[], id: string): EvDish | undefined =>
   courses.flatMap((one) => one.dishes).find((one) => one.id === id);
 
+const TWO_WAYS_FORMS: readonly Partial<VariantForm>[] = twoWays().map((one) => ({
+  name: one.name,
+  for: one.for,
+  allergens: Array.isArray(one.contains) ? one.contains : [],
+  none: one.contains === 'none',
+  diets: one.diets,
+}));
+
+/** sc-3913: Jollof rice's choice changed, or removed (`over` null), as the MenuChange dialog asks about it. */
+function changedChoice(
+  id: string,
+  over: Partial<Choice> | ((was: Choice) => Partial<Choice>) | null,
+  choices?: readonly Choice[],
+): MenuChange {
+  const jollof = dishIn(choiceCourses(choices), 'k2-jollof') as EvDish;
+  const was = choicesOf(jollof).find((one) => one.id === id) as Choice;
+  const next =
+    over == null
+      ? removeChoice(jollof, was)
+      : {
+          ...jollof,
+          choices: choicesOf(jollof).map((one) =>
+            one.id === id ? { ...one, ...(typeof over === 'function' ? over(one) : over) } : one,
+          ),
+        };
+
+  return { kind: 'choice', courseId: MAIN, dishId: 'k2-jollof', choiceId: id, next };
+}
+
 const unpicked = (variants: readonly Variant[]): Variant[] =>
   variants.map((one) => ({ ...one, pickers: [] }));
 
@@ -659,6 +691,8 @@ export type Opened =
       options?: readonly Partial<OptionForm>[];
       openAt?: number;
       binAt?: number;
+      /** Options already binned, by place, as sc-3913 lets a picked one go. */
+      drop?: readonly number[];
       optionsFull?: boolean;
       press?: boolean;
     };
@@ -1105,6 +1139,184 @@ const STATES = {
       picks: { ...SAMPLE_PICKS, today: '2026-11-16' },
       changing: { kind: 'dish', courseId: MAIN, dishId: 'k2-jollof' },
       changingBack: 'mc-remove-k2-jollof',
+    }),
+  changeFirstVariant: () => {
+    const jollof = sampleCourses()[1]?.dishes[0] as EvDish;
+
+    return start({
+      name: 'MenuChange: a picked dish’s first variants',
+      note: 'Add variant on Jollof rice, which 45 guests picked, now opens; Add variants with Fish and Chicken asks those 45 again for Main. Their answer reads “You picked Jollof rice, which now comes 2 ways.”',
+      asksAgain: true,
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'addFirst',
+        forms: TWO_WAYS_FORMS,
+      },
+      changing: {
+        kind: 'firstVariant',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        next: { ...jollof, pickers: [], variants: twoWays() },
+      },
+    });
+  },
+  changeVariantAllergen: () => {
+    const courses = variantCourses();
+    const jollof = dishIn(courses, 'k2-jollof') as EvDish;
+
+    return start({
+      name: 'MenuChange: an allergen added to a picked variant',
+      note: 'Sesame ticked on Chicken in Jollof rice. 4 who picked Chicken have Sesame recorded; the Other allergy is not matched. They also appear in Needs the host.',
+      courses,
+      asksAgain: true,
+      opened: {
+        kind: 'variants',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        variantId: 'v-chicken',
+        forms: [{ allergens: ['celery', 'sesame'] }],
+      },
+      changing: {
+        kind: 'variantAllergen',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        variantId: 'v-chicken',
+        next: {
+          ...jollof,
+          variants: variantsOf(jollof).map((one) =>
+            one.id === 'v-chicken' ? { ...one, contains: ['celery', 'sesame'] } : one,
+          ),
+        },
+      },
+    });
+  },
+  changeAddChoice: () => {
+    const jollof = sampleCourses()[1]?.dishes[0] as EvDish;
+
+    return start({
+      name: 'MenuChange: a choice added to a picked dish',
+      note: 'Add a choice on Jollof rice, which 45 guests picked, now opens; Add choice asks those 45 again for Main. Their answer reads “You picked Jollof rice, and its choices have changed.”',
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: SIDE_FORM,
+      },
+      changing: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        choiceId: null,
+        next: { ...jollof, choices: [sideChoice(false, 'c-new')] },
+      },
+    });
+  },
+  changeSameChoice: () => {
+    const pepper = sampleCourses()[0]?.dishes[0] as EvDish;
+
+    return start({
+      name: 'MenuChange: an Everyone gets the same course starts asking',
+      note: 'A choice added to Catfish pepper soup, the Starter everyone gets. Nobody picked the Starter, but the menu has picks, so everyone coming is asked, as at a course’s first dish.',
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: 'k1',
+        dishId: 'k1-pepper',
+        mode: 'add',
+        form: { question: 'And a side?' },
+        options: SIDE_FORM,
+      },
+      changing: {
+        kind: 'choice',
+        courseId: 'k1',
+        dishId: 'k1-pepper',
+        choiceId: null,
+        next: { ...pepper, choices: [sideChoice(false, 'c-new')] },
+      },
+    });
+  },
+  changeRemoveChoice: () =>
+    start({
+      name: 'MenuChange: an answered choice removed',
+      note: 'Remove… on “And a side?”, which 86 guests answered. Change and ask them removes it and asks them again for Main.',
+      courses: choiceCourses(),
+      asksAgain: true,
+      changing: changedChoice('c-side', null),
+      changingBack: 'mc-chremove-c-side',
+    }),
+  changePickCount: () =>
+    start({
+      name: 'MenuChange: how many to pick, on an answered choice',
+      note: 'Guests pick exactly 2 on “And a side?”, which 86 guests answered: not refused now. Save choice asks all 86 again for Main.',
+      courses: choiceCourses(),
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        form: { pick: 2 },
+      },
+      changing: changedChoice('c-side', { pick: 2 }),
+    }),
+  changeRequired: () =>
+    start({
+      name: 'MenuChange: Required turned on',
+      note: 'Required ticked on the optional “And a side?”, which 4 guests answered None for me. Save choice asks those 4 again; the other answers stay.',
+      courses: choiceCourses([optionalSide(), sauceChoice()]),
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        form: { required: true },
+      },
+      changing: changedChoice('c-side', { required: true }, [optionalSide(), sauceChoice()]),
+    }),
+  changeDropOption: () =>
+    start({
+      name: 'MenuChange: a picked option removed',
+      note: 'The bin on Moi moi, which 12 guests picked, now takes it off the form; Save choice asks those 12 again for Main.',
+      courses: choiceCourses(),
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        drop: [2],
+      },
+      changing: changedChoice('c-side', (was) => ({ options: was.options.slice(0, 2) })),
+    }),
+  changeOptionAllergen: () =>
+    start({
+      name: 'MenuChange: an allergen added to a picked option',
+      note: 'Crustaceans ticked on Moi moi. 3 who picked it have Crustaceans recorded. They also appear in Needs the host.',
+      courses: choiceCourses(),
+      asksAgain: true,
+      opened: {
+        kind: 'choice',
+        courseId: MAIN,
+        dishId: 'k2-jollof',
+        mode: 'edit',
+        choiceId: 'c-side',
+        options: [{}, {}, { allergens: ['eggs', 'crustaceans'] }],
+      },
+      changing: changedChoice('c-side', (was) => ({
+        options: was.options.map((one) =>
+          one.id === 'c-side-moimoi' ? { ...one, contains: ['eggs', 'crustaceans'] } : one,
+        ),
+      })),
     }),
   picksOneDate: () =>
     start({
@@ -2215,6 +2427,15 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'changeAllergen',
         'changeNobody',
         'changePastDate',
+        'changeFirstVariant',
+        'changeVariantAllergen',
+        'changeAddChoice',
+        'changeSameChoice',
+        'changeRemoveChoice',
+        'changePickCount',
+        'changeRequired',
+        'changeDropOption',
+        'changeOptionAllergen',
       ] as const
     ).map(link),
   },
