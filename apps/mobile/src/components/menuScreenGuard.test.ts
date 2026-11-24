@@ -51,6 +51,24 @@ describe('Choose who gets it saves the ticked people (sc-3909)', () => {
   });
 });
 
+describe('Choose for them, refused (sc-3914)', () => {
+  const chooseFor = choose.split('export function ChooseFor(')[1]?.split('\nexport ')[0] ?? '';
+
+  it('says so beside the choices, not instead of them', () => {
+    expect(chooseFor).toMatch(
+      /\{refused && <FailureLine words=\{t\('menuPicks\.refused'\)\} testID="menu\.choose\.refused" \/>\}\n\s*<\/SheetScrollView>/u,
+    );
+    expect(chooseFor).not.toMatch(/\{refused \?/u);
+  });
+
+  it('keeps Save, turned off, and offers no Close', () => {
+    expect(chooseFor).toMatch(/off=\{refused\}\n\s*testID="menu\.choose\.save"/u);
+    const actions = chooseFor.split('<SheetActions>')[1]?.split('</SheetActions>')[0] ?? '';
+    expect(actions).toMatch(/\{phone && saveButton\}/u);
+    expect(actions).not.toMatch(/menuPicks\.close/u);
+  });
+});
+
 describe('the Menu as its demo draws it (sc-3914)', () => {
   it("puts the event's name above the title", () => {
     expect(screen.indexOf('{event.name}')).toBeLessThan(screen.indexOf("{t('eventNav.menu')}"));
@@ -76,6 +94,14 @@ describe('the poll while the Menu is open (sc-3914)', () => {
     expect(screen).toMatch(
       /if \(!out\.current && AppState\.currentState === 'active'\) read\(\);/u,
     );
+  });
+
+  it('ends a pull through a timer from when it started, so a fast failure does not eat the next press', () => {
+    const landed = screen.split('const landed = () => {')[1]?.split('\n    };')[0] ?? '';
+    expect(landed).toMatch(
+      /pullEnds\.current = setTimeout\(\n\s*\(\) => setPulling\(false\),\n\s*Math\.max\(0, pulledAt\.current \+ PULL_SHOWN_MS - Date\.now\(\)\),\n\s*\);/u,
+    );
+    expect(landed.replace(/\(\) => setPulling\(false\)/u, '')).not.toMatch(/setPulling\(false\)/u);
   });
 
   it('drops a read that started before a save', () => {
