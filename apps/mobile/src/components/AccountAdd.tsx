@@ -40,7 +40,7 @@ export function AddScreen({
   const { t } = useTranslation();
   const keys = KIND_KEYS[kind];
   const email = kind === 'email';
-  const typed = useRef('');
+  const [typed, setTyped] = useState('');
   const field = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
   const [country, setCountry] = useState(startCountry);
@@ -59,15 +59,15 @@ export function AddScreen({
   }, [open, email]);
 
   function typing(text: string): void {
-    typed.current = text;
+    setTyped(text);
     setChanged(text.trim() !== '');
     if (error != null) setError(null);
   }
 
   function check(): string | null {
-    if (email) return emailMessage(typed.current, t);
+    if (email) return emailMessage(typed, t);
 
-    return phoneProblemMessage(phoneLengthProblem(typed.current, country), country, t);
+    return phoneProblemMessage(phoneLengthProblem(typed, country), country, t);
   }
 
   async function add(): Promise<void> {
@@ -76,7 +76,7 @@ export function AddScreen({
     if (checked != null) {
       const on = email
         ? 'number'
-        : (refusedPhoneField(phoneLengthProblem(typed.current, country)) ?? 'number');
+        : (refusedPhoneField(phoneLengthProblem(typed, country)) ?? 'number');
       setError(checked);
       setErrorOn(on);
       if (on === 'country') focusPicker(picker);
@@ -85,7 +85,7 @@ export function AddScreen({
     }
     keysStayDown();
     setSending(true);
-    const refused = await onAdd({ typed: typed.current.trim(), country });
+    const refused = await onAdd({ typed: typed.trim(), country });
     setSending(false);
     if (refused == null) return;
     setError(refused);
@@ -153,6 +153,7 @@ export function AddScreen({
           label={t(keys.label)}
           help={t(keys.help)}
           country={country}
+          number={typed}
           error={error}
           errorOn={errorOn}
           submitting={sending}

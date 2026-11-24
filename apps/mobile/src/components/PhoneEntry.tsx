@@ -28,7 +28,7 @@ export function PhoneEntry({
   pill?: string | undefined;
   help: string;
   country: string;
-  number?: string | undefined;
+  number: string;
   error: string | null | undefined;
   /** The control the line names takes the red edge: "Choose a country." is about the code (sc-30447). */
   errorOn?: 'country' | 'number';
