@@ -152,7 +152,6 @@ final class PaddleWebhookTest extends ApiTestCase
         $this->deliver($this->transaction('evt_failed', 'transaction.payment_failed', 'error', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '0002', 'expiry_month' => 3, 'expiry_year' => 2030]]));
         self::assertNull($this->paymentMethod());
 
-        // A payment that needed 3-D Secure completes inside the checkout; Soirely only ever sees the completed transaction.
         $this->deliver($this->transaction('evt_3ds', 'transaction.completed', 'captured', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '5556', 'expiry_month' => 3, 'expiry_year' => 2030, 'cardholder_name' => 'Folake Ade']]));
         self::assertSame(['type' => 'card', 'brand' => 'visa', 'last4' => '5556', 'expiryMonth' => 3, 'expiryYear' => 2030], $this->paymentMethod());
 
@@ -216,7 +215,11 @@ final class PaddleWebhookTest extends ApiTestCase
         $terms = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19')?->getTerms() ?? self::fail('The first version is missing.');
         $terms['enterprise'] = ['sales' => 'self_serve'] + Type\dict(Type\string(), Type\mixed())->coerce($terms['enterprise']);
         self::service(CatalogueKeeper::class)->publish(CataloguePart::Plans, 'self-serve enterprise', $terms, 'Enterprise sold through the checkout, for this test', 'Ada at Soirely');
-        $sent = $this->paddle(
+        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
+        $sent = new Ref([]);
+        $this->client->disableReboot();
+        self::getContainer()->set(PaddleApi::class, $this->paddleAnswering(
+            $sent,
             ['data' => []],
             ['data' => ['id' => 'ctm_new']],
             ['data' => [['id' => 'add_fr', 'country_code' => 'FR']]],
@@ -224,7 +227,7 @@ final class PaddleWebhookTest extends ApiTestCase
             ['data' => ['id' => 'txn_checkout']],
             ['data' => [['id' => 'add_gb', 'country_code' => 'GB']]],
             ['data' => ['id' => 'txn_again']],
-        );
+        ));
         $path = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing';
 
         $this->signIn($this->owner);
@@ -264,7 +267,6 @@ final class PaddleWebhookTest extends ApiTestCase
         self::assertSame(SubscriptionSource::Manual, $this->subscription()->getSource());
         self::assertSame(Plan::Free, $this->subscription()->getPlan());
         self::assertSame(0, self::connection()->fetchOne('SELECT count(*) FROM subscription_changes'));
-
     }
 
     #[Test]
@@ -272,7 +274,10 @@ final class PaddleWebhookTest extends ApiTestCase
     {
         $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
         $lines = $this->history();
-        $sent = $this->paddle(['data' => ['id' => 'txn_update']]);
+        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
+        $sent = new Ref([]);
+        $this->client->disableReboot();
+        self::getContainer()->set(PaddleApi::class, $this->paddleAnswering($sent, ['data' => ['id' => 'txn_update']]));
 
         $this->signIn($this->owner);
         $this->client->jsonRequest('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing/payment-method');
@@ -425,25 +430,8 @@ final class PaddleWebhookTest extends ApiTestCase
     }
 
     /**
-     * Paddle, for the controllers, answering each call in turn with the next of `$answers`.
-     *
-     * @param array<string, mixed> ...$answers
-     *
-     * @return Ref<list<array{0: string, 1: mixed}>> each call as its method and path, and the JSON body it sent
-     */
-    private function paddle(array ...$answers): Ref
-    {
-        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
-        $sent = new Ref([]);
-        $this->client->disableReboot();
-        self::getContainer()->set(PaddleApi::class, $this->paddleAnswering($sent, ...$answers));
-
-        return $sent;
-    }
-
-    /**
      * @param Ref<list<array{0: string, 1: mixed}>> $sent
-     * @param array<string, mixed> ...$answers
+     * @param array<string, mixed>                  ...$answers
      */
     private function paddleAnswering(Ref $sent, array ...$answers): PaddleApi
     {
