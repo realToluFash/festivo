@@ -24,6 +24,7 @@ import {
   piecesIn,
   titleSize,
   wordsIn,
+  windowAt,
   wordsRoomKey,
   wordsSlot,
   wholeLineHeight,
@@ -377,68 +378,88 @@ describe('rowsFloor', () => {
 
 describe('the width labels have to fit (sc-37298)', () => {
   it('keeps a container’s reported width when only the text size changes', () => {
-    const reported = { windowWidth: 360, width: 76 };
+    const reported = { window: windowAt(360, 360), width: 76 };
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, 360)).toBe(76);
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 12, windowAt(360, 360))).toBe(76);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360))).toBe(76);
   });
 
   it('forgets a reported width once the window changes width', () => {
-    const reported = { windowWidth: 360, width: 76 };
+    const reported = { window: windowAt(360, 360), width: 76 };
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 412)).toBe(0);
+    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(412, 412))).toBe(0);
   });
 
   it('keeps a wrapped text’s width only for the start it wrapped at', () => {
-    const kept = { key: '20|360', width: 120 };
+    const kept = { key: wordsRoomKey(20, windowAt(360, 360)), width: 120 };
 
-    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, 360)).toBe(120);
-    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, 360)).toBe(0);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 20, windowAt(360, 360))).toBe(120);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 24, windowAt(360, 360))).toBe(0);
   });
 
   it('forgets a wrapped text’s width once its container reports a new room (sc-69816)', () => {
-    const kept = { key: wordsRoomKey(43, 402), width: 129 };
-    const reported = { windowWidth: 402, width: 238 };
+    const kept = { key: wordsRoomKey(43, windowAt(402, 402)), width: 129 };
+    const reported = { window: windowAt(402, 402), width: 238 };
 
-    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(238);
-    expect(fitWidest(16, 43, 171, wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238))).toBe(
-      43,
-    );
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(238);
+    expect(
+      fitWidest(
+        16,
+        43,
+        171,
+        wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238),
+      ),
+    ).toBe(43);
   });
 
   it('keeps a wrapped text’s width while its container’s room is the same (sc-69816)', () => {
-    const kept = { key: wordsRoomKey(43, 402, 238), width: 236 };
-    const reported = { windowWidth: 402, width: 238 };
+    const kept = { key: wordsRoomKey(43, windowAt(402, 402), 238), width: 236 };
+    const reported = { window: windowAt(402, 402), width: 238 };
 
-    expect(wordsSlot({ wrapped: null, kept, reported }, 43, 402, 238)).toBe(236);
+    expect(wordsSlot({ wrapped: null, kept, reported }, 43, windowAt(402, 402), 238)).toBe(236);
   });
 
   it('takes the width a text wrapped at over anything kept', () => {
-    const kept = { key: '20|360', width: 120 };
+    const kept = { key: wordsRoomKey(20, windowAt(360, 360)), width: 120 };
 
     expect(
-      wordsSlot({ wrapped: 90, kept, reported: { windowWidth: 360, width: 76 } }, 20, 360),
+      wordsSlot(
+        { wrapped: 90, kept, reported: { window: windowAt(360, 360), width: 76 } },
+        20,
+        windowAt(360, 360),
+      ),
     ).toBe(90);
+  });
+
+  it('keeps no wrap read while a turn upright had moved the window but not yet the frame (sc-90463)', () => {
+    const upright = windowAt(834, 834);
+    const turning = windowAt(834, 1194);
+    const kept = { key: wordsRoomKey(43, turning), width: 512 };
+
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 43, turning)).toBe(512);
+    expect(wordsSlot({ wrapped: null, kept, reported: null }, 43, upright)).toBe(0);
   });
 
   it('steps the bar’s labels below the cap after a live change with no new layout', () => {
     const tab = 76;
-    const reported = { windowWidth: 360, width: tab };
+    const reported = { window: windowAt(360, 360), width: tab };
     const widestAt = (start: number) => (start / 12) * 60;
 
-    expect(wordsSlot({ wrapped: null, kept: null, reported }, 20, 360)).toBeGreaterThan(0);
+    expect(
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360)),
+    ).toBeGreaterThan(0);
 
     const before = fitWidest(
       12,
       12,
       widestAt(12),
-      wordsSlot({ wrapped: null, kept: null, reported }, 12, 360),
+      wordsSlot({ wrapped: null, kept: null, reported }, 12, windowAt(360, 360)),
     );
     const after = fitWidest(
       12,
       20,
       widestAt(20),
-      wordsSlot({ wrapped: null, kept: null, reported }, 20, 360),
+      wordsSlot({ wrapped: null, kept: null, reported }, 20, windowAt(360, 360)),
     );
 
     expect(before / 12).toBe(1);
