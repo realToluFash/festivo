@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BELL_BOARDS } from '../../src/demo/bell/BellBoards.ts';
+import { USAGE_WARNING_BOARDS } from '../../src/demo/usageWarning/UsageWarningBoards.ts';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
@@ -132,6 +133,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: '26 · Foundation · Notifications on a phone on its side (sc-62023)',
     boards: BELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: '37 · Billing · The 80% and 100% usage warning in the bell (sc-3931)',
+    boards: USAGE_WARNING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Bold text · the weight map',
