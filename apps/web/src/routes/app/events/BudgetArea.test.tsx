@@ -347,7 +347,7 @@ describe('changing a rate in place (sc-85)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(
       screen.getByText(
-        "That has too many decimal places for this event's currency. Enter the rate like 12.50.",
+        'That has too many decimal places for this event’s currency. Enter the rate like 12.50.',
       ),
     ).toBeTruthy();
     expect(field.getAttribute('aria-invalid')).toBe('true');
@@ -515,7 +515,7 @@ describe('Add a cost (sc-85, decided 6 Nov)', () => {
     expect(
       within(dialog).getByText('96 said yes now, up to 133 if all come · from the guest list'),
     ).toBeTruthy();
-    expect(within(dialog).getByText("3 days, from the event's dates")).toBeTruthy();
+    expect(within(dialog).getByText('3 days, from the event’s dates')).toBeTruthy();
     expect(within(dialog).queryByRole('textbox', { name: 'Rate' })).toBeNull();
     expect(within(dialog).queryByRole('textbox', { name: /Vendor/u })).toBeNull();
 
@@ -980,7 +980,7 @@ describe('a failed Undo (sc-85)', () => {
     [problem(404, 'not_found'), 'Not put back. It was removed more than a day ago.'],
     [
       problem(410, 'budget_line_currency_changed'),
-      "Not put back. The event's currency has changed since it was removed.",
+      'Not put back. The event’s currency has changed since it was removed.',
     ],
   ])(
     'says why a line past its Undo is not put back, and offers Undo no more (decided 19 Nov)',
