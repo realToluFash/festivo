@@ -133,6 +133,31 @@ describe('a passkey at sign-in (sc-86885)', () => {
     ).toBeDefined();
   });
 
+  it('opens a new sheet at once on Use a passkey instead, leaving the code’s error behind (sc-89577)', async () => {
+    let sheets = 0;
+    sheet(async () => {
+      sheets += 1;
+      if (sheets === 1) throw new DOMException('closed', 'NotAllowedError');
+      return new Promise(() => {});
+    });
+    const sent = await signIn({});
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Use a code instead' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use this code' }));
+    expect(await screen.findByText('Enter one of your recovery codes.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));
+
+    expect(await screen.findByText('Waiting for your passkey…')).toBeDefined();
+    expect(screen.getByRole('heading', { level: 1, name: 'Use your passkey' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Use a passkey' })).toBeNull();
+    expect(screen.queryByText('Enter one of your recovery codes.')).toBeNull();
+    expect(sheets).toBe(2);
+    expect(sent.filter((one) => one.path === '/api/auth/two-factor/passkey-options')).toHaveLength(
+      2,
+    );
+  });
+
   it('asks for the code where this browser has no passkeys, and says why', async () => {
     answering({
       'POST /api/auth/login': () =>
