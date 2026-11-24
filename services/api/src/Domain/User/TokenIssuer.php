@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\SessionsEnded;
 use App\Entity\RefreshToken;
@@ -15,6 +16,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psl\Iter;
+use Psl\Math;
 use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
@@ -43,13 +45,16 @@ final readonly class TokenIssuer
         private EventDispatcherInterface $eventDispatcher,
         #[Autowire(param: 'app.refresh_token_ttl')]
         private int $refreshTokenTtl,
+        #[Autowire(env: 'int:JWT_TOKEN_TTL')]
+        private int $accessTokenTtl,
+        private StaffLinkGrants $staffLinkGrants,
     ) {
     }
 
-    /** The caller flushes. `$signedInWith` is the provider the sign-in came through, null for a password. */
-    public function issueFor(User $user, ?Request $request = null, ?IdentityProvider $signedInWith = null): IssuedTokens
+    /** The caller flushes. `$signedInWith` is the provider the sign-in came through, null for a password; `$endsWithGrants` for a browser signed in by phone code (sc-4235). */
+    public function issueFor(User $user, ?Request $request = null, ?IdentityProvider $signedInWith = null, bool $endsWithGrants = false): IssuedTokens
     {
-        return $this->issue($user, null, $request, $signedInWith);
+        return $this->issue($user, null, $request, $signedInWith, $endsWithGrants);
     }
 
     /** The caller flushes, so the revocation and the new row commit together. */
@@ -57,7 +62,7 @@ final readonly class TokenIssuer
     {
         $used->setRevokedAt(new DateTimeImmutable());
 
-        return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith());
+        return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith(), $used->endsWithGrants());
     }
 
     /** One session, ended from the devices list. The caller flushes. */
@@ -155,7 +160,13 @@ final readonly class TokenIssuer
         return \hash('sha256', $plain);
     }
 
-    private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith): IssuedTokens
+    /** When a session that ends with its account's grants ends (sc-4235): a moment already passed once none is live. */
+    public function grantsEndFor(User $user): DateTimeImmutable
+    {
+        return $this->staffLinkGrants->lastEndFor($user) ?? new DateTimeImmutable('-1 second');
+    }
+
+    private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith, bool $endsWithGrants): IssuedTokens
     {
         $plain = \bin2hex(SecureRandom\bytes(self::REFRESH_BYTES));
 
@@ -167,12 +178,20 @@ final readonly class TokenIssuer
             self::truncate($request?->headers->get('User-Agent')),
             $request?->getClientIp(),
             $signedInWith,
+            $endsWithGrants,
         );
 
         $this->entityManager->persist($token);
+        $claims = [self::SESSION_CLAIM => $token->getChainId()->toRfc4122()];
+
+        // Never outliving the last grant's window, even by an access token's 15 minutes.
+        if ($endsWithGrants) {
+            $end = $this->grantsEndFor($user)->getTimestamp();
+            $claims['exp'] = Math\minva($end, \time() + $this->accessTokenTtl);
+        }
 
         return new IssuedTokens(
-            $this->jwtTokenManager->createFromPayload($user, [self::SESSION_CLAIM => $token->getChainId()->toRfc4122()]),
+            $this->jwtTokenManager->createFromPayload($user, $claims),
             $plain,
             $token->getExpiresAt(),
             $token->getId(),

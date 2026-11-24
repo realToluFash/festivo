@@ -47,12 +47,17 @@ class TwoFactorChallenge
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $linkSubject = null;
 
+    /** The first factor was a phone code (sc-4235), so a browser session it opens ends with the account's grants. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $afterPhoneCode = false;
+
     public function __construct(
         User $user,
         string $tokenHash,
         DateTimeImmutable $now,
         ?IdentityProvider $linkProvider = null,
         ?string $linkSubject = null,
+        bool $afterPhoneCode = false,
     ) {
         $this->id = Uuid::v7();
         $this->user = $user;
@@ -60,6 +65,12 @@ class TwoFactorChallenge
         $this->expiresAt = $now->modify('+' . self::LIFETIME_MINUTES . ' minutes');
         $this->linkProvider = $linkProvider;
         $this->linkSubject = $linkSubject;
+        $this->afterPhoneCode = $afterPhoneCode;
+    }
+
+    public function isAfterPhoneCode(): bool
+    {
+        return $this->afterPhoneCode;
     }
 
     public function getLinkProvider(): ?IdentityProvider

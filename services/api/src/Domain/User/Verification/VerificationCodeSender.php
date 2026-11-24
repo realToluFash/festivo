@@ -6,7 +6,7 @@ namespace App\Domain\User\Verification;
 
 use App\Domain\User\Model\IssuedVerificationCode;
 use App\Entity\EmailAddress;
-use App\Entity\PhoneNumber;
+use App\Entity\TextableContact;
 use Doctrine\ORM\EntityManagerInterface;
 
 /** A code goes where the contact is: an email to an address, a phone's by WhatsApp or SMS (sc-750). */
@@ -21,7 +21,7 @@ final readonly class VerificationCodeSender
     }
 
     /** An address's code and its email commit together; a phone's is sent once its code is stored, since the send is a call out. */
-    public function issue(EmailAddress|PhoneNumber $contact): void
+    public function issue(EmailAddress|TextableContact $contact): void
     {
         if ($contact instanceof EmailAddress) {
             $this->verificationCodeMailer->issue($contact);
@@ -34,7 +34,7 @@ final readonly class VerificationCodeSender
         $this->phoneCodeDispatch->send($contact, $issued);
     }
 
-    public function send(EmailAddress|PhoneNumber $contact, IssuedVerificationCode $issued): void
+    public function send(EmailAddress|TextableContact $contact, IssuedVerificationCode $issued): void
     {
         $contact instanceof EmailAddress
             ? $this->verificationCodeMailer->send($contact, $issued->code)

@@ -58,6 +58,10 @@ class RefreshToken
     #[ORM\Column(type: Types::STRING, length: 32, nullable: true, enumType: IdentityProvider::class)]
     private ?IdentityProvider $signedInWith = null;
 
+    /** A browser signed in by phone code (sc-4235): the chain ends with the account's last live grant, worked out on each refresh. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $endsWithGrants = false;
+
     public function __construct(
         User $user,
         string $tokenHash,
@@ -66,6 +70,7 @@ class RefreshToken
         ?string $userAgent = null,
         ?string $ipAddress = null,
         ?IdentityProvider $signedInWith = null,
+        bool $endsWithGrants = false,
     ) {
         $this->id = Uuid::v7();
         $this->user = $user;
@@ -75,6 +80,12 @@ class RefreshToken
         $this->userAgent = $userAgent;
         $this->ipAddress = $ipAddress;
         $this->signedInWith = $signedInWith;
+        $this->endsWithGrants = $endsWithGrants;
+    }
+
+    public function endsWithGrants(): bool
+    {
+        return $this->endsWithGrants;
     }
 
     public function getId(): Uuid

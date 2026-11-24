@@ -44,16 +44,17 @@ final readonly class SignInGate
     ) {
     }
 
-    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null): IssuedTokens|IssuedChallenge
+    /** `$byPhoneCode` when the first factor was a phone code (sc-4235); `$endsWithGrants` when that was in a browser. */
+    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null, bool $byPhoneCode = false, bool $endsWithGrants = false): IssuedTokens|IssuedChallenge
     {
         if (!$this->secondFactors->isOn($user)) {
             $this->link($user, $link);
 
-            return $this->issue($user, $request, $link);
+            return $this->issue($user, $request, $link, $byPhoneCode && $endsWithGrants);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
-        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject);
+        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject, $byPhoneCode);
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
@@ -70,7 +71,8 @@ final readonly class SignInGate
         return $this->passkeys->requestOptions($this->open($token)->getUser(), PasskeyStep::SignIn);
     }
 
-    public function complete(#[SensitiveParameter] string $token, SecondFactorAnswer $answer, ?Request $request = null): TwoFactorSignInResult
+    /** `$inBrowser` when the session's refresh token goes in a cookie: after a phone code, it then ends with the account's grants. */
+    public function complete(#[SensitiveParameter] string $token, SecondFactorAnswer $answer, ?Request $request = null, bool $inBrowser = false): TwoFactorSignInResult
     {
         $challenge = $this->open($token);
         $user = $challenge->getUser();
@@ -89,7 +91,7 @@ final readonly class SignInGate
         $link = null === $provider || null === $subject ? null : new ProviderLink($provider, $subject, $user->getPrimaryEmailAddress()?->getAddress());
         $linked = $this->link($user, $link);
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link), $linked);
+        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, $challenge->isAfterPhoneCode() && $inBrowser), $linked);
     }
 
     private function open(#[SensitiveParameter] string $token): TwoFactorChallenge
@@ -115,9 +117,9 @@ final readonly class SignInGate
         return true;
     }
 
-    private function issue(User $user, ?Request $request, ?ProviderLink $link): IssuedTokens
+    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $endsWithGrants): IssuedTokens
     {
-        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider);
+        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider, $endsWithGrants);
         $this->entityManager->flush();
 
         if (null !== $request) {

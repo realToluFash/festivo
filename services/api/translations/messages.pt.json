@@ -519,5 +519,7 @@
     "menu.default_option": "{option} faz parte do prato predefinido do serviço «{course}». Escolha primeiro outro prato predefinido, em «Editar serviço».",
     "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar.",
     "menu.change_asks": "Esta alteração pede aos convidados que escolham de novo. Confirme para continuar.",
-    "menu.event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado."
+    "menu.event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado.",
+    "phone_sign_in.alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
+    "invitations.needs_email": "Add that address to your account and verify it, then accept the invitation."
 }

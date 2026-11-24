@@ -155,5 +155,7 @@
     "menu_is_default": "This is part of the course’s default. Choose another default first.",
     "menu_default_move": "Changing the default moves the guests given it. Confirm to change it.",
     "menu_change_asks": "This change asks guests to pick again. Confirm to change it.",
-    "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed."
+    "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed.",
+    "phone_alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
+    "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation."
 }

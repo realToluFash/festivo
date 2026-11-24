@@ -155,5 +155,7 @@
     "menu_is_default": "Cela fait partie du plat par défaut du service. Choisissez d’abord un autre plat par défaut.",
     "menu_default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer.",
     "menu_change_asks": "Ce changement demande aux invités de choisir à nouveau. Confirmez pour continuer.",
-    "menu_event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié."
+    "menu_event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié.",
+    "phone_alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
+    "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation."
 }
