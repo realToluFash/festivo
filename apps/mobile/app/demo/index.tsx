@@ -2463,6 +2463,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=everyoneOn',
       },
       {
+        title: 'People · a long organisation name',
+        what: 'Outside Fundação Comunitária…: at AX1 to AX5 the tag keeps every word whole',
+        href: '/demo/people?state=longOrganisation',
+      },
+      {
+        title: 'People · a one-word organisation name',
+        what: 'A 50-letter name: at AX5 the tag draws at 12.5 pt and only that word breaks',
+        href: '/demo/people?state=oneWordOrganisation',
+      },
+      {
         title: 'People · loading',
         what: 'Loading the people on this event',
         href: '/demo/people?state=loading',

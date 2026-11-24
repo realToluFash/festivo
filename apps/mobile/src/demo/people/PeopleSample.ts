@@ -173,6 +173,10 @@ export const DOTTED = 'fundacao.comunitaria.de.oyo.e.artes@soirely.test';
 export const UNBROKEN = 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test';
 export const LONG_MOBILE = '+2348031234567';
 
+/** sc-90472: an organisation whose name makes the Outside tag wider than its line at the accessibility sizes, with the AC's own names. */
+export const LONG_ORGANISATION = 'Fundação Comunitária de Ọ̀yọ́ e Artes Contemporâneas Lisboa';
+export const ONE_WORD_ORGANISATION = 'Fundacaocomunitariadeoyoeartescontemporaneaslisboa';
+
 /** sc-70353: addresses wider than the phone sheet's heading, with the AC's own examples. */
 export function longOutsiders(): OnEvent[] {
   return [
@@ -489,6 +493,8 @@ export const PEOPLE_STATES = [
   'longAddressUnbroken',
   'longMobile',
   'longAddressRemove',
+  'longOrganisation',
+  'oneWordOrganisation',
   'loading',
   'failed',
 ] as const;
@@ -587,6 +593,10 @@ export function peopleStart(state: PeopleState): PeopleStart {
         onEvent: [...base.onEvent, ...longOutsiders()],
         opened: { id: LONG_OPENS[state], removing: state === 'longAddressRemove' ? 'ask' : null },
       };
+    case 'longOrganisation':
+      return { ...base, world: { ...ireWorld(), organisation: LONG_ORGANISATION } };
+    case 'oneWordOrganisation':
+      return { ...base, world: { ...ireWorld(), organisation: ONE_WORD_ORGANISATION } };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
