@@ -8,6 +8,7 @@ use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Passkey;
 use App\Entity\User;
@@ -15,9 +16,11 @@ use App\Enum\ErrorCode;
 use App\Enum\PasskeyStep;
 use App\Http\Exception\ApiException;
 use App\Repository\PasskeyRepository;
+use App\Repository\TwoFactorFactorRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\VirtualAuthenticator;
 use App\Tests\Traits\OnboardsAccounts;
+use App\WebAuthn\RelyingParty;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
@@ -105,6 +108,22 @@ final class PasskeyTwoFactorTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($signedIn));
         self::assertIsString($signedIn['accessToken'] ?? null);
+    }
+
+    #[Test]
+    public function anEnvironmentWithNoRelyingPartyAsksForNoPasskeyThoughTheMemberHoldsOne(): void
+    {
+        $this->authenticated();
+        $this->turnOnWith($this->phone);
+        $here = static fn (RelyingParty $party): SecondFactors => new SecondFactors(
+            self::service(TwoFactorFactorRepository::class),
+            self::service(PasskeyRepository::class),
+            $party,
+        );
+
+        self::assertSame(['app' => false, 'passkeys' => false], $here(new RelyingParty('127.0.0.1', 'http://127.0.0.1:5173'))->askable($this->fresh()));
+        self::assertSame(['app' => false, 'passkeys' => true], $here(new RelyingParty('127.0.0.1', 'http://127.0.0.1:5173'))->kinds($this->fresh()), 'the words still name the passkey held');
+        self::assertSame(['app' => false, 'passkeys' => true], $here(new RelyingParty('soirely.test', 'https://app.soirely.test'))->askable($this->fresh()));
     }
 
     #[Test]

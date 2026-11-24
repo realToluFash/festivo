@@ -1522,7 +1522,6 @@ describe('recovering a password', () => {
       email: 'folake@ire.events',
       twoFactor: false,
       factors: { app: true, passkeys: false },
-      passkeysOffered: false,
     });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
