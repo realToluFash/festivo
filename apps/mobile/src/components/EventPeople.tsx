@@ -426,6 +426,7 @@ export function EventPeople({
                         else rows.current.set(one.id, node);
                       }}
                       title={name}
+                      titleMayBeAddress
                       line={line}
                       lead={<PersonMark person={one} side={40} />}
                       tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}

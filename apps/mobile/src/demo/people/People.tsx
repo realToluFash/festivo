@@ -229,6 +229,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                           else rows.current.set(one.id, node);
                         }}
                         title={one.name}
+                        titleMayBeAddress
                         line={line}
                         lead={<Face person={one} side={40} />}
                         tag={

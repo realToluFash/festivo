@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { Text } from './Text.tsx';
+import { addressRuns } from '../kit/addressBreaks.ts';
+import { Text, type TextProps } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
 import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
@@ -77,6 +78,43 @@ export function TitleBesideTag({
     >
       <Fragment key={key}>{title}</Fragment>
       {tag}
+    </View>
+  );
+}
+
+/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). */
+export function NameText({
+  name,
+  box,
+  shown = (run) => run,
+  accessible,
+  accessibilityRole,
+  ...text
+}: Omit<TextProps, 'children'> & {
+  name: string;
+  box?: StyleProp<ViewStyle>;
+  shown?: (run: string) => string;
+}) {
+  const runs = addressRuns(name);
+  if (runs == null)
+    return (
+      <Text {...text} accessible={accessible} accessibilityRole={accessibilityRole}>
+        {shown(name)}
+      </Text>
+    );
+
+  return (
+    <View
+      style={[styles.address, box]}
+      accessible={accessible ?? true}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={name}
+    >
+      {runs.map((run) => (
+        <Text key={run} {...text} accessible={false}>
+          {shown(run)}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -233,6 +271,8 @@ export function SectionFoot({ foot }: { foot: string }) {
 
 export interface RowProps {
   title: string;
+  /** The title may be an address, which breaks after its @ first (sc-70353). */
+  titleMayBeAddress?: boolean;
   titleLines?: number | undefined;
   line?: string | undefined;
   /** Under the title in place of a plain line: a line with its own mark. */
@@ -262,6 +302,7 @@ export interface RowProps {
 /** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
 export function Row({
   title,
+  titleMayBeAddress = false,
   titleLines,
   line,
   below,
@@ -302,16 +343,28 @@ export function Row({
       <View style={styles.words}>
         <TitleBesideTag
           title={
-            <Text
-              size={16}
-              weight={weight}
-              numberOfLines={titleLines}
-              selectable={selectable}
-              accessible={grouped ? false : undefined}
-              style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
-            >
-              {titleWithInkRoom(title, Platform.OS, selectable)}
-            </Text>
+            titleMayBeAddress ? (
+              <NameText
+                name={title}
+                box={TITLE_BESIDE_TAG}
+                shown={(run) => titleWithInkRoom(run, Platform.OS)}
+                size={16}
+                weight={weight}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              />
+            ) : (
+              <Text
+                size={16}
+                weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              >
+                {titleWithInkRoom(title, Platform.OS, selectable)}
+              </Text>
+            )
           }
           tag={
             tag != null && (
@@ -567,6 +620,7 @@ const styles = StyleSheet.create({
     rowGap: 4,
   },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
+  address: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
   line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
