@@ -89,7 +89,7 @@ final class VendorsTest extends ApiTestCase
     public function eachRefusalIsAtItsField(): void
     {
         $refused = [
-            [['name' => '   ', 'category' => 'venue'], 'name', "Enter the vendor's name."],
+            [['name' => '   ', 'category' => 'venue'], 'name', 'Enter the vendor’s name.'],
             [['name' => 'Bloom', 'category' => ''], 'category', 'Choose the category.'],
             [['name' => 'Bloom', 'category' => 'florist'], 'category', 'Choose the category.'],
             [['name' => Str\repeat('a', 101), 'category' => 'venue'], 'name', 'Shorten the name to 100 characters or fewer.'],

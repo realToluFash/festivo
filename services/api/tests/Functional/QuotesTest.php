@@ -317,7 +317,7 @@ final class QuotesTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::PaymentsAlreadyScheduled->type(), $this->last()['type'] ?? null);
-        self::assertSame("Payments were added to this vendor's schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.", $this->last()['detail'] ?? null);
+        self::assertSame('Payments were added to this vendor’s schedule while you were filling this in, so none of yours were saved. Check the payments it has now before adding more.', $this->last()['detail'] ?? null);
         self::assertSame(['Deposit'], Vec\map($this->only()['payments'], static fn (array $one): mixed => $one['description']));
     }
 
