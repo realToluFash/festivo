@@ -12,6 +12,8 @@ use App\Enum\Plan;
 use App\Enum\SubscriptionChangeKind;
 use App\Enum\SubscriptionSource;
 use Closure;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 
@@ -68,6 +70,29 @@ final readonly class SubscriptionChanger
         foreach ($subscriptions as $subscription) {
             $this->entitlements->forget($subscription->getOrganisation()->getId());
         }
+    }
+
+    /**
+     * Counts the subscription's periods from `$periodStart`, for a change the provider bills from a new date: an upgrade from Free, or a switch to yearly. A renewal never moves it (sc-3929, 24 Nov).
+     *
+     * @param ?Closure(): void $alongside written in the same transaction, such as the audit of the change
+     */
+    public function movePeriodStart(Subscription $subscription, DateTimeImmutable $periodStart, ChangedBy $by, ?Closure $alongside = null): void
+    {
+        $this->entityManager->wrapInTransaction(function () use ($subscription, $periodStart, $by, $alongside): void {
+            $from = $subscription->getPeriodStart();
+
+            if ($from->getTimestamp() !== $periodStart->getTimestamp()) {
+                $this->record($subscription, SubscriptionChangeKind::Period, $from->format(DateTimeInterface::ATOM), $periodStart->format(DateTimeInterface::ATOM), $by);
+                $subscription->startPeriodAt($periodStart);
+            }
+
+            if (null !== $alongside) {
+                $alongside();
+            }
+        });
+
+        $this->entitlements->forget($subscription->getOrganisation()->getId());
     }
 
     private function record(Subscription $subscription, SubscriptionChangeKind $kind, ?string $from, ?string $to, ChangedBy $by): void
