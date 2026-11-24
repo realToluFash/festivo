@@ -3389,7 +3389,7 @@
     "openEvents": "Open Events",
     "inTitle": "You’re in for {{event}} · {{job}}",
     "inTitleNoJob": "You’re in for {{event}}",
-    "endsLine": "Access ends when the event concludes.",
+    "endsLine": "Your access ends when the event does.",
     "openEvent": "Open the event",
     "signedInAs": "Signed in as {{name}}"
   },
