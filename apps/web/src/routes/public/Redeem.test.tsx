@@ -179,6 +179,93 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
   });
 
+  it('signed out, asks a name and nothing else, and joins with it trimmed', async () => {
+    signedOut();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () =>
+        json(
+          {
+            accessToken: 'an-access-token',
+            refreshExpiresAt: '2030-11-15T00:00:00+00:00',
+            sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
+            eventId: 'ev_1',
+            name: 'Adébáyọ̀ Ọlá',
+            role: 'can_check_in',
+            jobLabel: 'Bar and drinks',
+            endsAt: '2030-11-14T23:30:00+00:00',
+            again: false,
+          },
+          201,
+        ),
+    });
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+    const field = screen.getByLabelText('Your name');
+    expect((field as HTMLInputElement).value).toBe('');
+    expect(screen.queryByLabelText(/Mobile number/u)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Join as/u })).toBeNull();
+
+    fireEvent.change(field, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    expect(screen.getByText('Enter your full name.')).toBeDefined();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(field);
+    expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
+
+    fireEvent.change(field, { target: { value: '  Adébáyọ̀ Ọlá ' } });
+    expect(screen.queryByText('Enter your full name.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
+      }),
+    ).toBeDefined();
+    expect(screen.getByText('Signed in as Adébáyọ̀ Ọlá')).toBeDefined();
+    expect(screen.getByText(/^You’ll be signed out at .*23:30\.$/u)).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/door-codes/K7P2QX9M/redeem')?.body).toEqual(
+      expect.objectContaining({ name: 'Adébáyọ̀ Ọlá' }),
+    );
+  });
+
+  it('shows Joining… while it works, and keeps the name when the code stops working', async () => {
+    signedOut();
+    let answer: (response: Response) => void = () => {};
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+    });
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      if (line === 'GET /api/door-codes/K7P2QX9M') return json(OPENED);
+      if (line === 'POST /api/door-codes/K7P2QX9M/redeem')
+        return new Promise<Response>((resolve) => {
+          answer = resolve;
+        });
+
+      return json({});
+    });
+
+    fireEvent.change(await screen.findByLabelText('Your name'), {
+      target: { value: 'Hugo Brandão' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+    const busy = await screen.findByRole('button', { name: 'Joining…' });
+    expect(busy.getAttribute('aria-busy')).toBe('true');
+
+    answer(json(REFUSED, 404));
+
+    expect(
+      await screen.findByText('That code does not work. Check it with whoever gave it to you.'),
+    ).toBeDefined();
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Brandão');
+    expect(screen.getByRole('button', { name: 'Join' })).toBeDefined();
+  });
+
   it('turns a member of the organisation away, with Open Events', async () => {
     signedIn();
     at('/d/K7P2QX9M', {

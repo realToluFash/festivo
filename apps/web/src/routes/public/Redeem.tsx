@@ -11,6 +11,7 @@ import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
+import { atWords } from '../app/events/doorCodes.ts';
 import { dayWords } from '../app/events/staffTimes.ts';
 import '../../components/desk.css';
 import './redeem.css';
@@ -22,9 +23,17 @@ type Line = 'blank' | 'short' | 'refused' | 'failed';
 type Step =
   | { kind: 'enter'; typed: string; line: Line | null; busy: boolean; signedOut: boolean }
   | { kind: 'tooMany'; when: string | null; words: string }
-  | { kind: 'event'; code: string; opened: OpenedDoorCode; busy: boolean; refused: boolean }
+  | {
+      kind: 'event';
+      code: string;
+      opened: OpenedDoorCode;
+      busy: boolean;
+      refused: boolean;
+      named: string;
+      checked: boolean;
+    }
   | { kind: 'member'; organisation: string }
-  | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event'] };
+  | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event']; held: boolean };
 
 /** A door code as typed: any case, spaces and hyphens ignored (sc-72). */
 function normalCode(typed: string): string {
@@ -89,8 +98,8 @@ function Redeem({ code }: { code: string }) {
   async function join(event: Extract<Step, { kind: 'event' }>): Promise<void> {
     setStep({ ...event, busy: true, refused: false });
     try {
-      const redeemed = await api.redeemDoorCode(event.code, signedIn ? null : name);
-      go({ kind: 'in', redeemed, event: event.opened.event });
+      const redeemed = await api.redeemDoorCode(event.code, signedIn ? null : event.named.trim());
+      go({ kind: 'in', redeemed, event: event.opened.event, held: !signedIn });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409)
         go({ kind: 'member', organisation: event.opened.event.organisation });
@@ -145,6 +154,21 @@ function Redeem({ code }: { code: string }) {
                 {t('redeem.refused')}
               </p>
             )}
+            {!signedIn && (
+              <NameStep
+                step={step}
+                fieldRef={field}
+                onName={(named) => setStep({ ...step, named })}
+                onJoin={() => {
+                  if (nameLine(step.named, t) != null) {
+                    setStep({ ...step, checked: true });
+                    field.current?.focus();
+                    return;
+                  }
+                  void join({ ...step, checked: true });
+                }}
+              />
+            )}
             {signedIn && (
               <div className="rd-pair">
                 <Primary busy={step.busy} onClick={() => void join(step)}>
@@ -182,6 +206,22 @@ function Redeem({ code }: { code: string }) {
             </Primary>
             <div className="rd-you">
               <p className="rd-you-name">{t('redeem.signedInAs', { name: step.redeemed.name })}</p>
+              {step.held && step.redeemed.endsAt != null && (
+                <p className="rd-you-line">
+                  {t('redeem.signedOutAt', {
+                    time: atWords(
+                      step.redeemed.endsAt,
+                      {
+                        endsAt: step.redeemed.endsAt,
+                        timeZone: step.event.timeZone,
+                        locale: dateLocale(),
+                        now: new Date(),
+                      },
+                      t,
+                    ),
+                  })}
+                </p>
+              )}
               <button type="button" className="rd-out" onClick={() => void leave()}>
                 <SignOutLine />
                 {t('redeem.signOut')}
@@ -213,7 +253,15 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
       return { next: { kind: 'member', organisation: opened.event.organisation }, to: 'title' };
 
     return {
-      next: { kind: 'event', code: normal, opened, busy: false, refused: false },
+      next: {
+        kind: 'event',
+        code: normal,
+        opened,
+        busy: false,
+        refused: false,
+        named: '',
+        checked: false,
+      },
       to: 'title',
     };
   } catch (error) {
@@ -354,6 +402,66 @@ function EnterStep({
       )}
       <Primary submit busy={step.busy}>
         {t('redeem.continue')}
+      </Primary>
+    </form>
+  );
+}
+
+function nameLine(named: string, t: TFunction): string | null {
+  return named.trim() === '' ? t('redeem.nameBlank') : null;
+}
+
+/** Signed out, the device-held grant asks a name and nothing else: no number, no phone code (sc-72, until sc-4235). */
+function NameStep({
+  step,
+  fieldRef,
+  onName,
+  onJoin,
+}: {
+  step: Extract<Step, { kind: 'event' }>;
+  fieldRef: RefObject<HTMLInputElement | null>;
+  onName: (named: string) => void;
+  onJoin: () => void;
+}) {
+  const { t } = useTranslation();
+  const said = step.checked ? nameLine(step.named, t) : null;
+
+  function submit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!step.busy) onJoin();
+  }
+
+  return (
+    <form className="rd-form" noValidate onSubmit={submit}>
+      <div className="rd-group">
+        <div
+          className={['rd-field', said != null && 'is-wrong', step.named !== '' && 'is-filled']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <label htmlFor="rd-name" className="rd-label">
+            {t('redeem.yourName')}
+          </label>
+          <input
+            ref={fieldRef}
+            id="rd-name"
+            className="rd-input"
+            value={step.named}
+            autoComplete="name"
+            spellCheck={false}
+            aria-invalid={said != null}
+            aria-describedby={said == null ? undefined : 'rd-name-line'}
+            onChange={(event) => onName(event.target.value)}
+          />
+        </div>
+        {said != null && (
+          <p id="rd-name-line" className="rd-says">
+            {said}
+          </p>
+        )}
+      </div>
+      <Primary submit busy={step.busy}>
+        {step.busy ? t('redeem.joining') : t('redeem.join')}
       </Primary>
     </form>
   );

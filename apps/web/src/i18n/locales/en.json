@@ -3319,6 +3319,10 @@
     "tooMany": "Too many tries",
     "tryAt": "Try again {{when}}.",
     "joinAs": "Join as {{name}}",
+    "yourName": "Your name",
+    "nameBlank": "Enter your full name.",
+    "join": "Join",
+    "joining": "Joining…",
     "signOut": "Sign out",
     "memberTitle": "You’re already a member of {{organisation}}",
     "memberLine": "Members open an event from its People page. Ask its lead or an admin to add you.",
@@ -3328,6 +3332,7 @@
     "endsLine": "Access ends when the event concludes.",
     "openEvent": "Open the event",
     "signedInAs": "Signed in as {{name}}",
+    "signedOutAt": "You’ll be signed out at {{time}}.",
     "signedOut": "Signed out."
   },
   "guestList": {
