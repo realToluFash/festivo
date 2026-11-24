@@ -27,6 +27,7 @@ import {
 } from './organisationDetails.ts';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RequestLinkCard } from './RequestLinkCard.tsx';
+import { SECURITY, securityOn } from './signInRulesDesk.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { useOffline } from '../../../offline.ts';
@@ -388,7 +389,11 @@ function WhyReadOnly({ organisation }: { organisation: Membership }) {
         )}
       </p>
       <p className="notice-action">
-        <Link className="link-button" to="/app/account/security">
+        <Link
+          className="link-button"
+          to={SECURITY}
+          state={securityOn(rule === 'linking' ? 'link' : 'turnOn')}
+        >
           {t(rule === 'linking' ? 'signInRules.unlinkedLink' : 'signInRules.gateTurnOn')}
         </Link>
       </p>
