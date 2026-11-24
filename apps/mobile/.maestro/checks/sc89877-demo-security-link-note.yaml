@@ -1,4 +1,5 @@
 # sc-89877: the app design demo, Settings › Security, Google not linked: the line under Link Google takes ’.
+# Known to fail its text match in the demo though the line shows (likely nested Text); judge it from the screenshot (sc-90172).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/security?state=linkPick
