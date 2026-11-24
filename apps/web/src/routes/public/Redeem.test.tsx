@@ -232,7 +232,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
         name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
       }),
     ).toBeDefined();
-    expect(screen.getByText('Access ends when the event concludes.')).toBeDefined();
+    expect(screen.getByText('Your access ends when the event does.')).toBeDefined();
     expect(screen.getByText('Signed in as Kemi Okafor')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
     await waitFor(() =>
@@ -336,7 +336,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: 'You’re already a member of Lumen Feiras',
+        name: 'You are already a member of Lumen Feiras',
       }),
     ).toBeDefined();
     expect(
@@ -379,7 +379,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: 'You’re already a member of Lumen Feiras',
+        name: 'You are already a member of Lumen Feiras',
       }),
     ).toBeDefined();
     expect(sent.some((one) => one.line.startsWith('POST /api/door-codes'))).toBe(false);

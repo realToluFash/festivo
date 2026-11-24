@@ -195,7 +195,7 @@ export function countLine(code: DoorCodeCard, clock: CodeClock, t: TFunction): s
 
 export function endsWords(ends: Ends, clock: CodeClock, t: TFunction): string {
   const times = { long: false, timeZone: clock.timeZone, locale: clock.locale };
-  if (ends.kind === 'event') return t('doorCodes.endsEvent', { at: eventEndWords(clock) });
+  if (ends.kind === 'event') return t('doorCodes.endsEvent', { at: eventEndWords(clock, t) });
   const at = endsInstant(ends, clock);
 
   return t('doorCodes.endsEarlier', {
@@ -205,10 +205,13 @@ export function endsWords(ends: Ends, clock: CodeClock, t: TFunction): string {
   });
 }
 
-export function eventEndWords(clock: CodeClock): string {
+export function eventEndWords(clock: CodeClock, t: TFunction): string {
   const times = { long: false, timeZone: clock.timeZone, locale: clock.locale };
 
-  return `${dayWords(clock.endsAt, times)}, ${clockWords(clock.endsAt, times)}`;
+  return t('doorCodes.dayTime', {
+    day: dayWords(clock.endsAt, times),
+    time: clockWords(clock.endsAt, times),
+  });
 }
 
 export function dayLabel(day: string, clock: CodeClock): string {

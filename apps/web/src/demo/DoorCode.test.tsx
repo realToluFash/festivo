@@ -39,9 +39,7 @@ describe('the door code’s card on People (sc-71, sc-72)', () => {
 
     expect(screen.getByText('No door code yet')).toBeDefined();
     expect(
-      screen.getByText(
-        'One code lets a crew in on the day. Each person gives their name and mobile number.',
-      ),
+      screen.getByText('One code lets a crew in on the day. Each person gives their full name.'),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Make a door code' })).toBeDefined();
   });
