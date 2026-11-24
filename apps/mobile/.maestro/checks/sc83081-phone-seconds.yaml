@@ -1,4 +1,4 @@
-# sc-83081 on a phone: Notifications opened by the bell on Events on a cold start, recorded and shot every second from 1 to 25 s after the tap, to tell a late mount from a loading state that draws nothing. Pass METRO_URL; run with batch --cold --android.
+# sc-83081 on a phone: Notifications opened by the bell on Events on a cold start, recorded and shot every second from 1 to 25 s after the tap, to tell a late mount from a loading state that draws nothing; at 2, 5 and 25 s it logs the feed's probe (development builds): mounts, the one-second timer's lag in ms, and ms to the first load settling. Pass METRO_URL; run with batch --cold --android.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events
@@ -9,12 +9,16 @@ appId: host.exp.Exponent
 - takeScreenshot: events-1s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-2s
+- copyTextFrom: { id: 'notifications.probe', optional: true }
+- evalScript: ${console.log('probe 2s ' + maestro.copiedText)}
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-3s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-4s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-5s
+- copyTextFrom: { id: 'notifications.probe', optional: true }
+- evalScript: ${console.log('probe 5s ' + maestro.copiedText)}
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-6s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
@@ -55,4 +59,6 @@ appId: host.exp.Exponent
 - takeScreenshot: events-24s
 - extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1000, optional: true }
 - takeScreenshot: events-25s
+- copyTextFrom: { id: 'notifications.probe', optional: true }
+- evalScript: ${console.log('probe 25s ' + maestro.copiedText)}
 - stopRecording

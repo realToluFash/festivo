@@ -34,7 +34,7 @@ import { Refreshing } from './Refreshing.tsx';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { Anchor } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
-import { type TextHandle } from './Text.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 import { rereadOrganisations } from '../signedIn.ts';
 
 type Feed =
@@ -310,41 +310,44 @@ export function NotificationsFeed({ where }: { where: FeedWhere }) {
   }
 
   const body = (
-    <BellBody
-      ask={asking ? { onAnswer: (turnOn) => void answerPush(turnOn) } : null}
-      feed={feed.status}
-      rows={feed.status === 'loaded' ? feed.items.map(rowOf) : []}
-      menu={menu}
-      onMenu={(id) => {
-        nextAction();
-        setMenu(id);
-      }}
-      onPick={(row) => {
-        const item =
-          feed.status === 'loaded' ? feed.items.find((one) => one.id === row.id) : undefined;
-        if (item != null) openItem(item);
-      }}
-      onTryAgain={() => {
-        void rereadOrganisations();
-        load();
-      }}
-      more={
-        feed.status === 'loaded' && feed.next != null
-          ? {
-              busy: more === 'loading',
-              failed: more === 'failed',
-              onMore: () => feed.next != null && showMore(feed.next),
-            }
-          : null
-      }
-      notice={notSaved}
-      onSettings={() => {
-        nextAction();
-        if (where.kind === 'popover') where.onClose();
-        router.push(SECTION_HREF.notifications);
-      }}
-      testID="notifications"
-    />
+    <>
+      {__DEV__ && <ColdStartProbe loaded={feed.status !== 'loading'} />}
+      <BellBody
+        ask={asking ? { onAnswer: (turnOn) => void answerPush(turnOn) } : null}
+        feed={feed.status}
+        rows={feed.status === 'loaded' ? feed.items.map(rowOf) : []}
+        menu={menu}
+        onMenu={(id) => {
+          nextAction();
+          setMenu(id);
+        }}
+        onPick={(row) => {
+          const item =
+            feed.status === 'loaded' ? feed.items.find((one) => one.id === row.id) : undefined;
+          if (item != null) openItem(item);
+        }}
+        onTryAgain={() => {
+          void rereadOrganisations();
+          load();
+        }}
+        more={
+          feed.status === 'loaded' && feed.next != null
+            ? {
+                busy: more === 'loading',
+                failed: more === 'failed',
+                onMore: () => feed.next != null && showMore(feed.next),
+              }
+            : null
+        }
+        notice={notSaved}
+        onSettings={() => {
+          nextAction();
+          if (where.kind === 'popover') where.onClose();
+          router.push(SECTION_HREF.notifications);
+        }}
+        testID="notifications"
+      />
+    </>
   );
 
   if (where.kind === 'framed')
@@ -389,6 +392,35 @@ export function NotificationsFeed({ where }: { where: FeedWhere }) {
   );
 }
 
+let feedMounts = 0;
+
+/** Development builds only: how often the feed mounted, how late its one-second timer fired, and when its first load settled, for sc83081-phone-seconds to tell a remount from a held JS thread (sc-83081). */
+function ColdStartProbe({ loaded }: { loaded: boolean }) {
+  const [mountedAt] = useState(() => Date.now());
+  const [mounts] = useState(() => (feedMounts += 1));
+  const [lag, setLag] = useState<number | null>(null);
+  const [settled, setSettled] = useState<number | null>(null);
+
+  useEffect(() => {
+    const id = setTimeout(() => setLag(Date.now() - mountedAt - 1000), 1000);
+
+    return () => clearTimeout(id);
+  }, [mountedAt]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const id = setTimeout(() => setSettled((at) => at ?? Date.now() - mountedAt), 0);
+
+    return () => clearTimeout(id);
+  }, [loaded, mountedAt]);
+
+  return (
+    <Text testID="notifications.probe" style={styles.probe}>
+      {`mounts=${mounts} lag=${lag ?? '-'} settled=${settled ?? '-'}`}
+    </Text>
+  );
+}
+
 /** Mute this event in an item's More (sc-3980), the same mute as the event's own page, inline under the item (sc-83081). */
 function FeedMute({ eventId, testID }: { eventId: string; testID: string }) {
   const { t } = useTranslation();
@@ -418,6 +450,7 @@ function FeedMute({ eventId, testID }: { eventId: string; testID: string }) {
 }
 
 const styles = StyleSheet.create({
+  probe: { position: 'absolute', opacity: 0 },
   framed: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
