@@ -53,6 +53,7 @@ import { DESK_FIT_PAGES } from './deskFit.ts';
 import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
 import { READS_STATE_NAMES, READS_STATES } from './NowReads.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { LINK_CARD_PAGES } from './linkCard.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
@@ -151,6 +152,7 @@ import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { LinkCard } from './LinkCard.tsx';
 import { Unsubscribe } from './Unsubscribe.tsx';
 import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
 import { VendorsMoved } from './Vendors.tsx';
@@ -360,6 +362,7 @@ export default function Demo() {
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
+      <Route path="link-card" element={<LinkCard />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="wallet-pass" element={<WalletPassPage />} />
       <Route path="guest/meal" element={<MealStepPage />} />
@@ -475,6 +478,8 @@ function DemoHome({ from }: { from: string }) {
           tablet landscape and desk
         </h3>
         <BoardPages pages={WALLET_PAGES} />
+        <h3>A guest’s link in a chat: its card (sc-89272) · WhatsApp at a phone’s width</h3>
+        <BoardPages pages={LINK_CARD_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
