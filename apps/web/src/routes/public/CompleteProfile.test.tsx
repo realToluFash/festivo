@@ -199,7 +199,7 @@ describe('a few details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     expect(screen.getByText('Add your name to carry on.')).toBeDefined();
-    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+    expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
     expect(screen.getByLabelText('Full name').getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(screen.getByLabelText('Full name'));
     expect(sent).toEqual([]);
@@ -820,7 +820,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(screen.getByRole('group', { name: 'Adunni Weddings' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+    expect(screen.getByText('Add your organisation’s name to carry on.')).toBeDefined();
   });
 
   it('keeps the organisation fields when a press is refused', async () => {

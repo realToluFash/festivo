@@ -1108,20 +1108,20 @@ describe('linking and unlinking at a desk', () => {
     ).toBeDefined();
   });
 
-  it("says Google didn't finish under its row when the trip failed, and nothing when it was cancelled", async () => {
+  it('says Google didn’t finish under its row when the trip failed, and nothing when it was cancelled', async () => {
     returnedFrom({ kind: 'link' }, { failed: 'failed' });
     answering({});
     const { unmount } = openSecurity();
 
     expect(
-      await screen.findByText("Google didn't finish, so nothing changed. Try again."),
+      await screen.findByText('Google didn’t finish, so nothing changed. Try again.'),
     ).toBeDefined();
     unmount();
 
     returnedFrom({ kind: 'link' }, { failed: 'cancelled' });
     openSecurity();
     await screen.findByText('Two-factor is off');
-    expect(screen.queryByText(/didn't finish/)).toBeNull();
+    expect(screen.queryByText(/didn’t finish/)).toBeNull();
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 

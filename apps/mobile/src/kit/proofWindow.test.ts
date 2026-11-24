@@ -40,7 +40,7 @@ describe('the proof window, counted from PROOF_MINUTES (sc-2197)', () => {
 
     expect(codeHelp(t, 'Google')).toEqual([
       'From your authenticator app, or one of your recovery codes.',
-      "A wrong code doesn't send you back to Google. Your Google sign-in lasts a minute.",
+      'A wrong code doesn’t send you back to Google. Your Google sign-in lasts a minute.',
     ]);
     expect(codeHelp(t, null)).toBe('From your authenticator app, or one of your recovery codes.');
   });
