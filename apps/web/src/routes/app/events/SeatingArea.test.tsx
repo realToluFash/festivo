@@ -1283,6 +1283,34 @@ describe('Tables at a desk (sc-4000)', () => {
     ]);
     expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
   });
+
+  it("reads a long table's length, ends and rotation without seating.manage", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          seating(
+            withTables(
+              table({ shape: 'rectangular', seats: 6, lengthCm: 76, endSeats: 0, rotation: 15 }),
+            ),
+          ),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeRectangular table',
+      'Seats6',
+      'Width180\u00a0cm',
+      'Length76\u00a0cm',
+      'Seats on the ends0',
+      'Rotation15°',
+    ]);
+  });
 });
 
 function row(more: Record<string, unknown> = {}) {
