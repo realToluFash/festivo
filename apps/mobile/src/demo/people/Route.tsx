@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 
 import { type PeopleParams } from './People.tsx';
-import { doorStartOf } from '../doorCode/DoorCodeModel.ts';
+import { DOOR_PLACE, doorStartOf } from '../doorCode/DoorCodeModel.ts';
 import { EventsShell } from '../events/Route.tsx';
 import { EventScreen } from '../events/EventPage.tsx';
 import { instantOf } from '../events/EventsModel.ts';
@@ -24,7 +24,7 @@ export function PeopleRoute() {
   );
 
   return (
-    <EventsShell>
+    <EventsShell place={door == null ? null : DOOR_PLACE}>
       <EventScreen
         id={door == null ? SAMPLE_EVENT_ID : DOOR_WEDDING.id}
         state={null}

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -241,5 +244,23 @@ describe('inside the event, by role (pm, 7 Nov, sc-72)', () => {
     ]);
     expect(moreAreas('Can view', true)).toEqual(['schedule', 'seating', 'people']);
     expect(moreAreas('Can view', false)).toEqual([]);
+  });
+});
+
+describe('the button turns while the code is checked or sent (sc-31774)', () => {
+  const redeem = readFileSync(join('src', 'demo', 'doorCode', 'Redeem.tsx'), 'utf8');
+  const turning = readFileSync(join('src', 'demo', 'doorCode', 'TurningButton.tsx'), 'utf8');
+
+  it('draws Continue, Send code and Join as the turning primary', () => {
+    for (const id of ['redeem.enter.continue', 'redeem.event.send', 'redeem.name.join'])
+      expect(redeem).toMatch(
+        new RegExp(`<TurningButton[^>]*testID="${id.replace(/\./gu, '\\.')}"`, 'u'),
+      );
+    expect(redeem).not.toMatch(/<PrimaryButton[^>]*busy=/u);
+  });
+
+  it('turns only while busy, hidden from the screen reader, which hears busy on the button', () => {
+    expect(turning).toMatch(/props\.busy === true && \(/u);
+    expect(turning).toMatch(/accessibilityElementsHidden\s+importantForAccessibility="no"/u);
   });
 });

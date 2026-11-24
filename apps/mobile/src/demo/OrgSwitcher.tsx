@@ -124,11 +124,14 @@ export function OrgSwitcherProvider({
   create = null,
   none = false,
   invited = false,
+  place = null,
   statusBar = 'dark',
   tell,
   children,
 }: {
   state: SwitcherState | null;
+  /** The one organisation the page is in, as the door code's Lumen Feiras (sc-31774); the demo's own session comes back when it closes. */
+  place?: Place | null;
   /** ?create=: the walk opens on load in that state; `created` lands in the new organisation. */
   create?: CreateState | null;
   /** ?orgs=none: Folake in no organisation. */
@@ -166,12 +169,20 @@ export function OrgSwitcherProvider({
   const autoOpened = useRef(false);
 
   useLayoutEffect(() => {
-    if (state == null && create == null && !none) return;
+    if (place == null) return undefined;
+    const before = store.session;
+    setSession({ ...sessionFor('one'), places: [place], current: place.id });
+
+    return () => setSession(before);
+  }, [place]);
+
+  useLayoutEffect(() => {
+    if (place != null || (state == null && create == null && !none)) return;
     const base = sessionFor(state ?? 'one');
     const start = none ? withoutPlaces(base, invited) : base;
     if (create === 'created') arrive(SAMPLE_FOUNDED.id);
     setSession(create === 'created' ? founded(start, SAMPLE_FOUNDED) : start);
-  }, [state, create, none, invited]);
+  }, [state, create, none, invited, place]);
 
   useEffect(() => {
     landing.words = null;
