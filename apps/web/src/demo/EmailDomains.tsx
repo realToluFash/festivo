@@ -80,7 +80,7 @@ export function EmailDomains({
 
   if (load !== 'loaded')
     return (
-      <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} loaded={false}>
+      <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} above="notices">
         {load === 'failed' ? (
           <PageFailed words={W.failedLoad} onRetry={retry} />
         ) : (
@@ -106,7 +106,7 @@ export function EmailDomains({
   const recordOf = view.domains.find((one) => one.name === record) ?? null;
 
   return (
-    <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} loaded>
+    <SubPage page="emailDomains" title={W.title} viewer={viewer} tell={tell} above="offline">
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{card.says}</Says>

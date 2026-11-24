@@ -37,15 +37,15 @@ export function SubPage({
   title,
   viewer,
   tell,
-  loaded,
+  above,
   children,
 }: {
   page: DataControlPage;
   title: string;
   viewer: Viewer;
   tell: Tell;
-  /** What stands above the title: the offline box once the page has loaded, the sign-in rules' notices before (sc-88912). */
-  loaded?: boolean;
+  /** What stands above the title: the offline box once the page has loaded, the sign-in rules' notices before it has, or nothing (sc-88912). */
+  above: 'offline' | 'notices' | 'none';
   children: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ export function SubPage({
   return (
     <div className="desk-page">
       <div className="desk-column">
-        {loaded === true ? <DemoOffline /> : loaded === false && <DemoRuleNotices />}
+        {above === 'offline' ? <DemoOffline /> : above === 'notices' && <DemoRuleNotices />}
         {page === 'hub' ? (
           <TitleRow title={title} bell={<DemoBell tell={tell} />} />
         ) : (

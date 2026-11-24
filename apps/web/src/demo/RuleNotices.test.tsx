@@ -134,13 +134,26 @@ describe('The offline box on Vendors and Data and control’s pages (sc-88912)',
     });
   }
 
-  it('is not on a page that has loaded nothing, which keeps the notices', async () => {
-    await open(
-      '/demo/settings/data-and-control?state=failed&offline&notice=changed',
-      'Data and control',
+  it('stands above Audit log’s Enterprise lock, which counts as loaded', async () => {
+    const page = await open(
+      '/demo/settings/data-and-control/audit-log?state=locked&offline',
+      'Audit log',
     );
+    const offline = await screen.findByText(/Offline · as of/);
 
-    expect(screen.queryByText(/Offline · as of/)).toBeNull();
-    expect(screen.getByText('Sign-in rules changed')).toBeDefined();
+    expect(screen.getByText('Available on Enterprise')).toBeDefined();
+    expect(follows(offline, page.title)).toBe(true);
   });
+
+  for (const [path, heading] of [
+    ['/demo/settings/data-and-control', 'Data and control'],
+    ['/demo/settings/vendors', 'Vendors'],
+  ] as const) {
+    it(`is not on ${heading} when it has loaded nothing, which keeps the notices`, async () => {
+      await open(`${path}?state=failed&offline&notice=changed`, heading);
+
+      expect(screen.queryByText(/Offline · as of/)).toBeNull();
+      expect(screen.getByText('Sign-in rules changed')).toBeDefined();
+    });
+  }
 });
