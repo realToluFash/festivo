@@ -1,4 +1,7 @@
 # sc-84453 iPad upright: B from the bell over A, C from the bell over B; ‹ goes C to B to A, and A's ‹ is as before.
+# Every sc84453-* flow waits on qa3's event names, not only the ids: A 'Lagos Night', B 'Ada and Tunde wedding',
+# C 'Ibadan Supper', D 'Oyo Picnic' (sc84453-behind-deleted.js deletes it by that name). sc84453-copy also needs
+# COPY (a copy of A) dated Feb 11, 2027 and A dated Jan 11, 2027. Run against other events and the first wait times out.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT

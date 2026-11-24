@@ -1,4 +1,5 @@
 # sc-84453 iPad upright, Spanish: B from the bell over A reads ‹ Evento, spoken "Volver a Evento".
+# The signed-in account and the device must already be in Spanish; this flow does not set the language, and it fails in English.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -24,5 +25,5 @@ appId: host.exp.Exponent
 - assertVisible: 'Ada and Tunde wedding'
 - assertVisible:
     id: frame.back
-    text: 'Volver a Evento|Back to Event'
+    text: 'Volver a Evento'
 - takeScreenshot: b-overview-evento
