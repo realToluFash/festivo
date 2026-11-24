@@ -1,5 +1,12 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
@@ -158,11 +165,13 @@ export function DoneAction({
   );
 }
 
-/** The sheet's heading. Its domain is laid out whole first; when no line holds it, it breaks before its dots instead, until the name or the width changes (sc-70353). */
+/** The sheet's heading. Its domain is laid out whole first; when no line holds it, it breaks before its dots instead, until the name, the width or the text size changes (sc-70353). */
 function AddressHeading({ name }: { name: string }) {
   const [wideFor, setWideFor] = useState<string | null>(null);
   const width = useRef(0);
-  const wide = wideFor === name;
+  const { fontScale } = useWindowDimensions();
+  const key = `${name}:${fontScale}`;
+  const wide = wideFor === key;
 
   return (
     <Text
@@ -183,7 +192,7 @@ function AddressHeading({ name }: { name: string }) {
             event.nativeEvent.lines.map((line) => line.text),
           )
         ) {
-          setWideFor(name);
+          setWideFor(key);
         }
       }}
     >
