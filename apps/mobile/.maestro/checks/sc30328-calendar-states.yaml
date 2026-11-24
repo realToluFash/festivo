@@ -1,4 +1,4 @@
-# sc-30328: the 15 Calendar demo states sc-30328 covers, one screenshot each, for side-by-side with Calendar-B-Lanes-*.
+# sc-30328: the 14 Calendar demo states sc-30328 covers, one screenshot each, for side-by-side with Calendar-B-Lanes-*.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
