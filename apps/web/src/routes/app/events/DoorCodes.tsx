@@ -60,8 +60,6 @@ import {
 import { clockWords, dayWords } from './staffTimes.ts';
 import './doorCodes.css';
 
-/** Shown up, the count is read again this often, so a join shows within 10 seconds (spec §2.3). */
-const COUNT_EVERY_MS = 5000;
 const STEP = (index: number) => `.dc-card[data-index="${index}"] .desk-step`;
 
 type Make = { form: MakeForm; into: number | null };
@@ -98,22 +96,6 @@ export function DoorCodes({
       onCodes((was) => was.map((one) => (one.id === id ? card : one))),
     [onCodes],
   );
-
-  const shownId = held == null ? null : (codes[held]?.id ?? null);
-  useEffect(() => {
-    if (shownId == null) return;
-    const timer = window.setInterval(() => {
-      api.doorCodes(event.id).then(
-        (fresh) => {
-          const read = fresh.find((one) => one.id === shownId);
-          if (read != null) replace(shownId, read);
-        },
-        () => undefined,
-      );
-    }, COUNT_EVERY_MS);
-
-    return () => window.clearInterval(timer);
-  }, [event.id, shownId, replace]);
 
   function made(card: DoorCodeCard, into: number | null): void {
     const at = into ?? codes.length;

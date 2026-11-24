@@ -74,6 +74,8 @@ const SETTLE_MS = 600;
 const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const LABEL_MOST = 60;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
 
 /** People on an event (sc-29915), as the People demo draws it at a desk, on its own title under the crumb (sc-69635): who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
@@ -116,6 +118,45 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, manages, answeredAgain]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let current = true;
+    let timer = 0;
+    const next = () => {
+      timer = window.setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (document.hidden) return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? (await api.doorCodes(event.id)).reverse() : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!current) return;
+          // A change made on the page while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => current && next(),
+      );
+    };
+    next();
+
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
 
   const shown = useMemo(() => {
     if (load.kind !== 'loaded') return null;
