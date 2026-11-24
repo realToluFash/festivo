@@ -59,12 +59,11 @@ export function meshOf(raw: string | null, fallback: Mesh): Mesh {
   return MESHES.find((mesh) => mesh === raw) ?? fallback;
 }
 
-/** The line's working copy for [en]; es, fr and pt are length stand-ins until l10n writes them. */
 const LINE: Record<GuestLanguage, (hosts: string) => string> = {
   en: (hosts) => `Your invitation from ${hosts}`,
-  es: (hosts) => `[Tu invitación de ${hosts}]`,
-  fr: (hosts) => `[Votre invitation de la part de ${hosts}]`,
-  pt: (hosts) => `[O seu convite de ${hosts}]`,
+  es: (hosts) => `Su invitación de ${hosts}`,
+  fr: (hosts) => `Votre invitation de la part de ${hosts}`,
+  pt: (hosts) => `O seu convite da parte de ${hosts}`,
 };
 
 export type Picture = { kind: 'photo'; alt: string | null } | { kind: 'colour'; mesh: Mesh };
