@@ -47,8 +47,15 @@ import { Glyph } from './Glyph.tsx';
 import { MomentBox, type Picking, PickerLayer, pick } from './MomentPick.tsx';
 import { RadioMark } from './RadioMark.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
-import { type Anchor, AnchoredMenu, HeadCount, SectionHead, TextAction } from './Summary.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import {
+  type Anchor,
+  AnchoredMenu,
+  HeadCount,
+  SectionHead,
+  TextAction,
+  useAnchorFollowsTurn,
+} from './Summary.tsx';
 import { TapPressable } from './TapPressable.tsx';
 import { Text, TitleCap } from './Text.tsx';
 import { MeasuredWords, MenuWords } from './Title.tsx';
@@ -402,7 +409,7 @@ export function FilterButton({
 /** The Filter menu, 272 wide: Type, When and Hosted by, each drilling in to its choices. */
 export function EventsFilterMenu({
   at,
-  onClose,
+  onAt,
   opener,
   filters,
   onFilters,
@@ -410,8 +417,9 @@ export function EventsFilterMenu({
   calendar,
 }: {
   at: Anchor | null;
-  onClose: () => void;
-  opener: RefObject<ScreenReaderTarget | null>;
+  /** Where it opens from as the opener moves, null as it closes. */
+  onAt: (at: Anchor | null) => void;
+  opener: RefObject<ViewInstance | null>;
   filters: EventsFilters;
   onFilters: (filters: EventsFilters) => void;
   hosts: readonly string[];
@@ -427,6 +435,7 @@ export function EventsFilterMenu({
   const offset = useRef(0);
   const leftAt = useRef(0);
   const [bringTo, setBringTo] = useState<{ y: number } | null>(null);
+  useAnchorFollowsTurn(opener, at != null, onAt);
   const { locale } = calendar;
   const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
   const types = filters.types.map((type) => t(`eventTypes.${type}`));
@@ -438,7 +447,7 @@ export function EventsFilterMenu({
     offset.current = 0;
     leftAt.current = 0;
     setBringTo(null);
-    onClose();
+    onAt(null);
   };
   const drill = (to: Exclude<Level, 'top'>) => {
     leftAt.current = offset.current;
