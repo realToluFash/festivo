@@ -1394,11 +1394,10 @@
         if (r.wake_every && r.wake_every !== '3m')
           tags.push(`<span class="tag">wakes every ${esc(r.wake_every)}</span>`);
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
-        tags.push(
-          STOPPABLE.includes(r.state)
-            ? controlButton('stop', 'Stop', r.role, 'copy quiet control')
-            : controlButton('start', 'Start', r.role, 'copy control'),
-        );
+        if (STOPPABLE.includes(r.state))
+          tags.push(controlButton('stop', 'Stop', r.role, 'copy quiet control'));
+        else if (r.state === 'stopped')
+          tags.push(controlButton('start', 'Start', r.role, 'copy control'));
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
         if (r.prompt)

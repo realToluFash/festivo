@@ -248,12 +248,15 @@ def start_here(db, platform, names, say=print, load=machine.load):
     if errors or set(names) - set(ready):
         return 1
     start_roles(db, config, ready, names, say)
-    said = f"started {', '.join(names)}; the first tick is within a minute"
+    started = f"started {', '.join(names)}"
     if runner.paused(db):
-        said = f"started {', '.join(names)}; it ticks once this machine is resumed"
+        say(f"{started}; it ticks once this machine is resumed")
+    elif (store.get_meta(db, "shared_view") or {}).get("paused"):
+        say(f"{started}; it ticks once every machine is resumed")
     elif not platform.timer_active():
-        said = f"started {', '.join(names)}; the manager is not running here: just agents up"
-    say(said)
+        say(f"{started}; the manager is not running here: just agents up")
+    else:
+        say(f"{started}; the first tick is within a minute")
     return 0
 
 

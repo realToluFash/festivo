@@ -433,7 +433,10 @@ class ControlDoor:
         if status == 404 and not body.lstrip().startswith(b"{"):
             return 404, {"error": f"{name}'s sq web has no controls yet; it gets them when its "
                                   "sq updates from main"}
-        return relay((status, body))
+        status, said = relay((status, body))
+        if "error" in said:
+            said = dict(said, error=f"{name}: {said['error']}")
+        return status, said
 
 
 def named_here(host):

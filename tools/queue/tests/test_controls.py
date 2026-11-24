@@ -96,6 +96,14 @@ class Act(unittest.TestCase):
         update.assert_not_called()
         self.assertTrue(runner.paused(self.db))
 
+    def test_a_start_while_every_machine_is_paused_says_so_after_this_machines_own_pause(self):
+        store.set_meta(self.db, "shared_view", {"paused": {"machine": "tolu-mac"}})
+        self.assertEqual(self.act("start", "ops")[1]["said"],
+                         "started ops; it ticks once every machine is resumed")
+        store.set_meta(self.db, "paused", "24 Nov 10:00")
+        self.assertEqual(self.act("start", "dev2")[1]["said"],
+                         "started dev2; it ticks once this machine is resumed")
+
     def test_a_start_says_so_when_the_manager_is_not_running(self):
         self.platform.timer_active = lambda: False
         self.assertEqual(self.act("start", "ops")[1]["said"],

@@ -805,14 +805,17 @@ class Controls(unittest.TestCase):
         self.answer = (409, b'{"error": "error: qa not in agents.json"}')
         self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "start",
                                         "role": "qa"}, "x"),
-                         (409, {"error": "error: qa not in agents.json"}))
+                         (409, {"error": "tolu-mac: error: qa not in agents.json"}))
         self.answer = (404, b"<html>Not Found</html>")
         status, said = self.door.act({"machine": "tolu-mac", "action": "pause"}, "x")
         self.assertEqual(status, 404)
         self.assertIn("tolu-mac's sq web has no controls yet", said["error"])
         self.answer = (502, b'{"error": "it did not answer"}')
         self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "pause"}, "x"),
-                         (502, {"error": "it did not answer"}))
+                         (502, {"error": "tolu-mac: it did not answer"}))
+        self.answer = (401, b"<html>Unauthorized</html>")
+        self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "pause"}, "x"),
+                         (401, {"error": "tolu-mac: it answered 401"}))
 
     def test_an_unknown_machine_is_not_found(self):
         self.assertEqual(self.door.act({"machine": "nowhere", "action": "pause"}, "x")[0], 404)
