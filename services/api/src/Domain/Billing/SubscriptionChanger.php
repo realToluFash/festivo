@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Billing;
 
 use App\Domain\Billing\Model\ChangedBy;
+use App\Domain\Billing\Model\SubscriptionState;
 use App\Entity\CatalogueVersion;
 use App\Entity\Subscription;
 use App\Entity\SubscriptionChange;
@@ -12,6 +13,7 @@ use App\Enum\Plan;
 use App\Enum\SubscriptionChangeKind;
 use App\Enum\SubscriptionSource;
 use Closure;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 
@@ -42,6 +44,41 @@ final readonly class SubscriptionChanger
 
         // After the commit: forgotten inside the transaction, a request in between re-caches the old plan.
         $this->entitlements->forget($subscription->getOrganisation()->getId());
+    }
+
+    /** @return bool false for a provider's word older than the one the subscription was last set from, which changes nothing (sc-3933) */
+    public function apply(Subscription $subscription, SubscriptionState $state, ChangedBy $by): bool
+    {
+        $at = $by->at ?? $this->clock->now();
+        $last = $subscription->getProviderUpdatedAt();
+
+        if (null !== $last && $at < $last) {
+            return false;
+        }
+
+        $this->entityManager->wrapInTransaction(function () use ($subscription, $state, $by, $at): void {
+            if ($subscription->getPlan() !== $state->plan) {
+                $this->record($subscription, SubscriptionChangeKind::Plan, $subscription->getPlan()->value, $state->plan->value, $by);
+                $subscription->changePlan($state->plan, $state->source);
+            }
+
+            if ((null !== $state->periodEnd && !self::same($subscription->getPeriodEnd(), $state->periodEnd)) || (null !== $state->billedFrom && !self::same($subscription->getPeriodStart(), $state->billedFrom))) {
+                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodEnd()?->format(\DATE_ATOM), $state->periodEnd?->format(\DATE_ATOM), $by);
+                $subscription->changePeriod($state->periodEnd ?? $subscription->getPeriodEnd(), $state->billedFrom);
+            }
+
+            if ($subscription->getStatus() !== $state->status) {
+                $this->record($subscription, SubscriptionChangeKind::Status, $subscription->getStatus()->value, $state->status->value, $by);
+                $subscription->changeStatus($state->status);
+            }
+
+            $subscription->linkToProvider($state->source, $state->externalRef);
+            $subscription->setProviderUpdatedAt($at);
+        });
+
+        $this->entitlements->forget($subscription->getOrganisation()->getId());
+
+        return true;
     }
 
     /**
@@ -81,7 +118,12 @@ final readonly class SubscriptionChanger
             $by->actorId,
             $by->actorLabel,
             $by->reason,
-            $this->clock->now(),
+            $by->at ?? $this->clock->now(),
         ));
+    }
+
+    private static function same(?DateTimeImmutable $one, ?DateTimeImmutable $other): bool
+    {
+        return $one?->getTimestamp() === $other?->getTimestamp();
     }
 }

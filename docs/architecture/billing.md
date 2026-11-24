@@ -184,3 +184,26 @@ limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is
 - Staff act through `app:catalogue:show`, `app:catalogue:publish`,
   `app:catalogue:move-subscribers` (says how many moved) and `app:catalogue:withdraw` (only a
   version nothing uses), each audited. A version is never updated: a trigger refuses it.
+
+## Built, sc-3933: Paddle, the first rail
+
+- `PaymentProviderInterface` is the port; `App\Integrations\Paddle` is the only code that knows
+  it is Paddle. Checkout (`POST /api/orgs/{id}/billing/checkout`) and a new payment method
+  (`POST /api/orgs/{id}/billing/payment-method`) need **billing.manage** and answer only a
+  transaction id for Paddle's hosted pages; the price is the catalogue's, sent as a
+  non-catalogue item, and a plan sold by contract is refused with 409.
+- `POST /api/webhooks/paddle` is the only writer from Paddle. It checks `Paddle-Signature`
+  (HMAC-SHA256 of `ts:body`, five minutes' window) and answers 401 otherwise. Each event id is
+  stored in `provider_events` in the same transaction as what it changes, so a repeat answers
+  200 and changes nothing. `SubscriptionChanger::apply()` takes the provider's state and time:
+  older than the subscription's `provider_updated_at`, it changes nothing; otherwise each kind
+  that changes writes one history line with the event id as who and the provider's time as
+  when, and a partial unique index on (`actor_label`, `kind`) holds that to once per event.
+  A renewal moves only the period end; only `subscription.created` sets the period start.
+- The payment method is what Paddle returns on a completed transaction and no more: a card's
+  brand (null for `unknown`), last four and expiry month and year, a wallet's type alone, or
+  `other`.
+- `app:billing:reconcile` runs nightly: each paying subscription against Paddle, and the
+  events Paddle gave up delivering, each logged at critical for ops. It never corrects.
+- Credit packs (sc-3932) and the Plan and billing page (sc-3934) are not built yet, so there is
+  no pack checkout or ledger line, and no screen opens these endpoints.

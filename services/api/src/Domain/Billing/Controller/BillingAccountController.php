@@ -24,6 +24,7 @@ final readonly class BillingAccountController
     public function show(string $organisationId): JsonResponse
     {
         $account = $this->subscriptionRepository->findCurrentOf(Uuid::fromString($organisationId))->getBillingAccount();
+        $method = $account->getPaymentMethodType();
 
         return new JsonResponse([
             'contactEmail' => $account->getContactEmail(),
@@ -31,6 +32,14 @@ final readonly class BillingAccountController
             'countryCode' => $account->getCountryCode(),
             'taxId' => $account->getTaxId(),
             'creditBalance' => $account->getCreditBalance(),
+            // Only what the provider returns (sc-3933): a card's brand (null for unknown), last four and expiry, a wallet's type alone.
+            'paymentMethod' => null === $method ? null : [
+                'type' => $method->value,
+                'brand' => $account->getCardBrand(),
+                'last4' => $account->getCardLast4(),
+                'expiryMonth' => $account->getCardExpiryMonth(),
+                'expiryYear' => $account->getCardExpiryYear(),
+            ],
         ]);
     }
 }

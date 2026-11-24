@@ -160,7 +160,7 @@ final class SubscriptionTest extends ApiTestCase
 
             self::assertResponseIsSuccessful();
             self::assertSame(
-                ['contactEmail' => 'folake@ire.events', 'currency' => 'NGN', 'countryCode' => 'NG', 'taxId' => null, 'creditBalance' => 0],
+                ['contactEmail' => 'folake@ire.events', 'currency' => 'NGN', 'countryCode' => 'NG', 'taxId' => null, 'creditBalance' => 0, 'paymentMethod' => null],
                 Json\decode((string) $this->client->getResponse()->getContent()),
             );
         }
