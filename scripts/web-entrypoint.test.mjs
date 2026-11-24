@@ -34,6 +34,16 @@ describe('the web entrypoint', () => {
     expect(() => run({ SOIRELY_API_INTERNAL_URL: 'http://api; return 200' })).toThrow();
   });
 
+  it("serves today's title, not the API's error body, when a guest link card fails", () => {
+    const conf = readFileSync('apps/web/nginx.conf', 'utf8');
+    const card = conf.slice(conf.indexOf('location = /_link-card'));
+
+    expect(card).toMatch(
+      /proxy_intercept_errors on;\s+error_page 400 403 404 429 500 502 503 504 = @no_link_card;/,
+    );
+    expect(conf).toMatch(/location @no_link_card \{\s+return 204;\s+\}/);
+  });
+
   it('writes a quote or backslash in a value into config.json as it was given', () => {
     const root = run({ SOIRELY_SCHEME: 'a"b\\c', SOIRELY_GOOGLE_CLIENT_ID: 'x"y' });
 
