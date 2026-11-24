@@ -73,27 +73,44 @@ final readonly class PaddleEvents
 
     private function subscription(string $eventId, string $type, DateTimeImmutable $occurredAt, mixed $data): void
     {
-        $organisationId = Type\shape([
-            'custom_data' => Type\optional(Type\nullable(Type\shape(['organisation_id' => Type\optional(Type\string())], true))),
-        ], true)->coerce($data)['custom_data']['organisation_id'] ?? null;
+        $organisationId = self::organisationOf($data);
         $state = $this->paddleSubscriptions->state($data, 'subscription.created' === $type);
 
-        if (null === $organisationId || !Uuid::isValid($organisationId) || null === $state) {
+        if (null === $organisationId || null === $state) {
             return;
         }
 
         $this->subscriptionChanger->apply(
-            $this->subscriptionRepository->findCurrentOf(Uuid::fromString($organisationId)),
+            $this->subscriptionRepository->findCurrentOf($organisationId),
             $state,
             ChangedBy::provider($eventId, $occurredAt),
         );
+    }
+
+    private static function organisationOf(mixed $data): ?Uuid
+    {
+        $organisationId = Type\shape([
+            'custom_data' => Type\optional(Type\nullable(Type\shape(['organisation_id' => Type\optional(Type\string())], true))),
+        ], true)->coerce($data)['custom_data']['organisation_id'] ?? null;
+
+        return null !== $organisationId && Uuid::isValid($organisationId) ? Uuid::fromString($organisationId) : null;
+    }
+
+    /** By the transaction's own subscription or organisation, never its customer: one founder's email is the customer of each organisation they found. */
+    private function accountOf(?string $subscriptionRef, mixed $data): ?BillingAccount
+    {
+        $organisationId = self::organisationOf($data);
+        $subscription = null === $subscriptionRef ? null : $this->subscriptionRepository->findOneBy(['externalRef' => $subscriptionRef]);
+        $subscription ??= null === $organisationId ? null : $this->subscriptionRepository->findOneBy(['organisation' => $organisationId]);
+
+        return $subscription?->getBillingAccount();
     }
 
     /** Paddle gives a card's details only for a card, and a wallet's name alone (Transactions, `payments[].method_details`). */
     private function paymentMethod(mixed $data): void
     {
         $transaction = Type\shape([
-            'customer_id' => Type\optional(Type\nullable(Type\string())),
+            'subscription_id' => Type\optional(Type\nullable(Type\string())),
             'payments' => Type\optional(Type\vec(Type\shape([
                 'status' => Type\string(),
                 'method_details' => Type\optional(Type\nullable(Type\shape([
@@ -108,8 +125,7 @@ final readonly class PaddleEvents
             ], true))),
         ], true)->coerce($data);
 
-        $customer = $transaction['customer_id'] ?? null;
-        $account = null === $customer ? null : $this->entityManager->getRepository(BillingAccount::class)->findOneBy(['providerCustomerRef' => $customer]);
+        $account = $this->accountOf($transaction['subscription_id'] ?? null, $data);
         $details = null;
 
         foreach ($transaction['payments'] ?? [] as $payment) {

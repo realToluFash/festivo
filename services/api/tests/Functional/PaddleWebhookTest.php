@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Billing\Catalogue\CatalogueKeeper;
+use App\Domain\Billing\Command\ReconcileCommand;
+use App\Domain\Billing\Model\SubscriptionState;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
@@ -11,27 +14,41 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\Subscription;
 use App\Entity\User;
+use App\Enum\CataloguePart;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\SeededRole;
 use App\Enum\SubscriptionSource;
 use App\Enum\SubscriptionStatus;
+use App\Integrations\Paddle\PaddleApi;
+use App\Integrations\Paddle\PaddleSubscriptions;
+use App\Repository\CatalogueVersionRepository;
 use App\Repository\SubscriptionRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\RecordingLogger;
+use App\Tests\Double\ScriptedPaymentProvider;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Ref;
 use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use Psr\Log\LogLevel;
 use SensitiveParameter;
 use Symfony\Component\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
 
 /** sc-3933: Paddle's signed webhooks are the only thing that changes what an organisation has paid for, each event once and in Paddle's order. */
 final class PaddleWebhookTest extends ApiTestCase
@@ -130,9 +147,6 @@ final class PaddleWebhookTest extends ApiTestCase
     public function aFailedPaymentChangesNothingAndThePaymentMethodShowsOnlyWhatPaddleReturns(): void
     {
         $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
-        $account = $this->subscription()->getBillingAccount();
-        $account->setProviderCustomerRef('ctm_1');
-        self::em()->flush();
 
         $this->deliver($this->transaction('evt_failed', 'transaction.payment_failed', 'error', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '0002', 'expiry_month' => 3, 'expiry_year' => 2030]]));
         self::assertNull($this->paymentMethod());
@@ -150,14 +164,17 @@ final class PaddleWebhookTest extends ApiTestCase
         $this->deliver($this->transaction('evt_other', 'transaction.completed', 'captured', ['type' => 'unknown', 'card' => null]));
         self::assertSame('other', $this->paymentMethod()['type'] ?? null);
 
+        // A refund changes nothing here: a cancellation that follows it arrives as its own subscription.canceled.
+        $this->deliver(['event_id' => 'evt_refund', 'event_type' => 'adjustment.created', 'occurred_at' => '2027-02-02T09:00:00Z', 'data' => ['id' => 'adj_1', 'action' => 'refund', 'status' => 'approved', 'transaction_id' => 'txn_evt_3ds', 'subscription_id' => 'sub_1']]);
+        $this->deliver(['event_id' => 'evt_refunded', 'event_type' => 'adjustment.updated', 'occurred_at' => '2027-02-02T09:05:00Z', 'data' => ['id' => 'adj_1', 'action' => 'refund', 'status' => 'approved', 'transaction_id' => 'txn_evt_3ds', 'subscription_id' => 'sub_1']]);
+
         self::assertSame(SubscriptionStatus::Active, $this->subscription()->getStatus());
+        self::assertSame(['plan', 'period'], Vec\map($this->history(), static fn (array $line): ?string => $line[1]));
     }
 
     #[Test]
     public function noCardNumberCvcOrCardholderIsStoredAnywhere(): void
     {
-        $this->subscription()->getBillingAccount()->setProviderCustomerRef('ctm_1');
-        self::em()->flush();
         $this->deliver($this->transaction('evt_card', 'transaction.completed', 'captured', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '5556', 'expiry_month' => 3, 'expiry_year' => 2030, 'cardholder_name' => 'Folake Ade']]));
 
         $columns = Type\vec(Type\string())->coerce(self::connection()->fetchFirstColumn('SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema()'));
@@ -169,6 +186,133 @@ final class PaddleWebhookTest extends ApiTestCase
         self::assertSame([], Vec\filter($columns, static fn (string $column): bool => Regex\matches($column, '/card_number|^pan$|cvc|cvv|cardholder/')));
         self::assertStringNotContainsString('Folake Ade', $dump);
         self::assertStringContainsString('5556', $dump);
+    }
+
+    #[Test]
+    public function aCardPaidForOneOfAFoundersOrganisationsShowsOnlyOnThatOne(): void
+    {
+        $other = self::service(OrganisationFounder::class)->found($this->owner, 'Ire Weddings', 'GB', 'Europe/London');
+        self::em()->flush();
+
+        foreach ([$this->organisation, $other] as $organisation) {
+            self::service(SubscriptionRepository::class)->findCurrentOf($organisation->getId())->getBillingAccount()->setProviderCustomerRef('ctm_1');
+        }
+        self::em()->flush();
+
+        $this->deliver($this->transaction('evt_other', 'transaction.completed', 'captured', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '1111', 'expiry_month' => 3, 'expiry_year' => 2030]], $other, null));
+        $this->deliver($this->transaction('evt_other_again', 'transaction.completed', 'captured', ['type' => 'card', 'card' => ['type' => 'visa', 'last4' => '5556', 'expiry_month' => 3, 'expiry_year' => 2030]], $other, null));
+
+        self::assertSame([null, '5556'], [$this->paymentMethod(), $this->paymentMethod($other)['last4'] ?? null]);
+
+        $this->deliver($this->transaction('evt_this', 'transaction.completed', 'captured', ['type' => 'card', 'card' => ['type' => 'mastercard', 'last4' => '4444', 'expiry_month' => 9, 'expiry_year' => 2031]], null, null));
+
+        self::assertSame(['4444', '5556'], [$this->paymentMethod()['last4'] ?? null, $this->paymentMethod($other)['last4'] ?? null]);
+    }
+
+    #[Test]
+    public function aCheckoutIsPricedFromTheCatalogueAndWritesNothingUntilTheProviderSaysSo(): void
+    {
+        $terms = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19')?->getTerms() ?? self::fail('The first version is missing.');
+        $terms['enterprise'] = ['sales' => 'self_serve'] + Type\dict(Type\string(), Type\mixed())->coerce($terms['enterprise']);
+        self::service(CatalogueKeeper::class)->publish(CataloguePart::Plans, 'self-serve enterprise', $terms, 'Enterprise sold through the checkout, for this test', 'Ada at Soirely');
+        $sent = $this->paddle(['data' => []], ['data' => ['id' => 'ctm_new']], ['data' => ['id' => 'txn_checkout']], ['data' => ['id' => 'txn_again']]);
+        $path = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing';
+
+        $this->signIn($this->owner);
+        $this->client->jsonRequest('POST', $path . '/checkout', ['plan' => 'enterprise', 'interval' => 'year']);
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame('txn_checkout', Json\typed((string) $this->client->getResponse()->getContent(), Type\shape(['checkout' => Type\shape(['transactionId' => Type\string()])]))['checkout']['transactionId']);
+
+        $currency = $this->subscription()->getBillingAccount()->getCurrency();
+        $yearly = [
+            'customer_id' => 'ctm_new',
+            'currency_code' => $currency,
+            'custom_data' => ['organisation_id' => $this->organisation->getId()->toRfc4122(), 'plan' => 'enterprise'],
+            'items' => [[
+                'quantity' => 1,
+                'price' => [
+                    'description' => 'enterprise year',
+                    'unit_price' => ['amount' => (string) ['USD' => 249000, 'EUR' => 229000, 'GBP' => 199000][$currency], 'currency_code' => $currency],
+                    'billing_cycle' => ['interval' => 'year', 'frequency' => 1],
+                    'product' => ['name' => 'Soirely Enterprise', 'tax_category' => 'standard'],
+                ],
+            ]],
+        ];
+        self::assertSame(['GET /customers?email=folake%40ire.events', 'POST /customers', 'POST /transactions'], Vec\map($sent->value, static fn (array $call): string => $call[0]));
+        self::assertSame(['email' => 'folake@ire.events'], $sent->value[1][1]);
+        self::assertSame($yearly, $sent->value[2][1]);
+
+        $this->client->request('POST', $path . '/checkout', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['plan' => 'enterprise', 'interval' => 'year', 'price' => 1, 'amount' => 1, 'currency' => 'USD']));
+        self::assertSame([201, 'POST /transactions', $yearly], [$this->client->getResponse()->getStatusCode(), $sent->value[3][0] ?? null, $sent->value[3][1] ?? null]);
+
+        self::assertSame(SubscriptionSource::Manual, $this->subscription()->getSource());
+        self::assertSame(Plan::Free, $this->subscription()->getPlan());
+        self::assertSame(0, self::connection()->fetchOne('SELECT count(*) FROM subscription_changes'));
+    }
+
+    #[Test]
+    public function aPaymentMethodPageIsTheProvidersOwnTransactionForTheSubscriptionAndWritesNothing(): void
+    {
+        $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
+        $lines = $this->history();
+        $sent = $this->paddle(['data' => ['id' => 'txn_update']]);
+
+        $this->signIn($this->owner);
+        $this->client->jsonRequest('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing/payment-method');
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame([['GET /subscriptions/sub_1/update-payment-method-transaction', null]], $sent->value);
+        self::assertSame($lines, $this->history());
+        self::assertNull($this->paymentMethod());
+    }
+
+    #[Test]
+    public function theNightlyReconciliationReportsEachDifferenceAndEveryUndeliveredEventAndCorrectsNothing(): void
+    {
+        $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
+        $before = [$this->history(), self::connection()->fetchAllAssociative('SELECT * FROM subscriptions')];
+        $periodEnd = new DateTimeImmutable('2027-02-28T09:00:00Z');
+        $held = static fn (Plan $plan, SubscriptionStatus $status, DateTimeImmutable $end): SubscriptionState => new SubscriptionState(SubscriptionSource::Paddle, 'sub_1', $plan, $status, $end);
+        $id = $this->subscription()->getId()->toRfc4122();
+
+        $reports = Vec\map([
+            $held(Plan::Enterprise, SubscriptionStatus::Active, $periodEnd),
+            $held(Plan::Free, SubscriptionStatus::Active, $periodEnd),
+            $held(Plan::Enterprise, SubscriptionStatus::PastDue, $periodEnd),
+            $held(Plan::Enterprise, SubscriptionStatus::Active, new DateTimeImmutable('2027-03-31T09:00:00Z')),
+            null,
+        ], fn (?SubscriptionState $state): array => $this->reconcile(new ScriptedPaymentProvider($state)));
+
+        self::assertSame([
+            [],
+            [[LogLevel::CRITICAL, 'Billing reconciliation: subscription ' . $id . ' differs from the provider, plan enterprise here, free there.']],
+            [[LogLevel::CRITICAL, 'Billing reconciliation: subscription ' . $id . ' differs from the provider, status active here, past_due there.']],
+            [[LogLevel::CRITICAL, 'Billing reconciliation: subscription ' . $id . ' differs from the provider, the period end differs.']],
+            [[LogLevel::CRITICAL, 'Billing reconciliation: subscription ' . $id . ' differs from the provider, the provider holds no such subscription.']],
+        ], $reports);
+        self::assertSame(
+            [[LogLevel::CRITICAL, 'Billing: the provider gave up delivering ntf_1 after its last retry.'], [LogLevel::CRITICAL, 'Billing: the provider gave up delivering ntf_2 after its last retry.']],
+            $this->reconcile(new ScriptedPaymentProvider($held(Plan::Enterprise, SubscriptionStatus::Active, $periodEnd), ['ntf_1', 'ntf_2'])),
+        );
+        self::assertSame($before, [$this->history(), self::connection()->fetchAllAssociative('SELECT * FROM subscriptions')]);
+    }
+
+    #[Test]
+    public function anEventIsReportedUndeliveredOnceTheNightAfterPaddlesLastAttemptOnEveryPage(): void
+    {
+        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
+        $sent = new Ref([]);
+        $paddle = $this->paddleAnswering(
+            $sent,
+            ['data' => [['id' => 'ntf_new', 'last_attempt_at' => '2027-01-31T07:00:00Z'], ['id' => 'ntf_reported', 'last_attempt_at' => '2027-01-30T08:59:00Z']], 'meta' => ['pagination' => ['next' => 'https://paddle.test/notifications?after=ntf_reported', 'has_more' => true]]],
+            ['data' => [['id' => 'ntf_late', 'last_attempt_at' => '2027-01-30T09:00:00Z']], 'meta' => ['pagination' => ['next' => 'https://paddle.test/notifications?after=ntf_late', 'has_more' => false]]],
+        );
+
+        self::assertSame(['ntf_new', 'ntf_late'], $paddle->undeliveredEvents());
+        self::assertSame(
+            ['GET /notifications?status=failed&per_page=200&from=2027-01-28T09%3A00%3A00%2B00%3A00', 'GET /notifications?after=ntf_reported'],
+            Vec\map($sent->value, static fn (array $call): string => $call[0]),
+        );
     }
 
     #[Test]
@@ -213,7 +357,7 @@ final class PaddleWebhookTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function transaction(string $id, string $type, string $paymentStatus, array $methodDetails): array
+    private function transaction(string $id, string $type, string $paymentStatus, array $methodDetails, ?Organisation $soldTo = null, ?string $subscriptionRef = 'sub_1'): array
     {
         return [
             'event_id' => $id,
@@ -223,7 +367,8 @@ final class PaddleWebhookTest extends ApiTestCase
                 'id' => 'txn_' . $id,
                 'status' => 'transaction.completed' === $type ? 'completed' : 'past_due',
                 'customer_id' => 'ctm_1',
-                'subscription_id' => 'sub_1',
+                'subscription_id' => $subscriptionRef,
+                'custom_data' => ['organisation_id' => ($soldTo ?? $this->organisation)->getId()->toRfc4122(), 'plan' => 'enterprise'],
                 'payments' => [['status' => $paymentStatus, 'method_details' => $methodDetails]],
             ],
         ];
@@ -254,12 +399,61 @@ final class PaddleWebhookTest extends ApiTestCase
     }
 
     /** @return ?array<string, mixed> */
-    private function paymentMethod(): ?array
+    private function paymentMethod(?Organisation $of = null): ?array
     {
         $this->signIn($this->owner);
-        $this->client->request('GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing-account');
+        $this->client->request('GET', '/api/orgs/' . ($of ?? $this->organisation)->getId()->toRfc4122() . '/billing-account');
 
         return Json\typed((string) $this->client->getResponse()->getContent(), Type\shape(['paymentMethod' => Type\nullable(Type\dict(Type\string(), Type\mixed()))], true))['paymentMethod'];
+    }
+
+    /**
+     * Paddle, for the controllers, answering each call in turn with the next of `$answers`.
+     *
+     * @param array<string, mixed> ...$answers
+     *
+     * @return Ref<list<array{0: string, 1: mixed}>> each call as its method and path, and the JSON body it sent
+     */
+    private function paddle(array ...$answers): Ref
+    {
+        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
+        $sent = new Ref([]);
+        $this->client->disableReboot();
+        self::getContainer()->set(PaddleApi::class, $this->paddleAnswering($sent, ...$answers));
+
+        return $sent;
+    }
+
+    /**
+     * @param Ref<list<array{0: string, 1: mixed}>> $sent
+     * @param array<string, mixed> ...$answers
+     */
+    private function paddleAnswering(Ref $sent, array ...$answers): PaddleApi
+    {
+        return new PaddleApi(
+            new MockHttpClient(static function (string $method, string $url, array $options) use (&$answers, $sent): MockResponse {
+                $body = $options['body'] ?? '';
+                $sent->value[] = [$method . ' ' . Str\strip_prefix($url, 'https://paddle.test'), '' === $body ? null : Json\decode(Type\string()->coerce($body))];
+
+                return new MockResponse(Json\encode(\array_shift($answers) ?? self::fail('Paddle was called once too often.')), ['http_code' => 200]);
+            }),
+            self::em(),
+            self::service(PaddleSubscriptions::class),
+            self::service(ClockInterface::class),
+            'https://paddle.test',
+            'test-key',
+        );
+    }
+
+    /** @return list<array{0: mixed, 1: string}> each line logged, as its level and message */
+    private function reconcile(ScriptedPaymentProvider $provider): array
+    {
+        $logger = new RecordingLogger();
+        $command = new ReconcileCommand(self::service(SubscriptionRepository::class), $provider, $logger);
+
+        self::assertSame(0, $command(new SymfonyStyle(new ArrayInput([]), new BufferedOutput())));
+
+        return Vec\map($logger->records, static fn (array $record): array => [$record['level'], $record['message']]);
     }
 
     private function subscription(): Subscription

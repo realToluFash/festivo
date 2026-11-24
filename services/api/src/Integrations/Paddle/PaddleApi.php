@@ -10,10 +10,11 @@ use App\Domain\Billing\Model\SubscriptionState;
 use App\Entity\Subscription;
 use App\Enum\BillingInterval;
 use App\Enum\Plan;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psl\Type;
-use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use RuntimeException;
 use SensitiveParameter;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -25,6 +26,7 @@ final readonly class PaddleApi implements PaymentProviderInterface
         private HttpClientInterface $http,
         private EntityManagerInterface $entityManager,
         private PaddleSubscriptions $paddleSubscriptions,
+        private ClockInterface $clock,
         private string $apiBase,
         #[SensitiveParameter]
         private string $apiKey,
@@ -71,11 +73,31 @@ final readonly class PaddleApi implements PaymentProviderInterface
         return null === $reference ? null : $this->paddleSubscriptions->state($this->call('GET', '/subscriptions/' . \rawurlencode($reference)));
     }
 
+    /** Those whose last attempt was in the day before this nightly run, so each is reported once. Paddle's own retries end within two days of the first (Webhooks, "Retry policy"). */
     public function undeliveredEvents(): array
     {
-        $notifications = Type\vec(Type\shape(['id' => Type\string()], true))->coerce($this->call('GET', '/notifications?status=failed'));
+        $now = $this->clock->now();
+        $since = $now->modify('-1 day');
+        $path = '/notifications?status=failed&per_page=200&from=' . \rawurlencode($now->modify('-3 days')->format(\DATE_RFC3339));
+        $undelivered = [];
 
-        return Vec\map($notifications, static fn (array $notification): string => $notification['id']);
+        do {
+            $page = Type\shape([
+                'data' => Type\vec(Type\shape(['id' => Type\string(), 'last_attempt_at' => Type\nullable(Type\string())], true)),
+                'meta' => Type\shape(['pagination' => Type\shape(['next' => Type\nullable(Type\string()), 'has_more' => Type\bool()], true)], true),
+            ], true)->coerce($this->request('GET', $path));
+
+            foreach ($page['data'] as $notification) {
+                if (null !== $notification['last_attempt_at'] && new DateTimeImmutable($notification['last_attempt_at']) >= $since) {
+                    $undelivered[] = $notification['id'];
+                }
+            }
+
+            $next = $page['meta']['pagination']['next'];
+            $path = $page['meta']['pagination']['has_more'] && null !== $next ? Str\strip_prefix($next, Str\trim_right($this->apiBase, '/')) : null;
+        } while (null !== $path);
+
+        return $undelivered;
     }
 
     private function customer(Subscription $subscription): string
@@ -101,6 +123,16 @@ final readonly class PaddleApi implements PaymentProviderInterface
     /** @param ?array<string, mixed> $body */
     private function call(string $method, string $path, ?array $body = null): mixed
     {
+        return Type\shape(['data' => Type\mixed()], true)->coerce($this->request($method, $path, $body))['data'];
+    }
+
+    /**
+     * @param ?array<string, mixed> $body
+     *
+     * @return array<array-key, mixed>
+     */
+    private function request(string $method, string $path, ?array $body = null): array
+    {
         if ('' === $this->apiKey) {
             throw new RuntimeException('PADDLE_API_KEY is not set.');
         }
@@ -117,6 +149,6 @@ final readonly class PaddleApi implements PaymentProviderInterface
             throw new RuntimeException('Paddle answered ' . $path . ' with ' . $response->getStatusCode() . '.');
         }
 
-        return Type\shape(['data' => Type\mixed()], true)->coerce($response->toArray())['data'];
+        return $response->toArray();
     }
 }
