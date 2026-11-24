@@ -169,11 +169,12 @@ export function SecurityDesk() {
         if (!live) return;
         lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
         setTwoFactor(now);
-        // A held step elsewhere in Settings opens two-factor's set-up, once the page knows it is off.
+        // A held step elsewhere in Settings opens Turn on two-factor's first step, once the page knows it is off.
         if (!opensSetup.current) return;
         opensSetup.current = false;
         void navigate(location.pathname, { replace: true, state: null });
-        if (!now.on) setDialog({ kind: 'setup' });
+        if (!now.on)
+          setDialog({ kind: now.passkeysOffered && canUsePasskeys() ? 'choice' : 'setup' });
       },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
