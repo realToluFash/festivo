@@ -75,10 +75,15 @@ export const XW = {
   ready: (file: string) => `Your file is ready. Look in your downloads for ${file}.`,
 };
 
-/** What narrows This view, as whole lines with slots: the menu's choice, then the search. */
-export function narrowing(choice: Choice | 'changed', q: string): string {
+/** What narrows This view, as whole lines with slots: the menu's choice, the search, then every chip that is on. */
+export function narrowing(
+  choice: Choice | 'changed',
+  q: string,
+  chips: readonly string[] = [],
+): string {
   const shown = choice === 'changed' ? GW.changedSince : CHOICE_WORDS[choice];
   const query = q.trim();
+  const searched = query === '' ? `Filter: ${shown}` : `Filter: ${shown} · search “${query}”`;
 
-  return query === '' ? `Filter: ${shown}` : `Filter: ${shown} · search “${query}”`;
+  return chips.length === 0 ? searched : `${searched} · ${chips.join(' · ')}`;
 }

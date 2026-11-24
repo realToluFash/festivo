@@ -129,7 +129,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
   const [groups, setGroups] = useState<GuestGroup[]>(start.groups);
   const [choice, setChoice] = useState<Filter>(start.choice);
   const [q, setQ] = useState(start.q);
-  const [groupFilter, setGroupFilter] = useState<GroupFilter | null>(start.groupFilter);
+  const [groupFilters, setGroupFilters] = useState<readonly GroupFilter[]>(start.groupFilters);
   const [menu, setMenu] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set(start.selected));
   const [pretend, setPretend] = useState(start.pretend);
@@ -151,14 +151,14 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
     replyByOf(event.id),
     manages,
     false,
-    groupFilter,
+    groupFilters,
   );
   const ids = shownGuests(view);
   const everyone = ids.length > 0 && ids.every((id) => selected.has(id));
   const companions = companionsWith(list, selected);
   const count = pretend ?? selected.size;
   const undoing = line?.kind === 'removed' && undo != null;
-  const looking = choice !== 'all' || q.trim() !== '' || groupFilter != null;
+  const looking = choice !== 'all' || q.trim() !== '' || groupFilters.length > 0;
   const marks = invitesOn(event, CLOCKS.rest);
   const empty = list.length === 0;
   /** sc-50772: once a removal empties the list, the line sits above the card until Undo or its 10 seconds end; a save there clears any filter so the saved guest shows. */
@@ -308,7 +308,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
     if (!emptied) return;
     setQ('');
     setChoice('all');
-    setGroupFilter(null);
+    setGroupFilters([]);
   }
 
   const asked = asking ? removeQuestion(list, selected) : null;
@@ -388,8 +388,8 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                 <GroupChips
                   groups={groups}
                   list={list}
-                  filter={groupFilter}
-                  onFilter={(next) => changeList(() => setGroupFilter(next))}
+                  filter={groupFilters}
+                  onFilter={(next) => changeList(() => setGroupFilters(next))}
                 />
                 {looking && (
                   <div className="gs-shown">
@@ -400,7 +400,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
                         changeList(() => {
                           setQ('');
                           setChoice('all');
-                          setGroupFilter(null);
+                          setGroupFilters([]);
                         })
                       }
                     />
@@ -524,7 +524,7 @@ function ManyPage({ event, start, tell }: { event: SampleEvent; start: ManyStart
 
                   setGroups(after.groups);
                   setList(after.list);
-                  if (groupFilter === id) setGroupFilter(null);
+                  setGroupFilters((was) => was.filter((one) => one !== id));
                 }}
                 onDone={() => {
                   setGrouping(false);
