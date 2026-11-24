@@ -78,10 +78,10 @@ export type Method =
   | { kind: 'paypal' | 'apple_pay' | 'google_pay' }
   | { kind: 'other' };
 
-const BRANDS: Readonly<Record<string, string>> = {
-  visa: 'Visa',
-  mastercard: 'Mastercard',
-  amex: 'American Express',
+const BRANDS: Readonly<Record<string, { name: string; mark: string }>> = {
+  visa: { name: 'Visa', mark: 'VISA' },
+  mastercard: { name: 'Mastercard', mark: 'MC' },
+  amex: { name: 'American Express', mark: 'AMEX' },
 };
 
 const WALLETS: Readonly<Record<'paypal' | 'apple_pay' | 'google_pay', string>> = {
@@ -98,16 +98,19 @@ export function expiry(month: number, year: number): string {
 export function methodLine(method: Method): string | null {
   if (method.kind === 'other') return null;
   if (method.kind !== 'card') return WALLETS[method.kind];
-  const brand = BRANDS[method.brand];
+  const brand = BRANDS[method.brand]?.name;
 
   return `${brand ?? 'Card'} ending ${method.last4} · Expires ${expiry(method.month, method.year)}`;
 }
 
-export function methodShape(method: Method): 'brand' | 'card' | 'wallet' | null {
-  if (method.kind === 'other') return null;
-  if (method.kind !== 'card') return 'wallet';
+export type MethodShape = { kind: 'brand'; mark: string } | { kind: 'card' } | { kind: 'wallet' };
 
-  return BRANDS[method.brand] == null ? 'card' : 'brand';
+export function methodShape(method: Method): MethodShape | null {
+  if (method.kind === 'other') return null;
+  if (method.kind !== 'card') return { kind: 'wallet' };
+  const brand = BRANDS[method.brand];
+
+  return brand == null ? { kind: 'card' } : { kind: 'brand', mark: brand.mark };
 }
 
 export const SAMPLE_CARD = {

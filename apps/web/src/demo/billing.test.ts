@@ -9,6 +9,7 @@ import {
   buyingLine,
   expiry,
   methodLine,
+  methodShape,
   money,
   slowIn,
   waitLook,
@@ -45,6 +46,16 @@ describe('Plan and billing checkout rules (sc-3933)', () => {
     expect(methodLine({ kind: 'apple_pay' })).toBe('Apple Pay');
     expect(methodLine({ kind: 'google_pay' })).toBe('Google Pay');
     expect(methodLine({ kind: 'other' })).toBeNull();
+  });
+
+  it('draws the mark of the brand the line names', () => {
+    const card = { kind: 'card', last4: '4242', month: 8, year: 2028 } as const;
+    expect(methodShape({ ...card, brand: 'visa' })).toEqual({ kind: 'brand', mark: 'VISA' });
+    expect(methodShape({ ...card, brand: 'mastercard' })).toEqual({ kind: 'brand', mark: 'MC' });
+    expect(methodShape({ ...card, brand: 'amex' })).toEqual({ kind: 'brand', mark: 'AMEX' });
+    expect(methodShape({ ...card, brand: 'unknown' })).toEqual({ kind: 'card' });
+    expect(methodShape({ kind: 'paypal' })).toEqual({ kind: 'wallet' });
+    expect(methodShape({ kind: 'other' })).toBeNull();
   });
 
   it('writes the expiry as two-digit month and four-digit year in every language', () => {

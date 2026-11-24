@@ -69,6 +69,22 @@ interface Start {
 
 const FIRST: Pack = PACKS[0] as Pack;
 
+/** What only the tab that opened a checkout shows, which a role that cannot open one never has. */
+function startFor(state: BillingState, manages: boolean, now: number): Start {
+  const start = startOf(state, now);
+  if (manages) return start;
+
+  return {
+    ...start,
+    packsOpen: false,
+    hosted: null,
+    waits: [],
+    notAdded: false,
+    plan: start.plan === 'confirming' ? 'free' : start.plan,
+    planPaidAt: null,
+  };
+}
+
 function startOf(state: BillingState, now: number): Start {
   const waiting = (ago: number, id = 1, credits = FIRST.credits): Wait => ({
     id,
@@ -171,7 +187,7 @@ function BillingPage({
   tell: Tell;
 }) {
   const locale = useMemo(() => formattingLocale('en', navigator.language), []);
-  const [start] = useState(() => startOf(state, Date.now()));
+  const [start] = useState(() => startFor(state, manages, Date.now()));
   const [balance, setBalance] = useState(start.balance);
   const [ledger, setLedger] = useState(start.ledger);
   const [packsOpen, setPacksOpen] = useState(start.packsOpen);
@@ -188,6 +204,7 @@ function BillingPage({
   const [now, setNow] = useState(() => Date.now());
   const [dropped, setDropped] = useState<string | null>(null);
   const nextId = useRef(3);
+  const live = useRef({ waits, balance });
   const addCredits = useRef<HTMLButtonElement>(null);
   const packButtons = useRef<(HTMLButtonElement | null)[]>([]);
   const update = useRef<HTMLButtonElement>(null);
@@ -209,6 +226,10 @@ function BillingPage({
   }, [waits, planWaiting, planPaidAt, now]);
 
   useEffect(() => {
+    live.current = { waits, balance };
+  });
+
+  useEffect(() => {
     if (!refreshing) return;
     const timer = setTimeout(() => setRefreshing(false), REFRESH_MS);
 
@@ -218,13 +239,20 @@ function BillingPage({
   const focusLater = (target: () => HTMLElement | null | undefined) =>
     requestAnimationFrame(() => target()?.focus());
 
-  const land = (wait: Wait) => {
-    const next = balance + wait.credits;
-    setWaits((all) => all.filter((one) => one.id !== wait.id));
+  const land = (landing: readonly Wait[]) => {
+    const last = landing.at(-1);
+    if (last == null) return;
+    const ids = new Set(landing.map((wait) => wait.id));
+    const credits = landing.reduce((sum, wait) => sum + wait.credits, 0);
+    const next = live.current.balance + credits;
+    live.current = { waits: live.current.waits.filter((one) => !ids.has(one.id)), balance: next };
+    setWaits((all) => all.filter((one) => !ids.has(one.id)));
     setBalance(next);
-    setLedger((all) => withBought(all, boughtEntry(wait.id, wait.credits)));
-    setDropped(`bought-${wait.id}`);
-    setSaid(boughtSaid(wait.credits, next, locale));
+    setLedger((all) =>
+      landing.reduce((rows, wait) => withBought(rows, boughtEntry(wait.id, wait.credits)), all),
+    );
+    setDropped(`bought-${last.id}`);
+    setSaid(boughtSaid(credits, next, locale));
   };
 
   const pay = (pack: Pack) => {
@@ -280,8 +308,10 @@ function BillingPage({
   const backOnline = () => {
     setOffline(false);
     setRefreshing(true);
-    const first = waits[0];
-    if (first != null) setTimeout(() => land(first), REFRESH_MS);
+    setTimeout(() => {
+      const at = Date.now();
+      land(live.current.waits.filter((wait) => waitLook(wait.paidAt, at) === 'waiting'));
+    }, REFRESH_MS);
   };
 
   const twoMinutes = () => {
@@ -331,7 +361,7 @@ function BillingPage({
             <WaitInset
               look={waitLook(planPaidAt, time)}
               words={W.confirming}
-              onLand={manages ? planLands : undefined}
+              onLand={offline ? undefined : planLands}
               landLabel="Webhook: the plan is paid"
             />
           )}
@@ -355,7 +385,7 @@ function BillingPage({
               key={wait.id}
               look={waitLook(wait.paidAt, time)}
               words={buyingLine(wait.credits, locale)}
-              onLand={() => land(wait)}
+              onLand={offline ? undefined : () => land([wait])}
               landLabel={`Webhook: ${count(wait.credits, locale)} credits paid`}
             />
           ))}
@@ -516,11 +546,11 @@ function MethodLine({ method }: { method: Method }) {
 
   return (
     <p className="bl-method">
-      <span className={`bl-method-shape is-${shape}`} aria-hidden="true">
-        {shape === 'brand' ? (
-          'VISA'
+      <span className={`bl-method-shape is-${shape.kind}`} aria-hidden="true">
+        {shape.kind === 'brand' ? (
+          shape.mark
         ) : (
-          <Glyph name={shape === 'wallet' ? 'wallet' : 'cards'} size={18} weight={2} />
+          <Glyph name={shape.kind === 'wallet' ? 'wallet' : 'cards'} size={18} weight={2} />
         )}
       </span>
       {line}
