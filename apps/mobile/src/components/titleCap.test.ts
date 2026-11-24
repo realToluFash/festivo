@@ -19,6 +19,7 @@ const event = readFileSync(join('src', 'components', 'EventScreen.tsx'), 'utf8')
 const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf8');
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+const calendar = readFileSync(join('src', 'components', 'CalendarScreen.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
@@ -166,5 +167,14 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
 
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {
     expect(rows).toMatch(/const wraps = wrapsAlways \|\| atAccessibilitySizes\(fontScale\);/u);
+  });
+});
+
+describe('an iPad’s Calendar title keeps its row from AX1 (sc-79265)', () => {
+  it('passes Refreshing… and Subscribe under the title on an iPad at AX, beside it otherwise', () => {
+    expect(calendar).toMatch(/const under = useAccessibilitySizes\(\) && kind !== 'phone';/u);
+    expect(calendar).toMatch(
+      /besideTitle=\{under \? undefined : ends\}\s+underTitle=\{under \? ends : undefined\}/u,
+    );
   });
 });
