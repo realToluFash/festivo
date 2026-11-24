@@ -31,3 +31,18 @@ describe('remeasureAfter', () => {
     expect(remeasureAfter(UPRIGHT, { ...UPRIGHT }, true, SETTLED)).toBeNull();
   });
 });
+
+describe('useAnchorFollowsTurn', () => {
+  it('is never called by a screen that draws AppFrame, above the BodyTop the band moves', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const callers = readdirSync(import.meta.dirname)
+      .filter((file) => file.endsWith('.tsx'))
+      .map((file) => [file, readFileSync(`${import.meta.dirname}/${file}`, 'utf8')] as const)
+      .filter(([, text]) => text.includes('useAnchorFollowsTurn('));
+
+    expect(callers.map(([file]) => file)).toContain('EventsSearch.tsx');
+    expect(callers.filter(([, text]) => text.includes('<AppFrame')).map(([file]) => file)).toEqual(
+      [],
+    );
+  });
+});

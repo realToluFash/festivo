@@ -341,7 +341,7 @@ export function EventsList({
         <>
           <EventsFilterMenu
             at={menuAt}
-            onClose={() => setMenuAt(null)}
+            onAt={setMenuAt}
             opener={filterRef}
             filters={filters}
             onFilters={setFilters}
