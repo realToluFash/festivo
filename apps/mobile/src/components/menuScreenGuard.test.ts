@@ -96,12 +96,17 @@ describe('the poll while the Menu is open (sc-3914)', () => {
     );
   });
 
-  it('ends a pull through a timer from when it started, so a fast failure does not eat the next press', () => {
-    const landed = screen.split('const landed = () => {')[1]?.split('\n    };')[0] ?? '';
+  it('holds a pull and what it brought until a timer from when it started, so a fast failure does not eat the next press', () => {
+    const read =
+      screen.split('const read = useCallback(() => {')[1]?.split('\n  }, [event.id]);')[0] ?? '';
+    const landed =
+      read.split('const landed = (show: () => void) => {')[1]?.split('\n    };')[0] ?? '';
     expect(landed).toMatch(
-      /pullEnds\.current = setTimeout\(\n\s*\(\) => setPulling\(false\),\n\s*Math\.max\(0, pulledAt\.current \+ PULL_SHOWN_MS - Date\.now\(\)\),\n\s*\);/u,
+      /pullEnds\.current = setTimeout\(\n\s*\(\) => \{\n\s*if \(mine === asked\.current\) show\(\);\n\s*setPulling\(false\);\n\s*\},\n\s*Math\.max\(0, pulledAt\.current \+ PULL_SHOWN_MS - Date\.now\(\)\),\n\s*\);/u,
     );
-    expect(landed.replace(/\(\) => setPulling\(false\)/u, '')).not.toMatch(/setPulling\(false\)/u);
+    const answers = read.split('Promise.all(')[1] ?? '';
+    expect(answers.match(/landed\(\(\) =>\s*setLoad\(/gu)).toHaveLength(2);
+    expect(answers.replace(/landed\(\(\) =>\s*setLoad\(/gu, '')).not.toMatch(/setLoad\(/u);
   });
 
   it('drops a read that started before a save', () => {
