@@ -17,12 +17,14 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Html;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The head a guest's link answers a chat app with (sc-89272), as the web's nginx asks for it. */
 final class LinkCardTest extends ApiTestCase
@@ -104,16 +106,16 @@ final class LinkCardTest extends ApiTestCase
         yield 'pt' => ['pt', 'Tunde e Kemi'];
     }
 
-    /** Until the translation ticket merges, the words are English in every catalogue; the hosts are joined in the guest's language. */
     #[Test]
     #[DataProvider('languages')]
     public function theLineIsInTheGuestsLanguageWhateverTheFetchAsks(?string $language, string $hosts): void
     {
         $this->hosts(['Tunde', 'Kemi']);
         $token = $this->token($this->add(['language' => $language]));
+        $line = self::service(TranslatorInterface::class)->trans('guest_link_card.line', ['hosts' => $hosts], 'messages', $language ?? 'en');
 
         foreach ([['HTTP_ACCEPT_LANGUAGE' => 'en'], ['HTTP_ACCEPT_LANGUAGE' => 'fr'], []] as $server) {
-            self::assertStringContainsString('<meta property="og:description" content="Your invitation from ' . $hosts . '">', $this->card($token, $server));
+            self::assertStringContainsString('<meta property="og:description" content="' . Html\encode_special_characters($line) . '">', $this->card($token, $server));
         }
     }
 
