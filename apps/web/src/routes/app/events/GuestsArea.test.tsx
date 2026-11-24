@@ -3666,6 +3666,134 @@ describe('Groups (sc-3775)', () => {
     ).toEqual(['Work', 'No group']);
   });
 
+  describe('with Dietary notes, Export, a deleted group and a selection (sc-90684)', () => {
+    const DIET = { ...NONE, diet: ['halal'] };
+    const TOBI_DIET = { ...TOBI, needs: DIET };
+    const DAPO_SEEN = guest('g_5', 'Dapo Ade', { reply: 'coming', group: WORK });
+    const BOLA_SEEN = guest('g_6', 'Bola Ade', { reply: 'coming', group: BRIDE });
+    const DAPO = { ...DAPO_SEEN, needs: NONE };
+    const BOLA = { ...BOLA_SEEN, needs: DIET };
+    const LIST = [TOBI_DIET, DAPO, BOLA, AMAKA];
+
+    function pressed(): string[] {
+      return screen.getAllByRole('button', { pressed: true }).map((one) => one.textContent ?? '');
+    }
+
+    it('opens an owner on Dietary notes and Work from the address, both narrowing the list', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped(LIST)) },
+        OWNER_PERMISSIONS,
+        '?dietary=1&group=gr_work',
+      );
+      await screen.findByText('Tobi Bello');
+
+      expect(pressed()).toEqual(['Dietary notes', 'Work']);
+      expect(rows()).toEqual([expect.stringMatching(/^Tobi Bello/u)]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dietary notes' }));
+      expect(shownRouter!.state.location.search).toBe('?group=gr_work');
+      expect(rows()).toEqual([
+        expect.stringMatching(/^Dapo Ade/u),
+        expect.stringMatching(/^Tobi Bello/u),
+      ]);
+    });
+
+    it('ignores Dietary notes in the address for somebody without guests.manage', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped([TOBI, DAPO_SEEN, BOLA_SEEN, AMAKA])) },
+        OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+        '?dietary=1',
+      );
+      await screen.findByRole('link', { name: /^Dapo Ade/u });
+
+      expect(screen.queryByRole('button', { name: 'Dietary notes' })).toBeNull();
+      expect(screen.getByRole('link', { name: /^Chief Amaka Obi/u })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Show all 3' })).toBeDefined();
+    });
+
+    it('exports only the guests two group chips and Dietary notes leave, naming every chip', async () => {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      signedIn();
+      const sent = await onGuests(
+        {
+          'GET /api/events/ev_1/guests': () => json(grouped(LIST)),
+          'POST /api/events/ev_1/guests/export': () =>
+            new Response(new Uint8Array([80, 75]), {
+              headers: { 'Content-Type': 'text/csv; charset=UTF-8' },
+            }),
+        },
+        OWNER_PERMISSIONS,
+        '?dietary=1&group=gr_work&group=gr_bride',
+      );
+      await screen.findByText('Tobi Bello');
+      expect(rows()).toEqual([
+        expect.stringMatching(/^Bola Ade/u),
+        expect.stringMatching(/^Tobi Bello/u),
+      ]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Export guests' });
+      expect(within(dialog).getByRole('radio', { name: /^This view \(2 people\)/u })).toBeDefined();
+      expect(within(dialog).getByText(/^Filter: .+ · Dietary notes · .+$/u).textContent).toMatch(
+        /· (Bride’s side · Work|Work · Bride’s side)$/u,
+      );
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+      await waitFor(() =>
+        expect(
+          sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body,
+        ).toMatchObject({ scope: 'view', people: ['g_6', 'g_3'] }),
+      );
+    });
+
+    it('lets a deleted group’s chip go and keeps the others on', async () => {
+      signedIn();
+      await onGuests(
+        {
+          'GET /api/events/ev_1/guests': () => json(grouped(LIST)),
+          'DELETE /api/events/ev_1/guest-groups/gr_work': () => new Response(null, { status: 204 }),
+        },
+        OWNER_PERMISSIONS,
+        '?group=gr_work&group=gr_bride',
+      );
+      await screen.findByText('Tobi Bello');
+      fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+      const column = await screen.findByRole('region', { name: 'Groups' });
+      fireEvent.click(within(column).getByRole('button', { name: 'Delete Work' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Delete Work?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete group' }));
+      expect(await within(column).findByText('Work deleted.')).toBeDefined();
+
+      await waitFor(() => expect(shownRouter!.state.location.search).toBe('?group=gr_bride'));
+      expect(pressed()).toContain('Bride’s side');
+    });
+
+    it('clears the selection when a second chip is pressed, as any filter change does', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped(LIST)) },
+        OWNER_PERMISSIONS,
+        '?group=gr_work',
+      );
+      await screen.findByText('Tobi Bello');
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select Tobi Bello' }));
+      expect(screen.getByRole('region', { name: 'Selected guests' })).toBeDefined();
+
+      fireEvent.click(
+        within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+          name: 'Bride’s side',
+        }),
+      );
+
+      expect(await screen.findByText('Selection cleared.')).toBeDefined();
+      expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    });
+  });
+
   it('names a 60-character group whole in its chip and its guest’s tag, wrapping, never cut short (sc-51198)', async () => {
     const LONG = {
       id: 'gr_long',
