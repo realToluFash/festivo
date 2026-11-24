@@ -522,5 +522,5 @@
     "menu.event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado.",
     "billing.plan_sold_by_contract": "Este plano é vendido por contrato, não através do pagamento online. Contacte a Soirely para o contratar.",
     "billing.plan_not_priced": "Este plano não tem preço na sua moeda de faturação.",
-    "billing.nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até que um plano seja pago."
+    "billing.nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até um plano ser pago."
 }
