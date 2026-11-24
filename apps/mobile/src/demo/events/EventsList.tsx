@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   FIGURE_OPENS,
@@ -408,7 +409,7 @@ export function EventsList({
               <EventCard
                 event={card}
                 now={now}
-                locale={locale}
+                locale={dateLocale()}
                 wide={wide}
                 onOpen={() => openEvent(card.id)}
                 takes={() => true}

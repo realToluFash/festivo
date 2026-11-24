@@ -15,6 +15,7 @@ import {
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -516,7 +517,7 @@ export function EventScreen({
     <EventCard
       event={shown}
       now={now}
-      locale={locale}
+      locale={dateLocale()}
       wide={shell.layout !== 'phone'}
       takes={(action) => takesCardStep(member, action)}
       onStep={onStep}
