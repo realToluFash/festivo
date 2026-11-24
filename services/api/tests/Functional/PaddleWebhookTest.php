@@ -15,6 +15,7 @@ use App\Entity\Role;
 use App\Entity\Subscription;
 use App\Entity\User;
 use App\Enum\CataloguePart;
+use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\Plan;
@@ -215,7 +216,15 @@ final class PaddleWebhookTest extends ApiTestCase
         $terms = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19')?->getTerms() ?? self::fail('The first version is missing.');
         $terms['enterprise'] = ['sales' => 'self_serve'] + Type\dict(Type\string(), Type\mixed())->coerce($terms['enterprise']);
         self::service(CatalogueKeeper::class)->publish(CataloguePart::Plans, 'self-serve enterprise', $terms, 'Enterprise sold through the checkout, for this test', 'Ada at Soirely');
-        $sent = $this->paddle(['data' => []], ['data' => ['id' => 'ctm_new']], ['data' => ['id' => 'txn_checkout']], ['data' => ['id' => 'txn_again']]);
+        $sent = $this->paddle(
+            ['data' => []],
+            ['data' => ['id' => 'ctm_new']],
+            ['data' => [['id' => 'add_fr', 'country_code' => 'FR']]],
+            ['data' => ['id' => 'add_gb']],
+            ['data' => ['id' => 'txn_checkout']],
+            ['data' => [['id' => 'add_gb', 'country_code' => 'GB']]],
+            ['data' => ['id' => 'txn_again']],
+        );
         $path = '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing';
 
         $this->signIn($this->owner);
@@ -226,6 +235,7 @@ final class PaddleWebhookTest extends ApiTestCase
         $currency = $this->subscription()->getBillingAccount()->getCurrency();
         $yearly = [
             'customer_id' => 'ctm_new',
+            'address_id' => 'add_gb',
             'currency_code' => $currency,
             'custom_data' => ['organisation_id' => $this->organisation->getId()->toRfc4122(), 'plan' => 'enterprise'],
             'items' => [[
@@ -238,16 +248,23 @@ final class PaddleWebhookTest extends ApiTestCase
                 ],
             ]],
         ];
-        self::assertSame(['GET /customers?email=folake%40ire.events', 'POST /customers', 'POST /transactions'], Vec\map($sent->value, static fn (array $call): string => $call[0]));
-        self::assertSame(['email' => 'folake@ire.events'], $sent->value[1][1]);
-        self::assertSame($yearly, $sent->value[2][1]);
+        self::assertSame(
+            ['GET /customers?email=folake%40ire.events', 'POST /customers', 'GET /customers/ctm_new/addresses?status=active', 'POST /customers/ctm_new/addresses', 'POST /transactions'],
+            Vec\map($sent->value, static fn (array $call): string => $call[0]),
+        );
+        self::assertSame([['email' => 'folake@ire.events'], ['country_code' => 'GB']], [$sent->value[1][1], $sent->value[3][1]]);
+        self::assertSame($yearly, $sent->value[4][1]);
 
         $this->client->request('POST', $path . '/checkout', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['plan' => 'enterprise', 'interval' => 'year', 'price' => 1, 'amount' => 1, 'currency' => 'USD']));
-        self::assertSame([201, 'POST /transactions', $yearly], [$this->client->getResponse()->getStatusCode(), $sent->value[3][0] ?? null, $sent->value[3][1] ?? null]);
+        self::assertSame(
+            [201, ['GET /customers/ctm_new/addresses?status=active', 'POST /transactions'], $yearly],
+            [$this->client->getResponse()->getStatusCode(), Vec\map(Vec\drop($sent->value, 5), static fn (array $call): string => $call[0]), $sent->value[6][1] ?? null],
+        );
 
         self::assertSame(SubscriptionSource::Manual, $this->subscription()->getSource());
         self::assertSame(Plan::Free, $this->subscription()->getPlan());
         self::assertSame(0, self::connection()->fetchOne('SELECT count(*) FROM subscription_changes'));
+
     }
 
     #[Test]
@@ -329,9 +346,9 @@ final class PaddleWebhookTest extends ApiTestCase
 
         $this->signIn($this->owner);
         $this->client->jsonRequest('POST', $path . '/checkout', ['plan' => 'enterprise', 'interval' => 'month']);
-        self::assertResponseStatusCodeSame(409, 'Enterprise is sold by contract');
+        self::assertSame([409, ErrorCode::PlanSoldByContract->type()], $this->refusal());
         $this->client->jsonRequest('POST', $path . '/payment-method');
-        self::assertResponseStatusCodeSame(409, 'nothing is paid through the provider yet');
+        self::assertSame([409, ErrorCode::NothingPaidThroughProvider->type()], $this->refusal());
     }
 
     /** @return array<string, mixed> */
@@ -454,6 +471,14 @@ final class PaddleWebhookTest extends ApiTestCase
         self::assertSame(0, $command(new SymfonyStyle(new ArrayInput([]), new BufferedOutput())));
 
         return Vec\map($logger->records, static fn (array $record): array => [$record['level'], $record['message']]);
+    }
+
+    /** @return array{0: int, 1: ?string} the status and the problem's type */
+    private function refusal(): array
+    {
+        $response = $this->client->getResponse();
+
+        return [$response->getStatusCode(), Json\typed((string) $response->getContent(), Type\shape(['type' => Type\nullable(Type\string())], true))['type']];
     }
 
     private function subscription(): Subscription

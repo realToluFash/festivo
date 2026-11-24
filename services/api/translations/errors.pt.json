@@ -155,5 +155,8 @@
     "menu_is_default": "Isto faz parte do prato predefinido do serviço. Escolha primeiro outro prato predefinido.",
     "menu_default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar.",
     "menu_change_asks": "Esta alteração pede aos convidados que escolham de novo. Confirme para continuar.",
-    "menu_event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado."
+    "menu_event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado.",
+    "plan_sold_by_contract": "Este plano é vendido por contrato, não através do pagamento online. Contacte a Soirely para o contratar.",
+    "plan_not_priced": "Este plano não tem preço na sua moeda de faturação.",
+    "nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até que um plano seja pago."
 }

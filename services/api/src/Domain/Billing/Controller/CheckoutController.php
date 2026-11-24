@@ -45,8 +45,12 @@ final readonly class CheckoutController
         $terms = $this->catalogue->inForce()->plan($body['plan']);
         $price = $terms->price($subscription->getBillingAccount()->getCurrency());
 
-        if (PlanSales::SelfServe !== $terms->sales || null === $price) {
-            throw new ApiException(ErrorCode::Conflict);
+        if (PlanSales::SelfServe !== $terms->sales) {
+            throw new ApiException(ErrorCode::PlanSoldByContract, 'billing.plan_sold_by_contract');
+        }
+
+        if (null === $price) {
+            throw new ApiException(ErrorCode::PlanNotPriced, 'billing.plan_not_priced');
         }
 
         return new JsonResponse(
@@ -62,7 +66,7 @@ final readonly class CheckoutController
         $subscription = $this->subscriptionRepository->findCurrentOf(Uuid::fromString($organisationId));
 
         if (null === $subscription->getExternalRef()) {
-            throw new ApiException(ErrorCode::Conflict);
+            throw new ApiException(ErrorCode::NothingPaidThroughProvider, 'billing.nothing_paid_through_provider');
         }
 
         return new JsonResponse(

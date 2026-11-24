@@ -36,9 +36,11 @@ final readonly class PaddleApi implements PaymentProviderInterface
     public function checkout(Subscription $subscription, Plan $plan, Price $price, BillingInterval $interval): string
     {
         $account = $subscription->getBillingAccount();
+        $customer = $this->customer($subscription);
 
         $transaction = $this->call('POST', '/transactions', [
-            'customer_id' => $this->customer($subscription),
+            'customer_id' => $customer,
+            'address_id' => $this->address($customer, $account->getCountryCode()),
             'currency_code' => $account->getCurrency(),
             'custom_data' => ['organisation_id' => $subscription->getOrganisation()->getId()->toRfc4122(), 'plan' => $plan->value],
             'items' => [[
@@ -118,6 +120,21 @@ final readonly class PaddleApi implements PaymentProviderInterface
         $this->entityManager->flush();
 
         return $id;
+    }
+
+    /** Tax is worked out from the country Soirely holds for the account, not one the buyer types into the checkout. */
+    private function address(string $customer, string $countryCode): string
+    {
+        $path = '/customers/' . \rawurlencode($customer) . '/addresses';
+        $addresses = Type\vec(Type\shape(['id' => Type\string(), 'country_code' => Type\string()], true))->coerce($this->call('GET', $path . '?status=active'));
+
+        foreach ($addresses as $address) {
+            if ($countryCode === $address['country_code']) {
+                return $address['id'];
+            }
+        }
+
+        return Type\shape(['id' => Type\string()], true)->coerce($this->call('POST', $path, ['country_code' => $countryCode]))['id'];
     }
 
     /** @param ?array<string, mixed> $body */
