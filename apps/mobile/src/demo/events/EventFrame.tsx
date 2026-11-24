@@ -43,6 +43,7 @@ import {
 } from '../../components/TodaySidebar.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { AREA_GLYPH } from '../../components/areaGlyph.ts';
+import { stripRest } from '../../components/stripRest.ts';
 import { demoShell } from '../demoShell.ts';
 import { Bell, Landscape } from '../settings/Frame.tsx';
 import { EventThumb } from '../../components/EventThumb.tsx';
@@ -561,10 +562,7 @@ function AreaPills({
     const end = ends.current[one];
     if (end != null && shown.current > 0 && content.current > 0)
       strip.current?.scrollTo({
-        x: Math.max(
-          0,
-          Math.min(content.current - shown.current, end + tokens.space3xl - shown.current),
-        ),
+        x: stripRest(end, shown.current, content.current),
         animated: false,
       });
   };

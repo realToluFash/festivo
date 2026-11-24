@@ -129,6 +129,7 @@ import {
 import { ManagedBanner } from './ManagedBanner.tsx';
 import { OrgDropDown } from './OrgDropDown.tsx';
 import { AREA_GLYPH } from './areaGlyph.ts';
+import { stripRest } from './stripRest.ts';
 import { ReadOut } from './ReadOut.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { OutsideEventsGroup, YourOrganisationsGroup } from './OutsideRows.tsx';
@@ -1902,15 +1903,24 @@ const MORE_FOOT = 116;
 /** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
 function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Record<string, number>>({});
+  const ends = useRef<Record<string, number>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
+  const byHand = useRef(false);
   const chosen = entries.find((entry) => entry.on)?.key;
   const reveal = (key: string | undefined) => {
-    const x = key == null ? undefined : starts.current[key];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = key == null ? undefined : ends.current[key];
+    if (end != null && shown.current > 0 && content.current > 0 && !byHand.current)
+      strip.current?.scrollTo({
+        x: stripRest(end, shown.current, content.current),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, as the demo's AreaPills keeps it.
-  useEffect(() => reveal(chosen), [chosen]);
+  // A strip scrolled by hand stays there, even when a pill's size changes later, until another area is chosen.
+  useEffect(() => {
+    byHand.current = false;
+    reveal(chosen);
+  }, [chosen]);
 
   const pills = entries.map((entry) => (
     <Pressable
@@ -1918,7 +1928,7 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       ref={entry.opener}
       style={[styles.pill, entry.on && styles.pillOn]}
       onLayout={(event) => {
-        starts.current[entry.key] = event.nativeEvent.layout.x;
+        ends.current[entry.key] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
         if (entry.on) reveal(entry.key);
       }}
       onPress={entry.onPress}
@@ -1945,6 +1955,17 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       style={styles.pillsBar}
       contentContainerStyle={styles.pillsInEvent}
       accessibilityRole="tablist"
+      onLayout={(event) => {
+        shown.current = event.nativeEvent.layout.width;
+        reveal(chosen);
+      }}
+      onContentSizeChange={(width) => {
+        content.current = width;
+        reveal(chosen);
+      }}
+      onScrollBeginDrag={() => {
+        byHand.current = true;
+      }}
     >
       {pills}
     </ScrollView>
