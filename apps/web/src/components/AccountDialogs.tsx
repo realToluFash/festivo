@@ -616,6 +616,9 @@ export function ProveDialog({
       )}
       {stepTwo != null && <Note strong>{t('waysCard.signedInWith', { provider: stepTwo })}</Note>}
       {showsCode && held?.passkeys === true && !canUsePasskeys() && <NoBrowser />}
+      {showsCode && held?.passkeys === true && (
+        <Note strong>{recovery ? t('passkey.recoveryLead') : t('passkey.codeLead')}</Note>
+      )}
       {(passwordStillAsked || showsCode) && (
         <div className="desk-fields">
           {passwordStillAsked && (

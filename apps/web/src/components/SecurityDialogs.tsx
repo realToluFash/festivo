@@ -660,7 +660,7 @@ export function FactorDialog({
       onConfirm={() => void go()}
     >
       {held.passkeys && !browserCan && <NoBrowser />}
-      <Note>{recovery ? t('passkey.recoveryLead') : t('twoFactorCard.offBody')}</Note>
+      <Note strong>{recovery ? t('passkey.recoveryLead') : t('passkey.codeLead')}</Note>
       <div className="desk-fields security-fields">
         <Field
           label={recovery ? t('passkey.recoveryLabel') : t('waysCard.code')}
