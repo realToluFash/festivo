@@ -94,7 +94,7 @@ export function AddBox({
       testID="people.add.open"
     >
       <Glyph name="plus" size={19} ink={tokens.colorAccent} weight={2.4} />
-      <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
+      <Text size={16} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
         {label}
       </Text>
     </Pressable>
@@ -848,7 +848,8 @@ const styles = StyleSheet.create({
   notice: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   addBox: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
