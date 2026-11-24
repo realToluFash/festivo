@@ -1,5 +1,12 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
@@ -10,7 +17,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
+import { addressRuns, breakableEmail, domainSplit, headingAddress } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -29,7 +36,6 @@ import {
   SectionHead,
   TextAction,
 } from './Summary.tsx';
-import { NameText } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
@@ -156,6 +162,42 @@ export function DoneAction({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/** The sheet's heading. Its domain is laid out whole first; when no line holds it, it breaks before its dots instead, until the name, the width or the text size changes (sc-70353). */
+function AddressHeading({ name }: { name: string }) {
+  const [wideFor, setWideFor] = useState<string | null>(null);
+  const width = useRef(0);
+  const { fontScale } = useWindowDimensions();
+  const key = `${name}:${fontScale}`;
+  const wide = wideFor === key;
+
+  return (
+    <Text
+      size={18}
+      weight="bold"
+      accessibilityRole="header"
+      accessibilityLabel={name}
+      onLayout={(event) => {
+        const now = event.nativeEvent.layout.width;
+        if (now !== width.current && width.current !== 0) setWideFor(null);
+        width.current = now;
+      }}
+      onTextLayout={(event) => {
+        if (
+          !wide &&
+          domainSplit(
+            name,
+            event.nativeEvent.lines.map((line) => line.text),
+          )
+        ) {
+          setWideFor(key);
+        }
+      }}
+    >
+      {headingAddress(name, wide) ?? name}
+    </Text>
   );
 }
 
@@ -290,7 +332,7 @@ export function RoleSheet<R extends string>({
       <View style={styles.person}>
         {person.face}
         <View style={styles.grow}>
-          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
+          <AddressHeading name={person.name} />
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
           </Text>
