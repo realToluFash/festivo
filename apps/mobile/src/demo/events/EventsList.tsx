@@ -657,10 +657,16 @@ function GuestTile({
 }
 
 /** The product's band (sc-22586) over a sample Stale, its Try again clearing the demo's state and reaching no server. */
-export function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  at: clock = OFFLINE_AS_OF,
+}: {
+  onRetry: () => void;
+  at?: string;
+}) {
   const [at] = useState(() => {
     const day = new Date();
-    day.setHours(Number(OFFLINE_AS_OF.slice(0, 2)), Number(OFFLINE_AS_OF.slice(3)), 0, 0);
+    day.setHours(Number(clock.slice(0, 2)), Number(clock.slice(3)), 0, 0);
 
     return day;
   });

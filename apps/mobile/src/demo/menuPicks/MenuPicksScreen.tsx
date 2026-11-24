@@ -23,6 +23,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { Confirmed, DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { OfflineBand } from '../events/EventsList.tsx';
 import {
   type Access,
   type ChangedCourse,
@@ -102,6 +103,7 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
   const [world, setWorld] = useState<MenuWorld | null>(settled.world);
   const [system, setSystem] = useState<System | null>(start.system);
   const [download, setDownload] = useState<Download>(start.download);
+  const [offline, setOffline] = useState(start.system === 'stale' || start.download === 'failed');
   const [opened, setOpened] = useState<Opened | null>(settled.opened);
   const [who, setWho] = useState<WhoOpened | null>(settled.who);
   const [said, setSaid] = useState<string[]>(settled.said);
@@ -122,11 +124,17 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
   };
   const refresh = () => {
     setSystem('refreshing');
-    later(REFRESH_MS, () => setSystem(null));
+    later(REFRESH_MS, () => {
+      setSystem(null);
+      setOffline(false);
+    });
   };
   const downloadSheet = () => {
     setDownload('downloading');
-    later(DOWNLOAD_MS, () => setDownload('shared'));
+    later(DOWNLOAD_MS, () => {
+      setDownload('shared');
+      setOffline(false);
+    });
   };
   const open = (
     personId: string,
@@ -210,8 +218,19 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
     </DemoOnly>
   );
 
+  const band = offline && (
+    <OfflineBand
+      at={UPDATED_AT}
+      onRetry={() => {
+        setOffline(false);
+        if (system === 'stale') setSystem(null);
+      }}
+    />
+  );
+
   const scroll = (children: React.ReactNode) => (
     <View style={[styles.page, { paddingTop: insets.top }]}>
+      {band}
       <ScrollView
         contentContainerStyle={[
           styles.body,
