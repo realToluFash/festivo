@@ -1,7 +1,6 @@
 /* The guest's own page, measured as the web demo draws A · The cover card (apps/web/src/demo/guest.css, sc-31306). Scoped under .guest-page so none of it reaches the demo's same-named gp- classes. */
 
 .guest-page {
-  --coverAccent: var(--coverParty);
   --gpGut: 20px;
   --gpHead: 60px;
   --gpHeadPad: 0 10px 0 var(--gpGut);
