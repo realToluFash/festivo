@@ -1844,10 +1844,12 @@ function RowsFrom({
                 <span className="gs-lead">
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
-                <RowWords title={name} lines={[line]} />
-                {change == null && (
-                  <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
-                )}
+                <span className="gs-row-mid">
+                  <RowWords title={name} lines={[line]} />
+                  {change == null && (
+                    <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                  )}
+                </span>
               </RowLink>
             </li>
           );
@@ -1864,11 +1866,13 @@ function RowsFrom({
               <span className="gs-lead">
                 <ReplyMark reply={companion.state} />
               </span>
-              <RowWords title={name} lines={[line]} />
-              <NeedsTags
-                needs={companion.needs}
-                group={indent ? null : (guest.group?.name ?? null)}
-              />
+              <span className="gs-row-mid">
+                <RowWords title={name} lines={[line]} />
+                <NeedsTags
+                  needs={companion.needs}
+                  group={indent ? null : (guest.group?.name ?? null)}
+                />
+              </span>
             </RowLink>
           </li>
         );
