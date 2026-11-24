@@ -289,6 +289,7 @@ export function AppFrame({
   primary,
   underTitle,
   besideTitle,
+  bellUnder = false,
   besideBack,
   top,
   listUnderTabs = false,
@@ -303,6 +304,8 @@ export function AppFrame({
   underTitle?: ReactNode;
   /** At the end of the title's row, as Members' Refreshing… (sc-27046). */
   besideTitle?: ReactNode;
+  /** On its side, the bell under the title and what is under it, as the Calendar's at the accessibility sizes (sc-79265). */
+  bellUnder?: boolean;
   /** At the end of the header's back row, where it has one, as an event page's Refreshing… (sc-27046); or one that gives way to the pill, as Guests' (sc-71821). */
   besideBack?: BesideBackNode;
   /** Inside an event, its areas take the navigation's place. */
@@ -664,6 +667,7 @@ export function AppFrame({
     primary: standIn == null ? primary : undefined,
     underTitle: standIn == null ? underTitle : undefined,
     besideTitle: standIn == null ? besideTitle : undefined,
+    bellUnder,
     besideBack: standIn == null || besideBack === undefined ? besideBack : null,
     switched: ownTop ? switchedNotice : null,
     untitled,
@@ -915,6 +919,7 @@ interface FrameHeaderProps {
   primary: TopPrimaryProps | undefined;
   underTitle: ReactNode;
   besideTitle: ReactNode;
+  bellUnder: boolean;
   besideBack: BesideBackNode;
   entries: readonly NavEntry[];
   inEvent: boolean;
@@ -1040,6 +1045,7 @@ function ScreenTop({
   primary,
   underTitle,
   besideTitle,
+  bellUnder,
   besideBack,
   switched,
   untitled,
@@ -1099,6 +1105,7 @@ function ScreenTop({
           }
           bell={kind === 'tabletLandscape' ? <BellButton /> : <SearchAndBell />}
           beside={besideTitle}
+          bellUnder={bellUnder}
           primary={primary}
           under={under}
           untitled={untitled}
