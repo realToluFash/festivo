@@ -857,11 +857,11 @@ export function EventScreen({
   let page: ReactNode;
   if (at === 'staff' && messagesHere)
     page = (
-      <AreaPage area={at} event={shown} locale={locale}>
+      <AreaPage area={at} event={shown} locale={dateLocale()}>
         <StaffRoster state={staff ?? 'populated'} />
       </AreaPage>
     );
-  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
+  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;
   else
     page = (
       <OverviewColumns
@@ -1113,8 +1113,8 @@ function Details({
   onMaps: () => void;
   last?: ReactNode;
 }) {
-  const dates = datesRow(shown, locale);
-  const hosts = hostsRow(shown, locale);
+  const dates = datesRow(shown, dateLocale());
+  const hosts = hostsRow(shown, dateLocale());
   const locked = scheduleLocked(shown);
   const reply = replyByRow(replyBy, shown.timeZone, locale, now);
 
