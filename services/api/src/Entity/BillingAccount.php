@@ -39,6 +39,10 @@ class BillingAccount
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $creditBalance = 0;
 
+    /** Credits set aside by reservations not yet settled or released (sc-3929); what is free to reserve is the balance less this. */
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
+    private int $creditsHeld = 0;
+
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $providerCustomerRef = null;
 
@@ -103,6 +107,11 @@ class BillingAccount
     public function setCreditBalance(int $creditBalance): void
     {
         $this->creditBalance = $creditBalance;
+    }
+
+    public function getCreditsHeld(): int
+    {
+        return $this->creditsHeld;
     }
 
     public function getProviderCustomerRef(): ?string
