@@ -1410,7 +1410,9 @@
         if (button) control(button.dataset.control, button.dataset.controlRole || null);
       });
 
-      // A role's own fields; the machine's Settings shows the same in defaults, and its cap.
+      // A role's own fields; the machine's Settings shows the same in defaults, then its cap
+      // and its account.
+      const ACCOUNT = ['claudeConfigDir', 'Claude account'];
       const FIELDS = [
         ['model', 'Model'],
         ['effort', 'Effort'],
@@ -1431,16 +1433,31 @@
       function settingsFields(s) {
         const d = s.data;
         if (s.where !== 'defaults')
-          return FIELDS.map(([key, label]) => ({ key, label, ...d.roles[s.where][key] }));
-        return FIELDS.map(([key, label]) => ({ key, label, ...d.defaults[key] })).concat([
-          {
-            key: 'dailyBudgetUsd',
-            label: 'Daily budget, USD',
-            value: d.machine.dailyBudgetUsd,
-            in_force: d.machine.dailyBudgetUsd,
+          return FIELDS.concat(d.accounts ? [ACCOUNT] : []).map(([key, label]) => ({
+            key,
+            label,
+            ...d.roles[s.where][key],
+          }));
+        const own = [['dailyBudgetUsd', 'Daily budget, USD']].concat(d.accounts ? [ACCOUNT] : []);
+        return FIELDS.map(([key, label]) => ({ key, label, ...d.defaults[key] })).concat(
+          own.map(([key, label]) => ({
+            key,
+            label,
+            value: d.machine[key],
+            in_force: d.machine[key],
             from: 'machine',
-          },
-        ]);
+            machine: true,
+          })),
+        );
+      }
+
+      // The value in force and where it is set; an account also says who it runs as.
+      function inForce(s, f) {
+        if (f.in_force == null) return 'not set';
+        const from = FROM[f.from] || (f.from === 'machine' ? 'this machine' : 'not set');
+        if (f.key !== 'claudeConfigDir') return `${f.in_force}, ${from}`;
+        const held = (s.data.accounts || []).find((a) => a.folder === f.in_force);
+        return `${f.in_force} (${(held && held.account) || 'not logged in'}), ${from}`;
       }
 
       function settingsInput(s, f, fields) {
@@ -1456,6 +1473,16 @@
                 ? `sq's floor (${f.in_force})`
                 : 'Unset';
         const attrs = `data-field="${f.key}" aria-label="${esc(f.label)}"${controlsOn ? '' : ' disabled'}`;
+        if (f.key === 'claudeConfigDir') {
+          const blankAccount = `The machine's (${d.machine.claudeConfigDir || 'none'})`;
+          return `<select ${attrs}>${role ? `<option value="">${esc(blankAccount)}</option>` : ''}${d.accounts
+            .map((a) => {
+              const who = a.account || 'not logged in';
+              const on = a.roles.length ? `; ${a.roles.join(', ')}` : '';
+              return `<option value="${esc(a.folder)}"${a.folder === f.value ? ' selected' : ''}>${esc(`${a.folder}: ${who}${on}`)}</option>`;
+            })
+            .join('')}</select>`;
+        }
         if (['model', 'effort', 'inboxEffort'].includes(f.key)) {
           const model = fields.find((g) => g.key === 'model').in_force;
           const options = f.key === 'model' ? Object.keys(d.models) : d.models[model] || [];
@@ -1495,7 +1522,7 @@
       <form class="settings-fields" id="settings-form">${fields
         .map(
           (f) =>
-            `<span>${esc(f.label)}</span>${settingsInput(s, f, fields)}<span class="role-title">${f.in_force == null ? 'not set' : `${esc(f.in_force)}, ${esc(FROM[f.from] || (f.from === 'machine' ? 'this machine' : 'not set'))}`}</span>`,
+            `<span>${esc(f.label)}</span>${settingsInput(s, f, fields)}<span class="role-title">${esc(inForce(s, f))}</span>`,
         )
         .join('')}</form>${said}
       <div class="login-row">${controlsOn ? `<button class="copy" type="button" data-settings-save${s.saving ? ' disabled' : ''}>Save</button>` : ''}<button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
@@ -1540,8 +1567,7 @@
           let value = typed === '' ? null : typed;
           if (value !== null && NUMBERS.includes(f.key) && !Number.isNaN(Number(value)))
             value = Number(value);
-          if (value !== (f.value ?? null))
-            changes[f.key === 'dailyBudgetUsd' ? 'machine' : 'here'][f.key] = value;
+          if (value !== (f.value ?? null)) changes[f.machine ? 'machine' : 'here'][f.key] = value;
         }
         return changes;
       }
