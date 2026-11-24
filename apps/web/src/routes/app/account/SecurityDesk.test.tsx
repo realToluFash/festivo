@@ -217,6 +217,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   sessionStorage.clear();
   tokens.clear();
 });
@@ -721,6 +722,54 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
       dialog("Confirm it's you").getByText(
         'One of the codes you saved when you turned on two-factor.',
       ),
+    ).toBeDefined();
+  });
+
+  it('proves a passkey member in two steps: the password, then the passkey or a code (sc-86885)', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: { get: () => new Promise(() => {}) },
+      configurable: true,
+    });
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: null,
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+      'POST /api/auth/two-factor/passkeys/options': () => json({ challenge: 'AAEC' }),
+    });
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    openSecurity();
+
+    fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    expect(await dialog("Confirm it's you").findByText('Waiting for your passkey…')).toBeDefined();
+    expect(dialog("Confirm it's you").queryByLabelText('Your password')).toBeNull();
+
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Use a code instead' }));
+
+    expect(dialog("Confirm it's you").getByLabelText('Recovery code')).toBeDefined();
+    expect(dialog("Confirm it's you").queryByLabelText('Your password')).toBeNull();
+    expect(
+      dialog("Confirm it's you").getByRole('button', { name: 'Use a passkey instead' }),
     ).toBeDefined();
   });
 
