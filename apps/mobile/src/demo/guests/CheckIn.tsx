@@ -34,6 +34,7 @@ import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSampl
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
+import { navSide, titleBeside } from './DoorNav.ts';
 
 type Phase = 'open' | 'before' | 'ended';
 
@@ -520,8 +521,8 @@ function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
   const [width, setWidth] = useState(0);
   const [back, setBack] = useState(0);
   const [title, setTitle] = useState(0);
-  const side = tokens.spaceSm + back + tokens.spaceXl;
-  const beside = width === 0 || back === 0 || title === 0 || title <= width - 2 * side;
+  const side = navSide(back);
+  const beside = titleBeside({ width, back, title });
   const heading = (
     <Text size={17} weight="bold" accessibilityRole="header">
       {W.checkIn}
