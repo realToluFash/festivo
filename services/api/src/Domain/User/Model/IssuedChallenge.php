@@ -14,6 +14,8 @@ final readonly class IssuedChallenge
         #[SensitiveParameter]
         public string $token,
         public DateTimeImmutable $expiresAt,
+        /** @var array{app: bool, passkeys: bool} which factors the member holds, so the step opens on the right one */
+        public array $factors,
     ) {
     }
 }

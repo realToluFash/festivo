@@ -8,16 +8,18 @@ use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\ProviderLink;
+use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\Model\TwoFactorSignInResult;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Entity\ProviderIdentity;
 use App\Entity\TwoFactorChallenge;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\PasskeyStep;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorChallengeRepository;
-use App\Repository\TwoFactorFactorRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
 use Psr\Clock\ClockInterface;
@@ -30,7 +32,8 @@ final readonly class SignInGate
     private const int CHALLENGE_BYTES = 32;
 
     public function __construct(
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
+        private Passkeys $passkeys,
         private TwoFactorChallengeRepository $twoFactorChallengeRepository,
         private ProviderIdentityRepository $providerIdentityRepository,
         private SecondFactorCheck $secondFactorCheck,
@@ -43,7 +46,7 @@ final readonly class SignInGate
 
     public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null): IssuedTokens|IssuedChallenge
     {
-        if (null === $this->twoFactorFactorRepository->findActiveFor($user)) {
+        if (!$this->secondFactors->isOn($user)) {
             $this->link($user, $link);
 
             return $this->issue($user, $request, $link);
@@ -54,38 +57,32 @@ final readonly class SignInGate
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
-        return new IssuedChallenge($plain, $challenge->getExpiresAt());
+        return new IssuedChallenge($plain, $challenge->getExpiresAt(), $this->secondFactors->kinds($user));
     }
 
-    /** Exactly one of a code from the app or a recovery code. */
-    public function complete(
-        #[SensitiveParameter]
-        string $token,
-        #[SensitiveParameter]
-        ?string $code,
-        #[SensitiveParameter]
-        ?string $recoveryCode,
-        ?Request $request = null,
-    ): TwoFactorSignInResult {
-        $challenge = $this->twoFactorChallengeRepository->findOneByHash(TokenIssuer::hash($token));
-        $now = $this->clock->now();
+    /**
+     * The options the sheet opens with at sign-in, each time with a new challenge.
+     *
+     * @return array<string, mixed>
+     */
+    public function passkeyOptions(#[SensitiveParameter] string $token): array
+    {
+        return $this->passkeys->requestOptions($this->open($token)->getUser(), PasskeyStep::SignIn);
+    }
 
-        if (null === $challenge || !$challenge->isOpenAt($now)) {
+    public function complete(#[SensitiveParameter] string $token, SecondFactorAnswer $answer, ?Request $request = null): TwoFactorSignInResult
+    {
+        $challenge = $this->open($token);
+        $user = $challenge->getUser();
+
+        // Turned off since the challenge was made: the first factor still has to be repeated.
+        if (!$this->secondFactors->isOn($user)) {
             throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
         }
 
-        $user = $challenge->getUser();
-        // Turned off since the challenge was made: the first factor still has to be repeated.
-        $factor = $this->twoFactorFactorRepository->findActiveFor($user)
-            ?? throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
+        $this->secondFactorCheck->pass($user, $answer, PasskeyStep::SignIn);
 
-        match (true) {
-            null !== $code => $this->secondFactorCheck->passCode($factor, $code),
-            null !== $recoveryCode => $this->secondFactorCheck->passRecoveryCode($factor, $recoveryCode),
-            default => throw new ApiException(ErrorCode::BadRequest, 'two_factor.code_or_recovery_code'),
-        };
-
-        $challenge->markUsed($now);
+        $challenge->markUsed($this->clock->now());
         $provider = $challenge->getLinkProvider();
         $subject = $challenge->getLinkSubject();
         // A link waits on the code only for sc-58's matching address, so the primary is the one the provider vouched for.
@@ -93,6 +90,17 @@ final readonly class SignInGate
         $linked = $this->link($user, $link);
 
         return new TwoFactorSignInResult($user, $this->issue($user, $request, $link), $linked);
+    }
+
+    private function open(#[SensitiveParameter] string $token): TwoFactorChallenge
+    {
+        $challenge = $this->twoFactorChallengeRepository->findOneByHash(TokenIssuer::hash($token));
+
+        if (null === $challenge || !$challenge->isOpenAt($this->clock->now())) {
+            throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
+        }
+
+        return $challenge;
     }
 
     /** False when there is nothing to link, or a sign-in that passed first already linked it. */

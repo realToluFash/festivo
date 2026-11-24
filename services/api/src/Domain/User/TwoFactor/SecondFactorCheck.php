@@ -6,23 +6,29 @@ namespace App\Domain\User\TwoFactor;
 
 use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Attempts\WrongSecret;
+use App\Domain\User\Model\SecondFactorAnswer;
+use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Entity\TwoFactorFactor;
+use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\PasskeyStep;
 use App\Http\Exception\ApiException;
-use Doctrine\DBAL\LockMode;
+use App\Repository\TwoFactorFactorRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Regex;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
-/** One attempt budget per account, shared by sign-in, setup and turning off, so guessing cannot move between them. */
+/** One attempt budget per account, shared by every step and every factor, so guessing cannot move between them. */
 final readonly class SecondFactorCheck
 {
     public function __construct(
         private SecretBox $secretBox,
         private AuthenticatorCodes $authenticatorCodes,
         private RecoveryCodes $recoveryCodes,
+        private Passkeys $passkeys,
+        private TwoFactorFactorRepository $twoFactorFactorRepository,
         private RateLimiterFactoryInterface $twoFactorAccountLimiter,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
@@ -30,16 +36,30 @@ final readonly class SecondFactorCheck
     ) {
     }
 
+    /** Whichever factor the answer carries. The app's code with no app reads as a wrong code. */
+    public function pass(User $user, SecondFactorAnswer $answer, PasskeyStep $step): void
+    {
+        match (true) {
+            null !== $answer->passkey => $this->passPasskey($user, $answer->passkey, $step),
+            null !== $answer->code => $this->passAppCode($user, $answer->code),
+            null !== $answer->recoveryCode => $this->passRecoveryCode($user, $answer->recoveryCode),
+            null !== $answer->either => $this->passEither($user, $answer->either),
+            default => throw new ApiException(ErrorCode::BadRequest, 'two_factor.code_or_recovery_code'),
+        };
+    }
+
+    /** The app's code, for a factor that may not be on yet: setting it up checks the first code. */
     public function passCode(TwoFactorFactor $factor, #[SensitiveParameter] string $code): void
     {
-        $this->guarded($factor, function () use ($factor, $code): ?WrongSecret {
+        $this->guarded($factor->getUser(), function () use ($factor, $code): ?WrongSecret {
+            $this->entityManager->refresh($factor);
             $secret = $this->secretBox->open($factor->getEncryptedSecret());
             $step = $this->authenticatorCodes->matchingStep($secret, $code, $this->clock->now()->getTimestamp());
             $last = $factor->getLastAcceptedStep();
 
             // A code already accepted, or one older than it, is a replay and reads as a wrong one.
             if (null === $step || (null !== $last && $step <= $last)) {
-                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'code.did_not_work'));
+                return self::wrongCode();
             }
 
             $factor->accepted($step);
@@ -48,13 +68,13 @@ final readonly class SecondFactorCheck
         });
     }
 
-    public function passRecoveryCode(TwoFactorFactor $factor, #[SensitiveParameter] string $typed): void
+    public function passRecoveryCode(User $user, #[SensitiveParameter] string $typed): void
     {
-        $this->guarded($factor, function () use ($factor, $typed): ?WrongSecret {
-            $code = $this->recoveryCodes->find($factor->getUser(), $typed);
+        $this->guarded($user, function () use ($user, $typed): ?WrongSecret {
+            $code = $this->recoveryCodes->find($user, $typed);
 
             if (null === $code) {
-                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'code.did_not_work'));
+                return self::wrongCode();
             }
 
             if ($code->isUsed()) {
@@ -67,24 +87,50 @@ final readonly class SecondFactorCheck
         });
     }
 
-    /** Turning it off takes either kind in one field: six digits is an app code. */
-    public function passEither(TwoFactorFactor $factor, #[SensitiveParameter] string $typed): void
+    /** One field taking either kind: six digits is an app code. */
+    public function passEither(User $user, #[SensitiveParameter] string $typed): void
     {
         $trimmed = Regex\replace($typed, '/\s+/', '');
 
         Regex\matches($trimmed, '/^\d{6}$/')
-            ? $this->passCode($factor, $trimmed)
-            : $this->passRecoveryCode($factor, $trimmed);
+            ? $this->passAppCode($user, $trimmed)
+            : $this->passRecoveryCode($user, $trimmed);
+    }
+
+    private function passAppCode(User $user, #[SensitiveParameter] string $code): void
+    {
+        $factor = $this->twoFactorFactorRepository->findActiveFor($user);
+
+        if (null === $factor) {
+            $this->guarded($user, self::wrongCode(...));
+
+            return;
+        }
+
+        $this->passCode($factor, $code);
+    }
+
+    /** @param array<string, mixed> $credential */
+    private function passPasskey(User $user, array $credential, PasskeyStep $step): void
+    {
+        $this->guarded($user, fn (): ?WrongSecret => $this->passkeys->passes($user, $step, $credential)
+            ? null
+            : new WrongSecret(new ApiException(ErrorCode::PasskeyRefused, 'passkey.did_not_work')));
     }
 
     /** @param callable(): ?WrongSecret $check */
-    private function guarded(TwoFactorFactor $factor, callable $check): void
+    private function guarded(User $user, callable $check): void
     {
         $this->guardedAttempt->attempt(
-            fn () => $this->entityManager->refresh($factor, LockMode::PESSIMISTIC_WRITE),
-            fn (): array => [$this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122())],
+            fn () => $this->entityManager->getConnection()->executeStatement('SELECT 1 FROM users WHERE id = ? FOR UPDATE', [$user->getId()->toRfc4122()]),
+            fn (): array => [$this->twoFactorAccountLimiter->create($user->getId()->toRfc4122())],
             $check,
             'limits.wrong_codes',
         );
+    }
+
+    private static function wrongCode(): WrongSecret
+    {
+        return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'code.did_not_work'));
     }
 }

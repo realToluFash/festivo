@@ -10,7 +10,7 @@ const tested = config();
 const OFF = 'They’re emailed now, and every session they had has ended.';
 const DOWN = 'Two-factor stays on for them, and they’re emailed.';
 const INTRO =
-  'They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.';
+  'They lost their two-factor methods and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.';
 
 async function members(path: string) {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);

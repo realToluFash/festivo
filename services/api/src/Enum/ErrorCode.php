@@ -154,6 +154,10 @@ enum ErrorCode: string
     case OrganisationTwoFactorRequired = 'organisation_two_factor_required';
     case OrganisationTwoFactorOverdue = 'organisation_two_factor_overdue';
     case TwoFactorKeptByRule = 'two_factor_kept_by_rule';
+    case TwoFactorLastFactor = 'two_factor_last_factor';
+    case PasskeyRefused = 'passkey_refused';
+    case PasskeyLimit = 'passkey_limit';
+    case PasskeysNotOffered = 'passkeys_not_offered';
     case SessionTimedOut = 'session_timed_out';
     case RecoveryNobodyToApprove = 'recovery_nobody_to_approve';
     case RecoveryRequestInvalid = 'recovery_request_invalid';
@@ -177,6 +181,7 @@ enum ErrorCode: string
             self::NotFound, self::ResetLinkInvalid => 404,
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
             self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::ProviderKeptByRule, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff, self::TwoFactorKeptByRule => 409,
+            self::TwoFactorLastFactor, self::PasskeyLimit, self::PasskeysNotOffered => 409,
             self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved, self::RecoveryRequestReplaced => 409,
             self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
@@ -202,7 +207,7 @@ enum ErrorCode: string
             self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,
-            self::TwoFactorCodeInvalid, self::RecoveryCodeUsed => 422,
+            self::TwoFactorCodeInvalid, self::RecoveryCodeUsed, self::PasskeyRefused => 422,
             self::InternalError => 500,
             self::ServiceUnavailable => 503,
             self::AssistantUnavailable, self::AssistantBusy => 503,

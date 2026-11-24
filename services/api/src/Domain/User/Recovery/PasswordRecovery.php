@@ -6,19 +6,22 @@ namespace App\Domain\User\Recovery;
 
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Device\KnownDevices;
+use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Entity\PasswordResetToken;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\PasskeyStep;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordResetTokenRepository;
 use App\Repository\ProviderIdentityRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
@@ -42,7 +45,8 @@ final readonly class PasswordRecovery
         private TokenIssuer $tokenIssuer,
         private KnownDevices $knownDevices,
         private RecoveryMailer $recoveryMailer,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
+        private Passkeys $passkeys,
         private SecondFactorCheck $secondFactorCheck,
         private SignInRules $signInRules,
         private EntityManagerInterface $entityManager,
@@ -82,27 +86,30 @@ final readonly class PasswordRecovery
     /** Whether this link needs a code before the new password: the account has two-factor on. */
     public function asksForSecondFactor(User $user): bool
     {
-        return null !== $this->twoFactorFactorRepository->findActiveFor($user);
+        return $this->secondFactors->isOn($user);
     }
 
-    /** The code comes first, so a link alone cannot change the password or end a session. */
-    public function passSecondFactor(
-        #[SensitiveParameter]
-        string $token,
-        #[SensitiveParameter]
-        ?string $code,
-        #[SensitiveParameter]
-        ?string $recoveryCode,
-    ): void {
-        $reset = $this->usable($token);
-        $factor = $this->twoFactorFactorRepository->findActiveFor($reset->getUser())
-            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
+    /**
+     * The sheet's options at the code step, each time with a new challenge.
+     *
+     * @return array<string, mixed>
+     */
+    public function passkeyOptions(#[SensitiveParameter] string $token): array
+    {
+        return $this->passkeys->requestOptions($this->usable($token)->getUser(), PasskeyStep::Reset);
+    }
 
-        match (true) {
-            null !== $code => $this->secondFactorCheck->passCode($factor, $code),
-            null !== $recoveryCode => $this->secondFactorCheck->passRecoveryCode($factor, $recoveryCode),
-            default => throw new ApiException(ErrorCode::BadRequest, 'two_factor.code_or_recovery_code'),
-        };
+    /** The second factor comes first, so a link alone cannot change the password or end a session. */
+    public function passSecondFactor(#[SensitiveParameter] string $token, SecondFactorAnswer $answer): void
+    {
+        $reset = $this->usable($token);
+        $user = $reset->getUser();
+
+        if (!$this->secondFactors->isOn($user)) {
+            throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
+        }
+
+        $this->secondFactorCheck->pass($user, $answer, PasskeyStep::Reset);
 
         $reset->passedSecondFactor($this->clock->now());
         $this->entityManager->flush();
