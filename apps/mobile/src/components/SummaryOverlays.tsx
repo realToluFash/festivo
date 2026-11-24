@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -27,7 +28,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { remeasureAfter } from './anchorRemeasure.ts';
+import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { reachableOffset } from './reachableOffset.ts';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -402,26 +404,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   );
 }
 
-/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+/** An open menu's anchor, measured again once a turned window settles or the offline band moves the frame's body; a button the turn took away closes it. */
 export function useAnchorFollowsTurn(
   trigger: RefObject<ViewInstance | null>,
   open: boolean,
   then: (at: Anchor | null) => void,
 ) {
   const { width, height } = useWindowDimensions();
-  const size = useRef({ width, height });
+  const bodyTop = useContext(BodyTop);
+  const was = useRef({ width, height, bodyTop });
 
   useEffect(() => {
-    const turned = size.current.width !== width || size.current.height !== height;
-    size.current = { width, height };
-    if (!open || !turned) return;
+    const now = { width, height, bodyTop };
+    const after = remeasureAfter(was.current, now, open, SETTLED_MS);
+    was.current = now;
+    if (after == null) return;
     const wait = setTimeout(() => {
       if (trigger.current == null) then(null);
       else anchorUnder(trigger, then);
-    }, SETTLED_MS);
+    }, after);
 
     return () => clearTimeout(wait);
-  }, [width, height, open, trigger, then]);
+  }, [width, height, bodyTop, open, trigger, then]);
 }
 
 interface MenuProps {
