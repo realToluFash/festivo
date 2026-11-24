@@ -266,7 +266,8 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
             and not (builds(role) and story["id"] in only)
-            and not (role == "ux" and story["state"] == "Failed QA" and story["id"] not in only)
+            and not (role == "ux" and story["state"] == "Failed QA"
+                     and (story["id"] not in only or demo_fixing(story, prs or [])))
             and not (builds(role) and demo_open(story, prs or []))]
 
 
@@ -516,6 +517,19 @@ def demo_only(stories, prs):
     return {story["id"]: by_story.get(story["id"], []) for story in stories
             if R.DEMO_ONLY in story["labels"]
             and all(design_pr(pr) for pr in by_story.get(story["id"], []))}
+
+
+def demo_fixing(story, prs):
+    """Whether a failed demo-only story's fix is open, or merged since the failure: ux's
+    hold ends there, and pm's demo-merged item takes it on."""
+    failed = T.epoch(story.get("moved_at"))
+    for pr in prs:
+        if pr.get("story_id") != story["id"] or not design_pr(pr):
+            continue
+        merged = T.epoch(pr.get("merged_at")) if pr["state"] == "merged" else None
+        if pr["state"] == "open" or (merged and failed and merged > failed):
+            return True
+    return False
 
 
 def demo_items(stories, prs):

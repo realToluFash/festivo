@@ -1170,21 +1170,33 @@ class DemoOnlyStories(unittest.TestCase):
                 if i["kind"] == "story" and role in i["roles"]]
 
     def test_in_failed_qa_ux_who_built_it_is_woken_without_a_tag(self):
-        for prs in ([self.demo()], [self.demo(state="open")], []):
-            self.assertEqual([reason for reason, _ in self.woken([self.on("Failed QA")], prs)],
+        failed = self.on("Failed QA", moved_at="2026-10-19T09:00:00Z")
+        for prs in ([self.demo()], []):
+            self.assertEqual([reason for reason, _ in self.woken([failed], prs)],
                              ["sc-1 moved to Failed QA"], prs)
         drawing = dict(self.on("Needs Design"), id=2)
         (_, rework), (_, draw) = sorted(
-            self.woken([self.on("Failed QA"), drawing], [self.demo()]), key=lambda x: x[0])
+            self.woken([failed, drawing], [self.demo()]), key=lambda x: x[0])
         self.assertLess(rework, draw)
 
     def test_ux_is_not_offered_a_failed_story_a_developer_built(self):
-        own = pr(41, 1, state="merged")
-        for stories, prs in (([self.on("Failed QA", ("dev2",))], [self.demo()]),
-                             ([self.on("Failed QA")], [self.demo(), own])):
+        own, later = pr(41, 1, state="merged"), "2026-10-19T09:00:00Z"
+        for stories, prs in (([self.on("Failed QA", ("dev2",), moved_at=later)], [self.demo()]),
+                             ([self.on("Failed QA", moved_at=later)], [self.demo(), own])):
             self.assertEqual(self.woken(stories, prs), [], (stories, prs))
             self.assertEqual(work.queued("ux", stories, prs=prs), [])
             self.assertIn("dev2", self.builders(stories, prs))
+
+    def test_uxs_hold_ends_while_its_fix_is_open_and_once_it_merges_after_the_failure(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        before = self.demo(merged_at="2026-10-18T09:00:00Z")
+        self.assertEqual(len(work.queued("ux", [failed], prs=[before])), 1)
+        fixing = self.demo(41, state="open")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixing]), [])
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        self.assertEqual(work.queued("ux", [failed], prs=[before, fixed]), [])
+        self.assertEqual([i["roles"] for i in self.pm_items([failed], [before, fixed])],
+                         [["pm"]])
 
     def test_ux_is_offered_it_only_in_failed_qa(self):
         for state in self.WAITING + self.LATER:
