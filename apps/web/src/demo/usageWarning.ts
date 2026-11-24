@@ -30,7 +30,6 @@ export const WARNINGS: Readonly<Record<`${Kind}${Threshold}`, Warning>> = {
   storage100: { kind: 'storage', at: 100, organisation: NAMED, used: 2.03 * GB, included: 2 * GB },
 };
 
-/** Where the web's bell item and the email's link lead, for the organisation the warning names. */
 export const USAGE_PLACE = '/settings/plan-and-billing#usage-this-period';
 
 const LOCALE: Readonly<Record<Lang, string>> = { en: 'en-GB', fr: 'fr-FR', pt: 'pt-PT' };
