@@ -502,6 +502,7 @@ final class EventDuplicateTest extends ApiTestCase
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
             self::service(ObjectStore::class)->publish(EventCoverEditor::sizeKey($photoKey, $size), 'webp', 'image/webp');
         }
+        self::service(ObjectStore::class)->publish(EventCoverEditor::cardKey($photoKey), 'jpeg', 'image/jpeg');
         self::em()->getConnection()->executeStatement(
             'INSERT INTO event_covers (event_id, photo_key, position, description, created_at, updated_at) VALUES (:id, :photo, :position, :description, NOW(), NOW())',
             ['id' => $id, 'photo' => $photoKey, 'position' => $position, 'description' => $description],

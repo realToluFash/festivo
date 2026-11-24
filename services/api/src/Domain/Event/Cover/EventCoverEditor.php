@@ -107,6 +107,10 @@ final readonly class EventCoverEditor
 
         $this->entityManager->flush();
 
+        if ($before['photo'] !== $cover->getPhotoKey() || $before['position'] !== $cover->getPosition()) {
+            $this->publishCard($cover);
+        }
+
         if (null !== $replaced) {
             $this->unpublish($replaced);
         }
@@ -146,6 +150,8 @@ final readonly class EventCoverEditor
             $this->objectStore->copyPublished(self::sizeKey($cover->getPhotoKey(), $size), self::sizeKey($photoKey, $size));
         }
 
+        $this->objectStore->copyPublished(self::cardKey($cover->getPhotoKey()), self::cardKey($photoKey));
+
         $copy = new EventCover($to, $photoKey, $cover->getPosition(), $cover->getDescription());
         $this->entityManager->persist($copy);
 
@@ -175,11 +181,31 @@ final readonly class EventCoverEditor
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
             $this->objectStore->unpublish(self::sizeKey($photoKey, $size));
         }
+
+        $this->objectStore->unpublish(self::cardKey($photoKey));
     }
 
     public static function sizeKey(string $photoKey, string $size): string
     {
         return Str\format('%s/%s.webp', $photoKey, $size);
+    }
+
+    /** The picture a guest's link shows in a chat (sc-89272), made when the photo or its frame is saved, so a fetch only reads it. */
+    public static function cardKey(string $photoKey): string
+    {
+        return Str\format('%s/card.jpg', $photoKey);
+    }
+
+    public function cardUrl(EventCover $cover): string
+    {
+        return $this->objectStore->publicUrl(self::cardKey($cover->getPhotoKey()));
+    }
+
+    private function publishCard(EventCover $cover): void
+    {
+        $photo = $this->objectStore->readPublished(self::sizeKey($cover->getPhotoKey(), 'large'));
+
+        $this->objectStore->publish(self::cardKey($cover->getPhotoKey()), $this->coverPhotoProcessor->card($photo, $cover->getPosition()), 'image/jpeg');
     }
 
     private function publish(Event $event, string $uploadKey): string
