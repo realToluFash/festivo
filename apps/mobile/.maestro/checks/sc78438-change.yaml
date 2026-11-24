@@ -45,6 +45,8 @@ appId: host.exp.Exponent
     centerElement: true
     timeout: 8000
     optional: true
+- assertNotVisible:
+    id: 'phone.country.search'
 - assertVisible: '.*\+44.*'
 - takeScreenshot: change-gb
 - scrollUntilVisible:

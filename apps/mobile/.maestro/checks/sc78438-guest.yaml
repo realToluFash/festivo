@@ -84,6 +84,8 @@ appId: host.exp.Exponent
     start: 50%, 55%
     end: 50%, 80%
 - waitForAnimationToEnd
+- assertNotVisible:
+    id: 'guest.form.mobile.country.search'
 - assertVisible: '.*\+44.*'
 - takeScreenshot: guest-gb
 - scrollUntilVisible:
