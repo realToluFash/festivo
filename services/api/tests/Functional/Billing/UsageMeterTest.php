@@ -303,6 +303,55 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function anIncludedSmsUnitPaysForTheMessageWhateverKindDeliveredIt(): void
+    {
+        $this->includeSms(100);
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+        self::assertSame([1, 0], [$hold->includedUnits, $hold->creditUnits]);
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', self::whatsApp());
+
+        self::assertSame([UsageKind::WhatsApp, UsagePayer::Included, 1, 0], [$record->getKind(), $record->getPaidBy(), $record->getIncludedQuantity(), $record->getCreditsTaken()]);
+        $sms = $this->read()->of(UsageKind::Sms);
+        $whatsApp = $this->read()->of(UsageKind::WhatsApp);
+        self::assertSame([1, 99, 0, 0], [$sms->used, $sms->left, $whatsApp->used, $whatsApp->fromCredits]);
+        self::assertSame([0, 0], [$this->read()->creditBalance, $this->read()->creditsHeld]);
+    }
+
+    #[Test]
+    public function aMessageDeliveredByEmailSpendsNoIncludedUnit(): void
+    {
+        $this->includeSms(100);
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', new MeteredUse(UsageKind::Email));
+
+        self::assertSame([UsageKind::Email, 0], [$record->getKind(), $record->getCreditsTaken()]);
+        self::assertSame([0, 100], [$this->read()->of(UsageKind::Sms)->used, $this->read()->of(UsageKind::Sms)->left]);
+    }
+
+    #[Test]
+    public function aLateSettleAsAnotherKindTakesAnIncludedUnitOfTheReservedKindWhileOneIsLeftAndCreditsAfter(): void
+    {
+        $this->includeSms(1);
+        $this->credit(100);
+        $first = $this->meter->reserve($this->organisation, self::sms());
+        $second = $this->meter->reserve($this->organisation, self::sms());
+        self::assertSame([1, 0, 0, 1], [$first->includedUnits, $first->creditUnits, $second->includedUnits, $second->creditUnits]);
+        $this->clock->modify('+25 hours');
+        $this->meter->releaseExpired();
+
+        $included = $this->meter->settle($first->reservationId, 'message-1', self::whatsApp());
+        $credited = $this->meter->settle($second->reservationId, 'message-2', self::whatsApp());
+
+        self::assertSame([true, UsagePayer::Included, 0], [$included->isLate(), $included->getPaidBy(), $included->getCreditsTaken()]);
+        self::assertSame([true, UsagePayer::Credits, 2], [$credited->isLate(), $credited->getPaidBy(), $credited->getCreditsTaken()]);
+        self::assertSame([1, 0], [$this->read()->of(UsageKind::Sms)->used, $this->read()->of(UsageKind::Sms)->left]);
+        self::assertSame([1, 2], [$this->read()->of(UsageKind::WhatsApp)->used, $this->read()->of(UsageKind::WhatsApp)->fromCredits]);
+        self::assertSame(98, $this->read()->creditBalance);
+    }
+
+    #[Test]
     public function aKindTheReservationsVersionDoesNotPriceIsPricedByTheFirstLaterVersionThatDoes(): void
     {
         $this->credit(100);
@@ -425,6 +474,22 @@ final class UsageMeterTest extends FunctionalTestCase
 
         self::assertSame(['2026-11-01T09:00:00+00:00', '2026-12-01T09:00:00+00:00'], [$november->period->start->format(\DATE_ATOM), $november->period->end->format(\DATE_ATOM)]);
         self::assertSame([1, 2], [$november->of(UsageKind::Email)->used, $december->of(UsageKind::Email)->used]);
+    }
+
+    #[Test]
+    public function aSettleCountsInItsReservationsPeriodAndItsRecordSaysWhenItHappened(): void
+    {
+        $this->credit(100);
+        $this->clock->modify('2026-12-01 08:59:30');
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+        $this->clock->modify('2026-12-01 09:00:05');
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', self::sms());
+
+        self::assertSame(['2026-12-01T09:00:05+00:00', '2026-11-01T09:00:00+00:00'], [$record->getOccurredAt()->format(\DATE_ATOM), $record->getPeriodStart()->format(\DATE_ATOM)]);
+        $november = $this->read(new DateTimeImmutable('2026-11-30 12:00:00'));
+        $december = $this->read(new DateTimeImmutable('2026-12-01 09:00:05'));
+        self::assertSame([1, 0], [$november->of(UsageKind::Sms)->used, $december->of(UsageKind::Sms)->used]);
     }
 
     #[Test]
@@ -628,6 +693,19 @@ final class UsageMeterTest extends FunctionalTestCase
         unset($cell);
 
         return self::service(CatalogueKeeper::class)->publish(CataloguePart::UnitCosts, $name, $terms, 'Twilio repriced', 'Ada at Soirely')->getId();
+    }
+
+    private function includeSms(int $segments): void
+    {
+        $first = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19') ?? self::fail('The first plans version is missing.');
+        $terms = Type\dict(Type\string(), Type\dict(Type\string(), Type\mixed()))->coerce($first->getTerms());
+        $limits = Type\dict(Type\string(), Type\mixed())->coerce($terms['free']['limits']);
+        $limits['sms'] = ['kind' => 'metered', 'amount' => $segments];
+        $terms['free']['limits'] = $limits;
+        $keeper = self::service(CatalogueKeeper::class);
+        $keeper->moveSubscribers($keeper->publish(CataloguePart::Plans, '2026-11-24', $terms, 'SMS included, for a test', 'Ada at Soirely'), null, 'SMS included, for a test', 'Ada at Soirely');
+        self::service(Entitlements::class)->forget($this->organisation);
+        self::em()->clear();
     }
 
     private static function recordCount(): int

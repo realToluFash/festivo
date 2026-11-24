@@ -279,6 +279,7 @@ final readonly class UsageMeter
         $periodStart = $reservation->getPeriodStart();
         $reservedPrice = $reservation->getCreditsPerUnit();
         $sameKind = $delivered->kind === $reservation->getKind();
+        $paidByReservedUnit = false;
         $free = $this->includedFree($organisationId, $periodStart, $delivered->kind, $this->allowance($organisationId, $delivered->kind));
 
         if ($sameKind) {
@@ -289,15 +290,18 @@ final readonly class UsageMeter
         } else {
             [$pricedBy, $creditsPerUnit] = $this->unitPricer->fromVersion($this->catalogue->unitCostsVersion($reservation->getUnitCostVersion()->getId()), $delivered);
             $version = $this->versionNamed($pricedBy->versionId);
-            $included = Math\minva($delivered->quantity, $free);
+            $paidByReservedUnit = $creditsPerUnit > 0 && ($late ? $this->includedFree($organisationId, $periodStart, $reservation->getKind(), $this->allowance($organisationId, $reservation->getKind())) > 0 : $fromIncluded > 0);
+            $included = $paidByReservedUnit ? $delivered->quantity : Math\minva($delivered->quantity, $free);
             // Never above the hold: Soirely absorbs a dearer delivery, so the check at reserve still guarantees the credits (sc-3929, 26 Oct).
-            $credits = Math\minva(($delivered->quantity - $included) * $creditsPerUnit, ($fromCredits + $beyond) * $reservedPrice);
+            $credits = $paidByReservedUnit ? 0 : Math\minva(($delivered->quantity - $included) * $creditsPerUnit, ($fromCredits + $beyond) * $reservedPrice);
         }
 
         $record = $this->written($reservation->getOrganisation(), $reservation->getBillingAccount(), $delivered, $idempotencyKey, $this->now(), $periodStart, $included, $credits, $version, $creditsPerUnit, $reservation, $late);
 
         if ($sameKind) {
             $this->addToTotals($organisationId, $periodStart, $delivered->kind, used: $delivered->quantity, includedUsed: $included, includedHeld: -$fromIncluded, creditsTaken: $credits);
+        } elseif ($paidByReservedUnit) {
+            $this->addToTotals($organisationId, $periodStart, $reservation->getKind(), used: 1, includedUsed: 1, includedHeld: -$fromIncluded);
         } else {
             $this->addToTotals($organisationId, $periodStart, $reservation->getKind(), includedHeld: -$fromIncluded);
             $this->addToTotals($organisationId, $periodStart, $delivered->kind, used: $delivered->quantity, includedUsed: $included, creditsTaken: $credits);
