@@ -142,6 +142,7 @@
 
 @media (width <= 40rem) {
   .demo-page:has(.unsub) .demo-page-header {
+    height: var(--sizeTopBar);
     padding: 0 var(--space3xl);
   }
 
