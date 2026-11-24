@@ -5,6 +5,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible:
-      id: 'settings.security'
+      text: 'Ways to sign in'
     timeout: 30000
 - takeScreenshot: security
