@@ -37,6 +37,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Uid\Uuid;
 
 /** sc-90252: an organisation's storage is the bytes the store holds for its events' covers, measured into the meter's gauge. */
 final class StorageMeasurementTest extends ApiTestCase
@@ -184,6 +185,15 @@ final class StorageMeasurementTest extends ApiTestCase
         self::assertSame(0, $tester->execute(['organisation' => $this->organisation->getId()->toRfc4122()]));
         self::assertSame([$this->storage()], $this->measurements($this->organisation));
         self::assertGreaterThan(0, $this->storage());
+    }
+
+    #[Test]
+    public function theCommandRefusesAnIdThatNamesNoOrganisation(): void
+    {
+        $tester = new CommandTester(new Application(self::$kernel ?? self::fail('no kernel'))->find('app:usage:measure-storage'));
+
+        self::assertSame(2, $tester->execute(['organisation' => Uuid::v7()->toRfc4122()]));
+        self::assertStringContainsString('No organisation has that id.', $tester->getDisplay());
     }
 
     private function measure(): int
