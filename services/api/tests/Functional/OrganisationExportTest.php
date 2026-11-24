@@ -147,6 +147,7 @@ final class OrganisationExportTest extends ApiTestCase
         'pending_registrations' => "a person's own account (sc-611's rule)",
         'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
         'phone_numbers' => "a person's own account (sc-611's rule)",
+        'provider_events' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'provider_identities' => "sign-in credentials (sc-611's rule)",
         'push_targets' => "notifications: one person's, or deliveries",
         'recovery_codes' => "sign-in credentials (sc-611's rule)",

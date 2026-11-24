@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\PaymentMethodType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -45,6 +46,22 @@ class BillingAccount
 
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $providerCustomerRef = null;
+
+    /** As the provider returns it, and never more: no card number, CVC or full expiry is ever stored (sc-3933). */
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: PaymentMethodType::class)]
+    private ?PaymentMethodType $paymentMethodType = null;
+
+    #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
+    private ?string $cardBrand = null;
+
+    #[ORM\Column(type: Types::STRING, length: 4, nullable: true)]
+    private ?string $cardLast4 = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $cardExpiryMonth = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $cardExpiryYear = null;
 
     public function __construct(string $contactEmail, string $currency, string $countryCode)
     {
@@ -122,5 +139,40 @@ class BillingAccount
     public function setProviderCustomerRef(?string $providerCustomerRef): void
     {
         $this->providerCustomerRef = $providerCustomerRef;
+    }
+
+    public function getPaymentMethodType(): ?PaymentMethodType
+    {
+        return $this->paymentMethodType;
+    }
+
+    public function getCardBrand(): ?string
+    {
+        return $this->cardBrand;
+    }
+
+    public function getCardLast4(): ?string
+    {
+        return $this->cardLast4;
+    }
+
+    public function getCardExpiryMonth(): ?int
+    {
+        return $this->cardExpiryMonth;
+    }
+
+    public function getCardExpiryYear(): ?int
+    {
+        return $this->cardExpiryYear;
+    }
+
+    /** A wallet or any other method carries no card details, so each is null for it. */
+    public function setPaymentMethod(PaymentMethodType $type, ?string $cardBrand = null, ?string $cardLast4 = null, ?int $cardExpiryMonth = null, ?int $cardExpiryYear = null): void
+    {
+        $this->paymentMethodType = $type;
+        $this->cardBrand = $cardBrand;
+        $this->cardLast4 = $cardLast4;
+        $this->cardExpiryMonth = $cardExpiryMonth;
+        $this->cardExpiryYear = $cardExpiryYear;
     }
 }
