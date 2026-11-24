@@ -1,14 +1,12 @@
 import type { DoorCodeCard, OrganisationEvent } from '@soirely/api-client';
-import { type Ref, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { api } from '../api.ts';
 import {
   BLANK_FORM,
   type CodeClock,
   cardStep,
-  COUNT_EVERY_MS,
   countLine,
   formFrom,
   type MakeForm,
@@ -86,22 +84,6 @@ export function DoorCodes({
     replace(was, card);
     if (kind === 'new') tell(t('doorCodes.made'));
   });
-
-  const shownId = showing?.open === true ? showing.id : null;
-  useEffect(() => {
-    if (shownId == null) return;
-    const timer = setInterval(() => {
-      api.doorCodes(event.id).then(
-        (fresh) => {
-          const read = fresh.find((one) => one.id === shownId);
-          if (read != null) replace(shownId, read);
-        },
-        () => undefined,
-      );
-    }, COUNT_EVERY_MS);
-
-    return () => clearInterval(timer);
-  }, [event.id, shownId, replace]);
 
   function openerFor(id: string | null): void {
     opener.current = id == null ? firstStep.current : (steps.current.get(id) ?? null);

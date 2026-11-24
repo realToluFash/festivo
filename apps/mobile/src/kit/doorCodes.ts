@@ -5,9 +5,6 @@ import type { TFunction } from 'i18next';
 export const CAP_MOST = 500;
 export const LABEL_MOST = 60;
 
-/** Shown, the count is read again this often, so a join shows within 10 seconds (spec §2.3). */
-export const COUNT_EVERY_MS = 5000;
-
 /** Can edit is listed so it can be shown dimmed with why; a code never gives it. */
 export const CODE_CHOICES = ['can_view', 'can_check_in', 'can_edit'] as const;
 export type CodeChoice = (typeof CODE_CHOICES)[number];
