@@ -17,7 +17,13 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail, domainSplit, headingAddress } from '../kit/addressBreaks.ts';
+import {
+  addressRuns,
+  breakableEmail,
+  headingAddress,
+  headingBreaksAfter,
+  type HeadingBreaks,
+} from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -165,39 +171,38 @@ export function DoneAction({
   );
 }
 
-/** The sheet's heading. Its domain is laid out whole first; when no line holds it, it breaks before its dots instead, until the name, the width or the text size changes (sc-70353). */
+/** The sheet's heading. It is laid out whole first, then breaks after its @, then before its domain's dots, each only when the last layout needed it, until the name, the width or the text size changes (sc-70353). */
 function AddressHeading({ name }: { name: string }) {
-  const [wideFor, setWideFor] = useState<string | null>(null);
-  const width = useRef(0);
+  const [width, setWidth] = useState(0);
   const { fontScale } = useWindowDimensions();
-  const key = `${name}:${fontScale}`;
-  const wide = wideFor === key;
+  const key = `${name}:${fontScale}:${width}`;
+  const [laid, setLaid] = useState<{ key: string; breaks: HeadingBreaks }>({ key, breaks: 'none' });
+  const breaks = laid.key === key ? laid.breaks : 'none';
+  const address = headingAddress(name, breaks);
 
   return (
-    <Text
-      size={18}
-      weight="bold"
-      accessibilityRole="header"
-      accessibilityLabel={name}
-      onLayout={(event) => {
-        const now = event.nativeEvent.layout.width;
-        if (now !== width.current && width.current !== 0) setWideFor(null);
-        width.current = now;
-      }}
-      onTextLayout={(event) => {
-        if (
-          !wide &&
-          domainSplit(
-            name,
-            event.nativeEvent.lines.map((line) => line.text),
-          )
-        ) {
-          setWideFor(key);
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      <Text
+        size={18}
+        weight="bold"
+        accessibilityRole="header"
+        accessibilityLabel={name}
+        onTextLayout={
+          address == null
+            ? undefined
+            : (event) => {
+                const next = headingBreaksAfter(
+                  name,
+                  breaks,
+                  event.nativeEvent.lines.map((line) => line.text),
+                );
+                if (next !== breaks) setLaid({ key, breaks: next });
+              }
         }
-      }}
-    >
-      {headingAddress(name, wide) ?? name}
-    </Text>
+      >
+        {address ?? name}
+      </Text>
+    </View>
   );
 }
 

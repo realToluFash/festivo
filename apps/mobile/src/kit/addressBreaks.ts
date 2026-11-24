@@ -12,18 +12,35 @@ export function addressRuns(name: string): readonly [string, string] | null {
   return [beforeDots(name.slice(0, at + 1)), beforeDots(name.slice(at + 1))];
 }
 
-/** An address as one line of text, free to break after its @ first and before a dot of the part ahead of it. The domain stays whole unless `wide`, a domain no line can hold, which breaks before its dots too. A heading of one Text, as the role sheet's, is measured as iOS draws it, which a row of runs beside a role's line was not (sc-70353). */
-export function headingAddress(name: string, wide = false): string | null {
+const JOIN = '\u2060';
+const UNSEEN = /[\u200B\u2060\n]/g;
+
+/** How far a heading address has had to break: not at all, after its @, or after its @ and before its domain's dots too. */
+export type HeadingBreaks = 'none' | 'at' | 'wide';
+
+/** An address as the role sheet's one heading Text. A hyphen never ends a line, as it would read as part of the address. Once the address takes more than a line it breaks after its @, and its domain breaks before its dots only when `wide`, no line holding it (sc-70353). */
+export function headingAddress(name: string, breaks: HeadingBreaks = 'none'): string | null {
   const runs = addressRuns(name);
   if (runs == null) return null;
 
-  return `${runs[0]}${BREAK}${wide ? runs[1] : runs[1].replaceAll(BREAK, '')}`;
+  const [local, domain] = runs.map((run) => run.replaceAll('-', `-${JOIN}`));
+  if (breaks === 'none')
+    return `${local.replaceAll(BREAK, '')}${BREAK}${domain.replaceAll(BREAK, '')}`;
+
+  return `${local}\n${breaks === 'wide' ? domain : domain.replaceAll(BREAK, '')}`;
 }
 
-/** Whether a heading laid out with its domain whole split that domain mid-word: no line holds it all. */
-export function domainSplit(name: string, lines: readonly string[]): boolean {
+/** What a heading laid out with `breaks` as `lines` must break at next; the same `breaks` once it reads right. */
+export function headingBreaksAfter(
+  name: string,
+  breaks: HeadingBreaks,
+  lines: readonly string[],
+): HeadingBreaks {
+  if (breaks === 'none') return lines.length > 1 ? 'at' : 'none';
+  if (breaks === 'wide') return 'wide';
   const domain = name.slice(name.lastIndexOf('@') + 1);
-  return !lines.some((line) => line.replaceAll(BREAK, '').includes(domain));
+
+  return lines.some((line) => line.replace(UNSEEN, '') === domain) ? 'at' : 'wide';
 }
 
 /** An address, or a sentence carrying one, free to break after its @ when it is wider than its line. Its accessibility label stays as written (sc-70353). */
