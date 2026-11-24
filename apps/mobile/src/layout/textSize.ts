@@ -291,11 +291,6 @@ export function sideListWidth(width: number, contentWidth: number, fontScale: nu
   return atAccessibilitySizes(fontScale) ? Math.max(width, Math.round(contentWidth * 0.4)) : width;
 }
 
-/** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
-export function breakableEmail(email: string): string {
-  return email.replace('@', '@​');
-}
-
 export const SMALL_LINE = tokens.typeSmall.size * tokens.typeSmall.lineHeight;
 export const TITLE_LINE = tokens.typeRowTitle.size * tokens.typeRowTitle.lineHeight;
 
