@@ -1,0 +1,69 @@
+# sc-3914 r10 (phone): in ${ORIENT}, the product's Menu (top, scrolled, Choose who gets it on ${VARIANT}, Choose for them on ${PERSON}, no menu on ${NOMENU}) beside the demo's matching states, each shot at the top.
+# Pass METRO_URL, EVENT_ID, VARIANT (a Children only variant), PERSON (under Who hasn't picked), NOMENU (an event with no menu), ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- takeScreenshot: populated-product
+- scrollUntilVisible:
+    element:
+      id: 'menu.who.${VARIANT}'
+    centerElement: true
+- tapOn:
+    id: 'menu.who.${VARIANT}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.save'
+    timeout: 10000
+- takeScreenshot: chooseWho-product
+- tapOn:
+    id: 'menu.who.cancel'
+- scrollUntilVisible:
+    element:
+      id: 'menu.wait.${PERSON}'
+    centerElement: true
+- tapOn:
+    id: 'menu.wait.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- takeScreenshot: chooseFor-product
+- tapOn:
+    id: 'menu.choose.cancel'
+    optional: true
+- openLink: ${METRO_URL}/--/events/${NOMENU}?area=menu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- takeScreenshot: noMenu-product
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=populated
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: populated-demo
+- scroll
+- takeScreenshot: populated-2-demo
+- scroll
+- takeScreenshot: populated-3-demo
+- scroll
+- takeScreenshot: populated-4-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=defaultAfter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: defaultAfter-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWho
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWho-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseFor
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseFor-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=noMenu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: noMenu-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=stale
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: stale-demo
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=sheetFailed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: sheetFailed-demo
+- setOrientation: PORTRAIT
