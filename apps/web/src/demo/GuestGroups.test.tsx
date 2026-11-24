@@ -159,6 +159,21 @@ describe('Groups on the list and the guest (sc-3775)', () => {
     },
   );
 
+  it(
+    'names every chip that is on in Export’s Filter line, both groups included (sc-90684)',
+    SLOW,
+    async () => {
+      await guests('groupsTwoChips');
+      fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+      const box = screen.getByRole('dialog', { name: 'Export guests' });
+
+      expect(
+        within(box).getByText('Filter: All · Dietary notes · Bride’s side · Work'),
+      ).toBeDefined();
+    },
+  );
+
   it('No group shows only guests without one', SLOW, async () => {
     await guests('groupsNoGroup');
 

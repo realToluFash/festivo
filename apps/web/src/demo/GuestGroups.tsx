@@ -11,14 +11,13 @@ import {
   type GroupPick,
   type GroupsStart,
   type GuestGroup,
-  NO_GROUP,
+  groupChips,
   groupCounts,
   groupLine,
   groupNameLength,
   groupOptions,
   groupProblem,
   sameGroup,
-  sortedGroups,
   toggledGroup,
 } from './guestGroups.ts';
 import type { Guest } from './guests.ts';
@@ -40,10 +39,7 @@ export function GroupChips({
   onFilter: (next: readonly GroupFilter[]) => void;
 }) {
   if (groups.length === 0) return null;
-  const chips = [
-    ...sortedGroups(groups).map((one) => ({ key: one.id, word: one.name })),
-    ...(list.some((one) => one.group == null) ? [{ key: NO_GROUP, word: GGW.noGroup }] : []),
-  ];
+  const chips = groupChips(groups, list);
 
   return (
     <div className="gs-chips gs-filters gg-chips" role="group" aria-label={GGW.chips}>

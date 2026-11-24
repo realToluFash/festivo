@@ -240,6 +240,30 @@ export function inGroupFilter(one: Guest, filters: readonly GroupFilter[]): bool
   return filters.some((filter) => (filter === NO_GROUP ? one.group == null : one.group === filter));
 }
 
+/** The chips under the search: one per group, A to Z, then No group while anyone has none. */
+export function groupChips(
+  groups: readonly GuestGroup[],
+  list: readonly Guest[],
+): { key: GroupFilter; word: string }[] {
+  if (groups.length === 0) return [];
+
+  return [
+    ...sortedGroups(groups).map((one) => ({ key: one.id, word: one.name })),
+    ...(list.some((one) => one.group == null) ? [{ key: NO_GROUP, word: GGW.noGroup }] : []),
+  ];
+}
+
+/** sc-90684: the words of the chips that are on, in the row's order, for Export's "Filter: …" line. */
+export function groupChipsOn(
+  groups: readonly GuestGroup[],
+  list: readonly Guest[],
+  filters: readonly GroupFilter[],
+): string[] {
+  return groupChips(groups, list)
+    .filter((chip) => filters.includes(chip.key))
+    .map((chip) => chip.word);
+}
+
 /** sc-90684: pressing a chip toggles only that chip. */
 export function toggledGroup(
   filters: readonly GroupFilter[],

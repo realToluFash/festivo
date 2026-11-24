@@ -124,6 +124,7 @@ import {
   GGW,
   type GuestGroup,
   deleteGroup,
+  groupChipsOn,
   groupNameOf,
   makeGroup,
   renameGroup,
@@ -1106,7 +1107,10 @@ function GuestsPage({
           day={localDay(start.clock, event.timeZone)}
           inView={shown}
           everyone={counts.all}
-          narrowing={narrowing(choice, q)}
+          narrowing={narrowing(choice, q, [
+            ...(manages && dietaryOnly ? [GW.dietaryNotes] : []),
+            ...groupChipsOn(groups, list, groupFilters),
+          ])}
           needs={manages}
           onClose={() => {
             setExporting(null);
