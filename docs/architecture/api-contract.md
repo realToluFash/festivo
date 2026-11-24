@@ -93,10 +93,12 @@ English, never the account's saved one. The two-factor recovery's
 (`POST /api/auth/two-factor/recovery`) names it in the account's zone ("Try again Sunday,
 Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `retryAt`
 member, because **Get back in without your authenticator** quotes them. A client quotes
-`retryAt` as it is, and falls back to `Retry-After` only when it is absent. Only the
-recovery carries `retryAt`. Any other such limit names it in UTC ("Try again Monday 26 Oct
-at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoever reads a
-raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. A door code's
+open and redeem (`/api/door-codes/{code}`, sc-72) carry `retryAt` too, in UTC ("Tuesday
+24 Nov at 13:32 UTC"), because the redeem page's **Too many tries** quotes it. Any
+other such limit names it in UTC ("Try again Monday 26 Oct at 16:32 UTC."), in its `detail`
+only (sc-12379): no screen quotes it, and whoever reads a raw `detail` reads it from
+anywhere. `Retry-After` stays in seconds either way (RFC 9110
 §10.2.3).
 
 | Endpoint                                            | Budget                                                                        | Spent by                 |
