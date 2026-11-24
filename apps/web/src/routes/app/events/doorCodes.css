@@ -283,6 +283,10 @@
   color: var(--colorPrintInk);
 }
 
+:where(.dc-sheet) :is(h1, p) {
+  margin: 0;
+}
+
 .dc-sheet-org {
   font: 600 18px/1.25 var(--fontFamily);
 }
