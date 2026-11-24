@@ -1902,14 +1902,23 @@ const MORE_FOOT = 116;
 /** The header band's pills in tablet portrait; inside an event they scroll sideways, so no area's name is cut. */
 function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: boolean }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Record<string, number>>({});
+  const ends = useRef<Record<string, number>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
   const chosen = entries.find((entry) => entry.on)?.key;
   const reveal = (key: string | undefined) => {
-    const x = key == null ? undefined : starts.current[key];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = key == null ? undefined : ends.current[key];
+    if (end != null && shown.current > 0 && content.current > 0)
+      strip.current?.scrollTo({
+        x: Math.max(
+          0,
+          Math.min(content.current - shown.current, end + tokens.space3xl - shown.current),
+        ),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, as the demo's AreaPills keeps it.
+  // The chosen area's pill is kept in view and the strip moves no further, so it opens at Overview wherever
+  // the chosen pill fits, as the demo's AreaPills does (sc-31370).
   useEffect(() => reveal(chosen), [chosen]);
 
   const pills = entries.map((entry) => (
@@ -1918,7 +1927,7 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       ref={entry.opener}
       style={[styles.pill, entry.on && styles.pillOn]}
       onLayout={(event) => {
-        starts.current[entry.key] = event.nativeEvent.layout.x;
+        ends.current[entry.key] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
         if (entry.on) reveal(entry.key);
       }}
       onPress={entry.onPress}
@@ -1945,6 +1954,14 @@ function Pills({ entries, scrolls }: { entries: readonly NavEntry[]; scrolls: bo
       style={styles.pillsBar}
       contentContainerStyle={styles.pillsInEvent}
       accessibilityRole="tablist"
+      onLayout={(event) => {
+        shown.current = event.nativeEvent.layout.width;
+        reveal(chosen);
+      }}
+      onContentSizeChange={(width) => {
+        content.current = width;
+        reveal(chosen);
+      }}
     >
       {pills}
     </ScrollView>
