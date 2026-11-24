@@ -14,6 +14,7 @@ import { AmberLine } from '../../components/Amber.tsx';
 import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { FailureLine } from '../../components/FailureLine.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { OfflineBand } from '../../components/OfflineBand.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet, SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
@@ -102,6 +103,13 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
   const [world, setWorld] = useState<MenuWorld | null>(settled.world);
   const [system, setSystem] = useState<System | null>(start.system);
   const [download, setDownload] = useState<Download>(start.download);
+  const [offline, setOffline] = useState(start.system === 'stale' || start.download === 'failed');
+  const [offlineAt] = useState(() => {
+    const day = new Date();
+    day.setHours(Number(UPDATED_AT.slice(0, 2)), Number(UPDATED_AT.slice(3)), 0, 0);
+
+    return day;
+  });
   const [opened, setOpened] = useState<Opened | null>(settled.opened);
   const [who, setWho] = useState<WhoOpened | null>(settled.who);
   const [said, setSaid] = useState<string[]>(settled.said);
@@ -210,8 +218,23 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
     </DemoOnly>
   );
 
+  const band = offline && (
+    <OfflineBand
+      stale={{
+        at: offlineAt,
+        retry: () => {
+          setOffline(false);
+          if (system === 'stale') setSystem(null);
+        },
+        unanswered: 0,
+      }}
+      inFront
+    />
+  );
+
   const scroll = (children: React.ReactNode) => (
     <View style={[styles.page, { paddingTop: insets.top }]}>
+      {band}
       <ScrollView
         contentContainerStyle={[
           styles.body,
