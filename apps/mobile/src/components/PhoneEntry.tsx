@@ -46,7 +46,8 @@ export function PhoneEntry({
 
   return (
     <Field label={label} pill={pill} error={error} help={help}>
-      <View style={over ? styles.over : styles.beside}>
+      {/* A live text-size change keeps the old row's text widths; a fresh row measures as a launch does (sc-78438). */}
+      <View key={over ? 'over' : 'beside'} style={over ? styles.over : styles.beside}>
         <View style={over ? styles.whole : styles.country}>
           <CountryPicker
             label={t('verifyPhone.countryLabel')}
