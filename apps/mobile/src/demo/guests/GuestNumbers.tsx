@@ -7,9 +7,8 @@ import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
-import { type FilterKey, type OverviewState, countsOf, filterWord } from './GuestsModel.ts';
+import { type Counts, type FilterKey, type OverviewState, filterWord } from './GuestsModel.ts';
 import { BlockHead } from './GuestsParts.tsx';
-import { GUESTS } from './GuestsSample.ts';
 import { W, say } from './GuestsWords.ts';
 import { MarkSlot, ReplyMark } from '../../components/ReplyMark.tsx';
 
@@ -18,13 +17,14 @@ const COUNTED = ['invited', 'coming', 'notcoming', 'maybe', 'noreply', 'held'] a
 /** Overview's Guests (sc-3786): the six exclusive counts as rows, each opening the guests it counts, and who is not yet invited. */
 export function GuestNumbers({
   state,
+  counts,
   onOpen,
 }: {
   state: OverviewState;
+  counts: Counts | null;
   onOpen: (filter: FilterKey) => void;
 }) {
   const [now, setNow] = useState(state);
-  const counts = countsOf(GUESTS);
   const open = (
     <TextAction
       label={W.openGuestList}
@@ -33,7 +33,7 @@ export function GuestNumbers({
     />
   );
 
-  if (now === 'overviewViewer') return null;
+  if (now === 'overviewViewer' || counts == null) return null;
   if (now === 'overviewFailed')
     return (
       <View testID="overview.guests">
@@ -46,7 +46,7 @@ export function GuestNumbers({
         />
       </View>
     );
-  if (now === 'overviewNone')
+  if (now === 'overviewNone' || counts.invited === 0)
     return (
       <View testID="overview.guests">
         <BlockHead title={W.guests} />

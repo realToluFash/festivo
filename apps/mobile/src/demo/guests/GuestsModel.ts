@@ -1279,6 +1279,14 @@ export function countsAt(
   return state === 'first' ? countsFrom(guests) : countsOf(guests, added);
 }
 
+/** Overview's Guests block (sc-30303): an event's own sample, nobody invited on a draft, and no block for an event the demo has no list for. */
+export function overviewCountsOf(event: string, phase: string): Counts | null {
+  const own = ownStateOf(event);
+  if (phase === 'draft') return own === 'draft' ? DRAFT : countsFrom([]);
+  if (own != null) return own === 'draft' ? DRAFT : PAUSED;
+  return event === WEDDING ? countsOf(GUESTS) : null;
+}
+
 /** Guests as it opens on an event: the state, the list, the counts and the card, all from the event when the URL gives no state. */
 export function guestsOpening(given: GuestsState | null, event: string, locale: string) {
   const state = startStateOf(given, event);
