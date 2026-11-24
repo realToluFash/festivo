@@ -15,6 +15,8 @@ import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { UsageWarning } from './UsageWarning.tsx';
+import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -354,6 +356,7 @@ export default function Demo() {
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
+      <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -679,6 +682,8 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
+        <BoardPages pages={USAGE_WARNING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">
