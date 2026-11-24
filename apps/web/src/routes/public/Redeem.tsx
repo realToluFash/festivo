@@ -373,7 +373,7 @@ function Primary({
       }}
     >
       {busy && <span className="rd-spin" aria-hidden="true" />}
-      {children}
+      <span className="rd-primary-words">{children}</span>
     </button>
   );
 }
