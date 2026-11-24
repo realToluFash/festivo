@@ -101,6 +101,11 @@ def tester(p, db, stories):
 
 
 def designer(p, db, stories):
+    failed = [s for s in ordered(W.queued(p.role, stories, prs=store.prs(db)))
+              if s["state"] == "Failed QA"]
+    if failed:
+        p.add(f"Failed QA, demo only ({len(failed)}): fix the demo on a ux/ branch; once it "
+              "merges pm moves it to Ready For QA:", *[line(s) for s in failed], "")
     waiting = [s for s in ordered(stories) if s["state"] == "Needs Design"
                and "translation" not in s["labels"]]
     p.add(f"Needs Design ({len(waiting)}): draw each, link it, then move it to Ready For Dev:")
