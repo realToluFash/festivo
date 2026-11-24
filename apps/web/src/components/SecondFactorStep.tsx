@@ -44,6 +44,7 @@ export function SecondFactorStep({
   failedTitle,
   failedBody,
   lostBoth,
+  lostWhileWaiting = false,
   onVerify,
   onExpired,
   onBack,
@@ -59,6 +60,8 @@ export function SecondFactorStep({
   failedBody: string;
   /** The way back in for somebody who has neither (sc-509). */
   lostBoth?: { to: string; state?: unknown };
+  /** The lost link also under the passkey's waiting state: the reset's, not a sign-in's. */
+  lostWhileWaiting?: boolean;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
   /** The column's ‹ Back, where the step has one to go back to: a sign-in's (WebTwoFactor, page 27). */
@@ -247,6 +250,7 @@ export function SecondFactorStep({
           </button>
         </div>
         {status.kind === 'refused' && <Refused line={t('passkey.refused')} />}
+        {lostWhileWaiting && lost != null && <div className="auth-asides">{lost}</div>}
       </>
     );
   }
