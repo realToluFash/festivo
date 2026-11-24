@@ -70,8 +70,15 @@ describe('the card a guest’s link answers (sc-89272)', () => {
     expect(head).not.toContain('/i/');
   });
 
-  it('sends sc-26025’s message while the event invites, and the bare link otherwise', () => {
+  it('sends sc-26025’s message where the board does, in the guest’s language', () => {
     expect(messageFor('photo')).toMatch(/^Yusuf Ibrahim, Adaeze Obi and Tunde Bakare would love/u);
-    expect(messageFor('ended')).toMatch(/^https:\/\//u);
+    expect(messageFor('french')).toMatch(/^\[Sophie.*seraient ravis de vous voir/u);
   });
+
+  it.each(['awkward', 'noHosts', 'ended', 'gone'] as const)(
+    'sends the bare link from Copy invitation link for %s, as the board draws it',
+    (state) => {
+      expect(messageFor(state)).toMatch(/^https:\/\/\S+$/u);
+    },
+  );
 });

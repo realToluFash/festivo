@@ -118,9 +118,11 @@ export function cardOf(state: CardState, mesh: Mesh = EVENT.mesh): Card {
   };
 }
 
-/** What the host sent: sc-26025's message while the event takes invitations, the bare link otherwise. */
+const BARE_LINK: ReadonlySet<CardState> = new Set(['awkward', 'noHosts', 'ended', 'gone']);
+
+/** What the host sent: sc-26025's message, or the bare link from Copy invitation link (sc-1526) as the board draws it. */
 export function messageFor(state: CardState): string {
-  if (state === 'ended' || state === 'gone') return LINK;
+  if (BARE_LINK.has(state)) return LINK;
 
   return messageOf(guestFor(state), EVENT, LINK);
 }
