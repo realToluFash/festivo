@@ -159,13 +159,9 @@ class Subscription
     }
 
     /** Only `SubscriptionChanger` calls this. A renewal never moves the period start (sc-3929): only a change billed from a new date does. */
-    public function changePeriod(?DateTimeImmutable $periodEnd, ?DateTimeImmutable $billedFrom = null): void
+    public function changePeriod(?DateTimeImmutable $periodEnd): void
     {
         $this->periodEnd = $periodEnd;
-
-        if (null !== $billedFrom) {
-            $this->periodStart = $billedFrom;
-        }
     }
 
     /** Only `SubscriptionChanger` calls this, so the change is recorded in the history. */

@@ -112,6 +112,18 @@ final class PaddleWebhookTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCreatedSubscriptionBilledFromANewDateMovesThePeriodStartUnderOnePeriodLine(): void
+    {
+        $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-02-03T09:00:00Z', '2027-03-03T09:00:00Z'));
+
+        self::assertSame(['2027-02-03T09:00:00+00:00', '2027-03-03T09:00:00+00:00'], [$this->subscription()->getPeriodStart()->format(\DATE_ATOM), $this->subscription()->getPeriodEnd()?->format(\DATE_ATOM)]);
+        self::assertSame([
+            ['evt_created', 'plan', 'free', 'enterprise', '2027-01-31 09:00:00'],
+            ['evt_created', 'period', null, '2027-03-03T09:00:00+00:00', '2027-01-31 09:00:00'],
+        ], $this->history());
+    }
+
+    #[Test]
     public function pastDueThenARenewalThatClearsItThenACancellationEachWriteTheirLines(): void
     {
         $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
@@ -335,6 +347,25 @@ final class PaddleWebhookTest extends ApiTestCase
             ['GET /notifications?status=failed&per_page=200&from=2027-01-28T09%3A00%3A00%2B00%3A00', 'GET /notifications?after=ntf_reported'],
             Vec\map($sent->value, static fn (array $call): string => $call[0]),
         );
+    }
+
+    #[Test]
+    public function aSelfServePlanWithNoPriceInTheAccountsCurrencyIsNotSentToPaddle(): void
+    {
+        $terms = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19')?->getTerms() ?? self::fail('The first version is missing.');
+        $terms['enterprise'] = ['sales' => 'self_serve'] + Type\dict(Type\string(), Type\mixed())->coerce($terms['enterprise']);
+        self::service(CatalogueKeeper::class)->publish(CataloguePart::Plans, 'self-serve enterprise', $terms, 'Enterprise sold through the checkout, for this test', 'Ada at Soirely');
+        $this->subscription()->getBillingAccount()->setCurrency('NGN');
+        self::em()->flush();
+        /** @var Ref<list<array{0: string, 1: mixed}>> $sent */
+        $sent = new Ref([]);
+        $this->client->disableReboot();
+        self::getContainer()->set(PaddleApi::class, $this->paddleAnswering($sent));
+
+        $this->signIn($this->owner);
+        $this->client->jsonRequest('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing/checkout', ['plan' => 'enterprise', 'interval' => 'month']);
+
+        self::assertSame([[409, ErrorCode::PlanNotPriced->type()], []], [$this->refusal(), $sent->value]);
     }
 
     #[Test]

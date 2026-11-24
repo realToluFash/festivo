@@ -63,9 +63,18 @@ final readonly class SubscriptionChanger
                 $subscription->changePlan($state->plan, $state->source);
             }
 
-            if ((null !== $state->periodEnd && !self::same($subscription->getPeriodEnd(), $state->periodEnd)) || (null !== $state->billedFrom && !self::same($subscription->getPeriodStart(), $state->billedFrom))) {
-                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodEnd()?->format(\DATE_ATOM), $state->periodEnd?->format(\DATE_ATOM), $by);
-                $subscription->changePeriod($state->periodEnd ?? $subscription->getPeriodEnd(), $state->billedFrom);
+            $endMoves = null !== $state->periodEnd && !self::same($subscription->getPeriodEnd(), $state->periodEnd);
+            $startMoves = null !== $state->billedFrom && !self::same($subscription->getPeriodStart(), $state->billedFrom);
+
+            if ($endMoves) {
+                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodEnd()?->format(DateTimeInterface::ATOM), $state->periodEnd->format(DateTimeInterface::ATOM), $by);
+                $subscription->changePeriod($state->periodEnd);
+            } elseif ($startMoves) {
+                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodStart()->format(DateTimeInterface::ATOM), $state->billedFrom->format(DateTimeInterface::ATOM), $by);
+            }
+
+            if ($startMoves) {
+                $subscription->startPeriodAt($state->billedFrom);
             }
 
             if ($subscription->getStatus() !== $state->status) {
