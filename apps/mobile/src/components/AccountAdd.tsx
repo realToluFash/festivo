@@ -44,11 +44,11 @@ export function AddScreen({
   const field = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
   const [country, setCountry] = useState(startCountry);
-  const [changed, setChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorOn, setErrorOn] = useState<'country' | 'number'>('number');
   const [discarding, setDiscarding] = useState(false);
   const [sending, setSending] = useState(false);
+  const changed = typed.trim() !== '';
   const leaves = useLeaveAsk(open && changed && !sending, () => setDiscarding(true), onClose);
 
   useEffect(() => {
@@ -60,7 +60,6 @@ export function AddScreen({
 
   function typing(text: string): void {
     setTyped(text);
-    setChanged(text.trim() !== '');
     if (error != null) setError(null);
   }
 
