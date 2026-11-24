@@ -22,8 +22,11 @@ export function useOrganisationExport(
 } {
   const [load, setLoad] = useState<ExportLoad>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  // Only a load Try again or the connection started says Refreshing…, never the poll (sc-88912).
+  const [asked, setAsked] = useState(false);
   const reload = useCallback(() => {
     setLoad((before) => (before.kind === 'failed' ? { kind: 'loading' } : before));
+    setAsked(true);
     setAttempt((n) => n + 1);
   }, []);
   const { watch, refreshing } = useOffline({
@@ -37,10 +40,14 @@ export function useOrganisationExport(
 
     watch(api.organisationExport(organisationId)).then(
       (page) => {
-        if (current) setLoad({ kind: 'loaded', page });
+        if (!current) return;
+        setLoad({ kind: 'loaded', page });
+        setAsked(false);
       },
       () => {
-        if (current) setLoad((before) => (before.kind === 'loaded' ? before : { kind: 'failed' }));
+        if (!current) return;
+        setLoad((before) => (before.kind === 'loaded' ? before : { kind: 'failed' }));
+        setAsked(false);
       },
     );
 
@@ -60,5 +67,5 @@ export function useOrganisationExport(
 
   const show = useCallback((page: OrganisationExportPage) => setLoad({ kind: 'loaded', page }), []);
 
-  return { load, show, reload, refreshing };
+  return { load, show, reload, refreshing: refreshing && asked };
 }

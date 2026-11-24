@@ -143,10 +143,13 @@ function Directory({
   const [reminders, setReminders] = useState<PaymentRemindersSetting | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const unasked = useRef(false);
+  // A search, a view or a filter loads without Refreshing…; Try again and the connection's return say it (sc-88912).
+  const [asked, setAsked] = useState(false);
   const { watch, refreshing } = useOffline({
     loaded: load.kind === 'loaded',
     reload: () => {
       unasked.current = true;
+      setAsked(true);
       setAttempt((n) => n + 1);
     },
     title: heading,
@@ -186,17 +189,20 @@ function Directory({
       ),
     ).then(
       (page) => {
-        if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
+        if (stop.signal.aborted) return;
+        setLoad({ kind: 'loaded', page, rows: 'shown' });
+        setAsked(false);
       },
       (error: unknown) => {
-        if (!stop.signal.aborted)
-          setLoad((was) =>
-            was.kind !== 'loaded'
-              ? { kind: 'failed' }
-              : quiet && keepsWhatLoaded(error)
-                ? was
-                : { ...was, rows: 'failed' },
-          );
+        if (stop.signal.aborted) return;
+        setAsked(false);
+        setLoad((was) =>
+          was.kind !== 'loaded'
+            ? { kind: 'failed' }
+            : quiet && keepsWhatLoaded(error)
+              ? was
+              : { ...was, rows: 'failed' },
+        );
       },
     );
 
@@ -256,7 +262,7 @@ function Directory({
       <div className="desk vd-desk">
         <div className="desk-page" inert={covered}>
           <div className="desk-column vd-column">
-            {refreshing && <Refreshing />}
+            {refreshing && asked && <Refreshing />}
             <TitleRow title={t('vendors.title')} titleRef={heading} bell={desk.bell} />
             {load.kind === 'loading' && <Loading />}
             {load.kind === 'failed' && (

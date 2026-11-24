@@ -327,6 +327,65 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
   });
 
+  it('polls a Preparing export online with no Refreshing… (sc-88912)', async () => {
+    signedIn();
+    const preparing = {
+      owner: true,
+      export: {
+        id: 'ex_1',
+        state: 'preparing',
+        mine: true,
+        askedBy: 'Folake Adeyemi',
+        askedAt: '2026-10-17T13:30:00+00:00',
+        asked: 'Saturday 17 Oct at 14:30 WAT',
+        expiresAt: null,
+        expires: null,
+        downloadedAt: null,
+        downloaded: null,
+      },
+      nextAllowedAt: null,
+      nextAllowed: null,
+    };
+    let asked = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path !== '/api/orgs/org_1/export') return json(ANSWERS[path]);
+      asked += 1;
+
+      return asked === 1 ? json(preparing) : new Promise<Response>(() => {});
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    open('/app/settings/data-and-control/export');
+    expect(await screen.findByText('Preparing your export')).toBeDefined();
+
+    await vi.advanceTimersByTimeAsync(5000);
+    vi.useRealTimers();
+
+    await waitFor(() => expect(asked).toBe(2));
+    expect(screen.queryByText('Refreshing…')).toBeNull();
+  });
+
+  it('searches Vendors online with no Refreshing… (sc-88912)', async () => {
+    signedIn();
+    let asked = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path !== '/api/orgs/org_1/vendors') return json(ANSWERS[path]);
+      asked += 1;
+
+      return asked === 1 ? json(ANSWERS[path]) : new Promise<Response>(() => {});
+    });
+    open('/app/settings/vendors');
+    await screen.findByText('Bloom & Co');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'Bloom' },
+    });
+
+    await waitFor(() => expect(asked).toBe(2));
+    expect(screen.queryByText('Refreshing…')).toBeNull();
+  });
+
   it('keeps the colours and says so in the box when Personalisation is opened from Notifications offline', async () => {
     signedIn();
     followAccountScheme('cobalt');
