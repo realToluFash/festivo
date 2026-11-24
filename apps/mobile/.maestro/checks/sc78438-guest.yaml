@@ -64,20 +64,29 @@ appId: host.exp.Exponent
 - takeScreenshot: guest-list-open
 - tapOn:
     id: 'guest.form.mobile.country.search'
-- inputText: '+44'
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.country.GB'
-    timeout: 15000
-    optional: true
-- tapOn:
-    id: 'guest.form.mobile.country.GB'
+- inputText: 'Royaume'
 - waitForAnimationToEnd
+- tapOn:
+    point: '30%,57%'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: '(Terminé|Done)'
+    commands:
+      - tapOn: '(Terminé|Done)'
+      - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: 'guest.form.mobile.number'
     timeout: 10000
     centerElement: true
+- swipe:
+    start: 50%, 55%
+    end: 50%, 80%
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'guest.form.mobile.country.search'
+- assertVisible: '.*\+44.*'
 - takeScreenshot: guest-gb
 - scrollUntilVisible:
     element:

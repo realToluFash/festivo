@@ -27,19 +27,27 @@ appId: host.exp.Exponent
 - takeScreenshot: change-list-open
 - tapOn:
     id: 'phone.country.search'
-- inputText: '+44'
-- swipe:
-    start: 50%, 60%
-    end: 50%, 52%
+- inputText: 'Royaume'
 - waitForAnimationToEnd
+- tapOn:
+    point: '30%,57%'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: '(Terminé|Done)'
+    commands:
+      - tapOn: '(Terminé|Done)'
+      - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: 'phone.country.GB'
-    timeout: 15000
+      id: 'phone.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
     optional: true
-- tapOn:
-    id: 'phone.country.GB'
-- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'phone.country.search'
+- assertVisible: '.*\+44.*'
 - takeScreenshot: change-gb
 - scrollUntilVisible:
     element:
