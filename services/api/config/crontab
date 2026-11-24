@@ -21,4 +21,4 @@
 * * * * * php /app/bin/console app:notifications:check --no-interaction
 15 * * * * php /app/bin/console app:mail:check-rates --no-interaction
 55 3 * * * php /app/bin/console app:billing:reconcile --no-interaction
-0 4 * * * php /app/bin/console app:usage:measure-storage --no-interaction
+58 3 * * * php /app/bin/console app:usage:measure-storage --no-interaction
