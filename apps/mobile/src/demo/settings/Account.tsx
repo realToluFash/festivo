@@ -54,7 +54,7 @@ import {
 } from './AccountModel.ts';
 import { useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
-import { saveName, useSavedName } from './savedName.ts';
+import { saveName, useSavedName, useStarts } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
@@ -76,8 +76,9 @@ export function AccountSection() {
   const { t } = useTranslation();
   const { state } = useLocalSearchParams<{ state?: string }>();
   const name = accountStateOf(state);
+  const starts = useStarts();
 
-  return <AccountPage key={name} start={accountStart(name, t)} />;
+  return <AccountPage key={`${name}:${starts}`} start={accountStart(name, t)} />;
 }
 
 function AccountPage({ start }: { start: AccountStart }) {
