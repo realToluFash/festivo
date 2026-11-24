@@ -16,6 +16,7 @@ import { Glyph } from '../components/Glyph.tsx';
 import {
   type AskPhase,
   BUSY_MS,
+  CODE_LINES,
   CODE_ROLES,
   type DoorAsk,
   type DoorCode,
@@ -55,7 +56,7 @@ import {
   stopLine,
 } from './doorCode.ts';
 import { focusWhenFree, LayersContext, useDeskDialog } from '../layers.ts';
-import { type OnEvent, ROLE_LINES } from './people.ts';
+import type { OnEvent } from './people.ts';
 import { qrPath, qrSeed } from './security.ts';
 import {
   Ask,
@@ -239,6 +240,7 @@ const MAKE_FRESH: MakeStart = {
   checked: false,
   phase: 'open',
   failsOnce: false,
+  refused: false,
   menu: false,
   into: null,
   focus: 'first',
@@ -495,6 +497,7 @@ function MakeDialog({
   const [form, setForm] = useState(start.form);
   const [checked, setChecked] = useState(start.checked);
   const [phase, setPhase] = useState(start.phase);
+  const [refused, setRefused] = useState(start.refused);
   const [menu, setMenu] = useState(start.menu);
   const fails = useRef(start.failsOnce);
   const roleRef = useRef<HTMLInputElement>(null);
@@ -537,6 +540,7 @@ function MakeDialog({
       (form.ends.kind === 'earlier' ? timeRef : endsRef).current?.focus();
       return;
     }
+    setRefused(false);
     setPhase('busy');
   }
 
@@ -552,6 +556,14 @@ function MakeDialog({
       <p className={busy ? 'desk-unseen dc-making' : 'desk-unseen'} role="status">
         {busy ? W.making : ''}
       </p>
+      {refused && phase === 'open' && (
+        <div className="desk-error dc-failed" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          <span>
+            {W.runRefused} {W.runRefusedLine}
+          </span>
+        </div>
+      )}
       {phase === 'failed' && (
         <p className="desk-error dc-failed" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -565,7 +577,7 @@ function MakeDialog({
           {CODE_ROLES.map((role) => (
             <li key={role}>
               <label className={role === form.role ? 'desk-row is-picked' : 'desk-row'}>
-                <RowWords title={role} lines={[ROLE_LINES[role]]} />
+                <RowWords title={role} lines={[CODE_LINES[role]]} />
                 <input
                   ref={role === form.role ? roleRef : undefined}
                   type="radio"

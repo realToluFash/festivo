@@ -23,13 +23,17 @@ export const LEVELS: readonly { level: Level; words: string; hint: string }[] = 
   {
     level: 'floor',
     words: 'Can work the floor',
-    hint: 'Serves their tables and marks what went out.',
+    hint: 'Marks plates and requests at their own tables.',
   },
-  { level: 'pass', words: 'Can work the pass', hint: 'Sees and sends the orders at the pass.' },
+  {
+    level: 'pass',
+    words: 'Can work the pass',
+    hint: 'Marks plates at the pass and the kitchen stations.',
+  },
   {
     level: 'run',
     words: 'Can run the floor',
-    hint: 'Runs the floor on the night. Comes only through a personal link.',
+    hint: 'Starts service, fires courses and acts on any table. Nothing else of the event.',
   },
 ];
 
