@@ -1,5 +1,6 @@
 import {
   type AddableMember,
+  type DoorCodeCard,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
@@ -13,6 +14,7 @@ import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
+import { atWords, inMadeOrder, shownCode } from '../kit/doorCodes.ts';
 import {
   JOB_LABEL_MOST,
   addRefused,
@@ -31,8 +33,10 @@ import {
 import { toneOf } from '../kit/personFace.ts';
 import { refusalSaid } from '../kit/refusal.ts';
 import { glide } from '../motion.ts';
+import { useServerNow } from '../kit/serverNow.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { DoorCodes } from './DoorCodes.tsx';
 import { Glyph } from './Glyph.tsx';
 import {
   AddBox,
@@ -48,6 +52,7 @@ import {
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FailedBlock, Line, Row, RowList, SectionHead } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { codeClock } from './useCodeAsk.ts';
 
 /** `addable` is null for whoever may not change People, and when its read failed: Add people stays off and the list still shows. */
 type Load =
@@ -59,6 +64,8 @@ type Load =
       owners: string[];
       admins: string[];
       addable: AddableMember[] | null;
+      /** Null for whoever may not change People, and when its read failed; in the order they were made. */
+      doorCodes: DoorCodeCard[] | null;
     };
 
 const LIT_MS = 2000;
@@ -184,6 +191,7 @@ export function EventPeople({
   const organisationName = organisation?.name ?? outsideIn?.organisationName ?? '';
   const country = organisation?.countryCode ?? '';
   const manages = managesPeople(event);
+  const now = useServerNow();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [opened, setOpened] = useState<{ id: string; open: boolean; visit: number } | null>(null);
@@ -200,9 +208,13 @@ export function EventPeople({
     const addableRead = manages
       ? api.addableEventMembers(event.id).catch(() => null)
       : Promise.resolve(null);
+    const codesRead = manages
+      ? api.doorCodes(event.id).then(inMadeOrder, () => null)
+      : Promise.resolve(null);
 
-    Promise.all([api.eventPeople(event.id), addableRead]).then(
-      ([read, addable]) => live && setLoad({ kind: 'loaded', ...read, addable }),
+    Promise.all([api.eventPeople(event.id), addableRead, codesRead]).then(
+      ([read, addable, doorCodes]) =>
+        live && setLoad({ kind: 'loaded', ...read, addable, doorCodes }),
       () => live && setLoad({ kind: 'failed' }),
     );
 
@@ -316,6 +328,18 @@ export function EventPeople({
       {manages && addable != null && (
         <AddBox ref={addBox} label={t('eventPeople.addPrompt')} onPress={openAdd} />
       )}
+      {manages && load.doorCodes != null && (
+        <DoorCodes
+          event={event}
+          codes={load.doorCodes}
+          onCodes={(change) =>
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, doorCodes: change(was.doorCodes ?? []) } : was,
+            )
+          }
+          tell={tell}
+        />
+      )}
       {people.length === 0 ? (
         <View style={styles.nobody}>
           <Text size={16} weight="semibold">
@@ -400,7 +424,22 @@ export function EventPeople({
             ]),
             face: <PersonMark person={person} side={44} />,
           }}
-          notes={person.outside && <Line text={t('eventPeople.outsideEnds')} size={14} />}
+          notes={
+            person.doorCode != null && person.joinedAt != null ? (
+              <>
+                <Line
+                  text={t('doorCodes.joinedWith', {
+                    code: shownCode(person.doorCode),
+                    time: atWords(person.joinedAt, codeClock(event, now), t),
+                  })}
+                  size={14}
+                />
+                <Line text={t('eventPeople.outsideEnds')} size={14} />
+              </>
+            ) : (
+              person.outside && <Line text={t('eventPeople.outsideEnds')} size={14} />
+            )
+          }
           start={person.role}
           off={
             person.outside

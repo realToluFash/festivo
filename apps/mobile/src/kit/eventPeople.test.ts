@@ -97,6 +97,12 @@ describe('People on an event', () => {
     expect(rowLine(t, PRIYA, 'u_priya')).toBe('Lead · You');
   });
 
+  it('ends the line of someone who came in by a door code with Door code', () => {
+    const joined = { ...TOM, doorCode: 'K7P2QX9M', joinedAt: '2026-11-14T13:31:00+00:00' };
+
+    expect(rowLine(t, joined, 'u_priya')).toBe('Can check guests in · Door · Door code');
+  });
+
   it('names the owners and admins who see every event', () => {
     expect(
       seesEveryEvent(
