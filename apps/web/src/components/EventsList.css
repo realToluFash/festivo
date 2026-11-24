@@ -165,7 +165,7 @@
 
 .ev-card.is-party,
 .ev-preview.is-party {
-  --evScrim: color-mix(in srgb, var(--coverAccent, var(--colorAccent)) 50%, var(--colorInk));
+  --evScrim: color-mix(in srgb, var(--coverParty) 50%, var(--colorInk));
 }
 
 .ev-card.is-draft,

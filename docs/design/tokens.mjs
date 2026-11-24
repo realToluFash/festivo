@@ -95,7 +95,7 @@ export const tokens = {
   optionPurple: '#8B6CD6',
   optionTeal: '#2A9D8F',
   optionRose: '#D96C8A',
-  coverParty: '#5A3DF0', // SETTLED (sc-89272): a party cover's ground on the guest page and its link card, whatever scheme the guest picked. Violet's base
+  coverParty: '#5A3DF0', // SETTLED (sc-89272, sc-89932): a party event's own colour on every screen and its link card, and a party organisation tile's, whatever scheme the person looking picked. Violet's base
   optionNone: '#D6D9E0', // "no pick". SETTLED: deliberately the same hex as colorTrack — both mean absence, and changing one does not imply changing the other
   // ── Colour · scrims (web: rgba; native: same rgba on a full-screen View) ───
   scrimSheet: 'rgba(21,23,28,0.35)', // bottom sheets. Screens also use 0.25 and 0.3 – accidents
