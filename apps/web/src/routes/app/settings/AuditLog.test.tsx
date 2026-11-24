@@ -124,7 +124,8 @@ function answering(answers: Record<string, (query: Record<string, string>) => Re
     const query = Object.fromEntries(url.searchParams);
     sent.push({ line, query, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
     const answer = answers[line];
-    if (answer == null) throw new TypeError('Failed to fetch');
+    // The shell's own reads answer, so that none of them tells the page the connection fell silent.
+    if (answer == null) return new Response(null, { status: 404 });
 
     return answer(query);
   });
