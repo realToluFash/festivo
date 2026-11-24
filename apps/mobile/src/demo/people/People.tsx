@@ -16,7 +16,7 @@ import { useLoad } from '../settings/MembersLoading.tsx';
 import { AddScreen } from './PeopleAdd.tsx';
 import { PeoplePage } from './PeopleFrame.tsx';
 import { Face, RoleSheet } from './PeopleRole.tsx';
-import { WholeWordsTag } from './PeopleTag.tsx';
+import { TagLineCheck, WholeWordsTag } from './PeopleTag.tsx';
 import {
   ADD_PROMPT,
   addedToast,
@@ -88,6 +88,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
   const { load, retry } = useLoad(start.load);
   const { fontScale } = useWindowDimensions();
   const tagWhole = atAccessibilitySizes(fontScale);
+  const [tagBreaks, setTagBreaks] = useState<Readonly<Record<string, boolean>>>({});
   const viewer = start.viewer;
   const [world] = useState(() => start.world ?? ireWorld());
   const members = world.members;
@@ -215,7 +216,8 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                 const opensRow = opens(one, viewer, onEvent);
                 const line = rowLine(one, viewer);
                 const tag = one.outside ? outsideTag(world.organisation) : null;
-                const tagUnder = tag != null && tagWhole;
+                const tagChecked = tag != null && tagWhole;
+                const tagUnder = tagChecked && tagBreaks[one.id] === true;
 
                 return {
                   key: one.id,
@@ -238,10 +240,18 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
                         titleMayBeAddress
                         line={tagUnder ? undefined : line}
                         below={
-                          tagUnder ? (
+                          tagChecked ? (
                             <>
-                              <WholeWordsTag word={tag} />
-                              {line != null && (
+                              <TagLineCheck
+                                word={tag}
+                                onBreaks={(breaks) =>
+                                  setTagBreaks((now) =>
+                                    now[one.id] === breaks ? now : { ...now, [one.id]: breaks },
+                                  )
+                                }
+                              />
+                              {tagUnder && <WholeWordsTag word={tag} />}
+                              {tagUnder && line != null && (
                                 <Text
                                   size={14}
                                   weight="medium"
