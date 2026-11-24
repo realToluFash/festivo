@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { remeasureAfter } from './anchorRemeasure.ts';
 import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { reachableOffset } from './reachableOffset.ts';
@@ -414,17 +415,14 @@ export function useAnchorFollowsTurn(
   const was = useRef({ width, height, bodyTop });
 
   useEffect(() => {
-    const turned = was.current.width !== width || was.current.height !== height;
-    const moved = was.current.bodyTop !== bodyTop;
-    was.current = { width, height, bodyTop };
-    if (!open || (!turned && !moved)) return;
-    const wait = setTimeout(
-      () => {
-        if (trigger.current == null) then(null);
-        else anchorUnder(trigger, then);
-      },
-      turned ? SETTLED_MS : 0,
-    );
+    const now = { width, height, bodyTop };
+    const after = remeasureAfter(was.current, now, open, SETTLED_MS);
+    was.current = now;
+    if (after == null) return;
+    const wait = setTimeout(() => {
+      if (trigger.current == null) then(null);
+      else anchorUnder(trigger, then);
+    }, after);
 
     return () => clearTimeout(wait);
   }, [width, height, bodyTop, open, trigger, then]);
