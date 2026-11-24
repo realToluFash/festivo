@@ -1,0 +1,28 @@
+# sc-84453 iPad upright, Spanish: B from the bell over A reads ‹ Evento, spoken "Volver a Evento".
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- assertVisible:
+    id: frame.back
+    text: 'Volver a Evento|Back to Event'
+- takeScreenshot: b-overview-evento

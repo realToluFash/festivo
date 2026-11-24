@@ -1,0 +1,93 @@
+# sc-84453 iPad upright then on its side: a notification for the event already open opens in place; one edge swipe leaves the event.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NG_A}
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: notifications.popover
+- assertVisible:
+    id: frame.back
+    text: 'Back to Today'
+- takeScreenshot: up-same-guests-changed
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_A}
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: guests.filter
+- assertVisible: 'Lagos Night'
+- assertVisible:
+    id: frame.back
+    text: 'Back to Today'
+- takeScreenshot: up-same-overview
+- swipe:
+    start: 0%, 50%
+    end: 75%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- assertNotVisible: 'Lagos Night'
+- takeScreenshot: up-one-swipe-leaves
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NG_A}
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: side-same-guests-changed
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_A}
+- waitForAnimationToEnd
+- takeScreenshot: side-same-overview
+- swipe:
+    start: 0%, 50%
+    end: 75%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- takeScreenshot: side-one-swipe
+- setOrientation: PORTRAIT
