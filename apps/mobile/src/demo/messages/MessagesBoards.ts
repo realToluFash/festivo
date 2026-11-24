@@ -1,8 +1,10 @@
 import { MESSAGES_STATES, type MessagesState } from './MessagesModel.ts';
 import { SAMPLE_EVENT_ID } from './MessagesSample.ts';
+import { BELL_BOARDS } from './BellStates.ts';
 
 /** The demo home's Messages group: each state's board as spec §7 names it, deep-linked into the wedding. */
 const BOARDS: Record<MessagesState, readonly [string, string]> = {
+  ...BELL_BOARDS,
   first: ['first time', 'No conversations; the composer waits'],
   loading: ['loading', 'The list and the conversation as quiet shapes'],
   inUse: ['in use', 'Needs you · 5, Scheduled · 1, Done'],

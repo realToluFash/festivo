@@ -257,6 +257,7 @@ final class GuestExportTest extends ApiTestCase
                 'email' => 'guest' . $at . '@example.com',
                 'position' => $at,
                 'link_token' => Str\format('export-test-link-%05d', $at),
+                'check_in_code' => Str\format('export-test-code-%05d', $at),
                 'created_at' => '2026-11-01 10:00:00',
                 'updated_at' => '2026-11-01 10:00:00',
             ]);

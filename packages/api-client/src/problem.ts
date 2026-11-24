@@ -54,6 +54,9 @@ export interface Problem {
   stale?: string[];
   /** On `seating_items_outside`: the tables the refused room size would leave outside it (sc-4000). */
   outside?: string[];
+  /** On `menu_default_move`: the people given the default who would move to the new one, and those who would go back to not chosen (sc-1362). */
+  move?: number;
+  back?: number;
   /** On `meal_picks_closed`: the closed courses a send would have changed, none of them saved (sc-3907). */
   courses?: string[];
   /** On `meal_pick_ruled_out`: each person the plate's allergens rule out, nothing saved until sent again with `anyway` (sc-3909). */
@@ -76,7 +79,11 @@ export interface Problem {
   current?: unknown;
   /** On `payer_covers_costs` (sc-91): the costs the payer covers, in the budget's order, and how many. */
   lineIds?: string[];
+  /** And on `menu_change_asks` (sc-3913): how many people the change asks again, for `course`, `whom` they are, and on `allergen` the added allergens they have recorded. */
   count?: number;
+  course?: { id: string; name: string };
+  whom?: 'picked' | 'everyone' | 'allergen';
+  allergens?: string[];
   /** On a night-screen press that changed nothing: the earlier press it lost to, its presser's name and when, in the event's zone (sc-3895). */
   superseded_by?: { name: string; at: string };
 }

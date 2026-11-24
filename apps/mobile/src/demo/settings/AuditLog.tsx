@@ -22,6 +22,7 @@ import {
   SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -322,9 +323,7 @@ function MenuButton({
 
   useEffect(() => {
     if (!open || at != null) return;
-    const wait = setTimeout(() => anchorUnder(trigger, setAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(trigger, then), setAt, MENU_AFTER_MS);
   }, [open, at]);
 
   const close = () => {

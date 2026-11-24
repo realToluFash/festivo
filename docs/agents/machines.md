@@ -58,6 +58,7 @@ repository because it describes the machine, not the project. The repository shi
 | `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `sliceMemoryMax`                          | what every worker on the machine may use between them, the cap on systemd's `soirely.slice`; `16G` by default. Raise it before adding roles, since each worker's own `memoryMax` counts against it                                                                                                                                                                                                                                                                                                                   |
 | `emulatorHost`                            | per tester role: the computer its Android emulator runs on, `"me@laptop"` or `{"ssh": "me@192.168.1.9", "name": "my-laptop", "gpu": "host", "sdk": "%LOCALAPPDATA%\\Android\\Sdk"}`. Unset, the emulator starts on this machine as always. A malformed value refuses only that role. See [An emulator on another computer](#an-emulator-on-another-computer)                                                                                                                                                         |
+| `chromeProfiles`                          | the Chrome profile folder of an account whose Chrome profile is not signed in to Google with that address, for a login from `sq web`: `{"qa@example.com": "Profile 3"}`. See [Claude accounts](#claude-accounts)                                                                                                                                                                                                                                                                                                     |
 | `manualTesters`                           | people who test, by Shortcut mention name: `{"@name": {"machine": "<the machine their stack runs on>", "member": "<Shortcut member id>"}}`. Kept out of the repository, which is public. A malformed entry is a warning in `sq status`, and stops no role                                                                                                                                                                                                                                                            |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
@@ -166,9 +167,32 @@ with `~/.claude-soirely`.
   login. The copy is made once. A later setup overwrites nothing; it names each folder
   whose `settings.json` no longer matches the default's, so a rule added there is not
   silently missing from the others.
+- **Logging in again, from `sq web`:** its **Claude logins** section lists every account
+  on every machine the page reads: the folders the roles name, soonest to run out first,
+  then the rest of each home folder's (`~/.claude`, and each `~/.claude-*` holding an
+  account file, settings or a login) as **No role**, so a spare account can be logged in
+  before a role moves onto it. Each row has how long the login has left
+  (`claude auth status`'s `loginExpiresAt`) and a **Log in again** button. A login
+  running out within three days, or gone, is also a warning on `sq status` and the page.
+  The button runs `claude auth login --email <account>` on the machine that holds the
+  folder, and the page's own machine opens the sign-in in the Chrome profile signed in as
+  that account (`--profile-email`, or the folder named in `chromeProfiles`). Sign in and the
+  login finishes by itself; if the sign-in page shows a code instead, paste it on the page.
+  A login that comes back as another account is named on the page, since the folder's roles
+  now run as it. Claude moves the date later each time it refreshes a login, so a login in
+  daily use rarely runs out; one that is dropped shows as logged out straight away.
+- **Each account's usage**, beside its login: every limit Claude reports for it (the
+  session, the week, the week for one model), how much is used and when it resets, as
+  `/usage` shows them. The page has each folder's Claude read them again once they are 5
+  minutes old, one folder at a time, with
+  `claude -p /usage --no-session-persistence --setting-sources ""` in
+  `~/.cache/soirely-usage`. Claude answers it itself: no model call, so nothing is spent,
+  no hooks or settings loaded, no session kept. sq then reads the figures from the account
+  file Claude keeps them in. An account a role uses that is 90% through any limit is a
+  warning on `sq status` and the page; a folder no role uses never is.
 - **A folder with no login refuses its roles**, with the command to log in. The other
-  roles keep running. `sq` reads only the account's email from `.claude.json`, never a
-  token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
+  roles keep running. `sq` reads only the account's email and the usage Claude last read
+  from `.claude.json`, never a token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
   Keychain. _(To check on the Mac's first run with two folders: that each keeps its own
   Keychain login, which `sq status` shows as each role's account and the run log as each
   run's.)_
@@ -383,6 +407,79 @@ through its own server, so the browser holds one token and talks to one address.
   warning on `sq status`.
 - It is plain HTTP on a trusted network, as Docker's own ports here are. Over anything else,
   put it behind a tunnel.
+- **A login started for another machine's account** runs on that machine, and its sign-in
+  opens in this one's Chrome. Claude sends the browser back to `localhost`, which is this
+  machine, so the page listens on that port here for the length of the login and passes
+  the code on to the other machine's Claude; when the port is taken here, it opens the
+  link whose page shows a code to paste instead. Chrome opens only for a page looked at
+  on the machine serving it (`127.0.0.1`): from another address the page shows the link
+  and the box for the code. Each login step is taken only as JSON from the page's own
+  address, so another site open in the browser cannot start one.
+
+### Controls on the page
+
+**The page pauses and resumes a machine, pauses and resumes every machine, and starts and
+stops each role**, on the machine it shows: a peer's are asked of that peer's own page,
+which does them. Each says what the `sq` command says, its `error:` included, and is kept
+in `<sq home>/runs/controls.jsonl` with the address it came from.
+
+- **Every control asks for the token, this machine's own page included.** A worker shares
+  the loopback with the owner, not the owner's cookie. Open the page once as
+  `http://127.0.0.1:8765/?token=<SQ_WEB_TOKEN>` (a hand-run `sq web` opens it that way
+  itself), and the cookie lasts a year. Until then the buttons are off and the page says how.
+- **Workers are never given `SQ_WEB_TOKEN`**, and reading the env file is among their
+  denied tools. Like the `OWNER_ONLY` refusals, that is a guard against a worker that
+  misreads a thread, not a boundary: a worker runs as the owner.
+- **Start starts the role and its stack, and leaves the manager as it is.** Unlike
+  `sq start`, it neither installs the manager nor lifts a pause, since the page is served
+  by one of the manager's own units. A started role on a paused machine ticks once the
+  machine is resumed, and the page says so.
+- **Stop lets a running worker finish its item**, as `sq stop` does. Stopping one at once
+  is `just agents down --now`, at the machine.
+- **Pause every machine is shown here at once**, and on the other machines at their next
+  tick, within a minute.
+- A peer whose `sq` predates the controls is named on the page; it gets them once its `sq`
+  updates from `main`.
+
+**Settings, on each role and on each machine's header, changes `agents.json` there**: a
+role's `model`, `effort`, `inboxEffort`, `wakeEvery`, `workers` and `maxBudgetUsd`, the same
+six in `defaults`, and the machine's `dailyBudgetUsd`, and the **Claude account**
+(`claudeConfigDir`) of each role and of the machine. The rest of the file is changed by
+hand, since a mistake there stops the machine.
+
+- **A Claude account is one of the folders the machine's logins list**: the folders its
+  roles run under, `~/.claude`, and each `~/.claude-*` with an account file, settings or a
+  login, named with who it runs as and the roles on it. Any other folder is refused, since
+  a folder's settings and hooks run in every worker started under it. Make a new one and
+  log in to it at the keyboard ([Claude accounts](#claude-accounts)). A folder is matched
+  by the path it resolves to and written in the `~/` form the logins show.
+- **A folder with no login is refused** with `sq run`'s `no Claude login in …`, for a role
+  even when it is refused for something else already, and for the machine's own folder
+  even when no role runs under it. A role's account can be cleared, so it runs under the
+  machine's (**The machine's**); naming the machine's folder instead keeps the role on it
+  when the machine's changes. The machine's cannot be cleared. The next run starts under
+  the new folder, with its account, settings and memory; a worker already running finishes
+  under the old one.
+- **Each field shows the value in force and where it is set**: the role, `defaults`, or
+  sq's own floor (`wakeEvery` 3m, `workers` 1). A cleared role field falls back to
+  `defaults`.
+- **A save is checked as `sq run` checks the whole file after it.** A save that would put
+  the file in error, or refuse a role that was not refused, is refused with `sq run`'s own
+  line, and nothing is written. So `workers: 2` in `defaults` is refused, naming every role
+  it would stop.
+- **Only the changed fields' lines change**, on a file indented as `just agents setup`
+  writes it. One Save is one write, even when it changes `defaults` and the daily budget
+  together. The file a save replaced is kept as `agents.json.prev`, with the revision the
+  save wrote beside it in `agents.json.prev.sha256`, and **Undo last change** puts it back:
+  one step, not a history.
+- **A save or an undo is refused when the file changed since the page read it**, by hand
+  or from another page, and the page shows the file as it now is. An undo is also refused,
+  and Undo is not offered, once the file has been changed by hand since the last save, so a
+  hand edit is never put back.
+- `sq run` reads the file every minute, so a change is in force by the next tick. A worker
+  already running finishes its item on the values it started with.
+- Without the token, Settings shows the values and offers no Save or Undo. Each save and
+  undo is kept in `runs/controls.jsonl` with each field's old and new value.
 
 ## An emulator on another computer
 

@@ -94,6 +94,7 @@ import { smsEncoding } from './inviteSms.ts';
 import type { DemoLink } from './settings.ts';
 import type { Field, TellKind } from './messagesTell.ts';
 import { TELL_GROUP, TELL_STATES, isTellState } from './messagesTellStates.ts';
+import { BELL_GROUP, BELL_STATES, isBellState } from './bellFeed.ts';
 
 /** Messaging B · Conversations (page e36, board/messaging-b-spec.md): the sample and the inbox's rules; the words are in messagesWords.ts. */
 export { MW };
@@ -127,7 +128,6 @@ export const MESSAGE_STATES = [
   { key: 'untold', name: 'Not told yet' },
   { key: 'invited', name: 'Invitations sent' },
   { key: 'scheduled', name: 'Scheduled' },
-  { key: 'bell', name: 'The bell' },
   { key: 'invitedReached', name: 'Who it reached, an invitation' },
   { key: 'sentReached', name: 'Who it reached, just sent' },
   { key: 'notMatched', name: 'A sender not matched' },
@@ -227,6 +227,8 @@ export const MESSAGE_STATES = [
   ...TAP_STATES,
   ...REFUSAL_STATES,
   ...CHOOSE_STATES,
+  { key: 'bell', name: 'The bell' },
+  ...BELL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGE_STATES)[number]['key'];
@@ -262,7 +264,8 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
         !isTellState(one.key) &&
         !isTapState(one.key) &&
         !isRefusalState(one.key) &&
-        !isChooseState(one.key),
+        !isChooseState(one.key) &&
+        !isBellState(one.key),
     ).map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
   },
   {
@@ -305,6 +308,13 @@ export const MESSAGES_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: CHOOSE_GROUP,
     states: CHOOSE_STATES.map((one) => ({ to: `${MESSAGES_AT}?state=${one.key}`, name: one.name })),
+  },
+  {
+    name: BELL_GROUP,
+    states: [{ key: 'bell', name: 'The bell' }, ...BELL_STATES].map((one) => ({
+      to: `${MESSAGES_AT}?state=${one.key}`,
+      name: one.name,
+    })),
   },
 ];
 
@@ -2744,6 +2754,18 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, loading: true };
     case 'conversation':
     case 'bell':
+    case 'bellPush':
+    case 'bellLoading':
+    case 'bellFailed':
+    case 'bellEmpty':
+    case 'bellMore':
+    case 'bellMoreFailed':
+    case 'bellMute':
+    case 'bellMuted':
+    case 'bellGone':
+    case 'bellOffline':
+    case 'bellRefreshing':
+    case 'bellUnknown':
     case 'stopAction':
     case 'stopAsk':
     case 'stopFailed':

@@ -987,19 +987,19 @@ export function viewOf(
   replyBy: string | null,
   contacts = true,
   dietaryOnly = false,
-  groupFilter: GroupFilter | null = null,
+  groupFilters: readonly GroupFilter[] = [],
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
   const needed = dietaryOnly && contacts;
 
-  if (searched || needed || groupFilter != null || (choice !== 'all' && choice !== 'invited')) {
+  if (searched || needed || groupFilters.length > 0 || (choice !== 'all' && choice !== 'invited')) {
     const found = people.filter(
       (one) =>
         inChoice(one.reply, choice) &&
         matches(one, q, contacts) &&
         (!needed || dietary(needsOfPerson(one))) &&
-        inGroupFilter(one.guest, groupFilter),
+        inGroupFilter(one.guest, groupFilters),
     );
 
     return {
@@ -1659,9 +1659,9 @@ export interface GuestsStart {
   askFailed: boolean;
   markEnds: 'saved' | 'fails' | 'refused';
   paused: boolean;
-  /** sc-3775: the event's groups, and the chip pressed. */
+  /** sc-3775: the event's groups; sc-90684: the chips pressed, any number. */
   groups: GuestGroup[];
-  groupFilter: GroupFilter | null;
+  groupFilters: readonly GroupFilter[];
   /** sc-3774: Remove's question open, and what the next Remove meets. */
   removing: Removing | null;
   /** sc-3774: a guest just removed, Undo open. */
@@ -1943,6 +1943,10 @@ export const GUESTS_STATES = [
   { key: 'groups', name: 'Each guest’s group on their row, a chip per group and No group' },
   { key: 'groupsChip', name: 'The Bride’s side chip pressed' },
   { key: 'groupsNoGroup', name: 'The No group chip pressed' },
+  {
+    key: 'groupsTwoChips',
+    name: 'Bride’s side and Work pressed, with Dietary notes: either group, with a need',
+  },
   { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
   { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
   { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
@@ -2057,7 +2061,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     markEnds: 'saved',
     paused: false,
     groups: [],
-    groupFilter: null,
+    groupFilters: [],
     removing: null,
     undo: null,
   };
@@ -2611,9 +2615,11 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groups':
       return grouped;
     case 'groupsChip':
-      return { ...grouped, groupFilter: 'g-bride' };
+      return { ...grouped, groupFilters: ['g-bride'] };
     case 'groupsNoGroup':
-      return { ...grouped, groupFilter: NO_GROUP };
+      return { ...grouped, groupFilters: [NO_GROUP] };
+    case 'groupsTwoChips':
+      return { ...grouped, dietary: true, groupFilters: ['g-bride', 'g-work'] };
     case 'groupsGuest':
       return { ...grouped, pane: guestPane('emeka') };
     case 'groupsGuestNone':
@@ -2623,7 +2629,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groupsLong':
       return { ...grouped, groups: longNamedGroups() };
     case 'groupsLongChip':
-      return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
+      return { ...grouped, groups: longNamedGroups(), groupFilters: ['g-school'] };
     case 'groupsLongGuest':
       return { ...grouped, list: withLongNamedGuest(grouped.list), groups: longNamedGroups() };
     case 'groupField':
@@ -2965,6 +2971,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'groups',
     'groupsChip',
     'groupsNoGroup',
+    'groupsTwoChips',
     'groupsGuest',
     'groupsGuestNone',
     'groupsViewerList',

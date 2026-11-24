@@ -1,0 +1,6 @@
+# sc-87421: sc87421-saved-line on the Android tablet in landscape. That tablet's natural orientation is landscape, and Maestro's PORTRAIT puts it there.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- runFlow: sc87421-saved-line.yaml

@@ -57,6 +57,7 @@ def path():
     return config_dir() / "agents.json"
 
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
+WEB_TOKEN = "SQ_WEB_TOKEN"
 
 
 def env_file():
@@ -246,6 +247,22 @@ def token_source(folder):
     return next((name for name in (token_name(folder), TOKEN) if os.environ.get(name)), None)
 
 
+def account_env(folder, spare=False):
+    """The environment a folder's Claude runs in: its workers' token (`token_source`) when
+    the env file holds one, never another account's, and never `sq web`'s, which works its
+    controls. A `spare` folder, one no role uses, gets only its own token, never the plain
+    one every role's folder shares."""
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(TOKEN) and key != WEB_TOKEN}
+    source = token_name(folder) if spare else token_source(folder)
+    if source and os.environ.get(source):
+        env[TOKEN] = os.environ[source]
+    env.pop("CLAUDE_CONFIG_DIR", None)
+    if not is_claude_default(folder):
+        env["CLAUDE_CONFIG_DIR"] = str(folder)
+    return env
+
+
 def account(folder):
     """Who the folder's workers run as, or None: `token` and the name it is filed under when
     the env file holds one, which Claude uses ahead of any login and which names no email,
@@ -397,6 +414,13 @@ def emulator_host_problem(config, role):
     return None
 
 
+def no_login(folder):
+    """Why a role cannot run under a Claude config folder no account is logged in to."""
+    login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
+    return (f"no Claude login in {folder}: run {login}, then /login with the account this "
+            f"role should use, or set {token_name(folder)} in the env file")
+
+
 def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
@@ -433,6 +457,11 @@ def check(config, known=None, logged_in=account):
     limit = config.get("sliceMemoryMax")
     if limit is not None and not SIZE.match(str(limit)):
         errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
+    profiles = config.get("chromeProfiles")
+    if profiles is not None and not (isinstance(profiles, dict) and all(
+            isinstance(key, str) and isinstance(value, str) for key, value in profiles.items())):
+        errors.append(f"chromeProfiles is {profiles!r} in {path()}: an account's email to "
+                      "its Chrome profile folder, such as {\"qa@example.com\": \"Profile 3\"}")
     for role in listed:
         if role in unknown:
             continue
@@ -455,10 +484,7 @@ def check(config, known=None, logged_in=account):
             continue
         folder = claude_dir(config, role)
         if folder and not logged_in(folder):
-            login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
-            refused[role] = (f"no Claude login in {folder}: run {login}, then /login with the "
-                             f"account this role should use, or set {token_name(folder)} in "
-                             "the env file")
+            refused[role] = no_login(folder)
             continue
         ready[role] = values
     return errors, refused, ready

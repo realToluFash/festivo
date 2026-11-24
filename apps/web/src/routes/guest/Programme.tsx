@@ -7,8 +7,8 @@ import { dateLocale } from '../../i18n/index.ts';
 import { readerZone, wallDayOf } from './GuestParts.tsx';
 import './programme.css';
 
-/** sc-3899's The day, under the event's details: the items the hosts show to guests, a day's date over each list when there is more than one. */
-export function Programme({ page }: { page: GuestPage }) {
+/** sc-3899's The day, under the event's details, or between Where and Your answer on the event's day (sc-24381): the items the hosts show to guests, a day's date over each list when there is more than one. */
+export function Programme({ page, onTheDay = false }: { page: GuestPage; onTheDay?: boolean }) {
   const { t } = useTranslation();
   const items = page.programme;
 
@@ -19,7 +19,7 @@ export function Programme({ page }: { page: GuestPage }) {
   const { timeZone } = page.event;
 
   return (
-    <section className="gp-prog" aria-labelledby="gp-prog-h">
+    <section className={onTheDay ? 'gp-day-block gp-prog' : 'gp-prog'} aria-labelledby="gp-prog-h">
       <h2 id="gp-prog-h" className="gp-h2">
         {days.length > 1 ? t('guest.programme') : t('guest.theDay')}
       </h2>

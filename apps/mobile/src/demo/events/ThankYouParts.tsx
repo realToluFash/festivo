@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
+import { useKeysUp } from '../../components/keyboardWatch.ts';
 import type { RefFor } from '../../components/EventOverview.tsx';
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
 import {
@@ -252,6 +253,7 @@ export function EndNowAsk({
   const insets = useSafeAreaInsets();
   const [field, setField] = useState(start);
   const [typing, setTyping] = useState(false);
+  const keysUp = useKeysUp();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -309,7 +311,7 @@ export function EndNowAsk({
           testID="event.ask.endNow.field"
         />
       }
-      top={typing ? insets.top + tokens.spaceLg : null}
+      top={typing && keysUp ? insets.top + tokens.spaceLg : null}
       width={ASK_WIDTH}
       onKeep={() => {
         if (!field.busy) onKeep();

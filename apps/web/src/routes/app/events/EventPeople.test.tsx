@@ -51,6 +51,7 @@ interface Row {
   address: string | null;
   addressKind: 'email' | 'mobile' | null;
   endsAt: string | null;
+  doorCode?: string | null;
 }
 
 function person(id: string, name: string, role: string, jobLabel: string | null = null): Row {
@@ -162,6 +163,7 @@ async function onPeople(
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/people')
       return json({ people, owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+    if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
     if (line === 'GET /api/events/ev_1/people/addable')
       return json({
         members: MEMBERS.filter(
@@ -761,6 +763,7 @@ describe('coming back to People while offline (sc-65646)', () => {
       if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
       if (line === 'GET /api/events/ev_1/people')
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
       if (line === 'PATCH /api/events/ev_1/people/p_tom')
         return json({ person: { ...TOM, role: 'can_edit' } });
@@ -791,6 +794,32 @@ describe('coming back to People while offline (sc-65646)', () => {
         'We could not load the people on this event. Check your connection and try again.',
       ),
     ).toBeNull();
+  });
+});
+
+describe('People keeping up while it is open (sc-72)', () => {
+  it('lists someone who joins by a door code within 10 seconds, reading the codes first, with a dialog left open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      signedIn();
+      const rows = [PRIYA, TOM];
+      const sent = await onPeople(rows);
+      fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+      const before = sent.length;
+
+      rows.push({ ...outsider('kemi', { name: 'Kemi Ade' }, 'can_view'), doorCode: 'K7P2QX9M' });
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+
+      expect(within(people()).getByRole('button', { name: /Kemi Ade.*Door code/ })).toBeDefined();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+      const reads = sent.slice(before).map((one) => one.line);
+      expect(reads.slice(0, 2)).toEqual([
+        'GET /api/events/ev_1/door-codes',
+        'GET /api/events/ev_1/people',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -1001,6 +1030,7 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
         await held;
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] });
       }
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
 
       return json({});

@@ -63,6 +63,7 @@ export * from './dayTiles.ts';
 export * from './eventSearch.ts';
 export * from './orgSearch.ts';
 export * from './picksShown.ts';
+export * from './menuPicks.ts';
 export * from './today.ts';
 export * from './todayView.ts';
 export * from './eventAreas.ts';

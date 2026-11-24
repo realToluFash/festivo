@@ -25,6 +25,7 @@ use App\Enum\GuestReplySource;
 use App\Enum\NeedKind;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
@@ -86,6 +87,16 @@ final readonly class GuestAnswers
     public function started(Guest $guest): bool
     {
         return $this->clock->now() >= $guest->getEvent()->getStartsAt();
+    }
+
+    /** From 00:00 on the start date until the end, both in the event's zone (sc-24381): the day a Coming guest's page leads with the way in. */
+    public function onTheDay(Guest $guest): bool
+    {
+        $event = $guest->getEvent();
+        $zone = new DateTimeZone($event->getTimeZone());
+        $now = $this->clock->now();
+
+        return $now->setTimezone($zone)->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d') && $now < $event->getEndsAt();
     }
 
     /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by, and a recorded reply, which invites a guest not yet invited, `event_state_invalid` unless the phase allows `invite` (sc-52829); the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */

@@ -21,7 +21,7 @@ import {
   clockOf,
   countLine,
   doorRows,
-  sameName,
+  listedAs,
   walkInProblem,
 } from '../kit/checkIn.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
@@ -104,6 +104,8 @@ export function CheckInView({
   nav,
   top,
   onEvent,
+  onScan,
+  searchAsk = null,
 }: {
   eventId: string;
   kind: LayoutKind;
@@ -112,6 +114,10 @@ export function CheckInView({
   /** At the head of the scroll on a tablet: the page's title, which scrolls away with it. */
   top: ReactNode;
   onEvent: (event: OrganisationEvent) => void;
+  /** Scan a code: the card's one step while the door is open (sc-1301). */
+  onScan: () => void;
+  /** Search by name from the scanner: each new ask focuses the search again. */
+  searchAsk?: string | null;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -125,6 +131,14 @@ export function CheckInView({
   const [walkIn, setWalkIn] = useState<WalkIn | null>(null);
   const search = useRef<TextInputInstance>(null);
   const opener = useRef<ViewInstance>(null);
+  const loaded = door.load.kind === 'loaded';
+
+  useEffect(() => {
+    if (searchAsk == null || !loaded) return;
+    const wait = setTimeout(() => focusChecked(search), tokens.motionBase);
+
+    return () => clearTimeout(wait);
+  }, [searchAsk, loaded]);
 
   useEffect(() => {
     let current = true;
@@ -252,7 +266,9 @@ export function CheckInView({
               ? t('checkIn.openedAtAlone', { time: opensAt })
               : t('checkIn.openedAt', { time: opensAt })
       }
-      step={null}
+      step={
+        open ? { label: t('checkIn.scan.title'), onPress: onScan, testID: 'checkIn.scan' } : null
+      }
     />
   );
   const startWalkIn = (name: string) =>
@@ -332,7 +348,7 @@ export function CheckInView({
             setWalkIn({ ...walkIn, checked: true });
             return;
           }
-          const listed = allowDuplicate ? null : sameName(checkIn, walkIn.name);
+          const listed = allowDuplicate ? null : listedAs(t, checkIn, walkIn.name, currentLocale());
           if (listed != null) {
             setWalkIn({ ...walkIn, checked: true, same: { id: listed.id, name: listed.name } });
             return;
@@ -496,7 +512,7 @@ function DoorLine({
   );
 }
 
-function ArrivedButton({
+export function ArrivedButton({
   name,
   id,
   big,

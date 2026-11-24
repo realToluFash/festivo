@@ -357,6 +357,8 @@ export interface GuestPage {
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
   started: boolean;
+  /** From 00:00 on the start date until the end, both in the event's zone, by the server's clock (sc-24381). */
+  onTheDay: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
@@ -365,6 +367,8 @@ export interface GuestPage {
   programme: GuestProgrammeItem[];
   /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
   seating: GuestSeating | null;
+  /** What the guest shows at the door (sc-1301), only while they are Coming: the code, and its QR as an SVG. */
+  checkInCode: { code: string; qrSvg: string } | null;
   /** The courses that ask guests anything, and each person's answers (sc-3907); no courses is no meal step. */
   meals: GuestMeals;
 }
@@ -409,11 +413,23 @@ export interface MealCourse {
   answer: 'choose' | 'same';
   skippable: boolean;
   picksClose: { at: string; source: string; closed: boolean };
+  /** Given at `chooseBy` to each person coming with no answer whom it can't harm (sc-1362). */
+  default: { dish: string; variant: string | null; options: string[]; chooseBy: string } | null;
   dishes: MealDish[];
 }
 
-/** Not answered is no answer; `defaulted` is set only by sc-1362. */
-export type MealAnswerKind = 'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted';
+/** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
+export type MealAnswerKind =
+  'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted' | 'menuChanged';
+
+/** Why a menu change asked a person again (sc-3913), and the dish they had picked. */
+export interface MealChanged {
+  picked: string;
+  why: 'removed' | 'ways' | 'choices' | 'allergen';
+  ways: number | null;
+  /** On `allergen`: the added allergens this person has recorded, in Annex II order. */
+  allergens: string[];
+}
 
 export interface MealAnswer {
   course: string;
@@ -422,6 +438,7 @@ export interface MealAnswer {
   dish: string | null;
   variant: string | null;
   options: string[];
+  changed: MealChanged | null;
 }
 
 export interface GuestMeals {
@@ -429,12 +446,14 @@ export interface GuestMeals {
   you: string;
   courses: MealCourse[];
   answers: Record<string, MealAnswer[]>;
+  /** By person: the courses whose default they are never given (sc-1362), each with `allergy` or the unmet diet's code. */
+  excluded: Record<string, { course: string; reason: string }[]>;
 }
 
 export interface MealPick {
   person: string;
   course: string;
-  answer: Exclude<MealAnswerKind, 'defaulted'>;
+  answer: Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
   dish?: string | null;
   variant?: string | null;
   options?: string[];
@@ -946,6 +965,10 @@ export interface CheckInGuest {
   id: string;
   fullName: string;
   reply: GuestReply;
+  /** When the reply was recorded, in the event's zone. */
+  repliedAt: string | null;
+  /** The SHA-256, in hex, of the guest's check-in code (sc-1301); null for a walk-in. */
+  code: string | null;
   walkIn: boolean;
   arrival: Arrival | null;
   companions: CheckInCompanion[];
@@ -987,6 +1010,8 @@ function asCheckInGuest(value: unknown): CheckInGuest | null {
     id,
     fullName,
     reply,
+    repliedAt: text(row.repliedAt),
+    code: text(row.code),
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
     companions: companions as CheckInCompanion[],

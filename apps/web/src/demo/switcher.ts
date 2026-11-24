@@ -26,6 +26,8 @@ export interface Where {
   places: readonly Place[];
   current: string;
   paused: boolean;
+  /** The organisation in use asks for two-factor and its deadline has passed (sc-609). */
+  overdue: boolean;
   invitations: readonly Invitation[];
   answers: Readonly<Record<string, Answer>>;
   offer: OfferStanding | null;
@@ -58,6 +60,11 @@ export const SWITCHER_STATES = [
   'managed-closed',
   'managed-listed',
   'paused',
+  'paused-invitation',
+  'paused-invitations',
+  'paused-alone',
+  'overdue',
+  'overdue-alone',
   'outside',
   'outside-one-org',
 ] as const;
@@ -68,6 +75,7 @@ export const OFFER = { id: 'org-ire-weddings', name: 'Ire Weddings', domain: 'ir
 export const PAUSED = {
   id: 'org-casa-lumen',
   name: 'Casa Lumen Eventos',
+  initials: 'CL',
   domain: 'casalumen.es',
   since: '2026-11-02',
 };
@@ -75,9 +83,20 @@ export const PAUSED = {
 const IRE: Place = { id: 'org-ire-events', name: 'Ire Events', role: 'Owner' };
 export const NEW_PLACE: Place = { ...NEW_ORG, role: 'Owner' };
 
+/** The paused membership: in use, named on the pill, never listed in the switcher (sc-85513). */
+const PAUSED_PLACE: Place = { id: PAUSED.id, name: PAUSED.name, role: 'Admin' };
+const PAUSED_STATES: readonly (SwitcherState | null)[] = [
+  'paused',
+  'paused-invitation',
+  'paused-invitations',
+  'paused-alone',
+];
+/** The states where Ire Events is the only organisation the switcher lists. */
+const ONE_ORG: readonly (SwitcherState | null)[] = ['outside-one-org', 'overdue-alone'];
+
 const POPULATED: readonly Place[] = [
   IRE,
-  { id: PAUSED.id, name: PAUSED.name, role: 'Admin' },
+  PAUSED_PLACE,
   {
     id: 'org-atelier-celeste-receptions',
     name: 'Atelier Céleste Réceptions et Mariages',
@@ -144,19 +163,27 @@ export function whereOf(state: SwitcherState | null): Where {
               ? { [CELEBRACIONES]: 'managed', [BLUEBIRD]: 'managed' }
               : {};
   const many = state === 'many' || state === 'search' || state === 'no-match';
-  const alone = state === 'one' || many || state === 'paused' || state === 'outside-one-org';
+  const paused = PAUSED_STATES.includes(state);
+  const held = state === 'paused' || state === 'paused-alone' || state === 'overdue';
+  const alone = state === 'one' || many || held || ONE_ORG.includes(state);
 
   return {
     places: many
       ? MANY
-      : state === 'one' || state === 'outside-one-org'
-        ? [IRE]
-        : state === 'joined'
-          ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
-          : POPULATED,
-    current: IRE.id,
-    paused: state === 'paused',
-    invitations: alone ? [] : INVITATIONS,
+      : state === 'paused-alone'
+        ? []
+        : paused
+          ? POPULATED.filter((place) => place.id !== PAUSED.id)
+          : state === 'one' || ONE_ORG.includes(state)
+            ? [IRE]
+            : state === 'joined'
+              ? [...POPULATED, joinedPlace(CELEBRACIONES_INVITATION)]
+              : POPULATED,
+    current: paused ? PAUSED.id : IRE.id,
+    paused,
+    overdue: state === 'overdue' || state === 'overdue-alone',
+    invitations:
+      state === 'paused-invitation' ? [CELEBRACIONES_INVITATION] : alone ? [] : INVITATIONS,
     answers,
     offer:
       state === 'offer'
@@ -189,6 +216,7 @@ function madeIn(now: Where, place: Place, at: string, takesFocus: boolean): Wher
     places: known ? now.places : [...now.places, place],
     current: place.id,
     paused: false,
+    overdue: false,
     switched: { name: place.name, at, takesFocus },
     fresh: known ? now.fresh : [...now.fresh, place.id],
     arrived: place.id,
@@ -226,7 +254,10 @@ export function waiting(where: Where): readonly Invitation[] {
   });
 }
 
+/** While paused the organisation in use is the paused one, which the switcher does not list. */
 export function currentPlace(where: Where): Place {
+  if (where.paused) return PAUSED_PLACE;
+
   return where.places.find((place) => place.id === where.current) ?? IRE;
 }
 
@@ -243,8 +274,9 @@ export function dayOf(date: string): string {
   }).format(new Date(`${date}T00:00Z`));
 }
 
-export function openerLabel(place: Place, count: number): string {
-  const named = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
+/** Paused (sc-85513, as the app's sc-83881): "access paused" in place of the role. */
+export function openerLabel(place: Place, count: number, paused = false): string {
+  const named = `Organisation: ${place.name}, ${paused ? 'access paused' : `your role ${place.role}`}. Switch organisation`;
 
   if (count === 0) return named;
 
@@ -268,6 +300,14 @@ export function useWhere(): Where {
   );
 }
 
+/** The organisation in use holds the account, paused or two-factor overdue, so a stand-in takes its pages. */
+export function useHeld(): boolean {
+  const where = useWhere();
+
+  return where.paused || where.overdue;
+}
+
+/** While the pill names a paused organisation, Settings and the person follow it, and hold no role (sc-86077). */
 export function usePaused(): boolean {
   return useWhere().paused;
 }
@@ -277,7 +317,7 @@ export function isFresh(where: Where): boolean {
 }
 
 export function inNone(where: Where): boolean {
-  return where.places.length === 0;
+  return where.places.length === 0 && !where.paused;
 }
 
 export function change(next: (now: Where) => Where): void {
@@ -322,6 +362,7 @@ export function switchTo(place: Place, at: string): void {
     ...now,
     current: place.id,
     paused: false,
+    overdue: false,
     switched: { name: place.name, at },
   }));
 }
@@ -392,7 +433,25 @@ export const SWITCHER_PAGES: readonly { name: string; states: readonly DemoLink[
       ),
     ],
   },
-  { name: 'Access paused', states: [switcherLink('paused', 'Access paused, none current')] },
+  {
+    name: 'Access paused',
+    states: [
+      switcherLink('paused', 'Access paused, the pill names it, none current (sc-85513)'),
+      switcherLink('paused-invitation', 'Access paused, 1 invitation waiting'),
+      switcherLink('paused-invitations', 'Access paused, 2 invitations waiting'),
+      switcherLink(
+        'paused-alone',
+        'Access paused, no other organisation: Create an organisation (sc-85006, sc-85513)',
+      ),
+    ],
+  },
+  {
+    name: 'Two-factor overdue',
+    states: [
+      switcherLink('overdue', 'Two-factor overdue, two other organisations'),
+      switcherLink('overdue-alone', 'Two-factor overdue, no other organisation (sc-85006)'),
+    ],
+  },
   {
     name: 'Events from outside (sc-68438)',
     states: [

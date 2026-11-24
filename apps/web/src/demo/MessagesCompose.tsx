@@ -883,7 +883,7 @@ export function OnEscape({ then }: { then: () => void }) {
   useEffect(() => {
     const keys = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      if (document.querySelector('.mg-to-pop, .mg-bell-pop, .desk-ask') != null) return;
+      if (document.querySelector('.mg-to-pop, .bell-pop, .desk-ask') != null) return;
 
       event.preventDefault();
       escape();

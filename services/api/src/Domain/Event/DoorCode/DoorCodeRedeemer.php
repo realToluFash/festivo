@@ -8,6 +8,7 @@ use App\Audit\Auditor;
 use App\Domain\Event\People\EventPeople;
 use App\Domain\User\AccountName;
 use App\Domain\User\Mail\AccountLanguage;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\TokenIssuer;
@@ -48,6 +49,7 @@ final readonly class DoorCodeRedeemer
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private UserMailer $userMailer,
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $doorCodeSourceLimiter,
         private RateLimiterFactoryInterface $doorCodeCodeLimiter,
@@ -198,6 +200,10 @@ final readonly class DoorCodeRedeemer
 
     private function tooMany(DateTimeImmutable $until): ApiException
     {
-        return ApiException::tooManyAttemptsUntil('door_codes.too_many', $until, static fn (DateTimeImmutable $at): string => $at->format(\DATE_ATOM));
+        return ApiException::tooManyAttemptsUntil(
+            'door_codes.too_many',
+            $until,
+            fn (DateTimeImmutable $at): string => $this->userMailer->deadlineInUtc($at, $this->userMailer->answeredLocale()),
+        );
     }
 }

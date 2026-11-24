@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_ROLES,
   ADD_PROMPT,
   addedToast,
   addRefusedLine,
@@ -9,6 +10,9 @@ import {
   AMAKA,
   DOTTED,
   LONG_MOBILE,
+  LONG_ORGANISATION,
+  ONE_WORD_ORGANISATION,
+  outsideTag,
   UNBROKEN,
   outsideRefusal,
   outsideView,
@@ -80,6 +84,20 @@ describe('People on an event in the demo, as one list', () => {
       'Sade Bello',
       'Tom Becker',
       'Kemi Okafor',
+    ]);
+  });
+
+  it('places a service level after Can check guests in, as the web demo does (sc-4002)', () => {
+    const ana = on('Ana Souza');
+    const order = listed(withRole(onEvent, ana.id, 'Can run the floor'));
+
+    expect(order[0]?.role).toBe('Lead');
+    expect(names(order)).toEqual([
+      'Priya Shah',
+      'Sade Bello',
+      'Kemi Okafor',
+      'Tom Becker',
+      'Ana Souza',
     ]);
   });
 
@@ -421,5 +439,40 @@ describe('adding someone from outside (sc-71)', () => {
     expect(
       peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
     ).toHaveLength(4);
+  });
+});
+
+describe('an organisation name wider than the tag’s line (sc-90472)', () => {
+  it('tags everyone from outside with the long name, and keeps the list as People’s', () => {
+    for (const [state, name] of [
+      ['longOrganisation', LONG_ORGANISATION],
+      ['oneWordOrganisation', ONE_WORD_ORGANISATION],
+    ] as const) {
+      const start = peopleStart(peopleStateOf(state));
+
+      expect(start.world?.organisation).toBe(name);
+      expect(start.onEvent).toEqual(peopleStart('people').onEvent);
+      expect(outsideTag(name)).toBe(`Outside ${name}`);
+    }
+    expect(ONE_WORD_ORGANISATION).toHaveLength(50);
+    expect(ONE_WORD_ORGANISATION).not.toMatch(/\s/u);
+  });
+});
+
+describe('the service levels on someone from outside (sc-4002)', () => {
+  it('offers them to someone from outside, after the event roles, and never to a member', () => {
+    const start = peopleStart(peopleStateOf('longAddress'));
+    const one = start.onEvent.find((each) => each.id === start.opened?.id) as OnEvent;
+
+    expect(sheetWords({ ...one, outside: true }).roles).toEqual([
+      ...EVENT_ROLES,
+      'Can work the floor',
+      'Can work the pass',
+      'Can run the floor',
+    ]);
+    expect(sheetWords({ ...one, outside: false }).roles).toEqual(EVENT_ROLES);
+    expect(sheetWords(one).means('Can run the floor')).toBe(
+      'Starts service, fires courses and acts on any table. Nothing else of the event.',
+    );
   });
 });

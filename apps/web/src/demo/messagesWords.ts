@@ -425,11 +425,21 @@ export const MESSAGES_WORD = 'Messages';
 export const BELL_WORDS = {
   bell: 'Notifications',
   bellUnread_other: 'Notifications, {{count, number}} unread',
-  heading: 'Notifications',
-  markAllRead: 'Mark all read',
   allRead: 'All read.',
-  unread: 'Unread',
   settings: 'Notification settings',
   whereWhen: '{{event}} · {{when}}',
   atTime: 'at {{time}}',
+  moreShown_other: '{{count, number}} more notifications shown.',
+  more: 'More for {{title}}, {{event}}',
+  /** Sample items in the words the server sends for them (eventChanges.title.*, payment_reminder.title.*, newDevice.subject); `unknown` stands for a category the server does not send yet (sc-84143). */
+  samples: {
+    paused: 'Ana Souza paused the event',
+    changed: 'Ana Souza changed the event',
+    live: 'Ana Souza made the event live',
+    deleted: 'Ana Souza deleted the event',
+    overdue: '1 payment overdue on {{event}}',
+    due: '2 payments due in the next 7 days on {{event}}',
+    signIn: 'New sign-in to Soirely',
+    unknown: 'Ana Souza added a note to the event',
+  },
 };

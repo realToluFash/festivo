@@ -1,4 +1,10 @@
-import { ApiError, type TwoFactorEnrolment } from '@soirely/api-client';
+import {
+  ApiError,
+  type CurrentFactor,
+  type HeldFactors,
+  type PasskeyOptions,
+  type TwoFactorEnrolment,
+} from '@soirely/api-client';
 import {
   PASSWORD_MINIMUM_LENGTH,
   cleanCode,
@@ -11,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import { emailMessage } from '../formChecks.ts';
 import { offButton } from '../offButton.ts';
+import { askPasskey, canUsePasskeys } from '../passkey.ts';
 import { useResendCountdown } from '../resendCountdown.ts';
 import {
   changeRefusal,
@@ -24,6 +31,7 @@ import { type Opening, useTriedOnArrival } from './AccountDialogs.tsx';
 import { ExpiredCode } from './AccountParts.tsx';
 import { FieldError } from './FieldError.tsx';
 import { Glyph } from './Glyph.tsx';
+import { NoBrowser, Refused, Waiting } from './PasskeyParts.tsx';
 import { Ask, Dialog, Field, Note, TextAction } from './SettingsParts.tsx';
 import './SecurityParts.css';
 
@@ -520,49 +528,139 @@ export function ChoosePasswordDialog({
   );
 }
 
+const LEADS = {
+  add: 'passkey.leadAdd',
+  addApp: 'passkey.leadAddApp',
+  remove: 'passkey.leadRemove',
+  turnOff: 'passkey.leadTurnOff',
+  newCodes: 'passkey.leadNewCodes',
+} as const;
+
+/** Confirm it's you with the current factor: the passkey's sheet first where it can open, else a code. */
 export function FactorDialog({
   purpose,
   email,
   start,
+  held = { app: true, passkeys: false },
+  passkeyOptions,
   submit,
   onClose,
   onDone,
   onKept,
 }: {
-  purpose: 'turnOff' | 'newCodes';
+  purpose: 'turnOff' | 'newCodes' | 'remove' | 'add' | 'addApp';
   email: string;
   start?: Opening;
-  submit: (code: string) => Promise<void>;
+  held?: HeldFactors;
+  passkeyOptions?: () => Promise<PasskeyOptions>;
+  submit: (current: CurrentFactor) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
   onKept: (organisation: string) => void;
 }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
+  const useCode = useRef<HTMLButtonElement>(null);
+  const browserCan = canUsePasskeys();
+  const offersPasskey = held.passkeys && passkeyOptions != null && browserCan;
+  const [mode, setMode] = useState<'passkey' | 'code'>(offersPasskey ? 'passkey' : 'code');
   const [typed, setTyped] = useState(start?.typed ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const recovery = !held.app;
+  const opened = useRef(false);
+  const lead =
+    held.passkeys || purpose === 'add' || purpose === 'remove'
+      ? t(LEADS[purpose], { email })
+      : null;
+
+  async function send(current: CurrentFactor): Promise<boolean> {
+    try {
+      await submit(current);
+      onDone();
+      return true;
+    } catch (refused) {
+      setBusy(false);
+      if (refused instanceof ApiError && refused.is('two_factor_kept_by_rule')) {
+        onKept(refused.problem.organisation ?? '');
+        return true;
+      }
+      setError(
+        refused instanceof ApiError && refused.is('passkey_refused')
+          ? t('passkey.refused')
+          : factorRefusal(refused, t),
+      );
+      return false;
+    }
+  }
 
   async function go(): Promise<void> {
     if (busy) return;
     if (typed.trim() === '') {
-      setError(t('twoFactorCard.offBlank'));
+      setError(recovery ? t('passkey.recoveryBlank') : t('twoFactorCard.offBlank'));
       return input.current?.focus();
     }
     setBusy(true);
+    if (!(await send({ code: typed.trim() }))) input.current?.focus();
+  }
+
+  async function openSheet(): Promise<void> {
+    if (busy || passkeyOptions == null) return;
+    setBusy(true);
+    setError(null);
     try {
-      await submit(typed.trim());
-      onDone();
+      const answer = await askPasskey(await passkeyOptions());
+      if (answer == null) return setBusy(false);
+      await send({ passkey: answer });
     } catch (refused) {
       setBusy(false);
-      if (refused instanceof ApiError && refused.is('two_factor_kept_by_rule'))
-        return onKept(refused.problem.organisation ?? '');
       setError(factorRefusal(refused, t));
-      input.current?.focus();
     }
   }
 
+  useEffect(() => {
+    if (opened.current || mode !== 'passkey') return;
+    opened.current = true;
+    void openSheet();
+    // The sheet opens by itself once, as the dialog arrives; after that only Use a passkey opens it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useTriedOnArrival(start?.tried, () => void go());
+
+  function switchTo(next: 'passkey' | 'code'): void {
+    setMode(next);
+    setError(null);
+  }
+
+  if (mode === 'passkey')
+    return (
+      <Dialog
+        title={t('passkey.proveTitle')}
+        verb={t('passkey.use')}
+        on={!busy}
+        locked={busy}
+        first={useCode}
+        onDismiss={onClose}
+        onConfirm={() => void openSheet()}
+      >
+        {lead != null && <Note>{lead}</Note>}
+        <Note strong>{t('passkey.waitTitle')}</Note>
+        <p className="desk-note">{t('passkey.waitLine')}</p>
+        {busy && <Waiting />}
+        {error != null && <Refused line={error} />}
+        <div className="account-acts">
+          <button
+            ref={useCode}
+            type="button"
+            className="desk-text"
+            onClick={() => switchTo('code')}
+          >
+            {t('passkey.useCode')}
+          </button>
+        </div>
+      </Dialog>
+    );
 
   return (
     <Dialog
@@ -574,13 +672,19 @@ export function FactorDialog({
       onDismiss={onClose}
       onConfirm={() => void go()}
     >
-      <Note>{t('twoFactorCard.offBody')}</Note>
+      {held.passkeys && !browserCan && <NoBrowser />}
+      {lead != null && <Note>{lead}</Note>}
+      <Note strong>{recovery ? t('passkey.recoveryLead') : t('passkey.codeLead')}</Note>
       <div className="desk-fields security-fields">
         <Field
-          label={t('waysCard.code')}
+          label={recovery ? t('passkey.recoveryLabel') : t('waysCard.code')}
           value={typed}
           help={
-            purpose === 'turnOff' ? t('twoFactorCard.offEmail', { email }) : t('waysCard.codeHelp')
+            purpose === 'turnOff' && lead == null
+              ? t('twoFactorCard.offEmail', { email })
+              : recovery
+                ? t('passkey.recoveryHelp')
+                : t('waysCard.codeHelp')
           }
           autoComplete="one-time-code"
           inputRef={input}
@@ -591,18 +695,35 @@ export function FactorDialog({
           }}
         />
       </div>
+      {offersPasskey && (
+        <div className="account-acts">
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => {
+              switchTo('passkey');
+              void openSheet();
+            }}
+          >
+            {t('passkey.useInstead')}
+          </button>
+        </div>
+      )}
     </Dialog>
   );
 }
 
 export function SetupDialog({
   start,
+  adding = false,
   enrol,
   activate,
   onClose,
   onOn,
 }: {
   start?: Opening;
+  /** Beside passkeys already on: the app joins them, so it reads as adding rather than turning on. */
+  adding?: boolean;
   enrol: () => Promise<TwoFactorEnrolment>;
   activate: (code: string) => Promise<string[]>;
   onClose: () => void;
@@ -659,8 +780,8 @@ export function SetupDialog({
 
   return (
     <Dialog
-      title={t('security.setupTitle')}
-      verb={t('security.setupVerb')}
+      title={adding ? t('passkey.addApp') : t('security.setupTitle')}
+      verb={adding ? t('passkey.addAppVerb') : t('security.setupVerb')}
       on={ready && !busy}
       locked={busy}
       first={input}
@@ -696,7 +817,7 @@ export function SetupDialog({
             <Field
               label={t('twoFactorCard.enterCode')}
               value={typed}
-              help={t('twoFactorCard.staysOff')}
+              help={adding ? t('passkey.addAppLine') : t('twoFactorCard.staysOff')}
               inputMode="numeric"
               autoComplete="one-time-code"
               inputRef={input}
@@ -721,10 +842,12 @@ async function copyAll(codes: readonly string[]): Promise<void> {
 /** The codes, once: no Cancel, since two-factor is already on, and Finish waits for the box so a slip cannot lose them. */
 export function RecoveryDialog({
   codes,
+  held = { app: true, passkeys: false },
   start,
   onFinish,
 }: {
   codes: readonly string[];
+  held?: HeldFactors;
   start?: { copied?: boolean; saved?: boolean };
   onFinish: () => void;
 }) {
@@ -744,7 +867,13 @@ export function RecoveryDialog({
       onDismiss={onFinish}
       onConfirm={onFinish}
     >
-      <Note>{t('twoFactorCard.saveIntro')}</Note>
+      <Note>
+        {!held.passkeys
+          ? t('twoFactorCard.saveIntro')
+          : held.app
+            ? t('twoFactorCard.saveIntroBoth')
+            : t('twoFactorCard.saveIntroPasskeys')}
+      </Note>
       <ul className="security-codes" aria-label={t('twoFactorCard.recoveryCodes')}>
         {codes.map((code) => (
           <li key={code}>{code}</li>

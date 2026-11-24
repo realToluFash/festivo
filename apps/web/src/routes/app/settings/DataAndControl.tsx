@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { DrawnGlyph, LockTag, PageLoading } from '../../../components/DataControlParts.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import {
   Card,
@@ -50,8 +51,12 @@ export function DataAndControl() {
 function Hub({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const { layers } = useDeskLayers();
-  const exported = useOrganisationExport(organisation.id);
-  const domains = useEmailDomains(organisation.id);
+  const title = useRef<HTMLHeadingElement>(null);
+  const [both, setBoth] = useState(false);
+  const exported = useOrganisationExport(organisation.id, title, both);
+  const domains = useEmailDomains(organisation.id, title, both);
+  const bothNow = exported.load.kind === 'loaded' && domains.load.kind === 'loaded';
+  if (bothNow !== both) setBoth(bothNow);
   const failed = exported.load.kind === 'failed' || domains.load.kind === 'failed';
   const reload = () => {
     exported.reload();
@@ -61,7 +66,8 @@ function Hub({ organisation }: { organisation: Membership }) {
   return (
     <DeskPage layers={layers}>
       <div className="desk-column">
-        <TitleRow title={t('dataControl.title')} />
+        {(exported.refreshing || domains.refreshing) && <Refreshing />}
+        <TitleRow title={t('dataControl.title')} titleRef={title} />
         {!failed && (exported.load.kind === 'loading' || domains.load.kind === 'loading') && (
           <PageLoading words={t('dataControl.loading')} />
         )}

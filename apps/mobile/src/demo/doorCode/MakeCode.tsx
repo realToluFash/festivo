@@ -12,7 +12,7 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
 import { MomentBox, pick, type Picking, PickerLayer } from '../../components/MomentPick.tsx';
-import { HELD_MS, ROLE_LINES } from '../people/PeopleSample.ts';
+import { HELD_MS, LEVEL_LINES } from '../people/PeopleSample.ts';
 import { DoneAction, RoleLayer } from '../../components/PeopleParts.tsx';
 import { RoleChoices } from '../../components/RoleChoices.tsx';
 import {
@@ -62,6 +62,7 @@ export function MakeCode({
   const [form, setForm] = useState(start.form);
   const [problems, setProblems] = useState(start.problems);
   const [failed, setFailed] = useState(start.failed);
+  const [refused, setRefused] = useState(start.refused === true);
   const [sending, setSending] = useState(start.sending !== 'idle');
   const [draft, setDraft] = useState<Ends | null>(start.endsDraft);
   const [picking, setPicking] = useState<Picking | null>(null);
@@ -96,6 +97,7 @@ export function MakeCode({
       return;
     }
     setFailed(false);
+    setRefused(false);
     setSending(true);
   }
 
@@ -224,6 +226,7 @@ export function MakeCode({
       over={over}
       testID="door.make"
     >
+      {refused && !sending && <Said words={W.runRefused} interrupts />}
       {failed && (
         <View style={styles.failed}>
           <Said words={W.makeFailed} interrupts />
@@ -236,7 +239,7 @@ export function MakeCode({
           <RoleChoices
             roles={CODE_ROLES}
             picked={form.role}
-            lines={ROLE_LINES}
+            lines={LEVEL_LINES}
             off={{ roles: ['Can edit'], line: W.noEdit }}
             onPick={(role) => {
               if (role !== 'Can edit') setForm((now) => ({ ...now, role: role as CodeRole }));

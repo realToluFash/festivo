@@ -84,19 +84,49 @@ describe('See picks (sc-3909)', () => {
 
   it('refuses Save with nothing picked, in place', SLOW, async () => {
     await picks('chooseForBlank');
-    expect(screen.getByText('Choose main for Bea, or let the kitchen choose.')).toBeTruthy();
+    expect(screen.getByText('Choose main for Bea Mensah, or let the kitchen choose.')).toBeTruthy();
   });
 
   it('asks the override question, and records the pick as the host’s', SLOW, async () => {
     await picks('chooseForOverride');
     const ask = screen.getByRole('alertdialog');
-    expect(within(ask).getByText('Kwame’s record says celery. Pick it anyway?')).toBeTruthy();
+    expect(
+      within(ask).getByText('Kwame Asante’s record says celery. Pick it anyway?'),
+    ).toBeTruthy();
     await waitFor(() => expect(document.activeElement?.textContent).toBe(SW.chooseAnother));
 
     fireEvent.click(within(ask).getByRole('button', { name: SW.pickAnyway }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(said()).toContain('Recorded as your pick for Kwame, despite the record');
+    expect(said()).toContain('Recorded as your pick for Kwame Asante, despite the record');
     expect(screen.getByText('40 of 48 picks in · 83% of the room')).toBeTruthy();
+  });
+
+  it('words a dish never stated as not stated, through the override (sc-87421)', SLOW, async () => {
+    await picks('chooseForNotStated');
+    const box = screen.getByRole('dialog');
+    expect(within(box).getByText(SW.ruledOutNotStated)).toBeTruthy();
+    expect(within(box).queryByText(/^Contains /)).toBeNull();
+
+    await picks('chooseForNotStatedOverride');
+    const ask = screen.getByRole('alertdialog');
+    expect(
+      within(ask).getByText('Kwame Asante’s record says peanuts and celery. Pick it anyway?'),
+    ).toBeTruthy();
+    expect(
+      within(ask).getByText(SW.overrideBodyNotStated('Puff-puff', 'Kwame Asante')),
+    ).toBeTruthy();
+    fireEvent.click(within(ask).getByRole('button', { name: SW.pickAnyway }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(said()).toContain(SW.savedOverrideNotStated('Kwame Asante', 'Puff-puff'));
+  });
+
+  it('words a never-stated pick under Needs the host (sc-87421)', SLOW, async () => {
+    await picks('picksNotStatedHost');
+    expect(
+      within(region(SW.needsHost)).getByText(
+        SW.allergyForNotStated('Dessert', 'Puff-puff', 'celery'),
+      ),
+    ).toBeTruthy();
   });
 
   it('says a 403 and saves nothing', SLOW, async () => {
@@ -131,10 +161,34 @@ describe('See picks (sc-3909)', () => {
     expect(within(region(SW.needsHost)).getAllByText(SW.nothingFor('Starter'))).toHaveLength(2);
   });
 
+  it(
+    'lists Menu changed under the party, and chooses for them on the changed course (sc-3913)',
+    SLOW,
+    async () => {
+      await picks('picksMenuChanged');
+      const waiting = region(SW.whoHasnt);
+      expect(within(waiting).getAllByText(SW.changedOn('Dessert', 'Puff puff'))).toHaveLength(3);
+      expect(within(waiting).getByText('Replied by Mateo Ruiz · 1 person')).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Choose for Lucía Ruiz' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByText('Dessert · 1 of 1')).toBeTruthy();
+      fireEvent.click(within(dialog).getByRole('radio', { name: SW.kitchenChoose }));
+      fireEvent.click(within(dialog).getByRole('button', { name: SW.save }));
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(
+        within(region(SW.whoHasnt)).getAllByText(SW.changedOn('Dessert', 'Puff puff')),
+      ).toHaveLength(2);
+    },
+  );
+
   it('asks before giving a variant to someone it rules out', SLOW, async () => {
     await picks('chooseWhoOverride');
     expect(
-      within(screen.getByRole('alertdialog')).getByText('Kojo: give Children’s portion anyway?'),
+      within(screen.getByRole('alertdialog')).getByText(
+        'Kojo Asante: give Children’s portion anyway?',
+      ),
     ).toBeTruthy();
   });
 });
@@ -175,7 +229,7 @@ describe('a course’s default on See picks (sc-1362)', () => {
 
   it('moves Kofi from Given the default to chosen once chosen for', SLOW, async () => {
     await picks('chooseForDefaultedSaved');
-    expect(said()).toContain('Main chosen for Kofi: Suya wrap, Beef.');
+    expect(said()).toContain('Main chosen for Kofi Mensah: Suya wrap, Beef.');
     expect(within(region(SW.given(1))).queryByText('Kofi Mensah')).toBeNull();
   });
 

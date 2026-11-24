@@ -1,15 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {
-  Account,
-  InvitationPreview,
-  Membership,
-  PausedOrganisation,
+import {
+  type Account,
+  type InvitationPreview,
+  type Membership,
+  type PausedOrganisation,
+  heldByDevice,
 } from '@soirely/api-client';
 import {
   type InvitationOutcome,
   chooseOrganisation,
   choosePaused,
   forgetEventsTab,
+  rememberedEntry,
+  rememberedFor,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import i18next from 'i18next';
@@ -18,10 +21,12 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
+import { forgetDoor } from './kit/doorStore.ts';
 import { leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';
 
+/** Per device and for the account that left it, so the next account to sign in opens in its own (sc-86373). */
 const REMEMBERED = 'soirely.organisation';
 
 export interface SignedIn {
@@ -33,6 +38,11 @@ export interface SignedIn {
   invitations: readonly InvitationPreview[];
   invitationOutcomes: Readonly<Record<string, InvitationOutcome>>;
 }
+
+const NO_ORGANISATIONS: { organisations: Membership[]; paused: PausedOrganisation[] } = {
+  organisations: [],
+  paused: [],
+};
 
 const SIGNED_OUT: SignedIn = {
   account: null,
@@ -101,7 +111,7 @@ export function onMovedOn(listener: (organisation: Membership) => void): () => v
 
 /** Read again on a language pick (sc-9267) and at each move (sc-28178); a failed read leaves everything as it was. */
 export async function rereadOrganisations(): Promise<void> {
-  if (state.account == null) return;
+  if (state.account == null || heldByDevice(state.account)) return;
 
   const account = state.account;
   const known = state.organisations;
@@ -126,6 +136,7 @@ export async function rereadOrganisations(): Promise<void> {
 
     forgetEventsTab();
     set({ ...state, organisations: read.organisations, organisation, pausedIn });
+    void rememberWorkingIn(account.id, organisation, pausedIn, lost);
     if (pausedIn != null) return;
     if (organisation == null) router.replace('/');
     else for (const listener of movedOn) listener(organisation);
@@ -158,20 +169,24 @@ function load(): Promise<boolean> {
   const askedIn = currentLocale();
   loading ??= Promise.all([
     api.me(),
-    api.organisationsWithPaused(),
+    api.organisationsWithPaused().then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    ),
     remembered(),
     api.myInvitations().catch(() => state.invitations),
   ])
-    .then(([account, { organisations, paused }, id, invitations]) => {
-      set({
-        ...state,
-        account,
-        organisations,
-        organisation: chooseOrganisation(organisations, id),
-        pausedIn: choosePaused(paused, id, organisations.length),
-        invitations,
-      });
-      void registerAppPush().catch(() => {});
+    .then(([account, read, stored, invitations]) => {
+      // A door code's account reaches only its events and itself (sc-72), so it has no organisations to read.
+      const device = heldByDevice(account);
+      if (!device && 'error' in read) throw read.error;
+      const { organisations, paused } = 'value' in read ? read.value : NO_ORGANISATIONS;
+      const id = rememberedFor(stored, account.id);
+      const organisation = chooseOrganisation(organisations, id);
+      const pausedIn = choosePaused(paused, id, organisations.length);
+      set({ ...state, account, organisations, organisation, pausedIn, invitations });
+      void rememberWorkingIn(account.id, organisation, pausedIn, id);
+      if (!device) void registerAppPush().catch(() => {});
       // The account's language, followed at launch while this read was on its way (sc-9267).
       if (currentLocale() !== askedIn) void rereadOrganisations();
 
@@ -188,18 +203,19 @@ function load(): Promise<boolean> {
 }
 
 /** Before the organisations are read, so the next read opens in this one: an invitation accepted while onboarding. */
-export function rememberOrganisation(id: string): Promise<void> {
-  return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+export function rememberOrganisation(account: string, id: string): Promise<void> {
+  return AsyncStorage.setItem(REMEMBERED, rememberedEntry(account, id)).catch(() => {});
 }
 
 export function switchOrganisation(id: string, landed?: () => void): boolean {
   const organisation = state.organisations.find((membership) => membership.id === id);
-  if (organisation == null) return false;
+  const account = state.account?.id;
+  if (organisation == null || account == null) return false;
 
   const go = (): void => {
     forgetEventsTab();
     set({ ...state, organisation, pausedIn: null });
-    void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+    void rememberOrganisation(account, id);
     landed?.();
   };
 
@@ -245,6 +261,16 @@ export function signOutHere(): void {
   });
 }
 
+/** Sign out where a door code's step stays on screen, signed out (sc-72). */
+export function signOutThen(then: () => void): void {
+  leaveThen(() => {
+    void api.signOut().finally(() => {
+      forget();
+      then();
+    });
+  });
+}
+
 /** This device's session already ended elsewhere: only the tokens are left to clear, and a form holding a change does not ask. */
 export function endedHere(): void {
   leaveWithoutAsking();
@@ -256,9 +282,24 @@ export function endedHere(): void {
 
 function forget(): void {
   void takeDownRunOfShowCards().catch(() => undefined);
+  void forgetDoor();
   ended = true;
   loading = null;
   set(SIGNED_OUT);
+}
+
+/** Opened by default as much as by choice, so a pause there shows its page at the next launch rather than another organisation (sc-86056); another account's is let go, so it does not come back after this one (sc-86373). */
+function rememberWorkingIn(
+  account: string,
+  organisation: Membership | null,
+  pausedIn: PausedOrganisation | null,
+  ownRemembered: string | null,
+): Promise<void> {
+  if (organisation != null && pausedIn == null)
+    return rememberOrganisation(account, organisation.id);
+  if (ownRemembered == null) return AsyncStorage.removeItem(REMEMBERED).catch(() => {});
+
+  return Promise.resolve();
 }
 
 async function remembered(): Promise<string | null> {

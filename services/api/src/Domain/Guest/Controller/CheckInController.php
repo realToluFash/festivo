@@ -14,10 +14,12 @@ use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use DateTimeImmutable;
+use DateTimeZone;
 use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -47,14 +49,20 @@ final readonly class CheckInController
         return $this->read($this->event($eventId));
     }
 
-    /** A guest or a companion, by `guestId`; one already arrived keeps their first arrival. */
+    /** A guest or a companion, by `guestId`; one already arrived keeps their first arrival. `arrivedAt` is when a device that was offline recorded it (sc-1301): the earlier of two arrivals stands, and one from the future is taken as now. */
     #[Route('/api/events/{eventId}/check-in/arrivals', name: 'check_in_arrive', methods: ['POST'])]
     #[InEvent(Permission::GuestsCheckIn)]
     public function arrive(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
-        $body = Input::body($request, Type\shape(['guestId' => Type\string()]));
-        $this->arrivals->arrive($event, $body['guestId'], $this->user(), DeviceIdentity::of($request));
+        $body = Input::body($request, Type\shape(['guestId' => Type\string(), 'arrivedAt' => Type\optional(Type\string())]));
+        $at = null === ($body['arrivedAt'] ?? null) ? null : self::instant($body['arrivedAt']);
+
+        if (false === $at) {
+            throw new ShapeRefusal('arrivedAt', ShapeRefusal::FIELD);
+        }
+
+        $this->arrivals->arrive($event, $body['guestId'], $this->user(), DeviceIdentity::of($request), $at?->setTimezone(new DateTimeZone('UTC')));
 
         return $this->read($event);
     }
@@ -96,6 +104,12 @@ final readonly class CheckInController
             'token' => $issued->token,
             'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
         ]);
+    }
+
+    /** RFC 3339 with or without milliseconds, as `Date.toISOString()` writes it. */
+    private static function instant(string $value): DateTimeImmutable|false
+    {
+        return DateTimeImmutable::createFromFormat(\DATE_ATOM, $value) ?: DateTimeImmutable::createFromFormat(\DATE_RFC3339_EXTENDED, $value);
     }
 
     private function read(Event $event): JsonResponse

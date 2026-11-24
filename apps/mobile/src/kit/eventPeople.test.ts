@@ -41,6 +41,8 @@ function person(id: string, name: string, role: EventRole, jobLabel: string | nu
     address: null,
     addressKind: null,
     endsAt: null,
+    doorCode: null,
+    joinedAt: null,
   } satisfies EventPerson;
 }
 
@@ -59,6 +61,8 @@ function fromOutside(
     address,
     addressKind,
     endsAt: '2026-12-12T23:00:00+01:00',
+    doorCode: null,
+    joinedAt: null,
   };
 }
 
@@ -91,6 +95,12 @@ describe('People on an event', () => {
   it('lines a row with its role, then any job label, then You', () => {
     expect(rowLine(t, TOM, 'u_priya')).toBe('Can check guests in · Door');
     expect(rowLine(t, PRIYA, 'u_priya')).toBe('Lead · You');
+  });
+
+  it('ends the line of someone who came in by a door code with Door code', () => {
+    const joined = { ...TOM, doorCode: 'K7P2QX9M', joinedAt: '2026-11-14T13:31:00+00:00' };
+
+    expect(rowLine(t, joined, 'u_priya')).toBe('Can check guests in · Door · Door code');
   });
 
   it('names the owners and admins who see every event', () => {

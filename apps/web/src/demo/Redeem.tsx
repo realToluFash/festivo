@@ -140,10 +140,10 @@ function RedeemPage({ state }: { state: RedeemState }) {
     }
     if (step.kind === 'named') {
       if (step.usedUp) setStep({ ...step, busy: 'no' });
-      else go({ kind: 'in', name: name.trim(), checks: true });
+      else go({ kind: 'in', name: name.trim(), checks: true, held: true });
       return;
     }
-    if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true });
+    if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true, held: false });
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
         if (isSecondNumber(number))
@@ -159,7 +159,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
             },
             'number',
           );
-        else go({ kind: 'in', name, checks: true });
+        else go({ kind: 'in', name, checks: true, held: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -360,7 +360,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
             )}
             <div className="rd-you">
               <p className="rd-you-name">{R.signedInAs(step.name)}</p>
-              <p className="rd-you-line">{R.signedOutAt}</p>
+              {step.held && <p className="rd-you-line">{R.signedOutAt}</p>}
               <button type="button" className="rd-out" onClick={signOut}>
                 <SignOutLine />
                 {R.signOut}
@@ -425,7 +425,7 @@ export function Primary({
       }}
     >
       {busy && <span className="rd-spin" aria-hidden="true" />}
-      {children}
+      <span className="rd-primary-words">{children}</span>
     </button>
   );
 }

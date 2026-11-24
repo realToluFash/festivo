@@ -73,6 +73,18 @@ function TodayBody({
   onOffline: (offline: ScreenOffline) => void;
 }) {
   const { place, onClosed } = useNextAfterClosed();
+  const { kind } = useLayout();
+  const below = (
+    <>
+      <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
+      <SignInRulesNotices
+        key={organisation.id}
+        organisation={organisation}
+        place={place}
+        onClosed={onClosed}
+      />
+    </>
+  );
 
   return (
     <TodayLanding
@@ -82,15 +94,8 @@ function TodayBody({
       notices={
         <>
           <FrameBodySwitched />
-          <View style={styles.notices}>
-            <LinkedNotice wordsRef={place('linked')} onDismissed={() => onClosed('linked')} />
-            <SignInRulesNotices
-              key={organisation.id}
-              organisation={organisation}
-              place={place}
-              onClosed={onClosed}
-            />
-          </View>
+          {/* Landscape's page spaces each notice itself, so an empty wrapper there would add a gap of its own (sc-46032). */}
+          {kind === 'tabletLandscape' ? below : <View style={styles.notices}>{below}</View>}
         </>
       }
     />

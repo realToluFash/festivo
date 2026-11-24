@@ -6,9 +6,12 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\MealAnswerKind;
+use App\Enum\MenuChangeWhy;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Psl\Str;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
 /** One person's answer to one course (sc-3907), with the allergens they had when it was made: one recorded since serves a chosen pick as needs the host. A pick the host made for them names the host and the time, and the allergens the host confirmed despite the record (sc-3909). */
@@ -65,6 +68,20 @@ class MealAnswer
     /** @var list<string> */
     #[ORM\Column(type: Types::JSON)]
     private array $overridden = [];
+
+    /** The dish's name as they picked it, kept while a menu change asks them again (sc-3913), since the dish may be gone. */
+    #[ORM\Column(type: Types::STRING, length: 200, nullable: true)]
+    private ?string $changedFrom = null;
+
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: MenuChangeWhy::class)]
+    private ?MenuChangeWhy $changedWhy = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $changedWays = null;
+
+    /** @var list<string> the allergens added to their pick that they have recorded, which put them in Needs the host */
+    #[ORM\Column(type: Types::JSON)]
+    private array $changedAllergens = [];
 
     /**
      * @param list<string> $options
@@ -139,6 +156,52 @@ class MealAnswer
         $this->chosenByName = null;
         $this->chosenAt = null;
         $this->overridden = [];
+        $this->changedFrom = null;
+        $this->changedWhy = null;
+        $this->changedWays = null;
+        $this->changedAllergens = [];
+    }
+
+    /**
+     * The pick is let go, so the kitchen counts it on no item, and only its dish's name stays for their RSVP.
+     *
+     * @param list<string> $allergens
+     */
+    public function askAgain(MenuChangeWhy $why, ?int $ways = null, array $allergens = []): void
+    {
+        $name = null === $this->dish ? $this->changedFrom ?? '' : Str\join(Vec\filter_nulls([$this->dish->getName(), $this->variant?->getName()]), ', ');
+        $this->answer(MealAnswerKind::MenuChanged, null, null, [], $this->allergensAtPick);
+        $this->changedFrom = $name;
+        $this->changedWhy = $why;
+        $this->changedWays = $ways;
+        $this->changedAllergens = $allergens;
+    }
+
+    /** Their variant was the last but one removed, so the dish now serves them as it is (sc-3903). */
+    public function foldWay(): void
+    {
+        $this->variant = null;
+    }
+
+    public function getChangedFrom(): ?string
+    {
+        return $this->changedFrom;
+    }
+
+    public function getChangedWhy(): ?MenuChangeWhy
+    {
+        return $this->changedWhy;
+    }
+
+    public function getChangedWays(): ?int
+    {
+        return $this->changedWays;
+    }
+
+    /** @return list<string> */
+    public function getChangedAllergens(): array
+    {
+        return $this->changedAllergens;
     }
 
     /**

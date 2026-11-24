@@ -91,10 +91,16 @@ export const MW = {
   again: 'Start this step again',
 } as const;
 
-export const allergenList = (codes: readonly DishAllergen[], lang: Lang): string =>
-  DISH_ALLERGENS.filter((code) => codes.includes(code))
-    .map((code) => allergenName(code, lang).toLocaleLowerCase(lang))
-    .join(', ');
+export const allergenList = (
+  codes: readonly DishAllergen[],
+  lang: Lang,
+  join = (names: readonly string[]): string => names.join(', '),
+): string =>
+  join(
+    DISH_ALLERGENS.filter((code) => codes.includes(code)).map((code) =>
+      allergenName(code, lang).toLocaleLowerCase(lang),
+    ),
+  );
 
 export function containsLine(contains: MealContains, lang: Lang): string {
   return contains === 'none' ? MW.containsNone : MW.contains(allergenList(contains, lang));
@@ -568,7 +574,7 @@ const DEFAULT_STATES = {
   excludedAfter: () =>
     back({
       name: 'Excluded, after the date',
-      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: read-only with the padlock, no dish, no Change, and the host will be in touch.',
+      note: 'Today is Saturday, Oct 17, the allergy recorded and Starter never answered: no dish: the needs-the-host mark and “The host will be in touch about it.” in its place, then the padlock and closed line, and no Change.',
       today: '2026-10-17',
       saved: UNANSWERED,
       person: SESAME,

@@ -1,7 +1,13 @@
-# sc-6476: a member who cannot end the event sees no card on a Finished event with no line (${EV_RNONE}). Needs ${METRO_URL}, ${ORIENT}.
+# sc-6476: a member who cannot end the event sees no card on a Finished event with no line (${EV_RNONE}). Needs ${METRO_URL}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
 - openLink: ${METRO_URL}/--/events/${EV_RNONE}
 - extendedWaitUntil:
     visible:

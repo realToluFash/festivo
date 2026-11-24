@@ -1,5 +1,12 @@
 import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
+import {
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { addInTurn } from '../kit/addInTurn.ts';
@@ -10,6 +17,13 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
+import {
+  addressRuns,
+  breakableEmail,
+  headingAddress,
+  headingBreaksAfter,
+  type HeadingBreaks,
+} from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -86,7 +100,7 @@ export function AddBox({
       testID="people.add.open"
     >
       <Glyph name="plus" size={19} ink={tokens.colorAccent} weight={2.4} />
-      <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
+      <Text size={16} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
         {label}
       </Text>
     </Pressable>
@@ -154,6 +168,41 @@ export function DoneAction({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/** The sheet's heading. It is laid out whole first, then breaks after its @, then before its domain's dots, each only when the last layout needed it, until the name, the width or the text size changes (sc-70353). */
+function AddressHeading({ name }: { name: string }) {
+  const [width, setWidth] = useState(0);
+  const { fontScale } = useWindowDimensions();
+  const key = `${name}:${fontScale}:${width}`;
+  const [laid, setLaid] = useState<{ key: string; breaks: HeadingBreaks }>({ key, breaks: 'none' });
+  const breaks = laid.key === key ? laid.breaks : 'none';
+  const address = headingAddress(name, breaks);
+
+  return (
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      <Text
+        size={18}
+        weight="bold"
+        accessibilityRole="header"
+        accessibilityLabel={name}
+        onTextLayout={
+          address == null
+            ? undefined
+            : (event) => {
+                const next = headingBreaksAfter(
+                  name,
+                  breaks,
+                  event.nativeEvent.lines.map((line) => line.text),
+                );
+                if (next !== breaks) setLaid({ key, breaks: next });
+              }
+        }
+      >
+        {address ?? name}
+      </Text>
+    </View>
   );
 }
 
@@ -269,7 +318,7 @@ export function RoleSheet<R extends string>({
   }
 
   const ask: AskProps = {
-    title: words.removeTitle,
+    title: addressRuns(person.name) == null ? words.removeTitle : breakableEmail(words.removeTitle),
     line: words.removeLine,
     keep: { label: words.keep, off: removing === 'sending', testID: 'people.remove.keep' },
     confirm: {
@@ -288,14 +337,16 @@ export function RoleSheet<R extends string>({
       <View style={styles.person}>
         {person.face}
         <View style={styles.grow}>
-          <Text size={18} weight="bold" accessibilityRole="header">
-            {person.name}
-          </Text>
+          <AddressHeading name={person.name} />
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
           </Text>
         </View>
-        {phone && <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />}
+        {phone && (
+          <View style={styles.doneBesideName}>
+            <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />
+          </View>
+        )}
       </View>
       {notes}
       {failed != null && <Refused failed={failed} />}
@@ -802,7 +853,8 @@ const styles = StyleSheet.create({
   notice: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   addBox: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
@@ -813,11 +865,13 @@ const styles = StyleSheet.create({
   },
   person: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceHair,
     paddingBottom: tokens.spaceXxs,
   },
+  // Done's word level with the name's first line, however many lines the name takes.
+  doneBesideName: { marginTop: -10 },
   done: {
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,

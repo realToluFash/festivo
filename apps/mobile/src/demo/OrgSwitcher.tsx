@@ -124,11 +124,14 @@ export function OrgSwitcherProvider({
   create = null,
   none = false,
   invited = false,
+  place = null,
   statusBar = 'dark',
   tell,
   children,
 }: {
   state: SwitcherState | null;
+  /** The one organisation the page is in, as the door code's Lumen Feiras (sc-31774); the demo's own session comes back when it closes. */
+  place?: Place | null;
   /** ?create=: the walk opens on load in that state; `created` lands in the new organisation. */
   create?: CreateState | null;
   /** ?orgs=none: Folake in no organisation. */
@@ -166,12 +169,20 @@ export function OrgSwitcherProvider({
   const autoOpened = useRef(false);
 
   useLayoutEffect(() => {
-    if (state == null && create == null && !none) return;
+    if (place == null) return undefined;
+    const before = store.session;
+    setSession({ ...sessionFor('one'), places: [place], current: place.id });
+
+    return () => setSession(before);
+  }, [place]);
+
+  useLayoutEffect(() => {
+    if (place != null || (state == null && create == null && !none)) return;
     const base = sessionFor(state ?? 'one');
     const start = none ? withoutPlaces(base, invited) : base;
     if (create === 'created') arrive(SAMPLE_FOUNDED.id);
     setSession(create === 'created' ? founded(start, SAMPLE_FOUNDED) : start);
-  }, [state, create, none, invited]);
+  }, [state, create, none, invited, place]);
 
   useEffect(() => {
     landing.words = null;
@@ -419,11 +430,15 @@ export function OrgSwitcherProvider({
   );
 }
 
+/** True under the paused page (?held=paused), where the openers name the paused organisation with no role (sc-83881). */
+export const PausedHere = createContext(false);
+
 /** What an opener draws and does; the one drawn first and in view is what ?switcher= opens from. */
 export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   const { t } = useTranslation();
   const { register, show, openedBy } = useSwitcher();
   const session = useSession();
+  const paused = useContext(PausedHere);
   const place = currentPlace(session);
   const waiting = waitingOf(session);
 
@@ -434,7 +449,7 @@ export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
     name: place.name,
     waiting: waiting > 0 ? t('invitations.count', { count: waiting }) : null,
     expanded: openedBy === ref,
-    label: openerLabel(place, waiting),
+    label: openerLabel(place, waiting, paused),
     onPress: () => show(ref),
   };
 }

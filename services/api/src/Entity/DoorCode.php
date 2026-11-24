@@ -54,6 +54,11 @@ class DoorCode
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $madeBy;
 
+    /** The code Make a new code put in its place; People no longer shows a replaced code. */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?DoorCode $replacedBy = null;
+
     public function __construct(Event $event, string $code, EventRole $role, ?string $jobLabel, int $useCap, DateTimeImmutable $expiresAt, User $madeBy)
     {
         $this->id = Uuid::v7();
@@ -114,5 +119,15 @@ class DoorCode
     public function getMadeBy(): ?User
     {
         return $this->madeBy;
+    }
+
+    public function getReplacedBy(): ?DoorCode
+    {
+        return $this->replacedBy;
+    }
+
+    public function setReplacedBy(DoorCode $replacedBy): void
+    {
+        $this->replacedBy = $replacedBy;
     }
 }

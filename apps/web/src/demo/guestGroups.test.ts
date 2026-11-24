@@ -114,7 +114,7 @@ describe('one group each, the counts adding up (sc-3775)', () => {
   it('filters by a group or No group', () => {
     const list = wedding();
 
-    expect(list.filter((one) => inGroupFilter(one, 'g-bride')).map((one) => one.id)).toEqual([
+    expect(list.filter((one) => inGroupFilter(one, ['g-bride'])).map((one) => one.id)).toEqual([
       'musa',
       'amaka',
       'folasade',
@@ -122,7 +122,7 @@ describe('one group each, the counts adding up (sc-3775)', () => {
       'ngozi',
     ]);
     expect(
-      list.filter((one) => inGroupFilter(one, NO_GROUP)).every((one) => one.group == null),
+      list.filter((one) => inGroupFilter(one, [NO_GROUP])).every((one) => one.group == null),
     ).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type ChoiceDetails,
   type Dish,
   DISH_ALLERGENS,
   type EventMenu,
@@ -11,51 +12,50 @@ import {
   type MenuDish,
   type MenuDishChoice,
   type OrganisationEvent,
-  type UnwarnedOption,
-  type UnwarnedPickers,
   asEventMenu,
   realtimeTopic,
 } from '@soirely/api-client';
 import {
-  type ChoiceForm,
-  type ChoiceOptionForm,
-  type DishForm,
-  type VariantForm,
-  type VariantMode,
   addChoiceOutcome,
   addVariantOutcome,
   blankChoiceForm,
   blankDishForm,
   blankOptionForm,
+  blankVariantForm,
   choiceDetailsOf,
+  type ChoiceForm,
   choiceFormOf,
+  type ChoiceOptionForm,
   choiceProblems,
+  dishDetailsOf,
+  type DishForm,
+  dishItemProblems,
   dishPicked,
+  dishProblems,
   firstChoiceProblem,
+  firstDishProblem,
+  firstVariantProblem,
+  type FixedRow,
   formDraftReasons,
   hasChoiceProblem,
-  optionPicked,
-  removeChoiceOutcome,
-  savesAsDraft,
-  blankVariantForm,
-  firstVariantProblem,
   hasProblem,
-  removeVariantOutcome,
-  variantDetailsOf,
-  variantFormOf,
-  variantProblems,
-  dishDetailsOf,
-  dishProblems,
-  firstDishProblem,
+  type ItemRow,
   listFormat,
+  menuClose,
+  menuCloseFrom,
   moneyLanguage,
+  ownItemProblems,
+  removeVariantOutcome,
   roleName,
   sameNamedDish,
-  type FixedRow,
-  type ItemRow,
-  dishItemProblems,
-  ownItemProblems,
+  savesAsDraft,
   sentItems,
+  variantDetailsOf,
+  type VariantForm,
+  variantFormOf,
+  type VariantMode,
+  variantPrefix,
+  variantProblems,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
@@ -63,7 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
+import { KitchenSheetLink, MenuPicksProvider, PicksSummary, useEventPicks } from './menuPicks.tsx';
 import {
   keepLoaded,
   keptFor,
@@ -85,13 +85,14 @@ import {
   courseProblems,
   coursePicked,
   firstCourseProblem,
-  menuClose,
   menuCounts,
   moveTarget,
   servedTime,
   zoneCity,
 } from './menuArea.ts';
 import { type ChoiceAsk, ChoiceFields, ChoiceIntro } from './ChoiceParts.tsx';
+import { allergensInSentence } from './allergenWords.ts';
+import { type ChangeAsks, MenuChangeDialog } from './MenuChangeDialog.tsx';
 import { choiceName } from './choiceWords.ts';
 import { firstItemProblem, ownRowsOf, rowsOf, useOrList, withoutRow } from './menuItems.ts';
 import { useShowMenuReady } from './EventNav.tsx';
@@ -108,6 +109,26 @@ import {
 } from './MenuParts.tsx';
 import { type ShownVariant, type VariantAsk, VariantFields } from '../menu/VariantParts.tsx';
 import { useHubTopics } from './useHubTopics.ts';
+import {
+  type DefaultDates,
+  type DefaultForm,
+  checkDefault,
+  choiceLeavesDefault,
+  dayIn,
+  dayWords,
+  defaultForm,
+  firstDefaultProblem,
+  hasDefaultProblem,
+  isDefaultDish,
+  isDefaultOption,
+  isDefaultVariant,
+  type Move,
+  moveWords,
+  pickWords,
+  sentDefault,
+  variantLeavesDefault,
+} from './courseDefault.ts';
+import { DefaultFields, MoveDialog } from './MenuDefault.tsx';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -124,6 +145,9 @@ type Open =
       from: string;
       form: CourseForm;
       own: FixedRow[];
+      /** sc-1362's default and choose-by date; null on a course that asks guests nothing. */
+      pair: DefaultForm | null;
+      move: Move | null;
       pressed: boolean;
       failed: string | null;
       full: boolean;
@@ -182,7 +206,7 @@ type ChoiceOpen = Extract<Open, { kind: 'choice' }>;
 type Asking = { kind: 'dish' | 'course'; id: string; failed: string | null };
 
 type Refusal =
-  | { kind: 'dish'; id: string }
+  | { kind: 'dish' | 'defaultDish'; id: string }
   | { kind: 'course'; id: string }
   | { kind: 'limit'; at: 'top' | 'end' };
 
@@ -329,22 +353,20 @@ function Crumbs({ event }: { event: OrganisationEvent }) {
   );
 }
 
-function unwarnedLine(
-  t: TFunction,
-  language: string,
-  dish: string,
-  unwarned: UnwarnedPickers | null,
-): string | null {
-  if (unwarned == null) return null;
-  const names = DISH_ALLERGENS.filter((code) => unwarned.allergens.includes(code)).map((code) =>
-    t(`guestNeeds.allergen.${code}`),
-  );
+/** What a menu change's 409 says (sc-3913): how many it asks, for which course, and on an allergen which of the added ones they have recorded. */
+interface Asked {
+  count: number;
+  course: string;
+  recorded: string[];
+  whom: 'picked' | 'everyone' | 'allergen';
+}
 
-  return t('eventMenu.unwarned', {
-    count: unwarned.count,
-    dish,
-    allergens: listFormat(language, { type: 'conjunction' }).format(names),
-  });
+interface Changing extends ChangeAsks {
+  done: string;
+  courseId: string | null;
+  go: () => Promise<void>;
+  refused: string | null;
+  busy: boolean;
 }
 
 function Courses({
@@ -383,6 +405,7 @@ function Courses({
   const [addRefused, setAddRefused] = useState<VariantHandlers['addRefused']>(null);
   const [choiceAsk, setChoiceAsk] = useState<ChoiceAsk | null>(null);
   const [choiceRefused, setChoiceRefused] = useState<ChoiceHandlers['addRefused']>(null);
+  const [changing, setChanging] = useState<Changing | null>(null);
   const prices = canOn(event, 'budget.read');
   const focusAfter = useRef<string | null>(backFromPreview ? 'mc-preview' : null);
   const counts = menuCounts(courses);
@@ -471,20 +494,31 @@ function Courses({
     focusAfter.current = 'mc-said';
   }
 
+  /** A refusal shows on the item's own Remove? line, or on the page's note when that line is not open. */
   function keepAsking(id: string, error: unknown, words: string) {
-    setAsking((was) =>
-      was?.id === id
-        ? {
-            ...was,
-            failed:
-              error instanceof ApiError && error.status === 403 ? t('eventMenu.forbidden') : words,
-          }
-        : was,
-    );
+    const failed =
+      pastDate(error) ??
+      (error instanceof ApiError && error.status === 403 ? t('eventMenu.forbidden') : words);
+    if (asking?.id !== id) {
+      tellFailed(failed);
+      return;
+    }
+    setAsking({ ...asking, failed });
     focusAfter.current = `mc-ask-failed-${id}`;
   }
 
+  /** sc-3913: once the event's date has passed, every menu edit is refused with this line. */
+  function pastDate(error: unknown): string | null {
+    return error instanceof ApiError && error.is('menu_event_over')
+      ? t('menuChange.pastDate', { event: event.name, day: closeWords(event.startsAt) })
+      : null;
+  }
+
   function failedLine(error: unknown, button: string): string {
+    const over = pastDate(error);
+    if (over != null) return over;
+    if (error instanceof ApiError && error.is('menu_change_asks')) return error.problem.title;
+
     return error instanceof ApiError && error.status === 403
       ? t('eventMenu.forbidden')
       : t('eventMenu.failedSave', { button });
@@ -498,6 +532,164 @@ function Courses({
 
     return true;
   }
+
+  /** sc-3913: a change that asks guests to pick again opens the MenuChange dialog, and Change and ask them sends it again with `askAgain`. */
+  function asksFirst(
+    error: unknown,
+    words: (asked: Asked) => ChangeAsks & { done: string },
+    go: () => Promise<void>,
+  ): boolean {
+    if (!(error instanceof ApiError) || !error.is('menu_change_asks')) return false;
+    const { count = 0, course, allergens = [], whom = 'picked' } = error.problem;
+    const asked: Asked = {
+      count,
+      course: course?.name ?? '',
+      recorded: DISH_ALLERGENS.filter((code) => allergens.includes(code)),
+      whom,
+    };
+    setChanging({ ...words(asked), courseId: course?.id ?? null, go, refused: null, busy: false });
+
+    return true;
+  }
+
+  async function makeChange() {
+    if (changing == null || changing.busy) return;
+    const now = changing;
+    setChanging({ ...now, busy: true });
+
+    try {
+      await now.go();
+      setChanging(null);
+      setSaid({ words: now.done });
+      focusAfter.current = now.courseId == null ? 'mc-said' : `mc-c-${now.courseId}`;
+    } catch (error) {
+      if (gone(error)) {
+        setChanging(null);
+        return;
+      }
+      const refused = failedLine(error, t('menuChange.go'));
+      setChanging((then) => (then == null ? then : { ...then, busy: false, refused }));
+    }
+  }
+
+  const allergenAsks = (dish: string, added: readonly string[]) => (asked: Asked) => {
+    const names = (codes: readonly string[], type?: 'disjunction') =>
+      allergensInSentence(
+        t,
+        i18n.language,
+        DISH_ALLERGENS.filter((code) => codes.includes(code)),
+        type,
+      );
+
+    return {
+      title: t('menuChange.addAllergens', {
+        allergens: names(added.length > 0 ? added : asked.recorded),
+        dish,
+      }),
+      count: t('menuChange.pickedWith', {
+        count: asked.count,
+        allergens: names(asked.recorded, 'disjunction'),
+        course: asked.course,
+      }),
+      stays: t('menuChange.staysAgain', { course: asked.course }),
+      done: t('menuChange.doneAllergens', { count: asked.count, dish }),
+    };
+  };
+
+  const firstDishAsks = (dish: string) => (asked: Asked) => ({
+    title: t('menuChange.addFirst', { dish, course: asked.course }),
+    count: t('menuChange.allComing', { count: asked.count, course: asked.course }),
+    stays: t('menuChange.staysNew', { course: asked.course }),
+    done: t('menuChange.doneFirst', { count: asked.count, dish, course: asked.course }),
+  });
+
+  /** Who a change on a dish reaches: everyone coming when a set course starts asking, those who answered its choices on a set course that already asks, else those who picked it. */
+  const dishCount = (asked: Asked, dish: string, same: boolean) =>
+    asked.whom === 'everyone'
+      ? t('menuChange.allComing', { count: asked.count, course: asked.course })
+      : same
+        ? t('menuChange.answeredDish', { count: asked.count, dish, course: asked.course })
+        : t('menuChange.pickedDish', { count: asked.count, course: asked.course });
+
+  const staysFor = (asked: Asked) =>
+    asked.whom === 'everyone'
+      ? t('menuChange.staysNew', { course: asked.course })
+      : t('menuChange.staysAgain', { course: asked.course });
+
+  const waysAsks =
+    (dish: string, ways: number, added: string | null, same: boolean) => (asked: Asked) => ({
+      title:
+        added == null
+          ? t('menuChange.firstVariants', { dish, ways })
+          : t('menuChange.addVariant', { variant: added, dish }),
+      count: dishCount(asked, dish, same),
+      stays: staysFor(asked),
+      done:
+        added == null
+          ? t('menuChange.doneWays', { count: asked.count, dish, ways })
+          : t('menuChange.doneVariantAdded', { count: asked.count, variant: added, dish }),
+    });
+
+  const addChoiceAsks = (dish: string, question: string, same: boolean) => (asked: Asked) => ({
+    title: t('menuChange.addChoice', { question, dish }),
+    count: dishCount(asked, dish, same),
+    stays: staysFor(asked),
+    done: t(
+      asked.whom === 'everyone' ? 'menuChange.doneChoiceAddedAll' : 'menuChange.doneChoiceAdded',
+      { count: asked.count, question, dish },
+    ),
+  });
+
+  const removeChoiceAsks = (dish: string, question: string) => (asked: Asked) => ({
+    title: t('menuChange.removeChoice', { question, dish }),
+    count: t('menuChange.answeredChoice', { count: asked.count, course: asked.course }),
+    stays: t('menuChange.staysAgain', { course: asked.course }),
+    done: t('menuChange.doneChoiceRemoved', { count: asked.count, question, dish }),
+  });
+
+  /** An answered choice saved changed (sc-3913, 31 Oct): a new pick count, Required turned on, or options dropped, each named alone and together as Save. */
+  const changeChoiceAsks = (was: MenuDishChoice, details: ChoiceDetails) => (asked: Asked) => {
+    const dropped = was.options.filter(
+      (one) => !details.options.some((kept) => kept.id === one.id),
+    );
+    const kinds = [
+      details.pick !== was.pick ? 'pick' : null,
+      details.required && !was.required ? 'required' : null,
+      dropped.length > 0 ? 'options' : null,
+    ].filter((one) => one != null);
+    const one = kinds.length === 1 ? kinds[0] : null;
+    const course = asked.course;
+    const question = details.question;
+
+    return {
+      title:
+        one === 'pick'
+          ? t('menuChange.pickCount', { count: details.pick, question })
+          : one === 'required'
+            ? t('menuChange.requiredOn', { question })
+            : one === 'options'
+              ? t('menuChange.dropOptions', {
+                  options: listFormat(i18n.language, { type: 'conjunction' }).format(
+                    dropped.map((option) => option.name),
+                  ),
+                  question,
+                })
+              : t('menuChange.saveChoice', { question }),
+      count:
+        one === 'pick'
+          ? t('menuChange.answeredChoice', { count: asked.count, course })
+          : one === 'required'
+            ? t('menuChange.answeredNone', { count: asked.count, course })
+            : one === 'options'
+              ? t(dropped.length === 1 ? 'menuChange.pickedOption' : 'menuChange.pickedOptions', {
+                  count: asked.count,
+                  course,
+                })
+              : t('menuChange.answersChange', { count: asked.count, course }),
+      stays: t('menuChange.staysAgain', { course }),
+      done: t('menuChange.doneChoice', { count: asked.count, question }),
+    };
+  };
 
   function close() {
     if (open == null) return;
@@ -532,6 +724,8 @@ function Courses({
       from: at === 'top' ? 'mc-add-course' : 'mc-add-course-end',
       form: { name: '', servedAt: '' },
       own: [],
+      pair: null,
+      move: null,
       pressed: false,
       failed: null,
       full: false,
@@ -549,6 +743,8 @@ function Courses({
       from: `mc-edit-${course.id}`,
       form: { name: course.name, servedAt: course.servedAt ?? '' },
       own: ownRowsOf(course.ownItems),
+      pair: course.picksClose == null ? null : defaultForm(course),
+      move: null,
       pressed: false,
       failed: null,
       full: false,
@@ -600,12 +796,37 @@ function Courses({
     focusAfter.current = 'mc-panel-title';
   }
 
-  async function saveCourse() {
+  function datesOf(course: MenuCourse): DefaultDates {
+    const stored = course.default?.chooseBy ?? null;
+
+    return {
+      today: dayIn(new Date(), event.timeZone),
+      event: dayIn(new Date(event.startsAt), event.timeZone),
+      stored,
+      locked:
+        stored != null && course.picksClose?.source === 'chooseBy' && course.picksClose.closed,
+    };
+  }
+
+  const day = (date: string): string => dayWords(date, dateLocale());
+
+  async function saveCourse(confirmMove = false) {
     if (open == null || (open.kind !== 'addCourse' && open.kind !== 'editCourse') || open.busy)
       return;
+    const pairCourse = open.kind === 'editCourse' ? openCourse : null;
+    const pairErrors =
+      open.pair == null || pairCourse == null
+        ? null
+        : checkDefault(open.pair, pairCourse, datesOf(pairCourse), t, day);
     const problem =
       firstCourseProblem(courseProblems(open.form)) ??
-      firstItemProblem(open.own, ownItemProblems(open.own), true);
+      firstItemProblem(open.own, ownItemProblems(open.own), true) ??
+      (pairErrors != null &&
+      hasDefaultProblem(pairErrors) &&
+      open.pair != null &&
+      pairCourse != null
+        ? firstDefaultProblem(pairErrors, open.pair, pairCourse)
+        : null);
     if (problem != null) {
       setOpen({ ...open, pressed: true, failed: null, full: false });
       focusAfter.current = problem;
@@ -614,6 +835,8 @@ function Courses({
     const adding = open.kind === 'addCourse';
     const details = { name: open.form.name.trim(), servedAt: servedTime(open.form.servedAt) };
     setOpen({ ...open, pressed: true, busy: true, failed: null, full: false });
+    const sent =
+      open.pair == null || pairCourse == null ? undefined : sentDefault(open.pair, pairCourse);
 
     try {
       if (adding) {
@@ -632,12 +855,45 @@ function Courses({
         answer: course.answer,
         skippable: course.skippable,
         ownItems: open.own.map((one) => one.name.trim()),
+        ...(sent == null ? {} : { default: sent }),
+        ...(confirmMove ? { confirmMove } : {}),
       });
       onMenu(changed.menu);
       setOpen(null);
-      tellDone(t('eventMenu.saved', { name: details.name }));
+      tellDone(
+        open.move != null && confirmMove
+          ? moveWords(t, open.move).done
+          : t('eventMenu.saved', { name: details.name }),
+      );
     } catch (error) {
       if (gone(error)) return;
+      if (error instanceof ApiError && error.is('menu_default_move') && sent?.dish != null) {
+        const course = openCourse;
+        const was = course?.default ?? null;
+        const problem = error.problem;
+        if (course != null && was != null) {
+          setOpen((now) =>
+            now == null || now.kind !== 'editCourse'
+              ? now
+              : {
+                  ...now,
+                  busy: false,
+                  move: {
+                    move: problem?.move ?? 0,
+                    back: problem?.back ?? 0,
+                    from: pickWords(course, was),
+                    to: pickWords(course, {
+                      dish: sent.dish ?? '',
+                      variant: sent.variant ?? null,
+                      options: sent.options ?? [],
+                    }),
+                    on: day(was.chooseBy),
+                  },
+                },
+          );
+          return;
+        }
+      }
       if (error instanceof ApiError && error.is('menu_course_limit')) {
         setOpen((now) => (now == null ? now : { ...now, busy: false, full: true }));
         focusAfter.current = 'mc-form-full';
@@ -676,9 +932,10 @@ function Courses({
         return;
       }
       tellFailed(
-        error instanceof ApiError && error.status === 403
-          ? t('eventMenu.forbidden')
-          : t('eventMenu.failedChange'),
+        pastDate(error) ??
+          (error instanceof ApiError && error.status === 403
+            ? t('eventMenu.forbidden')
+            : t('eventMenu.failedChange')),
       );
     }
   }
@@ -702,6 +959,17 @@ function Courses({
       );
     } catch (error) {
       if (gone(error)) return;
+      if (
+        asksFirst(error, firstDishAsks(dish.name), async () => {
+          onMenu(
+            (await api.addMenuDish(event.id, course.id, { libraryDishId: dish.id }, true)).menu,
+          );
+          setOpen(null);
+        })
+      ) {
+        setOpen((then) => (then?.kind === 'addDish' ? { ...then, busy: false } : then));
+        return;
+      }
       if (error instanceof ApiError && error.is('menu_dish_on_course')) {
         api.menu(event.id).then(onMenu, () => undefined);
         setOpen((then) => (then?.kind === 'addDish' ? { ...then, busy: false } : then));
@@ -768,6 +1036,24 @@ function Courses({
       );
     } catch (error) {
       if (gone(error)) return;
+      if (
+        asksFirst(error, firstDishAsks(details.name), async () => {
+          onMenu(
+            (
+              await api.addMenuDish(
+                event.id,
+                course.id,
+                { ...details, onlyForEvent: onlyEvent },
+                true,
+              )
+            ).menu,
+          );
+          setOpen(null);
+        })
+      ) {
+        setOpen((then) => (then?.kind === 'addDish' ? { ...then, busy: false } : then));
+        return;
+      }
       if (error instanceof ApiError && error.is('dish_name_shared')) {
         setOpen((then) =>
           then?.kind === 'addDish'
@@ -815,21 +1101,28 @@ function Courses({
       return;
     }
     const { lastPrice: _price, ...details } = dishDetailsOf(open.form, language, false, false);
+    const sent = { ...details, items: sentItems(open.items) };
     setOpen({ ...open, pressed: true, busy: true, failed: null });
 
     try {
-      const changed: MenuChange = await api.changeMenuDish(event.id, open.dishId, {
-        ...details,
-        items: sentItems(open.items),
-      });
+      const changed: MenuChange = await api.changeMenuDish(event.id, open.dishId, sent);
       onMenu(changed.menu);
       setOpen(null);
-      tellDone(
-        t('eventMenu.saved', { name: details.name }),
-        unwarnedLine(t, i18n.language, details.name, changed.unwarned),
-      );
+      tellDone(t('eventMenu.saved', { name: details.name }));
     } catch (error) {
       if (gone(error)) return;
+      const dishId = open.dishId;
+      const had = editing?.allergens ?? [];
+      const added = (sent.allergens ?? []).filter((code) => !had.includes(code));
+      if (
+        asksFirst(error, allergenAsks(details.name, added), async () => {
+          onMenu((await api.changeMenuDish(event.id, dishId, sent, true)).menu);
+          setOpen(null);
+        })
+      ) {
+        setOpen((then) => (then?.kind === 'editDish' ? { ...then, busy: false } : then));
+        return;
+      }
       setOpen((then) =>
         then?.kind === 'editDish'
           ? { ...then, busy: false, failed: failedLine(error, t('eventMenu.saveChanges')) }
@@ -860,9 +1153,10 @@ function Courses({
       if (gone(error)) return;
       setSaid({
         words:
-          error instanceof ApiError && error.status === 403
+          pastDate(error) ??
+          (error instanceof ApiError && error.status === 403
             ? t('eventMenu.forbidden')
-            : t('eventMenu.failedMove', { name: course.name, n: at + 1, count: courses.length }),
+            : t('eventMenu.failedMove', { name: course.name, n: at + 1, count: courses.length })),
         tone: 'fail',
       });
     }
@@ -871,8 +1165,13 @@ function Courses({
   function askRemove(dish: MenuDish) {
     settle();
     setSaid(null);
-    if (dishPicked(dish)) {
-      setRefused({ kind: 'dish', id: dish.id });
+    const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+    if (course != null && isDefaultDish(course, dish.id)) {
+      setRefused({ kind: 'defaultDish', id: dish.id });
+      return;
+    }
+    if (course != null && dishPicked(dish)) {
+      void remove(course, dish);
       return;
     }
     setAsking({ kind: 'dish', id: dish.id, failed: null });
@@ -887,9 +1186,29 @@ function Courses({
       if (open?.kind === 'editDish' && open.dishId === dish.id) setOpen(null);
       tellDone(t('eventMenu.removed', { dish: dish.name, course: course.name }));
     } catch (error) {
-      if (error instanceof ApiError && error.is('menu_dish_picked')) {
+      const removeAsks = (asked: Asked) => ({
+        title: t('menuChange.removeDish', { dish: dish.name, course: course.name }),
+        count: t('menuChange.pickedDish', { count: asked.count, course: asked.course }),
+        stays: t('menuChange.staysAgain', { course: asked.course }),
+        done: t('menuChange.doneDish', {
+          count: asked.count,
+          dish: dish.name,
+          course: course.name,
+        }),
+      });
+      if (
+        asksFirst(error, removeAsks, async () => {
+          onMenu((await api.removeMenuDish(event.id, dish.id, true)).menu);
+          if (open?.kind === 'editDish' && open.dishId === dish.id) setOpen(null);
+        })
+      ) {
         setAsking(null);
-        setRefused({ kind: 'dish', id: dish.id });
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        setAsking(null);
+        setRefused({ kind: 'defaultDish', id: dish.id });
+        api.menu(event.id).then(onMenu, () => undefined);
         return;
       }
       if (gone(error)) {
@@ -930,10 +1249,10 @@ function Courses({
 
   function addVariant(course: MenuCourse, dish: MenuDish) {
     const outcome = addVariantOutcome(dish.variants, dish.picked);
-    if (outcome !== 'open') {
+    if (outcome === 'limit' || variantLeavesDefault(course, dish.id, null, false)) {
       settle();
       setSaid(null);
-      setAddRefused({ dishId: dish.id, outcome });
+      setAddRefused({ dishId: dish.id, outcome: outcome === 'limit' ? 'limit' : 'default' });
       return;
     }
     openVariant(course, dish, dish.variants.length === 0 ? 'addFirst' : 'add', null);
@@ -957,6 +1276,19 @@ function Courses({
     if (hasProblem(problems)) {
       setOpen({ ...open, pressed: true, failed: null });
       focusAfter.current = firstVariantProblem(problems, open.forms);
+      return;
+    }
+    if (
+      open.variantId != null &&
+      variantLeavesDefault(
+        openCourse,
+        open.dishId,
+        open.variantId,
+        open.forms[0]?.for === 'children',
+      )
+    ) {
+      setOpen({ ...open, pressed: true, failed: null });
+      focusAfter.current = `${variantPrefix(0)}for-children`;
       return;
     }
     const details = open.forms.map((form) => variantDetailsOf(form, 'event', language, prices));
@@ -984,32 +1316,58 @@ function Courses({
         );
       else if (open.mode === 'add' && first != null)
         tellDone(t('dishVariants.added', { variant: first.name, dish: dishName }));
-      else if (first != null)
-        tellDone(
-          t('dishVariants.saved', { variant: first.name }),
-          changed.unwarned == null
-            ? null
-            : t('dishVariants.unwarned', {
-                count: changed.unwarned.count,
-                dish: dishName,
-                variant: first.name,
-                allergens: listFormat(i18n.language, { type: 'conjunction' }).format(
-                  DISH_ALLERGENS.filter((code) => changed.unwarned?.allergens.includes(code)).map(
-                    (code) => t(`guestNeeds.allergen.${code}`),
-                  ),
-                ),
-              }),
-        );
+      else if (first != null) tellDone(t('dishVariants.saved', { variant: first.name }));
     } catch (error) {
       if (gone(error)) return;
-      if (error instanceof ApiError && error.is('menu_dish_picked')) {
-        setOpen(null);
-        setAddRefused({ dishId: open.dishId, outcome: 'picked' });
+      const [edited] = details;
+      const variantId = open.variantId;
+      if (
+        variantId != null &&
+        edited != null &&
+        error instanceof ApiError &&
+        error.problem.whom === 'allergen' &&
+        asksFirst(error, allergenAsks(dish?.name ?? '', []), async () => {
+          onMenu((await api.changeMenuVariant(event.id, variantId, edited, true)).menu);
+          setOpen(null);
+        })
+      ) {
+        setOpen((then) => (then?.kind === 'variant' ? { ...then, busy: false } : then));
+        return;
+      }
+      const added = open.mode === 'add' ? (details[0]?.name ?? null) : null;
+      if (
+        open.variantId == null &&
+        asksFirst(
+          error,
+          waysAsks(
+            dish?.name ?? '',
+            (dish?.variants.length ?? 0) + details.length,
+            added,
+            openCourse.answer === 'same',
+          ),
+          async () => {
+            onMenu((await api.addMenuVariants(event.id, open.dishId, details, true)).menu);
+            setOpen(null);
+          },
+        )
+      ) {
+        setOpen((then) => (then?.kind === 'variant' ? { ...then, busy: false } : then));
         return;
       }
       if (error instanceof ApiError && error.is('variant_limit')) {
         setOpen(null);
         setAddRefused({ dishId: open.dishId, outcome: 'limit' });
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        api.menu(event.id).then(onMenu, () => undefined);
+        if (open.variantId == null) {
+          setOpen(null);
+          setAddRefused({ dishId: open.dishId, outcome: 'default' });
+          return;
+        }
+        setOpen((then) => (then?.kind === 'variant' ? { ...then, busy: false } : then));
+        focusAfter.current = `${variantPrefix(0)}for-children`;
         return;
       }
       setOpen((then) =>
@@ -1032,9 +1390,23 @@ function Courses({
   function askRemoveVariant(dish: MenuDish, variant: ShownVariant) {
     settle();
     setSaid(null);
-    const outcome = removeVariantOutcome(dish.variants, variant);
+    const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+    if (course != null && isDefaultVariant(course, dish.id, variant.id)) {
+      setVariantAsk({
+        variantId: variant.id,
+        kind: 'refused',
+        lines: [],
+        said: t('courseDefault.refuseVariant', { variant: variant.name, course: course.name }),
+      });
+      return;
+    }
+    const outcome = removeVariantOutcome(dish.variants, { ...variant, picked: false });
     if (outcome.kind === 'refused') {
       setVariantAsk({ variantId: variant.id, kind: 'refused', lines: outcome.lines });
+      return;
+    }
+    if (variant.picked === true) {
+      void confirmVariant(dish, variant);
       return;
     }
     setVariantAsk({ variantId: variant.id, kind: outcome.kind });
@@ -1060,8 +1432,38 @@ function Courses({
         );
       else tellDone(t('dishVariants.removed', { variant: variant.name, dish: dish.name }));
     } catch (error) {
-      if (error instanceof ApiError && error.is('variant_picked')) {
-        setVariantAsk({ variantId: variant.id, kind: 'refused', lines: ['picked'] });
+      const removeAsks = (asked: Asked) => ({
+        title: t('menuChange.removeVariant', { variant: variant.name, dish: dish.name }),
+        count: t('menuChange.pickedVariant', { count: asked.count, course: asked.course }),
+        stays: t('menuChange.staysAgain', { course: asked.course }),
+        done: t('menuChange.doneVariant', {
+          count: asked.count,
+          variant: variant.name,
+          dish: dish.name,
+        }),
+      });
+      if (
+        asksFirst(error, removeAsks, async () => {
+          onMenu((await api.removeMenuVariant(event.id, variant.id, true)).menu);
+          if (folding) dropOpenRow(dish.id, null);
+          if (open?.kind === 'variant' && open.dishId === dish.id) setOpen(null);
+        })
+      ) {
+        setVariantAsk(null);
+        return;
+      }
+      if (error instanceof ApiError && error.is('menu_is_default')) {
+        const course = courses.find((one) => one.dishes.some((each) => each.id === dish.id));
+        setVariantAsk({
+          variantId: variant.id,
+          kind: 'refused',
+          lines: [],
+          said: t('courseDefault.refuseVariant', {
+            variant: variant.name,
+            course: course?.name ?? '',
+          }),
+        });
+        api.menu(event.id).then(onMenu, () => undefined);
         return;
       }
       if (error instanceof ApiError && error.is('variant_last_everyone')) {
@@ -1124,7 +1526,7 @@ function Courses({
 
   function addChoice(course: MenuCourse, dish: MenuDish) {
     const outcome = addChoiceOutcome(dish);
-    if (outcome !== 'open') {
+    if (outcome === 'limit') {
       settle();
       setSaid(null);
       setChoiceRefused({ dishId: dish.id, outcome });
@@ -1140,7 +1542,9 @@ function Courses({
   function pressBin(now: ChoiceOpen, key: string) {
     const option = now.form.options.find((one) => one.key === key);
     const saved = openChoice?.options.find((one) => one.id === option?.id);
-    if (saved != null && optionPicked(saved)) {
+    const isDefault =
+      openCourse != null && saved != null && isDefaultOption(openCourse, now.dishId, saved.id);
+    if (saved != null && isDefault) {
       setOpen({ ...now, binRefused: key, optionsFull: false });
       focusAfter.current = `ch-${key}-bin`;
       return;
@@ -1166,24 +1570,10 @@ function Courses({
     focusAfter.current = `ch-${added.key}-name`;
   }
 
-  function optionLines(lines: readonly UnwarnedOption[]): string[] {
-    return lines.map((line) =>
-      t('dishChoices.unwarned', {
-        count: line.count,
-        option: line.option,
-        allergens: listFormat(i18n.language, { type: 'conjunction' }).format(
-          DISH_ALLERGENS.filter((code) => line.allergens.includes(code)).map((code) =>
-            t(`guestNeeds.allergen.${code}`).toLocaleLowerCase(i18n.language),
-          ),
-        ),
-      }),
-    );
-  }
-
   async function saveChoice() {
     if (open?.kind !== 'choice' || openDish == null || open.busy) return;
     const was = openChoice;
-    const problems = choiceProblems(open.form, was);
+    const problems = askingProblems(open.form, was);
     if (hasChoiceProblem(problems)) {
       const problem = firstChoiceProblem(problems, open.form, was);
       setOpen({
@@ -1194,6 +1584,12 @@ function Courses({
         openKey: problem?.open ?? open.openKey,
       });
       focusAfter.current = problem?.id ?? null;
+      return;
+    }
+    const leaves = choiceLeavesDefault(openCourse, open.dishId, open.form, was, problems);
+    if (leaves != null) {
+      setOpen({ ...open, pressed: true, failed: null, binRefused: null });
+      focusAfter.current = defaultControl(leaves, open.form, was);
       return;
     }
     const details = choiceDetailsOf(open.form, was);
@@ -1226,16 +1622,41 @@ function Courses({
         );
       else if (open.choiceId == null)
         tellDone(t('dishChoices.added', { question: details.question, dish: dish.name }));
-      else
-        tellDone(
-          t('dishChoices.saved', { question: details.question }),
-          optionLines(changed.unwarnedOptions ?? []),
-        );
+      else tellDone(t('dishChoices.saved', { question: details.question }));
     } catch (error) {
       if (gone(error)) return;
-      if (error instanceof ApiError && error.is('menu_dish_picked')) {
-        setOpen(null);
-        setChoiceRefused({ dishId: open.dishId, outcome: 'picked' });
+      const choiceId = open.choiceId;
+      if (
+        choiceId != null &&
+        error instanceof ApiError &&
+        error.problem.whom === 'allergen' &&
+        asksFirst(error, allergenAsks(dish.name, []), async () => {
+          onMenu((await api.changeMenuChoice(event.id, choiceId, details, true)).menu);
+          setOpen(null);
+        })
+      ) {
+        setOpen((then) => (then?.kind === 'choice' ? { ...then, busy: false } : then));
+        return;
+      }
+      const same = openCourse?.answer === 'same';
+      if (
+        asksFirst(
+          error,
+          choiceId == null || was == null
+            ? addChoiceAsks(dish.name, details.question, same)
+            : changeChoiceAsks(was, details),
+          async () => {
+            onMenu(
+              (choiceId == null
+                ? await api.addMenuChoice(event.id, dish.id, details, true)
+                : await api.changeMenuChoice(event.id, choiceId, details, true)
+              ).menu,
+            );
+            setOpen(null);
+          },
+        )
+      ) {
+        setOpen((then) => (then?.kind === 'choice' ? { ...then, busy: false } : then));
         return;
       }
       if (error instanceof ApiError && error.is('choice_limit')) {
@@ -1261,9 +1682,8 @@ function Courses({
   function askRemoveChoice(choice: MenuDishChoice) {
     settle();
     setSaid(null);
-    const kind = removeChoiceOutcome(choice);
-    setChoiceAsk({ choiceId: choice.id, kind });
-    if (kind === 'ask') focusAfter.current = `mc-chask-${choice.id}`;
+    setChoiceAsk({ choiceId: choice.id, kind: 'ask' });
+    focusAfter.current = `mc-chask-${choice.id}`;
   }
 
   async function confirmChoice(dish: MenuDish, choice: MenuDishChoice) {
@@ -1275,8 +1695,14 @@ function Courses({
       if (open?.kind === 'choice' && open.choiceId === choice.id) setOpen(null);
       tellDone(t('dishChoices.removed', { question: choice.question, dish: dish.name }));
     } catch (error) {
-      if (error instanceof ApiError && error.is('choice_answered')) {
-        setChoiceAsk({ choiceId: choice.id, kind: 'answered' });
+      if (
+        asksFirst(error, removeChoiceAsks(dish.name, choice.question), async () => {
+          onMenu((await api.removeMenuChoice(event.id, choice.id, true)).menu);
+          dropOpenRow(dish.id, choice.id);
+          if (open?.kind === 'choice' && open.choiceId === choice.id) setOpen(null);
+        })
+      ) {
+        setChoiceAsk(null);
         return;
       }
       if (gone(error)) {
@@ -1375,7 +1801,9 @@ function Courses({
                 <Glyph name={headClose.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
                 {headClose.closed
                   ? t('eventMenu.picksHeadClosed', { date: closeWords(headClose.at) })
-                  : t('eventMenu.picksHead', { date: closeWords(headClose.at) })}
+                  : t(menuCloseFrom(courses) ? 'eventMenu.picksHeadFrom' : 'eventMenu.picksHead', {
+                      date: closeWords(headClose.at),
+                    })}
               </span>
             )}
             {refreshing && <Refreshing />}
@@ -1391,6 +1819,7 @@ function Courses({
             {t('eventMenu.previewAsGuest')}
           </Link>
         )}
+        <KitchenSheetLink />
         {manage && courses.length > 0 && (
           <div className="mc-add-wrap">
             <button
@@ -1472,7 +1901,7 @@ function Courses({
                   }
                   askFailed={asking?.failed ?? null}
                   refused={
-                    refused == null || refused.kind === 'limit'
+                    refused == null || refused.kind === 'limit' || refused.kind === 'defaultDish'
                       ? null
                       : refused.kind === 'course'
                         ? refused.id === course.id
@@ -1480,6 +1909,7 @@ function Courses({
                           : null
                         : refused.id
                   }
+                  defaultRefused={refused?.kind === 'defaultDish' ? refused.id : null}
                   dragging={dragging === course.id}
                   onDragStart={() => setDragging(course.id)}
                   onDragEnd={() => setDragging(null)}
@@ -1535,9 +1965,14 @@ function Courses({
             closeLine={
               headClose == null
                 ? null
-                : t(headClose.closed ? 'eventMenu.picksClosed' : 'eventMenu.picksClose', {
-                    date: closeWords(headClose.at),
-                  })
+                : t(
+                    headClose.closed
+                      ? 'eventMenu.picksClosed'
+                      : menuCloseFrom(courses)
+                        ? 'eventMenu.picksCloseFrom'
+                        : 'eventMenu.picksClose',
+                    { date: closeWords(headClose.at) },
+                  )
             }
           />
         )}
@@ -1584,6 +2019,32 @@ function Courses({
                   onPatch={(next) =>
                     setOpen({ ...open, form: { ...open.form, ...next }, full: false })
                   }
+                />
+              )}
+              {open.kind === 'editCourse' && open.pair != null && openCourse != null && (
+                <DefaultFields
+                  course={openCourse}
+                  form={open.pair}
+                  dates={datesOf(openCourse)}
+                  errors={
+                    open.pressed
+                      ? checkDefault(open.pair, openCourse, datesOf(openCourse), t, day)
+                      : null
+                  }
+                  zone={zoneCity(event.timeZone)}
+                  day={day}
+                  onPatch={(pair) => setOpen({ ...open, pair, move: null })}
+                />
+              )}
+              {open.kind === 'editCourse' && open.move != null && (
+                <MoveDialog
+                  move={open.move}
+                  busy={open.busy}
+                  onCancel={() => {
+                    setOpen({ ...open, move: null });
+                    focusAfter.current = 'mc-panel-save';
+                  }}
+                  onMove={() => void saveCourse(true)}
                 />
               )}
               {open.kind === 'addDish' && openCourse != null && (
@@ -1647,7 +2108,7 @@ function Courses({
               {open.kind === 'choice' && openDish != null && (
                 <ChoiceFields
                   form={open.form}
-                  problems={open.pressed ? choiceProblems(open.form, openChoice) : null}
+                  problems={open.pressed ? askingProblems(open.form, openChoice) : null}
                   draft={
                     savesAsDraft(open.form, openChoice)
                       ? formDraftReasons(open.form, openChoice)
@@ -1656,6 +2117,12 @@ function Courses({
                   ways={openDish.variants.length}
                   openKey={open.openKey}
                   binRefused={open.binRefused}
+                  binWords={binDefaultWords(t, open, openCourse, openChoice)}
+                  defaultLine={
+                    open.pressed
+                      ? choiceDefaultLine(t, open, openCourse, openDish, openChoice)
+                      : null
+                  }
                   optionsFull={open.optionsFull}
                   intro={
                     <ChoiceIntro
@@ -1784,8 +2251,69 @@ function Courses({
           </aside>
         )}
       </div>
+      {changing != null && (
+        <MenuChangeDialog
+          asks={changing}
+          refused={changing.refused}
+          busy={changing.busy}
+          onCancel={() => setChanging(null)}
+          onGo={() => void makeChange()}
+        />
+      )}
     </>
   );
+}
+
+/** The Edit choice panel's status line for a bin refused because the option is part of the course's default (sc-1362). */
+/** sc-3913: a new pick count, or Required turned on, on an answered choice asks first instead of being refused. */
+function askingProblems(form: ChoiceForm, was: MenuDishChoice | null) {
+  return { ...choiceProblems(form, was), pick: false, required: false };
+}
+
+function binDefaultWords(
+  t: TFunction,
+  open: ChoiceOpen,
+  course: MenuCourse | null,
+  choice: MenuDishChoice | null,
+): string | null {
+  const key = open.binRefused;
+  const id = open.form.options.find((one) => one.key === key)?.id;
+  const option = choice?.options.find((one) => one.id === id);
+  if (course == null || option == null || !isDefaultOption(course, open.dishId, option.id))
+    return null;
+
+  return t('courseDefault.refuseOption', { option: option.name, course: course.name });
+}
+
+/** The Edit choice panel's line for an edit that would leave the course's default unfinished (sc-1362). */
+function choiceDefaultLine(
+  t: TFunction,
+  open: ChoiceOpen,
+  course: MenuCourse | null,
+  dish: MenuDish,
+  choice: MenuDishChoice | null,
+): { at: 'pick' | 'required' | 'draft'; words: string } | null {
+  const at = choiceLeavesDefault(
+    course,
+    open.dishId,
+    open.form,
+    choice,
+    askingProblems(open.form, choice),
+  );
+  if (at == null || course == null) return null;
+
+  return { at, words: t('courseDefault.refuseDish', { dish: dish.name, course: course.name }) };
+}
+
+function defaultControl(
+  at: 'pick' | 'required' | 'draft',
+  form: ChoiceForm,
+  was: MenuDishChoice | null,
+): string {
+  if (at === 'pick') return was != null && form.pick > was.pick ? 'ch-fewer' : 'ch-more';
+  if (at === 'required') return 'ch-required';
+
+  return form.question.trim() === '' ? 'ch-question' : 'ch-add-option';
 }
 
 function sharedLine(t: TFunction, name: string, archivedOnly: boolean): string {
@@ -1826,6 +2354,13 @@ function VariantPanel({
       dish={dish}
       forms={open.forms}
       problems={open.pressed ? variantProblems(open.forms, others(dish), language, prices) : null}
+      forRefused={
+        open.pressed &&
+        variant != null &&
+        variantLeavesDefault(course, dish.id, variant.id, open.forms[0]?.for === 'children')
+          ? t('courseDefault.refuseDish', { dish: dish.name, course: course.name })
+          : null
+      }
       where="event"
       prices={prices}
       language={language}

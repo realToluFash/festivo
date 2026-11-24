@@ -786,7 +786,7 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(409, $this->statusCode());
         self::assertSame(ErrorCode::EventConcluded->type(), $this->last()['type'] ?? null);
-        self::assertSame("This event's end has passed, so it cannot be made live. Change its dates first.", $this->last()['detail'] ?? null);
+        self::assertSame('This event’s end has passed, so it cannot be made live. Change its dates first.', $this->last()['detail'] ?? null);
         $kept = $this->event($this->as($this->owner, 'GET', '/api/events/' . $id));
         self::assertSame(['draft', null], [$kept['status'], $kept['madeLiveAt']]);
     }
@@ -1772,9 +1772,9 @@ final class EventsTest extends ApiTestCase
     public static function hostRefusals(): iterable
     {
         yield 'blank' => [['Funmi Adeyemi', " \n "], 'hosts[1]', 'Enter a name or remove this host.'];
-        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
-        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 61."];
-        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', "A host's name can be at most 60 characters. This one has 1."];
+        yield 'over 60 characters' => [[Str\repeat('é', 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'over 60 marked letters' => [[Str\repeat("e\u{0323}\u{0300}", 61)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 61.'];
+        yield 'one letter of many marks' => [['a' . Str\repeat("\u{0301}", 240)], 'hosts[0]', 'A host’s name can be at most 60 characters. This one has 1.'];
         yield 'a repeat, regardless of case' => [['Funmi Adeyemi', 'Tayo', ' funmi ADEYEMI'], 'hosts[2]', 'Funmi Adeyemi is already a host.'];
         yield 'a seventh' => [['A', 'B', 'C', 'D', 'E', 'F', 'G'], 'hosts', 'An event can have at most 6 hosts.'];
     }

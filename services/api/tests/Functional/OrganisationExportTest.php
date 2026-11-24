@@ -147,6 +147,7 @@ final class OrganisationExportTest extends ApiTestCase
         'pending_registrations' => "a person's own account (sc-611's rule)",
         'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
         'phone_numbers' => "a person's own account (sc-611's rule)",
+        'provider_events' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'provider_identities' => "sign-in credentials (sc-611's rule)",
         'push_targets' => "notifications: one person's, or deliveries",
         'recovery_codes' => "sign-in credentials (sc-611's rule)",
@@ -157,6 +158,8 @@ final class OrganisationExportTest extends ApiTestCase
         'screen_links' => 'a link that opens without signing in',
         'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
+        'passkey_challenges' => "sign-in credentials (sc-611's rule)",
+        'passkeys' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'two_factor_challenges' => "sign-in credentials (sc-611's rule)",
@@ -164,6 +167,10 @@ final class OrganisationExportTest extends ApiTestCase
         'two_factor_recoveries' => "sign-in credentials (sc-611's rule)",
         'two_factor_recovery_handles' => "sign-in credentials (sc-611's rule)",
         'verification_challenges' => "sign-in credentials (sc-611's rule)",
+        'usage_hold_releases' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_records' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_reservations' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_totals' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
     ];
 
     private User $owner;
@@ -660,7 +667,7 @@ final class OrganisationExportTest extends ApiTestCase
         $this->as($someone, 'POST', $this->path(''));
 
         self::assertSame([403, ErrorCode::OwnerRequired->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
-        self::assertSame("Only an owner can export the organisation's data.", $this->last()['detail'] ?? null);
+        self::assertSame('Only an owner can export the organisation’s data.', $this->last()['detail'] ?? null);
         self::assertCount(0, self::em()->getRepository(OrganisationExport::class)->findAll());
     }
 

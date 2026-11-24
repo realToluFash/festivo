@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
-import { switcherStateOf } from '../OrgSwitcherModel.ts';
+import { type Place, switcherStateOf } from '../OrgSwitcherModel.ts';
 import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
@@ -50,10 +50,12 @@ export function EventsShell({
   told: start,
   switcher,
   looking = OWNER,
+  place = null,
   children,
 }: {
   told?: string | undefined;
   switcher?: string | undefined;
+  place?: Place | null;
   looking?: Looking;
   children: ReactNode;
 }) {
@@ -96,7 +98,7 @@ export function EventsShell({
 
   return (
     <ShellContext.Provider value={shell}>
-      <OrgSwitcherProvider state={switcherStateOf(switcher)} tell={tell}>
+      <OrgSwitcherProvider state={switcherStateOf(switcher)} place={place} tell={tell}>
         <View style={styles.fill}>
           {children}
           {told != null && (
@@ -173,7 +175,7 @@ function ListRoute({
   );
 }
 
-/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863), ?from= for what it was opened over, ?pushed=1 when that screen is under it and ?q= for Search's term, with ?lang=es and ?refreshing=1 (sc-83008); with ?area=messages, ?state= is Messages'. */
+/** /demo/events/[id]: one event, with ?state= for each phase, edit and question, or the draft made from an enquiry (sc-31232), and ?area= for an area, ?people= for Overview's People card, ?link= for opening it from its link (sc-80863), ?from= for what it was opened over, ?pushed=1 when that screen is under it and ?q= for Search's term, with ?lang=es and ?refreshing=1 (sc-83008), and ?bell=open for an iPad's bell open over it (sc-84453); with ?area=messages, ?state= is Messages'. */
 export function EventRoute() {
   const params = useLocalSearchParams<{
     id?: string;
@@ -190,6 +192,7 @@ export function EventRoute() {
     q?: string;
     lang?: string;
     refreshing?: string;
+    bell?: string;
   }>();
   const link = linkStateOf(params.link);
   const opened: Opened = {
@@ -198,12 +201,18 @@ export function EventRoute() {
     term: params.q ?? null,
     spanish: params.lang === 'es',
     refreshing: params.refreshing === '1',
+    bell: params.bell === 'open',
   };
   const area = areaOf(params.area);
   const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
   // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
   const noStaff = staff === 'noRead';
-  const from = area === 'guests' ? guestsFromOf(params.filter) : null;
+  const from =
+    area !== 'guests'
+      ? null
+      : params.filter === 'changed'
+        ? 'changed'
+        : guestsFromOf(params.filter);
   const messages = area === 'messages' ? messagesStateOf(params.state) : null;
   const seating = area === 'seating' ? seatingStateOf(params.state) : null;
   const budget = area === 'budget' ? budgetStateOf(params.state) : null;

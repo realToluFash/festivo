@@ -1283,6 +1283,84 @@ describe('Tables at a desk (sc-4000)', () => {
     ]);
     expect(screen.getByText('You can view and print this plan, but not change it.')).toBeDefined();
   });
+
+  it("reads a long table's length, ends and rotation without seating.manage", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          seating(
+            withTables(
+              table({ shape: 'rectangular', seats: 6, lengthCm: 76, endSeats: 0, rotation: 15 }),
+            ),
+          ),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, rectangular, 0 of 6 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeRectangular table',
+      'Seats6',
+      'Width180\u00a0cm',
+      'Length76\u00a0cm',
+      'Seats on the ends0',
+      'Rotation15°',
+    ]);
+  });
+
+  it("reads a head table's sizes in feet and inches without seating.manage", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          json({
+            seating: {
+              measurementSystem: 'us',
+              plan: withTables(table({ shape: 'head', seats: 6, lengthCm: 76, rotation: 90 })),
+            },
+          }),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, head table, 0 of 6 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeHead table',
+      'Seats6',
+      'Width5\u00a0ft 11\u00a0in',
+      'Length2\u00a0ft 6\u00a0in',
+      'Seats on the ends0',
+      'Rotation90°',
+    ]);
+  });
+
+  it("reads a cocktail table's places and diameter, and no long-table rows", async () => {
+    signedIn();
+    await onSeating(
+      {
+        'GET /api/events/ev_1/seating-plan': () =>
+          seating(withTables(table({ shape: 'cocktail', seats: 4, widthCm: 80, lengthCm: 80 }))),
+      },
+      OWNER_PERMISSIONS.filter((one) => one !== 'seating.manage'),
+    );
+
+    await chooseTable('Table 1, cocktail, 0 of 4 seats taken');
+    const facts = [...document.querySelectorAll('.st-facts div')].map((row) => row.textContent);
+
+    expect(facts).toEqual([
+      'SectionNo section',
+      'ShapeCocktail table',
+      'Places4',
+      'Diameter80\u00a0cm',
+    ]);
+  });
 });
 
 function row(more: Record<string, unknown> = {}) {

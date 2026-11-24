@@ -1,3 +1,5 @@
+import { type CourseDefault, asCourseDefault } from './menu.ts';
+
 export type PicksRowKind = 'dish' | 'variant' | 'option';
 
 export interface PicksRow {
@@ -6,7 +8,8 @@ export interface PicksRow {
   name: string;
   dish: string | null;
   for: 'everyone' | 'children' | null;
-  allergens: string[];
+  /** Null is never stated: the plate may hold any of the 14. */
+  allergens: string[] | null;
   chosen: number;
   defaulted: number;
   holders: string[] | null;
@@ -18,11 +21,17 @@ export interface PicksCourse {
   asksNothing: boolean;
   skippable: boolean;
   closed: boolean;
+  /** The course's default and choose-by date (sc-1362), or null. */
+  default: CourseDefault | null;
   rows: PicksRow[];
   kitchen: number;
   skipped: number;
   needsHost: number;
   notChosen: number;
+  /** Asked again by a menu change (sc-3913), and not counted as in. */
+  menuChanged: number;
+  /** Of menuChanged, those asked because a dish now contains an allergen they have recorded: also in Needs the host. */
+  menuChangedAllergen: number;
   room: number;
   answered: number;
 }
@@ -38,6 +47,8 @@ export interface PicksHostLine {
   reason: 'nothing' | 'allergy';
   pick: string | null;
   allergens: string[];
+  /** The pick never stated its allergens (sc-87421): nothing says it contains them. */
+  notStated: boolean;
 }
 
 export interface PicksParty {
@@ -45,8 +56,36 @@ export interface PicksParty {
   replier: string;
 }
 
+/** Why a person is never given a course's default (sc-1362): `allergy` (Other included), or the unmet diet's code, `other` among them. */
+export interface PicksExcluded {
+  course: string;
+  reason: string;
+}
+
+/** A course a menu change asked the person again (sc-3913), with the name of the pick they had. */
+export interface PicksChanged {
+  course: string;
+  picked: string;
+}
+
 export interface PicksWaiting extends PicksParty {
-  people: (PicksPerson & { courses: string[] })[];
+  people: (PicksPerson & {
+    courses: string[];
+    changed: PicksChanged[];
+    excluded: PicksExcluded[];
+  })[];
+}
+
+/** One course a person was given its default on (sc-1362), with the pick. */
+export interface PicksGivenCourse {
+  course: string;
+  dish: string;
+  variant: string | null;
+  options: string[];
+}
+
+export interface PicksGiven extends PicksParty {
+  people: (PicksPerson & { courses: PicksGivenCourse[] })[];
 }
 
 export interface PicksRoomPerson extends PicksPerson {
@@ -64,6 +103,8 @@ export interface EventPicks {
   courses: PicksCourse[];
   needsHost: PicksHostLine[] | null;
   waiting: PicksWaiting[] | null;
+  /** Given the default (sc-1362), by party; null without guests.read. */
+  given: PicksGiven[] | null;
   people: PicksRoomPerson[] | null;
   parties: PicksParty[] | null;
   canChoose: boolean;
@@ -100,7 +141,7 @@ function asRow(raw: unknown): PicksRow {
     name: str(one.name),
     dish: typeof one.dish === 'string' ? one.dish : null,
     for: one.for === 'children' || one.for === 'everyone' ? one.for : null,
-    allergens: strings(one.allergens),
+    allergens: Array.isArray(one.allergens) ? strings(one.allergens) : null,
     chosen: num(one.chosen),
     defaulted: num(one.defaulted),
     holders: Array.isArray(one.holders) ? strings(one.holders) : null,
@@ -116,11 +157,14 @@ function asCourse(raw: unknown): PicksCourse {
     asksNothing: one.asksNothing === true,
     skippable: one.skippable === true,
     closed: one.closed === true,
+    default: asCourseDefault(one.default) ?? null,
     rows: list(one.rows).map(asRow),
     kitchen: num(one.kitchen),
     skipped: num(one.skipped),
     needsHost: num(one.needsHost),
     notChosen: num(one.notChosen),
+    menuChanged: num(one.menuChanged),
+    menuChangedAllergen: num(one.menuChangedAllergen),
     room: num(one.room),
     answered: num(one.answered),
   };
@@ -148,6 +192,7 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             reason: host.reason === 'allergy' ? 'allergy' : 'nothing',
             pick: typeof host.pick === 'string' ? host.pick : null,
             allergens: strings(host.allergens),
+            notStated: host.notStated === true,
           };
         })
       : null,
@@ -161,6 +206,37 @@ export function asEventPicks(raw: unknown): EventPicks | null {
             people: list(reply.people).map((person) => ({
               ...asPerson(person),
               courses: strings(record(person).courses),
+              changed: list(record(person).changed).map((line) => ({
+                course: str(record(line).course),
+                picked: str(record(line).picked),
+              })),
+              excluded: list(record(person).excluded).map((line) => ({
+                course: str(record(line).course),
+                reason: str(record(line).reason),
+              })),
+            })),
+          };
+        })
+      : null,
+    given: Array.isArray(one.given)
+      ? one.given.map((party) => {
+          const reply = record(party);
+
+          return {
+            id: str(reply.id),
+            replier: str(reply.replier),
+            people: list(reply.people).map((person) => ({
+              ...asPerson(person),
+              courses: list(record(person).courses).map((line) => {
+                const given = record(line);
+
+                return {
+                  course: str(given.course),
+                  dish: str(given.dish),
+                  variant: typeof given.variant === 'string' ? given.variant : null,
+                  options: strings(given.options),
+                };
+              }),
             })),
           };
         })

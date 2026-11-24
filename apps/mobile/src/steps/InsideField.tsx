@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -15,7 +15,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { FocusEdge, useHeld, useRevealed } from '../components/Field.tsx';
-import { fieldFocused, fieldLeft } from '../components/focusedField.ts';
+import { fieldFocused, fieldLeft, focusOwed } from '../components/focusedField.ts';
 import { Text } from '../components/Text.tsx';
 import { UnseenName } from '../components/UnseenName.tsx';
 import {
@@ -85,6 +85,9 @@ export function InsideField({
   const [labelHeight, setLabelHeight] = useState(LABEL_LARGE * 1.3 * fontScale);
   const restingHeight = Math.max(HEIGHT - 2, labelHeight + 2 * tokens.spaceSm);
   const box = useRef<ViewInstance>(null);
+  const [focusesItself] = useState(rest.autoFocus === true);
+
+  useLayoutEffect(() => (focusesItself ? focusOwed(box.current) : undefined), [focusesItself]);
 
   useEffect(() => {
     const mounted = box.current;
@@ -167,7 +170,7 @@ export function InsideField({
       </Animated.View>
       {password && (
         <Pressable
-          style={styles.eye}
+          style={[styles.eye, { top: (restingHeight - tokens.sizeHit) / 2 }]}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
           accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
@@ -259,7 +262,6 @@ const styles = StyleSheet.create({
   eye: {
     position: 'absolute',
     right: tokens.spaceXxs,
-    top: (HEIGHT - 2 - tokens.sizeHit) / 2,
     width: tokens.sizeHit,
     height: tokens.sizeHit,
     alignItems: 'center',

@@ -105,6 +105,7 @@
 /* A phone's width, from Google's consent screen or the App Store: one column, nothing sideways at 320 (WCAG 1.4.10). */
 @media (width <= 40rem) {
   .demo-legal .demo-page-header {
+    height: var(--sizeTopBar);
     padding: 0 var(--spaceXl);
   }
 

@@ -79,6 +79,8 @@ describe('the browser’s redeem pages (sc-72, sc-4235)', () => {
       problem: 'exhausted',
     });
     expect(redeemStart('join-as')).toMatchObject({ name: 'Kemi Okafor' });
+    expect(redeemStart('join-as-long').name).toHaveLength(60);
+    expect(redeemStart('join-as-longest').name).toHaveLength(180);
     expect(redeemStart('event-blank')).toMatchObject({ name: '', number: '' });
     expect(redeemStart('event-short')).toMatchObject({ name: 'João Pereira', number: '912 345' });
     expect(redeemStart('signed-out').step).toMatchObject({

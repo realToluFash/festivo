@@ -13,6 +13,8 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { Billing } from './Billing.tsx';
+import { BILLING_PAGES } from './billing.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -43,6 +45,8 @@ import { SchedulePage } from './Schedule.tsx';
 import { SCHEDULE_PAGES } from './schedule.ts';
 import { GetBackInBoard } from './GetBackIn.tsx';
 import { GuestPage } from './Guest.tsx';
+import { WalletPassPage } from './Wallet.tsx';
+import { WALLET_PAGES } from './wallet.ts';
 import { MealStepPage } from './MealStep.tsx';
 import { HandoffPage } from './Handoff.tsx';
 import { HANDOFF_PAGES, forgetAnyway } from './handoff.ts';
@@ -51,6 +55,7 @@ import { DESK_FIT_PAGES } from './deskFit.ts';
 import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
 import { READS_STATE_NAMES, READS_STATES } from './NowReads.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { LINK_CARD_PAGES } from './linkCard.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
@@ -66,6 +71,8 @@ import { MARK_PAGES } from './guestsMark.ts';
 import { GuestsMany } from './GuestsMany.tsx';
 import { MANY_PAGES } from './guestsMany.ts';
 import { KitchenPage } from './Kitchen.tsx';
+import { KitchenSheetPage } from './KitchenSheet.tsx';
+import { SHEET_PAGES, STATION_PAGES } from './kitchenSheet.ts';
 import { MenuPage } from './MenuServed.tsx';
 import { MENU_PAGES } from './menuServed.ts';
 import { COURSES_PAGES } from './menuCourses.ts';
@@ -74,7 +81,7 @@ import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
-import { CHANGES_PAGES, KITCHEN_PAGES, PARTS_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -147,6 +154,7 @@ import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { LinkCard } from './LinkCard.tsx';
 import { Unsubscribe } from './Unsubscribe.tsx';
 import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
 import { VendorsMoved } from './Vendors.tsx';
@@ -291,6 +299,7 @@ export default function Demo() {
       <Route path="events/:id/messages" element={<EventPage messages />} />
       <Route path="events/:id/seating" element={<SeatingPage />} />
       <Route path="events/:id/kitchen" element={<KitchenPage />} />
+      <Route path="events/:id/kitchen/sheet" element={<KitchenSheetPage />} />
       <Route path="events/:id/menu" element={<MenuPage />} />
       <Route path="events/:id/staff" element={<Navigate to="roster" replace />} />
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
@@ -344,6 +353,7 @@ export default function Demo() {
         element={<Settings open="data" page="guestRequest" />}
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="settings/plan-and-billing" element={<Billing />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -355,7 +365,9 @@ export default function Demo() {
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
+      <Route path="link-card" element={<LinkCard />} />
       <Route path="guest" element={<GuestPage />} />
+      <Route path="wallet-pass" element={<WalletPassPage />} />
       <Route path="guest/meal" element={<MealStepPage />} />
       <Route path="guests" element={<Guests />} />
       <Route path="guests/select" element={<GuestsMark />} />
@@ -464,6 +476,13 @@ function DemoHome({ from }: { from: string }) {
           desk
         </h3>
         <BoardPages pages={GUEST_TABLE_PAGES} />
+        <h3>
+          Keep the check-in code in Apple or Google Wallet (sc-9956) · phone, tablet portrait,
+          tablet landscape and desk
+        </h3>
+        <BoardPages pages={WALLET_PAGES} />
+        <h3>A guest’s link in a chat: its card (sc-89272) · WhatsApp at a phone’s width</h3>
+        <BoardPages pages={LINK_CARD_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
@@ -509,10 +528,21 @@ function DemoHome({ from }: { from: string }) {
         <h3>The organisation’s dishes and what each contains · sc-3901 · desktop</h3>
         <BoardPages pages={LIBRARY_PAGES} />
       </section>
+      <section className="demo-home-page" aria-labelledby="demo-page-32-sheet">
+        <h2 id="demo-page-32-sheet">32 · Menu · the kitchen sheet</h2>
+        <h3>
+          Allergies first, then what to cook · sc-3911 · desktop, a web window down to 320 px, and
+          printed on A4 and Letter (entry: Kitchen sheet on the Menu with its picks)
+        </h3>
+        <BoardPages pages={SHEET_PAGES} />
+      </section>
       <section className="demo-home-page" aria-labelledby="demo-page-32-kitchen">
-        <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet’s parts</h2>
-        <h3>Each part of a course, and each table’s platters · sc-34244 · desktop and A4</h3>
-        <BoardPages pages={PARTS_PAGES} />
+        <h2 id="demo-page-32-kitchen">32 · Menu · the kitchen sheet by station</h2>
+        <h3>
+          Each course’s items under the station that serves them · sc-34244 · desktop, a web window
+          down to 320 px, and printed on A4 and Letter
+        </h3>
+        <BoardPages pages={STATION_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-33">
@@ -643,6 +673,12 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CHECK_IN_PAGES} />
         <h3>A staff link in the browser, signed out (sc-4235) · 390 first, one column wider</h3>
         <BoardPages pages={STAFF_SIGN_IN_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-37">
+        <h2 id="demo-page-37">37 · Billing</h2>
+        <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
+        <BoardPages pages={BILLING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

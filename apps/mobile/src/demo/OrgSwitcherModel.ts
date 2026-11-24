@@ -34,8 +34,9 @@ export const VIEWER = { name: 'Folake Adeyemi', email: 'folake@ire.events' } as 
 /** The switcher lists only the signed-in account's own invitations, so `invitation_not_yours` cannot reach it. */
 export type SwitcherRefusal = Exclude<InvitationRefusalCode, 'invitation_not_yours'>;
 
-export function openerLabel(place: Place, waiting: number): string {
-  const label = `Organisation: ${place.name}, your role ${place.role}. Switch organisation`;
+/** Paused (sc-83881): the API returns no role for a paused membership, so the label says access is paused; the pill still opens the switcher, so it still names the switch. */
+export function openerLabel(place: Place, waiting: number, paused = false): string {
+  const label = `Organisation: ${place.name}, ${paused ? 'access paused' : `your role ${place.role}`}. Switch organisation`;
 
   if (waiting === 0) return label;
 

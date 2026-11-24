@@ -33,6 +33,7 @@ import { RunArea } from './RunArea.tsx';
 import { BudgetArea } from './BudgetArea.tsx';
 import { MenuArea } from './MenuArea.tsx';
 import { SeePicksArea } from './SeePicksArea.tsx';
+import { KitchenSheetArea, KitchenSheetRefused } from './KitchenSheetArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
@@ -66,6 +67,7 @@ type Page =
   | 'staffJobs'
   | 'staffStations'
   | 'menuPicks'
+  | 'kitchenSheet'
   | PlaceholderEventArea;
 
 export function EventView() {
@@ -103,6 +105,11 @@ export function EventStations() {
 
 export function EventMenuPicks() {
   return <ForEvent page="menuPicks" />;
+}
+
+/** The kitchen sheet (sc-3911), behind Kitchen sheet on the Menu. */
+export function EventKitchenSheet() {
+  return <ForEvent page="kitchenSheet" />;
 }
 
 /** Staff opens its first tab, the Roster (sc-3906). */
@@ -345,6 +352,13 @@ function EventOf({
 
   if (page === 'menuPicks' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.menu) ? <SeePicksArea event={load.event} /> : <Withheld />;
+
+  if (page === 'kitchenSheet' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.menu) ? (
+      <KitchenSheetArea event={load.event} />
+    ) : (
+      <KitchenSheetRefused event={load.event} />
+    );
 
   if (page === 'budget' && load.kind === 'loaded')
     return budgetUnseen ? <BudgetWithheld event={load.event} /> : <BudgetArea event={load.event} />;

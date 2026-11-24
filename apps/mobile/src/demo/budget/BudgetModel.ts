@@ -735,6 +735,7 @@ export interface ReminderRow {
   words: string;
 }
 
+/** A push's rows always name their event, one event or several, since iOS cuts the title before it (sc-95, #83486). */
 export function reminderRows(kind: ReminderKind, locale: string): ReminderRow[] {
   const sheet = reminderSheet(kind);
   return sheet.ids.map((id) => {
@@ -747,10 +748,7 @@ export function reminderRows(kind: ReminderKind, locale: string): ReminderRow[] 
     return {
       id,
       late,
-      words:
-        kind === 'mixed'
-          ? say.reminderRowOn(vendor, EVENT_NAME, amount, when)
-          : say.reminderRow(vendor, amount, when),
+      words: say.reminderRowOn(vendor, EVENT_NAME, amount, when),
     };
   });
 }

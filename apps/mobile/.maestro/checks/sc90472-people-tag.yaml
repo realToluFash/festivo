@@ -1,0 +1,10 @@
+# sc-90472: an event's People with an outsider's Outside tag, as drawn at the device's text size, the row scrolled to the middle.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'people.row.${P_OUT}' }, direction: DOWN, timeout: 20000, centerElement: true }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: people

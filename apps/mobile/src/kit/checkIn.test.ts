@@ -7,9 +7,10 @@ import {
   checksIn,
   clockOf,
   countLine,
-  doorMatches,
+  doorMatch,
   doorRows,
   onEventDay,
+  listedAs,
   sameName,
   walkInProblem,
 } from './checkIn.ts';
@@ -21,7 +22,17 @@ const t = ((key: string, values?: Record<string, unknown>) =>
 const ADAEZE = 'Chief Mrs Adaeze Okonkwo-Williams';
 
 function guest(id: string, fullName: string, more: Partial<CheckInGuest> = {}): CheckInGuest {
-  return { id, fullName, reply: 'coming', walkIn: false, arrival: null, companions: [], ...more };
+  return {
+    id,
+    fullName,
+    reply: 'coming',
+    repliedAt: null,
+    code: null,
+    walkIn: false,
+    arrival: null,
+    companions: [],
+    ...more,
+  };
 }
 
 const LIST: CheckIn = {
@@ -42,12 +53,70 @@ const LIST: CheckIn = {
   ],
 };
 
+const OLUWASEUN = 'Olúwaseun Adébáyọ̀';
+const FOLASADE = 'Chief Mrs Folasade Okonkwo-Williams';
+
+const DOOR: CheckIn = {
+  ...LIST,
+  guests: [
+    guest('d_s', 'Seun Bello'),
+    guest('d_w', OLUWASEUN),
+    guest('d_f', FOLASADE),
+    guest('d_c', 'Chinedu Eze'),
+    guest('d_k', 'Kemi Okafor', {
+      companions: [{ id: 'd_o', fullName: 'Olusegun Eze', state: 'coming', arrival: null }],
+    }),
+  ],
+};
+
+const found = (typed: string) => doorRows(t, DOOR, typed, 'en').map((row) => row.name);
+
+describe('finding a guest inside a word of their name (sc-85893)', () => {
+  it('lists the names that start with what was typed, then those that only hold it', () => {
+    expect(found('seun')).toEqual(['Seun Bello', OLUWASEUN]);
+    expect(found('seun adebayo')).toEqual([OLUWASEUN]);
+    expect(found('okon fola')).toEqual([FOLASADE]);
+  });
+
+  it('sorts each group A to Z', () => {
+    expect(found('eun')).toEqual([OLUWASEUN, 'Seun Bello']);
+  });
+
+  it('finds inside a word only from 3 letters', () => {
+    expect(found('kwo')).toEqual([FOLASADE]);
+    expect(found('sade williams')).toEqual([FOLASADE]);
+    expect(found('nedu')).toEqual(['Chinedu Eze']);
+    expect(found('ne')).toEqual([]);
+    expect(doorMatch('Chinedu Eze', 'ned')).toBe('inside');
+    expect(doorMatch('Chinedu Eze', 'ed eze')).toBeNull();
+  });
+
+  it('shows a companion found inside a word under their host, in the group they were found by', () => {
+    expect(doorRows(t, DOOR, 'segun', 'en').map((row) => [row.id, row.companion])).toEqual([
+      ['d_k', false],
+      ['d_o', true],
+    ]);
+  });
+
+  it('keeps a host and the companions shown under them in the first group either belongs to', () => {
+    const both: CheckIn = {
+      ...DOOR,
+      guests: [
+        guest('d_a', 'Abiola Okeze'),
+        guest('d_z', 'Zara Bello', {
+          companions: [{ id: 'd_y', fullName: 'Eze Ade', state: 'coming', arrival: null }],
+        }),
+      ],
+    };
+    expect(doorRows(t, both, 'eze', 'en').map((row) => row.id)).toEqual(['d_z', 'd_y', 'd_a']);
+  });
+});
+
 describe('finding a guest at the door (sc-1454)', () => {
   it('matches every typed word as the start of a word in the name, any order, ignoring case and accents', () => {
-    expect(doorMatches(ADAEZE, 'okon ada')).toBe(true);
-    expect(doorMatches(ADAEZE, 'WILL')).toBe(true);
-    expect(doorMatches(ADAEZE, 'kwo')).toBe(false);
-    expect(doorMatches('Émile Ávila', 'emile avi')).toBe(true);
+    expect(doorMatch(ADAEZE, 'okon ada')).toBe('start');
+    expect(doorMatch(ADAEZE, 'WILL')).toBe('start');
+    expect(doorMatch('Émile Ávila', 'emile avi')).toBe('start');
   });
 
   it('lists everyone A to Z, each companion under their host, an unnamed one as the guest of their host, numbered', () => {
@@ -106,6 +175,27 @@ describe('a walk-in', () => {
     expect(walkInProblem('   ')).toBe('blank');
     expect(walkInProblem('a'.repeat(201))).toBe('long');
     expect(walkInProblem(` ${'a'.repeat(200)} `)).toBeNull();
+  });
+
+  it('asks about the first guest Search by name would find when no name is the same (sc-85893)', () => {
+    expect(listedAs(t, DOOR, 'Seun Adebayo', 'en')?.name).toBe(OLUWASEUN);
+    expect(listedAs(t, DOOR, 'seun', 'en')?.id).toBe('d_s');
+    expect(listedAs(t, DOOR, 'segun', 'en')).toMatchObject({ id: 'd_o', name: 'Olusegun Eze' });
+    expect(listedAs(t, DOOR, 'Kofi Asante', 'en')).toBeNull();
+    expect(listedAs(t, DOOR, '  ', 'en')).toBeNull();
+  });
+
+  it('names the companion who matched, never the host shown above them (sc-85893, 23 Nov)', () => {
+    expect(listedAs(t, DOOR, 'Segun Eze', 'en')).toMatchObject({
+      id: 'd_o',
+      name: 'Olusegun Eze',
+      companion: true,
+    });
+  });
+
+  it('names the guest with the same name before the first one a search finds', () => {
+    const both: CheckIn = { ...DOOR, guests: [...DOOR.guests, guest('d_x', 'Aseun Bello')] };
+    expect(listedAs(t, both, 'aseun bello', 'en')?.id).toBe('d_x');
   });
 
   it('counts a name as a person sees it, as the API does', () => {

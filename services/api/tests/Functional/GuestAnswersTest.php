@@ -185,6 +185,28 @@ final class GuestAnswersTest extends ApiTestCase
         self::assertSame('maybe', $page['guest']['reply']['answer'] ?? null);
     }
 
+    /** The wedding runs 16:00 on 14 Nov to 02:00 on 15 Nov in Lagos (UTC+1), so its day begins at 23:00 UTC on the 13th. */
+    #[Test]
+    #[DataProvider('days')]
+    public function theDayRunsFromMidnightOnTheStartDateInTheEventsZoneUntilTheEnd(string $now, bool $onTheDay): void
+    {
+        $token = $this->token($this->add(self::ADAEZE));
+
+        self::mockTime(new DateTimeImmutable($now));
+
+        self::assertSame($onTheDay, $this->open($token)['onTheDay'] ?? null);
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function days(): iterable
+    {
+        yield '23:59 the evening before in Lagos' => ['2030-11-13T22:59:59+00:00', false];
+        yield '00:00 in Lagos while UTC still reads the 13th' => ['2030-11-13T23:00:00+00:00', true];
+        yield 'after the start' => ['2030-11-14T19:00:00+00:00', true];
+        yield 'past midnight, before the end' => ['2030-11-15T00:59:59+00:00', true];
+        yield 'at the end' => ['2030-11-15T01:00:00+00:00', false];
+    }
+
     /** @return iterable<string, array{string}> */
     public static function notOffered(): iterable
     {

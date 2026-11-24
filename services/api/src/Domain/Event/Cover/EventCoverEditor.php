@@ -107,6 +107,10 @@ final readonly class EventCoverEditor
 
         $this->entityManager->flush();
 
+        if ($before['photo'] !== $cover->getPhotoKey() || $before['position'] !== $cover->getPosition()) {
+            $this->publishCard($cover);
+        }
+
         if (null !== $replaced) {
             $this->unpublish($replaced);
         }
@@ -131,7 +135,7 @@ final readonly class EventCoverEditor
         $this->unpublish($cover->getPhotoKey());
     }
 
-    /** Under a key of the copy's own, so a later change to either cover, or a purge of either event, never reaches the other (sc-3593). */
+    /** Under a key of the copy's own, so a later change to either cover, or a purge of either event, never reaches the other (sc-3593). The card is made, not copied: a cover saved before cards has none. */
     public function copy(Event $from, Event $to): ?EventCover
     {
         $cover = $this->eventCoverRepository->findOneForEvent($from);
@@ -147,6 +151,7 @@ final readonly class EventCoverEditor
         }
 
         $copy = new EventCover($to, $photoKey, $cover->getPosition(), $cover->getDescription());
+        $this->publishCard($copy);
         $this->entityManager->persist($copy);
 
         return $copy;
@@ -175,11 +180,31 @@ final readonly class EventCoverEditor
         foreach (Vec\keys(CoverPhotoProcessor::SIZES) as $size) {
             $this->objectStore->unpublish(self::sizeKey($photoKey, $size));
         }
+
+        $this->objectStore->unpublish(self::cardKey($photoKey));
     }
 
     public static function sizeKey(string $photoKey, string $size): string
     {
         return Str\format('%s/%s.webp', $photoKey, $size);
+    }
+
+    /** The picture a guest's link shows in a chat (sc-89272), made when the photo or its frame is saved, so a fetch only reads it. */
+    public static function cardKey(string $photoKey): string
+    {
+        return Str\format('%s/card.jpg', $photoKey);
+    }
+
+    public function cardUrl(EventCover $cover): string
+    {
+        return $this->objectStore->publicUrl(self::cardKey($cover->getPhotoKey()));
+    }
+
+    private function publishCard(EventCover $cover): void
+    {
+        $photo = $this->objectStore->readPublished(self::sizeKey($cover->getPhotoKey(), 'large'));
+
+        $this->objectStore->publish(self::cardKey($cover->getPhotoKey()), $this->coverPhotoProcessor->card($photo, $cover->getPosition()), 'image/jpeg');
     }
 
     private function publish(Event $event, string $uploadKey): string

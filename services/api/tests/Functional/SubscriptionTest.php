@@ -16,6 +16,7 @@ use App\Entity\BillingAccount;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\Subscription;
+use App\Entity\SubscriptionChange;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
@@ -23,6 +24,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\Plan;
 use App\Enum\PlanFeature;
 use App\Enum\SeededRole;
+use App\Enum\SubscriptionChangeKind;
 use App\Enum\SubscriptionSource;
 use App\Enum\SubscriptionStatus;
 use App\Repository\SubscriptionRepository;
@@ -132,6 +134,25 @@ final class SubscriptionTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMovedPeriodStartIsRecordedInTheHistoryAndAMoveToTheSameDateIsNot(): void
+    {
+        $subscription = $this->subscription();
+        $from = $subscription->getPeriodStart();
+        $changer = self::service(SubscriptionChanger::class);
+
+        $changer->movePeriodStart($subscription, new DateTimeImmutable('2026-12-01 09:00:00+00:00'), ChangedBy::staff('Ada at Soirely', 'Upgraded from Free'));
+        $changer->movePeriodStart($subscription, new DateTimeImmutable('2026-12-01 09:00:00+00:00'), ChangedBy::staff('Ada at Soirely', 'Upgraded from Free'));
+        self::em()->clear();
+
+        $changes = self::em()->getRepository(SubscriptionChange::class)->findBy(['kind' => SubscriptionChangeKind::Period]);
+        self::assertSame(
+            [[$from->format(DateTimeImmutable::ATOM), '2026-12-01T09:00:00+00:00']],
+            Vec\map($changes, static fn (SubscriptionChange $change): array => [$change->getFromValue(), $change->getToValue()]),
+        );
+        self::assertSame('2026-12-01T09:00:00+00:00', $this->subscription()->getPeriodStart()->format(DateTimeImmutable::ATOM));
+    }
+
+    #[Test]
     public function aRequestCachingTheOldPlanBeforeTheChangeCommitsIsForgotten(): void
     {
         $entitlements = self::service(Entitlements::class);
@@ -160,7 +181,7 @@ final class SubscriptionTest extends ApiTestCase
 
             self::assertResponseIsSuccessful();
             self::assertSame(
-                ['contactEmail' => 'folake@ire.events', 'currency' => 'NGN', 'countryCode' => 'NG', 'taxId' => null, 'creditBalance' => 0],
+                ['contactEmail' => 'folake@ire.events', 'currency' => 'NGN', 'countryCode' => 'NG', 'taxId' => null, 'creditBalance' => 0, 'paymentMethod' => null],
                 Json\decode((string) $this->client->getResponse()->getContent()),
             );
         }

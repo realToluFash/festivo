@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bandPlace,
-  breakableEmail,
   capChipInDisc,
   capInDisc,
   capUnderTitle,
   drawnLine,
   drawnSize,
   besideGlyph,
+  besideGlyphInPill,
   fitWidest,
   grownPad,
   labelStart,
@@ -233,6 +233,27 @@ describe('besideGlyph, Sign out at the foot of Settings (sc-66900)', () => {
   });
 });
 
+describe('besideGlyphInPill, Sign out on one line in its pill (sc-84920)', () => {
+  const inside = 362 - 2 * (20 + 1.5) - 8;
+  const glyph = 18 / 16;
+  const inPill = (start: number) =>
+    besideGlyphInPill({
+      size: 16,
+      start,
+      wrap: { pieces: [[2.1 * start], [1.6 * start]], space: 0.25 * start },
+      glyph,
+      beside: 8,
+      width: 362,
+      sides: 20 + 1.5,
+      pad: grownPad(52, 16, 1.5) + 1.5,
+      ring: 1.5,
+    });
+
+  it.each([16, 16 * 2.14])('sizes a one-line label at %d as besideGlyph does', (start) => {
+    expect(inPill(start)).toBe(besideGlyph(16, start, 2.1 * start, glyph, inside));
+  });
+});
+
 describe('grownPad, the room above and below Sign out’s words (sc-66900)', () => {
   it('keeps main’s 44 on a tablet on its side at the default size', () => {
     expect(2 * grownPad(44, 15, 1.5) + 2 * 1.5 + 15 * LABEL_LINE).toBeCloseTo(44, 5);
@@ -254,14 +275,6 @@ describe('widths', () => {
     expect(sideListWidth(320, 834, AX1)).toBe(334);
     expect(sideListWidth(236, 980, AX2)).toBe(392);
     expect(sideListWidth(320, 700, AX2)).toBe(320);
-  });
-});
-
-describe('breakableEmail', () => {
-  it('lets the line break after the @ and nowhere new', () => {
-    expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
-      'camille.moreau@​traiteur-lumiere.fr',
-    );
   });
 });
 

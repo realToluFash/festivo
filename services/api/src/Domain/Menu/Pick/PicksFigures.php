@@ -17,12 +17,11 @@ use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
 /**
- * See picks (sc-3909): everyone coming is in exactly one state per course, so a course's dish rows and states always add up to the room.
+ * See picks (sc-3909): everyone coming is in exactly one state per course, so a course's dish rows and states always add up to the room. Menu changed is its own state (sc-3913), and one asked again for an allergen added to their pick is in Needs the host too.
  *
  * @phpstan-import-type GuestDish from GuestMenu
  * @phpstan-import-type Course from PicksMenu
- *
- * @phpstan-type Spot array{state: string, dish?: string, variant?: ?string, options?: list<string>, reason?: string, pick?: string, allergens?: list<string>}
+ * @phpstan-import-type Spot from PicksMenu
  */
 final readonly class PicksFigures
 {
@@ -41,7 +40,7 @@ final readonly class PicksFigures
         return Vec\filter($this->headcountCalculator->coming($event), static fn (Guest $person): bool => null !== $person->getFullName());
     }
 
-    /** @return array<string, mixed> `names` is false without guests.read: Needs the host and Who hasn't picked are left out, and each course keeps its counts */
+    /** @return array<string, mixed> `names` is false without guests.read: Needs the host, Who hasn't picked and Given the default are left out, and each course keeps its counts */
     public function of(Event $event, bool $names): array
     {
         $coming = $this->headcountCalculator->coming($event);
@@ -63,10 +62,14 @@ final readonly class PicksFigures
         )));
         $needsHost = [];
         $waiting = [];
+        $given = [];
 
         foreach ($room as $person) {
             $id = $person->getId()->toRfc4122();
             $open = [];
+            $changed = [];
+            $excluded = [];
+            $defaulted = [];
 
             foreach ($courses as $course) {
                 $spot = $spots[$course['id']][$id];
@@ -78,18 +81,53 @@ final readonly class PicksFigures
                         'reason' => $spot['reason'] ?? 'nothing',
                         'pick' => $spot['pick'] ?? null,
                         'allergens' => $spot['allergens'] ?? [],
+                        'notStated' => $spot['notStated'] ?? false,
                     ];
+                }
+
+                if ('changed' === $spot['state']) {
+                    $changed[] = ['course' => $course['id'], 'picked' => $spot['picked'] ?? ''];
+
+                    if ('allergen' === ($spot['why'] ?? null)) {
+                        $needsHost[] = [
+                            'person' => $names ? self::person($person) : null,
+                            'course' => $course['id'],
+                            'reason' => 'allergy',
+                            'pick' => $spot['picked'] ?? null,
+                            'allergens' => $spot['allergens'] ?? [],
+                            'notStated' => false,
+                        ];
+                    }
                 }
 
                 if ('none' === $spot['state']) {
                     $open[] = $course['id'];
+
+                    if (isset($spot['excluded'])) {
+                        $excluded[] = ['course' => $course['id'], 'reason' => $spot['excluded']];
+                    }
+                }
+
+                if ('defaulted' === $spot['state']) {
+                    $defaulted[] = ['course' => $course['id'], 'dish' => $spot['dish'] ?? '', 'variant' => $spot['variant'] ?? null, 'options' => $spot['options'] ?? []];
                 }
             }
 
-            if ([] !== $open) {
-                $waiting[self::partyOf($person)->getId()->toRfc4122()][] = [...self::person($person), 'courses' => $open];
+            $party = self::partyOf($person)->getId()->toRfc4122();
+
+            if ([] !== $open || [] !== $changed) {
+                $waiting[$party][] = [...self::person($person), 'courses' => $open, 'changed' => $changed, 'excluded' => $excluded];
+            }
+
+            if ([] !== $defaulted) {
+                $given[$party][] = [...self::person($person), 'courses' => $defaulted];
             }
         }
+
+        $byParty = static fn (array $people): array => Vec\map(
+            Vec\filter($parties, static fn (array $party): bool => isset($people[$party['id']])),
+            static fn (array $party): array => [...$party, 'people' => $people[$party['id']]],
+        );
 
         return [
             'updatedAt' => $this->clock->now()->setTimezone(new DateTimeZone($event->getTimeZone()))->format(\DATE_ATOM),
@@ -100,10 +138,8 @@ final readonly class PicksFigures
             'allIn' => [] === $needsHost && $answered === $roomSize,
             'courses' => Vec\map($courses, fn (array $course): array => $this->course($course, $spots[$course['id']], $roomSize, $names)),
             'needsHost' => $names ? $needsHost : null,
-            'waiting' => $names ? Vec\map(
-                Vec\filter($parties, static fn (array $party): bool => isset($waiting[$party['id']])),
-                static fn (array $party): array => [...$party, 'people' => $waiting[$party['id']]],
-            ) : null,
+            'waiting' => $names ? $byParty($waiting) : null,
+            'given' => $names ? $byParty($given) : null,
             'people' => $names ? Vec\map($room, static fn (Guest $person): array => [
                 ...self::person($person),
                 'party' => self::partyOf($person)->getId()->toRfc4122(),
@@ -137,7 +173,7 @@ final readonly class PicksFigures
         $rows = [];
 
         foreach ($course['dishes'] as $dish) {
-            $rows[] = ['id' => $dish['id'], 'kind' => 'dish', 'name' => $dish['name'], 'chosen' => $onDish($dish['id'], 'dish', static fn (): bool => true), 'defaulted' => $onDish($dish['id'], 'defaulted', static fn (): bool => true)];
+            $rows[] = ['id' => $dish['id'], 'kind' => 'dish', 'name' => $dish['name'], 'allergens' => [] === $dish['variants'] ? $dish['allergens'] : $dish['allergens'] ?? [], 'chosen' => $onDish($dish['id'], 'dish', static fn (): bool => true), 'defaulted' => $onDish($dish['id'], 'defaulted', static fn (): bool => true)];
 
             foreach ($dish['variants'] as $variant) {
                 $on = static fn (array $spot): bool => ($spot['variant'] ?? null) === $variant['id'];
@@ -164,6 +200,7 @@ final readonly class PicksFigures
 
         $host = $count(static fn (array $spot): bool => 'host' === $spot['state']);
         $none = $count(static fn (array $spot): bool => 'none' === $spot['state']);
+        $changed = $count(static fn (array $spot): bool => 'changed' === $spot['state']);
 
         return [
             'id' => $course['id'],
@@ -171,13 +208,16 @@ final readonly class PicksFigures
             'asksNothing' => PicksMenu::asksNothing($course),
             'skippable' => $course['skippable'],
             'closed' => $course['picksClose']['closed'] ?? false,
+            'default' => $course['default'],
             'rows' => $rows,
             'kitchen' => $count(static fn (array $spot): bool => 'kitchen' === $spot['state']),
             'skipped' => $count(static fn (array $spot): bool => 'skipped' === $spot['state']),
             'needsHost' => $host,
             'notChosen' => $none,
+            'menuChanged' => $changed,
+            'menuChangedAllergen' => $count(static fn (array $spot): bool => 'changed' === $spot['state'] && 'allergen' === ($spot['why'] ?? null)),
             'room' => $room,
-            'answered' => $room - $host - $none,
+            'answered' => $room - $host - $none - $changed,
         ];
     }
 

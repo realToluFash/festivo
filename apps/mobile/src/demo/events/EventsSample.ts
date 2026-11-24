@@ -351,8 +351,25 @@ export const REUNION: SampleEvent = {
   photo: false,
 };
 
+/** Not one of the twenty either: the door code's event, Lumen Feiras's in Portugal, which People draws in its event's frame (sc-72). */
+export const DOOR_WEDDING: SampleEvent = {
+  id: 'evt-joana-rui',
+  name: 'Joana & Rui’s wedding',
+  type: 'wedding',
+  venue: venue('Quinta do Torneiro', 'Oeiras, Portugal', 'Oeiras'),
+  arrivalNote: null,
+  timeZone: LISBON,
+  startsAt: '2026-11-14T15:00:00Z',
+  endsAt: '2026-11-14T23:30:00Z',
+  hosts: ['Joana & Rui'],
+  currency: 'EUR',
+  status: 'live',
+  concludedAt: null,
+  photo: false,
+};
+
 export function sampleEvent(id: string | undefined): SampleEvent | null {
-  return [...EVENTS, REUNION].find((event) => event.id === id) ?? null;
+  return [...EVENTS, REUNION, DOOR_WEDDING].find((event) => event.id === id) ?? null;
 }
 
 export const TYPE_WORDS: Record<EventType, string> = {

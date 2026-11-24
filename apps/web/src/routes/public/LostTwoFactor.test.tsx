@@ -83,9 +83,15 @@ function problem(
   );
 }
 
-async function atTheStart(answers: Record<string, () => Response | Promise<Response>>) {
+async function atTheStart(
+  answers: Record<string, () => Response | Promise<Response>>,
+  { factors, lost = 'Lost your authenticator and your recovery codes?' } = {} as {
+    factors?: { app: boolean; passkeys: boolean };
+    lost?: string;
+  },
+) {
   const sent = answering({
-    'POST /api/auth/login': () => json(CHALLENGE, 202),
+    'POST /api/auth/login': () => json({ ...CHALLENGE, factors }, 202),
     'POST /api/auth/two-factor/recovery/opening': () => json(OPENING),
     ...answers,
   });
@@ -94,13 +100,7 @@ async function atTheStart(answers: Record<string, () => Response | Promise<Respo
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a decent passphrase' } });
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-  fireEvent.click(
-    await screen.findByRole(
-      'link',
-      { name: 'Lost your authenticator and your recovery codes?' },
-      THE_WAY_IN,
-    ),
-  );
+  fireEvent.click(await screen.findByRole('link', { name: lost }, THE_WAY_IN));
   await screen.findByRole(
     'heading',
     {
@@ -475,6 +475,29 @@ describe('getting back in without the authenticator', () => {
       expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeDefined();
       expect(screen.queryByRole('alertdialog')).toBeNull();
       expect(screen.queryByText(/Not cancelled/)).toBeNull();
+    },
+  );
+
+  it.each([
+    [
+      { app: false, passkeys: true },
+      'Lost your passkeys and your recovery codes?',
+      'Get back in without your passkeys',
+      'For when you have lost your passkeys and your recovery codes.',
+    ],
+    [
+      { app: true, passkeys: true },
+      'Lost your passkeys, your authenticator and your recovery codes?',
+      'Get back in without your passkeys or authenticator',
+      'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+    ],
+  ])(
+    'names the factors held, from the link to the page (sc-86885)',
+    async (factors, lost, title, line) => {
+      await atTheStart({}, { factors, lost });
+
+      expect(screen.getByRole('heading', { level: 1, name: title })).toBeDefined();
+      expect(screen.getByText(line)).toBeDefined();
     },
   );
 

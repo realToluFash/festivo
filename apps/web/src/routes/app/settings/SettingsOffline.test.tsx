@@ -1,7 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { VENDOR_CATEGORIES } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __resetColourScheme, followAccountScheme } from '../../../colourScheme.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { pagedMembers } from '../../../test-members.ts';
@@ -75,6 +77,41 @@ const ANSWERS: Record<string, unknown> = {
     areas: [],
   },
   '/api/orgs/org_1/domains': { domains: [] },
+  '/api/orgs/org_1/email-domains': { plan: 'enterprise', domains: [] },
+  '/api/orgs/org_1/vendors': {
+    vendors: [
+      {
+        id: 'v1',
+        name: 'Bloom & Co',
+        category: 'flowers',
+        contactName: 'Ngozi Eze',
+        emailAddress: 'ngozi@bloomandco.co.uk',
+        phoneNumber: null,
+        phoneCountryCode: null,
+        website: null,
+        address: null,
+        note: null,
+        archivedAt: null,
+        events: 0,
+      },
+    ],
+    page: 1,
+    total: 1,
+    inUse: 1,
+    archived: 0,
+    categories: Object.fromEntries(VENDOR_CATEGORIES.map((category) => [category, 0])),
+  },
+  '/api/orgs/org_1/payment-reminders': { days: 3, inForce: true },
+  '/api/orgs/org_1/export': { owner: true, export: null, nextAllowedAt: null, nextAllowed: null },
+  '/api/orgs/org_1/audit-log': {
+    organisation: 'Ìrè Events',
+    zone: 'Africa/Lagos',
+    entries: [],
+    next: null,
+    people: [],
+    events: [],
+    preparing: null,
+  },
   '/api/orgs/org_1/request-link': { on: false, url: null },
   '/api/orgs/org_1/sign-in-rules': {
     providerOnly: false,
@@ -192,6 +229,7 @@ function boxAbove(title: HTMLElement): HTMLElement {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  __resetColourScheme();
 });
 
 describe('Settings offline at a desk, where the band has gone (sc-39471)', () => {
@@ -202,6 +240,13 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     ['/app/account', 'Your account'],
     ['/app/account/security', 'Security'],
     ['/app/account/notifications', 'Notification settings'],
+    ['/app/account/personalisation', 'Personalisation'],
+    ['/app/settings/vendors', 'Vendors'],
+    ['/app/settings/vendors/payment-reminders', 'Payment reminders'],
+    ['/app/settings/data-and-control', 'Data and control'],
+    ['/app/settings/data-and-control/export', 'Export all data'],
+    ['/app/settings/data-and-control/email-domains', 'Email domains'],
+    ['/app/settings/data-and-control/audit-log', 'Audit log'],
   ])('%s says so in the amber box above its title, with Try again', async (path, title) => {
     signedIn();
     const soirely = { reachable: true };
@@ -218,15 +263,192 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     expect(within(box).getByRole('button', { name: 'Try again' })).toBeDefined();
   });
 
-  it('keeps Personalisation, which loads nothing from Soirely, to the one box above its title', async () => {
+  it('keeps Payment reminders without the box when it loaded nothing, and drops the box once Soirely answers Try again (sc-88912)', async () => {
     signedIn();
-    serving({ reachable: true });
-    open('/app/account/personalisation');
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
+    const soirely = { reachable: false };
+    serving(soirely);
+    open('/app/settings/vendors/payment-reminders');
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Payment reminders did not load',
+    );
+    expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
+
+    soirely.reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Payment reminders' });
+
+    soirely.reachable = false;
+    goOffline();
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(screen.getByText(/3 days/)).toBeDefined();
+
+    soirely.reachable = true;
+    fireEvent.click(within(boxAbove(heading)).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it("keeps the vendor rows and the box when the box's Try again still reaches nothing (sc-88912)", async () => {
+    signedIn();
+    const soirely = { reachable: true };
+    serving(soirely);
+    open('/app/settings/vendors');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Vendors' });
+    await screen.findByText('Bloom & Co');
+
+    soirely.reachable = false;
+    goOffline();
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+
+    fireEvent.click(within(boxAbove(heading)).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByText('Refreshing…')).toBeNull());
+    expect(screen.getByText('Bloom & Co')).toBeDefined();
+    expect(screen.queryByText(/did not load/)).toBeNull();
+    boxAbove(heading);
+  });
+
+  it('shows Data and control no box when only one of its two loads answered (sc-88912)', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/email-domains')) throw new TypeError('Failed to fetch');
+
+      return json(ANSWERS[path]);
+    });
+    open('/app/settings/data-and-control');
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'We could not load Data and control',
+    );
 
     goOffline();
 
-    boxAbove(heading);
+    await waitFor(() => expect(screen.queryByText('Refreshing…')).toBeNull());
+    expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
+  });
+
+  it("puts the box above Audit log's Enterprise lock (sc-88912)", async () => {
+    signedIn();
+    const soirely = { reachable: true };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (!soirely.reachable) throw new TypeError('Failed to fetch');
+
+      return new Response(
+        JSON.stringify({ type: 'https://soirely.com/errors/plan_required', status: 403 }),
+        { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+      );
+    });
+    open('/app/settings/data-and-control/audit-log');
+    await screen.findByText('Available on Enterprise');
+    const heading = screen.getByRole('heading', { level: 1, name: 'Audit log' });
+
+    soirely.reachable = false;
+    goOffline();
+
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(within(boxAbove(heading)).getByText(/^Offline · as of /)).toBeDefined();
+    expect(screen.getByText('Available on Enterprise')).toBeDefined();
+  });
+
+  it('polls a Preparing export online with no Refreshing… (sc-88912)', async () => {
+    signedIn();
+    const preparing = {
+      owner: true,
+      export: {
+        id: 'ex_1',
+        state: 'preparing',
+        mine: true,
+        askedBy: 'Folake Adeyemi',
+        askedAt: '2026-10-17T13:30:00+00:00',
+        asked: 'Saturday 17 Oct at 14:30 WAT',
+        expiresAt: null,
+        expires: null,
+        downloadedAt: null,
+        downloaded: null,
+      },
+      nextAllowedAt: null,
+      nextAllowed: null,
+    };
+    let asked = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path !== '/api/orgs/org_1/export') return json(ANSWERS[path]);
+      asked += 1;
+
+      return asked === 1 ? json(preparing) : new Promise<Response>(() => {});
+    });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    open('/app/settings/data-and-control/export');
+    expect(await screen.findByText('Preparing your export')).toBeDefined();
+
+    await vi.advanceTimersByTimeAsync(5000);
+    vi.useRealTimers();
+
+    await waitFor(() => expect(asked).toBe(2));
+    expect(screen.queryByText('Refreshing…')).toBeNull();
+  });
+
+  it('searches Vendors online with no Refreshing… (sc-88912)', async () => {
+    signedIn();
+    let asked = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path !== '/api/orgs/org_1/vendors') return json(ANSWERS[path]);
+      asked += 1;
+
+      return asked === 1 ? json(ANSWERS[path]) : new Promise<Response>(() => {});
+    });
+    open('/app/settings/vendors');
+    await screen.findByText('Bloom & Co');
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search vendors' }), {
+      target: { value: 'Bloom' },
+    });
+
+    await waitFor(() => expect(asked).toBe(2));
+    expect(screen.queryByText('Refreshing…')).toBeNull();
+  });
+
+  it('keeps the colours and says so in the box when Personalisation is opened from Notifications offline', async () => {
+    signedIn();
+    followAccountScheme('cobalt');
+    const soirely = { reachable: true };
+    serving(soirely);
+    open('/app/account/notifications');
+    await screen.findByRole('heading', { level: 1, name: 'Notification settings' });
+    soirely.reachable = false;
+
+    fireEvent.click(screen.getByRole('link', { name: 'Personalisation' }));
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(within(boxAbove(heading)).getByText(/^Offline · as of /)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Choose colours/ })).toBeDefined();
+  });
+
+  it('says so in the box once a save on Personalisation is refused offline, before the account has answered', async () => {
+    signedIn();
+    followAccountScheme('cobalt');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (init?.method === 'PUT') throw new TypeError('Failed to fetch');
+      if (path === '/api/auth/me') return new Promise<Response>(() => {});
+
+      return json(ANSWERS[path]);
+    });
+    open('/app/account/personalisation');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Garden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('because you are offline');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(boxAbove(heading).querySelector('.ev-offline-words')?.textContent).toMatch(
+      /^Offline · as of /,
+    );
   });
 
   it('puts the box over a person opened beside the Members list', async () => {

@@ -509,6 +509,15 @@ const STATES = {
     name: 'Closed at the start, Coming',
     starts: { started: true, recorded: COMING, view: CLOSED },
   },
+  closedSaved: {
+    name: 'Closed at the start, Coming, the kitchen needs saved: the note and the pencil go',
+    starts: {
+      started: true,
+      recorded: COMING,
+      view: CLOSED,
+      kitchen: closedKitchen(COMPANIONS, EARLIER, { saved: true }),
+    },
+  },
   closedNever: {
     name: 'Closed at the start, never answered',
     starts: { started: true, view: CLOSED },
@@ -822,6 +831,7 @@ export const GUEST_PAGES: readonly { name: string; states: readonly DemoLink[] }
         'replyByClosedSaved',
         'closedRefused',
         'closed',
+        'closedSaved',
         'closedNever',
         'paused',
         'pausedNever',
@@ -1129,7 +1139,7 @@ const BOARD_ENGLISH = {
   tellThanksOther:
     'Thank you. {{hosts}} have been told and will look into it. You can close this page.',
   doorTitle: 'Show this at the door',
-  doorLine: 'It lets you and your companions in. A screenshot works too.',
+  doorLine: 'It lets you and anyone coming with you in. A screenshot works too.',
   doorLineAlone: 'A screenshot works too.',
   doorCode: 'Your code for the door. It holds no name.',
   calendarTitle: 'Add to calendar',

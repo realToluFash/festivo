@@ -39,8 +39,22 @@ final readonly class DoorCodes
     ) {
     }
 
-    /** A code never lives past its event: an end later than the event's is the event's. */
-    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by): DoorCode
+    /** A code never lives past its event: an end later than the event's is the event's. The code it replaces stops, in the same write. */
+    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?DoorCode $replaces = null): DoorCode
+    {
+        $code = $this->built($event, $role, $jobLabel, $useCap, $expiresAt, $by);
+
+        if (null !== $replaces) {
+            $this->stopping($replaces, $by);
+            $replaces->setReplacedBy($code);
+        }
+
+        $this->entityManager->flush();
+
+        return $code;
+    }
+
+    private function built(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by): DoorCode
     {
         $violations = [
             ...$this->roleViolations($role),
@@ -73,7 +87,6 @@ final readonly class DoorCodes
             'useCap' => [null, $useCap],
             'expiresAt' => [null, $expires->format(\DATE_ATOM)],
         ]);
-        $this->entityManager->flush();
 
         return $code;
     }
@@ -81,13 +94,18 @@ final readonly class DoorCodes
     /** Stopping keeps everyone already in; a stopped code stays stopped. */
     public function stop(DoorCode $code, User $by): DoorCode
     {
+        $this->stopping($code, $by);
+        $this->entityManager->flush();
+
+        return $code;
+    }
+
+    private function stopping(DoorCode $code, User $by): void
+    {
         if (null === $code->getStoppedAt()) {
             $code->setStoppedAt($this->clock->now());
             $this->record('door_code.stopped', $code, $by, ['stoppedAt' => [null, $this->clock->now()->format(\DATE_ATOM)]]);
-            $this->entityManager->flush();
         }
-
-        return $code;
     }
 
     public function statusOf(DoorCode $code, int $used): DoorCodeStatus

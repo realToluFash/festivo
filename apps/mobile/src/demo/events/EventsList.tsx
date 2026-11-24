@@ -79,6 +79,7 @@ import {
   SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
@@ -192,9 +193,7 @@ export function EventsList({
 
   useEffect(() => {
     if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
-    const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(filterRef, then), setMenuAt, MENU_AFTER_MS);
   }, [state]);
 
   const clearSearch = () => {
@@ -342,7 +341,7 @@ export function EventsList({
         <>
           <EventsFilterMenu
             at={menuAt}
-            onClose={() => setMenuAt(null)}
+            onAt={setMenuAt}
             opener={filterRef}
             filters={filters}
             onFilters={setFilters}
@@ -658,10 +657,16 @@ function GuestTile({
 }
 
 /** The product's band (sc-22586) over a sample Stale, its Try again clearing the demo's state and reaching no server. */
-export function OfflineBand({ onRetry }: { onRetry: () => void }) {
+export function OfflineBand({
+  onRetry,
+  at: clock = OFFLINE_AS_OF,
+}: {
+  onRetry: () => void;
+  at?: string;
+}) {
   const [at] = useState(() => {
     const day = new Date();
-    day.setHours(Number(OFFLINE_AS_OF.slice(0, 2)), Number(OFFLINE_AS_OF.slice(3)), 0, 0);
+    day.setHours(Number(clock.slice(0, 2)), Number(clock.slice(3)), 0, 0);
 
     return day;
   });

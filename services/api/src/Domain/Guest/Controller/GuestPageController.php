@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Controller;
 
 use App\Domain\Event\CalendarFeed\FeedLinkIssuer;
+use App\Domain\Guest\Arrival\CheckInCodes;
 use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\GuestRules;
 use App\Domain\Guest\Http\GuestPageEvent;
@@ -55,6 +56,7 @@ final readonly class GuestPageController
         private GuestProgramme $guestProgramme,
         private SharedSeats $sharedSeats,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private CheckInCodes $checkInCodes,
         private MealPicks $mealPicks,
         private GuestMenu $guestMenu,
         private ServedMeals $servedMeals,
@@ -213,14 +215,16 @@ final readonly class GuestPageController
             'event' => $this->guestPageEvent->of($event, $phase),
             'phase' => $phase->value,
             'started' => $this->guestAnswers->started($guest),
+            'onTheDay' => $this->guestAnswers->onTheDay($guest),
             'answersOpen' => $this->guestAnswers->open($guest),
             'answersClosedOn' => $this->guestAnswers->closedOn($guest),
             'calendarFeed' => $this->calendarFeed($guest),
+            'checkInCode' => $this->checkInCodes->of($guest),
             'programme' => $this->guestProgramme->of($event, $phase),
             'meals' => [
                 'you' => $guest->getId()->toRfc4122(),
                 'courses' => $this->guestMenu->menu($event),
-                'answers' => $this->servedMeals->answersOf([$guest, ...$named]),
+                ...$this->servedMeals->of([$guest, ...$named]),
             ],
             // Absent, not null, before the tables are shared (sc-4022).
             ...null === $seating ? [] : ['seating' => $seating],

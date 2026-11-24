@@ -3,6 +3,7 @@ import {
   type GuestMeals,
   type GuestPage,
   type MealAnswerKind,
+  type MealChanged,
   type MealChoice,
   type MealCourse,
   type MealDish,
@@ -19,15 +20,17 @@ export interface Eater {
   you: boolean;
 }
 
-export type Kind = Exclude<MealAnswerKind, 'defaulted'>;
+export type Kind = Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
 
 export interface Plate {
-  kind: Kind | 'defaulted';
+  kind: Kind | 'defaulted' | 'menuChanged';
   dish: string | null;
   variant: string | null;
   options: Readonly<Record<string, readonly string[]>>;
   /** Made by the host (sc-3909): never marked, never refused. */
   byHost?: boolean;
+  /** sc-3913: why the host's menu change asked this course again, and the dish as it was picked. */
+  changed?: MealChanged;
 }
 
 export type Plates = Readonly<Record<string, Plate>>;
@@ -133,15 +136,56 @@ export function stepsOf(course: MealCourse, plate: Plate | null): Step[] {
   return dish == null ? [first] : [first, ...asked(dish)];
 }
 
-export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
-  const way = dish.variants.find((one) => one.id === plate.variant);
-  const base = dish.variants.length === 0 ? dish.allergens : (way?.allergens ?? null);
-  if (base == null) return null;
-  const options = dish.choices.flatMap((choice) =>
-    choice.options.filter((one) => (plate.options[choice.id] ?? []).includes(one.id)),
-  );
+/** What a dish contains before a way is picked: its only way's allergens, or the dish's own. */
+export function dishContains(dish: MealDish): readonly string[] | null {
+  if (dish.variants.length === 1) return dish.variants[0]?.allergens ?? null;
 
-  return [...new Set([...base, ...options.flatMap((one) => one.allergens)])];
+  return dish.allergens;
+}
+
+type CardPart = { way: string | null; name: string; allergens: readonly string[] | null };
+
+function plateParts(dish: MealDish, plate: Plate): CardPart[] {
+  const ways = dish.variants.length >= 2;
+  const way = ways ? dish.variants.find((one) => one.id === plate.variant) : undefined;
+  const head: CardPart =
+    way != null
+      ? { way: way.name, name: dish.name, allergens: way.allergens }
+      : { way: null, name: dish.name, allergens: dishContains(dish) };
+
+  return [
+    head,
+    ...dish.choices.flatMap((choice) =>
+      choice.options
+        .filter((one) => (plate.options[choice.id] ?? []).includes(one.id))
+        .map((one) => ({ way: null, name: one.name, allergens: one.allergens })),
+    ),
+  ];
+}
+
+/** What the plate holds, for its mark: not stated while a dish of two ways has no way picked, whatever the dish itself states. */
+export function plateAllergens(dish: MealDish, plate: Plate): string[] | null {
+  if (dish.variants.length >= 2 && !dish.variants.some((one) => one.id === plate.variant))
+    return null;
+
+  return partsAllergens(plateParts(dish, plate));
+}
+
+/** The dish card once its dish is picked: the way (or the dish) and each picked option, each with its own allergens. A dish with no ways and no choices keeps its own Contains line. */
+export function cardParts(dish: MealDish, plate: Plate | null): CardPart[] | null {
+  if (plate?.kind !== 'chosen' || plate.dish !== dish.id) return null;
+  if (dish.variants.length < 2 && dish.choices.length === 0) return null;
+
+  return plateParts(dish, plate);
+}
+
+/** Every part's allergens together; not stated when any part never stated them. */
+export function partsAllergens(
+  parts: readonly { allergens: readonly string[] | null }[],
+): string[] | null {
+  if (parts.some((one) => one.allergens == null)) return null;
+
+  return [...new Set(parts.flatMap((one) => one.allergens ?? []))];
 }
 
 export function markOf(
@@ -231,6 +275,14 @@ export function savedPlates(meals: GuestMeals, eaters: readonly Eater[]): Plates
   const plates: Record<string, Plate> = {};
   for (const eater of eaters) {
     for (const one of meals.answers[eater.id] ?? []) {
+      if (one.answer === 'menuChanged') {
+        plates[keyOf(eater.key, one.course)] = {
+          ...blank(),
+          kind: 'menuChanged',
+          ...(one.changed == null ? {} : { changed: one.changed }),
+        };
+        continue;
+      }
       const course = meals.courses.find((each) => each.id === one.course);
       const dish = course == null ? null : plateDish(course, { ...blank(), dish: one.dish });
       const options: Record<string, string[]> = {};
@@ -285,6 +337,20 @@ export function clearRuledOut(
   return { plates: next, cleared };
 }
 
+/** sc-3913: the rows a menu change asked again whose course is still open, in party order: the only screens a visit then walks. */
+export function changedOpen(
+  plates: Plates,
+  eaters: readonly Eater[],
+  courses: readonly MealCourse[],
+): string[] {
+  return eaters.flatMap((eater) =>
+    courses
+      .filter((course) => !course.picksClose.closed)
+      .map((course) => keyOf(eater.key, course.id))
+      .filter((key) => plates[key]?.kind === 'menuChanged'),
+  );
+}
+
 export function markedOpen(
   plates: Plates,
   eaters: readonly Eater[],
@@ -333,7 +399,8 @@ export function picksOf(
 
     return courses.flatMap((course): MealPick[] => {
       const plate = plates[keyOf(eater.key, course.id)];
-      if (plate == null || course.picksClose.closed || plate.kind === 'defaulted') return [];
+      if (plate == null || course.picksClose.closed) return [];
+      if (plate.kind === 'defaulted' || plate.kind === 'menuChanged') return [];
       if (plate.byHost === true) return [];
       const chosen = plate.kind === 'chosen' || (plate.kind === 'needsHost' && plate.dish != null);
       if (!chosen) return [{ person, course: course.id, answer: plate.kind }];
@@ -353,6 +420,72 @@ export function picksOf(
   });
 }
 
+/** Whether an answer could be picked by hand for this person on this course (sc-17283): needs the host never is, and a pick only with its dish, its way and every option allowed. */
+export function copyable(
+  plate: Plate | undefined,
+  course: MealCourse,
+  allergies: readonly string[],
+): boolean {
+  if (plate == null) return false;
+  switch (plate.kind) {
+    case 'chefsChoice':
+      return !nothingSafe(course, allergies);
+    case 'skipped':
+      return course.skippable;
+    case 'chosen':
+      break;
+    default:
+      return false;
+  }
+  const dish = plateDish(course, plate);
+  if (dish == null || dishRuled(dish, allergies) != null) return false;
+  const ways = dish.variants.length >= 2;
+  if (ways && !dish.variants.some((one) => one.id === plate.variant)) return false;
+  if (!ways && plate.variant != null && plate.variant !== dish.variants[0]?.id) return false;
+  const known = Object.entries(plate.options).every(([choice, ids]) => {
+    const one = dish.choices.find((each) => each.id === choice);
+
+    return one != null && ids.every((id) => one.options.some((option) => option.id === id));
+  });
+  const complete = stepsOf(course, plate).every(
+    (step, at) => refusalOf(step, plate, at === 0) == null,
+  );
+
+  return known && complete && against(plateAllergens(dish, plate), allergies) == null;
+}
+
+/** Same as {name}: every open course takes the earlier person's answer where it can be picked for this one, and is cleared where it can't. */
+export function copyPlates(
+  plates: Plates,
+  from: string,
+  to: string,
+  courses: readonly MealCourse[],
+  allergies: readonly string[],
+): { plates: Plates; asked: string[] } {
+  const next: Record<string, Plate> = { ...plates };
+  const asked: string[] = [];
+  for (const course of courses) {
+    if (course.picksClose.closed) continue;
+    const source = plates[keyOf(from, course.id)];
+    const key = keyOf(to, course.id);
+    if (source != null && copyable(source, course, allergies)) {
+      next[key] = {
+        kind: source.kind,
+        dish: source.dish,
+        variant: source.variant,
+        options: Object.fromEntries(
+          Object.entries(source.options).map(([choice, ids]) => [choice, [...ids]]),
+        ),
+      };
+      continue;
+    }
+    delete next[key];
+    asked.push(course.id);
+  }
+
+  return { plates: next, asked };
+}
+
 /** The day every course's picks close on, while all are open, so one line says it in place of a close line on each row. */
 export function oneCloseDay(
   courses: readonly MealCourse[],
@@ -364,4 +497,31 @@ export function oneCloseDay(
   return days.size === 1 && day != null && courses.every((one) => !one.picksClose.closed)
     ? day
     : null;
+}
+
+/** sc-1362's line for a person's course: the default waiting for them while it is open, the default they were given, or the host in touch for someone it would never be given. */
+export type DefaultLine = 'chooseBy' | 'defaulted' | 'hostInTouch' | null;
+
+export function defaultLine(
+  meals: GuestMeals,
+  course: MealCourse,
+  eater: Eater,
+  plate: Plate | null | undefined,
+  shut: boolean,
+): DefaultLine {
+  if (course.default == null) return null;
+  if (plate?.kind === 'defaulted') return 'defaulted';
+  if (plate != null) return null;
+  const excluded = (meals.excluded[eater.id] ?? []).some((one) => one.course === course.id);
+  if (shut) return excluded ? 'hostInTouch' : null;
+
+  return excluded ? null : 'chooseBy';
+}
+
+/** The default's dish, with its variant's name where it has variants. */
+export function defaultName(course: MealCourse): string {
+  const dish = dishIn(course, course.default?.dish ?? null);
+  const way = dish?.variants.find((one) => one.id === course.default?.variant);
+
+  return [dish?.name, way?.name].filter((one) => one != null).join(', ');
 }

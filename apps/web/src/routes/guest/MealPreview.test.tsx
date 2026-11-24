@@ -101,6 +101,7 @@ const PREVIEW = {
   },
   phase: 'live',
   started: false,
+  onTheDay: false,
   answersOpen: true,
   answersClosedOn: null,
   calendarFeed: null,
@@ -234,6 +235,19 @@ describe('Preview as guest (sc-3907)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     expect((screen.getByRole('radio', { name: /Egusi/ }) as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('shows no Same as button, being the host alone (sc-17283)', async () => {
+    onMenu(CLOSE);
+    await openPreview();
+
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole('radio', { name: /Jollof rice/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('heading', { name: 'Check and send' })).toBe(document.activeElement);
+    expect(screen.queryByRole('button', { name: /^Same as/ })).toBeNull();
   });
 
   it('shows to a role that can only read the menu', async () => {

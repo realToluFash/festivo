@@ -12,9 +12,9 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
-               permissions, remote, roles, runlog, runner, sessions, shared, store, sync, systemd,
-               update, work)
+from . import (actions, agents, controls, dashboard, digests, github, launchd, logins, machine,
+               payloads, permissions, remote, roles, runlog, runner, sessions, settings, shared,
+               store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -696,6 +696,28 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
+def settings_view():
+    try:
+        return 200, settings.read()
+    except (OSError, ValueError) as error:
+        return 409, {"error": f"error: {machine.path()} cannot be read: {error}"}
+
+
+def control(platform, path, asked, by):
+    """One of `sq web`'s controls, on a connection of its own: a start can wait on Docker
+    while the page goes on reading through the other."""
+    if path == "/settings":
+        return controls.change(home(), asked, by)
+    if path == "/settings/undo":
+        return controls.undo(home(), asked, by)
+    db = open_db()
+    try:
+        return controls.act(db, home(), platform, str(asked.get("action") or ""),
+                            asked.get("role") and str(asked["role"]), by)
+    finally:
+        db.close()
+
+
 def tell_peers(db, platform):
     peers = remote.peers(remote.config())
     if peers and remote.usable(remote.token()):
@@ -705,6 +727,40 @@ def tell_peers(db, platform):
 
 def shown(count):
     return "?" if count is None else str(count)
+
+
+def login_order(row):
+    """The roles' logins first, soonest to need logging in again first, then the rest."""
+    return (not row["roles"], bool(row.get("token")), bool(row.get("logged_in")),
+            row.get("expires_at") or 0)
+
+
+def login_left(row, now):
+    """What a login has left, as `sq status` lists it."""
+    if row.get("token"):
+        return "setup-token"
+    if row.get("error"):
+        return "unread"
+    if not row.get("logged_in"):
+        return "logged out"
+    if row.get("expires_at") is None:
+        return "no end given"
+    if row["expires_at"] <= now:
+        return "ran out"
+    return f"{logins.left(row['expires_at'] - now)} left"
+
+
+def login_usage(row, now):
+    """The account's usage, as `sq status` lists it after its roles: each limit used, and
+    how long ago Claude read it."""
+    usage = row.get("usage") or {}
+    limits = [f"{each['name'].lower()} {each['percent']:g}%" for each in usage.get("limits") or []
+              if each.get("percent") is not None
+              and (each.get("resets_at") is None or each["resets_at"] > now)]
+    if not limits:
+        return f"  usage unread: {row['usage_error']}" if row.get("usage_error") else ""
+    read = f", read {ago(now - usage['read_at'])}" if usage.get("read_at") else ""
+    return f"  {', '.join(limits)}{read}"
 
 
 def status(db, platform, now):
@@ -738,6 +794,14 @@ def status(db, platform, now):
         for other in view["machines"]:
             say(f"  {other['name']:{name_width}}  seen {ago(other['seen']):8}  "
                 f"{', '.join(other['started']) or 'no role'}")
+    held = [(view["machine"], row) for row in view.get("logins") or []] + \
+        [(name, row) for name, rows in (view.get("peer_logins") or {}).items() for row in rows]
+    if held:
+        say()
+        say("claude logins")
+        for name, row in sorted(held, key=lambda found: login_order(found[1])):
+            say(f"  {name}  {login_left(row, now)}  {row.get('email') or row['folder']}  "
+                f"{', '.join(row['roles']) or 'no role'}{login_usage(row, now)}")
     rows = []
     for role in view["roles"]:
         if role["state"] == "refused":
@@ -886,7 +950,10 @@ def admin(argv):
                         a.port or port, open_page=not a.no_open,
                         session=lambda found: sessions.view(db, home(), platform, found),
                         host=a.listen or host, secret=remote.token(),
-                        peers=lambda: remote.peers(remote.config()))
+                        peers=lambda: remote.peers(remote.config()), config=remote.config,
+                        usage=logins.Usage(remote.config),
+                        control=lambda path, asked, by: control(platform, path, asked, by),
+                        settings=settings_view)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -913,21 +980,14 @@ def admin(argv):
             return sys.exit(agents.start(db, home(), platform, names))
         return sys.exit(agents.stop(db, names))
     elif a.command == "pause" and a.everywhere:
-        name = machine.load().get("machine") or "machine"
-        done = shared.pause_everywhere(shared.GitHubRefs(), name)
-        print("paused every machine: no role ticks anywhere, running workers finish their "
-              "item" if done else "every machine was already paused")
+        controls.pause_everywhere(db, shared.GitHubRefs(),
+                                  machine.load().get("machine") or "machine", print)
     elif a.command == "resume" and a.everywhere:
-        shared.resume_everywhere(shared.GitHubRefs())
-        print("resumed every machine; a machine paused on its own stays paused")
+        controls.resume_everywhere(db, shared.GitHubRefs(), print)
     elif a.command == "pause":
-        store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
-        print("paused: no role ticks, running workers finish their item")
+        controls.pause(db, print)
     elif a.command == "resume":
-        store.set_meta(db, "paused", None)
-        pause = (store.get_meta(db, "shared_view") or {}).get("paused")
-        print("resumed" + (f"; every machine is still paused by {pause.get('machine')}: "
-                           "sq resume --everywhere" if pause else ""))
+        controls.resume(db, print)
     elif a.command == "cost":
         cost(a.days)
     elif a.command == "agents":

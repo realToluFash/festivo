@@ -243,10 +243,13 @@ class Checked(unittest.TestCase):
 
     def test_machine_wide_limits_are_checked(self):
         changed = config(self.root, onVersionDrift="halt", dailyBudgetUsd="ten", minFreeGb=-1,
-                         sliceMemoryMax="plenty")
+                         sliceMemoryMax="plenty", chromeProfiles={"qa@example.com": 3})
         errors = " ".join(machine.check(changed)[0])
-        for field in ("onVersionDrift", "dailyBudgetUsd", "minFreeGb", "sliceMemoryMax"):
+        for field in ("onVersionDrift", "dailyBudgetUsd", "minFreeGb", "sliceMemoryMax",
+                      "chromeProfiles"):
             self.assertIn(field, errors)
+        named = config(self.root, chromeProfiles={"qa@example.com": "Profile 3"})
+        self.assertNotIn("chromeProfiles", " ".join(machine.check(named)[0]))
 
     def test_the_workers_share_16G_unless_the_file_says_otherwise(self):
         self.assertEqual(machine.slice_memory(config(self.root)), "16G")

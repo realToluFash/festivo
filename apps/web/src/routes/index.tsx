@@ -22,6 +22,7 @@ import {
   EventRun,
   EventStaff,
   EventStations,
+  EventKitchenSheet,
   EventMenuPicks,
   EventView,
 } from './app/events/EventView.tsx';
@@ -42,6 +43,7 @@ import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { RedeemPage } from './public/Redeem.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
@@ -118,6 +120,7 @@ export const routes = [
           { path: 'events/:eventId/staff/stations', element: <EventStations /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
           { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
+          { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
           { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
@@ -155,6 +158,8 @@ export const routes = [
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/w/:token', element: <StaffLinkPage /> },
+      { path: '/d', element: <RedeemPage /> },
+      { path: '/d/:code', element: <RedeemPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

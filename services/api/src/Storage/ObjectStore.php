@@ -131,6 +131,11 @@ final readonly class ObjectStore
         $this->s3->putObject(['Bucket' => $this->publicBucket, 'Key' => $key, 'Body' => $bytes, 'ContentType' => $contentType]);
     }
 
+    public function readPublished(string $key): string
+    {
+        return $this->s3->getObject(['Bucket' => $this->publicBucket, 'Key' => $key])->getBody()->getContentAsString();
+    }
+
     public function copyPublished(string $from, string $to): void
     {
         $this->s3->copyObject(['Bucket' => $this->publicBucket, 'Key' => $to, 'CopySource' => $this->publicBucket . '/' . $from]);

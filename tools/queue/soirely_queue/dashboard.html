@@ -194,6 +194,57 @@
       .alert.warning {
         background: var(--warning-soft);
       }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: -8px 0 20px;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .controls:empty {
+        display: none;
+      }
+      .control-said {
+        white-space: pre-wrap;
+      }
+      .control-said.fail {
+        color: var(--critical);
+      }
+      .card .control {
+        margin-left: auto;
+        padding: 3px 10px;
+      }
+      .card .control ~ .control {
+        margin-left: 0;
+      }
+      .settings {
+        margin-bottom: 20px;
+        display: grid;
+        gap: 12px;
+      }
+      .settings[hidden] {
+        display: none;
+      }
+      .settings-fields {
+        display: grid;
+        grid-template-columns: minmax(120px, auto) minmax(160px, 260px) 1fr;
+        gap: 8px 12px;
+        align-items: center;
+        font-size: 13px;
+      }
+      .settings-fields input,
+      .settings-fields select {
+        font: inherit;
+        font-size: 13px;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+      }
       .kpis {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -378,6 +429,94 @@
       .copy:focus-visible {
         outline: 2px solid var(--accent);
         outline-offset: 2px;
+      }
+      .copy.quiet {
+        color: var(--text-2);
+        background: transparent;
+        border: 1px solid var(--line);
+      }
+      .copy:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .login-flow {
+        margin-top: 12px;
+        display: grid;
+        gap: 10px;
+      }
+      .login-flow[hidden] {
+        display: none;
+      }
+      #login-said:empty {
+        display: none;
+      }
+      .login-flow p {
+        margin: 0;
+      }
+      .login-flow.good {
+        background: var(--good-soft);
+      }
+      .login-flow.critical {
+        background: var(--critical-soft);
+      }
+      .login-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .login-row input {
+        font: inherit;
+        font-size: 13px;
+        flex: 1 1 220px;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+      }
+      .login-row a {
+        color: var(--accent);
+        font-size: 13px;
+      }
+      .usage {
+        display: grid;
+        grid-template-columns: minmax(64px, auto) minmax(72px, 1fr) auto;
+        gap: 4px 8px;
+        align-items: center;
+        min-width: 240px;
+        font-size: 12px;
+        color: var(--text-2);
+      }
+      .usage .role-title {
+        grid-column: 1 / -1;
+      }
+      .meter {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-2);
+        box-shadow: inset 0 0 0 1px var(--line);
+        overflow: hidden;
+      }
+      .meter i {
+        display: block;
+        height: 100%;
+        background: var(--good);
+      }
+      .meter.warning i {
+        background: var(--warning);
+      }
+      .meter.critical i {
+        background: var(--critical);
+      }
+      .usage > span:not(.role-title) {
+        white-space: nowrap;
+      }
+      .usage b {
+        font-weight: 600;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
       }
       .owner {
         background: var(--warning-soft);
@@ -761,7 +900,14 @@
         <div class="meta" id="meta"></div>
       </header>
       <div class="alerts" id="alerts"></div>
+      <div class="controls" id="controls" aria-live="polite"></div>
+      <div class="panel settings" id="settings" aria-live="polite" hidden></div>
       <div class="kpis" id="kpis"></div>
+      <section id="logins-section" hidden>
+        <h2>Claude logins <span class="count" id="logins-count"></span></h2>
+        <div class="panel table-wrap"><table id="logins"></table></div>
+        <div class="panel login-flow" id="login-flow" aria-live="polite" hidden></div>
+      </section>
       <section id="draw-section" hidden>
         <h2>To draw <span class="count" id="draw-count"></span></h2>
         <div class="draws" id="draws"></div>
@@ -829,9 +975,15 @@
         refused: ['critical', 'Refused'],
         prompt: ['critical', 'Stopped on a prompt'],
       };
+      // Stop is offered for every state a started role can be in.
+      const STOPPABLE = ['running', 'busy', 'started', 'elsewhere', 'prompt'];
       let data = null,
         fetchedAt = 0,
         failing = false;
+      // Whether this page holds the token its controls ask for, and what they last said.
+      let controlsOn = false,
+        controlSaid = null;
+      const controlling = new Set();
       // The machine shown, null for this one; the others are read through this one's server.
       let machine = null,
         peerNames = [],
@@ -904,6 +1056,274 @@
             .join('');
       }
 
+      const DAY = 86400;
+      const loginMachine = (name) => (name === localName ? '' : name);
+
+      function loginLeft(r) {
+        if (r.token) return ['', 'Setup-token'];
+        if (r.error) return ['critical', 'Unread'];
+        if (!r.logged_in) return ['critical', 'Logged out'];
+        if (r.expires_at == null) return ['', 'No end given'];
+        const s = r.expires_at - Date.now() / 1000;
+        if (s <= 0) return ['critical', 'Ran out'];
+        const text =
+          s < 3600
+            ? `${Math.floor(s / 60)} min`
+            : s < 2 * DAY
+              ? `${Math.floor(s / 3600)} h`
+              : `${Math.floor(s / DAY)} days`;
+        return [s < DAY ? 'critical' : s < 3 * DAY ? 'warning' : 'good', text];
+      }
+
+      const loginOrder = (r) =>
+        r.token ? Infinity : r.error || !r.logged_in ? -Infinity : (r.expires_at ?? Infinity);
+
+      function resets(at) {
+        const s = at - Date.now() / 1000;
+        if (s < DAY)
+          return `in ${s < 3600 ? Math.max(Math.floor(s / 60), 1) + ' min' : Math.floor(s / 3600) + ' h'}`;
+        return new Date(at * 1000).toLocaleString(undefined, {
+          weekday: 'short',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      }
+
+      function loginUsage(r) {
+        // A peer on an older sq sends no usage at all, which is not the same as none read yet.
+        if (!('usage' in r)) return '';
+        const now = Date.now() / 1000;
+        const u = r.usage || {};
+        const lines = (u.limits || [])
+          .filter((l) => l.percent != null)
+          .map((l) => {
+            const reset = l.resets_at != null && l.resets_at <= now;
+            const width = reset ? 0 : Math.min(Math.max(l.percent, 0), 100);
+            const used = reset ? 'reset since it was read' : `${l.percent}% used`;
+            const left = l.resets_at != null ? `resets ${resets(l.resets_at)}` : '';
+            const when = reset ? 'reset since' : left;
+            return `<span>${esc(l.name)}</span><span class="meter ${reset ? '' : esc(l.tone || '')}" role="img" aria-label="${esc(l.name)}: ${esc(used)}"><i style="width:${width}%"></i></span><span><b>${reset ? '–' : esc(l.percent + '%')}</b> ${esc(when)}</span>`;
+          });
+        const read = [
+          u.read_at ? `Read ${since(u.read_at)}` : '',
+          r.usage_error ? `not read again: ${r.usage_error}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        if (lines.length)
+          return `<div class="usage">${lines.join('')}<span class="role-title">${esc(read)}</span></div>`;
+        if (r.usage_error) return `<span class="role-title">${esc(r.usage_error)}</span>`;
+        return r.logged_in || r.token ? '<span class="role-title">Not read yet</span>' : '';
+      }
+
+      function loginsTable(d) {
+        const rows = (d.logins || [])
+          .map((r) => ({ ...r, machine: d.machine }))
+          .concat(
+            Object.entries(d.peer_logins || {}).flatMap(([name, list]) =>
+              list.map((r) => ({ ...r, machine: name })),
+            ),
+          )
+          .sort((a, b) => !a.roles.length - !b.roles.length || loginOrder(a) - loginOrder(b));
+        document.getElementById('logins-section').hidden = !rows.length;
+        const due = rows.filter(
+          (r) => r.roles.length && ['critical', 'warning'].includes(loginLeft(r)[0]),
+        ).length;
+        document.getElementById('logins-count').textContent = rows.length
+          ? `${rows.length} ${rows.length === 1 ? 'account' : 'accounts'}` +
+            (due ? `, ${due} to log in again soon` : '')
+          : '';
+        document.getElementById('logins').innerHTML =
+          `<tr><th>Account</th><th>Machine</th><th>Roles</th><th>Runs out</th><th>Left</th><th>Usage</th><th></th></tr>` +
+          rows
+            .map((r) => {
+              const [tone, left] = loginLeft(r);
+              const busy =
+                loginFlow &&
+                loginFlow.phase !== 'ended' &&
+                loginFlow.name === r.machine &&
+                loginFlow.folder === r.folder;
+              const button = r.token
+                ? ''
+                : `<button class="copy" type="button" data-login-machine="${esc(r.machine)}" data-login-folder="${esc(r.folder)}" data-login-email="${esc(r.email || '')}" data-login-roles="${esc(r.roles.join(', '))}"${busy ? ' disabled' : ''}>${r.logged_in ? 'Log in again' : 'Log in'}</button>`;
+              return `<tr><td><b>${esc(r.email || 'No account')}</b><div class="role-title">${esc(r.folder)}${r.error ? ' · ' + esc(r.error) : ''}</div></td>
+        <td class="role-chip">${esc(r.machine)}</td>
+        <td><div class="tags">${r.roles.length ? r.roles.map((role) => `<span class="tag">${esc(role)}</span>`).join('') : '<span class="role-title">No role</span>'}</div></td>
+        <td class="when">${r.expires_at && !r.token ? esc(clock(r.expires_at)) : ''}</td>
+        <td><span class="pill ${tone}">${esc(left)}</span></td>
+        <td>${loginUsage(r)}</td>
+        <td class="num">${button}</td></tr>`;
+            })
+            .join('');
+      }
+
+      let loginFlow = null;
+
+      async function postJSON(path, body) {
+        const response = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const said = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(said.error || `sq web answered ${response.status}`);
+        return said;
+      }
+
+      function loginLead(f) {
+        const a = f.answer || {};
+        const who = `<b>${esc(f.email || a.email || f.folder)}</b>`;
+        if (f.phase === 'starting') return `Starting a login for ${who} on ${esc(f.name)}…`;
+        if (f.phase === 'ended') {
+          const end = a.ended || {};
+          if (end.state === 'done')
+            return `<b>${esc(end.email || f.email)}</b> is logged in on ${esc(f.name)}${end.expires_at ? '. The login runs out ' + esc(clock(end.expires_at)) : ''}.`;
+          if (end.state === 'wrong account')
+            return `<b>${esc(end.email)}</b> signed in, not ${who}, so ${esc(f.roles || f.folder)} now run as ${esc(end.email)}. Log in again and sign in as ${who}.`;
+          if (end.state === 'cancelled') return `The login for ${who} was cancelled.`;
+          return `The login for ${who} stopped: ${esc(end.message || 'no reason given')}.`;
+        }
+        if (a.opened === 'direct')
+          return `Chrome opened the sign-in for ${who} in its profile. Sign in there and this finishes by itself.`;
+        if (a.opened === 'link')
+          return `Chrome opened the sign-in for ${who} in its profile. Sign in, then paste the code the page shows.`;
+        return `sq could not open Chrome in the profile for ${who} from here. Open the link in that profile, sign in, then paste the code the page shows.`;
+      }
+
+      function drawLogin() {
+        const panel = document.getElementById('login-flow');
+        const f = loginFlow;
+        panel.hidden = !f;
+        if (!f) return;
+        const end = (f.answer || {}).ended;
+        const tone = end ? ({ done: ' good', cancelled: '' }[end.state] ?? ' critical') : '';
+        panel.className = 'panel login-flow' + tone;
+        const link = (f.answer || {}).link;
+        const waiting = f.phase === 'waiting';
+        panel.innerHTML = `<div class="login-row"><b>Log in</b><span class="role-title">${esc(f.folder)} on ${esc(f.name)}</span></div>
+      <p>${loginLead(f)}</p>
+      <p class="role-title" id="login-said">${waiting ? esc(f.said || '') : ''}</p>
+      ${
+        waiting && link
+          ? `<div class="login-row"><a href="${esc(link)}" target="_blank" rel="noopener">Open the link in this browser</a>
+      <button class="copy quiet" type="button" data-copy="login-link">Copy link</button><span id="prompt-login-link" hidden>${esc(link)}</span></div>`
+          : ''
+      }
+      ${
+        waiting
+          ? `<form class="login-row" id="login-code"><input name="code" aria-label="Code from the sign-in page" placeholder="If the page shows a code, paste it here" autocomplete="off" spellcheck="false" />
+      <button class="copy" type="submit">Send code</button><button class="copy quiet" type="button" data-login-act="cancel">Cancel</button></form>`
+          : f.phase === 'ended'
+            ? `<div class="login-row"><button class="copy quiet" type="button" data-login-act="close">Close</button></div>`
+            : ''
+      }`;
+      }
+
+      function saidLogin(text) {
+        loginFlow.said = text;
+        const said = document.getElementById('login-said');
+        if (said) said.textContent = text;
+      }
+
+      async function startLogin(button) {
+        if (loginFlow && loginFlow.phase === 'waiting')
+          postJSON('login/cancel', { machine: loginFlow.m, id: loginFlow.id }).catch(() => null);
+        const flow = (loginFlow = {
+          name: button.dataset.loginMachine,
+          m: loginMachine(button.dataset.loginMachine),
+          folder: button.dataset.loginFolder,
+          email: button.dataset.loginEmail,
+          roles: button.dataset.loginRoles,
+          phase: 'starting',
+        });
+        drawLogin();
+        if (data) loginsTable(data);
+        try {
+          const said = await postJSON('login/start', { machine: flow.m, folder: flow.folder });
+          if (flow !== loginFlow) return;
+          Object.assign(flow, { id: said.id, answer: said, said: said.said || '' });
+          flow.phase = said.ended ? 'ended' : 'waiting';
+        } catch (error) {
+          if (flow !== loginFlow) return;
+          flow.answer = { ended: { state: 'failed', message: error.message } };
+          flow.phase = 'ended';
+        }
+        drawLogin();
+        document.getElementById('login-flow').scrollIntoView({ block: 'nearest' });
+      }
+
+      async function followLogin() {
+        const flow = loginFlow;
+        if (!flow || flow.phase !== 'waiting') return;
+        try {
+          const response = await fetch(
+            `login/state?machine=${encodeURIComponent(flow.m)}&id=${encodeURIComponent(flow.id)}`,
+            { cache: 'no-store' },
+          );
+          const said = await response.json();
+          if (flow !== loginFlow || flow.phase !== 'waiting') return;
+          if (!response.ok) return saidLogin(said.error || `sq web answered ${response.status}`);
+          flow.answer = { ...flow.answer, ...said };
+          if (said.ended) {
+            flow.phase = 'ended';
+            flow.said = '';
+            drawLogin();
+            refresh();
+          } else if (said.said !== flow.said) saidLogin(said.said || '');
+        } catch (error) {
+          return;
+        }
+      }
+
+      document.addEventListener('click', (event) => {
+        const start = event.target.closest('[data-login-folder]');
+        if (start) return startLogin(start);
+        const act = event.target.closest('[data-login-act]');
+        if (!act || !loginFlow) return;
+        if (act.dataset.loginAct === 'cancel' && loginFlow.id) {
+          const flow = loginFlow;
+          postJSON('login/cancel', { machine: flow.m, id: flow.id })
+            .then((said) => {
+              flow.answer = { ...flow.answer, ...said };
+            })
+            .catch(() => {
+              flow.answer = { ...flow.answer, ended: { state: 'cancelled' } };
+            })
+            .finally(() => {
+              flow.phase = 'ended';
+              if (flow === loginFlow) drawLogin();
+              if (data) loginsTable(data);
+            });
+        }
+        if (act.dataset.loginAct === 'close') {
+          loginFlow = null;
+          drawLogin();
+          if (data) loginsTable(data);
+        }
+      });
+
+      document.addEventListener('submit', async (event) => {
+        if (event.target.id !== 'login-code') return;
+        event.preventDefault();
+        const flow = loginFlow;
+        const code = event.target.code.value.trim();
+        if (!code || !flow || !flow.id) return;
+        event.target.code.value = '';
+        saidLogin('Sending the code…');
+        try {
+          const said = await postJSON('login/code', { machine: flow.m, id: flow.id, code });
+          if (flow !== loginFlow) return;
+          flow.answer = { ...flow.answer, ...said };
+          if (said.ended) {
+            flow.phase = 'ended';
+            drawLogin();
+            refresh();
+          }
+        } catch (error) {
+          if (flow === loginFlow) saidLogin(error.message);
+        }
+      });
+
       function kpis(d) {
         const today = d.spend[d.spend.length - 1] || { total: 0 };
         const here = d.roles.filter((r) => r.state !== 'refused');
@@ -934,6 +1354,310 @@
           .join('');
       }
 
+      const controlMachine = (action) => (action.endsWith('everywhere') ? '' : machine || '');
+      const controlKey = (action, role) => [controlMachine(action), action, role || ''].join('|');
+
+      function controlButton(action, label, role, cls = 'copy') {
+        const off = !controlsOn || failing || controlling.has(controlKey(action, role));
+        return `<button class="${cls}" type="button" data-control="${action}"${role ? ` data-control-role="${esc(role)}"` : ''}${off ? ' disabled' : ''}>${esc(label)}</button>`;
+      }
+
+      function controlsBar(d) {
+        const name = d.machine || 'this machine';
+        const bits = [
+          d.paused
+            ? controlButton('resume', `Resume ${name}`)
+            : controlButton('pause', `Pause ${name}`),
+          d.paused_everywhere
+            ? controlButton('resume-everywhere', 'Resume every machine', null, 'copy quiet')
+            : controlButton('pause-everywhere', 'Pause every machine', null, 'copy quiet'),
+        ];
+        bits.push(
+          `<button class="copy quiet" type="button" data-settings="defaults">Settings</button>`,
+        );
+        if (d.settings_undo && controlsOn)
+          bits.push(
+            `<button class="copy quiet" type="button" data-settings-undo="${esc(d.settings_undo)}"${failing ? ' disabled' : ''}>Undo last change</button>`,
+          );
+        if (!controlsOn)
+          bits.push(
+            `<span>Controls are off on this page. Open it once as <code>${esc(location.origin)}/?token=…</code>, with <code>SQ_WEB_TOKEN</code> from <code>~/.config/soirely/env</code>.</span>`,
+          );
+        if (controlSaid)
+          bits.push(
+            `<span class="control-said${controlSaid.failed ? ' fail' : ''}">${esc(controlSaid.text)}</span>`,
+          );
+        document.getElementById('controls').innerHTML = bits.join('');
+      }
+
+      async function control(action, role) {
+        const key = controlKey(action, role);
+        if (controlling.has(key)) return;
+        controlling.add(key);
+        render();
+        try {
+          const said = await postJSON('control', { machine: controlMachine(action), action, role });
+          controlSaid = { text: said.said, failed: false };
+        } catch (error) {
+          controlSaid = { text: error.message, failed: true };
+        }
+        controlling.delete(key);
+        await refresh();
+      }
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-control]');
+        if (button) control(button.dataset.control, button.dataset.controlRole || null);
+      });
+
+      // A role's own fields; the machine's Settings shows the same in defaults, then its cap
+      // and its account.
+      const ACCOUNT = ['claudeConfigDir', 'Claude account'];
+      const FIELDS = [
+        ['model', 'Model'],
+        ['effort', 'Effort'],
+        ['inboxEffort', 'Inbox effort'],
+        ['wakeEvery', 'Wakes every'],
+        ['workers', 'Workers'],
+        ['maxBudgetUsd', 'Budget per run, USD'],
+      ];
+      const NUMBERS = ['workers', 'maxBudgetUsd', 'dailyBudgetUsd'];
+      const FROM = {
+        role: 'set for this role',
+        defaults: 'from defaults',
+        'built-in': "sq's floor",
+      };
+      let settingsOpen = null;
+
+      // Each field as the form shows it: its own value, the one in force, and where that is set.
+      function settingsFields(s) {
+        const d = s.data;
+        if (s.where !== 'defaults')
+          return FIELDS.concat(d.accounts ? [ACCOUNT] : []).map(([key, label]) => ({
+            key,
+            label,
+            ...d.roles[s.where][key],
+          }));
+        const own = [['dailyBudgetUsd', 'Daily budget, USD']].concat(d.accounts ? [ACCOUNT] : []);
+        return FIELDS.map(([key, label]) => ({ key, label, ...d.defaults[key] })).concat(
+          own.map(([key, label]) => ({
+            key,
+            label,
+            value: d.machine[key],
+            in_force: d.machine[key],
+            from: 'machine',
+            machine: true,
+          })),
+        );
+      }
+
+      // The value in force and where it is set; an account also says who it runs as.
+      function inForce(s, f) {
+        if (f.in_force == null) return 'not set';
+        const from = FROM[f.from] || (f.from === 'machine' ? 'this machine' : 'not set');
+        if (f.key !== 'claudeConfigDir') return `${f.in_force}, ${from}`;
+        const held = (s.data.accounts || []).find((a) => a.folder === f.in_force);
+        return `${f.in_force} (${(held && held.account) || 'not logged in'}), ${from}`;
+      }
+
+      function settingsInput(s, f, fields) {
+        const d = s.data;
+        const role = s.where !== 'defaults';
+        const clearable = role || !['model', 'effort'].includes(f.key);
+        const blank =
+          f.key === 'dailyBudgetUsd'
+            ? 'No daily cap'
+            : role
+              ? `From defaults${f.from === 'role' ? '' : ` (${f.in_force ?? 'unset'})`}`
+              : f.from === 'built-in'
+                ? `sq's floor (${f.in_force})`
+                : 'Unset';
+        const attrs = `data-field="${f.key}" aria-label="${esc(f.label)}"${controlsOn ? '' : ' disabled'}`;
+        if (f.key === 'claudeConfigDir') {
+          const blankAccount = `The machine's (${d.machine.claudeConfigDir || 'none'})`;
+          // A folder in force that the logins do not list stays chosen, so a Save of
+          // another field does not move the account to the first folder listed.
+          const listed = d.accounts.some((a) => a.folder === f.value);
+          const kept =
+            f.value && !listed
+              ? `<option value="${esc(f.value)}" selected>${esc(`${f.value}: not listed`)}</option>`
+              : '';
+          return `<select ${attrs}>${role ? `<option value="">${esc(blankAccount)}</option>` : ''}${kept}${d.accounts
+            .map((a) => {
+              const who = a.account || 'not logged in';
+              const on = a.roles.length ? `; ${a.roles.join(', ')}` : '';
+              return `<option value="${esc(a.folder)}"${a.folder === f.value ? ' selected' : ''}>${esc(`${a.folder}: ${who}${on}`)}</option>`;
+            })
+            .join('')}</select>`;
+        }
+        if (['model', 'effort', 'inboxEffort'].includes(f.key)) {
+          const model = fields.find((g) => g.key === 'model').in_force;
+          const options = f.key === 'model' ? Object.keys(d.models) : d.models[model] || [];
+          return `<select ${attrs}>${clearable ? `<option value="">${esc(blank)}</option>` : ''}${options
+            .map((o) => `<option${o === f.value ? ' selected' : ''}>${esc(o)}</option>`)
+            .join('')}</select>`;
+        }
+        const one = f.key === 'workers' && role && !d.parallel.includes(s.where);
+        const kind = NUMBERS.includes(f.key)
+          ? ` type="number" min="${f.key === 'workers' ? 1 : 0}"${one ? ' max="1"' : ''} step="${f.key === 'workers' ? 1 : 'any'}"`
+          : ' type="text" spellcheck="false" autocomplete="off"';
+        return `<input ${attrs}${kind} value="${esc(f.value ?? '')}" placeholder="${esc(blank)}" />`;
+      }
+
+      function drawSettings() {
+        const panel = document.getElementById('settings');
+        const s = settingsOpen;
+        panel.hidden = !s;
+        if (!s) return (panel.innerHTML = '');
+        const name = s.m || localName || 'this machine';
+        const title = s.where === 'defaults' ? `Defaults on ${name}` : `${s.where} on ${name}`;
+        const said = s.said
+          ? `<p class="control-said${s.failed ? ' fail' : ''}">${esc(s.said)}</p>`
+          : '';
+        if (!s.data) {
+          panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div>${said || '<p class="role-title">Reading agents.json…</p>'}
+      <div class="login-row"><button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+          return;
+        }
+        if (s.where !== 'defaults' && !s.data.roles[s.where]) {
+          panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div><p class="control-said fail">${esc(s.where)} is not listed in this machine's agents.json, so it has no settings to change here.</p>
+      <div class="login-row"><button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+          return;
+        }
+        const fields = settingsFields(s);
+        panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div>
+      <form class="settings-fields" id="settings-form">${fields
+        .map(
+          (f) =>
+            `<span>${esc(f.label)}</span>${settingsInput(s, f, fields)}<span class="role-title">${esc(inForce(s, f))}</span>`,
+        )
+        .join('')}</form>${said}
+      <div class="login-row">${controlsOn ? `<button class="copy" type="button" data-settings-save${s.saving ? ' disabled' : ''}>Save</button>` : ''}<button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+      }
+
+      async function readSettings(s) {
+        const response = await fetch(
+          (s.m ? `m/${encodeURIComponent(s.m)}/` : '') + 'settings.json',
+          {
+            cache: 'no-store',
+          },
+        );
+        const said = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(said.error || `it answered ${response.status}`);
+        return said;
+      }
+
+      async function openSettings(where) {
+        const s = (settingsOpen = { m: machine || '', where, data: null });
+        drawSettings();
+        try {
+          s.data = await readSettings(s);
+        } catch (error) {
+          Object.assign(s, { said: error.message, failed: true });
+        }
+        if (s === settingsOpen) drawSettings();
+        document.getElementById('settings').scrollIntoView({ block: 'nearest' });
+      }
+
+      // Only what the form changed, a cleared field as null. A browser reads a number field it
+      // cannot parse as empty, which would clear the field, so that is refused here by name.
+      function settingsChanges(s) {
+        const changes = { here: {}, machine: {}, unread: [] };
+        for (const f of settingsFields(s)) {
+          const input = document.querySelector(`#settings-form [data-field="${f.key}"]`);
+          if (!input) continue;
+          if (input.validity && input.validity.badInput) {
+            changes.unread.push(f.label);
+            continue;
+          }
+          const typed = input.value.trim();
+          let value = typed === '' ? null : typed;
+          if (value !== null && NUMBERS.includes(f.key) && !Number.isNaN(Number(value)))
+            value = Number(value);
+          if (value !== (f.value ?? null)) changes[f.machine ? 'machine' : 'here'][f.key] = value;
+        }
+        return changes;
+      }
+
+      async function postSettings(path, body) {
+        const response = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const said = await response.json().catch(() => ({}));
+        return {
+          ok: response.ok,
+          said: said.said || said.error || `sq web answered ${response.status}`,
+          settings: said.settings,
+        };
+      }
+
+      async function saveSettings() {
+        const s = settingsOpen;
+        if (!s || !s.data || s.saving) return;
+        const changes = settingsChanges(s);
+        if (changes.unread.length) {
+          Object.assign(s, { said: `${changes.unread.join(', ')}: not a number`, failed: true });
+          return drawSettings();
+        }
+        const saves = Object.fromEntries(
+          [
+            [s.where, changes.here],
+            ['machine', changes.machine],
+          ].filter(([, fields]) => Object.keys(fields).length),
+        );
+        if (!Object.keys(saves).length) {
+          Object.assign(s, { said: 'Nothing changed.', failed: false });
+          return drawSettings();
+        }
+        s.saving = true;
+        drawSettings();
+        const answer = await postSettings('settings', {
+          machine: s.m,
+          changes: saves,
+          revision: s.data.revision,
+        });
+        if (answer.settings) s.data = answer.settings;
+        Object.assign(s, { saving: false, said: answer.said, failed: !answer.ok });
+        if (s === settingsOpen) drawSettings();
+        refresh();
+      }
+
+      // The revision the page last read, from an open Settings or the status: the server
+      // refuses the undo if agents.json changed since, so a hand edit is never put back.
+      async function undoSettings(button) {
+        button.disabled = true;
+        const s = { m: machine || '' };
+        const open = settingsOpen && settingsOpen.m === s.m && settingsOpen.data;
+        try {
+          const answer = await postSettings('settings/undo', {
+            machine: s.m,
+            revision: open && open.undo ? open.revision : button.dataset.settingsUndo,
+          });
+          controlSaid = { text: answer.said, failed: !answer.ok };
+          if (settingsOpen && settingsOpen.m === s.m && answer.settings) {
+            settingsOpen.data = answer.settings;
+            drawSettings();
+          }
+        } catch (error) {
+          controlSaid = { text: error.message, failed: true };
+        }
+        await refresh();
+      }
+
+      document.addEventListener('click', (event) => {
+        const open = event.target.closest('[data-settings]');
+        if (open) return openSettings(open.dataset.settings);
+        if (event.target.closest('[data-settings-save]')) return saveSettings();
+        const undo = event.target.closest('[data-settings-undo]');
+        if (undo) return undoSettings(undo);
+        if (event.target.closest('[data-settings-close]')) {
+          settingsOpen = null;
+          drawSettings();
+        }
+      });
+
       function roleCard(r) {
         const [cls, label] = STATES[r.state] || ['', r.state];
         const stateLabel =
@@ -945,8 +1669,9 @@
         const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
     <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
     ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting ?? '?'}</div><div class="l">waiting</div></div>`}</div>`;
+        const settingsButton = `<button class="copy quiet control" type="button" data-settings="${esc(r.role)}">Settings</button>`;
         if (r.state === 'refused')
-          return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span></div>
+          return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span>${settingsButton}</div>
       <div class="block"><div class="v">${esc(r.detail)}</div></div></div>`;
         const tags = [
           `<span class="pill ${cls}">${esc(stateLabel)}</span>`,
@@ -955,6 +1680,11 @@
         if (r.wake_every && r.wake_every !== '3m')
           tags.push(`<span class="tag">wakes every ${esc(r.wake_every)}</span>`);
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
+        if (STOPPABLE.includes(r.state))
+          tags.push(controlButton('stop', 'Stop', r.role, 'copy quiet control'));
+        else if (r.state === 'stopped')
+          tags.push(controlButton('start', 'Start', r.role, 'copy control'));
+        tags.push(settingsButton);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
         if (r.prompt)
@@ -1322,6 +2052,9 @@
         if (shown !== machine) {
           machine = shown;
           data = null;
+          controlSaid = null;
+          settingsOpen = null;
+          drawSettings();
           peerError = null;
           failing = false;
           sessionId = null;
@@ -1387,7 +2120,9 @@
           : 'Roles on this machine';
         drawings(data);
         header(data);
+        controlsBar(data);
         kpis(data);
+        loginsTable(data);
         const here = data.roles;
         document.getElementById('roles-count').textContent = here.length
           ? `${here.length} roles`
@@ -1425,6 +2160,7 @@
       function learnPeers(d) {
         peerNames = d.peers || [];
         localName = d.machine;
+        controlsOn = !!d.controls;
       }
 
       async function findPeers() {
@@ -1455,6 +2191,7 @@
       if (machine) findPeers();
       else refresh();
       setInterval(refresh, 5000);
+      setInterval(followLogin, 2000);
       setInterval(() => {
         if (sessionId && (!session || session.live)) refreshSession();
       }, 3000);

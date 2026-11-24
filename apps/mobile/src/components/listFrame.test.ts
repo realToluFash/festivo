@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { LIST_GAP, SETTINGS_PAGE, titleFoot } from './listFrame.ts';
+import { LIST_GAP, PANE_TITLE_ROW, SETTINGS_PAGE, titleFoot } from './listFrame.ts';
 
 vi.mock('react', () => ({ useMemo: vi.fn() }));
 vi.mock('react-native', () => ({
@@ -35,6 +35,34 @@ describe("a Settings page's title", () => {
     expect(readFileSync(join('src', 'components', 'ListAndPage.tsx'), 'utf8')).toMatch(
       /<FrameTop style=\{topStyle\} \/>/,
     );
+  });
+});
+
+describe("a Settings page's title in the pane on its side (sc-39471, #88680)", () => {
+  const panes = [
+    'organisation',
+    'sign-in-rules',
+    'account',
+    'security',
+    'notifications',
+    'personalisation',
+  ];
+
+  it('stands 40 from the pane’s top and 34 above the first block, as SummaryPage draws it', () => {
+    const top = SETTINGS_PAGE.tabletLandscape.paddingTop + PANE_TITLE_ROW.paddingTop;
+    const under = PANE_TITLE_ROW.paddingBottom + SETTINGS_PAGE.tabletLandscape.gap;
+
+    expect([top, under]).toEqual([40, 34]);
+  });
+
+  it.each(panes)('%s puts its pane title in that row', (page) => {
+    expect(readFileSync(join(settings, `${page}.tsx`), 'utf8')).toContain(
+      '<View style={[besideRow.row, PANE_TITLE_ROW]}>',
+    );
+  });
+
+  it('leaves Members out: its title heads the list column, and a person’s page has none', () => {
+    expect(readFileSync(join(settings, 'members.tsx'), 'utf8')).not.toContain('PANE_TITLE_ROW');
   });
 });
 

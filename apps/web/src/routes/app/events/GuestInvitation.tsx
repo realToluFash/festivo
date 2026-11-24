@@ -6,7 +6,7 @@ import {
   canMarkNotInvited,
 } from '@soirely/api-client';
 import { invitationLine, shownReply } from '@soirely/domain';
-import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph, type GlyphName } from '../../../components/Glyph.tsx';
@@ -27,7 +27,6 @@ export function Invitation({
   copyByHand,
   marking,
   markFailed,
-  replaceButton,
   send,
   asked,
   onCopy,
@@ -49,7 +48,6 @@ export function Invitation({
   copyByHand: ReactNode;
   marking: boolean;
   markFailed: boolean;
-  replaceButton: RefObject<HTMLButtonElement | null>;
   /** sc-26025: WhatsApp's own address for this guest, null where it is not offered. */
   send: string | null;
   asked: boolean;
@@ -152,7 +150,6 @@ export function Invitation({
           {manages && (
             <li>
               <button
-                ref={replaceButton}
                 type="button"
                 className="desk-row gs-do"
                 data-focus="replace"

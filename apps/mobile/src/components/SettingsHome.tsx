@@ -8,7 +8,7 @@ import { useAccountChoice } from '../colourScheme.ts';
 import { type Choice, inUse } from '../kit/personalisation.ts';
 import { schemeOf } from '../kit/schemes.ts';
 import { schemeAtLaunch, tokens } from '../theme/tokens.ts';
-import { breakableEmail } from '../layout/textSize.ts';
+import { breakableEmail } from '../kit/addressBreaks.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { CARD_PIECES, Confetti, Cover } from './Cover.tsx';
 import { Glyph } from './Glyph.tsx';

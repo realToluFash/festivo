@@ -1,4 +1,4 @@
-/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468): the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
+/* The demo's own frame for Today, Events and Calendar in a phone's browser (sc-57468), and its bar alone (`.dp-bar`) over every other Settings page: the pages' rules are `components/phoneFit.css`, which the product's shell shares, and Today's narrow arrangement at a desk is deskFit.css. */
 
 .dp-menu {
   display: none;
@@ -11,6 +11,7 @@
     min-height: 100vh;
   }
 
+  .dp-bar .today-side,
   .dp-fit .today-side {
     flex-direction: row;
     align-items: center;
@@ -23,32 +24,43 @@
     background: var(--colorCard);
   }
 
+  .dp-bar .today-side > :not(.sw, .dp-menu, .desk-bell),
   .dp-fit .today-side > :not(.sw, .dp-menu, .desk-bell) {
     display: none;
   }
 
+  /* The rest of Settings and Your account sit under the product shell's phone bar (sc-13413), its bell in the bar rather than the title row. */
+  .dp-bar .desk-main .desk-bell {
+    display: none;
+  }
+
   /* The bar's bell is the product shell's: the card's colour on the bar, not the title row's grey. */
+  .dp-bar .today-side > .desk-bell,
   .dp-fit .today-side > .desk-bell {
     border-radius: var(--radiusNav);
     background: var(--colorCard);
     color: var(--colorInk);
   }
 
+  .dp-bar .today-side > .desk-bell:hover,
   .dp-fit .today-side > .desk-bell:hover {
     background: var(--colorInset);
   }
 
+  .dp-bar .today-side > .sw,
   .dp-fit .today-side > .sw {
     flex: 1;
     min-width: 0;
   }
 
+  .dp-bar .today-side .sw-opener-name,
   .dp-fit .today-side .sw-opener-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .dp-bar .dp-menu,
   .dp-fit .dp-menu {
     display: flex;
     flex: none;
@@ -66,6 +78,7 @@
     cursor: pointer;
   }
 
+  .dp-bar .dp-menu svg,
   .dp-fit .dp-menu svg {
     width: 16px;
     height: 16px;
@@ -95,5 +108,12 @@
     min-height: 0;
     padding-bottom: 0;
     overflow: hidden;
+  }
+
+  /* Under the bar the page runs flat to the window's edges, as the product's shell does at this width. */
+  .today.desk.dp-bar:not(.dp-fit) > .desk-main {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 }

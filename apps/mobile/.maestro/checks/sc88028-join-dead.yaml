@@ -1,0 +1,10 @@
+# sc-88028: a request link that does not exist, This link does not work, at the current text size. Pass DEAD, 32 hex characters no link has.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${DEAD}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.home
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: sc88028-join-dead

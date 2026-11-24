@@ -9,3 +9,13 @@ export function twoFactorStanding(
 
   return due.overdue || Date.parse(due.at) <= now ? 'overdue' : 'due';
 }
+
+/** Whether any of these organisations is one the member can still work in, as the held pages say (sc-85645). */
+export function anyNotOverdue(
+  organisations: readonly { twoFactorDue?: { at: string; overdue: boolean } | null }[],
+  now: number,
+): boolean {
+  return organisations.some(
+    (organisation) => twoFactorStanding(organisation.twoFactorDue ?? null, now) !== 'overdue',
+  );
+}

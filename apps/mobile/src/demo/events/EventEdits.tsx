@@ -9,14 +9,14 @@ import {
 } from '@soirely/domain';
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
-  Linking,
   Pressable,
   StyleSheet,
   type TextInputInstance,
   View,
   type ViewInstance,
 } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import i18next from 'i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 
 import { AlertLine } from '../../components/AlertLine.tsx';
 import { SearchField } from '../../components/EventsSearch.tsx';
@@ -47,7 +47,6 @@ import { PhotoFill } from '../../components/EventThumb.tsx';
 import { currencyMatches } from '../../components/currencyMatches.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { GlyphMark } from '../../components/StatusMark.tsx';
-import { RowRule } from '../../components/SummaryRows.tsx';
 import { MomentBox, type Picking, pick } from '../../components/MomentPick.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import {
@@ -61,9 +60,7 @@ import { LONG_NOTE, ARRIVAL_NOTE, NOTE_WORDS, noteTooLong, savedNote } from './A
 import {
   CREDIT_TYPED,
   type CreditLanguage,
-  OSM_COPYRIGHT,
-  OSM_CREDIT,
-  STADIA_ATTRIBUTION,
+  FRENCH_CREDIT,
   creditLanguageOf,
   isCreditState,
 } from './addressCredit.ts';
@@ -566,87 +563,63 @@ export function VenueFields({
   const found = chosen == null && !down ? suggestionsFor(address) : [];
 
   useReadOut(found.length > 0 ? say.suggestionsBelow(found.length) : null);
+  const words = useCreditWords(credit);
 
-  return (
-    <>
-      <VenueFieldsView
-        name={name}
-        address={address}
-        onName={onName}
-        onAddress={(typed) => {
-          onAddress(typed);
-          setChosen(null);
-          setOffer(false);
-        }}
-        suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
-        onSuggestion={(key) => {
-          const one = found.find((each) => each.name === key);
-          if (one == null) return;
-          onName(one.name);
-          onAddress(one.address);
-          setChosen(one);
-          setOffer(one.timeZone !== zone);
-        }}
-        down={down}
-        offer={
-          offer && chosen != null
-            ? {
-                zone: chosen.timeZone,
-                keep: zone,
-                onUse: () => {
-                  onZone(chosen.timeZone);
-                  setOffer(false);
-                },
-                onKeep: () => setOffer(false),
-              }
-            : null
-        }
-        nameError={nameError}
-        addressError={addressError}
-        {...(nameRef == null ? {} : { nameRef })}
-        {...(addressRef == null ? {} : { addressRef })}
-        autoFocus={autoFocus}
-        off={off}
-        testID={testID}
-      />
-      {found.length > 0 && <AddressCredit language={credit} testID={`${testID}.credit`} />}
-    </>
+  const fields = (
+    <VenueFieldsView
+      name={name}
+      address={address}
+      onName={onName}
+      onAddress={(typed) => {
+        onAddress(typed);
+        setChosen(null);
+        setOffer(false);
+      }}
+      suggestions={found.map((one) => ({ key: one.name, title: one.name, line: one.address }))}
+      onSuggestion={(key) => {
+        const one = found.find((each) => each.name === key);
+        if (one == null) return;
+        onName(one.name);
+        onAddress(one.address);
+        setChosen(one);
+        setOffer(one.timeZone !== zone);
+      }}
+      down={down}
+      offer={
+        offer && chosen != null
+          ? {
+              zone: chosen.timeZone,
+              keep: zone,
+              onUse: () => {
+                onZone(chosen.timeZone);
+                setOffer(false);
+              },
+              onKeep: () => setOffer(false),
+            }
+          : null
+      }
+      nameError={nameError}
+      addressError={addressError}
+      {...(nameRef == null ? {} : { nameRef })}
+      {...(addressRef == null ? {} : { addressRef })}
+      autoFocus={autoFocus}
+      off={off}
+      testID={testID}
+    />
   );
+
+  return words == null ? fields : <I18nextProvider i18n={words}>{fields}</I18nextProvider>;
 }
 
-/** sc-80918: under the last suggestion, past a hairline, and not one of them: each link opens in the device's browser, and each is its own 48pt target. */
-function AddressCredit({ language, testID }: { language: CreditLanguage; testID: string }) {
-  const words = OSM_CREDIT[language];
-  const link = (url: string, name: string, id: string) => (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLanguage={language}
-      onPress={() => void Linking.openURL(url)}
-      style={({ pressed }) => [styles.creditLink, pressed && styles.pressed]}
-      testID={`${testID}.${id}`}
-    >
-      <Text size={13} weight="medium" style={styles.creditWords}>
-        {name}
-      </Text>
-    </Pressable>
-  );
-
-  return (
-    <>
-      <RowRule inset={40} />
-      <View style={styles.credit} testID={testID}>
-        <Text size={13} weight="medium" style={styles.secondary}>
-          ©{' '}
-        </Text>
-        {link(STADIA_ATTRIBUTION, words.stadia, 'stadia')}
-        <Text size={13} weight="medium" style={styles.secondary}>
-          {' '}
-          ©{' '}
-        </Text>
-        {link(OSM_COPYRIGHT, words.osm, 'osm')}
-      </View>
-    </>
-  );
+/** sc-80918: the French state shows the fields in French, with the credit in OpenStreetMap's own French wording until the linguist's lands. */
+function useCreditWords(language: CreditLanguage) {
+  const [words] = useState(() => {
+    if (language === 'en') return null;
+    const local = i18next.cloneInstance({ lng: language, forkResourceStore: true });
+    local.addResource(language, 'translation', 'eventForm.creditOsm', FRENCH_CREDIT);
+    return local;
+  });
+  return words;
 }
 
 function VenueEdit(edit: EditProps) {
@@ -1057,19 +1030,6 @@ const styles = StyleSheet.create({
   none: { gap: tokens.spaceSm, paddingVertical: tokens.spaceMd },
   secondary: { color: tokens.colorInkSecondary },
   pressed: { opacity: tokens.opacityPressed },
-  credit: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    paddingLeft: 40,
-  },
-  creditLink: {
-    minWidth: tokens.sizeHitPhonePrimary,
-    minHeight: tokens.sizeHitPhonePrimary,
-    flexShrink: 1,
-    justifyContent: 'center',
-  },
-  creditWords: { color: tokens.colorInkSecondary, textDecorationLine: 'underline' },
   acPill: {
     minHeight: 26,
     justifyContent: 'center',

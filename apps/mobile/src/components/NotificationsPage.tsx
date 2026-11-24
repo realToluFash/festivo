@@ -132,7 +132,7 @@ export function NotificationsBody({
   if (grid.status === 'loading')
     return (
       <LoadingBlock
-        words={t('pending.loading')}
+        words={t('notificationSettings.loading')}
         height={layout === 'landscape' ? 156 : 200}
         icons
       />

@@ -51,13 +51,12 @@ import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
-import { capUnderTitle } from '../layout/textSize.ts';
+import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 import { useMarkSide } from './markSide.ts';
 
-/** 16 is the smallest size iOS Safari will not zoom into on focus. */
-export const CONTROL_TEXT_SIZE = 16;
+export { CONTROL_TEXT_SIZE };
 
 interface FieldNamed {
   labelID: string;
@@ -377,6 +376,24 @@ export function focusChecked(field: RefObject<TextInputInstance | null>): void {
   if (focused && !Keyboard.isVisible()) input.blur();
   fieldChecked(focused && Keyboard.isVisible());
   input.focus();
+}
+
+/** Android binds the keyboard to a field only after the field's first layout, and shows no keys for a field focused before that. */
+const NEW_FIELD_BOUND_MS = 150;
+
+/** To a field drawn in this commit, with the keyboard and the screen reader on it. Returns what cancels the moves still to come. */
+export function focusNewField(input: TextInputInstance | null): () => void {
+  if (input == null) return () => {};
+  focusChecked({ current: input });
+  if (Platform.OS !== 'android') return () => {};
+  const bound = setTimeout(() => {
+    if (!input.isFocused()) return;
+    // TalkBack does not follow input focus, and left on the button that added the row it went to the top of the screen (qa2 #83712).
+    moveScreenReaderFocus(input);
+    if (!Keyboard.isVisible()) raiseKeysOn(input);
+  }, NEW_FIELD_BOUND_MS);
+
+  return () => clearTimeout(bound);
 }
 
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */

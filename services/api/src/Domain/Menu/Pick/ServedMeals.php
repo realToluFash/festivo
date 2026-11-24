@@ -5,32 +5,37 @@ declare(strict_types=1);
 namespace App\Domain\Menu\Pick;
 
 use App\Domain\Guest\GuestNeedsRecord;
+use App\Domain\Guest\Headcount\HeadcountCalculator;
+use App\Domain\Guest\Model\GuestNeeds;
+use App\Domain\Menu\DishRules;
 use App\Entity\Guest;
 use App\Entity\MealAnswer;
 use App\Entity\MenuChoiceOption;
 use App\Enum\MealAnswerKind;
+use App\Enum\MenuChangeWhy;
 use App\Repository\MealAnswerRepository;
 use App\Repository\MenuChoiceOptionRepository;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** Stored meal answers as they are served (sc-3907): a chosen pick holding an allergen recorded since it was made is needs the host, and still names the pick. */
+/** Stored meal answers as they are served (sc-3907): a chosen pick holding an allergen recorded since it was made is needs the host, and still names the pick. A course's default is served, once its date has passed, to each person coming with no answer whom it can't harm (sc-1362). */
 final readonly class ServedMeals
 {
     public function __construct(
         private MealAnswerRepository $mealAnswerRepository,
         private MenuChoiceOptionRepository $menuChoiceOptionRepository,
         private GuestNeedsRecord $guestNeedsRecord,
+        private GuestMenu $guestMenu,
     ) {
     }
 
     /**
-     * @param list<Guest> $people
+     * @param non-empty-list<Guest> $people one party, the guest first
      *
-     * @return array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>}>> by the person's id
+     * @return array{answers: array<string, list<array{course: string, answer: string, dish: ?string, variant: ?string, options: list<string>, changed: ?array{picked: string, why: string, ways: ?int, allergens: list<string>}}>>, excluded: array<string, list<array{course: string, reason: string}>>} each by the person's id; `changed` on an answer a menu change asked again (sc-3913); `excluded` names the courses whose default the person is never given, and why
      */
-    public function answersOf(array $people): array
+    public function of(array $people): array
     {
         $needs = $this->guestNeedsRecord->of($people);
         $byPerson = Dict\group_by($this->mealAnswerRepository->findFor($people), static fn (MealAnswer $answer): string => $answer->getPerson()->getId()->toRfc4122());
@@ -38,18 +43,48 @@ final readonly class ServedMeals
             $this->menuChoiceOptionRepository->findOnEvent($people[0]->getEvent()),
             static fn (MenuChoiceOption $option): array => [$option->getId()->toRfc4122(), $option],
         ));
+        $withDefault = Vec\filter($this->guestMenu->menu($people[0]->getEvent()), static fn (array $course): bool => null !== $course['default']);
+        $answers = [];
+        $excluded = [];
 
-        return Dict\map_with_key($byPerson, function (string $id, array $answers) use ($needs, $options): array {
+        foreach ($people as $person) {
+            $id = $person->getId()->toRfc4122();
+            $theirs = $byPerson[$id] ?? [];
             $allergens = isset($needs[$id]) ? MealAllergens::of($needs[$id]) : [];
-
-            return Vec\map($answers, fn (MealAnswer $answer): array => [
+            $answered = Vec\map($theirs, static fn (MealAnswer $answer): string => $answer->getCourse()->getId()->toRfc4122());
+            $served = Vec\map($theirs, fn (MealAnswer $answer): array => [
                 'course' => $answer->getCourse()->getId()->toRfc4122(),
                 'answer' => $this->served($answer, $allergens, $options)->value,
                 'dish' => $answer->getDish()?->getId()->toRfc4122(),
                 'variant' => $answer->getVariant()?->getId()->toRfc4122(),
                 'options' => $answer->getOptions(),
+                'changed' => MealAnswerKind::MenuChanged === $answer->getKind()
+                    ? ['picked' => $answer->getChangedFrom() ?? '', 'why' => ($answer->getChangedWhy() ?? MenuChangeWhy::Removed)->value, 'ways' => $answer->getChangedWays(), 'allergens' => Vec\filter(DishRules::allergenCodes(), static fn (string $code): bool => Iter\contains($answer->getChangedAllergens(), $code))]
+                    : null,
             ]);
-        });
+
+            foreach ($withDefault as $course) {
+                $default = $course['default'];
+
+                if (null === $default || Iter\contains($answered, $course['id']) || !HeadcountCalculator::isComing($person) || Iter\all($course['dishes'], static fn (array $dish): bool => GuestMenu::ruledOut($dish, $allergens))) {
+                    continue;
+                }
+
+                $reason = MealDefault::exclusion($needs[$id] ?? GuestNeeds::none(), MealDefault::suitableFor($course));
+
+                if (null !== $reason) {
+                    $excluded[$id][] = ['course' => $course['id'], 'reason' => $reason];
+                } elseif ($course['picksClose']['closed']) {
+                    $served[] = ['course' => $course['id'], 'answer' => MealAnswerKind::Defaulted->value, 'dish' => $default['dish'], 'variant' => $default['variant'], 'options' => $default['options'], 'changed' => null];
+                }
+            }
+
+            if ([] !== $served) {
+                $answers[$id] = $served;
+            }
+        }
+
+        return ['answers' => $answers, 'excluded' => $excluded];
     }
 
     /**
@@ -63,6 +98,14 @@ final readonly class ServedMeals
         }
 
         return [] === $this->recordedSince($answer, $allergens, $options) ? MealAnswerKind::Chosen : MealAnswerKind::NeedsHost;
+    }
+
+    /** The chosen plate never stated its allergens: its dish, or the variant picked (sc-87421). */
+    public static function notStated(MealAnswer $answer): bool
+    {
+        $dish = $answer->getDish();
+
+        return null !== $dish && null === $answer->getVariant() && null === $dish->getAllergens();
     }
 
     /**

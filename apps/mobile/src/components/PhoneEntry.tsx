@@ -2,11 +2,12 @@ import type { Ref, RefObject } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { CountryPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
 
-/** The code and the number side by side, as Verify phone draws them. */
+/** The code and the number side by side, as Verify phone draws them; from the accessibility sizes on, the code over the number, each the field's full width (sc-78438). */
 export function PhoneEntry({
   label,
   pill,
@@ -27,7 +28,7 @@ export function PhoneEntry({
   pill?: string | undefined;
   help: string;
   country: string;
-  number?: string | undefined;
+  number: string;
   error: string | null | undefined;
   /** The control the line names takes the red edge: "Choose a country." is about the code (sc-30447). */
   errorOn?: 'country' | 'number';
@@ -41,11 +42,13 @@ export function PhoneEntry({
   testID: string;
 }) {
   const { t } = useTranslation();
+  const over = useAccessibilitySizes();
 
   return (
     <Field label={label} pill={pill} error={error} help={help}>
-      <View style={styles.entry}>
-        <View style={styles.country}>
+      {/* A live text-size change keeps the old row's text widths; a fresh row measures as a launch does (sc-78438). */}
+      <View key={over ? 'over' : 'beside'} style={over ? styles.over : styles.beside}>
+        <View style={over ? styles.whole : styles.country}>
           <CountryPicker
             label={t('verifyPhone.countryLabel')}
             value={country}
@@ -59,7 +62,7 @@ export function PhoneEntry({
         </View>
         <TextField
           ref={ref}
-          style={styles.number}
+          style={over ? styles.whole : styles.number}
           value={number}
           wrong={error != null && errorOn === 'number'}
           submitting={submitting}
@@ -79,7 +82,9 @@ export function PhoneEntry({
 }
 
 const styles = StyleSheet.create({
-  entry: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  beside: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  over: { gap: tokens.spaceSm },
   country: { flexGrow: 1, flexBasis: 140 },
   number: { flexGrow: 2, flexBasis: 180 },
+  whole: { alignSelf: 'stretch' },
 });

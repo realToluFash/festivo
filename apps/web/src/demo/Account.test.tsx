@@ -96,7 +96,7 @@ describe('Your account at a desk (sc-30209)', () => {
     expect(within(ask).getByRole('button', { name: 'Keep folake@ire.events' })).toBeDefined();
     fireEvent.click(within(ask).getByRole('button', { name: 'Make it primary' }));
 
-    expect(within(dialog()).getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
+    expect(within(dialog()).getByRole('heading', { name: 'Confirm it’s you' })).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
     expect(within(dialog()).getByText('Enter your password.')).toBeDefined();
 

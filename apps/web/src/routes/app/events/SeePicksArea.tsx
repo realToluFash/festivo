@@ -10,7 +10,23 @@ import {
   type PicksRoomPerson,
   type PicksRow,
 } from '@soirely/api-client';
-import { listFormat } from '@soirely/domain';
+import {
+  against,
+  courseHostCount,
+  defaultPick,
+  defaultedOn,
+  dishRuledOut,
+  excludedOf,
+  formatTimeOfDay,
+  goesBackTo,
+  hostCount,
+  listFormat,
+  mealPickName,
+  menuCourseOf,
+  plateOf,
+  showsDefaulted,
+  waitingSplit,
+} from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
@@ -19,18 +35,11 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
-import {
-  against,
-  clockOf,
-  dishRuledOut,
-  firstName,
-  hostCount,
-  menuCourseOf,
-  pickName,
-  plateOf,
-} from './seePicks.ts';
+import { allergensInSentence } from './allergenWords.ts';
+import { closeDay } from './menuArea.ts';
 import '../../../components/SettingsParts.css';
 import '../../../components/eventsDesk.css';
 import '../../../components/eventPage.css';
@@ -47,7 +56,7 @@ type Load =
   | { kind: 'loaded'; picks: EventPicks; menu: EventMenu; stale: boolean; refreshing: boolean };
 
 type Opened =
-  | { kind: 'chooseFor'; personId: string; courseIds: string[]; from: string }
+  | { kind: 'chooseFor'; personId: string; courseIds: string[]; from: string; given?: boolean }
   | { kind: 'chooseWho'; courseId: string; row: PicksRow; from: string };
 
 interface Said {
@@ -58,10 +67,13 @@ interface Said {
 function useAllergens(): (codes: readonly string[]) => string {
   const { t, i18n } = useTranslation();
 
-  return (codes) =>
-    listFormat(i18n.language, { type: 'conjunction' }).format(
-      codes.map((code) => t(`guestNeeds.allergen.${code}`)),
-    );
+  return (codes) => allergensInSentence(t, i18n.language, codes);
+}
+
+function useList(): (items: readonly string[]) => string {
+  const { i18n } = useTranslation();
+
+  return (items) => listFormat(i18n.language, { type: 'conjunction' }).format(items);
 }
 
 export function SeePicksArea({ event }: { event: OrganisationEvent }) {
@@ -223,13 +235,14 @@ function Picks({
 }) {
   const { t } = useTranslation();
   const allergens = useAllergens();
+  const list = useList();
   const [opened, setOpened] = useState<Opened | null>(null);
   const [said, setSaid] = useState<Said | null>(null);
   const manage = picks.canChoose;
   const names = picks.people != null;
   const courseName = (id: string) => picks.courses.find((one) => one.id === id)?.name ?? '';
   const personOf = (id: string) => picks.people?.find((one) => one.id === id);
-  const at = clockOf(picks.updatedAt);
+  const at = formatTimeOfDay(picks.updatedAt, dateLocale());
   const [askedFor] = useState(waitingFor);
 
   useEffect(() => {
@@ -300,14 +313,69 @@ function Picks({
       </>
     );
 
-  const waiting = (picks.waiting ?? [])
-    .map((party) => ({
+  const { never, parties: waiting } = waitingSplit(
+    (picks.waiting ?? []).map((party) => ({
       ...party,
       people: party.people.filter(
-        (person) => askedFor == null || person.courses.includes(askedFor),
+        (person) =>
+          askedFor == null ||
+          person.courses.includes(askedFor) ||
+          person.changed.some((one) => one.course === askedFor),
       ),
-    }))
-    .filter((party) => party.people.length > 0);
+    })),
+  );
+  const given = picks.given ?? [];
+  const givenCount = given.reduce((sum, party) => sum + party.people.length, 0);
+  const openWords = (person: (typeof never)[number]) =>
+    t('seePicks.notChosenOn', {
+      courses: list(
+        person.courses.map((id) => {
+          const excluded = person.excluded.find((one) => one.course === id);
+
+          return excluded == null
+            ? courseName(id)
+            : t('seePicks.excludedOn', { course: courseName(id), why: excludedWord(excluded) });
+        }),
+      ),
+    });
+  const excludedWord = (excluded: { reason: string }) =>
+    excludedOf(excluded.reason) === 'allergy'
+      ? t('seePicks.allergy')
+      : excludedOf(excluded.reason) === 'other'
+        ? t('seePicks.otherDiet')
+        : t(`guestNeeds.dietName.${excluded.reason}`);
+  const chooseForWaiting = (person: (typeof never)[number], id: string): Opened => {
+    const courses = [
+      ...person.courses,
+      ...person.changed.map((one) => one.course).filter((one) => !person.courses.includes(one)),
+    ];
+
+    return {
+      kind: 'chooseFor',
+      personId: person.id,
+      courseIds:
+        askedFor == null || !courses.includes(askedFor)
+          ? courses
+          : [askedFor, ...courses.filter((one) => one !== askedFor)],
+      from: id,
+    };
+  };
+  const personLines = (person: (typeof never)[number]) => (
+    <>
+      {person.courses.length > 0 && (
+        <span className="pk-state">
+          <DashedCircle />
+          {openWords(person)}
+        </span>
+      )}
+      {person.changed.map((one) => (
+        <span key={one.course} className="pk-state">
+          <Swap />
+          {t('seePicks.changedOn', { course: courseName(one.course), dish: one.picked })}
+        </span>
+      ))}
+    </>
+  );
 
   return (
     <>
@@ -351,11 +419,16 @@ function Picks({
                       <span>
                         {one.reason === 'nothing'
                           ? t('seePicks.nothingFor', { course: courseName(one.course) })
-                          : t('seePicks.allergyFor', {
-                              course: courseName(one.course),
-                              dish: one.pick ?? '',
-                              allergens: allergens(one.allergens),
-                            })}
+                          : t(
+                              one.notStated
+                                ? 'seePicks.allergyForNotStated'
+                                : 'seePicks.allergyFor',
+                              {
+                                course: courseName(one.course),
+                                dish: one.pick ?? '',
+                                allergens: allergens(one.allergens),
+                              },
+                            )}
                       </span>
                     </div>
                     {manage && (
@@ -379,10 +452,13 @@ function Picks({
           ) : (
             <ul className="pk-lines">
               {picks.courses
-                .filter((course) => course.needsHost > 0)
+                .filter((course) => courseHostCount(course) > 0)
                 .map((course) => (
                   <li key={course.id}>
-                    {t('seePicks.hostCount', { course: course.name, count: course.needsHost })}
+                    {t('seePicks.hostCount', {
+                      course: course.name,
+                      count: courseHostCount(course),
+                    })}
                   </li>
                 ))}
             </ul>
@@ -393,6 +469,7 @@ function Picks({
         <CourseCard
           key={course.id}
           course={course}
+          menuCourse={menuCourseOf(menu, course.id)}
           manage={manage}
           onChooseWho={(row, from) => open({ kind: 'chooseWho', courseId: course.id, row, from })}
         />
@@ -404,12 +481,38 @@ function Picks({
               ? t('seePicks.whoHasnt')
               : t('seePicks.whoHasntOn', { course: courseName(askedFor) })}
           </h2>
-          {waiting.length === 0 && (
+          {waiting.length === 0 && never.length === 0 && (
             <p className="mn-quiet">
               {askedFor == null
                 ? t('seePicks.whoHasntNone')
                 : t('seePicks.whoHasntNoneOn', { course: courseName(askedFor) })}
             </p>
+          )}
+          {never.length > 0 && (
+            <div className="pk-party">
+              <h3>{t('seePicks.neverGiven', { count: never.length })}</h3>
+              <ul className="pk-people">
+                {never.map((person) => {
+                  const id = `pk-never-${person.id}`;
+
+                  return (
+                    <li key={person.id} className="pk-person">
+                      <div className="pk-person-words">
+                        <strong>{person.name}</strong>
+                        {personLines(person)}
+                      </div>
+                      {manage && (
+                        <ChooseForButton
+                          id={id}
+                          name={person.name}
+                          onOpen={() => open(chooseForWaiting(person, id))}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )}
           {waiting.map((party) => (
             <div key={party.id} className="pk-party">
@@ -422,12 +525,48 @@ function Picks({
                     <li key={person.id} className="pk-person">
                       <div className="pk-person-words">
                         <strong>{person.name}</strong>
-                        <span className="pk-state">
-                          <DashedCircle />
-                          {t('seePicks.notChosenOn', {
-                            courses: person.courses.map(courseName).join(', '),
-                          })}
-                        </span>
+                        {personLines(person)}
+                      </div>
+                      {manage && (
+                        <ChooseForButton
+                          id={id}
+                          name={person.name}
+                          onOpen={() => open(chooseForWaiting(person, id))}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+      {names && givenCount > 0 && (
+        <section className="desk-card pk-waiting" aria-labelledby="pk-given-title">
+          <h2 id="pk-given-title" className="pk-card-title">
+            {t('seePicks.given', { count: givenCount })}
+          </h2>
+          {given.map((party) => (
+            <div key={party.id} className="pk-party">
+              <h3>{t('seePicks.replied', { name: party.replier, count: party.people.length })}</h3>
+              <ul className="pk-people">
+                {party.people.map((person) => {
+                  const id = `pk-given-${person.id}`;
+
+                  return (
+                    <li key={person.id} className="pk-person">
+                      <div className="pk-person-words">
+                        <strong>{person.name}</strong>
+                        {person.courses.map((one) => (
+                          <span key={one.course}>
+                            {t('seePicks.givenOn', {
+                              course: courseName(one.course),
+                              pick: defaultPick(menu, one),
+                            })}{' '}
+                            <span className="pk-default-mark">{t('seePicks.defaultMark')}</span>
+                          </span>
+                        ))}
                       </div>
                       {manage && (
                         <ChooseForButton
@@ -437,11 +576,9 @@ function Picks({
                             open({
                               kind: 'chooseFor',
                               personId: person.id,
-                              courseIds:
-                                askedFor == null || !person.courses.includes(askedFor)
-                                  ? person.courses
-                                  : [askedFor, ...person.courses.filter((one) => one !== askedFor)],
+                              courseIds: person.courses.map((one) => one.course),
                               from: id,
+                              given: true,
                             })
                           }
                         />
@@ -461,6 +598,7 @@ function Picks({
           courses={opened.courseIds
             .map((id) => menuCourseOf(menu, id))
             .filter((one): one is MenuCourse => one != null)}
+          given={opened.given === true}
           onSaved={(next, line, overridden) => {
             onPicks(next);
             setSaid({ line, overridden });
@@ -517,17 +655,30 @@ function ChooseForButton({ id, name, onOpen }: { id: string; name: string; onOpe
 
 function CourseCard({
   course,
+  menuCourse,
   manage,
   onChooseWho,
 }: {
   course: PicksCourse;
+  menuCourse: MenuCourse | undefined;
   manage: boolean;
   onChooseWho: (row: PicksRow, from: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const titleId = `pk-course-${course.id}`;
   const options = course.rows.some((row) => row.kind === 'option');
-  const defaults = course.rows.some((row) => row.defaulted > 0);
+  const defaults = showsDefaulted(course);
+  const defaultLine = (() => {
+    if (course.default == null || menuCourse == null) return null;
+    const pick = defaultPick({ courses: [menuCourse] }, { course: course.id, ...course.default });
+    const date = closeDay(`${course.default.chooseBy}T12:00:00Z`, 'UTC', i18n.language);
+    if (!course.closed) return t('seePicks.defaultLine', { pick, date });
+    const count = defaultedOn(course);
+
+    return count === 0
+      ? t('seePicks.defaultLineNobody', { pick, date })
+      : t('seePicks.defaultLineGiven', { pick, date, count });
+  })();
   const dishName = (id: string | null) => course.rows.find((row) => row.id === id)?.name ?? '';
 
   return (
@@ -545,6 +696,7 @@ function CourseCard({
           {t('seePicks.asksNothing', { dish: course.rows[0]?.name ?? '' })}
         </p>
       )}
+      {defaultLine != null && <p className="mn-quiet">{defaultLine}</p>}
       <div className="pk-scroll">
         <table className="pk-table">
           <caption className="pk-hidden">{`${course.name} · ${t('seePicks.dish')}`}</caption>
@@ -608,6 +760,9 @@ function CourseCard({
             <StateRow mark={<CircleMinus />} name={t('seePicks.skipped')} n={course.skipped} />
             <StateRow mark={<Triangle />} name={t('seePicks.needsHost')} n={course.needsHost} />
             <StateRow mark={<DashedCircle />} name={t('seePicks.none')} n={course.notChosen} />
+            {course.menuChanged > 0 && (
+              <StateRow mark={<Swap />} name={t('seePicks.changed')} n={course.menuChanged} />
+            )}
           </tbody>
           <tfoot>
             <tr className="pk-room">
@@ -617,6 +772,7 @@ function CourseCard({
           </tfoot>
         </table>
       </div>
+      {course.menuChanged > 0 && <p className="mn-quiet">{t('seePicks.menuChanged')}</p>}
       {!course.skippable && !course.asksNothing && (
         <p className="mn-quiet">{t('seePicks.noSkip')}</p>
       )}
@@ -656,31 +812,40 @@ function ChooseFor({
   eventId,
   person,
   courses,
+  given,
   onSaved,
   onClose,
 }: {
   eventId: string;
   person: PicksRoomPerson;
   courses: MenuCourse[];
+  given: boolean;
   onSaved: (picks: EventPicks, line: string, overridden: string | null) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const allergens = useAllergens();
   const [at, setAt] = useState(0);
-  const [choice, setChoice] = useState<Choice>(blankChoice);
+  const startOf = (one: MenuCourse | undefined): Choice =>
+    given && one?.default != null
+      ? { dishId: one.default.dish, variantId: one.default.variant, optionIds: one.default.options }
+      : blankChoice;
+  const [choice, setChoice] = useState<Choice>(() => startOf(courses[0]));
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState<string[] | null>(null);
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
   useDialogKeys(box, onClose, false);
+  const focusOn = (target: { current: HTMLElement | null }) =>
+    requestAnimationFrame(() => target.current?.focus());
 
   useEffect(() => box.current?.focus(), []);
 
   const course = courses[at];
   if (course == null) return null;
-  const first = firstName(person.name);
+  const who = person.name;
   const dish = course.dishes.find((one) => one.id === choice.dishId) ?? null;
   const questions = dish?.choices.filter((one) => !one.draft) ?? [];
   const saveLabel = at + 1 < courses.length ? t('seePicks.saveNext') : t('seePicks.save');
@@ -691,25 +856,24 @@ function ChooseFor({
   };
 
   const save = async (confirmed: boolean) => {
+    if (busy) return;
     if (choice.dishId == null)
       return fail(
-        t('seePicks.blank', { course: course.name.toLocaleLowerCase(), name: first }),
+        t('seePicks.blank', { course: course.name.toLocaleLowerCase(i18n.language), name: who }),
         'pk-for-dish',
       );
     if (dish != null && dish.variants.length > 0 && choice.variantId == null)
-      return fail(t('seePicks.blankWay', { dish: dish.name, name: first }), 'pk-for-way');
+      return fail(t('seePicks.blankWay', { dish: dish.name, name: who }), 'pk-for-way');
     const unanswered = questions.find(
       (one) => one.required && !one.options.some((option) => choice.optionIds.includes(option.id)),
     );
     if (unanswered != null)
       return fail(
-        t('seePicks.blankOption', { question: unanswered.question, name: first }),
+        t('seePicks.blankOption', { question: unanswered.question, name: who }),
         'pk-for-option',
       );
-    const ruled =
-      dish == null
-        ? []
-        : against(plateOf(dish, choice.variantId, choice.optionIds), person.allergens);
+    const plate = dish == null ? [] : plateOf(dish, choice.variantId, choice.optionIds);
+    const ruled = against(plate, person.allergens);
     if (ruled.length > 0 && !confirmed) {
       setAsking(ruled);
       return;
@@ -729,24 +893,34 @@ function ChooseFor({
     try {
       const next = await api.chooseForGuest(eventId, person.id, course.id, pick);
       const what =
-        dish == null ? t('seePicks.kitchen') : pickName(dish, choice.variantId, choice.optionIds);
+        dish == null
+          ? t('seePicks.kitchen')
+          : mealPickName(dish, choice.variantId, choice.optionIds);
       onSaved(
         next,
-        t('seePicks.savedFor', { course: course.name, name: first, what }),
-        ruled.length > 0
-          ? t('seePicks.savedOverride', { name: first, dish: what, allergens: allergens(ruled) })
-          : null,
+        t('seePicks.savedFor', { course: course.name, name: who, what }),
+        ruled.length === 0
+          ? null
+          : plate == null
+            ? t('seePicks.savedOverrideNotStated', { name: who, dish: what })
+            : t('seePicks.savedOverride', { name: who, dish: what, allergens: allergens(ruled) }),
       );
       if (at + 1 < courses.length) {
         setAt(at + 1);
-        setChoice(blankChoice);
+        setChoice(startOf(courses[at + 1]));
         setError(null);
+        focusOn(box);
       } else onClose();
     } catch (failure) {
-      if (refusedFor(failure)) setRefused(true);
-      else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out'))
+      if (refusedFor(failure)) {
+        setRefused(true);
+        focusOn(box);
+      } else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out'))
         setAsking(failure.problem.people?.[0]?.allergens ?? ruled);
-      else setError(t('eventMenu.failedSave', { button: saveLabel }));
+      else {
+        setError(t('eventMenu.failedSave', { button: saveLabel }));
+        focusOn(saveButton);
+      }
     } finally {
       setBusy(false);
     }
@@ -793,7 +967,8 @@ function ChooseFor({
                     label={one.name}
                     checked={choice.dishId === one.id}
                     ruled={dishRuledOut(one, person)}
-                    first={first}
+                    notStated={plateOf(one, null, []) == null}
+                    who={who}
                     onPick={() => pickDish(one.id)}
                   />
                 ))}
@@ -803,7 +978,7 @@ function ChooseFor({
                   label={t('seePicks.kitchenChoose')}
                   checked={choice.dishId === 'kitchen'}
                   ruled={[]}
-                  first={first}
+                  who={who}
                   onPick={() => pickDish('kitchen')}
                 />
               </div>
@@ -821,7 +996,7 @@ function ChooseFor({
                       childrenOnly={variant.for === 'children'}
                       checked={choice.variantId === variant.id}
                       ruled={against(variant.allergens, person.allergens)}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({ ...choice, variantId: variant.id });
                         setError(null);
@@ -843,7 +1018,7 @@ function ChooseFor({
                       label={option.name}
                       checked={choice.optionIds.includes(option.id)}
                       ruled={against(option.allergens, person.allergens)}
-                      first={first}
+                      who={who}
                       onPick={() => {
                         setChoice({
                           ...choice,
@@ -882,9 +1057,10 @@ function ChooseFor({
                 {t('seePicks.cancel')}
               </button>
               <button
+                ref={saveButton}
                 type="button"
                 className="gs-pill is-primary"
-                disabled={busy}
+                aria-disabled={busy}
                 onClick={() => void save(false)}
               >
                 {saveLabel}
@@ -895,12 +1071,19 @@ function ChooseFor({
       </div>
       {asking != null && dish != null && (
         <Override
-          title={t('seePicks.overrideTitle', { name: first, allergens: allergens(asking) })}
-          body={t('seePicks.overrideBody', {
-            dish: pickName(dish, choice.variantId, choice.optionIds),
-            allergens: allergens(asking),
-            name: first,
-          })}
+          title={t('seePicks.overrideTitle', { name: who, allergens: allergens(asking) })}
+          body={
+            plateOf(dish, choice.variantId, choice.optionIds) == null
+              ? t('seePicks.overrideBodyNotStated', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  name: who,
+                })
+              : t('seePicks.overrideBody', {
+                  dish: mealPickName(dish, choice.variantId, choice.optionIds),
+                  allergens: allergens(asking),
+                  name: who,
+                })
+          }
           keep={t('seePicks.chooseAnother')}
           go={t('seePicks.pickAnyway')}
           onKeep={() => {
@@ -920,7 +1103,8 @@ function DishOption({
   label,
   checked,
   ruled,
-  first,
+  notStated = false,
+  who,
   childrenOnly = false,
   onPick,
 }: {
@@ -929,7 +1113,8 @@ function DishOption({
   label: string;
   checked: boolean;
   ruled: readonly string[];
-  first: string;
+  notStated?: boolean;
+  who: string;
   childrenOnly?: boolean;
   onPick: () => void;
 }) {
@@ -958,7 +1143,9 @@ function DishOption({
               <Triangle />
               {t('seePicks.allergyMark')}
             </span>
-            {t('seePicks.ruledOut', { allergens: allergens(ruled), name: first })}
+            {notStated
+              ? t('seePicks.ruledOutNotStated')
+              : t('seePicks.ruledOut', { allergens: allergens(ruled), name: who })}
           </span>
         )}
       </span>
@@ -1033,6 +1220,7 @@ function ChooseWho({
 }) {
   const { t } = useTranslation();
   const allergens = useAllergens();
+  const list = useList();
   const people = picks.people ?? [];
   const holders = row.holders ?? [];
   const [ticked, setTicked] = useState<ReadonlySet<string>>(() => new Set(holders));
@@ -1041,23 +1229,26 @@ function ChooseWho({
   const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const saveButton = useRef<HTMLButtonElement>(null);
   useDialogKeys(box, onClose, false);
+  const focusOn = (target: { current: HTMLElement | null }) =>
+    requestAnimationFrame(() => target.current?.focus());
 
   useEffect(() => box.current?.focus(), []);
 
   const dishName = dish?.name ?? '';
   const ruledFor = (person: PicksRoomPerson) => against(row.allergens, person.allergens);
   const goesBack = (person: PicksRoomPerson): string => {
-    if (!course.asksNothing || dish == null) return t('seePicks.goesBackNone');
-    const everyone = dish.variants.find((one) => one.for === 'everyone');
-    const plate = everyone == null ? dish.allergens : everyone.allergens;
-    if (against(plate, person.allergens).length > 0)
-      return t('seePicks.goesBack', { to: t('seePicks.needsHost') });
+    const to = goesBackTo(course, dish, person);
+    if (to.kind === 'notChosen') return t('seePicks.goesBackNone');
 
-    return t('seePicks.goesBack', { to: everyone?.name ?? dish.name });
+    return t('seePicks.goesBack', {
+      to: to.kind === 'needsHost' ? t('seePicks.needsHost') : to.name,
+    });
   };
 
   const save = async (confirmed: boolean) => {
+    if (busy) return;
     const ruled = people.filter(
       (one) => ticked.has(one.id) && !holders.includes(one.id) && ruledFor(one).length > 0,
     );
@@ -1074,16 +1265,21 @@ function ChooseWho({
         next,
         t('seePicks.whoSaved', { variant: row.name, dish: dishName, count: ticked.size }),
         ruled.length > 0
-          ? t('seePicks.whoOverride', { names: ruled.map((one) => one.name).join(', ') })
+          ? t('seePicks.whoOverride', { names: list(ruled.map((one) => one.name)) })
           : null,
       );
       onClose();
     } catch (failure) {
-      if (refusedFor(failure)) setRefused(true);
-      else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out')) {
+      if (refusedFor(failure)) {
+        setRefused(true);
+        focusOn(box);
+      } else if (failure instanceof ApiError && failure.is('meal_pick_ruled_out')) {
         const ids = (failure.problem.people ?? []).map((one) => one.id);
         setAsking(people.filter((one) => ids.includes(one.id)));
-      } else setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
+      } else {
+        setError(t('eventMenu.failedSave', { button: t('seePicks.save') }));
+        focusOn(saveButton);
+      }
     } finally {
       setBusy(false);
     }
@@ -1156,7 +1352,7 @@ function ChooseWho({
                                 </span>
                                 {t('seePicks.ruledOutWho', {
                                   allergens: allergens(ruled),
-                                  name: firstName(person.name),
+                                  name: person.name,
                                 })}
                               </span>
                             )}
@@ -1190,9 +1386,10 @@ function ChooseWho({
                 {t('seePicks.cancel')}
               </button>
               <button
+                ref={saveButton}
                 type="button"
                 className="gs-pill is-primary"
-                disabled={busy}
+                aria-disabled={busy}
                 onClick={() => void save(false)}
               >
                 {t('seePicks.save')}
@@ -1204,7 +1401,7 @@ function ChooseWho({
       {asking != null && (
         <Override
           title={t('seePicks.overrideWhoTitle', {
-            names: asking.map((one) => firstName(one.name)).join(', '),
+            names: list(asking.map((one) => one.name)),
             variant: row.name,
           })}
           body={t('seePicks.overrideWhoBody', {
@@ -1213,7 +1410,7 @@ function ChooseWho({
                 t('seePicks.overrideWhoLine', {
                   variant: row.name,
                   allergens: allergens(ruledFor(one)),
-                  name: firstName(one.name),
+                  name: one.name,
                 }),
               )
               .join(' '),
@@ -1227,6 +1424,7 @@ function ChooseWho({
               return next;
             });
             setAsking(null);
+            focusOn(saveButton);
           }}
           onGo={() => void save(true)}
         />
@@ -1269,6 +1467,21 @@ function CircleMinus() {
     <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
       <circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M6.5 10h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Swap() {
+  return (
+    <svg className="pk-mark" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4 7h11l-3-3M16 13H5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

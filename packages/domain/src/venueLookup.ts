@@ -15,6 +15,10 @@ export interface PickedAddressInput {
 
 export const ASK_AFTER_MS = 250;
 
+/** sc-80918: where the suggestions' credit links, as Stadia's terms and OpenStreetMap's licence ask. */
+export const STADIA_ATTRIBUTION = 'https://stadiamaps.com/attribution/';
+export const OSM_COPYRIGHT = 'https://www.openstreetmap.org/copyright';
+
 /** What the address field shows beside itself: the suggestions, the outage line, and the venue's zone offered. */
 export interface LookupSeen {
   suggestions: readonly AddressSuggestionInput[];

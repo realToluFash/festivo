@@ -10,6 +10,7 @@ import {
 import { DOOR_CODE_BOARDS } from './DoorCodeBoards.ts';
 import {
   BAR_CODE,
+  CODE_ROLES,
   capProblem,
   atWords,
   cardLine,
@@ -398,12 +399,34 @@ describe('the demo home’s Door code group', () => {
       ]),
     );
     expect(new Set(hrefs).size).toBe(hrefs.length);
-    expect(hrefs).toHaveLength(14 + 7 + 7 + 32);
+    expect(hrefs).toHaveLength(14 + 8 + 7 + 32);
   });
 
   it('titles each one apart', () => {
     const titles = DOOR_CODE_BOARDS.map((board) => board.title);
 
     expect(new Set(titles).size).toBe(titles.length);
+  });
+});
+
+describe('a code’s service levels (sc-4002)', () => {
+  it('offers the two that work a place, keeps Can edit off, and never offers running the floor', () => {
+    expect(CODE_ROLES).toEqual([
+      'Can view',
+      'Can check guests in',
+      'Can work the floor',
+      'Can work the pass',
+      'Can edit',
+    ]);
+    expect(W.noEdit).toBe(
+      'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+    );
+  });
+
+  it('opens the refused form on a floor code with the API’s refusal at its top', () => {
+    const make = doorStartOf(undefined, 'refused', undefined)?.make;
+
+    expect(make?.refused).toBe(true);
+    expect(make?.form.role).toBe('Can work the floor');
   });
 });

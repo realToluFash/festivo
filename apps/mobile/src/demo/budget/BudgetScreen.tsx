@@ -239,6 +239,7 @@ export function BudgetScreen({
           {pinned}
           {view.page === 'home' && (
             <ReminderBanner
+              key={m.reminder ?? 'none'}
               kind={m.reminder}
               locale={locale}
               onOpen={() => {
