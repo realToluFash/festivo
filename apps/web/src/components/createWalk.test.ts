@@ -63,7 +63,7 @@ describe('the countries (sc-30412)', () => {
 describe('the step checks', () => {
   it('checks only the step Continue is on', () => {
     expect(stepRefused(freshWalk(LISBON), t)).toEqual({
-      nameRefused: "Enter the organisation's name.",
+      nameRefused: "Enter the organisation’s name.",
       countryRefused: null,
     });
     expect(stepRefused({ ...named, country: null }, t)).toBeNull();

@@ -822,7 +822,7 @@ describe('the owner claim on the summary card (sc-34200, sc-6640)', () => {
     const dialog = within(await screen.findByRole('dialog', { name: 'Become the owner' }));
     expect(
       await dialog.findByText(
-        "We couldn't find the record yet. DNS changes can take up to 48 hours.",
+        "We couldn’t find the record yet. DNS changes can take up to 48 hours.",
       ),
     ).toBeDefined();
   });
@@ -878,7 +878,7 @@ describe('the owner claim on the summary card (sc-34200, sc-6640)', () => {
       ),
     ).toBeDefined();
     fireEvent.click(page().getByRole('button', { name: 'Stop this claim' }));
-    const ask = within(await screen.findByRole('alertdialog', { name: "Stop Bisi's claim?" }));
+    const ask = within(await screen.findByRole('alertdialog', { name: "Stop Bisi’s claim?" }));
     fireEvent.click(ask.getByRole('button', { name: 'Stop the claim' }));
 
     expect(
@@ -983,7 +983,7 @@ describe('restoring, and what a refusal says (sc-34200)', () => {
 
       expect(
         await page().findByText(
-          "All 5 team seats on this organisation's plan are in use, so nothing has changed.",
+          "All 5 team seats on this organisation’s plan are in use, so nothing has changed.",
         ),
       ).toBeDefined();
       expect(page().getByText(way)).toBeDefined();
@@ -1006,7 +1006,7 @@ describe('restoring, and what a refusal says (sc-34200)', () => {
 
     await openPerson('Bisi Adeyemi');
     expect(
-      page().getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
+      page().getByText("Bisi Adeyemi’s ire.events address is no longer on their account."),
     ).toBeDefined();
     expect(page().getByText(REMOVED_ON)).toBeDefined();
     expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
@@ -1194,7 +1194,7 @@ describe('what a person’s page lets the viewer do (sc-34200)', () => {
 
     await openPerson('Folake Adeyemi');
     expect(
-      page().getAllByText("Only an owner can change an owner's role or remove them."),
+      page().getAllByText("Only an owner can change an owner’s role or remove them."),
     ).toHaveLength(1);
     expect(page().queryByRole('button', { name: 'Change role' })).toBeNull();
     expect(page().queryByRole('button', { name: /^Remove/ })).toBeNull();
@@ -1215,7 +1215,7 @@ describe('what a person’s page lets the viewer do (sc-34200)', () => {
 
     await openPerson('Folake Adeyemi');
     expect(
-      page().getByText("Folake Adeyemi's ire.events address is no longer on their account."),
+      page().getByText("Folake Adeyemi’s ire.events address is no longer on their account."),
     ).toBeDefined();
     expect(page().getByText(REMOVED_ON)).toBeDefined();
     expect(page().queryByRole('button', { name: /^Restore/ })).toBeNull();
