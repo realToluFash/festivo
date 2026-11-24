@@ -6,9 +6,11 @@ namespace App\Domain\Billing\Meter;
 
 use App\Enum\RealtimeTopic;
 use App\Realtime\RealtimePublisher;
+use Closure;
 use Psl\Vec;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -24,10 +26,20 @@ final class UsagePublisher implements ResetInterface
     /** @var array<string, Uuid> by organisation id */
     private array $pending = [];
 
+    /**
+     * Closures, so a terminate with nothing to publish builds neither the hub nor the limiter: `composer install` clears the cache with no Mercure configured.
+     *
+     * @param Closure(): RealtimePublisher           $realtimePublisher
+     * @param Closure(): UsageReader                 $usageUpdateReader
+     * @param Closure(): RateLimiterFactoryInterface $usageUpdateLimiter
+     */
     public function __construct(
-        private readonly RealtimePublisher $realtimePublisher,
-        private readonly UsageReader $usageReader,
-        private readonly RateLimiterFactoryInterface $usageUpdateLimiter,
+        #[AutowireServiceClosure(RealtimePublisher::class)]
+        private readonly Closure $realtimePublisher,
+        #[AutowireServiceClosure(UsageReader::class)]
+        private readonly Closure $usageUpdateReader,
+        #[AutowireServiceClosure('limiter.usage_update')]
+        private readonly Closure $usageUpdateLimiter,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -41,7 +53,7 @@ final class UsagePublisher implements ResetInterface
     public function publishDue(): void
     {
         foreach ($this->pending as $id => $organisationId) {
-            if ($this->usageUpdateLimiter->create($id)->consume()->isAccepted()) {
+            if (($this->usageUpdateLimiter)()->create($id)->consume()->isAccepted()) {
                 unset($this->pending[$id]);
                 $this->publish($organisationId);
             }
@@ -55,7 +67,7 @@ final class UsagePublisher implements ResetInterface
         $this->pending = [];
 
         foreach ($pending as $organisationId) {
-            $this->usageUpdateLimiter->create($organisationId->toRfc4122())->reserve()->wait();
+            ($this->usageUpdateLimiter)()->create($organisationId->toRfc4122())->reserve()->wait();
             $this->publish($organisationId);
         }
     }
@@ -69,7 +81,7 @@ final class UsagePublisher implements ResetInterface
     private function publish(Uuid $organisationId): void
     {
         try {
-            $this->realtimePublisher->publish(RealtimeTopic::OrganisationUsage, $organisationId->toRfc4122(), $this->usageReader->read($organisationId)->written());
+            ($this->realtimePublisher)()->publish(RealtimeTopic::OrganisationUsage, $organisationId->toRfc4122(), ($this->usageUpdateReader)()->read($organisationId)->written());
         } catch (Throwable $e) {
             $this->logger->warning('A usage update was dropped; an open page catches up on its next read.', ['organisationId' => $organisationId->toRfc4122(), 'exception' => $e::class]);
         }
