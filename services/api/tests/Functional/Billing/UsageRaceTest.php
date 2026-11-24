@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Billing;
 
+use App\Domain\User\Mail\UserMailer;
 use App\Tests\FunctionalTestCase;
 use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,13 +21,16 @@ final class UsageRaceTest extends FunctionalTestCase
 
     private const string RESERVE = __DIR__ . '/../../Fixtures/Concurrency/usage-race.php';
 
-    /** @var ?array{userId: string, organisations: list<string>, accounts: list<string>} */
+    /** @var ?array{userId: string, address: string, organisations: list<string>, accounts: list<string>} */
     private ?array $made = null;
 
     protected function tearDown(): void
     {
         if (null !== $this->made) {
             $elsewhere = DriverManager::getConnection(self::em()->getConnection()->getParams());
+            $mail = ['person' => Json\encode(['only' => [UserMailer::person($this->made['address'])->toRfc4122()]])];
+            $elsewhere->executeStatement('DELETE FROM notification_deliveries WHERE scheduled_notification_id IN (SELECT id FROM scheduled_notifications WHERE audience @> CAST(:person AS jsonb))', $mail);
+            $elsewhere->executeStatement('DELETE FROM scheduled_notifications WHERE audience @> CAST(:person AS jsonb)', $mail);
             $elsewhere->executeStatement('DELETE FROM usage_reservations WHERE billing_account_id = ?', [$this->made['accounts'][0]]);
             $elsewhere->executeStatement('DELETE FROM audit_entries WHERE actor_id = ? OR subject_id IN (?, ?, ?)', [$this->made['userId'], $this->made['userId'], ...$this->made['organisations']]);
 
@@ -50,7 +54,7 @@ final class UsageRaceTest extends FunctionalTestCase
     public function twoOrganisationsReservingOneAccountsLastCreditsTogetherHoldThemOnce(): void
     {
         $out = \shell_exec(\escapeshellcmd('php ' . self::SETUP) . ' 2>/dev/null');
-        $this->made = Type\shape(['userId' => Type\string(), 'organisations' => Type\vec(Type\string()), 'accounts' => Type\vec(Type\string())])->coerce(Json\decode((string) $out));
+        $this->made = Type\shape(['userId' => Type\string(), 'address' => Type\string(), 'organisations' => Type\vec(Type\string()), 'accounts' => Type\vec(Type\string())])->coerce(Json\decode((string) $out));
 
         // Long enough for every process to boot its kernel before the instant they all reserve at.
         $startAt = (string) (\microtime(true) + 15);

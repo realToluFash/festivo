@@ -27,7 +27,8 @@ $entityManager = Type\instance_of(EntityManagerInterface::class)->coerce($contai
 $registrar = Type\instance_of(UserRegistrar::class)->coerce($container->get(UserRegistrar::class));
 $founder = Type\instance_of(OrganisationFounder::class)->coerce($container->get(OrganisationFounder::class));
 
-$user = $registrar->register('race-' . SecureRandom\string(8) . '@ire.events', 'Person', 'a decent passphrase')->user;
+$address = 'race-' . SecureRandom\string(8) . '@ire.events';
+$user = $registrar->register($address, 'Person', 'a decent passphrase')->user;
 $first = $founder->found($user, 'Race Events', 'NG', 'Africa/Lagos');
 $second = $founder->found($user, 'Race Weddings', 'NG', 'Africa/Lagos');
 $entityManager->flush();
@@ -40,6 +41,7 @@ $connection->executeStatement('UPDATE billing_accounts SET credit_balance = 62 W
 
 IO\write(Json\encode([
     'userId' => $user->getId()->toRfc4122(),
+    'address' => $address,
     'organisations' => [$first->getId()->toRfc4122(), $second->getId()->toRfc4122()],
     'accounts' => [$account, $abandoned],
 ]));
