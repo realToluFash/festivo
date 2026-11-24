@@ -91,7 +91,8 @@ fi
 # ── Apple webcredentials ─────────────────────────────────────────────────────
 #
 # iOS lets the app use this host's passkeys only when this file names the app
-# as <team id>.<bundle id> (sc-86888). Written only when that is configured.
+# as <team id>.<bundle id> (sc-86888), and opens a door code's /d/ link in the
+# app only when applinks names the path (sc-72). Written only when configured.
 if [ -n "${SOIRELY_APPLE_APP_ID:-}" ]; then
     mkdir -p "$WELL_KNOWN"
     APPLE_APP_ID="$(json_string SOIRELY_APPLE_APP_ID "$SOIRELY_APPLE_APP_ID")"
@@ -99,6 +100,14 @@ if [ -n "${SOIRELY_APPLE_APP_ID:-}" ]; then
 {
   "webcredentials": {
     "apps": [${APPLE_APP_ID}]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [${APPLE_APP_ID}],
+        "components": [{ "/": "/d/*" }]
+      }
+    ]
   }
 }
 JSON

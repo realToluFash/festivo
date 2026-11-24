@@ -1,9 +1,9 @@
-import type { Account, OutsideEvent } from '@soirely/api-client';
+import { type Account, type OutsideEvent, gateOf, heldByDevice } from '@soirely/api-client';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, gateOf, heldByDevice } from '../../session.ts';
+import { __setSessionState } from '../../session.ts';
 import { __forgetTab } from '../../tabKept.ts';
 import { routes } from '../index.tsx';
 
