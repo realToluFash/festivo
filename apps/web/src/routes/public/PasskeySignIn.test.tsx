@@ -121,6 +121,7 @@ describe('a passkey at sign-in (sc-86885)', () => {
 
     await screen.findByRole('button', { name: 'Use a passkey' });
     expect(sent.some((one) => one.path === '/api/auth/two-factor/verify')).toBe(false);
+    expect(screen.queryByRole('link', { name: /^Lost your passkeys/ })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Use a code instead' }));
 

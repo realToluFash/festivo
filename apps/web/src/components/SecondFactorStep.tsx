@@ -21,6 +21,7 @@ import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import { askPasskey, canUsePasskeys } from '../passkey.ts';
 import { FieldError } from './FieldError.tsx';
+import { Refused } from './PasskeyParts.tsx';
 import { ColumnBack } from './Onboarding.tsx';
 
 type Mode = 'passkey' | 'app' | 'recovery';
@@ -247,13 +248,8 @@ export function SecondFactorStep({
           <button className="link-button" type="button" onClick={() => switchTo(codeMode)}>
             {t('passkey.useCode')}
           </button>
-          {lost}
         </div>
-        {status.kind === 'refused' && (
-          <p className="passkey-refused" role="alert">
-            {t('passkey.refused')}
-          </p>
-        )}
+        {status.kind === 'refused' && <Refused line={t('passkey.refused')} />}
       </>
     );
   }
