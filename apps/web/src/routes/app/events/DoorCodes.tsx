@@ -99,7 +99,6 @@ export function DoorCodes({
     [onCodes],
   );
 
-  // While a code is shown up, its count follows the people joining by it.
   const shownId = held == null ? null : (codes[held]?.id ?? null);
   useEffect(() => {
     if (shownId == null) return;
@@ -291,7 +290,6 @@ function CodeWords({ code, className }: { code: string; className: string }) {
   );
 }
 
-/** Under the card: Print, then Make a new code, then Stop this code in red; a full code keeps Print and Stop. */
 function CodeActions({
   code,
   onPrint,
