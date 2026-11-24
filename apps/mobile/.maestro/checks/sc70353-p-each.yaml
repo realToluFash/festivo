@@ -1,0 +1,107 @@
+# sc-70353: every person's role sheet on the phone, the list back at its top before each, waiting for the scroll to settle.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_AMAKA}' }, timeout: 30000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_MOBILE}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_MOBILE}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-mobile
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_MEMBER}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_MEMBER}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-member
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_AMAKA}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_AMAKA}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-amaka
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_DOTTED}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_DOTTED}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-dotted
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_UNBROKEN}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_UNBROKEN}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-unbroken
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- swipe: { direction: DOWN, duration: 300 }
+- swipe: { direction: DOWN, duration: 300 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.${P_DOMAIN}' },
+      direction: DOWN,
+      timeout: 15000,
+      visibilityPercentage: 100,
+    }
+- waitForAnimationToEnd: { timeout: 5000 }
+- tapOn: { id: 'people.row.${P_DOMAIN}' }
+- extendedWaitUntil: { visible: { id: 'people.role.done' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: role-domain
+- tapOn: { id: 'people.role.done' }
+- waitForAnimationToEnd: { timeout: 5000 }
