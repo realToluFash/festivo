@@ -1,0 +1,170 @@
+# sc-88756 iPad upright: B opened from Events (Overview), then Guests from B's guests notification over A's page, then ‹ back to A left at Guests.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: 'Drafts.*'
+    timeout: 30000
+- tapOn: 'Drafts.*'
+- extendedWaitUntil:
+    visible: 'Ada and Tunde wedding'
+    timeout: 20000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn: 'Ada and Tunde wedding'
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: events-overview
+- tapOn:
+    id: event.nav.guests
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: events-guests
+- tapOn:
+    id: event.nav.seating
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: events-seating
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: ${NG_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: bell-guests
+- tapOn:
+    id: event.nav.budget
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: b-budget-over-a
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: back-to-a-overview
+- tapOn:
+    id: event.nav.guests
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: event.nav.staff
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: event.nav.guests
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- openLink: ${METRO_URL}/--/events/${A}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- tapOn:
+    id: ${NG_B}
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: bell-b-over-a-guests
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc88756.never
+    timeout: 2500
+    optional: true
+- takeScreenshot: back-a-guests
