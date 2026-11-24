@@ -66,6 +66,7 @@ describe('every page that places its own notices at a desk (sc-39471, #88228)', 
   it('is found by walking the routes', () => {
     expect(placing).toContain('/app/settings/vendors/payment-reminders');
     expect(placing).toContain('/app/calendar');
+    expect(placing).toContain('/app/menu-library');
   });
 
   it.each(placing)('%s shows the sign-in rules’ notice once', async (path) => {
@@ -95,6 +96,55 @@ describe('"Google linked" on Settings at a desk (sc-39471, #88228)', () => {
     const notice = (await screen.findByText(LINKED)).closest('.notice');
 
     expect(notice?.closest('.settings-desk-page')).not.toBeNull();
+  });
+});
+
+describe('the sign-in rules’ notices on the Menu library at a desk (sc-39471, #88656)', () => {
+  it('stand in the page’s own column, above its title', async () => {
+    signedIn();
+    at('/app/menu-library');
+
+    const notice = (await screen.findByText('Two-factor required by Ìrè Events')).closest(
+      '.rn-box',
+    );
+
+    expect(notice?.closest('.desk.lib-page')).not.toBeNull();
+    expect(
+      notice!.compareDocumentPosition(screen.getByRole('heading', { level: 1 })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('put the offline box there too, above the title', async () => {
+    signedIn(IRE);
+    const soirely = { reachable: true };
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (!soirely.reachable || !String(input).includes(`/api/orgs/${IRE.id}/dishes`))
+        throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify({ dishes: [], canManage: true, seesPrices: true }), {
+        status: 200,
+      });
+    });
+    at('/app/menu-library');
+    const heading = await screen.findByRole('heading', { level: 1 });
+    await screen.findByRole('heading', { level: 2 });
+
+    soirely.reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    const box = await waitFor(() => {
+      const found = document.querySelector('.offline-box');
+      expect(found?.querySelector('.ev-offline')).not.toBeNull();
+
+      return found!;
+    });
+
+    expect(document.querySelectorAll('.offline-box')).toHaveLength(1);
+    expect(box.closest('.desk.lib-page')).not.toBeNull();
+    expect(box.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 

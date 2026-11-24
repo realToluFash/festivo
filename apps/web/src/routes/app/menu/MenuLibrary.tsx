@@ -545,7 +545,6 @@ function Library({
 
   return (
     <div className="desk desk-page lib-page">
-      {desk.above}
       <TitleRow
         title={t('menuLibrary.title')}
         titleRef={title}
@@ -567,7 +566,6 @@ function Library({
         }
         bell={desk.bell}
       />
-      {desk.said}
       <p className="lib-sub">{t('menuLibrary.sub')}</p>
       {load.kind === 'loaded' && !manage && (
         <p className="mn-lock">
