@@ -21,6 +21,7 @@ import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import { askPasskey, canUsePasskeys } from '../passkey.ts';
 import { FieldError } from './FieldError.tsx';
+import { NoBrowser, Refused, Waiting } from './PasskeyParts.tsx';
 import { ColumnBack } from './Onboarding.tsx';
 
 type Mode = 'passkey' | 'app' | 'recovery';
@@ -226,10 +227,7 @@ export function SecondFactorStep({
         </div>
 
         {status.kind === 'waiting' ? (
-          <p className="passkey-waiting" role="status">
-            <span className="pending-spinner" aria-hidden="true" />
-            {t('passkey.waiting')}
-          </p>
+          <Waiting />
         ) : (
           <button
             className="button button-primary"
@@ -247,13 +245,8 @@ export function SecondFactorStep({
           <button className="link-button" type="button" onClick={() => switchTo(codeMode)}>
             {t('passkey.useCode')}
           </button>
-          {lost}
         </div>
-        {status.kind === 'refused' && (
-          <p className="passkey-refused" role="alert">
-            {t('passkey.refused')}
-          </p>
-        )}
+        {status.kind === 'refused' && <Refused line={t('passkey.refused')} />}
       </>
     );
   }
@@ -266,9 +259,7 @@ export function SecondFactorStep({
           {mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}
         </h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
-        {factors.passkeys && !browserCan && (
-          <p className="passkey-nobrowser">{t('passkey.noBrowser')}</p>
-        )}
+        {factors.passkeys && !browserCan && <NoBrowser />}
         {(status.kind === 'paused' || status.kind === 'failed') && (
           <div className="auth-notice" role="alert">
             <p className="auth-notice-title">

@@ -767,6 +767,9 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Use a code instead' }));
 
     expect(dialog("Confirm it's you").getByLabelText('Recovery code')).toBeDefined();
+    expect(
+      dialog("Confirm it's you").getByText('Enter one of your recovery codes. Each works once.'),
+    ).toBeDefined();
     expect(dialog("Confirm it's you").queryByLabelText('Your password')).toBeNull();
     expect(
       dialog("Confirm it's you").getByRole('button', { name: 'Use a passkey instead' }),
