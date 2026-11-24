@@ -9,7 +9,7 @@ import os
 from . import machine, roles
 
 ROLE = ("model", "effort", "inboxEffort", "wakeEvery", "workers", "maxBudgetUsd")
-DEFAULTS = ("model", "effort", "inboxEffort", "wakeEvery", "maxBudgetUsd")
+DEFAULTS = ROLE
 MACHINE = ("dailyBudgetUsd",)
 
 
@@ -86,14 +86,13 @@ def changed(config, where, changes):
 
 
 def problems(before, after, known, logged_in):
-    """What `sq run` would say of `after` that it does not say of `before`, so a role refused
-    for something else, a missing login say, does not stop a change to its effort."""
+    """What `sq run` would say of `after` that it does not say of `before`, in its own words,
+    so a role refused for something else, a missing login say, does not stop a change."""
     errors, refused, _ = machine.check(before, known, logged_in)
     new_errors, new_refused, _ = machine.check(after, known, logged_in)
-    found = [error for error in new_errors if error not in errors]
-    found += [f"{role}: {why}" if not why.startswith(role) else why
-              for role, why in new_refused.items() if refused.get(role) != why]
-    return found
+    return [f"error: {error}" for error in new_errors if error not in errors] + \
+        [f"refused {role}: {why}" for role, why in new_refused.items()
+         if refused.get(role) != why]
 
 
 def save(where, changes, asked_revision, path=None, known=None, logged_in=machine.account):
@@ -110,7 +109,7 @@ def save(where, changes, asked_revision, path=None, known=None, logged_in=machin
         return done
     found = problems(before, after, known, logged_in)
     if found:
-        raise Refused(409, "\n".join(f"error: {line}" for line in found))
+        raise Refused(409, "\n".join(found))
     write(path, json.dumps(after, indent=2) + "\n", keep=text)
     return done
 

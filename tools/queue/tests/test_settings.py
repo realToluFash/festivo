@@ -1,5 +1,6 @@
 """The settings `sq web` changes in `agents.json`, against a file in a temporary folder."""
 
+import difflib
 import json
 import pathlib
 import tempfile
@@ -75,12 +76,12 @@ class Settings(unittest.TestCase):
     def test_a_value_sq_run_refuses_writes_nothing_and_says_what_sq_run_says(self):
         before = self.file.read_text()
         for where, changes, said in (
-                ("dev2", {"workers": 2}, "only pm, ux, bm, cd, lead run more"),
+                ("dev2", {"workers": 2}, "refused dev2: workers is 2, but dev2 keeps one stack"),
                 ("dev2", {"effort": "furious"}, "effort 'furious' is not one"),
                 ("dev2", {"model": "gpt-9"}, "model 'gpt-9' is not one sq accepts"),
                 ("ops", {"wakeEvery": "soon"}, "wakeEvery 'soon' is not a time"),
-                ("defaults", {"model": None}, "no default model"),
-                ("machine", {"dailyBudgetUsd": -1}, "dailyBudgetUsd is -1")):
+                ("defaults", {"model": None}, "error: no default model"),
+                ("machine", {"dailyBudgetUsd": -1}, "error: dailyBudgetUsd is -1")):
             with self.subTest(where=where, changes=changes):
                 with self.assertRaises(settings.Refused) as refused:
                     self.save(where, changes)
@@ -89,6 +90,22 @@ class Settings(unittest.TestCase):
         self.assertEqual(self.file.read_text(), before)
         self.assertFalse(settings.previous(self.file).exists())
 
+    def test_more_workers_in_the_defaults_is_refused_naming_each_role_it_would_stop(self):
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("defaults", {"workers": 2})
+        lines = str(refused.exception).splitlines()
+        self.assertEqual(sorted(line.split(":")[0] for line in lines),
+                         ["refused dev2", "refused ops"])
+        self.assertNotIn("workers", self.on_disk()["defaults"])
+
+    def test_a_save_changes_only_the_lines_of_the_fields_it_changed(self):
+        self.save("pm", {"effort": "low"})
+        diff = [line for line in difflib.unified_diff(
+            settings.previous(self.file).read_text().splitlines(),
+            self.file.read_text().splitlines(), lineterm="", n=0)
+            if line[:1] in "+-" and line[:3] not in ("+++", "---")]
+        self.assertEqual(diff, ['-      "effort": "high"', '+      "effort": "low"'])
+
     def test_more_workers_are_taken_by_a_role_that_may_run_them(self):
         self.save("pm", {"workers": 2})
         self.assertEqual(self.on_disk()["roles"]["pm"]["workers"], 2)
@@ -96,7 +113,6 @@ class Settings(unittest.TestCase):
     def test_a_field_the_page_does_not_own_or_a_role_not_listed_is_refused(self):
         for where, changes, status in (("dev2", {"claudeConfigDir": "~/.x"}, 400),
                                        ("machine", {"workspace": "~/x"}, 400),
-                                       ("defaults", {"workers": 3}, 400),
                                        ("qa", {"effort": "high"}, 404)):
             with self.subTest(where=where), self.assertRaises(settings.Refused) as refused:
                 self.save(where, changes)
