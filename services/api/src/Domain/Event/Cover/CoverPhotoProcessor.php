@@ -8,7 +8,9 @@ use App\Domain\Event\Cover\Exception\CoverPhotoRefused;
 use Imagick;
 use ImagickException;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Regex;
+use Psl\Str\Byte;
 
 /** Turns an uploaded photo into the sizes a cover is shown at, re-encoded so nothing of the original's metadata survives (sc-3590). */
 final readonly class CoverPhotoProcessor
@@ -18,6 +20,13 @@ final readonly class CoverPhotoProcessor
 
     /** Each size's width; a photo narrower than one is kept at its own width. */
     public const array SIZES = ['small' => 640, 'medium' => 1280, 'large' => 1920];
+
+    /** The link card's picture (sc-89272): the 1200-wide frame chat apps expect, at 16:9. */
+    public const int CARD_WIDTH = 1200;
+    public const int CARD_HEIGHT = 675;
+
+    /** So it loads on a slow network; WhatsApp shows no picture for a large one. */
+    private const int CARD_MAXIMUM_BYTES = 300_000;
 
     private const array FORMATS = ['JPEG', 'PNG', 'WEBP', 'HEIC', 'HEIF'];
 
@@ -57,6 +66,34 @@ final readonly class CoverPhotoProcessor
         $image->clear();
 
         return $webp;
+    }
+
+    /** The frame the host set, cropped as the page's `object-position: 50% <position>%` crops it, as a JPEG because not every chat app shows WebP. */
+    public function card(string $photo, int $position): string
+    {
+        $image = new Imagick();
+        $image->readImageBlob($photo);
+        $scale = Math\maxva(self::CARD_WIDTH / $image->getImageWidth(), self::CARD_HEIGHT / $image->getImageHeight());
+        $width = (int) Math\ceil($image->getImageWidth() * $scale);
+        $height = (int) Math\ceil($image->getImageHeight() * $scale);
+        $image->resizeImage($width, $height, Imagick::FILTER_LANCZOS, 1);
+        $image->cropImage(self::CARD_WIDTH, self::CARD_HEIGHT, Math\div($width - self::CARD_WIDTH, 2), Math\div(($height - self::CARD_HEIGHT) * $position, 100));
+        $image->setImagePage(0, 0, 0, 0);
+        $image->setImageFormat('JPEG');
+        $image->stripImage();
+
+        $jpeg = '';
+        foreach ([82, 72, 62, 52, 42] as $quality) {
+            $image->setImageCompressionQuality($quality);
+            $jpeg = $image->getImageBlob();
+            if (Byte\length($jpeg) <= self::CARD_MAXIMUM_BYTES) {
+                break;
+            }
+        }
+
+        $image->clear();
+
+        return $jpeg;
     }
 
     /** @throws CoverPhotoRefused */
