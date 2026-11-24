@@ -54,7 +54,7 @@ import {
 } from './AccountModel.ts';
 import { useCountdown, useZoneHeld } from './AccountParts.tsx';
 import { HOME_ZONE, PHONE_COUNTRY, phoneShown, sentCodeProblem, ZONES } from './AccountSample.ts';
-import { saveName, savedName } from './savedName.ts';
+import { saveName, useSavedName } from './savedName.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 
 export { ACCOUNT_STATES } from './AccountModel.ts';
@@ -85,7 +85,9 @@ function AccountPage({ start }: { start: AccountStart }) {
   const shell = useShell();
   const clear = useRowClear();
   const yours = shell.viewer !== 'member';
-  const [name, setName] = useState<string>(() => (yours ? savedName() : null) ?? SAMPLE.name);
+  const saved = useSavedName();
+  const [theirs, setTheirs] = useState<string>(SAMPLE.name);
+  const name = yours ? (saved ?? SAMPLE.name) : theirs;
   const [zone, setZone] = useState(HOME_ZONE);
   const [emails, setEmails] = useState(start.emails);
   const [phones, setPhones] = useState(start.phones);
@@ -334,8 +336,8 @@ function AccountPage({ start }: { start: AccountStart }) {
         opener={opener}
         onClose={() => setScreen(null)}
         onSave={(next) => {
-          setName(next);
           if (yours) saveName(next);
+          else setTheirs(next);
           done(t('nameCard.saved', { name: next }));
 
           return Promise.resolve(null);
