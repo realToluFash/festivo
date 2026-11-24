@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  EVENT_ROLES,
   ADD_PROMPT,
   addedToast,
   addRefusedLine,
@@ -421,5 +422,23 @@ describe('adding someone from outside (sc-71)', () => {
     expect(
       peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
     ).toHaveLength(4);
+  });
+});
+
+describe('the service levels on someone from outside (sc-4002)', () => {
+  it('offers them to someone from outside, after the event roles, and never to a member', () => {
+    const start = peopleStart(peopleStateOf('longAddress'));
+    const one = start.onEvent.find((each) => each.id === start.opened?.id) as OnEvent;
+
+    expect(sheetWords({ ...one, outside: true }).roles).toEqual([
+      ...EVENT_ROLES,
+      'Can work the floor',
+      'Can work the pass',
+      'Can run the floor',
+    ]);
+    expect(sheetWords({ ...one, outside: false }).roles).toEqual(EVENT_ROLES);
+    expect(sheetWords(one).means('Can run the floor')).toBe(
+      'Starts service, fires courses and acts on any table. Nothing else of the event.',
+    );
   });
 });

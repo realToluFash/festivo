@@ -29,6 +29,7 @@ const MAKING: Record<MakeState, readonly [string, string]> = {
   past: ['Making · an end that has passed', 'Choose a time that has not passed yet.'],
   making: ['Making · making', 'Making… held, then the card'],
   failed: ['Making · failed', 'The line at the top, and Try again'],
+  refused: ['Making · refused at Can run the floor', 'sc-4002’s level_not_allowed_for_code'],
 };
 
 const HOLDING: Record<HoldState, readonly [string, string]> = {
