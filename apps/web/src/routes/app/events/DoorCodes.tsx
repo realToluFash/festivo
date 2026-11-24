@@ -546,7 +546,10 @@ function MakeDialog({
       (form.ends.kind === 'earlier' ? timeRef : endsRef).current?.focus();
       return;
     }
-    const sent: NewDoorCode = { ...newCode(form, clock), replaces };
+    const sent: NewDoorCode = {
+      ...newCode(form, clock),
+      ...(replaces == null ? {} : { replaces }),
+    };
     setBusy(true);
     setFailed(null);
     try {
