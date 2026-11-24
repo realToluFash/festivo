@@ -104,7 +104,7 @@ describe('a focused screen whose title takes focus with each new step (sc-11032)
 
   it('gives every Android window it opens, an ask and a menu too, a name TalkBack speaks as nothing, above every other text in it (#41817)', () => {
     expect(screen).toMatch(
-      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}\s*\{children\}/,
+      /onDismiss=\{gone\}\s*>\s*\{Platform\.OS === 'android' && <SilentWindowName \/>\}\s*<WindowArriving\.Provider value=\{arriving\}>\{children\}/,
     );
     expect(screen.match(/<SilentWindowName \/>/g)).toHaveLength(1);
   });

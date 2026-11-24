@@ -49,7 +49,8 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
+import { holdOpenedFocus, WindowArriving } from './openedFocus.ts';
+import { bothRefs, SETTLED_MS, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
@@ -396,34 +397,31 @@ export function focusNewField(input: TextInputInstance | null): () => void {
   return () => clearTimeout(bound);
 }
 
-/** An Android window slides or fades in for 200ms, and a field it opens with is settled in it half a beat later. */
-const OPENED_FIELD_SETTLED_MS = 450;
-
-/** An autofocused field in an Android window that slides in loses focus as the window arrives, the keys staying up over a field that takes no typing (sc-91027): it takes focus again as the keys rise and once the window has arrived, unless another field holds it by then. */
+/** A field a sliding Android window opens with loses focus as the window arrives, the keys staying up over a field that takes no typing (sc-91027): it takes focus again as `holdOpenedFocus` has it. */
 export function useAutoFocusHeld(
   autoFocus: boolean | undefined,
 ): RefObject<TextInputInstance | null> {
   const input = useRef<TextInputInstance>(null);
-  const [opensFocused] = useState(() => Platform.OS === 'android' && autoFocus === true);
+  const arriving = useContext(WindowArriving);
+  const [opensFocused] = useState(() => arriving && autoFocus === true);
 
   useEffect(() => {
     if (!opensFocused) return;
-    const retake = () => {
-      const field = input.current;
-      if (field == null || !field.isConnected) return;
-      const holder = TextInput.State.currentlyFocusedInput();
-      if (holder == null || holder === field) raiseKeysOn(field);
-    };
-    const risen = Keyboard.addListener('keyboardDidShow', retake);
-    const settled = setTimeout(() => {
-      risen.remove();
-      retake();
-    }, OPENED_FIELD_SETTLED_MS);
 
-    return () => {
-      clearTimeout(settled);
-      risen.remove();
-    };
+    return holdOpenedFocus({
+      field: () => (input.current?.isConnected === true ? input.current : null),
+      holder: () => TextInput.State.currentlyFocusedInput(),
+      raise: raiseKeysOn,
+      onKeys: (up, down) => {
+        const risen = Keyboard.addListener('keyboardDidShow', up);
+        const fallen = Keyboard.addListener('keyboardDidHide', down);
+        return () => {
+          risen.remove();
+          fallen.remove();
+        };
+      },
+      settledMs: SETTLED_MS,
+    });
   }, [opensFocused]);
 
   return input;

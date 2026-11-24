@@ -29,6 +29,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { remeasureAfter } from './anchorRemeasure.ts';
+import { WindowArriving } from './openedFocus.ts';
 import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { reachableOffset } from './reachableOffset.ts';
@@ -83,6 +84,21 @@ function useClearOfGoing(): boolean {
   return clear;
 }
 
+/** True from when `up` turns true until SETTLED_MS later, and false while it is false. */
+function useArriving(up: boolean): boolean {
+  const [arrived, setArrived] = useState(false);
+  if (!up && arrived) setArrived(false);
+
+  useEffect(() => {
+    if (!up) return;
+    const settled = setTimeout(() => setArrived(true), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [up]);
+
+  return up && !arrived;
+}
+
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
@@ -106,6 +122,7 @@ function Window({
   const here = useIsFocused();
   const clear = useClearOfGoing();
   const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
+  const arriving = useArriving(shown && slides && Platform.OS === 'android');
   const showing = useRef(false);
 
   useLayoutEffect(() => {
@@ -134,7 +151,7 @@ function Window({
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
-      {children}
+      <WindowArriving.Provider value={arriving}>{children}</WindowArriving.Provider>
     </Modal>
   );
 }
