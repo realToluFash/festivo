@@ -121,10 +121,10 @@ describe('a typed rate, by sc-83’s Form checks (decided 17 Oct)', () => {
 
   it('gives the example at the currency’s minor unit, and says amount on a fixed line', () => {
     expect(priceProblemWords(t, 'decimals', false, 'en', 'GBP')).toBe(
-      "That has too many decimal places for this event's currency. Enter the rate like 12.50.",
+      'That has too many decimal places for this event’s currency. Enter the rate like 12.50.',
     );
     expect(priceProblemWords(t, 'decimals', true, 'en', 'KWD')).toBe(
-      "That has too many decimal places for this event's currency. Enter the amount like 12.500.",
+      'That has too many decimal places for this event’s currency. Enter the amount like 12.500.',
     );
     expect(priceProblemWords(t, 'decimals', false, 'en', 'JPY')).toContain('like 12.');
     expect(priceProblemWords(t, 'blank', true, 'en', 'GBP')).toBe('Enter the amount.');
@@ -139,7 +139,7 @@ describe('Add a cost asks for no number the event already knows', () => {
       '96 said yes now, up to 133 if all come · from the guest list',
     );
     expect(basisLine(t, now, 'per_table', EN)).toBe('No seating plan yet');
-    expect(basisLine(t, now, 'per_day', EN)).toBe("3 days, from the event's dates");
+    expect(basisLine(t, now, 'per_day', EN)).toBe('3 days, from the event’s dates');
     expect(basisLine(t, now, 'fixed', EN)).toBe('Counted once');
   });
 });
