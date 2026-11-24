@@ -111,7 +111,6 @@ final readonly class Passkeys
             $made = $this->ceremonies->register($this->relyingParty, $parts['clientDataJSON'], $parts['attestationObject'], $challenge[0]);
         } catch (CeremonyRefused $refused) {
             $this->logger->info('A new passkey was refused: {reason}', ['reason' => $refused->getMessage()]);
-            $this->entityManager->flush();
 
             throw new ApiException(ErrorCode::PasskeyRefused, 'passkey.did_not_work');
         }
@@ -192,6 +191,7 @@ final readonly class Passkeys
         }
 
         $this->entityManager->remove($held);
+        $this->entityManager->flush();
 
         if (!Iter\contains($steps, $held->getStep()) || $held->getExpiresAt() <= $this->clock->now()) {
             throw new CeremonyRefused('challenge made for another step, or lapsed');

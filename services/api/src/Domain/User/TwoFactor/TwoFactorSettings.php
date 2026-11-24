@@ -152,9 +152,11 @@ final readonly class TwoFactorSettings
      */
     public function addPasskey(User $user, array $credential, ?string $asked = null, ?string $userAgent = null): array
     {
-        return $this->entityManager->wrapInTransaction(function () use ($user, $credential, $asked, $userAgent): array {
+        // Outside the transaction, so a refused registration still spends its challenge.
+        [$passkey, $step] = $this->passkeys->register($user, $credential, [PasskeyStep::TurnOn, PasskeyStep::Register]);
+
+        return $this->entityManager->wrapInTransaction(function () use ($user, $passkey, $step, $asked, $userAgent): array {
             $wasOn = $this->secondFactors->isOn($user);
-            [$passkey, $step] = $this->passkeys->register($user, $credential, [PasskeyStep::TurnOn, PasskeyStep::Register]);
 
             if ($wasOn !== (PasskeyStep::Register === $step)) {
                 throw $wasOn

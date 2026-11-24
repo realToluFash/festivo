@@ -9,6 +9,7 @@ use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\UserRegistrar;
+use App\Entity\Passkey;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\PasskeyStep;
@@ -21,6 +22,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Encoding\Base64;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
@@ -161,6 +163,54 @@ final class PasskeyTwoFactorTest extends ApiTestCase
 
         $this->call('POST', '/api/auth/two-factor/passkeys/options', ['make' => true, 'passkey' => $this->phone->get($this->stepChallenge('add'))]);
         self::assertSame(ErrorCode::PasskeyLimit->type(), $this->last()['type']);
+    }
+
+    #[Test]
+    public function theEleventhPasskeyIsRefusedWhenItIsRegisteredAndItsChallengeIsSpent(): void
+    {
+        $this->authenticated();
+        $this->turnOnWith($this->phone);
+
+        foreach (Vec\range(2, 9) as $_) {
+            $this->addWith(new VirtualAuthenticator());
+        }
+
+        [$tenth, $eleventh] = Vec\map([1, 2], fn (): string => VirtualAuthenticator::challengeOf(
+            $this->call('POST', '/api/auth/two-factor/passkeys/options', ['make' => true, 'passkey' => $this->phone->get($this->stepChallenge('add'))]),
+        ));
+        $this->call('POST', '/api/auth/two-factor/passkeys', ['passkey' => new VirtualAuthenticator()->create($tenth)]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $late = new VirtualAuthenticator()->create($eleventh);
+        $this->call('POST', '/api/auth/two-factor/passkeys', ['passkey' => $late]);
+        self::assertSame(ErrorCode::PasskeyLimit->type(), $this->last()['type']);
+        self::assertSame(10, self::service(PasskeyRepository::class)->countFor($this->fresh()));
+
+        $this->call('POST', '/api/auth/two-factor/passkeys', ['passkey' => $late]);
+        self::assertSame(ErrorCode::PasskeyRefused->type(), $this->last()['type'], 'the refused registration spent its challenge');
+    }
+
+    #[Test]
+    public function aRemovedPasskeyIsRefusedAndAUsedOneSaysWhetherItIsSynced(): void
+    {
+        $this->authenticated();
+        $this->turnOnWith($this->phone);
+        $key = new VirtualAuthenticator();
+        $this->addWith($key);
+        $keys = Type\instance_of(Passkey::class)->coerce(self::service(PasskeyRepository::class)->findOneOf($this->fresh(), Base64\encode($key->credentialId, Base64\Variant::UrlSafe, padding: false)));
+
+        $this->call('POST', '/api/auth/two-factor/remove', ['factor' => $keys->getId()->toRfc4122(), 'passkey' => $this->phone->get($this->stepChallenge('remove'))]);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        $challenge = $this->challenge();
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'passkey' => $key->get($this->signInChallenge($challenge))]);
+        self::assertSame(ErrorCode::PasskeyRefused->type(), $this->last()['type'], 'the removed passkey');
+
+        $this->phone->backedUp = false;
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'passkey' => $this->phone->get($this->signInChallenge($challenge))]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->authenticated();
+        self::assertFalse(Type\dict(Type\string(), Type\mixed())->coerce(Type\vec(Type\mixed())->coerce($this->call('GET', '/api/auth/two-factor')['factors'])[0])['synced']);
     }
 
     #[Test]

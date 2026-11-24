@@ -62,6 +62,25 @@ final class CeremoniesTest extends TestCase
         yield 'another origin' => [static fn (VirtualAuthenticator $a) => $a->origin = 'http://evil.localhost:5173', 'challenge', null];
         yield 'another challenge' => [static fn () => null, 'other', null];
         yield 'no relying party set' => [static fn () => null, 'challenge', new RelyingParty('127.0.0.1', 'http://127.0.0.1:5173')];
+        yield 'no user verification' => [static fn (VirtualAuthenticator $a) => $a->userVerified = false, 'challenge', null];
+        yield 'no user presence' => [static fn (VirtualAuthenticator $a) => $a->userPresent = false, 'challenge', null];
+    }
+
+    /** @return iterable<string, array{0: callable(VirtualAuthenticator): void}> */
+    public static function unverifiedUsers(): iterable
+    {
+        yield 'no user verification' => [static fn (VirtualAuthenticator $a) => $a->userVerified = false];
+        yield 'no user presence' => [static fn (VirtualAuthenticator $a) => $a->userPresent = false];
+    }
+
+    #[DataProvider('unverifiedUsers')]
+    #[Test]
+    public function aRegistrationWithoutTheUserIsRefused(callable $change): void
+    {
+        $change($this->authenticator);
+
+        $this->expectException(CeremonyRefused::class);
+        $this->register('challenge');
     }
 
     #[DataProvider('refusals')]

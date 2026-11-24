@@ -18,6 +18,8 @@ final class VirtualAuthenticator
     public string $credentialId;
     public int $signCount = 0;
     public bool $backedUp = true;
+    public bool $userPresent = true;
+    public bool $userVerified = true;
     public string $aaguid = 'fbfc3007154e4ecc8c0b6e020557d7bd';
     private OpenSSLAsymmetricKey $key;
 
@@ -78,8 +80,7 @@ final class VirtualAuthenticator
 
     private function authData(int $extraFlags): string
     {
-        // User present, user verified, backup eligible, and backed up when it is.
-        $flags = 0x01 | 0x04 | 0x08 | ($this->backedUp ? 0x10 : 0) | $extraFlags;
+        $flags = ($this->userPresent ? 0x01 : 0) | ($this->userVerified ? 0x04 : 0) | 0x08 | ($this->backedUp ? 0x10 : 0) | $extraFlags;
 
         return \hash('sha256', $this->rpId, true) . Byte\chr($flags) . \pack('N', $this->signCount);
     }
