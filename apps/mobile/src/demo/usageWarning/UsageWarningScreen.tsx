@@ -24,6 +24,7 @@ import {
   feedOf,
   langOf,
   said,
+  whenOf,
 } from './usageRules.ts';
 
 const MENU_AFTER_MS = 300;
@@ -35,6 +36,8 @@ export function UsageWarningScreen({ state }: { state: UsageState }) {
   const { kind } = useLayout();
   const phone = kind === 'phone';
   const lang = langOf(state);
+  const when = (createdAt: string) =>
+    whenOf(createdAt, lang, (time) => t('notifications.atTime', { time, lng: lang }));
   const [items, setItems] = useState<readonly FeedItem[]>(() =>
     state === 'opened'
       ? feedOf(state).map((item, index) => (index === 0 ? { ...item, read: true } : item))
@@ -66,7 +69,10 @@ export function UsageWarningScreen({ state }: { state: UsageState }) {
         category: item.category,
         title: EVENT_SAMPLE.title,
         lines: EVENT_SAMPLE.lines,
-        where: t('notifications.whereWhen', { event: EVENT_SAMPLE.event, when: item.when }),
+        where: t('notifications.whereWhen', {
+          event: EVENT_SAMPLE.event,
+          when: when(item.createdAt),
+        }),
         unread: !item.read,
         muted: false,
         more: {
@@ -83,7 +89,7 @@ export function UsageWarningScreen({ state }: { state: UsageState }) {
       category: item.category,
       title: words.heading,
       lines: words.lines,
-      where: item.when,
+      where: when(item.createdAt),
       unread: !item.read,
       muted: false,
       more: null,
@@ -101,7 +107,9 @@ export function UsageWarningScreen({ state }: { state: UsageState }) {
   function play(): void {
     setItems((now) => [ARRIVAL, ...now]);
     if (ARRIVAL.warning != null)
-      readOut(t('notifications.arrived', { title: said(ARRIVAL.warning, lang).heading }));
+      readOut(
+        t('notifications.arrived', { title: said(ARRIVAL.warning, lang).heading, lng: lang }),
+      );
   }
 
   const demo = (

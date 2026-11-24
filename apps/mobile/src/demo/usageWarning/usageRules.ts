@@ -1,3 +1,5 @@
+import { whenShown } from '@soirely/domain';
+
 export type Kind = 'drafts' | 'storage';
 export type Threshold = 80 | 100;
 /** fr and pt are length stand-ins, about 30% longer, with values formatted in that language: l10n words them on the translation ticket. */
@@ -200,38 +202,54 @@ export interface FeedItem {
   id: string;
   warning: Warning | null;
   category: 'money' | 'event_changes';
-  when: string;
+  createdAt: string;
   read: boolean;
+}
+
+/** The demo's now, so today's items read as a time and Friday's as a date in every run. */
+export const DEMO_NOW = new Date(2026, 10, 25, 16, 0);
+
+function today(hours: number, minutes: number): string {
+  return new Date(2026, 10, 25, hours, minutes).toISOString();
+}
+
+const FRIDAY = new Date(2026, 10, 20, 17, 40).toISOString();
+
+/** "at 14:05" today and the locale's date before today, as the built bell shows it (whenShown), in the shown language. */
+export function whenOf(createdAt: string, lang: Lang, atTime: (time: string) => string): string {
+  const shown = whenShown(createdAt, DEMO_NOW, localeOf(lang));
+
+  return shown.today ? atTime(shown.time) : shown.date;
 }
 
 const EVENT_ITEM: FeedItem = {
   id: 'event',
   warning: null,
   category: 'event_changes',
-  when: 'at 11:20',
+  createdAt: today(11, 20),
   read: false,
 };
 
 export function feedOf(state: UsageState): readonly FeedItem[] {
-  const usage = (key: keyof typeof WARNINGS, when: string, read = false): FeedItem => ({
+  const usage = (key: keyof typeof WARNINGS, createdAt: string, read = false): FeedItem => ({
     id: key,
     warning: WARNINGS[key],
     category: 'money',
-    when,
+    createdAt,
     read,
   });
 
   switch (state) {
     case 'read':
-      return [usage('drafts80', 'at 14:05', true), usage('storage80', 'at 09:12', true)];
+      return [usage('drafts80', today(14, 5), true), usage('storage80', today(9, 12), true)];
     case 'all':
-      return [usage('drafts100', 'at 14:05'), usage('storage100', 'at 09:12')];
+      return [usage('drafts100', today(14, 5)), usage('storage100', today(9, 12))];
     case 'feed':
-      return [usage('drafts100', 'at 14:05'), EVENT_ITEM, usage('drafts80', 'Fri 20 Nov')];
+      return [usage('drafts100', today(14, 5)), EVENT_ITEM, usage('drafts80', FRIDAY)];
     case 'live':
-      return [EVENT_ITEM, usage('drafts80', 'Fri 20 Nov')];
+      return [EVENT_ITEM, usage('drafts80', FRIDAY)];
     default:
-      return [usage('drafts80', 'at 14:05'), usage('storage80', 'at 09:12')];
+      return [usage('drafts80', today(14, 5)), usage('storage80', today(9, 12))];
   }
 }
 
@@ -239,7 +257,7 @@ export const ARRIVAL: FeedItem = {
   id: 'drafts100',
   warning: WARNINGS.drafts100,
   category: 'money',
-  when: 'at 14:05',
+  createdAt: today(14, 5),
   read: false,
 };
 

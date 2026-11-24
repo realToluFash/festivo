@@ -9,6 +9,7 @@ import {
   sizeOf,
   usageStateOf,
   warningKeyOf,
+  whenOf,
 } from './usageWarning.ts';
 
 describe('sizeOf', () => {
@@ -91,5 +92,21 @@ describe('the states', () => {
     expect(langOf('fr', null)).toBe('fr');
     expect(langOf('emailPhone', 'pt')).toBe('pt');
     expect(warningKeyOf(null)).toBe('drafts80');
+  });
+});
+
+describe('whenOf', () => {
+  it('shows today as a time and an earlier day as a date, in the shown language', () => {
+    const atTime = (time: string) => `[${time}]`;
+    const [today, , friday] = feedOf('feed').map((item) => item.createdAt) as [
+      string,
+      string,
+      string,
+    ];
+
+    expect(whenOf(today, 'en', atTime)).toMatch(/^\[14[:.h]05\]$/);
+    expect(whenOf(friday, 'fr', atTime)).toMatch(/nov/i);
+    expect(whenOf(friday, 'fr', atTime)).not.toMatch(/Fri|Nov\b/);
+    expect(whenOf(friday, 'pt', atTime)).not.toMatch(/Fri|Nov\b/);
   });
 });

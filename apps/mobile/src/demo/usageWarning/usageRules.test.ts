@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { WARNINGS, feedOf, langOf, said, sizeOf, usageStateOf } from './usageRules.ts';
+import { WARNINGS, feedOf, langOf, said, sizeOf, usageStateOf, whenOf } from './usageRules.ts';
 
 describe('the app’s usage warning item', () => {
   it('gives assistant drafts three lines and storage two', () => {
@@ -37,5 +37,21 @@ describe('the app’s usage warning item', () => {
     expect(usageStateOf(undefined)).toBe('eighty');
     expect(langOf('opened')).toBe('en');
     expect(langOf('pt')).toBe('pt');
+  });
+});
+
+describe('whenOf', () => {
+  it('shows today as a time and an earlier day as a date, in the shown language', () => {
+    const atTime = (time: string) => `[${time}]`;
+    const [today, , friday] = feedOf('feed').map((item) => item.createdAt) as [
+      string,
+      string,
+      string,
+    ];
+
+    expect(whenOf(today, 'en', atTime)).toMatch(/^\[14[:.h]05\]$/);
+    expect(whenOf(friday, 'fr', atTime)).toMatch(/nov/i);
+    expect(whenOf(friday, 'fr', atTime)).not.toMatch(/Fri|Nov\b/);
+    expect(whenOf(friday, 'pt', atTime)).not.toMatch(/Fri|Nov\b/);
   });
 });

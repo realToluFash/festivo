@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useEffect, useId, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { type BellRow, BellMute, BellPanel } from '../components/BellPanel.tsx';
@@ -18,12 +19,12 @@ import {
   WARNINGS,
   WARNING_KEYS,
   type WarningKey,
-  arrivedSaid,
   feedOf,
   langOf,
   said,
   usageStateOf,
   warningKeyOf,
+  whenOf,
 } from './usageWarning.ts';
 import './usageWarning.css';
 
@@ -55,6 +56,7 @@ export function UsageWarning() {
 }
 
 function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell: Tell }) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(state === 'other' ? OTHER : NAMED);
   const [switched, setSwitched] = useState('');
   const [items, setItems] = useState<readonly FeedItem[]>(() => feedOf(state));
@@ -104,7 +106,10 @@ function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell:
                 onClick={() => {
                   setItems((now) => [ARRIVAL, ...now]);
                   setArrived(
-                    arrivedSaid(said(ARRIVAL.warning ?? WARNINGS.drafts100, lang).heading),
+                    t('notifications.arrived', {
+                      title: said(ARRIVAL.warning ?? WARNINGS.drafts100, lang).heading,
+                      lng: lang,
+                    }),
                   );
                 }}
               >
@@ -158,6 +163,9 @@ function UsageBell({
   const box = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const unread = items.filter((item) => !item.read).length;
+  const { t } = useTranslation();
+  const when = (createdAt: string) =>
+    whenOf(createdAt, lang, (time) => t('notifications.atTime', { time, lng: lang }));
 
   useEffect(() => {
     if (!open) return undefined;
@@ -188,7 +196,10 @@ function UsageBell({
         category: item.category,
         title: EVENT_SAMPLE.title,
         lines: EVENT_SAMPLE.lines,
-        where: `${EVENT_SAMPLE.event} · ${item.when}`,
+        where: t('notifications.whereWhen', {
+          event: EVENT_SAMPLE.event,
+          when: when(item.createdAt),
+        }),
         unread: !item.read,
         muted: false,
         more: {
@@ -204,7 +215,7 @@ function UsageBell({
       category: item.category,
       title: words.heading,
       lines: words.lines,
-      where: item.when,
+      where: when(item.createdAt),
       unread: !item.read,
       muted: false,
       more: null,
@@ -284,6 +295,10 @@ function UsageEmail({ phone, lang, shown }: { phone: boolean; lang: Lang; shown:
           The demo only. {phone ? 'Phone' : 'Desktop'} mail width
           {lang === 'en' ? '' : `, ${lang === 'fr' ? 'French' : 'Portuguese'} stand-in`}. No preview
           text is set: a mail client shows the start of the body.
+        </p>
+        <p>
+          {words.link} leads to {USAGE_PLACE}. Usage this period is sc-3934’s and not drawn in the
+          Billing demo yet, so here it opens Plan and billing at the top.
         </p>
         {WARNING_KEYS.map((warning) => (
           <Link
