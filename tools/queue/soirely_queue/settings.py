@@ -7,11 +7,12 @@ import json
 import os
 import threading
 
-from . import machine, roles
+from . import logins, machine, roles
 
-ROLE = ("model", "effort", "inboxEffort", "wakeEvery", "workers", "maxBudgetUsd")
-DEFAULTS = ROLE
-MACHINE = ("dailyBudgetUsd",)
+DEFAULTS = ("model", "effort", "inboxEffort", "wakeEvery", "workers", "maxBudgetUsd")
+ACCOUNT = "claudeConfigDir"
+ROLE = DEFAULTS + (ACCOUNT,)
+MACHINE = ("dailyBudgetUsd", ACCOUNT)
 # `sq web` answers each request on a thread of its own; two saves must not both pass the
 # revision check before either writes.
 WRITING = threading.Lock()
@@ -48,7 +49,32 @@ def undoable(path=None, text=None):
     return current if written(path).read_text().strip() == current else None
 
 
-def read(path=None, known=None):
+def accounts(config, home=None, logged_in=machine.account):
+    """The Claude config folders a role may be moved to: the ones sq finds on this machine,
+    as the page's logins list them, each with who it runs as and the roles on it."""
+    return [{"folder": logins.shown(folder), "account": logged_in(folder), "roles": held}
+            for folder, held in logins.folders(config, home).items()]
+
+
+def found_folder(value, config, home=None):
+    """The one of `accounts`' folders `value` resolves to, as they name it, else `Refused`:
+    a folder's settings and hooks run in every worker started under it, so the page offers
+    no other."""
+    if isinstance(value, str) and value.strip():
+        wanted = machine.expand(value.strip()).resolve()
+        for folder in logins.folders(config, home):
+            if folder.resolve() == wanted:
+                return logins.shown(folder)
+    raise Refused(400, f"error: {value!r} is not a Claude config folder sq found on this "
+                       "machine; make it and log in to it there first")
+
+
+def shown(value):
+    """A folder as `accounts` names it, so the page can tell which one is chosen."""
+    return logins.shown(machine.expand(value)) if isinstance(value, str) and value else value
+
+
+def read(path=None, known=None, home=None, logged_in=machine.account):
     """What the page shows: each listed role's fields as the file sets them and as they are
     in force, the defaults, the machine's own, and what each field may be."""
     path = path or machine.path()
@@ -58,6 +84,10 @@ def read(path=None, known=None):
     defaults = config.get("defaults") or {}
 
     def field(own, key, role):
+        if key == ACCOUNT:
+            folder = machine.claude_dir(config, role)
+            return {"value": shown(own.get(key)), "in_force": folder and logins.shown(folder),
+                    "from": "role" if own.get(key) else "machine"}
         in_force = machine.settings(config, role).get(key)
         source = "role" if own.get(key) is not None else \
             "defaults" if defaults.get(key) is not None else "built-in"
@@ -74,17 +104,19 @@ def read(path=None, known=None):
         "revision": revision(text), "undo": undoable(path, text) is not None,
         "models": {name: model["efforts"] for name, model in known.items()},
         "parallel": list(roles.PARALLEL),
-        "machine": {key: config.get(key) for key in MACHINE},
+        "accounts": accounts(config, home, logged_in),
+        "machine": {"dailyBudgetUsd": config.get("dailyBudgetUsd"),
+                    ACCOUNT: shown(config.get(ACCOUNT))},
         "defaults": {key: default(key) for key in DEFAULTS},
         "roles": {role: {key: field(own or {}, key, role) for key in ROLE}
                   for role, own in (config.get("roles") or {}).items()},
     }
 
 
-def changed(config, where, changes):
+def changed(config, where, changes, home=None):
     """`config` with `changes` made at `where`: "machine", "defaults" or a listed role. A
-    null clears the field, so the role falls back to `defaults`. Returns the fields that
-    changed, old and new."""
+    null clears the field, so the role falls back to `defaults`, or for its account to the
+    machine's. Returns the fields that changed, old and new."""
     if where == "machine":
         allowed, entry = MACHINE, config
     elif where == "defaults":
@@ -100,6 +132,8 @@ def changed(config, where, changes):
                            f"it can be set in {machine.path()}")
     done = {}
     for key, value in changes.items():
+        if key == ACCOUNT and value is not None:
+            value = found_folder(value, config, home)
         old = entry.get(key)
         if value == old:
             continue
@@ -148,11 +182,33 @@ def problems(before, after, known, logged_in):
     return found
 
 
+def unready_accounts(after, done, logged_in):
+    """`sq run`'s line for each folder `done` moves a role, or the machine, to with no
+    Claude login, whether or not the role is refused already: `sq run` stops at a role's
+    first refusal, so `problems` would not see it, and the role would stop on it later. A
+    machine's folder names each role that runs under it, or itself when none does."""
+    found = []
+    for where, fields in done.items():
+        new = (fields.get(ACCOUNT) or {}).get("new")
+        if not new or logged_in(machine.expand(new)):
+            continue
+        folder = machine.expand(new)
+        if where != "machine":
+            found.append(f"refused {where}: {machine.no_login(folder)}")
+            continue
+        under = [role for role, own in (after.get("roles") or {}).items()
+                 if not (own or {}).get(ACCOUNT)]
+        found += [f"refused {role}: {machine.no_login(folder)}" for role in under] or \
+            [f"error: {machine.no_login(folder)}"]
+    return found
+
+
 def stale(path):
     return Refused(409, f"error: {path} changed since the page read it; read it again")
 
 
-def save(changes, asked_revision, path=None, known=None, logged_in=machine.account):
+def save(changes, asked_revision, path=None, known=None, logged_in=machine.account,
+         home=None):
     """Makes `changes`, `{where: {field: value}}`, as one change: checked once, written once,
     undone at once. Returns what changed, `{where: {field: {old, new}}}`, or raises
     `Refused` having written nothing."""
@@ -168,12 +224,14 @@ def save(changes, asked_revision, path=None, known=None, logged_in=machine.accou
         before, after = json.loads(text), json.loads(text)
         done = {}
         for where, fields in changes.items():
-            made = changed(after, str(where), fields)
+            made = changed(after, str(where), fields, home)
             if made:
                 done[str(where)] = made
         if not done:
             return done
-        found = problems(before, after, known, logged_in)
+        found = unready_accounts(after, done, logged_in)
+        found += [line for line in problems(before, after, known, logged_in)
+                  if line not in found]
         if found:
             raise Refused(409, "\n".join(found))
         write(path, json.dumps(after, indent=2) + "\n", keep=text)
