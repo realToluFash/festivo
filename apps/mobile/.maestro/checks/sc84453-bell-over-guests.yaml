@@ -1,0 +1,69 @@
+# sc-84453 iPad upright: B from the bell over A's Guests (Coming) reads ‹ Event; ‹ and the edge swipe both land on A's Guests, Coming.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}?area=guests&filter=coming
+- extendedWaitUntil:
+    visible: 'Coming · 2'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: a-guests-coming-before
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: bell-over-a-guests
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: notifications.popover
+- assertVisible: 'Ada and Tunde wedding'
+- assertVisible:
+    id: frame.back
+    text: 'Back to (Event|Evento)'
+- takeScreenshot: b-overview-event
+- tapOn:
+    id: frame.back
+- extendedWaitUntil:
+    visible: 'Coming · 2|Asisten · 2|Vienen · 2|.*· 2'
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible:
+    id: guests.filter
+- takeScreenshot: back-on-a-guests-coming
+- assertVisible:
+    id: frame.back
+    text: 'Back to Today|Volver a Hoy'
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- swipe:
+    start: 0%, 50%
+    end: 75%, 50%
+    duration: 400
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: guests.filter
+    timeout: 20000
+- takeScreenshot: swipe-on-a-guests-coming

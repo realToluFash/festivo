@@ -1,0 +1,72 @@
+# sc-84453 iPad upright: B from the bell over A, C from the bell over B; ‹ goes C to B to A, and A's ‹ is as before.
+# Every sc84453-* flow waits on qa3's event names, not only the ids: A 'Lagos Night', B 'Ada and Tunde wedding',
+# C 'Ibadan Supper', D 'Oyo Picnic' (sc84453-behind-deleted.js deletes it by that name). sc84453-copy also needs
+# COPY (a copy of A) dated Feb 11, 2027 and A dated Jan 11, 2027. Run against other events and the first wait times out.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${A}
+- extendedWaitUntil:
+    visible: 'Lagos Night'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible:
+    id: frame.back
+    text: 'Back to Today'
+- takeScreenshot: a-before
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_B}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- tapOn:
+    id: frame.bell
+- extendedWaitUntil:
+    visible:
+      id: notifications.popover
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn:
+    id: ${NO_C}
+- extendedWaitUntil:
+    visible:
+      id: frame.back
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: 'Ibadan Supper'
+- assertVisible:
+    id: frame.back
+    text: 'Back to Event'
+- takeScreenshot: c-over-b
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- assertVisible: 'Ada and Tunde wedding'
+- assertVisible:
+    id: frame.back
+    text: 'Back to Event'
+- takeScreenshot: back-to-b
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- assertVisible: 'Lagos Night'
+- assertVisible:
+    id: frame.back
+    text: 'Back to Today'
+- takeScreenshot: back-to-a
+- tapOn:
+    id: frame.back
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: frame.back
+- takeScreenshot: a-back-today
