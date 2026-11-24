@@ -414,9 +414,12 @@ function ColdStartProbe({ loaded }: { loaded: boolean }) {
     return () => clearTimeout(id);
   }, [loaded, mountedAt]);
 
+  const line = `mounts=${mounts} lag=${lag ?? '-'} settled=${settled ?? '-'}`;
+  useEffect(() => console.log(`[sc83081 probe] ${line}`), [line]);
+
   return (
     <Text testID="notifications.probe" style={styles.probe}>
-      {`mounts=${mounts} lag=${lag ?? '-'} settled=${settled ?? '-'}`}
+      {line}
     </Text>
   );
 }
@@ -450,7 +453,7 @@ function FeedMute({ eventId, testID }: { eventId: string; testID: string }) {
 }
 
 const styles = StyleSheet.create({
-  probe: { position: 'absolute', opacity: 0 },
+  probe: { position: 'absolute', opacity: 0.01 },
   framed: {
     paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXl,
