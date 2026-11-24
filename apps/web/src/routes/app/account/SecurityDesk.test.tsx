@@ -448,6 +448,31 @@ describe('two-factor at a desk', () => {
     expect(await screen.findByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
+  it('opens on the choice when a held step sent the person here and passkeys are offered (sc-86885)', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: false,
+          recoveryCodesLeft: 0,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [],
+        }),
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [{ pathname: '/app/account/security', state: { opens: 'turnOn' } }],
+        })}
+      />,
+    );
+
+    const choice = await screen.findByRole('dialog', { name: 'Turn on two-factor' });
+    expect(within(choice).getByRole('button', { name: /Use a passkey/ })).toBeDefined();
+    expect(within(choice).queryByLabelText('Enter the 6-digit code the app shows')).toBeNull();
+  });
+
   it('opens at rest when a held step sent the person here with two-factor already on', async () => {
     answering({}, true);
     render(
