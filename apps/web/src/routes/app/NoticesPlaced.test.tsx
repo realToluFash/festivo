@@ -109,6 +109,42 @@ describe('the sign-in rules’ notices on the Menu library at a desk (sc-39471, 
     );
 
     expect(notice?.closest('.desk.lib-page')).not.toBeNull();
+    expect(
+      notice!.compareDocumentPosition(screen.getByRole('heading', { level: 1 })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('put the offline box there too, above the title', async () => {
+    signedIn(IRE);
+    const soirely = { reachable: true };
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (!soirely.reachable || !String(input).includes(`/api/orgs/${IRE.id}/dishes`))
+        throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify({ dishes: [], canManage: true, seesPrices: true }), {
+        status: 200,
+      });
+    });
+    at('/app/menu-library');
+    const heading = await screen.findByRole('heading', { level: 1 });
+    await screen.findByRole('heading', { level: 2 });
+
+    soirely.reachable = false;
+    act(() => {
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    const box = await waitFor(() => {
+      const found = document.querySelector('.offline-box');
+      expect(found?.querySelector('.ev-offline')).not.toBeNull();
+
+      return found!;
+    });
+
+    expect(document.querySelectorAll('.offline-box')).toHaveLength(1);
+    expect(box.closest('.desk.lib-page')).not.toBeNull();
+    expect(box.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
 
