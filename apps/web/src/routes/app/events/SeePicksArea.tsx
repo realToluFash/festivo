@@ -12,12 +12,12 @@ import {
 } from '@soirely/api-client';
 import {
   against,
-  clockOf,
   courseHostCount,
   defaultPick,
   defaultedOn,
   dishRuledOut,
   excludedOf,
+  formatTimeOfDay,
   goesBackTo,
   hostCount,
   listFormat,
@@ -35,6 +35,7 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { ChildrenTag } from '../menu/VariantParts.tsx';
 import { allergensInSentence } from './allergenWords.ts';
@@ -241,7 +242,7 @@ function Picks({
   const names = picks.people != null;
   const courseName = (id: string) => picks.courses.find((one) => one.id === id)?.name ?? '';
   const personOf = (id: string) => picks.people?.find((one) => one.id === id);
-  const at = clockOf(picks.updatedAt);
+  const at = formatTimeOfDay(picks.updatedAt, dateLocale());
   const [askedFor] = useState(waitingFor);
 
   useEffect(() => {
