@@ -92,9 +92,16 @@ final class Version20261124120000 extends AbstractMigration
         $this->addSql('ALTER TABLE usage_records ADD CONSTRAINT FK_C2192E5994B287F FOREIGN KEY (corrects_id) REFERENCES usage_records (id) ON DELETE CASCADE NOT DEFERRABLE');
 
         // Never edited: a correction is a record of its own. A row goes only with its organisation's purge.
+        // A storage measurement is a gauge, and the day's latest measures it again in place.
         $this->addSql(<<<'SQL'
             CREATE FUNCTION usage_records_never_change() RETURNS trigger LANGUAGE plpgsql AS $$
             BEGIN
+                IF OLD.kind = 'storage_bytes'
+                    AND (NEW.id, NEW.organisation_id, NEW.billing_account_id, NEW.kind, NEW.key_scope, NEW.idempotency_key, NEW.paid_by, NEW.credits_taken, NEW.reservation_id, NEW.corrects_id)
+                        IS NOT DISTINCT FROM (OLD.id, OLD.organisation_id, OLD.billing_account_id, OLD.kind, OLD.key_scope, OLD.idempotency_key, OLD.paid_by, OLD.credits_taken, OLD.reservation_id, OLD.corrects_id)
+                THEN
+                    RETURN NEW;
+                END IF;
                 RAISE EXCEPTION 'usage_records are never edited: record a correction instead (sc-3929)';
             END $$
             SQL);

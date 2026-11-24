@@ -10,9 +10,10 @@ use App\Enum\WhatsAppCategory;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 use Symfony\Component\Uid\Uuid;
 
-/** One billable use, written once under the key of what caused it and never edited (sc-3929): a correction is a record of its own that names this one. */
+/** One billable use, written once under the key of what caused it and never edited (sc-3929): a correction is a record of its own that names this one. A storage measurement is the exception, a gauge a later measurement of the same day replaces. */
 #[ORM\Entity]
 #[ORM\Table(name: 'usage_records')]
 #[ORM\UniqueConstraint(name: 'uniq_usage_record_key', columns: ['key_scope', 'idempotency_key'])]
@@ -220,5 +221,17 @@ class UsageRecord
     public function getCorrects(): ?self
     {
         return $this->corrects;
+    }
+
+    public function remeasure(int $bytes, DateTimeImmutable $at, DateTimeImmutable $periodStart): void
+    {
+        if (UsageKind::StorageBytes !== $this->kind) {
+            throw new LogicException('Only a storage measurement is ever measured again.');
+        }
+
+        $this->quantity = $bytes;
+        $this->includedQuantity = $bytes;
+        $this->occurredAt = $at;
+        $this->periodStart = $periodStart;
     }
 }

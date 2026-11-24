@@ -205,7 +205,7 @@ final readonly class UsageMeter
         return $record;
     }
 
-    /** @param int<0, max> $bytes a gauge: one measurement per organisation per day, never reserved, settled or taken from credits */
+    /** @param int<0, max> $bytes a gauge: one measurement per organisation per day, the day's latest standing, never reserved, settled or taken from credits */
     public function measureStorage(Uuid $organisationId, DateTimeImmutable $day, int $bytes): UsageRecord
     {
         $subscription = $this->subscriptionRepository->findCurrentOf($organisationId);
@@ -217,14 +217,15 @@ final readonly class UsageMeter
 
         $record = $this->connection()->transactional(function () use ($organisation, $account, $bytes, $now, $period, $key): UsageRecord {
             $this->lockAccount($account->getId());
-            $existing = $this->recordUnder(UsageKind::StorageBytes, $key);
+            $record = $this->recordUnder(UsageKind::StorageBytes, $key);
 
-            if (null !== $existing) {
-                return $existing;
+            if (null === $record) {
+                $record = new UsageRecord($organisation, $account, UsageKind::StorageBytes, $key, $bytes, null, null, $now, $period->start, UsagePayer::Included, $bytes, 0, null, 0, null, false);
+                $this->entityManager->persist($record);
+            } else {
+                $record->remeasure($bytes, $now, $period->start);
             }
 
-            $record = new UsageRecord($organisation, $account, UsageKind::StorageBytes, $key, $bytes, null, null, $now, $period->start, UsagePayer::Included, $bytes, 0, null, 0, null, false);
-            $this->entityManager->persist($record);
             $this->entityManager->flush();
 
             $this->connection()->executeStatement(

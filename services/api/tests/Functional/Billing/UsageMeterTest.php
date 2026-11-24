@@ -15,6 +15,8 @@ use App\Domain\Billing\Meter\UnitPricer;
 use App\Domain\Billing\Meter\UsageMeter;
 use App\Domain\Billing\Meter\UsagePublisher;
 use App\Domain\Billing\Meter\UsageReader;
+use App\Domain\Billing\Model\ChangedBy;
+use App\Domain\Billing\SubscriptionChanger;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\UsageRecord;
@@ -125,6 +127,15 @@ final class UsageMeterTest extends FunctionalTestCase
 
         $this->expectException(DriverException::class);
         self::em()->getConnection()->executeStatement('UPDATE usage_records SET credits_taken = 0');
+    }
+
+    #[Test]
+    public function aStorageMeasurementIsMeasuredAgainButNeverTakesCredits(): void
+    {
+        $this->meter->measureStorage($this->organisation, new DateTimeImmutable('2026-11-24'), 500);
+
+        $this->expectException(DriverException::class);
+        self::em()->getConnection()->executeStatement("UPDATE usage_records SET credits_taken = 5 WHERE kind = 'storage_bytes'");
     }
 
     #[Test]
@@ -389,7 +400,9 @@ final class UsageMeterTest extends FunctionalTestCase
     {
         $this->meter->record($this->organisation, 'email-1', new MeteredUse(UsageKind::Email));
         $this->clock->modify('2026-11-24 12:00:00');
-        $this->startPeriodAt('2026-11-24 11:30:00');
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        self::service(SubscriptionChanger::class)->movePeriodStart($subscription, new DateTimeImmutable('2026-11-24 11:30:00'), ChangedBy::staff('Ada at Soirely', 'Upgraded from Free'));
+        self::em()->clear();
 
         self::assertSame(0, $this->read()->of(UsageKind::Email)->used);
         self::assertSame('2026-11-24T11:30:00+00:00', $this->read()->period->start->format(\DATE_ATOM));
@@ -407,7 +420,7 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function storageReadsAsTheLatestMeasurementNeverASum(): void
+    public function storageReadsAsTheDaysLatestMeasurementNeverASum(): void
     {
         $this->meter->measureStorage($this->organisation, new DateTimeImmutable('2026-11-23'), 700);
         $this->meter->measureStorage($this->organisation, new DateTimeImmutable('2026-11-24'), 500);
@@ -415,7 +428,7 @@ final class UsageMeterTest extends FunctionalTestCase
 
         $storage = $this->read()->of(UsageKind::StorageBytes);
 
-        self::assertSame([500, 2_000_000_000 - 500, 0], [$storage->used, $storage->left, $storage->fromCredits]);
+        self::assertSame([900, 2_000_000_000 - 900, 0], [$storage->used, $storage->left, $storage->fromCredits]);
         self::assertSame(2, self::recordCount(), 'one measurement per organisation per day');
     }
 
