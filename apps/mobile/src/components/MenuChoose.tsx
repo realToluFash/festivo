@@ -160,6 +160,7 @@ export function ChooseFor({
       label={saveLabel}
       onPress={() => void save(false)}
       busy={busy}
+      off={refused}
       testID="menu.choose.save"
     />
   );
@@ -175,119 +176,100 @@ export function ChooseFor({
         </Text>
       </View>
       <SheetScrollView style={styles.list} contentContainerStyle={styles.scroll}>
-        {refused ? (
-          <FailureLine words={t('menuPicks.refused')} testID="menu.choose.refused" />
-        ) : (
-          <>
-            <View accessibilityRole="radiogroup" style={styles.choices}>
-              {course.dishes.map((one) => (
-                <Choice
-                  key={one.id}
-                  on={draft.dishId === one.id}
-                  title={one.name}
-                  lines={
-                    one.allergens == null
-                      ? [t('menuPicks.allergensNotStated')]
-                      : one.allergens.length === 0
-                        ? []
-                        : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
-                  }
-                  allergy={ruledWords(dishRuledOut(one, person), plateOf(one, null, []))}
-                  onPress={() => pickDish(one.id)}
-                  testID={`menu.choose.${one.id}`}
-                />
-              ))}
+        <View accessibilityRole="radiogroup" style={styles.choices}>
+          {course.dishes.map((one) => (
+            <Choice
+              key={one.id}
+              on={draft.dishId === one.id}
+              title={one.name}
+              lines={
+                one.allergens == null
+                  ? [t('menuPicks.allergensNotStated')]
+                  : one.allergens.length === 0
+                    ? []
+                    : [t('menuPicks.contains', { allergens: allergens(one.allergens) })]
+              }
+              allergy={ruledWords(dishRuledOut(one, person), plateOf(one, null, []))}
+              onPress={() => pickDish(one.id)}
+              testID={`menu.choose.${one.id}`}
+            />
+          ))}
+          <Choice
+            on={draft.dishId === 'kitchen'}
+            title={t('menuPicks.kitchenChoose')}
+            lines={[]}
+            allergy={null}
+            onPress={() => pickDish('kitchen')}
+            testID="menu.choose.kitchen"
+          />
+        </View>
+        {dish != null && dish.variants.length > 1 && (
+          <View accessibilityRole="radiogroup" style={styles.choices}>
+            <Text size={17} weight="semibold" accessibilityRole="header">
+              {t('menuPicks.whichWay', { dish: dish.name })}
+            </Text>
+            {dish.variants.map((way) => (
               <Choice
-                on={draft.dishId === 'kitchen'}
-                title={t('menuPicks.kitchenChoose')}
-                lines={[]}
-                allergy={null}
-                onPress={() => pickDish('kitchen')}
-                testID="menu.choose.kitchen"
+                key={way.id}
+                on={draft.variantId === way.id}
+                title={way.name}
+                lines={[
+                  ...(way.for === 'children' ? [t('menuPicks.childrenOnly')] : []),
+                  ...(way.allergens == null || way.allergens.length === 0
+                    ? []
+                    : [t('menuPicks.contains', { allergens: allergens(way.allergens) })]),
+                ]}
+                allergy={ruledWords(against(way.allergens, person.allergens), way.allergens)}
+                onPress={() => {
+                  setError(null);
+                  setDraft({ ...draft, variantId: way.id });
+                }}
+                testID={`menu.choose.${way.id}`}
               />
-            </View>
-            {dish != null && dish.variants.length > 1 && (
-              <View accessibilityRole="radiogroup" style={styles.choices}>
-                <Text size={17} weight="semibold" accessibilityRole="header">
-                  {t('menuPicks.whichWay', { dish: dish.name })}
-                </Text>
-                {dish.variants.map((way) => (
-                  <Choice
-                    key={way.id}
-                    on={draft.variantId === way.id}
-                    title={way.name}
-                    lines={[
-                      ...(way.for === 'children' ? [t('menuPicks.childrenOnly')] : []),
-                      ...(way.allergens == null || way.allergens.length === 0
-                        ? []
-                        : [t('menuPicks.contains', { allergens: allergens(way.allergens) })]),
-                    ]}
-                    allergy={ruledWords(against(way.allergens, person.allergens), way.allergens)}
-                    onPress={() => {
-                      setError(null);
-                      setDraft({ ...draft, variantId: way.id });
-                    }}
-                    testID={`menu.choose.${way.id}`}
-                  />
-                ))}
-              </View>
-            )}
-            {questions.map((one) => (
-              <View key={one.id} accessibilityRole="radiogroup" style={styles.choices}>
-                <Text size={17} weight="semibold" accessibilityRole="header">
-                  {one.question}
-                </Text>
-                {one.options.map((option) => (
-                  <Choice
-                    key={option.id}
-                    on={draft.optionIds.includes(option.id)}
-                    title={option.name}
-                    lines={[]}
-                    allergy={ruledWords(
-                      against(option.allergens, person.allergens),
-                      option.allergens,
-                    )}
-                    onPress={() => {
-                      setError(null);
-                      setDraft({
-                        ...draft,
-                        optionIds: [
-                          ...draft.optionIds.filter(
-                            (id) => !one.options.some((other) => other.id === id),
-                          ),
-                          option.id,
-                        ],
-                      });
-                    }}
-                    testID={`menu.choose.${option.id}`}
-                  />
-                ))}
-              </View>
             ))}
-            {error != null && <FailureLine words={error} testID="menu.choose.blank" />}
-          </>
+          </View>
         )}
+        {questions.map((one) => (
+          <View key={one.id} accessibilityRole="radiogroup" style={styles.choices}>
+            <Text size={17} weight="semibold" accessibilityRole="header">
+              {one.question}
+            </Text>
+            {one.options.map((option) => (
+              <Choice
+                key={option.id}
+                on={draft.optionIds.includes(option.id)}
+                title={option.name}
+                lines={[]}
+                allergy={ruledWords(against(option.allergens, person.allergens), option.allergens)}
+                onPress={() => {
+                  setError(null);
+                  setDraft({
+                    ...draft,
+                    optionIds: [
+                      ...draft.optionIds.filter(
+                        (id) => !one.options.some((other) => other.id === id),
+                      ),
+                      option.id,
+                    ],
+                  });
+                }}
+                testID={`menu.choose.${option.id}`}
+              />
+            ))}
+          </View>
+        ))}
+        {error != null && <FailureLine words={error} testID="menu.choose.blank" />}
+        {refused && <FailureLine words={t('menuPicks.refused')} testID="menu.choose.refused" />}
       </SheetScrollView>
       <SheetActions>
-        {refused ? (
-          <SecondaryButton
-            label={t('menuPicks.close')}
-            onPress={onClose}
-            stacked={phone}
-            testID="menu.choose.close"
-          />
-        ) : (
-          <>
-            {phone && saveButton}
-            <SecondaryButton
-              label={t('menuPicks.cancel')}
-              onPress={onClose}
-              stacked={phone}
-              testID="menu.choose.cancel"
-            />
-            {!phone && saveButton}
-          </>
-        )}
+        {phone && saveButton}
+        <SecondaryButton
+          label={t('menuPicks.cancel')}
+          onPress={onClose}
+          stacked={phone}
+          testID="menu.choose.cancel"
+        />
+        {!phone && saveButton}
       </SheetActions>
       {asking != null && dish != null && (
         <OverrideAlert
