@@ -1,4 +1,6 @@
 # sc-88756 iPad upright: B opened from Events (Overview), then Guests from B's guests notification over A's page, then ‹ back to A left at Guests.
+# Needs B to be the draft 'Ada and Tunde wedding': the first leg reaches it by that name under Drafts, not by the B id, and times out
+# (or opens another event) on a stack where it is not. Run with --ipad, passing A and NG_B (the id of B's guests notification); this flow never reads B.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT

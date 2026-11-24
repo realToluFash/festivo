@@ -1,4 +1,5 @@
 # sc-88756 iPad upright: a strip dragged by hand stays where it was left until another area is chosen; turning upright from on its side places it by the rule.
+# Run with --ipad, passing B (the event whose Guests strip is dragged); it waits only on ids, not on event names.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
