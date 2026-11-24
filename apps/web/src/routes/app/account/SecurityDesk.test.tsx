@@ -563,6 +563,63 @@ describe('two-factor at a desk', () => {
     ]);
   });
 
+  const PASSKEY_ONLY = {
+    'GET /api/auth/two-factor': () =>
+      json({
+        on: true,
+        recoveryCodesLeft: 10,
+        passkeysOffered: true,
+        mostPasskeys: 10,
+        factors: [
+          {
+            kind: 'passkey',
+            id: 'pk-1',
+            provider: 'Apple Passwords',
+            synced: true,
+            addedAt: '2026-11-20T10:00:00+00:00',
+          },
+        ],
+      }),
+  };
+
+  it('says why it asks before turning off a passkey-only two-factor (sc-86885)', async () => {
+    answering(PASSKEY_ONLY, true);
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Apple Passwords/ }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor…' }));
+    fireEvent.click(asked('Turn off two-factor?').getByRole('button', { name: 'Turn it off' }));
+
+    expect(
+      await dialog("Confirm it's you").findByText(
+        'To turn off two-factor, confirm it’s you. We will email folake@ire.events to say it was turned off.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says why it asks before making new codes for a passkey-only member (sc-86885)', async () => {
+    answering(PASSKEY_ONLY, true);
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    expect(
+      await dialog("Confirm it's you").findByText('To make new recovery codes, confirm it’s you.'),
+    ).toBeDefined();
+  });
+
   it('says a wrong code is wrong, and keeps it on', async () => {
     answering(
       { 'POST /api/auth/two-factor/disable': () => problem('two_factor_code_invalid', 422) },
@@ -1131,6 +1188,43 @@ describe('the devices at a desk', () => {
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
+  });
+
+  it('asks a member with a passkey and the app for a code without the sign-in line (sc-86885)', async () => {
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: 'Apple Passwords',
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+            { kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+    });
+    openSecurity();
+
+    await everywhere();
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    expect(await dialog("Confirm it's you").findByLabelText('Code')).toBeDefined();
+    expect(
+      dialog("Confirm it's you").getByText(
+        'From your authenticator app, or one of your recovery codes.',
+      ),
+    ).toBeDefined();
   });
 
   it('signs the others out with a held proof, without asking for it again', async () => {

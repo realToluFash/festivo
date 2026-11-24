@@ -528,7 +528,6 @@ export function ChoosePasswordDialog({
   );
 }
 
-/** Confirm it's you with the current factor: the passkey's sheet first where it can open, else a code. */
 const LEADS = {
   add: 'passkey.leadAdd',
   addApp: 'passkey.leadAddApp',
@@ -537,6 +536,7 @@ const LEADS = {
   newCodes: 'passkey.leadNewCodes',
 } as const;
 
+/** Confirm it's you with the current factor: the passkey's sheet first where it can open, else a code. */
 export function FactorDialog({
   purpose,
   email,
