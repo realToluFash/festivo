@@ -66,6 +66,25 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
     expect(screen.getByText('Sign-in rules changed')).toBeDefined();
   });
 
+  it('stands in Payment reminders’ column above its card (#88659)', async () => {
+    const reminders = await open(
+      '/demo/settings/payment-reminders?notice=due,unlinked,gate,changed&offline',
+      'Payment reminders',
+    );
+    const column = reminders.title.closest('.desk-column');
+    const drawn = [
+      screen.getByText(/Offline · as of/),
+      screen.getByText('Two-factor required by Ire Events'),
+      screen.getByText(/requires two-factor from/),
+      screen.getByText('Sign-in rules changed'),
+    ];
+
+    for (const box of drawn) {
+      expect(column?.contains(box)).toBe(true);
+      expect(follows(box, reminders.title)).toBe(true);
+    }
+  });
+
   it('stands above Events’ title', async () => {
     const events = await open('/demo/events?notice=due', 'Events');
     expect(follows(screen.getByText(/requires two-factor from/), events.title)).toBe(true);

@@ -20,24 +20,25 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                       | Portuguese                            | Notes                                                                |
-| ----------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
-| Settings                      | Definições                            |                                                                      |
-| Organisation                  | Organização                           |                                                                      |
-| Sign in                       | Iniciar sessão                        |                                                                      |
-| Sign out                      | Encerrar sessão                       | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada"     |
-| Email                         | Endereço de e-mail                    |                                                                      |
-| Password                      | Palavra-passe                         |                                                                      |
-| Continue                      | Continuar                             |                                                                      |
-| Cancel                        | Cancelar                              |                                                                      |
-| Two-factor authentication     | Autenticação de dois fatores          | In a comma list of Security's contents, "dois fatores" alone         |
-| Home (tab)                    | Início                                | Settled 17 Oct 2026. Not "Página inicial": too long for the tab      |
-| Recovery code                 | Código de recuperação                 |                                                                      |
-| Phone (device)                | Telemóvel                             | Settled 18 Oct 2026. Never "celular"                                 |
-| Account (Settings section)    | Conta                                 | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"      |
-| Alternative (address, number) | alternativo                           | Settled 18 Oct 2026. Not primary; never "secundário"                 |
-| Try again (button)            | Tentar novamente                      | Settled 1 Nov 2026, sc-26974                                         |
-| Owner / Admin / Member        | Proprietário / Administrador / Membro | Settled 5 Nov 2026, sc-29914. In a sentence "a função Administrador" |
+| English                       | Portuguese                            | Notes                                                                                                   |
+| ----------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Settings                      | Definições                            |                                                                                                         |
+| Organisation                  | Organização                           |                                                                                                         |
+| Sign in                       | Iniciar sessão                        |                                                                                                         |
+| Sign out                      | Encerrar sessão                       | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada"                                        |
+| Email                         | Endereço de e-mail                    |                                                                                                         |
+| Password                      | Palavra-passe                         |                                                                                                         |
+| Continue                      | Continuar                             |                                                                                                         |
+| Cancel                        | Cancelar                              |                                                                                                         |
+| Two-factor authentication     | Autenticação de dois fatores          | In a comma list of Security's contents, "dois fatores" alone                                            |
+| Home (tab)                    | Início                                | Settled 17 Oct 2026. Not "Página inicial": too long for the tab                                         |
+| Recovery code                 | Código de recuperação                 |                                                                                                         |
+| Passkey                       | Chave de acesso                       | Settled 24 Nov 2026 (sc-86976): feminine. Two-factor methods: "métodos de autenticação de dois fatores" |
+| Phone (device)                | Telemóvel                             | Settled 18 Oct 2026. Never "celular"                                                                    |
+| Account (Settings section)    | Conta                                 | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"                                         |
+| Alternative (address, number) | alternativo                           | Settled 18 Oct 2026. Not primary; never "secundário"                                                    |
+| Try again (button)            | Tentar novamente                      | Settled 1 Nov 2026, sc-26974                                                                            |
+| Owner / Admin / Member        | Proprietário / Administrador / Membro | Settled 5 Nov 2026, sc-29914. In a sentence "a função Administrador"                                    |
 
 ## Never translated
 
@@ -47,6 +48,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 ## Decided phrasings
 
+- **24 Nov 2026. A autenticação de dois fatores com chave de acesso na web** (sc-86976 para sc-86885, `web:passkey.*`, `twoFactor.lost*`, `lostTwoFactor.start*`, `emails:twoFactor.added|removed|factor.*`). "Chave de acesso", no feminino: "Adicionada a {{day}}", "Sincronizada". Tirar uma chave ou a aplicação é "Remover"; o que a pessoa faz depois no gestor é "apagá-la lá". `{{place}}` é um nome de gestor ou "o seu gestor de palavras-passe ou a sua chave de segurança", por isso nunca vem depois de "em" (daria "em o seu"): fica depois de dois pontos, "Continua guardada até a apagar lá: {{place}}." `{factor}` abre a frase dos emails de método adicionado e removido, com maiúscula, e o particípio concorda no feminino ("foi adicionada"); os assuntos dizem "Método de dois fatores", curto como "dois fatores" numa lista, para caber numa linha da caixa de entrada.
 - **23 Nov 2026. Uma alteração ao menu volta a perguntar** (sc-4042 para sc-3913, `web:menuChange.*`, `guestMeal.changed.*|pickNew|menuChanged|changedOpen_*`, `seePicks.changed*|menuChanged`, `kitchenSheet.changed|cellChanged`, `mobile:menuPicks.changed*|menuChanged`, `kitchen_sheet.menu_changed|cell_changed` da API). Menu changed, o nome de estado, é **«Menu alterado»** em todo o lado. No diálogo, {{course}} chega como foi escrito e vai entre aspas («em «{{course}}»»); em `pickNew` chega em minúsculas e segue `which`: «O que escolher agora de {{course}}?». They’ll be asked é «Vai ser-lhe(s) pedido que escolha(m) de novo»; as confirmações começam pelo nome («Prato», «Variante», «Pergunta») para o particípio concordar e acabam em «Vai ser pedido a {{count}} convidados que escolham de novo». Os alergénios vêm depois de dois pontos («tem registado: », «que agora contém: »). `allComing` é um rótulo («Convidados que vêm: {{count}}.»). {{day}} tem dia da semana, por isso `pastDate` põe-no entre parênteses: «A data de {{event}} ({{day}}) já passou.» `staysAgain` não recebe {{count}}: fica sem possessivo nem verbo no plural, para servir a um ou mais convidados. `menuChanged` diz «mudou ou foi retirado», porque também aparece quando se junta um alergénio ou variantes.
 - **23 Nov 2026. A folha da cozinha por posto** (sc-4042 para sc-34244, `web:kitchenSheet.byStation|chefsChoice`, `kitchen_sheet.by_station|chefs_choice` da API). By station é "Por posto", como Station na Equipa. Chef’s choice, a linha do passe, é "À escolha do chef": não é «À escolha da cozinha» (Kitchen’s choice), um estado da escolha do convidado, mas o conjunto que sai do passe (sc-4005), por isso tem palavra própria.
 - **23 Nov 2026. O Menu e as suas escolhas na app** (sc-4042 para sc-3914, `mobile:menuPicks.*`). Reutiliza palavra por palavra o decidido para Ver as escolhas (`web:seePicks.*`), a folha da cozinha e o prato predefinido; próprio do telemóvel: Variant e Side de uma linha são "Variante · {{name}}" e "Opção · {{name}}"; a folha de partilha não é nomeada ("Quando o PDF estiver pronto, vai poder partilhá-lo"). Download é "transferir", como `kitchenSheet.download`. Pull down to refresh é "Puxe para baixo para atualizar". O botão citado em `failedSave` vai entre aspas: "toque novamente em «{{button}}»". `rowSaid` é um rótulo de leitor de ecrã: "escolhido: 2, predefinido: 1".

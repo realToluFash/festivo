@@ -19,6 +19,7 @@ x-api-environment: &api-environment
   MERCURE_PUBLISH_URL: http://mercure/.well-known/mercure
   MERCURE_PUBLIC_URL: https://${API_HOST}/.well-known/mercure
   CORS_WEB_ORIGIN: https://${APP_HOST}
+  WEBAUTHN_RP_ID: ${RP_HOST:-${APP_HOST}}
   # The proxy's own address, so the client address it forwards is believed from it
   # alone: the mail webhook's IP ranges are checked against it (sc-4332).
   SYMFONY_TRUSTED_PROXIES: 172.30.0.2

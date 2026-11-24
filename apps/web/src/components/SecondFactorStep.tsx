@@ -1,4 +1,9 @@
-import { ApiError, type SecondFactor } from '@soirely/api-client';
+import {
+  ApiError,
+  type HeldFactors,
+  type PasskeyOptions,
+  type SecondFactor,
+} from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
@@ -6,7 +11,7 @@ import {
   lockLiftsAt,
   shapeRecovery,
 } from '@soirely/domain';
-import { type FormEvent, type RefObject, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -14,15 +19,18 @@ import { selectCode } from '../codeScreen.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
+import { askPasskey, canUsePasskeys } from '../passkey.ts';
 import { FieldError } from './FieldError.tsx';
 import { ColumnBack } from './Onboarding.tsx';
 
-type Mode = 'app' | 'recovery';
+type Mode = 'passkey' | 'app' | 'recovery';
 
 type Status =
   | { kind: 'ready' }
   | { kind: 'checking' }
   | { kind: 'wrong'; message: string }
+  | { kind: 'waiting' }
+  | { kind: 'refused' }
   | { kind: 'paused'; time: string; liftsAt: number }
   | { kind: 'failed' };
 
@@ -39,6 +47,8 @@ export function SecondFactorStep({
   onExpired,
   onBack,
   headingRef,
+  factors = { app: true, passkeys: false },
+  passkey,
 }: {
   intro: string;
   recoveryIntro: string;
@@ -53,14 +63,21 @@ export function SecondFactorStep({
   /** The column's ‹ Back, where the step has one to go back to: a sign-in's (WebTwoFactor, page 27). */
   onBack?: () => void;
   headingRef?: RefObject<HTMLHeadingElement | null>;
+  factors?: HeldFactors;
+  /** Where the account holds a passkey: the step opens on it, its sheet over the page (sc-86885). */
+  passkey?: { lead: string; options: () => Promise<PasskeyOptions> };
 }) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<Mode>('app');
+  const browserCan = canUsePasskeys();
+  const offersPasskey = factors.passkeys && passkey != null && browserCan;
+  const codeMode: Mode = factors.app ? 'app' : 'recovery';
+  const [mode, setMode] = useState<Mode>(offersPasskey ? 'passkey' : codeMode);
   const [typed, setTyped] = useState('');
   const [blank, setBlank] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'ready' });
 
-  const checking = status.kind === 'checking';
+  const checking = status.kind === 'checking' || status.kind === 'waiting';
+  const opened = useRef(false);
   const liftsAt = status.kind === 'paused' ? status.liftsAt : null;
   const error = blank ?? (status.kind === 'wrong' ? status.message : null);
 
@@ -80,11 +97,45 @@ export function SecondFactorStep({
     return () => window.clearTimeout(lift);
   }, [liftsAt]);
 
+  useEffect(() => {
+    if (opened.current || mode !== 'passkey') return;
+    opened.current = true;
+    void openSheet();
+    // The sheet opens by itself once, as the step arrives; after that only Use a passkey opens it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function openSheet(): Promise<void> {
+    if (passkey == null || checking || status.kind === 'paused') return;
+
+    setStatus({ kind: 'waiting' });
+
+    try {
+      const answer = await askPasskey(await passkey.options());
+      if (answer == null) {
+        setStatus({ kind: 'ready' });
+        return;
+      }
+      await onVerify({ passkey: answer });
+      setStatus({ kind: 'ready' });
+    } catch (refusal) {
+      if (refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')) {
+        onExpired();
+        return;
+      }
+      setStatus(
+        refusal instanceof ApiError && refusal.is('passkey_refused')
+          ? { kind: 'refused' }
+          : statusFrom(refusal, mode, t),
+      );
+    }
+  }
+
   function switchTo(next: Mode): void {
     setMode(next);
     setTyped('');
     setBlank(null);
-    if (status.kind === 'wrong') setStatus({ kind: 'ready' });
+    if (status.kind === 'wrong' || status.kind === 'refused') setStatus({ kind: 'ready' });
   }
 
   function type(value: string): void {
@@ -138,6 +189,75 @@ export function SecondFactorStep({
     }
   }
 
+  const lostWords = !factors.passkeys
+    ? t('twoFactor.lostBoth')
+    : factors.app
+      ? t('twoFactor.lostAll')
+      : t('twoFactor.lostPasskeys');
+  const lost =
+    lostBoth == null ? null : (
+      <Link className="link-button" to={lostBoth.to} state={lostBoth.state}>
+        {lostWords}
+      </Link>
+    );
+
+  if (mode === 'passkey') {
+    return (
+      <>
+        {onBack != null && <ColumnBack onClick={onBack} />}
+        <div className="auth-heading">
+          <h1 ref={headingRef} tabIndex={headingRef == null ? undefined : -1}>
+            {t('passkey.waitTitle')}
+          </h1>
+          <p>{passkey?.lead}</p>
+          {(status.kind === 'paused' || status.kind === 'failed') && (
+            <div className="auth-notice" role="alert">
+              <p className="auth-notice-title">
+                {status.kind === 'paused' ? t('passkey.pausedTitle') : failedTitle}
+              </p>
+              <p>
+                {status.kind === 'paused'
+                  ? t('passkey.pausedBody', { time: status.time })
+                  : failedBody}
+              </p>
+              {status.kind === 'paused' && pausedNote != null && <p>{pausedNote}</p>}
+            </div>
+          )}
+        </div>
+
+        {status.kind === 'waiting' ? (
+          <p className="passkey-waiting" role="status">
+            <span className="pending-spinner" aria-hidden="true" />
+            {t('passkey.waiting')}
+          </p>
+        ) : (
+          <button
+            className="button button-primary"
+            type="button"
+            {...offButton(status.kind === 'paused')}
+            onClick={() => void openSheet()}
+          >
+            {status.kind === 'paused'
+              ? t('twoFactor.tryAgainAt', { time: status.time })
+              : t('passkey.use')}
+          </button>
+        )}
+
+        <div className="auth-asides">
+          <button className="link-button" type="button" onClick={() => switchTo(codeMode)}>
+            {t('passkey.useCode')}
+          </button>
+          {lost}
+        </div>
+        {status.kind === 'refused' && (
+          <p className="passkey-refused" role="alert">
+            {t('passkey.refused')}
+          </p>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       {onBack != null && <ColumnBack onClick={onBack} />}
@@ -146,6 +266,9 @@ export function SecondFactorStep({
           {mode === 'app' ? t('twoFactor.title') : t('twoFactor.recoveryTitle')}
         </h1>
         <p>{mode === 'app' ? intro : recoveryIntro}</p>
+        {factors.passkeys && !browserCan && (
+          <p className="passkey-nobrowser">{t('passkey.noBrowser')}</p>
+        )}
         {(status.kind === 'paused' || status.kind === 'failed') && (
           <div className="auth-notice" role="alert">
             <p className="auth-notice-title">
@@ -200,18 +323,21 @@ export function SecondFactorStep({
       </form>
 
       <div className="auth-asides">
-        <button
-          className="link-button"
-          type="button"
-          onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
-        >
-          {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
-        </button>
-        {lostBoth != null && (
-          <Link className="link-button" to={lostBoth.to} state={lostBoth.state}>
-            {t('twoFactor.lostBoth')}
-          </Link>
+        {offersPasskey && (
+          <button className="link-button" type="button" onClick={() => switchTo('passkey')}>
+            {t('passkey.useInstead')}
+          </button>
         )}
+        {factors.app && (
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => switchTo(mode === 'app' ? 'recovery' : 'app')}
+          >
+            {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
+          </button>
+        )}
+        {lost}
         {status.kind === 'paused' && (
           <p className="auth-aside">
             <span>{t('twoFactor.notYou')}</span>

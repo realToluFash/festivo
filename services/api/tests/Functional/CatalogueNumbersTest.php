@@ -55,6 +55,8 @@ final class CatalogueNumbersTest extends FunctionalTestCase
         'Entity/VerificationChallenge.php: public const int MAXIMUM_ATTEMPTS = 5;',
         'Entity/GuestGroup.php: public const int MOST_PER_EVENT = 50;',
         'Entity/StaffShift.php: public const int NEEDED_MAXIMUM = 50;',
+        'WebAuthn/Cbor.php: private const int MAX_DEPTH = 8;',
+        'WebAuthn/Cbor.php: if ($value > (\\PHP_INT_MAX >> 8)) {',
     ];
 
     #[Test]

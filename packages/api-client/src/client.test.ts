@@ -1521,6 +1521,8 @@ describe('recovering a password', () => {
     expect(await client.checkResetLink('t1')).toEqual({
       email: 'folake@ire.events',
       twoFactor: false,
+      factors: { app: true, passkeys: false },
+      passkeysOffered: false,
     });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
@@ -2442,6 +2444,7 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
+      factors: { app: true, passkeys: false },
     });
     expect(tokens.saved).toBeNull();
   });
