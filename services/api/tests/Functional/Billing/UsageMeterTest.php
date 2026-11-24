@@ -32,6 +32,7 @@ use App\Tests\Double\RecordingLogger;
 use App\Tests\FunctionalTestCase;
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\DriverException;
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
 use Psl\Iter;
@@ -384,6 +385,19 @@ final class UsageMeterTest extends FunctionalTestCase
         self::assertTrue($second->getOrganisation()->getId()->equals($other));
         self::assertSame([62, 62], [$first->getCreditsTaken(), $second->getCreditsTaken()]);
         self::assertSame(2, self::recordCount());
+    }
+
+    #[Test]
+    public function aUseOfNoUnitsIsRefused(): void
+    {
+        foreach ([0, -1] as $quantity) {
+            try {
+                new MeteredUse(UsageKind::AiRequest, $quantity);
+                self::fail('A metered use of ' . $quantity . ' units was taken.');
+            } catch (InvalidArgumentException) {
+                self::assertSame(0, self::recordCount());
+            }
+        }
     }
 
     #[Test]
