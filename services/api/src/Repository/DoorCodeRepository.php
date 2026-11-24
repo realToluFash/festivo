@@ -34,9 +34,9 @@ final class DoorCodeRepository extends ServiceEntityRepository implements EventS
         return $this->findOneBy(['code' => $code]);
     }
 
-    /** @return list<DoorCode> the newest first */
-    public function findOnEvent(Uuid $eventId): array
+    /** @return list<DoorCode> the newest first, leaving out the codes another has replaced */
+    public function findInPlayOnEvent(Uuid $eventId): array
     {
-        return $this->findBy(['event' => $eventId], ['createdAt' => 'DESC', 'id' => 'DESC']);
+        return $this->findBy(['event' => $eventId, 'replacedBy' => null], ['createdAt' => 'DESC', 'id' => 'DESC']);
     }
 }

@@ -256,17 +256,10 @@ describe('door codes on People, at a desk (sc-72)', () => {
     ).toBe(true);
   });
 
-  it('makes the new code before it stops the old one, with the old one’s role, label, number and end', async () => {
-    const order: string[] = [];
+  it('makes the new code in the old one’s place, with its role, label, number and end', async () => {
     const sent = await onPeople([CARD], {
-      'POST /api/events/ev_1/door-codes': () => {
-        order.push('make');
-        return json({ doorCode: { ...CARD, id: 'new', code: 'H3WD9RN6', used: 0 } }, 201);
-      },
-      [`POST /api/events/ev_1/door-codes/${CARD.id}/stop`]: () => {
-        order.push('stop');
-        return json({ doorCode: { ...CARD, status: 'stopped' } });
-      },
+      'POST /api/events/ev_1/door-codes': () =>
+        json({ doorCode: { ...CARD, id: 'new', code: 'H3WD9RN6', used: 0 } }, 201),
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Make a new code' }));
@@ -281,14 +274,28 @@ describe('door codes on People, at a desk (sc-72)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Make a new code' }));
 
     expect(await screen.findByText('H3WD 9RN6')).toBeDefined();
-    expect(order).toEqual(['make', 'stop']);
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/door-codes')?.body).toEqual({
       role: 'can_check_in',
       jobLabel: 'Bar and drinks',
       useCap: 30,
       expiresAt: CARD.expiresAt,
+      replaces: CARD.id,
     });
+    expect(sent.some((one) => one.line.endsWith('/stop'))).toBe(false);
     expect(screen.queryByText('K7P2 QX9M')).toBeNull();
+  });
+
+  it('keeps the old code working when the new one is not made', async () => {
+    await onPeople([CARD], {
+      'POST /api/events/ev_1/door-codes': () => json({ title: 'Server error' }, 500),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new code' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Make a new code?' });
+    fireEvent.click(within(ask).getByRole('button', { name: 'Make a new code' }));
+
+    expect(await within(ask).findByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(screen.getAllByText('K7P2 QX9M').length).toBeGreaterThan(0);
   });
 
   it('shows the code over the whole window with its QR, and Escape closes it', async () => {
@@ -322,5 +329,24 @@ describe('door codes on People, at a desk (sc-72)', () => {
       'Bar and drinks',
     );
     expect(within(dialog).getByLabelText('How many people')).toHaveProperty('value', '30');
+  });
+
+  it('makes a stopped code’s new one in its place', async () => {
+    const sent = await onPeople(
+      [{ ...CARD, status: 'stopped', stoppedAt: '2026-11-08T10:00:00+00:00' }],
+      {
+        'POST /api/events/ev_1/door-codes': () =>
+          json({ doorCode: { ...CARD, id: 'new', code: 'H3WD9RN6', used: 0 } }, 201),
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make a new code' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Door code' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make' }));
+
+    expect(await screen.findByText('H3WD 9RN6')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/door-codes')?.body).toMatchObject(
+      { replaces: CARD.id },
+    );
   });
 });

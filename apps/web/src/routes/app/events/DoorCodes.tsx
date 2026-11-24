@@ -65,7 +65,7 @@ const COUNT_EVERY_MS = 5000;
 const STEP = (index: number) => `.dc-card[data-index="${index}"] .desk-step`;
 
 type Make = { form: MakeForm; into: number | null };
-type CodeAskOpen = { kind: 'new' | 'stop'; index: number; failed: boolean };
+type CodeAskOpen = { kind: 'new' | 'stop'; index: number };
 
 /** The door codes on People, as the web demo's People draws them at a desk (sc-72): a card each, what is under it, and what they open. */
 export function DoorCodes({
@@ -128,7 +128,7 @@ export function DoorCodes({
 
   function step(code: DoorCodeCard, index: number): void {
     if (code.status === 'working') setHeld(index);
-    else if (code.status === 'full') setAsk({ kind: 'new', index, failed: false });
+    else if (code.status === 'full') setAsk({ kind: 'new', index });
     else setMake({ form: formFrom(code, clock), into: index });
   }
 
@@ -168,8 +168,8 @@ export function DoorCodes({
               <CodeActions
                 code={code}
                 onPrint={() => print(index)}
-                onNew={() => setAsk({ kind: 'new', index, failed: false })}
-                onStop={() => setAsk({ kind: 'stop', index, failed: false })}
+                onNew={() => setAsk({ kind: 'new', index })}
+                onStop={() => setAsk({ kind: 'stop', index })}
               />
             </div>
           ))}
@@ -184,6 +184,7 @@ export function DoorCodes({
         <MakeDialog
           eventId={event.id}
           form={make.form}
+          replaces={make.into == null ? undefined : codes[make.into]?.id}
           clock={clock}
           onClose={() => setMake(null)}
           onMade={(card) => made(card, make.into)}
@@ -195,8 +196,8 @@ export function DoorCodes({
           clock={clock}
           onClose={() => setHeld(null)}
           onPrint={() => print(held)}
-          onNew={() => setAsk({ kind: 'new', index: held, failed: false })}
-          onStop={() => setAsk({ kind: 'stop', index: held, failed: false })}
+          onNew={() => setAsk({ kind: 'new', index: held })}
+          onStop={() => setAsk({ kind: 'stop', index: held })}
         />
       )}
       {ask != null && asked != null && (
@@ -211,10 +212,6 @@ export function DoorCodes({
             replace(asked.id, fresh);
             setAsk(null);
             if (held == null) tell(t('doorCodes.made'));
-          }}
-          onRenewedButStillWorks={(fresh) => {
-            onCodes((was) => [...was, fresh]);
-            setAsk({ kind: 'stop', index: ask.index, failed: true });
           }}
           onStopped={(stopped) => {
             replace(asked.id, stopped);
@@ -318,7 +315,7 @@ function CodeActions({
   );
 }
 
-/** Make a new code makes the new one first and then stops the old, so a failure never leaves the crew with neither. */
+/** Make a new code makes the new one and stops the old in one write, so a failure leaves the old one working. */
 function CodeAsk({
   eventId,
   ask,
@@ -326,7 +323,6 @@ function CodeAsk({
   clock,
   onKeep,
   onRenewed,
-  onRenewedButStillWorks,
   onStopped,
 }: {
   eventId: string;
@@ -335,12 +331,11 @@ function CodeAsk({
   clock: CodeClock;
   onKeep: () => void;
   onRenewed: (fresh: DoorCodeCard) => void;
-  onRenewedButStillWorks: (fresh: DoorCodeCard) => void;
   onStopped: (stopped: DoorCodeCard) => void;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(ask.failed);
+  const [failed, setFailed] = useState(false);
   const going = useRef(false);
   const stop = ask.kind === 'stop';
 
@@ -357,14 +352,10 @@ function CodeAsk({
         setFailed(true);
       }
     } else {
-      let fresh: DoorCodeCard | null = null;
       try {
-        fresh = await api.makeDoorCode(eventId, renewal(code, clock));
-        await api.stopDoorCode(eventId, code.id);
-        onRenewed(fresh);
+        onRenewed(await api.makeDoorCode(eventId, renewal(code, clock)));
       } catch {
-        if (fresh == null) setFailed(true);
-        else onRenewedButStillWorks(fresh);
+        setFailed(true);
       }
     }
 
@@ -514,12 +505,14 @@ function refusal(error: unknown, fallback: string): string {
 function MakeDialog({
   eventId,
   form: start,
+  replaces,
   clock,
   onClose,
   onMade,
 }: {
   eventId: string;
   form: MakeForm;
+  replaces: string | undefined;
   clock: CodeClock;
   onClose: () => void;
   onMade: (card: DoorCodeCard) => void;
@@ -553,7 +546,7 @@ function MakeDialog({
       (form.ends.kind === 'earlier' ? timeRef : endsRef).current?.focus();
       return;
     }
-    const sent: NewDoorCode = newCode(form, clock);
+    const sent: NewDoorCode = { ...newCode(form, clock), replaces };
     setBusy(true);
     setFailed(null);
     try {

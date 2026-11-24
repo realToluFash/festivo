@@ -26,6 +26,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
 
 /** An event's door codes (sc-72), on its People: seen, made and stopped by whoever manages People there (Owner, Admin, the event's Lead). */
 final readonly class DoorCodesController
@@ -44,13 +45,13 @@ final readonly class DoorCodesController
     #[InEvent(Permission::PeopleManage)]
     public function list(string $eventId): JsonResponse
     {
-        $codes = $this->doorCodeRepository->findOnEvent($this->event($eventId)->getId());
+        $codes = $this->doorCodeRepository->findInPlayOnEvent($this->event($eventId)->getId());
         $used = $this->doorCodeRedemptionRepository->countsFor($codes);
 
         return new JsonResponse(['doorCodes' => Vec\map($codes, fn (DoorCode $code): array => $this->card($code, $used[$code->getId()->toRfc4122()] ?? 0))]);
     }
 
-    /** `useCap` from 1 to 500 and `expiresAt`, an instant with its offset, are both required; `role` is can_view or can_check_in. */
+    /** `useCap` from 1 to 500 and `expiresAt`, an instant with its offset, are both required; `role` is can_view or can_check_in. `replaces`, a code's id on the same event, is Make a new code: that code stops and leaves the list. */
     #[Route('/api/events/{eventId}/door-codes', name: 'events_door_codes_make', methods: ['POST'])]
     #[InEvent(Permission::PeopleManage)]
     public function make(Request $request, string $eventId): JsonResponse
@@ -60,8 +61,11 @@ final readonly class DoorCodesController
             'jobLabel' => Type\optional(Type\nullable(Type\string())),
             'useCap' => Type\optional(Type\nullable(Type\int())),
             'expiresAt' => Type\optional(Type\nullable(Type\string())),
+            'replaces' => Type\optional(Type\nullable(Type\string())),
         ]));
-        $code = $this->doorCodes->make($this->event($eventId), $body['role'], $body['jobLabel'] ?? null, $body['useCap'] ?? null, $body['expiresAt'] ?? null, $this->user());
+        $event = $this->event($eventId);
+        $replaces = null === ($body['replaces'] ?? null) ? null : $this->inPlay($event, $body['replaces']);
+        $code = $this->doorCodes->make($event, $body['role'], $body['jobLabel'] ?? null, $body['useCap'] ?? null, $body['expiresAt'] ?? null, $this->user(), $replaces);
 
         return new JsonResponse(['doorCode' => $this->card($code, 0)], Response::HTTP_CREATED);
     }
@@ -98,6 +102,13 @@ final readonly class DoorCodesController
     private function event(string $id): Event
     {
         return $this->eventRepository->find($id) ?? throw ApiException::notFound('access.not_found');
+    }
+
+    private function inPlay(Event $event, string $id): DoorCode
+    {
+        $code = Uuid::isValid($id) ? $this->doorCodeRepository->findOneInEvent($event->getId(), Uuid::fromString($id)) : null;
+
+        return null === $code || null !== $code->getReplacedBy() ? throw ApiException::notFound('access.not_found') : $code;
     }
 
     private function user(): User

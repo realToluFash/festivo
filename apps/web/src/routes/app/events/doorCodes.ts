@@ -158,6 +158,7 @@ export function renewal(code: DoorCodeCard, clock: CodeClock): NewDoorCode {
     jobLabel: code.jobLabel,
     useCap: code.useCap,
     expiresAt: at > clock.now.getTime() ? code.expiresAt : clock.endsAt,
+    replaces: code.id,
   };
 }
 
