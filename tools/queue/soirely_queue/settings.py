@@ -5,12 +5,16 @@ at the keyboard, where a mistake cannot stop a machine from a phone."""
 import hashlib
 import json
 import os
+import threading
 
 from . import machine, roles
 
 ROLE = ("model", "effort", "inboxEffort", "wakeEvery", "workers", "maxBudgetUsd")
 DEFAULTS = ROLE
 MACHINE = ("dailyBudgetUsd",)
+# `sq web` answers each request on a thread of its own; two saves must not both pass the
+# revision check before either writes.
+WRITING = threading.Lock()
 
 
 class Refused(Exception):
@@ -29,6 +33,21 @@ def previous(path):
     return path.with_name(path.name + ".prev")
 
 
+def written(path):
+    """The revision of the file the last change wrote, so an undo can tell a hand edit since."""
+    return path.with_name(path.name + ".prev.sha256")
+
+
+def undoable(path=None, text=None):
+    """The revision an undo puts the kept file back over: the file as the last change wrote
+    it. None when there is no change kept, or the file has been changed since."""
+    path = path or machine.path()
+    if not previous(path).exists() or not written(path).exists():
+        return None
+    current = revision(path.read_text() if text is None else text)
+    return current if written(path).read_text().strip() == current else None
+
+
 def read(path=None, known=None):
     """What the page shows: each listed role's fields as the file sets them and as they are
     in force, the defaults, the machine's own, and what each field may be."""
@@ -44,12 +63,19 @@ def read(path=None, known=None):
             "defaults" if defaults.get(key) is not None else "built-in"
         return {"value": own.get(key), "in_force": in_force, "from": source}
 
+    def default(key):
+        value = defaults.get(key)
+        if value is not None:
+            return {"value": value, "in_force": value, "from": "defaults"}
+        floor = machine.BUILT_IN.get(key)
+        return {"value": None, "in_force": floor, "from": "built-in" if floor is not None else None}
+
     return {
-        "revision": revision(text), "undo": previous(path).exists(),
+        "revision": revision(text), "undo": undoable(path, text) is not None,
         "models": {name: model["efforts"] for name, model in known.items()},
         "parallel": list(roles.PARALLEL),
         "machine": {key: config.get(key) for key in MACHINE},
-        "defaults": {key: defaults.get(key) for key in DEFAULTS},
+        "defaults": {key: default(key) for key in DEFAULTS},
         "roles": {role: {key: field(own or {}, key, role) for key in ROLE}
                   for role, own in (config.get("roles") or {}).items()},
     }
@@ -85,51 +111,103 @@ def changed(config, where, changes):
     return done
 
 
+def differences(before, after):
+    """The page's fields that differ between two versions of the file, by where they live,
+    old and new, as a save reports them."""
+    def fields(config, where):
+        if where == "machine":
+            return {key: config.get(key) for key in MACHINE}
+        if where == "defaults":
+            return {key: (config.get("defaults") or {}).get(key) for key in DEFAULTS}
+        own = (config.get("roles") or {}).get(where) or {}
+        return {key: own.get(key) for key in ROLE}
+
+    found = {}
+    listed = list((before.get("roles") or {}))
+    listed += [role for role in (after.get("roles") or {}) if role not in listed]
+    for where in ["defaults", *listed, "machine"]:
+        old, new = fields(before, where), fields(after, where)
+        made = {key: {"old": old[key], "new": new[key]} for key in old if old[key] != new[key]}
+        if made:
+            found[where] = made
+    return found
+
+
 def problems(before, after, known, logged_in):
     """What `sq run` would say of `after` that it does not say of `before`, in its own words,
-    so a role refused for something else, a missing login say, does not stop a change."""
+    so a role refused for something else, a missing login say, does not stop a change, nor
+    does fixing one of two things wrong with a role."""
     errors, refused, _ = machine.check(before, known, logged_in)
     new_errors, new_refused, _ = machine.check(after, known, logged_in)
-    return [f"error: {error}" for error in new_errors if error not in errors] + \
-        [f"refused {role}: {why}" for role, why in new_refused.items()
-         if refused.get(role) != why]
+    found = [f"error: {error}" for error in new_errors if error not in errors]
+    for role, why in new_refused.items():
+        was = set(refused.get(role, "").split("; "))
+        fresh = [part for part in why.split("; ") if part not in was]
+        if fresh:
+            found.append(f"refused {role}: {'; '.join(fresh)}")
+    return found
 
 
-def save(where, changes, asked_revision, path=None, known=None, logged_in=machine.account):
-    """Writes the change and returns the fields it changed, or raises `Refused`."""
+def stale(path):
+    return Refused(409, f"error: {path} changed since the page read it; read it again")
+
+
+def save(changes, asked_revision, path=None, known=None, logged_in=machine.account):
+    """Makes `changes`, `{where: {field: value}}`, as one change: checked once, written once,
+    undone at once. Returns what changed, `{where: {field: {old, new}}}`, or raises
+    `Refused` having written nothing."""
+    if not isinstance(changes, dict) or not changes or not all(
+            isinstance(fields, dict) and fields for fields in changes.values()):
+        raise Refused(400, "error: a save names the fields it changes, by where they live")
     path = path or machine.path()
-    text = path.read_text()
-    if asked_revision != revision(text):
-        raise Refused(409, f"error: {path} changed since the page read it; read it again")
     known = known or machine.models()
-    before = json.loads(text)
-    after = json.loads(text)
-    done = changed(after, where, changes)
-    if not done:
-        return done
-    found = problems(before, after, known, logged_in)
-    if found:
-        raise Refused(409, "\n".join(found))
-    write(path, json.dumps(after, indent=2) + "\n", keep=text)
+    with WRITING:
+        text = path.read_text()
+        if asked_revision != revision(text):
+            raise stale(path)
+        before, after = json.loads(text), json.loads(text)
+        done = {}
+        for where, fields in changes.items():
+            made = changed(after, str(where), fields)
+            if made:
+                done[str(where)] = made
+        if not done:
+            return done
+        found = problems(before, after, known, logged_in)
+        if found:
+            raise Refused(409, "\n".join(found))
+        write(path, json.dumps(after, indent=2) + "\n", keep=text)
     return done
 
 
 def undo(asked_revision, path=None):
-    """Puts back the file the last change replaced. Returns False when there is none."""
+    """Puts back the file the last change replaced, and returns what that changed back.
+    None when there is no change kept; refused when the file changed since the page read it,
+    or since that change wrote it, so a hand edit is never undone."""
     path = path or machine.path()
-    kept = previous(path)
-    if not kept.exists():
-        return False
-    if asked_revision != revision(path.read_text()):
-        raise Refused(409, f"error: {path} changed since the page read it; read it again")
-    os.replace(kept, path)
-    return True
+    with WRITING:
+        kept = previous(path)
+        if not kept.exists():
+            return None
+        text = path.read_text()
+        if asked_revision != revision(text):
+            raise stale(path)
+        if undoable(path, text) is None:
+            raise Refused(409, f"error: {path} was changed by hand since the last change from "
+                               "the page, so the page cannot undo it; change it there")
+        done = differences(json.loads(text), json.loads(kept.read_text()))
+        os.replace(kept, path)
+        written(path).unlink(missing_ok=True)
+    return done
 
 
 def write(path, text, keep):
     mode = path.stat().st_mode & 0o777
-    kept, fresh = previous(path), path.with_name(path.name + ".new")
+    kept, fresh, wrote = previous(path), path.with_name(path.name + ".new"), written(path)
+    wrote.unlink(missing_ok=True)
     for target, content in ((kept, keep), (fresh, text)):
         target.write_text(content)
         target.chmod(mode)
     os.replace(fresh, path)
+    wrote.write_text(revision(text) + "\n")
+    wrote.chmod(mode)

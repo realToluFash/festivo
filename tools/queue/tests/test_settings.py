@@ -5,6 +5,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 from soirely_queue import settings
 
@@ -28,8 +29,10 @@ class Settings(unittest.TestCase):
     def read(self):
         return settings.read(self.file)
 
-    def save(self, where, changes, revision=None):
-        return settings.save(where, changes, revision or self.read()["revision"], self.file,
+    def save(self, where, changes=None, revision=None):
+        """One where and its fields, or `{where: fields}` as a page's Save sends them."""
+        asked = {where: changes} if changes is not None else where
+        return settings.save(asked, revision or self.read()["revision"], self.file,
                              logged_in=lambda folder: "owner@example.com")
 
     def on_disk(self):
@@ -43,7 +46,13 @@ class Settings(unittest.TestCase):
                          {"value": None, "in_force": "medium", "from": "defaults"})
         self.assertEqual(found["roles"]["dev2"]["wakeEvery"],
                          {"value": None, "in_force": "3m", "from": "built-in"})
-        self.assertEqual(found["defaults"]["model"], "claude-opus-5-5")
+        self.assertEqual(found["defaults"]["model"],
+                         {"value": "claude-opus-5-5", "in_force": "claude-opus-5-5",
+                          "from": "defaults"})
+        self.assertEqual(found["defaults"]["wakeEvery"],
+                         {"value": None, "in_force": "3m", "from": "built-in"})
+        self.assertEqual(found["defaults"]["inboxEffort"],
+                         {"value": None, "in_force": None, "from": None})
         self.assertEqual(found["machine"], {"dailyBudgetUsd": None})
         self.assertIn("claude-opus-5-5", found["models"])
         self.assertIn("pm", found["parallel"])
@@ -52,8 +61,8 @@ class Settings(unittest.TestCase):
     def test_a_change_writes_only_its_field_and_keeps_every_other_key_in_order(self):
         before = self.file.read_text()
         done = self.save("dev2", {"effort": "high", "wakeEvery": "1m"})
-        self.assertEqual(done, {"effort": {"old": None, "new": "high"},
-                                "wakeEvery": {"old": None, "new": "1m"}})
+        self.assertEqual(done, {"dev2": {"effort": {"old": None, "new": "high"},
+                                         "wakeEvery": {"old": None, "new": "1m"}}})
         after = self.on_disk()
         self.assertEqual(after["roles"]["dev2"], {"effort": "high", "wakeEvery": "1m"})
         self.assertEqual(list(after), list(json.loads(before)))
@@ -72,6 +81,23 @@ class Settings(unittest.TestCase):
         after = self.on_disk()
         self.assertEqual((after["defaults"]["effort"], after["dailyBudgetUsd"]), ("low", 40))
         self.assertEqual(self.read()["roles"]["dev2"]["effort"]["in_force"], "low")
+
+    def test_one_save_across_the_defaults_and_the_machine_is_one_check_and_one_write(self):
+        before = self.file.read_text()
+        with self.assertRaises(settings.Refused) as refused:
+            self.save({"defaults": {"effort": "low"}, "machine": {"dailyBudgetUsd": -1}})
+        self.assertIn("error: dailyBudgetUsd is -1", str(refused.exception))
+        self.assertEqual(self.file.read_text(), before)
+        done = self.save({"defaults": {"effort": "low"}, "machine": {"dailyBudgetUsd": 40}})
+        self.assertEqual(done, {"defaults": {"effort": {"old": "medium", "new": "low"}},
+                                "machine": {"dailyBudgetUsd": {"old": None, "new": 40}}})
+        self.assertEqual(settings.previous(self.file).read_text(), before)
+
+    def test_a_save_that_names_no_fields_is_refused(self):
+        for asked in ({}, {"dev2": {}}, {"dev2": "effort=high"}, "dev2"):
+            with self.subTest(asked=asked), self.assertRaises(settings.Refused) as refused:
+                settings.save(asked, self.read()["revision"], self.file)
+            self.assertEqual(refused.exception.status, 400)
 
     def test_a_value_sq_run_refuses_writes_nothing_and_says_what_sq_run_says(self):
         before = self.file.read_text()
@@ -132,14 +158,54 @@ class Settings(unittest.TestCase):
         self.assertIn("changed since the page read it", str(refused.exception))
         self.assertEqual(self.on_disk()["roles"]["dev2"]["effort"], "high")
 
-    def test_the_last_change_is_undone_once(self):
+    def test_the_last_change_is_undone_once_and_says_what_it_put_back(self):
         before = self.file.read_text()
-        self.save("dev2", {"effort": "high"})
+        self.save({"defaults": {"effort": "low"}, "machine": {"dailyBudgetUsd": 40}})
         self.assertTrue(self.read()["undo"])
-        self.assertTrue(settings.undo(self.read()["revision"], self.file))
+        self.assertEqual(settings.undo(self.read()["revision"], self.file),
+                         {"defaults": {"effort": {"old": "low", "new": "medium"}},
+                          "machine": {"dailyBudgetUsd": {"old": 40, "new": None}}})
         self.assertEqual(self.file.read_text(), before)
         self.assertFalse(self.read()["undo"])
-        self.assertFalse(settings.undo(self.read()["revision"], self.file))
+        self.assertIsNone(settings.undo(self.read()["revision"], self.file))
+
+    def test_an_undo_after_a_hand_edit_is_refused_and_puts_nothing_back(self):
+        self.save("dev2", {"effort": "high"})
+        edited = self.on_disk()
+        edited["roles"]["qa"] = {}
+        self.file.write_text(json.dumps(edited, indent=2) + "\n")
+        self.assertFalse(self.read()["undo"])
+        with self.assertRaises(settings.Refused) as refused:
+            settings.undo(self.read()["revision"], self.file)
+        self.assertEqual(refused.exception.status, 409)
+        self.assertIn("changed by hand since the last change", str(refused.exception))
+        self.assertIn("qa", self.on_disk()["roles"])
+
+    def test_an_undo_with_a_revision_read_before_a_hand_edit_is_refused(self):
+        self.save("dev2", {"effort": "high"})
+        read = self.read()["revision"]
+        self.file.write_text(self.file.read_text().replace('"high"', '"low"'))
+        with self.assertRaises(settings.Refused) as refused:
+            settings.undo(read, self.file)
+        self.assertIn("changed since the page read it", str(refused.exception))
+        self.assertEqual(self.on_disk()["roles"]["dev2"]["effort"], "low")
+
+    def test_a_save_checks_and_writes_holding_the_lock_an_undo_holds(self):
+        held = []
+        real = settings.problems
+        with mock.patch.object(settings, "problems",
+                               lambda *asked: held.append(settings.WRITING.locked())
+                               or real(*asked)):
+            self.save("dev2", {"effort": "high"})
+        self.assertEqual(held, [True])
+        self.assertFalse(settings.WRITING.locked())
+
+    def test_fixing_one_of_two_things_wrong_with_a_role_is_taken(self):
+        broken = self.on_disk()
+        broken["roles"]["dev2"] = {"wakeEvery": "soon", "maxBudgetUsd": -1}
+        self.file.write_text(json.dumps(broken, indent=2) + "\n")
+        self.save("dev2", {"wakeEvery": "5m"})
+        self.assertEqual(self.on_disk()["roles"]["dev2"]["wakeEvery"], "5m")
 
     def test_an_unchanged_value_writes_nothing(self):
         self.assertEqual(self.save("pm", {"effort": "high"}), {})
