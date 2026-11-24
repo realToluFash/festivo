@@ -31,6 +31,12 @@ final readonly class SubscriptionPeriod
         return new self(self::monthsOn($anchor, $months), self::monthsOn($anchor, $months + 1));
     }
 
+    /** The same period cut short where a moved period start ends it (sc-3929, Reading's 3rd bullet). */
+    public function endingAt(DateTimeImmutable $end): self
+    {
+        return $end < $this->end ? new self($this->start, $end) : $this;
+    }
+
     public function contains(DateTimeImmutable $at): bool
     {
         return $this->start <= $at && $at < $this->end;
