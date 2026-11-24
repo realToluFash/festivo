@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail, headingAddress } from '../kit/addressBreaks.ts';
+import { addressRuns, breakableEmail, domainSplit, headingAddress } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -158,6 +158,40 @@ export function DoneAction({
   );
 }
 
+/** The sheet's heading. Its domain is laid out whole first; when no line holds it, it breaks before its dots instead, until the name or the width changes (sc-70353). */
+function AddressHeading({ name }: { name: string }) {
+  const [wideFor, setWideFor] = useState<string | null>(null);
+  const width = useRef(0);
+  const wide = wideFor === name;
+
+  return (
+    <Text
+      size={18}
+      weight="bold"
+      accessibilityRole="header"
+      accessibilityLabel={name}
+      onLayout={(event) => {
+        const now = event.nativeEvent.layout.width;
+        if (now !== width.current && width.current !== 0) setWideFor(null);
+        width.current = now;
+      }}
+      onTextLayout={(event) => {
+        if (
+          !wide &&
+          domainSplit(
+            name,
+            event.nativeEvent.lines.map((line) => line.text),
+          )
+        ) {
+          setWideFor(name);
+        }
+      }}
+    >
+      {headingAddress(name, wide) ?? name}
+    </Text>
+  );
+}
+
 function Refused({ failed }: { failed: { line: string; times: number } }) {
   return (
     <ReadOut
@@ -289,9 +323,7 @@ export function RoleSheet<R extends string>({
       <View style={styles.person}>
         {person.face}
         <View style={styles.grow}>
-          <Text size={18} weight="bold" accessibilityRole="header" accessibilityLabel={person.name}>
-            {headingAddress(person.name) ?? person.name}
-          </Text>
+          <AddressHeading name={person.name} />
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
           </Text>

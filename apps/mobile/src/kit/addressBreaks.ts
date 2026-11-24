@@ -12,12 +12,18 @@ export function addressRuns(name: string): readonly [string, string] | null {
   return [beforeDots(name.slice(0, at + 1)), beforeDots(name.slice(at + 1))];
 }
 
-/** An address as one line of text, free to break after its @ first and before a dot of the part ahead of it; the domain stays whole. A heading of one Text, as the role sheet's, is measured as iOS draws it, which a row of runs beside a role's line was not (sc-70353). */
-export function headingAddress(name: string): string | null {
+/** An address as one line of text, free to break after its @ first and before a dot of the part ahead of it. The domain stays whole unless `wide`, a domain no line can hold, which breaks before its dots too. A heading of one Text, as the role sheet's, is measured as iOS draws it, which a row of runs beside a role's line was not (sc-70353). */
+export function headingAddress(name: string, wide = false): string | null {
   const runs = addressRuns(name);
   if (runs == null) return null;
 
-  return `${runs[0]}${BREAK}${runs[1].replaceAll(BREAK, '')}`;
+  return `${runs[0]}${BREAK}${wide ? runs[1] : runs[1].replaceAll(BREAK, '')}`;
+}
+
+/** Whether a heading laid out with its domain whole split that domain mid-word: no line holds it all. */
+export function domainSplit(name: string, lines: readonly string[]): boolean {
+  const domain = name.slice(name.lastIndexOf('@') + 1);
+  return !lines.some((line) => line.replaceAll(BREAK, '').includes(domain));
 }
 
 /** An address, or a sentence carrying one, free to break after its @ when it is wider than its line. Its accessibility label stays as written (sc-70353). */
