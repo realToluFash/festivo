@@ -9,7 +9,12 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame, FrameTop, besideRow } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { LIST_GAP, SETTINGS_PAGE, titleFoot } from '../../src/components/listFrame.ts';
+import {
+  LIST_GAP,
+  PANE_TITLE_ROW,
+  SETTINGS_PAGE,
+  titleFoot,
+} from '../../src/components/listFrame.ts';
 import {
   DetailRows,
   DetailsScreen,
@@ -218,7 +223,7 @@ function Organisation() {
         <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
           {alone && <FrameTop style={titleFoot(CONTENT[kind])} />}
           {!alone && (
-            <View style={besideRow.row}>
+            <View style={[besideRow.row, PANE_TITLE_ROW]}>
               <View style={styles.shrink}>
                 <Text
                   ref={title}
