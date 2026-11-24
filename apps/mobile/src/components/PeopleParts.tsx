@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakAfterAt } from '../kit/addressBreaks.ts';
+import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -271,7 +271,7 @@ export function RoleSheet<R extends string>({
   }
 
   const ask: AskProps = {
-    title: addressRuns(person.name) == null ? words.removeTitle : breakAfterAt(words.removeTitle),
+    title: addressRuns(person.name) == null ? words.removeTitle : breakableEmail(words.removeTitle),
     line: words.removeLine,
     keep: { label: words.keep, off: removing === 'sending', testID: 'people.remove.keep' },
     confirm: {

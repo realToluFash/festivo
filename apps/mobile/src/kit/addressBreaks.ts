@@ -12,7 +12,7 @@ export function addressRuns(name: string): readonly [string, string] | null {
   return [beforeDots(name.slice(0, at + 1)), beforeDots(name.slice(at + 1))];
 }
 
-/** A sentence carrying an address breaks after its @ rather than inside a word (sc-70353). */
-export function breakAfterAt(sentence: string): string {
-  return sentence.replaceAll('@', `@${BREAK}`);
+/** An address, or a sentence carrying one, free to break after its @ when it is wider than its line. Its accessibility label stays as written (sc-70353). */
+export function breakableEmail(text: string): string {
+  return text.replace('@', `@${BREAK}`);
 }

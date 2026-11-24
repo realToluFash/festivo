@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bandPlace,
-  breakableEmail,
   capChipInDisc,
   capInDisc,
   capUnderTitle,
@@ -276,14 +275,6 @@ describe('widths', () => {
     expect(sideListWidth(320, 834, AX1)).toBe(334);
     expect(sideListWidth(236, 980, AX2)).toBe(392);
     expect(sideListWidth(320, 700, AX2)).toBe(320);
-  });
-});
-
-describe('breakableEmail', () => {
-  it('lets the line break after the @ and nowhere new', () => {
-    expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
-      'camille.moreau@​traiteur-lumiere.fr',
-    );
   });
 });
 

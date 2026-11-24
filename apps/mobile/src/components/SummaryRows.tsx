@@ -347,9 +347,11 @@ export function Row({
               <NameText
                 name={title}
                 box={TITLE_BESIDE_TAG}
-                shown={(run) => titleWithInkRoom(run, Platform.OS)}
+                shown={(run) => titleWithInkRoom(run, Platform.OS, selectable)}
                 size={16}
                 weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
                 accessible={grouped ? false : undefined}
                 style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
               />

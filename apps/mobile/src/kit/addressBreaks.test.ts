@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addressRuns, breakAfterAt } from './addressBreaks.ts';
+import { addressRuns, breakableEmail } from './addressBreaks.ts';
 
 const BREAK = '​';
 
@@ -26,9 +26,15 @@ describe('addressRuns', () => {
   });
 });
 
-describe('breakAfterAt', () => {
-  it('lets a sentence break after the @ only', () => {
-    expect(breakAfterAt('Remove amaka.outside@soirely.test from this event?')).toBe(
+describe('breakableEmail', () => {
+  it('lets an address break after the @ and nowhere new', () => {
+    expect(breakableEmail('camille.moreau@traiteur-lumiere.fr')).toBe(
+      `camille.moreau@${BREAK}traiteur-lumiere.fr`,
+    );
+  });
+
+  it('lets a sentence carrying one break after the @ only', () => {
+    expect(breakableEmail('Remove amaka.outside@soirely.test from this event?')).toBe(
       `Remove amaka.outside@${BREAK}soirely.test from this event?`,
     );
   });
