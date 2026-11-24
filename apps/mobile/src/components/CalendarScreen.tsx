@@ -95,6 +95,7 @@ export function CalendarScreen() {
       offline={offline.stale}
       besideTitle={under ? undefined : ends}
       underTitle={under ? ends : undefined}
+      bellUnder={under}
     >
       {organisation != null && account != null && (
         <CalendarOf

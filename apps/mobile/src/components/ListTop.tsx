@@ -21,6 +21,7 @@ export function ListTop({
   pill,
   bell,
   beside,
+  bellUnder = false,
   primary,
   under,
   untitled = false,
@@ -35,6 +36,8 @@ export function ListTop({
   pill: ReactNode;
   bell: ReactNode;
   beside?: ReactNode;
+  /** On its side, the bell under the title and `under` rather than at the end of the title's row (sc-79265). */
+  bellUnder?: boolean;
   primary?: TopPrimaryProps | undefined;
   under?: ReactNode;
   /** The page in front names itself, so the top draws no title (sc-37693). */
@@ -67,7 +70,7 @@ export function ListTop({
       </View>
       {beside}
       {primary != null && <TopPrimary {...primary} wide={label.wide} />}
-      {kind === 'tabletLandscape' && bell}
+      {kind === 'tabletLandscape' && !bellUnder && bell}
     </View>
   );
 
@@ -76,6 +79,7 @@ export function ListTop({
       {kind === 'phone' && <PillRow pill={pill} bell={bell} />}
       {!untitled && titleRow}
       {under}
+      {kind === 'tabletLandscape' && bellUnder && <View style={styles.bellUnder}>{bell}</View>}
     </View>
   );
 }
@@ -160,6 +164,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   pillRow: { marginBottom: tokens.spaceSm },
+  bellUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceXs },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   portraitTop: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.spaceXxs },
   tabsAt: {

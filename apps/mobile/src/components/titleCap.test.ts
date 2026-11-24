@@ -20,6 +20,7 @@ const guests = readFileSync(join('src', 'components', 'GuestsHeading.tsx'), 'utf
 const settings = readFileSync(join('src', 'components', 'SettingsHome.tsx'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
 const calendar = readFileSync(join('src', 'components', 'CalendarScreen.tsx'), 'utf8');
+const listTop = readFileSync(join('src', 'components', 'ListTop.tsx'), 'utf8');
 const demoFrame = readFileSync(join('src', 'demo', 'settings', 'Frame.tsx'), 'utf8');
 const demoMembers = readFileSync(join('src', 'demo', 'settings', 'MembersParts.tsx'), 'utf8');
 
@@ -176,5 +177,10 @@ describe('an iPad’s Calendar title keeps its row from AX1 (sc-79265)', () => {
     expect(calendar).toMatch(
       /besideTitle=\{under \? undefined : ends\}\s+underTitle=\{under \? ends : undefined\}/u,
     );
+  });
+
+  it('on its side, puts the bell under the Subscribe row at AX', () => {
+    expect(calendar).toMatch(/bellUnder=\{under\}/u);
+    expect(listTop).toMatch(/\{under\}\s+\{kind === 'tabletLandscape' && bellUnder && /u);
   });
 });
