@@ -210,6 +210,31 @@ describe('door codes on People, at a desk (sc-72)', () => {
     expect(screen.getByText('K7P2 QX9M')).toBeDefined();
   });
 
+  it('refuses an earlier end that has already passed, at Time, and sends nothing', async () => {
+    const sent = await onPeople([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make a door code' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Door code' });
+    fireEvent.change(within(dialog).getByLabelText('How many people'), {
+      target: { value: '30' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Ends/u }));
+    fireEvent.click(within(dialog).getByRole('menuitemradio', { name: /Earlier/u }));
+
+    const day = within(dialog).getByLabelText('Day') as HTMLSelectElement;
+    const today = day.options[0]?.value ?? '';
+    fireEvent.change(day, { target: { value: today } });
+    const time = within(dialog).getByLabelText('Time') as HTMLSelectElement;
+    fireEvent.change(time, { target: { value: '00:00' } });
+    expect(time.value).toBe('00:00');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Make' }));
+
+    expect(within(dialog).getByText('Choose a time that has not passed yet.')).toBeDefined();
+    expect(document.activeElement).toBe(time);
+    expect(time.getAttribute('aria-invalid')).toBe('true');
+    expect(sent.some((one) => one.line === 'POST /api/events/ev_1/door-codes')).toBe(false);
+  });
+
   it('says the code was not made when the request does not arrive, and keeps the form', async () => {
     await onPeople([], {
       'POST /api/events/ev_1/door-codes': () => Promise.reject(new TypeError('offline')),
