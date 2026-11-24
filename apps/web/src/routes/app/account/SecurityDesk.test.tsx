@@ -620,6 +620,60 @@ describe('two-factor at a desk', () => {
     ).toBeDefined();
   });
 
+  it('opens a new sheet at once on Use a passkey instead, before making new codes (sc-89577)', async () => {
+    let sheets = 0;
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: {
+        get: async () => {
+          sheets += 1;
+          if (sheets === 1) throw new DOMException('closed', 'NotAllowedError');
+          return new Promise(() => {});
+        },
+      },
+      configurable: true,
+    });
+    const sent = answering(
+      {
+        ...PASSKEY_ONLY,
+        'POST /api/auth/two-factor/passkeys/options': () => json({ challenge: 'AAEC' }),
+      },
+      true,
+    );
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    fireEvent.click(
+      await dialog(/Confirm it.s you/).findByRole('button', { name: 'Use a code instead' }),
+    );
+    fireEvent.click(dialog(/Confirm it.s you/).getByRole('button', { name: 'Continue' }));
+    expect(
+      await dialog(/Confirm it.s you/).findByText('Enter one of your recovery codes.'),
+    ).toBeDefined();
+
+    fireEvent.click(
+      dialog(/Confirm it.s you/).getByRole('button', { name: 'Use a passkey instead' }),
+    );
+
+    expect(await dialog(/Confirm it.s you/).findByText('Waiting for your passkey…')).toBeDefined();
+    expect(dialog(/Confirm it.s you/).queryByText('Enter one of your recovery codes.')).toBeNull();
+    expect(sheets).toBe(2);
+    expect(
+      sent.filter((one) => one.call === 'POST /api/auth/two-factor/passkeys/options'),
+    ).toHaveLength(2);
+  });
+
   it('says a wrong code is wrong, and keeps it on', async () => {
     answering(
       { 'POST /api/auth/two-factor/disable': () => problem('two_factor_code_invalid', 422) },

@@ -130,7 +130,7 @@ export function SecondFactorStep({
       setStatus(
         refusal instanceof ApiError && refusal.is('passkey_refused')
           ? { kind: 'refused' }
-          : statusFrom(refusal, mode, t),
+          : statusFrom(refusal, 'passkey', t),
       );
     }
   }
@@ -319,7 +319,14 @@ export function SecondFactorStep({
 
       <div className="auth-asides">
         {offersPasskey && (
-          <button className="link-button" type="button" onClick={() => switchTo('passkey')}>
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => {
+              switchTo('passkey');
+              void openSheet();
+            }}
+          >
             {t('passkey.useInstead')}
           </button>
         )}
