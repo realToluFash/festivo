@@ -10,7 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
-import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
+import { addressRuns, breakableEmail, headingAddress } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -29,7 +29,6 @@ import {
   SectionHead,
   TextAction,
 } from './Summary.tsx';
-import { NameText } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
@@ -290,7 +289,9 @@ export function RoleSheet<R extends string>({
       <View style={styles.person}>
         {person.face}
         <View style={styles.grow}>
-          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
+          <Text size={18} weight="bold" accessibilityRole="header" accessibilityLabel={person.name}>
+            {headingAddress(person.name) ?? person.name}
+          </Text>
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
           </Text>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addressRuns, breakableEmail } from './addressBreaks.ts';
+import { addressRuns, breakableEmail, headingAddress } from './addressBreaks.ts';
 
 const BREAK = '​';
 
@@ -37,5 +37,18 @@ describe('breakableEmail', () => {
     expect(breakableEmail('Remove amaka.outside@soirely.test from this event?')).toBe(
       `Remove amaka.outside@${BREAK}soirely.test from this event?`,
     );
+  });
+});
+
+describe('headingAddress', () => {
+  it('breaks after the @ and before the dots ahead of it, keeping the domain whole', () => {
+    expect(headingAddress('fundacao.comunitaria.de@soirely.test')).toBe(
+      `fundacao${BREAK}.comunitaria${BREAK}.de@${BREAK}soirely.test`,
+    );
+  });
+
+  it('leaves a name or a number to its plain text', () => {
+    expect(headingAddress('Ada Obi')).toBeNull();
+    expect(headingAddress('+234 803 123 4567')).toBeNull();
   });
 });
