@@ -212,11 +212,23 @@
   justify-content: center;
   gap: var(--spaceMd);
   width: 100%;
-  height: var(--sizeHitPhonePrimary);
+  min-height: var(--sizeHitPhonePrimary);
+  padding: var(--spaceXs) var(--spaceXxl);
   border-radius: var(--radiusPill);
   background: var(--colorAccent);
   color: var(--colorInkOnDark);
-  font: 600 17px/1 var(--fontFamily);
+  font: 600 17px/1.25 var(--fontFamily);
+  text-align: center;
+}
+
+.rd-primary-words {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .rd-primary:hover {
@@ -228,6 +240,7 @@
 }
 
 .rd-spin {
+  flex-shrink: 0;
   box-sizing: border-box;
   width: 16px;
   height: 16px;
