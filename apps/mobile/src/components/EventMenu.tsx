@@ -50,6 +50,8 @@ import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 
 /** Under 10 seconds, so counts move while the screen is open (sc-3914). */
 export const POLL_MS = 8000;
+// iOS keeps the scroll view's pull offset when a refresh ends before it has shown, and the next tap only clears it (sc-3914).
+const PULL_SHOWN_MS = 1000;
 
 const PDF = { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' };
 
@@ -85,6 +87,8 @@ export function EventMenu({
   const opener = useRef<ViewInstance | null>(null);
   const asked = useRef(0);
   const out = useRef(false);
+  const pulledAt = useRef(0);
+  const pullEnds = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const drop = () => {
     asked.current += 1;
@@ -97,7 +101,11 @@ export function EventMenu({
     const landed = () => {
       if (mine !== asked.current) return false;
       out.current = false;
-      setPulling(false);
+      if (pullEnds.current != null) clearTimeout(pullEnds.current);
+      pullEnds.current = setTimeout(
+        () => setPulling(false),
+        Math.max(0, pulledAt.current + PULL_SHOWN_MS - Date.now()),
+      );
 
       return true;
     };
@@ -120,12 +128,14 @@ export function EventMenu({
 
     return () => {
       clearInterval(timer);
+      if (pullEnds.current != null) clearTimeout(pullEnds.current);
       asked.current += 1;
       out.current = false;
     };
   }, [read]);
 
   const pull = () => {
+    pulledAt.current = Date.now();
     setPulling(true);
     read();
   };
