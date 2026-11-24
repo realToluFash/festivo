@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { PageLoading } from '../../../components/DataControlParts.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   Card,
   CardStep,
@@ -14,6 +15,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { useDeskTop } from '../../../deskTop.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
+import { useOffline } from '../../../offline.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { BudgetRow, Rows } from '../events/QuoteParts.tsx';
@@ -43,27 +45,33 @@ function RemindersDesk({ organisation }: { organisation: Membership }) {
   const [attempt, setAttempt] = useState(0);
   const [changing, setChanging] = useState(false);
   const said = useRef<HTMLHeadingElement>(null);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => setAttempt((one) => one + 1),
+    title: said,
+  });
 
   useEffect(() => {
     let live = true;
-    api.paymentReminders(organisation.id).then(
+    watch(api.paymentReminders(organisation.id)).then(
       (setting) => {
         if (live) setLoad({ kind: 'loaded', setting });
       },
       () => {
-        if (live) setLoad({ kind: 'failed' });
+        if (live) setLoad((before) => (before.kind === 'loaded' ? before : { kind: 'failed' }));
       },
     );
 
     return () => {
       live = false;
     };
-  }, [organisation.id, attempt]);
+  }, [organisation.id, attempt, watch]);
 
   return (
     <DeskPage layers={layers}>
       <div className="desk-page" inert={covered}>
         <div className="desk-column">
+          {refreshing && <Refreshing />}
           {desk.above}
           {desk.said}
           {load.kind === 'loading' && <PageLoading words={t('paymentReminders.loading')} />}

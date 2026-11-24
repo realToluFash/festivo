@@ -25,6 +25,7 @@ import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   Ask,
   Card,
@@ -44,6 +45,7 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { LayersContext, focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { offButton } from '../../../offButton.ts';
+import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { codeChoice } from '../../../phoneProblem.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -139,6 +141,16 @@ function Directory({
   const backToSearch = useRef(false);
   const retried = useRef(false);
   const [reminders, setReminders] = useState<PaymentRemindersSetting | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const unasked = useRef(false);
+  const { watch, refreshing } = useOffline({
+    loaded: load.kind === 'loaded',
+    reload: () => {
+      unasked.current = true;
+      setAttempt((n) => n + 1);
+    },
+    title: heading,
+  });
 
   useEffect(() => {
     if (!setsReminders) return;
@@ -157,8 +169,11 @@ function Directory({
 
   useEffect(() => {
     const stop = new AbortController();
-    api
-      .vendors(
+    // Asked again by the connection, not by a press, a read that never reached Soirely keeps the rows in view.
+    const quiet = unasked.current;
+    unasked.current = false;
+    watch(
+      api.vendors(
         organisationId,
         {
           view: looking.view,
@@ -168,21 +183,25 @@ function Directory({
           vendor: looking.vendor,
         },
         { signal: stop.signal },
-      )
-      .then(
-        (page) => {
-          if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
-        },
-        () => {
-          if (!stop.signal.aborted)
-            setLoad((was) =>
-              was.kind === 'loaded' ? { ...was, rows: 'failed' } : { kind: 'failed' },
-            );
-        },
-      );
+      ),
+    ).then(
+      (page) => {
+        if (!stop.signal.aborted) setLoad({ kind: 'loaded', page, rows: 'shown' });
+      },
+      (error: unknown) => {
+        if (!stop.signal.aborted)
+          setLoad((was) =>
+            was.kind !== 'loaded'
+              ? { kind: 'failed' }
+              : quiet && keepsWhatLoaded(error)
+                ? was
+                : { ...was, rows: 'failed' },
+          );
+      },
+    );
 
     return () => stop.abort();
-  }, [organisationId, looking, attempt]);
+  }, [organisationId, looking, attempt, watch]);
 
   useEffect(() => {
     const wait = window.setTimeout(
@@ -237,7 +256,8 @@ function Directory({
       <div className="desk vd-desk">
         <div className="desk-page" inert={covered}>
           <div className="desk-column vd-column">
-            <TitleRow title={t('vendors.title')} bell={desk.bell} />
+            {refreshing && <Refreshing />}
+            <TitleRow title={t('vendors.title')} titleRef={heading} bell={desk.bell} />
             {load.kind === 'loading' && <Loading />}
             {load.kind === 'failed' && (
               <Failed

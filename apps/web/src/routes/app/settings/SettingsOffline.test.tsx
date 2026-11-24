@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { VENDOR_CATEGORIES } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -76,6 +77,26 @@ const ANSWERS: Record<string, unknown> = {
     areas: [],
   },
   '/api/orgs/org_1/domains': { domains: [] },
+  '/api/orgs/org_1/email-domains': { plan: 'enterprise', domains: [] },
+  '/api/orgs/org_1/vendors': {
+    vendors: [],
+    page: 1,
+    total: 0,
+    inUse: 0,
+    archived: 0,
+    categories: Object.fromEntries(VENDOR_CATEGORIES.map((category) => [category, 0])),
+  },
+  '/api/orgs/org_1/payment-reminders': { days: 3, inForce: true },
+  '/api/orgs/org_1/export': { owner: true, export: null, nextAllowedAt: null, nextAllowed: null },
+  '/api/orgs/org_1/audit-log': {
+    organisation: 'Ìrè Events',
+    zone: 'Africa/Lagos',
+    entries: [],
+    next: null,
+    people: [],
+    events: [],
+    preparing: null,
+  },
   '/api/orgs/org_1/request-link': { on: false, url: null },
   '/api/orgs/org_1/sign-in-rules': {
     providerOnly: false,
@@ -205,6 +226,12 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     ['/app/account/security', 'Security'],
     ['/app/account/notifications', 'Notification settings'],
     ['/app/account/personalisation', 'Personalisation'],
+    ['/app/settings/vendors', 'Vendors'],
+    ['/app/settings/vendors/payment-reminders', 'Payment reminders'],
+    ['/app/settings/data-and-control', 'Data and control'],
+    ['/app/settings/data-and-control/export', 'Export all data'],
+    ['/app/settings/data-and-control/email-domains', 'Email domains'],
+    ['/app/settings/data-and-control/audit-log', 'Audit log'],
   ])('%s says so in the amber box above its title, with Try again', async (path, title) => {
     signedIn();
     const soirely = { reachable: true };
@@ -219,6 +246,31 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     const box = boxAbove(heading);
     expect(within(box).getByText(/^Offline · as of /)).toBeDefined();
     expect(within(box).getByRole('button', { name: 'Try again' })).toBeDefined();
+  });
+
+  it('keeps Payment reminders without the box when it loaded nothing, and drops the box once Soirely answers Try again (sc-88912)', async () => {
+    signedIn();
+    const soirely = { reachable: false };
+    serving(soirely);
+    open('/app/settings/vendors/payment-reminders');
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Payment reminders did not load',
+    );
+    expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
+
+    soirely.reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Payment reminders' });
+
+    soirely.reachable = false;
+    goOffline();
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(screen.getByText(/3 days/)).toBeDefined();
+
+    soirely.reachable = true;
+    fireEvent.click(within(boxAbove(heading)).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 
   it('keeps the colours and says so in the box when Personalisation is opened from Notifications offline', async () => {

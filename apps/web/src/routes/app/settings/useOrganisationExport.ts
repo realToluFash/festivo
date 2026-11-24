@@ -1,25 +1,35 @@
 import type { OrganisationExportPage } from '@soirely/api-client';
-import { useCallback, useEffect, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useState } from 'react';
 
 import { api } from '../../../api.ts';
+import { useOffline } from '../../../offline.ts';
 import { PREPARING_POLL_MS, isPreparing } from './exportAllData.ts';
 
 export type ExportLoad =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: OrganisationExportPage };
 
 /** Where the organisation's export stands, asked again while it prepares; `show` puts an answer in place, `reload` asks afresh. */
-export function useOrganisationExport(organisationId: string): {
+export function useOrganisationExport(
+  organisationId: string,
+  title: RefObject<HTMLElement | null>,
+): {
   load: ExportLoad;
   show: (page: OrganisationExportPage) => void;
   reload: () => void;
+  refreshing: boolean;
 } {
   const [load, setLoad] = useState<ExportLoad>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const reload = useCallback(() => {
+    setLoad((before) => (before.kind === 'failed' ? { kind: 'loading' } : before));
+    setAttempt((n) => n + 1);
+  }, []);
+  const { watch, refreshing } = useOffline({ loaded: load.kind === 'loaded', reload, title });
 
   useEffect(() => {
     let current = true;
 
-    api.organisationExport(organisationId).then(
+    watch(api.organisationExport(organisationId)).then(
       (page) => {
         if (current) setLoad({ kind: 'loaded', page });
       },
@@ -31,7 +41,7 @@ export function useOrganisationExport(organisationId: string): {
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, watch]);
 
   const preparing = load.kind === 'loaded' && isPreparing(load.page);
 
@@ -43,10 +53,6 @@ export function useOrganisationExport(organisationId: string): {
   }, [preparing, load]);
 
   const show = useCallback((page: OrganisationExportPage) => setLoad({ kind: 'loaded', page }), []);
-  const reload = useCallback(() => {
-    setLoad((before) => (before.kind === 'failed' ? { kind: 'loading' } : before));
-    setAttempt((n) => n + 1);
-  }, []);
 
-  return { load, show, reload };
+  return { load, show, reload, refreshing };
 }
