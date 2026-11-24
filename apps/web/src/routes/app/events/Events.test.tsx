@@ -1360,7 +1360,7 @@ describe('New event', () => {
       await waitFor(() => expect(document.activeElement).toBe(name));
       expect(errorUnder('event-host-0')).toContain('Enter a name or remove this host.');
       expect(errorUnder('event-host-1')).toContain(
-        "A host's name can be at most 60 characters. This one has 61.",
+        'A host’s name can be at most 60 characters. This one has 61.',
       );
       expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
 
@@ -1970,7 +1970,7 @@ describe("An event's Overview (sc-22103)", () => {
     expect(within(details).queryByRole('button', { name: /^.*Dates/u })).toBeNull();
     expect(
       within(details).getByText(
-        "Dates · This event is over, so its start, end and time zone can't be changed.",
+        'Dates · This event is over, so its start, end and time zone can’t be changed.',
       ),
     ).toBeDefined();
   });
@@ -1993,7 +1993,7 @@ describe("An event's Overview (sc-22103)", () => {
     const details = await screen.findByRole('region', { name: 'Details' });
     expect(
       within(details).getByText(
-        "Dates · This event was called off, so its start, end and time zone can't be changed.",
+        'Dates · This event was called off, so its start, end and time zone can’t be changed.',
       ),
     ).toBeDefined();
   });
@@ -2638,12 +2638,12 @@ describe("An event's venue in New event (sc-3589)", () => {
 
     expect(
       await screen.findByText(
-        "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+        'Suggestions aren’t available right now. Type the address in full and it will be saved as you typed it.',
       ),
     ).toBeDefined();
     const help = address().getAttribute('aria-describedby')!;
     expect(document.getElementById(help)?.textContent).toContain(
-      "Suggestions aren't available right now.",
+      'Suggestions aren’t available right now.',
     );
 
     expect((await create(sent)).venue).toEqual({ name: null, address: '12 Bode Thomas Street' });
@@ -2774,7 +2774,7 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
 
       expect(
         await within(details).findByText(
-          "Dates · This event was called off, so its start, end and time zone can't be changed.",
+          'Dates · This event was called off, so its start, end and time zone can’t be changed.',
         ),
       ).toBeDefined();
       expect(within(details).queryByRole('group', { name: 'Starts' })).toBeNull();
@@ -3028,7 +3028,7 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       within(dialog).getByText(
-        "Guests can be invited, and they can see it. It can't go back to being a draft.",
+        'Guests can be invited, and they can see it. It can’t go back to being a draft.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Not yet' }));
@@ -3070,7 +3070,7 @@ describe('Make live (sc-3584)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(changed).getByText("It's live now. The page shows what it is now."),
+      within(changed).getByText('It’s live now. The page shows what it is now.'),
     ).toBeDefined();
     fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Live')).toBeDefined();
@@ -3271,7 +3271,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(within(dialog).getByRole('button', { name: 'Call off' }).className).toContain('is-red');
     expect(
       within(dialog).getByText(
-        "It won't go ahead. Guests following their link will be told. You can't undo this.",
+        'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it on' }));
@@ -3345,7 +3345,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
     const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
     expect(
-      within(dialog).getByText("It will be over for everybody. You can't undo this."),
+      within(dialog).getByText('It will be over for everybody. You can’t undo this.'),
     ).toBeDefined();
     expect(within(dialog).getByRole('button', { name: 'End now' }).className).not.toContain(
       'is-red',
@@ -3431,7 +3431,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's been called off. The page shows what it is now."),
+      within(refused).getByText('It’s been called off. The page shows what it is now.'),
     ).toBeDefined();
     expect(within(refused).queryByText('This event is already over.')).toBeNull();
   });
@@ -3682,7 +3682,7 @@ describe('Pause and Resume (sc-3586)', () => {
     const dialog = await screen.findByRole('alertdialog', { name: 'Pause Adaeze and Tunde?' });
     expect(
       within(dialog).getByText(
-        "Guests can't reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.",
+        'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
@@ -3750,13 +3750,13 @@ describe('Pause and Resume (sc-3586)', () => {
       'somebody else changed it when the resume is refused and it is live now',
       () => live(),
       'Somebody else changed this event while you had it open.',
-      "It's live now. The page shows what it is now.",
+      'It’s live now. The page shows what it is now.',
     ],
     [
       'it is already over when the resume is refused because its end has passed',
       () => paused({ phase: 'finished', pausedAt: null }),
       'This event is already over.',
-      "It's finished now. The page shows what it is now.",
+      'It’s finished now. The page shows what it is now.',
     ],
     [
       'somebody else changed it when the resume is refused and it was called off (sc-17382)',
@@ -3768,7 +3768,7 @@ describe('Pause and Resume (sc-3586)', () => {
           concludedAt: '2026-10-28T09:00:00+00:00',
         }),
       'Somebody else changed this event while you had it open.',
-      "It's been called off. The page shows what it is now.",
+      'It’s been called off. The page shows what it is now.',
     ],
   ])('says %s, and focus is on the title', async (_, reloaded, said, now) => {
     signedIn();
@@ -3806,7 +3806,7 @@ describe('Pause and Resume (sc-3586)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's paused now. The page shows what it is now."),
+      within(refused).getByText('It’s paused now. The page shows what it is now.'),
     ).toBeDefined();
   });
 
@@ -3832,10 +3832,10 @@ describe('Pause and Resume (sc-3586)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's been called off. The page shows what it is now."),
+      within(refused).getByText('It’s been called off. The page shows what it is now.'),
     ).toBeDefined();
     expect(
-      within(refused).queryByText("It's finished now. The page shows what it is now."),
+      within(refused).queryByText('It’s finished now. The page shows what it is now.'),
     ).toBeNull();
   });
 
@@ -5157,7 +5157,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
     expect(
       await within(dialog).findByText(
-        "A host's name can be at most 60 characters. This one has 66.",
+        'A host’s name can be at most 60 characters. This one has 66.',
       ),
     ).toBeDefined();
     expect(host.value).toBe('é'.repeat(66));
@@ -5519,7 +5519,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
 
     expect(
       await within(page).findByText(
-        "Every date on this event, earliest first. Times are in Europe/Madrid, the event's time zone.",
+        'Every date on this event, earliest first. Times are in Europe/Madrid, the event’s time zone.',
       ),
     ).toBeDefined();
     expect(rows(page)).toEqual([
