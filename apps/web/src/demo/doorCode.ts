@@ -32,7 +32,7 @@ export const JOIN_MS = 1500;
 
 export const W = {
   noneSays: 'No door code yet',
-  noneLine: 'One code lets a crew in on the day. Each person gives their name and mobile number.',
+  noneLine: 'One code lets a crew in on the day. Each person gives their full name.',
   makeFirst: 'Make a door code',
   another: 'Make another door code',
   doorCode: 'Door code',

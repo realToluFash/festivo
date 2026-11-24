@@ -722,7 +722,7 @@ function EndsChoice({
   }
 
   const choices = [
-    { key: 'event', word: t('doorCodes.whenEventEnds'), line: eventEndWords(clock) },
+    { key: 'event', word: t('doorCodes.whenEventEnds'), line: eventEndWords(clock, t) },
     { key: 'earlier', word: t('doorCodes.earlier'), line: t('doorCodes.earlierLine') },
   ] as const;
   const earlier = ends.kind === 'earlier' ? ends : null;

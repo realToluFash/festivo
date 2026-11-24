@@ -328,7 +328,7 @@ describe('who is not asked again', () => {
     await redeem('member');
 
     expect(
-      screen.getByRole('heading', { level: 1, name: 'You’re already a member of Lumen Feiras' }),
+      screen.getByRole('heading', { level: 1, name: 'You are already a member of Lumen Feiras' }),
     ).toBeDefined();
     expect(
       screen.getByText(
