@@ -151,6 +151,9 @@ export function WindowOrigin({ children }: { children: ReactNode }) {
   );
 }
 
+/** Where the frame's body starts under its header, lower while the offline band shows (sc-83081). */
+export const BodyTop = createContext(0);
+
 /** Where the app's root starts in measureInWindow's frame, for reading the keys' top against it. */
 export function useWindowOrigin(): number {
   return useContext(Origin);

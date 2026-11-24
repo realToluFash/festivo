@@ -134,7 +134,7 @@ import { ReadOut } from './ReadOut.tsx';
 import { Row, RowList, TextAction } from './SummaryRows.tsx';
 import { OutsideEventsGroup, YourOrganisationsGroup } from './OutsideRows.tsx';
 import { Back, useBackWord } from './SettingsParts.tsx';
-import { SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { BodyTop, SETTLED_MS, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
@@ -356,6 +356,7 @@ export function AppFrame({
     }, []),
   );
   const [choosing, setChoosing] = useState(false);
+  const [bodyTop, setBodyTop] = useState(0);
   const [creating, setCreating] = useState(false);
   const pill = useRef<ViewInstance>(null);
   const ownTitle = useRef<TextHandle>(null);
@@ -718,56 +719,59 @@ export function AppFrame({
                     paddingBottom: phoneTabBarClearance(insets.bottom) + tokens.spaceMd,
                   },
                 ]}
+                onLayout={(event) => setBodyTop(event.nativeEvent.layout.y)}
               >
-                <PageTitleDrawn.Provider value={titleCap.onDrawn}>
-                  <TitleCap.Provider value={cap}>
-                    {!ownTop && switchedNotice}
-                    <OpenSwitcher.Provider value={openSwitcher}>
-                      <StartOrganisation.Provider
-                        value={{ open: startOrganisation, managed: offer.managed }}
-                      >
-                        <OpenJoined.Provider value={openJoined}>
-                          <HideBack.Provider value={backRow.hide}>
-                            <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
-                              {standIn === 'paused' ? (
-                                pausedCard
-                              ) : standIn === 'overdue' && signedIn.organisation != null ? (
-                                <TwoFactorOverdue
-                                  organisation={signedIn.organisation.name}
-                                  others={signedIn.organisations.filter(
-                                    (other) => other.id !== signedIn.organisation?.id,
-                                  )}
-                                  answer={switchAnswer ?? lapsed}
-                                  headingRef={overdueHeading}
-                                  onTurnOn={() => router.navigate(SECTION_HREF.security)}
-                                  onSignOut={signOutHere}
-                                />
-                              ) : (
-                                <FrameSwitch.Provider value={switchAnswer}>
-                                  <ScrolledTop.Provider
-                                    value={ownTop && top === 'scrolls' ? header : null}
-                                  >
-                                    <BodySwitched.Provider value={bodySwitched}>
-                                      <UnderTabsProvider value={underTabs}>
-                                        <BellInPane.Provider
-                                          value={sidebar && untitled && !bareList}
-                                        >
-                                          <PausedCard.Provider value={pausedCard}>
-                                            {children}
-                                          </PausedCard.Provider>
-                                        </BellInPane.Provider>
-                                      </UnderTabsProvider>
-                                    </BodySwitched.Provider>
-                                  </ScrolledTop.Provider>
-                                </FrameSwitch.Provider>
-                              )}
-                            </EdgeSwipeStrip.Provider>
-                          </HideBack.Provider>
-                        </OpenJoined.Provider>
-                      </StartOrganisation.Provider>
-                    </OpenSwitcher.Provider>
-                  </TitleCap.Provider>
-                </PageTitleDrawn.Provider>
+                <BodyTop.Provider value={bodyTop}>
+                  <PageTitleDrawn.Provider value={titleCap.onDrawn}>
+                    <TitleCap.Provider value={cap}>
+                      {!ownTop && switchedNotice}
+                      <OpenSwitcher.Provider value={openSwitcher}>
+                        <StartOrganisation.Provider
+                          value={{ open: startOrganisation, managed: offer.managed }}
+                        >
+                          <OpenJoined.Provider value={openJoined}>
+                            <HideBack.Provider value={backRow.hide}>
+                              <EdgeSwipeStrip.Provider value={setEdgeSwipe}>
+                                {standIn === 'paused' ? (
+                                  pausedCard
+                                ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                                  <TwoFactorOverdue
+                                    organisation={signedIn.organisation.name}
+                                    others={signedIn.organisations.filter(
+                                      (other) => other.id !== signedIn.organisation?.id,
+                                    )}
+                                    answer={switchAnswer ?? lapsed}
+                                    headingRef={overdueHeading}
+                                    onTurnOn={() => router.navigate(SECTION_HREF.security)}
+                                    onSignOut={signOutHere}
+                                  />
+                                ) : (
+                                  <FrameSwitch.Provider value={switchAnswer}>
+                                    <ScrolledTop.Provider
+                                      value={ownTop && top === 'scrolls' ? header : null}
+                                    >
+                                      <BodySwitched.Provider value={bodySwitched}>
+                                        <UnderTabsProvider value={underTabs}>
+                                          <BellInPane.Provider
+                                            value={sidebar && untitled && !bareList}
+                                          >
+                                            <PausedCard.Provider value={pausedCard}>
+                                              {children}
+                                            </PausedCard.Provider>
+                                          </BellInPane.Provider>
+                                        </UnderTabsProvider>
+                                      </BodySwitched.Provider>
+                                    </ScrolledTop.Provider>
+                                  </FrameSwitch.Provider>
+                                )}
+                              </EdgeSwipeStrip.Provider>
+                            </HideBack.Provider>
+                          </OpenJoined.Provider>
+                        </StartOrganisation.Provider>
+                      </OpenSwitcher.Provider>
+                    </TitleCap.Provider>
+                  </PageTitleDrawn.Provider>
+                </BodyTop.Provider>
               </View>
               {floatingTabs && (
                 <FrameTabBar current={current} organisation={signedIn.organisation} />
