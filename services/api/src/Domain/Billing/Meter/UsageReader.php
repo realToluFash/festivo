@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Billing\Meter;
 
-use App\Domain\Billing\Entitlements;
 use App\Domain\Billing\Meter\Model\KindUsage;
-use App\Domain\Billing\Meter\Model\SubscriptionPeriod;
 use App\Domain\Billing\Meter\Model\UsageReading;
 use App\Enum\UsageKind;
 use App\Repository\SubscriptionRepository;
@@ -24,16 +22,17 @@ final readonly class UsageReader
     public function __construct(
         private Connection $connection,
         private SubscriptionRepository $subscriptionRepository,
-        private Entitlements $entitlements,
+        private SubscriptionPeriods $subscriptionPeriods,
         private ClockInterface $clock,
     ) {
     }
 
+    /** For the period containing `$at`, ended or not; an ended period with the included amounts in force when it ended (sc-3929, 24 Nov). */
     public function read(Uuid $organisationId, ?DateTimeImmutable $at = null): UsageReading
     {
         $subscription = $this->subscriptionRepository->findCurrentOf($organisationId);
-        $period = SubscriptionPeriod::containing($subscription->getPeriodStart(), $at ?? $this->clock->now());
-        $terms = $this->entitlements->of($organisationId)->terms;
+        $inForce = $this->subscriptionPeriods->containing($subscription, $at ?? $this->clock->now());
+        $period = $inForce->period;
 
         $rows = Dict\reindex(Type\vec(self::row())->coerce($this->connection->fetchAllAssociative(
             'SELECT kind, used, included_used, included_held, credits_taken FROM usage_totals WHERE organisation_id = :organisation AND period_start = :start',
@@ -55,7 +54,7 @@ final readonly class UsageReader
 
         foreach (UsageKind::cases() as $kind) {
             $row = $rows[$kind->value] ?? ['used' => 0, 'included_used' => 0, 'included_held' => 0, 'credits_taken' => 0];
-            $included = $terms->limit($kind->limit())->allowance;
+            $included = $inForce->terms->limit($kind->limit())->allowance;
             $used = UsageKind::StorageBytes === $kind ? $stored : $row['used'];
             $taken = UsageKind::StorageBytes === $kind ? $stored : $row['included_used'] + $row['included_held'];
 

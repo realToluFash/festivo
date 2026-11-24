@@ -7,10 +7,12 @@ namespace App\Tests\Functional\Billing;
 use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\Billing\Catalogue\CatalogueKeeper;
 use App\Domain\Billing\Entitlements;
+use App\Domain\Billing\Meter\Exception\BeforeTheFirstPeriod;
 use App\Domain\Billing\Meter\Exception\ReservationRefused;
 use App\Domain\Billing\Meter\Exception\UnknownReservation;
 use App\Domain\Billing\Meter\Model\MeteredUse;
 use App\Domain\Billing\Meter\Model\UsageReading;
+use App\Domain\Billing\Meter\SubscriptionPeriods;
 use App\Domain\Billing\Meter\UnitPricer;
 use App\Domain\Billing\Meter\UsageMeter;
 use App\Domain\Billing\Meter\UsagePublisher;
@@ -21,7 +23,9 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\UsageRecord;
 use App\Enum\CataloguePart;
+use App\Enum\Plan;
 use App\Enum\RealtimeTopic;
+use App\Enum\SubscriptionSource;
 use App\Enum\UsageKind;
 use App\Enum\UsagePayer;
 use App\Enum\WhatsAppCategory;
@@ -530,6 +534,101 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aSendHeldBeforeAnUpgradeMovesThePeriodStartAndSettledAfterShowsInThePeriodTheMoveEnded(): void
+    {
+        $this->credit(100);
+        $this->clock->modify('2026-11-20 11:00:00');
+        $this->meter->record($this->organisation, 'email-1', new MeteredUse(UsageKind::Email));
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+        $this->clock->modify('2026-11-20 12:00:00');
+        $this->upgradeMovingThePeriodStartTo('2026-11-20 12:00:00');
+        $this->clock->modify('2026-11-20 12:30:00');
+
+        $this->meter->settle($hold->reservationId, 'message-1', self::sms());
+
+        $ended = $this->read(new DateTimeImmutable('2026-11-15 00:00:00'));
+        $next = $this->read(new DateTimeImmutable('2026-11-21 00:00:00'));
+        self::assertSame(['2026-11-01T09:00:00+00:00', '2026-11-20T12:00:00+00:00'], [$ended->period->start->format(\DATE_ATOM), $ended->period->end->format(\DATE_ATOM)]);
+        self::assertSame([1, 1, 2499], [$ended->of(UsageKind::Sms)->used, $ended->of(UsageKind::Email)->used, $ended->of(UsageKind::Email)->left]);
+        self::assertSame(['2026-11-20T12:00:00+00:00', '2026-12-20T12:00:00+00:00'], [$next->period->start->format(\DATE_ATOM), $next->period->end->format(\DATE_ATOM)]);
+        self::assertSame([0, 0, 100000], [$next->of(UsageKind::Sms)->used, $next->of(UsageKind::Email)->used, $next->of(UsageKind::Email)->left]);
+    }
+
+    #[Test]
+    public function aPeriodWhoseStartMovedForwardThenBackEndsAtTheEarlierMove(): void
+    {
+        $this->clock->modify('2026-11-10 10:00:00');
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        $this->changer()->movePeriodStart($subscription, new DateTimeImmutable('2026-12-01 09:00:00'), ChangedBy::staff('Ada at Soirely', 'Moved to yearly'));
+        self::em()->clear();
+        $this->clock->modify('2026-11-15 12:00:00');
+        $this->upgradeMovingThePeriodStartTo('2026-11-15 12:00:00');
+
+        $ended = $this->read(new DateTimeImmutable('2026-11-12 00:00:00'))->period;
+        $next = $this->read(new DateTimeImmutable('2026-11-20 00:00:00'))->period;
+
+        self::assertSame(['2026-11-01T09:00:00+00:00', '2026-11-15T12:00:00+00:00'], [$ended->start->format(\DATE_ATOM), $ended->end->format(\DATE_ATOM)]);
+        self::assertSame(['2026-11-15T12:00:00+00:00', '2026-12-15T12:00:00+00:00'], [$next->start->format(\DATE_ATOM), $next->end->format(\DATE_ATOM)]);
+    }
+
+    #[Test]
+    public function aLateSettleIntoAPeriodEndedByAnUpgradeIsPaidFromTheIncludedAmountsItEndedWith(): void
+    {
+        $this->includeSms(1);
+        self::em()->getConnection()->executeStatement('UPDATE subscription_changes SET occurred_at = ?', [self::PERIOD_START]);
+        $this->credit(100);
+        $this->clock->modify('2026-11-20 11:00:00');
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+        $this->clock->modify('2026-11-20 12:00:00');
+        $this->upgradeMovingThePeriodStartTo('2026-11-20 12:00:00');
+        $this->clock->modify('2026-11-21 12:00:00');
+        $this->meter->releaseExpired();
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', self::sms());
+
+        self::assertSame([true, UsagePayer::Included, 1, 0], [$record->isLate(), $record->getPaidBy(), $record->getIncludedQuantity(), $record->getCreditsTaken()]);
+        $sms = $this->read(new DateTimeImmutable('2026-11-15 00:00:00'))->of(UsageKind::Sms);
+        self::assertSame([1, 0, 0], [$sms->used, $sms->left, $sms->fromCredits]);
+    }
+
+    #[Test]
+    public function anEndedPeriodReadAfterAPlanChangeThatKeepsItsStartHasTheIncludedAmountsItEndedWith(): void
+    {
+        $this->meter->record($this->organisation, 'email-1', new MeteredUse(UsageKind::Email));
+        $this->clock->modify('2026-12-05 10:00:00');
+        $this->changer()->changePlan(self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation), Plan::Enterprise, SubscriptionSource::Manual, ChangedBy::staff('Ada at Soirely', 'Moved to Enterprise'));
+        self::em()->clear();
+
+        $november = $this->read(new DateTimeImmutable('2026-11-15 00:00:00'));
+        $december = $this->read();
+
+        self::assertSame([1, 2499], [$november->of(UsageKind::Email)->used, $november->of(UsageKind::Email)->left]);
+        self::assertSame([0, 100000], [$december->of(UsageKind::Email)->used, $december->of(UsageKind::Email)->left]);
+    }
+
+    #[Test]
+    public function aReadForAMomentBeforeTheFirstPeriodStartIsRefused(): void
+    {
+        $this->expectException(BeforeTheFirstPeriod::class);
+
+        $this->read(new DateTimeImmutable('2026-11-01 08:59:59'));
+    }
+
+    #[Test]
+    public function aRecordPaidPartlyFromIncludedAndPartlyFromCreditsSaysCreditsWithItsIncludedUnits(): void
+    {
+        $this->includeSms(1);
+        $this->credit(200);
+        $hold = $this->meter->reserve($this->organisation, self::sms(2));
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', self::sms(2));
+
+        self::assertSame([2, UsagePayer::Credits, 1, 62], [$record->getQuantity(), $record->getPaidBy(), $record->getIncludedQuantity(), $record->getCreditsTaken()]);
+        $sms = $this->read()->of(UsageKind::Sms);
+        self::assertSame([2, 0, 62], [$sms->used, $sms->left, $sms->fromCredits]);
+    }
+
+    #[Test]
     public function storageReadsAsTheDaysLatestMeasurementNeverASum(): void
     {
         $this->meter->measureStorage($this->organisation, new DateTimeImmutable('2026-11-23'), 700);
@@ -639,7 +738,7 @@ final class UsageMeterTest extends FunctionalTestCase
         return new UsageMeter(
             self::em(),
             self::service(SubscriptionRepository::class),
-            self::service(Entitlements::class),
+            self::service(SubscriptionPeriods::class),
             $this->catalogue(),
             self::service(UnitPricer::class),
             self::service(UsagePublisher::class),
@@ -651,6 +750,20 @@ final class UsageMeterTest extends FunctionalTestCase
     private function read(?DateTimeImmutable $at = null): UsageReading
     {
         return self::service(UsageReader::class)->read($this->organisation, $at ?? $this->clock->now());
+    }
+
+    private function changer(): SubscriptionChanger
+    {
+        return new SubscriptionChanger(self::em(), $this->clock, self::service(Entitlements::class));
+    }
+
+    private function upgradeMovingThePeriodStartTo(string $start): void
+    {
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        $by = ChangedBy::staff('Ada at Soirely', 'Upgraded from Free');
+        $this->changer()->changePlan($subscription, Plan::Enterprise, SubscriptionSource::Manual, $by);
+        $this->changer()->movePeriodStart($subscription, new DateTimeImmutable($start), $by);
+        self::em()->clear();
     }
 
     private function catalogue(): Catalogue
