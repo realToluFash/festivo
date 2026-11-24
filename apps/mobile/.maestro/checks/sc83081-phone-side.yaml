@@ -1,0 +1,28 @@
+# sc-83081, the phone on its side: Notifications opened by the bell on Events keeps main's frame, and its items each carry their mark with no bordered card. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape # the harness turns it (sc-50565)
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 10000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-events
+- tapOn: { id: 'frame.bell' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: side-notifications-top
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: side-notifications-scrolled
+- back
+- waitForAnimationToEnd
+- takeScreenshot: side-events-after-back
+- setOrientation: PORTRAIT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
