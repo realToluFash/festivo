@@ -1,4 +1,5 @@
 import {
+  type HeldFactors,
   type PasskeyOptions,
   type Provider,
   type ProviderSignInAttempt,
@@ -34,13 +35,13 @@ import { currentLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { codeChoice, phoneProblemMessage } from '../phoneProblem.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
-import { askPasskey } from '../passkey.ts';
+import { askPasskey, canUsePasskeys } from '../passkey.ts';
 import { type ProveWith, type Second, useProving } from '../proving.ts';
 import { useStepFocus } from '../stepFocus.ts';
 import { ExpiredCode } from './AccountParts.tsx';
 import { FieldError } from './FieldError.tsx';
 import { Glyph } from './Glyph.tsx';
-import { Refused, Waiting } from './PasskeyParts.tsx';
+import { NoBrowser, Refused, Waiting } from './PasskeyParts.tsx';
 import { Ask, Dialog, Field, Note, RowWords } from './SettingsParts.tsx';
 
 type Saving = Promise<string | null>;
@@ -469,6 +470,7 @@ export function ProveDialog({
   codeHelp,
   prove,
   passkey,
+  held,
   leave = startProviderSignIn,
   onClose,
   onProved,
@@ -485,6 +487,7 @@ export function ProveDialog({
   prove(first: ProveWith, code?: Second): Promise<string>;
   /** Where the account holds a passkey this browser can use: it answers the second step, the code its fallback. */
   passkey?: (() => Promise<PasskeyOptions>) | undefined;
+  held?: HeldFactors | undefined;
   /** Off to the provider for the proof; the demo comes back at once instead. */
   leave?: (provider: Provider, purpose: ReturnPurpose) => Promise<void>;
   onClose: () => void;
@@ -514,6 +517,8 @@ export function ProveDialog({
   const providerName = provider == null ? null : PROVIDER_NAMES[provider];
   const showsCode = codeAsked && byCode && (askPassword || signIn != null);
   const asksPasskey = codeAsked && !byCode;
+  const recovery = held?.passkeys === true && !held.app;
+  const help = recovery ? t('passkey.recoveryHelp') : (codeHelp ?? t('waysCard.codeHelp'));
 
   async function openSheet(): Promise<void> {
     if (passkey == null || checking) return;
@@ -603,6 +608,7 @@ export function ProveDialog({
         </div>
       )}
       {stepTwo != null && <Note strong>{t('waysCard.signedInWith', { provider: stepTwo })}</Note>}
+      {showsCode && held?.passkeys === true && !canUsePasskeys() && <NoBrowser />}
       {(askPassword || showsCode) && (
         <div className="desk-fields">
           {askPassword && (
@@ -621,12 +627,12 @@ export function ProveDialog({
           )}
           {showsCode && (
             <Field
-              label={t('waysCard.code')}
+              label={recovery ? t('passkey.recoveryLabel') : t('waysCard.code')}
               value={code}
               help={
                 stepTwo == null
-                  ? (codeHelp ?? t('waysCard.codeHelp'))
-                  : `${codeHelp ?? t('waysCard.codeHelp')} ${t('waysCard.codeKeepsSignIn', { provider: stepTwo, count: PROOF_MINUTES })}`
+                  ? help
+                  : `${help} ${t('waysCard.codeKeepsSignIn', { provider: stepTwo, count: PROOF_MINUTES })}`
               }
               autoComplete="one-time-code"
               inputRef={codeRef}

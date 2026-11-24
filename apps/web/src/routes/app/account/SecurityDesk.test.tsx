@@ -685,6 +685,45 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     expect(posts(sent)).toHaveLength(1);
   });
 
+  it('says this browser can’t use passkeys, and asks a passkey-only member for a recovery code (sc-86885)', async () => {
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: 'Apple Passwords',
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+    });
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    openSecurity();
+
+    fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    expect(await dialog("Confirm it's you").findByLabelText('Recovery code')).toBeDefined();
+    expect(dialog("Confirm it's you").getByText('This browser can’t use passkeys.')).toBeDefined();
+    expect(
+      dialog("Confirm it's you").getByText(
+        'One of the codes you saved when you turned on two-factor.',
+      ),
+    ).toBeDefined();
+  });
+
   it('back from Google to sign out everywhere else, proves with it although two-factor failed', async () => {
     signedInAs(GOOGLE_ONLY);
     returnedFrom({ kind: 'signOutOthers' });

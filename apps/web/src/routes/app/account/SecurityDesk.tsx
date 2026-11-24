@@ -947,6 +947,7 @@ export function SecurityDesk() {
           passkey={
             held.passkeys && canUsePasskeys() ? () => api.passkeyOptions('proof') : undefined
           }
+          held={held}
           returned={proving.returned}
           purpose={
             provingAct == null ? { kind: 'signOutOthers' } : { kind: 'prove', then: provingAct }
