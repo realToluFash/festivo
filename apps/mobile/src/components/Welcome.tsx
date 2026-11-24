@@ -77,6 +77,11 @@ export function Welcome({ devTools }: { devTools?: ReactNode }) {
             onPress={() => router.push('/register')}
             testID="welcome.register"
           />
+          <QuietButton
+            label={t('welcome.doorCode')}
+            onPress={() => router.push('/d')}
+            testID="welcome.doorCode"
+          />
           {devTools}
         </View>
       }

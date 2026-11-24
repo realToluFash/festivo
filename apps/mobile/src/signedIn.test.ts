@@ -54,7 +54,13 @@ const { useInvitationAnswers, useWaitingInvitations } = await import('./invitati
 const { waitingInvitations } = await import('@soirely/domain');
 const { default: i18next } = await import('i18next');
 
-const account = { id: 'usr_1', name: 'Adaeze' };
+const account = {
+  id: 'usr_1',
+  name: 'Adaeze',
+  verified: true,
+  emailAddresses: [],
+  phoneNumbers: [],
+};
 const organisation = {
   id: 'org_1',
   name: 'Ìrè Events',
@@ -156,6 +162,28 @@ describe('opening the signed-in home at launch', () => {
 
     await expect(launchSignedIn()).resolves.toBe(true);
     expect(useSignedIn().organisation).toEqual(organisation);
+  });
+
+  it("lands a door code's account, which may read no organisations, in none (sc-72)", async () => {
+    const doorCode = { ...account, verified: false };
+    api.me.mockResolvedValue(doorCode);
+    api.organisationsWithPaused.mockRejectedValue(new Error('account_unverified'));
+
+    await expect(launchSignedIn()).resolves.toBe(true);
+    expect(useSignedIn()).toMatchObject({ account: doorCode, organisation: null });
+    expect(router.replace).not.toHaveBeenCalled();
+
+    api.organisationsWithPaused.mockClear();
+    await rereadOrganisations();
+    expect(api.organisationsWithPaused).not.toHaveBeenCalled();
+  });
+
+  it('opens welcome when an account with an address cannot read its organisations', async () => {
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockRejectedValue(new Error('down'));
+
+    await expect(launchSignedIn()).resolves.toBe(false);
+    expect(router.replace).toHaveBeenCalledWith('/welcome');
   });
 
   it('resumes the session when Home is tapped from the frame while signed in (sc-28178)', async () => {

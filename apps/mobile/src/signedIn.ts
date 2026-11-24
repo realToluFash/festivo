@@ -21,6 +21,7 @@ import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
 import { forgetDoor } from './kit/doorStore.ts';
+import { heldByDevice } from './landing.ts';
 import { leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';
@@ -37,6 +38,11 @@ export interface SignedIn {
   invitations: readonly InvitationPreview[];
   invitationOutcomes: Readonly<Record<string, InvitationOutcome>>;
 }
+
+const NO_ORGANISATIONS: { organisations: Membership[]; paused: PausedOrganisation[] } = {
+  organisations: [],
+  paused: [],
+};
 
 const SIGNED_OUT: SignedIn = {
   account: null,
@@ -105,7 +111,7 @@ export function onMovedOn(listener: (organisation: Membership) => void): () => v
 
 /** Read again on a language pick (sc-9267) and at each move (sc-28178); a failed read leaves everything as it was. */
 export async function rereadOrganisations(): Promise<void> {
-  if (state.account == null) return;
+  if (state.account == null || heldByDevice(state.account)) return;
 
   const account = state.account;
   const known = state.organisations;
@@ -163,17 +169,24 @@ function load(): Promise<boolean> {
   const askedIn = currentLocale();
   loading ??= Promise.all([
     api.me(),
-    api.organisationsWithPaused(),
+    api.organisationsWithPaused().then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    ),
     remembered(),
     api.myInvitations().catch(() => state.invitations),
   ])
-    .then(([account, { organisations, paused }, stored, invitations]) => {
+    .then(([account, read, stored, invitations]) => {
+      // A door code's account reaches only its events and itself (sc-72), so it has no organisations to read.
+      const device = heldByDevice(account);
+      if (!device && 'error' in read) throw read.error;
+      const { organisations, paused } = 'value' in read ? read.value : NO_ORGANISATIONS;
       const id = rememberedFor(stored, account.id);
       const organisation = chooseOrganisation(organisations, id);
       const pausedIn = choosePaused(paused, id, organisations.length);
       set({ ...state, account, organisations, organisation, pausedIn, invitations });
       void rememberWorkingIn(account.id, organisation, pausedIn, id);
-      void registerAppPush().catch(() => {});
+      if (!device) void registerAppPush().catch(() => {});
       // The account's language, followed at launch while this read was on its way (sc-9267).
       if (currentLocale() !== askedIn) void rereadOrganisations();
 
@@ -244,6 +257,16 @@ export function signOutHere(): void {
     void api.signOut().finally(() => {
       forget();
       router.replace('/welcome');
+    });
+  });
+}
+
+/** Sign out where a door code's step stays on screen, signed out (sc-72). */
+export function signOutThen(then: () => void): void {
+  leaveThen(() => {
+    void api.signOut().finally(() => {
+      forget();
+      then();
     });
   });
 }

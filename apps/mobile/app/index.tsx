@@ -1,4 +1,4 @@
-import { ApiUnreachableError, awaiting } from '@soirely/api-client';
+import { ApiUnreachableError } from '@soirely/api-client';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -10,7 +10,7 @@ import { DevTools } from '../src/components/DevTools.tsx';
 import { Welcome } from '../src/components/Welcome.tsx';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingAfterRestart } from '../src/colourScheme.ts';
-import { landingFor } from '../src/landing.ts';
+import { gateOf, landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
@@ -54,7 +54,7 @@ export default function Home() {
         void followAccount(signedIn);
 
         // Behind the onboarding gate, the gate's screen opens rather than the app.
-        const landing = landingFor(awaiting(signedIn));
+        const landing = landingFor(gateOf(signedIn));
         if (landing !== '/') router.replace(landing);
         else
           void launchSignedIn().then((loaded) => {
