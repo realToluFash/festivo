@@ -302,3 +302,53 @@ describe('Print', () => {
     print.mockRestore();
   });
 });
+
+describe('the service levels on a code and on someone from outside (sc-4002)', () => {
+  it('offers a code four levels, never edit or running the floor, and says why', async () => {
+    await people('code=open');
+    const make = dialog('Door code');
+
+    const offered = make
+      .getAllByRole('radio')
+      .filter((radio) => !(radio as HTMLInputElement).disabled);
+    expect(offered).toHaveLength(4);
+    expect(make.getByRole('radio', { name: /^Can work the floor/u })).toBeDefined();
+    expect(make.getByText('Marks plates at the pass and the kitchen stations.')).toBeDefined();
+    expect(make.queryByRole('radio', { name: /^Can run the floor/u })).toBeNull();
+    expect(
+      make.getByText(
+        'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('shows the API’s level_not_allowed_for_code at the top of the form', async () => {
+    await people('code=refused');
+    const make = dialog('Door code');
+
+    expect(make.getByRole('alert').textContent).toBe(
+      'A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
+    );
+    expect(
+      (make.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement).checked,
+    ).toBe(true);
+  });
+
+  it('offers someone from outside the service levels under their own heading, with the closing line', async () => {
+    await people('state=code-person');
+    const role = dialog('Role on this event');
+
+    expect(role.getByText('For the service')).toBeDefined();
+    expect(role.getAllByRole('radio')).toHaveLength(7);
+    expect(
+      role.getByText(
+        'Starts service, fires courses and acts on any table. Nothing else of the event.',
+      ),
+    ).toBeDefined();
+    expect(
+      role.getByText(
+        'The service levels open only the service. None of them sees contact details or the budget.',
+      ),
+    ).toBeDefined();
+  });
+});

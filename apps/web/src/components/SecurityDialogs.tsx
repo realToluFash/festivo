@@ -697,7 +697,14 @@ export function FactorDialog({
       </div>
       {offersPasskey && (
         <div className="account-acts">
-          <button type="button" className="desk-text" onClick={() => switchTo('passkey')}>
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => {
+              switchTo('passkey');
+              void openSheet();
+            }}
+          >
             {t('passkey.useInstead')}
           </button>
         </div>

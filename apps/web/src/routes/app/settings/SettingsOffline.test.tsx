@@ -327,6 +327,29 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
   });
 
+  it("puts the box above Audit log's Enterprise lock (sc-88912)", async () => {
+    signedIn();
+    const soirely = { reachable: true };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (!soirely.reachable) throw new TypeError('Failed to fetch');
+
+      return new Response(
+        JSON.stringify({ type: 'https://soirely.com/errors/plan_required', status: 403 }),
+        { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+      );
+    });
+    open('/app/settings/data-and-control/audit-log');
+    await screen.findByText('Available on Enterprise');
+    const heading = screen.getByRole('heading', { level: 1, name: 'Audit log' });
+
+    soirely.reachable = false;
+    goOffline();
+
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(within(boxAbove(heading)).getByText(/^Offline · as of /)).toBeDefined();
+    expect(screen.getByText('Available on Enterprise')).toBeDefined();
+  });
+
   it('polls a Preparing export online with no Refreshing… (sc-88912)', async () => {
     signedIn();
     const preparing = {

@@ -1,0 +1,8 @@
+# sc-83081 on a phone: Notifications opened and loaded, left open for a step outside Maestro (a network or stack change). Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'notifications\.item\..*' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: loaded

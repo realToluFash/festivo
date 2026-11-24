@@ -242,6 +242,7 @@ export function EventScreen({
   linked = false,
   failed = null,
   opened: openedOver,
+  clock,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -267,13 +268,15 @@ export function EventScreen({
   failed?: (() => void) | null;
   /** What the event was opened over, and the board's Spanish and Refreshing… (sc-83008). */
   opened?: Opened | undefined;
+  /** The moment the frame reads as now, when what it holds runs on its own sample's clock (sc-72). */
+  clock?: Date | undefined;
 }) {
   const shell = useShell();
   const top = useBehind(openedOver);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const now = useMemo(
-    () => (guests == null ? clockOf(state) : guestsClock(guests)),
-    [state, guests],
+    () => clock ?? (guests == null ? clockOf(state) : guestsClock(guests)),
+    [clock, state, guests],
   );
   const [event, setEvent] = useState(() =>
     origin == null

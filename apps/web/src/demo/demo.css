@@ -179,6 +179,24 @@
   padding-top: 44px;
 }
 
+/* The product's signed-out pages at phone width: a 24 gutter, and the header's right end wraps under the lockup (sc-89577). */
+@media (width <= 40rem) {
+  .demo-page-header {
+    flex-wrap: wrap;
+    gap: var(--spaceSm) var(--spaceLg);
+    height: auto;
+    padding: var(--spaceXl) var(--space3xl) 0;
+  }
+
+  .demo-page-header .brand {
+    margin-right: auto;
+  }
+
+  .demo-page-main {
+    padding-inline: var(--space3xl);
+  }
+}
+
 .demo-back {
   display: inline-flex;
   align-self: flex-start;

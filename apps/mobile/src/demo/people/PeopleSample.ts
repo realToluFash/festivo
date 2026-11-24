@@ -32,7 +32,28 @@ export const ROLE_LINES: Record<EventRole, string> = {
   'Can check guests in': 'Checks guests in on the day. Names only, no contact details.',
 };
 
-const NOW_CAN: Record<EventRole, { one: string; several: string }> = {
+/** sc-4002: the levels someone from outside or a join code may hold beside the event roles; never offered to a member. */
+export const SERVICE_LEVELS = [
+  'Can work the floor',
+  'Can work the pass',
+  'Can run the floor',
+] as const;
+export type ServiceLevel = (typeof SERVICE_LEVELS)[number];
+export type Level = EventRole | ServiceLevel;
+export const SERVICE_LINES: Record<ServiceLevel, string> = {
+  'Can work the floor': 'Marks plates and requests at their own tables.',
+  'Can work the pass': 'Marks plates at the pass and the kitchen stations.',
+  'Can run the floor':
+    'Starts service, fires courses and acts on any table. Nothing else of the event.',
+};
+export const LEVEL_LINES: Record<Level, string> = { ...ROLE_LINES, ...SERVICE_LINES };
+export const SERVICE_CLOSING =
+  'The service levels open only the service. None of them sees contact details or the budget.';
+
+const NOW_CAN: Record<Level, { one: string; several: string }> = {
+  'Can work the floor': { one: 'can work the floor now.', several: 'can work the floor now.' },
+  'Can work the pass': { one: 'can work the pass now.', several: 'can work the pass now.' },
+  'Can run the floor': { one: 'can run the floor now.', several: 'can run the floor now.' },
   Lead: { one: 'leads this event now.', several: 'lead this event now.' },
   'Can edit': { one: 'can edit now.', several: 'can edit now.' },
   'Can view': { one: 'can view now.', several: 'can view now.' },
@@ -81,7 +102,7 @@ export interface OnEvent {
   name: string;
   initials: string | null;
   tone: number;
-  role: EventRole;
+  role: Level;
   outside: boolean;
   label: string | null;
   /** Added by an address the viewer is not shown: no name, no address, no kind of address. */
@@ -199,8 +220,10 @@ export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnE
       );
 }
 
+const LISTED_ORDER: readonly Level[] = [...EVENT_ROLES, ...SERVICE_LEVELS];
+
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
-  return inRoleOrder(onEvent, EVENT_ROLES, (one) => one, 'en');
+  return inRoleOrder(onEvent, LISTED_ORDER, (one) => one, 'en');
 }
 
 /** An owner, an admin or the event's lead changes who is on it. */
@@ -291,7 +314,7 @@ export function joinedWithLine(
   return `Joined with the door code ${byCode.code} at ${atWords(byCode, locale, today)}.`;
 }
 
-export function savedWords(person: OnEvent, role: EventRole): string {
+export function savedWords(person: OnEvent, role: Level): string {
   return `Saved. ${person.name} ${NOW_CAN[role].one}`;
 }
 
@@ -421,7 +444,7 @@ export function withOutside(
   ];
 }
 
-export function withRole(onEvent: readonly OnEvent[], id: string, role: EventRole): OnEvent[] {
+export function withRole(onEvent: readonly OnEvent[], id: string, role: Level): OnEvent[] {
   return onEvent.map((one) => (one.id === id ? { ...one, role } : one));
 }
 
@@ -578,9 +601,12 @@ export const ROLE_WORDS: RoleWords<EventRole> = {
   saved: 'Saved',
 };
 
-export function sheetWords(person: OnEvent): RoleSheetWords<EventRole> {
+export function sheetWords(person: OnEvent): RoleSheetWords<Level> {
   return {
     ...ROLE_WORDS,
+    roles: person.outside ? [...EVENT_ROLES, ...SERVICE_LEVELS] : EVENT_ROLES,
+    name: (role) => role,
+    means: (role) => LEVEL_LINES[role],
     title: 'Role on this event',
     done: 'Done',
     remove: 'Remove from this event…',

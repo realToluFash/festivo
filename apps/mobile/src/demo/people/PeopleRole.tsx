@@ -11,7 +11,7 @@ import { Avatar } from '../../components/SettingsParts.tsx';
 import { Line } from '../../components/Summary.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
-  type EventRole,
+  type Level,
   HELD_MS,
   joinedWithLine,
   leadOff,
@@ -20,6 +20,7 @@ import {
   OUTSIDE_ENDS,
   rolesOff,
   SAVE_MS,
+  SERVICE_CLOSING,
   sheetLine,
   sheetWords,
 } from './PeopleSample.ts';
@@ -59,7 +60,7 @@ export function RoleSheet({
   removingAtStart?: Removing;
   locale?: string;
   today?: string | undefined;
-  onSaved: (role: EventRole) => void;
+  onSaved: (role: Level) => void;
   onClose: () => void;
   onRemove: () => void;
 }) {
@@ -79,6 +80,7 @@ export function RoleSheet({
               <Line text={joinedWithLine(person.byCode, locale, today)} size={14} />
             )}
             <Line text={OUTSIDE_ENDS} size={14} />
+            <Line text={SERVICE_CLOSING} size={14} />
           </View>
         )
       }

@@ -12,6 +12,8 @@ export type AuditLoad =
   | { kind: 'forbidden' }
   | { kind: 'loaded'; page: AuditLogPage };
 
+const LOCKED = Symbol('locked');
+
 export type More = 'idle' | 'loading' | 'failed';
 
 /** The log's first page for the filters, asked afresh whenever they change; `more` adds the next page under it. */
@@ -46,16 +48,23 @@ export function useAuditLog(
   useEffect(() => {
     const ask = ++asked.current;
 
-    watch(api.auditLog(organisationId, asQuery({ person, type, event, from, to }))).then(
+    // The lock is Soirely's answer, so it reaches the watch as one and the box has its minute.
+    const read = api
+      .auditLog(organisationId, asQuery({ person, type, event, from, to }))
+      .catch((error: unknown): typeof LOCKED => {
+        if (error instanceof ApiError && error.is('plan_required')) return LOCKED;
+        throw error;
+      });
+
+    watch(read).then(
       (page) => {
         if (ask !== asked.current) return;
         setMore('idle');
-        setLoad({ kind: 'loaded', page });
+        setLoad(page === LOCKED ? { kind: 'locked' } : { kind: 'loaded', page });
       },
       (error: unknown) => {
         if (ask !== asked.current) return;
-        if (error instanceof ApiError && error.is('plan_required')) setLoad({ kind: 'locked' });
-        else if (error instanceof ApiError && error.is('permission_required'))
+        if (error instanceof ApiError && error.is('permission_required'))
           setLoad({ kind: 'forbidden' });
         else
           setLoad((before) =>

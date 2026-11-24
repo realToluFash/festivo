@@ -435,6 +435,11 @@ function CodeFirst({ email, state }: { email: string; state: string }) {
         onVerified={() => void navigate(backIn('new'), { state: { email } })}
       />
       <div className="demo-asides">
+        {state === 'has-passkey' && (
+          <Link className="link-button demo-link" to={backIn('code-passkey')} state={{ email }}>
+            Use a passkey instead
+          </Link>
+        )}
         <Link
           className="link-button demo-link"
           to={twoFactorAt('recovery', held === 'both' ? state : undefined)}
