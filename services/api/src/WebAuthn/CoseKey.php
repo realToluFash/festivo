@@ -29,7 +29,7 @@ final readonly class CoseKey
             default => throw new CeremonyRefused('COSE algorithm not supported'),
         };
 
-        return "-----BEGIN PUBLIC KEY-----\n" . Str\join(\str_split(Base64\encode($der), 64), "\n") . "\n-----END PUBLIC KEY-----\n";
+        return "-----BEGIN PUBLIC KEY-----\n" . Str\join(Byte\chunk(Base64\encode($der), 64), "\n") . "\n-----END PUBLIC KEY-----\n";
     }
 
     /** @param array<int|string, mixed> $cose */
@@ -62,7 +62,7 @@ final readonly class CoseKey
 
     private function integer(string $unsigned): string
     {
-        $trimmed = \ltrim($unsigned, "\x00");
+        $trimmed = Byte\trim_left($unsigned, "\x00");
 
         return $this->der(0x02, (\ord($trimmed[0] ?? "\x00") & 0x80) !== 0 || '' === $trimmed ? "\x00" . $trimmed : $trimmed);
     }
@@ -72,11 +72,11 @@ final readonly class CoseKey
         $length = Byte\length($content);
 
         if ($length < 0x80) {
-            return \chr($tag) . \chr($length) . $content;
+            return Byte\chr($tag) . Byte\chr($length) . $content;
         }
 
-        $bytes = \ltrim(\pack('N', $length), "\x00");
+        $bytes = Byte\trim_left(\pack('N', $length), "\x00");
 
-        return \chr($tag) . \chr(0x80 | Byte\length($bytes)) . $bytes . $content;
+        return Byte\chr($tag) . Byte\chr(0x80 | Byte\length($bytes)) . $bytes . $content;
     }
 }

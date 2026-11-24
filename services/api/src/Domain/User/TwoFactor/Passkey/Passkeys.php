@@ -19,6 +19,7 @@ use App\WebAuthn\RelyingParty;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Encoding\Base64;
+use Psl\Iter;
 use Psl\SecureRandom;
 use Psl\Type;
 use Psl\Vec;
@@ -74,7 +75,7 @@ final readonly class Passkeys
         $rpId = $this->relyingPartyId();
         $passkeys = $this->passkeyRepository->findFor($user);
 
-        if (\count($passkeys) >= self::MOST) {
+        if (Iter\count($passkeys) >= self::MOST) {
             throw $this->limitReached();
         }
 
@@ -192,7 +193,7 @@ final readonly class Passkeys
 
         $this->entityManager->remove($held);
 
-        if (!\in_array($held->getStep(), $steps, true) || $held->getExpiresAt() <= $this->clock->now()) {
+        if (!Iter\contains($steps, $held->getStep()) || $held->getExpiresAt() <= $this->clock->now()) {
             throw new CeremonyRefused('challenge made for another step, or lapsed');
         }
 

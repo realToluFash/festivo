@@ -83,7 +83,7 @@ final readonly class Cbor
             default => throw new CeremonyRefused('CBOR indefinite length not supported'),
         };
         $value = 0;
-        foreach (\str_split($this->take($bytes, $offset, $length)) as $byte) {
+        foreach (Byte\chunk($this->take($bytes, $offset, $length)) as $byte) {
             if ($value > (\PHP_INT_MAX >> 8)) {
                 throw new CeremonyRefused('CBOR integer too large');
             }

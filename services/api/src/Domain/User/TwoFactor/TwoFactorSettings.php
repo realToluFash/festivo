@@ -66,7 +66,7 @@ final readonly class TwoFactorSettings
             ]),
             ...(null === $app ? [] : [['kind' => 'app', 'addedAt' => ($app->getActivatedAt() ?? $app->getCreatedAt())->format(\DATE_ATOM)]]),
         ];
-        \usort($factors, static fn (array $a, array $b): int => $b['addedAt'] <=> $a['addedAt']);
+        $factors = Vec\sort($factors, static fn (array $a, array $b): int => $b['addedAt'] <=> $a['addedAt']);
         $on = null !== $app || [] !== $passkeys;
 
         return [

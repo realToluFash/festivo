@@ -13,6 +13,7 @@ use App\WebAuthn\Model\CheckedAssertion;
 use App\WebAuthn\Model\NewCredential;
 use App\WebAuthn\RelyingParty;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psl\Encoding\Base64;
 use RuntimeException;
@@ -30,7 +31,8 @@ final class CeremoniesTest extends TestCase
         $this->authenticator = new VirtualAuthenticator();
     }
 
-    public function testARegistrationAndItsAssertionsCheckOut(): void
+    #[Test]
+    public function aRegistrationAndItsAssertionsCheckOut(): void
     {
         $credential = $this->register('first');
 
@@ -45,7 +47,8 @@ final class CeremoniesTest extends TestCase
         self::assertSame(1, $checked->signCount);
     }
 
-    public function testTheChallengeIsReadBackFromTheClientData(): void
+    #[Test]
+    public function theChallengeIsReadBackFromTheClientData(): void
     {
         $response = $this->authenticator->get('the challenge');
 
@@ -62,7 +65,8 @@ final class CeremoniesTest extends TestCase
     }
 
     #[DataProvider('refusals')]
-    public function testAnAssertionThatDoesNotMatchIsRefused(callable $change, string $expected, ?RelyingParty $party): void
+    #[Test]
+    public function anAssertionThatDoesNotMatchIsRefused(callable $change, string $expected, ?RelyingParty $party): void
     {
         $credential = $this->register('first');
         $change($this->authenticator);
@@ -71,7 +75,8 @@ final class CeremoniesTest extends TestCase
         $this->assertWith($this->authenticator->get('challenge'), $expected, $credential->publicKeyPem, 0, $party);
     }
 
-    public function testAnotherKeysSignatureIsRefused(): void
+    #[Test]
+    public function anotherKeysSignatureIsRefused(): void
     {
         $credential = $this->register('first');
 
@@ -79,7 +84,8 @@ final class CeremoniesTest extends TestCase
         $this->assertWith(new VirtualAuthenticator()->get('challenge'), 'challenge', $credential->publicKeyPem, 0);
     }
 
-    public function testACounterThatDidNotMoveIsRefused(): void
+    #[Test]
+    public function aCounterThatDidNotMoveIsRefused(): void
     {
         $credential = $this->register('first');
 
@@ -87,14 +93,16 @@ final class CeremoniesTest extends TestCase
         $this->assertWith($this->authenticator->get('challenge'), 'challenge', $credential->publicKeyPem, 5);
     }
 
-    public function testAnAssertionIsNotARegistration(): void
+    #[Test]
+    public function anAssertionIsNotARegistration(): void
     {
         $this->expectException(CeremonyRefused::class);
         $response = $this->authenticator->create('challenge', 'webauthn.get');
         $this->ceremonies->register($this->party, $this->decoded($response['response']['clientDataJSON']), $this->decoded($response['response']['attestationObject']), 'challenge');
     }
 
-    public function testAnIpAddressIsNoRelyingParty(): void
+    #[Test]
+    public function anIpAddressIsNoRelyingParty(): void
     {
         self::assertNull(new RelyingParty('127.0.0.1', 'http://127.0.0.1:5173')->id);
         self::assertNull(new RelyingParty('', 'http://localhost:5173')->id);
@@ -103,7 +111,8 @@ final class CeremoniesTest extends TestCase
         self::assertSame('soirely.com', new RelyingParty('soirely.com', 'https://app.soirely.com')->id);
     }
 
-    public function testAnRsaKeyBecomesAPemOpensslReads(): void
+    #[Test]
+    public function anRsaKeyBecomesAPemOpensslReads(): void
     {
         $key = \openssl_pkey_new(['private_key_type' => \OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
         self::assertNotFalse($key);

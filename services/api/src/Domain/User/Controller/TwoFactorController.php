@@ -13,6 +13,8 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use Psl\Iter;
+use Psl\Str;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -45,7 +47,7 @@ final readonly class TwoFactorController
     #[Route('/api/auth/two-factor/enrol', name: 'auth_two_factor_enrol', methods: ['POST'])]
     public function enrol(Request $request): JsonResponse
     {
-        $body = '' === \trim($request->getContent()) ? [] : Input::body($request, Type\shape(SecondFactorInput::fields()));
+        $body = '' === Str\trim($request->getContent()) ? [] : Input::body($request, Type\shape(SecondFactorInput::fields()));
         $answer = $this->secondFactorInput->eitherIfSent($body);
 
         return new JsonResponse($this->twoFactorSettings->enrol($this->user(), $answer));
@@ -83,7 +85,7 @@ final readonly class TwoFactorController
 
         $step = $body['step'] ?? null;
 
-        if (!\in_array($step, self::SIGNED_IN_STEPS, true)) {
+        if (!Iter\contains(self::SIGNED_IN_STEPS, $step)) {
             throw new ApiException(ErrorCode::BadRequest, 'passkey.step');
         }
 

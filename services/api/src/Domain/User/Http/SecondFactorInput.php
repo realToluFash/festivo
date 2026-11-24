@@ -6,6 +6,7 @@ namespace App\Domain\User\Http;
 
 use App\Domain\User\Model\SecondFactorAnswer;
 use App\Http\CodeField;
+use Psl\Iter;
 use Psl\Type;
 
 /** The second factor out of a request body: `passkey`, or a code as the step's fields name it. */
@@ -54,7 +55,7 @@ final readonly class SecondFactorInput
     /** @param array<string, mixed> $body */
     public function eitherIfSent(array $body): ?SecondFactorAnswer
     {
-        return \array_key_exists('code', $body) || \array_key_exists('passkey', $body) ? $this->either($body) : null;
+        return Iter\contains_key($body, 'code') || Iter\contains_key($body, 'passkey') ? $this->either($body) : null;
     }
 
     /**

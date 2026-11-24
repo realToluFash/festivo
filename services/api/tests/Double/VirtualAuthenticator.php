@@ -6,8 +6,10 @@ namespace App\Tests\Double;
 
 use OpenSSLAsymmetricKey;
 use Psl\Encoding\Base64;
+use Psl\Iter;
 use Psl\Json;
 use Psl\SecureRandom;
+use Psl\Str\Byte;
 use RuntimeException;
 
 /** A P-256 authenticator answering as `PublicKeyCredential.toJSON()` does, holding one credential. */
@@ -33,8 +35,8 @@ final class VirtualAuthenticator
     {
         $details = \openssl_pkey_get_details($this->key) ?: throw new RuntimeException('no key details');
         $ec = $details['ec'] ?? throw new RuntimeException('not an EC key');
-        $cose = self::map([1 => 2, 3 => -7, -1 => 1, -2 => self::bytes(\str_pad($ec['x'], 32, "\0", \STR_PAD_LEFT)), -3 => self::bytes(\str_pad($ec['y'], 32, "\0", \STR_PAD_LEFT))]);
-        $authData = $this->authData(0x40) . (\hex2bin($this->aaguid) ?: throw new RuntimeException('AAGUID is not hex')) . \pack('n', \strlen($this->credentialId)) . $this->credentialId . $cose;
+        $cose = self::map([1 => 2, 3 => -7, -1 => 1, -2 => self::bytes(Byte\pad_left($ec['x'], 32, "\0")), -3 => self::bytes(Byte\pad_left($ec['y'], 32, "\0"))]);
+        $authData = $this->authData(0x40) . (\hex2bin($this->aaguid) ?: throw new RuntimeException('AAGUID is not hex')) . \pack('n', Byte\length($this->credentialId)) . $this->credentialId . $cose;
         $attestation = self::map(['fmt' => self::text('none'), 'attStmt' => self::map([]), 'authData' => self::bytes($authData)]);
 
         return [
@@ -79,7 +81,7 @@ final class VirtualAuthenticator
         // User present, user verified, backup eligible, and backed up when it is.
         $flags = 0x01 | 0x04 | 0x08 | ($this->backedUp ? 0x10 : 0) | $extraFlags;
 
-        return \hash('sha256', $this->rpId, true) . \chr($flags) . \pack('N', $this->signCount);
+        return \hash('sha256', $this->rpId, true) . Byte\chr($flags) . \pack('N', $this->signCount);
     }
 
     private function clientData(string $type, string $challenge): string
@@ -95,7 +97,7 @@ final class VirtualAuthenticator
     /** @param array<int|string, string|int> $entries values already encoded, or integers */
     private static function map(array $entries): string
     {
-        $out = self::head(5, \count($entries));
+        $out = self::head(5, Iter\count($entries));
         foreach ($entries as $key => $value) {
             $out .= (\is_int($key) ? self::int($key) : self::text($key)) . (\is_int($value) ? self::int($value) : $value);
         }
@@ -110,21 +112,21 @@ final class VirtualAuthenticator
 
     private static function bytes(string $value): string
     {
-        return self::head(2, \strlen($value)) . $value;
+        return self::head(2, Byte\length($value)) . $value;
     }
 
     private static function text(string $value): string
     {
-        return self::head(3, \strlen($value)) . $value;
+        return self::head(3, Byte\length($value)) . $value;
     }
 
     private static function head(int $major, int $argument): string
     {
         return match (true) {
-            $argument < 24 => \chr(($major << 5) | $argument),
-            $argument < 0x100 => \chr(($major << 5) | 24) . \chr($argument),
-            $argument < 0x10000 => \chr(($major << 5) | 25) . \pack('n', $argument),
-            default => \chr(($major << 5) | 26) . \pack('N', $argument),
+            $argument < 24 => Byte\chr(($major << 5) | $argument),
+            $argument < 0x100 => Byte\chr(($major << 5) | 24) . Byte\chr($argument),
+            $argument < 0x10000 => Byte\chr(($major << 5) | 25) . \pack('n', $argument),
+            default => Byte\chr(($major << 5) | 26) . \pack('N', $argument),
         };
     }
 }

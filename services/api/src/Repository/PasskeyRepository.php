@@ -8,6 +8,7 @@ use App\Entity\Passkey;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,7 +23,7 @@ final class PasskeyRepository extends ServiceEntityRepository
     /** @return list<Passkey> newest first */
     public function findFor(User $user): array
     {
-        return \array_values($this->findBy(['user' => $user], ['createdAt' => 'DESC', 'id' => 'DESC']));
+        return Vec\values($this->findBy(['user' => $user], ['createdAt' => 'DESC', 'id' => 'DESC']));
     }
 
     public function countFor(User $user): int

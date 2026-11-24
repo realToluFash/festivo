@@ -9,6 +9,7 @@ use App\WebAuthn\Model\CheckedAssertion;
 use App\WebAuthn\Model\NewCredential;
 use Psl\Encoding\Base64;
 use Psl\Json;
+use Psl\Str;
 use Psl\Str\Byte;
 use Psl\Type;
 use Throwable;
@@ -68,7 +69,7 @@ final readonly class Ceremonies
         return new NewCredential(
             Base64\encode($id, Base64\Variant::UrlSafe, padding: false),
             $this->coseKey->toPem($cose),
-            \vsprintf('%s%s-%s-%s-%s-%s%s%s', \str_split($aaguid, 4)),
+            Str\join([Byte\slice($aaguid, 0, 8), Byte\slice($aaguid, 8, 4), Byte\slice($aaguid, 12, 4), Byte\slice($aaguid, 16, 4), Byte\slice($aaguid, 20)], '-'),
             0 !== ($flags & self::BACKED_UP),
             $this->signCount($authData),
         );

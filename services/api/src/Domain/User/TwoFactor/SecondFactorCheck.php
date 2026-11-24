@@ -102,7 +102,7 @@ final readonly class SecondFactorCheck
         $factor = $this->twoFactorFactorRepository->findActiveFor($user);
 
         if (null === $factor) {
-            $this->guarded($user, static fn (): WrongSecret => self::wrongCode());
+            $this->guarded($user, self::wrongCode(...));
 
             return;
         }
