@@ -169,7 +169,7 @@ export type Step =
       busy: Busy;
       wrongs: number;
     }
-  | { kind: 'in'; name: string; checks: boolean };
+  | { kind: 'in'; name: string; checks: boolean; held: boolean };
 
 /** `held`: a deep-linked wait, long enough to look at. */
 export type Busy = 'no' | 'busy' | 'held';
@@ -205,6 +205,7 @@ export const REDEEM_STATES = [
   'second-number',
   'browser-in',
   'browser-in-view',
+  'browser-in-account',
   'from-check-in',
   'signed-out',
 ] as const;
@@ -332,9 +333,15 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: event({ ...RITA, checked: true, secondNumber: true }), ...RITA };
     case 'browser-in':
     case 'from-check-in':
-      return { step: { kind: 'in', name: HUGO.name, checks: true }, ...hugo };
+      return { step: { kind: 'in', name: HUGO.name, checks: true, held: true }, ...hugo };
     case 'browser-in-view':
-      return { step: { kind: 'in', name: HUGO.name, checks: false }, ...hugo };
+      return { step: { kind: 'in', name: HUGO.name, checks: false, held: true }, ...hugo };
+    case 'browser-in-account':
+      return {
+        step: { kind: 'in', name: KEMI, checks: true, held: false },
+        name: KEMI,
+        number: '',
+      };
     case 'signed-out':
       return { step: enter({ signedOut: true }), ...joao };
     default:
@@ -409,6 +416,7 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       redeem('browser-in', 'You’re in, Check-in first (sc-28230)'),
       redeem('browser-in-view', 'You’re in at Can view: no Check-in (sc-28230)'),
+      redeem('browser-in-account', 'You’re in with your own account: no sign-out time'),
       redeem('from-check-in', 'You’re in, back from check-in: nothing redeemed again (sc-28230)'),
       redeem('signed-out', 'Signed out'),
     ],
