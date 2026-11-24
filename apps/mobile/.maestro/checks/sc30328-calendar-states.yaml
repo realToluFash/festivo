@@ -1,0 +1,174 @@
+# sc-30328: every ?state= of the Calendar demo, one screenshot each, for side-by-side with Calendar-B-Lanes-*.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/demo/calendar?state=populated
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: populated
+- openLink: ${METRO_URL}/--/demo/calendar?state=agenda
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: agenda
+- openLink: ${METRO_URL}/--/demo/calendar?state=showMenu
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: showMenu
+- openLink: ${METRO_URL}/--/demo/calendar?state=eventsOnly
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: eventsOnly
+- openLink: ${METRO_URL}/--/demo/calendar?state=monthEdge
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: monthEdge
+- openLink: ${METRO_URL}/--/demo/calendar?state=otherZone
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: otherZone
+- openLink: ${METRO_URL}/--/demo/calendar?state=busyDay
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: busyDay
+- openLink: ${METRO_URL}/--/demo/calendar?state=emptyMonth
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: emptyMonth
+- openLink: ${METRO_URL}/--/demo/calendar?state=none
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: none
+- openLink: ${METRO_URL}/--/demo/calendar?state=loading
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: loading
+- openLink: ${METRO_URL}/--/demo/calendar?state=failed
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: failed
+- openLink: ${METRO_URL}/--/demo/calendar?state=subscribe
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: subscribe
+- openLink: ${METRO_URL}/--/demo/calendar?state=subscribeRefused
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: subscribeRefused
+- openLink: ${METRO_URL}/--/demo/calendar?state=resetLink
+- waitForAnimationToEnd:
+    timeout: 6000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible:
+      id: 'org.switch'
+    timeout: 20000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: resetLink
