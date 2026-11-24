@@ -13,8 +13,8 @@ import sys
 import time
 
 from . import (actions, agents, controls, dashboard, digests, github, launchd, logins, machine,
-               payloads, permissions, remote, roles, runlog, runner, sessions, shared, store, sync,
-               systemd, update, work)
+               payloads, permissions, remote, roles, runlog, runner, sessions, settings, shared,
+               store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -696,12 +696,24 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
-def control(platform, action, role, by):
+def settings_view():
+    try:
+        return 200, settings.read()
+    except (OSError, ValueError) as error:
+        return 409, {"error": f"error: {machine.path()} cannot be read: {error}"}
+
+
+def control(platform, path, asked, by):
     """One of `sq web`'s controls, on a connection of its own: a start can wait on Docker
     while the page goes on reading through the other."""
+    if path == "/settings":
+        return controls.change(home(), asked, by)
+    if path == "/settings/undo":
+        return controls.undo(home(), asked, by)
     db = open_db()
     try:
-        return controls.act(db, home(), platform, action, role, by)
+        return controls.act(db, home(), platform, str(asked.get("action") or ""),
+                            asked.get("role") and str(asked["role"]), by)
     finally:
         db.close()
 
@@ -940,7 +952,8 @@ def admin(argv):
                         host=a.listen or host, secret=remote.token(),
                         peers=lambda: remote.peers(remote.config()), config=remote.config,
                         usage=logins.Usage(remote.config),
-                        control=lambda action, role, by: control(platform, action, role, by))
+                        control=lambda path, asked, by: control(platform, path, asked, by),
+                        settings=settings_view)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)

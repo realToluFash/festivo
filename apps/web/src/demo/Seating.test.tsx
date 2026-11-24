@@ -276,6 +276,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
       expect(within(panel()).getByText('Diameter')).toBeDefined();
       expect(within(panel()).queryByRole('button', { name: 'Delete table' })).toBeNull();
       expect(screen.getByRole('button', { name: 'Print' })).toBeDefined();
+      expect(document.querySelector('.st-save')).toBeNull();
     },
   );
 

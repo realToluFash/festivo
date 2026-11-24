@@ -2020,7 +2020,7 @@ function Seating({
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
-              <SaveLine />
+              {!ui.readOnly && <SaveLine />}
               {room != null && (
                 <button
                   type="button"
