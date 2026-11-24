@@ -26,6 +26,19 @@ const appleAppLink = process.env.EXPO_PUBLIC_APPLE_APP_LINK?.startsWith('https:/
   ? new URL(process.env.EXPO_PUBLIC_APPLE_APP_LINK)
   : null;
 
+// A door code's QR carries https://<web>/d/<code> (DoorCodeLink), which opens here where the app is
+// installed: iOS by applinks in the web's apple-app-site-association, Android once assetlinks.json verifies it.
+const webLink = process.env.EXPO_PUBLIC_WEB_URL?.startsWith('https://')
+  ? new URL(process.env.EXPO_PUBLIC_WEB_URL)
+  : null;
+
+const verifiedLinks = [
+  ...(appleAppLink == null
+    ? []
+    : [{ scheme: 'https', host: appleAppLink.host, pathPrefix: appleAppLink.pathname }]),
+  ...(webLink == null ? [] : [{ scheme: 'https', host: webLink.host, pathPrefix: '/d/' }]),
+];
+
 const config: ExpoConfig = {
   name: 'Soirely',
   slug: 'soirely',
@@ -55,6 +68,7 @@ const config: ExpoConfig = {
     entitlements: { 'com.apple.developer.usernotifications.time-sensitive': true },
     // Asked before Open Mail (sc-29071) and Add to my authenticator app (sc-40025) are shown, which iOS answers only for a scheme listed here.
     infoPlist: { LSApplicationQueriesSchemes: ['message', 'otpauth'] },
+    ...(webLink == null ? {} : { associatedDomains: [`applinks:${webLink.host}`] }),
   },
   android: {
     package: 'com.soirely.app',
@@ -63,19 +77,16 @@ const config: ExpoConfig = {
       monochromeImage: './assets/adaptive-icon-mono.png',
       backgroundColor: tokens.colorAccent,
     },
-    ...(appleAppLink == null
+    ...(verifiedLinks.length === 0
       ? {}
       : {
-          intentFilters: [
-            {
-              action: 'VIEW',
-              autoVerify: true,
-              data: [
-                { scheme: 'https', host: appleAppLink.host, pathPrefix: appleAppLink.pathname },
-              ],
-              category: ['BROWSABLE', 'DEFAULT'],
-            },
-          ],
+          // One filter each: Android crosses every host in a filter with every path in it.
+          intentFilters: verifiedLinks.map((link) => ({
+            action: 'VIEW',
+            autoVerify: true,
+            data: [link],
+            category: ['BROWSABLE', 'DEFAULT'],
+          })),
         }),
     // There is deliberately NO edge-to-edge flag here. This SDK has none — the
     // toggle was removed because Android now enforces edge to edge, so the

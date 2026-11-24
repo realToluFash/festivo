@@ -62,11 +62,14 @@ describe('the web entrypoint', () => {
     expect(statement.target.package_name).toBe('com.soirely.app');
   });
 
-  it('names the iOS app for passkeys in apple-app-site-association (sc-87083)', () => {
+  it('names the iOS app for passkeys and door code links in apple-app-site-association (sc-87083, sc-72)', () => {
     const root = run({ SOIRELY_APPLE_APP_ID: 'TEAM123.com.soirely.app' });
 
     expect(json(root, '.well-known/apple-app-site-association')).toEqual({
       webcredentials: { apps: ['TEAM123.com.soirely.app'] },
+      applinks: {
+        details: [{ appIDs: ['TEAM123.com.soirely.app'], components: [{ '/': '/d/*' }] }],
+      },
     });
   });
 
