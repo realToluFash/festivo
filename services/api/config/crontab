@@ -19,4 +19,4 @@
 * * * * * php /app/bin/console app:audit-exports:prepare --no-interaction
 * * * * * php /app/bin/console app:notifications:check --no-interaction
 15 * * * * php /app/bin/console app:mail:check-rates --no-interaction
-20 4 * * * php /app/bin/console app:billing:reconcile --no-interaction
+55 3 * * * php /app/bin/console app:billing:reconcile --no-interaction
