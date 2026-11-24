@@ -7,6 +7,7 @@ import { Card, CardStep, Field } from '../components/SettingsParts.tsx';
 import { Amount, BudgetDialog, BudgetRow, MoneyField, RingMark, Rows } from './BudgetParts.tsx';
 import { TODAY, type Payment, money, shortDay } from './budget.ts';
 import { BUDGET_WORDS as BW } from './budgetWords.ts';
+import { DemoOffline } from './DemoOffline.tsx';
 import {
   type Cancelling,
   type Changing,
@@ -330,6 +331,7 @@ function Reminders({ viewer, state }: { viewer: Viewer; state: string }) {
   return (
     <div className="desk-page">
       <div className="desk-column">
+        <DemoOffline />
         <Card>
           <div className="desk-said-lines">
             <h1 className="desk-says pay-says" tabIndex={-1}>
@@ -439,6 +441,7 @@ function Refused({ viewer }: { viewer: Viewer }) {
   return (
     <div className="desk-page">
       <div className="desk-column">
+        <DemoOffline />
         <div className="pay-refused" role="alert">
           <h1 className="desk-title" tabIndex={-1}>
             {t('forbidden.title')}
