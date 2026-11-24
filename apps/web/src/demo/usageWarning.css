@@ -1,0 +1,135 @@
+/* sc-3931: the usage warning's bell item and email. The popover is the product's (BellPanel.css); at 320 the desk reflows and it is capped at the window less 48. */
+
+.uw-bell-at {
+  position: relative;
+}
+
+.uw-bell-at .bell-pop {
+  max-width: calc(100vw - 48px);
+}
+
+.uw-said {
+  margin: 0;
+  font: var(--typeBody);
+}
+
+.uw-said:empty {
+  display: none;
+}
+
+.uw-demo-only {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  margin-top: var(--spaceXl);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderAdd);
+  border-radius: var(--radiusRow);
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.uw-demo-only p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.uw-demo-only button,
+.uw-demo-only a {
+  min-height: 24px;
+}
+
+.uw-demo-only [aria-pressed='true'],
+.uw-demo-only [aria-current='page'] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.uw-play {
+  position: fixed;
+  right: var(--spaceXl);
+  bottom: var(--spaceXl);
+  z-index: 40;
+  max-width: 320px;
+  background: var(--colorCard);
+}
+
+.uw-mail-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceXl);
+  min-height: 100vh;
+  padding: var(--spaceXxl) var(--spaceLg);
+  background: var(--colorPage);
+}
+
+.uw-mail {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+}
+
+.uw-mail-phone {
+  max-width: 390px;
+}
+
+.uw-mail-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceLg) var(--spaceXxl);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.uw-mail-top p {
+  margin: 0;
+}
+
+.uw-mail-subject {
+  font: var(--typeBodyStrong);
+}
+
+.uw-mail-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+  padding: var(--spaceXxl);
+  font: var(--typeBody);
+}
+
+.uw-mail-phone .uw-mail-body {
+  align-items: stretch;
+  padding: var(--spaceXl);
+}
+
+.uw-mail-body h1 {
+  margin: 0;
+  font: var(--typeTitleSection);
+}
+
+.uw-mail-body p {
+  margin: 0;
+}
+
+.uw-mail-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  max-width: 100%;
+  padding: var(--spaceSm) var(--spaceXl);
+  border-radius: 999px;
+  background: var(--colorInk);
+  color: var(--colorInkOnDark);
+  font: var(--typeButton);
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
