@@ -1475,7 +1475,14 @@
         const attrs = `data-field="${f.key}" aria-label="${esc(f.label)}"${controlsOn ? '' : ' disabled'}`;
         if (f.key === 'claudeConfigDir') {
           const blankAccount = `The machine's (${d.machine.claudeConfigDir || 'none'})`;
-          return `<select ${attrs}>${role ? `<option value="">${esc(blankAccount)}</option>` : ''}${d.accounts
+          // A folder in force that the logins do not list stays chosen, so a Save of
+          // another field does not move the account to the first folder listed.
+          const listed = d.accounts.some((a) => a.folder === f.value);
+          const kept =
+            f.value && !listed
+              ? `<option value="${esc(f.value)}" selected>${esc(`${f.value}: not listed`)}</option>`
+              : '';
+          return `<select ${attrs}>${role ? `<option value="">${esc(blankAccount)}</option>` : ''}${kept}${d.accounts
             .map((a) => {
               const who = a.account || 'not logged in';
               const on = a.roles.length ? `; ${a.roles.join(', ')}` : '';
