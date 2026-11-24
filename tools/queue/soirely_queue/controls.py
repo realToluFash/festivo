@@ -84,23 +84,26 @@ def act(db, home, platform, action, role=None, by=None, refs=shared.GitHubRefs,
     return status, {"said": said} if status == 200 else {"error": said}
 
 
+def described(done):
+    """What a save or an undo changed, as the page and the run log say it."""
+    return "; ".join(f"{where}: " + ", ".join(f"{key} {value['old']} → {value['new']}"
+                                             for key, value in fields.items())
+                     for where, fields in done.items())
+
+
 def change(home, asked, by, path=None, now=None):
     """A save from the page's Settings. The answer carries the file as it now is, so a page
     refused for reading an older one shows what is there."""
-    where, changes = str(asked.get("where") or ""), asked.get("changes")
-    if not isinstance(changes, dict) or not changes:
-        return 400, {"error": "error: a save names the fields it changes"}
+    changes = asked.get("changes")
     try:
-        done = settings.save(where, changes, asked.get("revision"), path)
+        done = settings.save(changes, asked.get("revision"), path)
     except settings.Refused as refused:
         status, answer, done = refused.status, {"error": str(refused)}, None
     else:
-        status = 200
-        answer = {"said": ", ".join(f"{key} {value['old']} → {value['new']}"
-                                    for key, value in done.items()) or "nothing changed"}
+        status, answer = 200, {"said": described(done) or "nothing changed"}
     if done or status != 200:
         runlog.append(home, LOG, {"at": now or time.time(), "action": "settings",
-                                  "where": where, "changes": done or changes, "from": by,
+                                  "changes": done or changes, "from": by,
                                   "said": answer.get("said") or answer["error"],
                                   "failed": status != 200})
     return status, dict(answer, settings=settings.read(path))
@@ -108,13 +111,15 @@ def change(home, asked, by, path=None, now=None):
 
 def undo(home, asked, by, path=None, now=None):
     try:
-        undone = settings.undo(asked.get("revision"), path)
+        done = settings.undo(asked.get("revision"), path)
     except settings.Refused as refused:
-        status, answer = refused.status, {"error": str(refused)}
+        status, answer, done = refused.status, {"error": str(refused)}, None
     else:
-        status, answer = (200, {"said": "put back agents.json as it was before the last change"}) \
-            if undone else (409, {"error": "error: there is no change to undo"})
-    runlog.append(home, LOG, {"at": now or time.time(), "action": "undo", "from": by,
+        status, answer = (409, {"error": "error: there is no change to undo"}) if done is None \
+            else (200, {"said": "put back agents.json as it was before the last change"
+                                + (f": {described(done)}" if done else "")})
+    runlog.append(home, LOG, {"at": now or time.time(), "action": "undo",
+                              "changes": done or {}, "from": by,
                               "said": answer.get("said") or answer["error"],
                               "failed": status != 200})
     return status, dict(answer, settings=settings.read(path))

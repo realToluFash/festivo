@@ -32,7 +32,7 @@ ASKED_MOST_BYTES = 64 << 10
 # Starting a role starts its stack, which Docker can take a minute or two over.
 CONTROL_SECONDS = 180
 # What each control takes, and so all that is passed on to the machine that does it.
-CONTROLLED = {"/control": ("action", "role"), "/settings": ("where", "changes", "revision"),
+CONTROLLED = {"/control": ("action", "role"), "/settings": ("changes", "revision"),
               "/settings/undo": ("revision",)}
 
 
@@ -87,7 +87,7 @@ def snapshot(db, platform, now, home, load=machine.load):
     if config:
         problems, refused, ready = machine.check(config)
         view["machine"] = config.get("machine") or "this machine"
-        view["settings_undo"] = settings.previous(machine.path()).exists()
+        view["settings_undo"] = settings.undoable(machine.path())
         view["peers"] = sorted(remote.peers(config))
         view["warnings"] += remote.problems(config) + machine.tester_problems(config)
         view["warnings"] += [f"a run that ended left {leftovers.describe(left)}"
@@ -437,13 +437,16 @@ class ControlDoor:
                                              for key in CONTROLLED[path]}).encode(),
                                  timeout=CONTROL_SECONDS)
         if status == 404 and not body.lstrip().startswith(b"{"):
-            what = "controls" if path == "/control" else "settings"
-            return 404, {"error": f"{name}'s sq web has no {what} yet; it gets them when its "
-                                  "sq updates from main"}
+            return 404, {"error": too_old(name, "controls" if path == "/control" else "settings")}
         status, said = relay((status, body))
         if "error" in said:
             said = dict(said, error=f"{name}: {said['error']}")
         return status, said
+
+
+def too_old(name, what):
+    """Why a peer whose `sq` predates `what` answers it with a bare 404."""
+    return f"{name}'s sq web has no {what} yet; it gets them when its sq updates from main"
 
 
 def named_here(host):
@@ -533,6 +536,10 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                 if not base or rest not in ("status.json", "session.json", "settings.json"):
                     return self.send_error(404)
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
+                if rest == "settings.json" and status == 404 \
+                        and not body.lstrip().startswith(b"{"):
+                    body = json.dumps({"error": too_old(urllib.parse.unquote(name),
+                                                        "settings")}).encode()
             elif path == "/status.json":
                 view = shared()
                 if "own=1" not in query.split("&"):

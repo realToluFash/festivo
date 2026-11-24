@@ -454,10 +454,14 @@ hand, since a mistake there stops the machine.
   line, and nothing is written. So `workers: 2` in `defaults` is refused, naming every role
   it would stop.
 - **Only the changed fields' lines change**, on a file indented as `just agents setup`
-  writes it. The file a save replaced is kept as `agents.json.prev`, and **Undo last
-  change** puts it back: one step, not a history.
+  writes it. One Save is one write, even when it changes `defaults` and the daily budget
+  together. The file a save replaced is kept as `agents.json.prev`, with the revision the
+  save wrote beside it in `agents.json.prev.sha256`, and **Undo last change** puts it back:
+  one step, not a history.
 - **A save or an undo is refused when the file changed since the page read it**, by hand
-  or from another page, and the page shows the file as it now is.
+  or from another page, and the page shows the file as it now is. An undo is also refused,
+  and Undo is not offered, once the file has been changed by hand since the last save, so a
+  hand edit is never put back.
 - `sq run` reads the file every minute, so a change is in force by the next tick. A worker
   already running finishes its item on the values it started with.
 - Without the token, Settings shows the values and offers no Save or Undo. Each save and

@@ -14,7 +14,7 @@ import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, logins, remote, runlog, runner, sessions, store
+from soirely_queue import dashboard, logins, remote, runlog, runner, sessions, settings, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -52,12 +52,16 @@ class Snapshot(unittest.TestCase):
         return dashboard.snapshot(self.db, self.platform, NOW, self.home,
                                   load=lambda: self.settings)
 
-    def test_the_header_offers_an_undo_while_the_last_change_is_kept(self):
+    def test_the_header_offers_an_undo_until_the_file_is_changed_by_hand(self):
         kept = self.root / "agents.json"
+        kept.write_text("{}\n")
         with mock.patch("soirely_queue.machine.path", return_value=kept):
-            self.assertFalse(self.snap()["settings_undo"])
-            (self.root / "agents.json.prev").write_text("{}")
-            self.assertTrue(self.snap()["settings_undo"])
+            self.assertIsNone(self.snap()["settings_undo"])
+            settings.write(kept, '{"defaults": {}}\n', keep="{}\n")
+            self.assertEqual(self.snap()["settings_undo"],
+                             settings.revision('{"defaults": {}}\n'))
+            kept.write_text('{"by": "hand"}\n')
+            self.assertIsNone(self.snap()["settings_undo"])
 
     def test_each_role_shows_its_state_last_run_and_next_items(self):
         store.record(self.db, [work("ops"), work("dev2")], NOW)
@@ -674,7 +678,7 @@ class ServeElsewhere(unittest.TestCase):
         self.assertIn("settings.json", fetched)
         port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
         here = {"Content-Type": "application/json", "Host": f"127.0.0.1:{port}"}
-        save = {"where": "dev2", "changes": {"effort": "high"}, "revision": "here"}
+        save = {"changes": {"dev2": {"effort": "high"}}, "revision": "here"}
         for path in ("/settings", "/settings/undo"):
             self.assertEqual(self.post_login(said, path, json.dumps(save), here)[0], 401)
         self.assertEqual(done, [])
@@ -682,6 +686,15 @@ class ServeElsewhere(unittest.TestCase):
         self.assertEqual(self.post_login(said, "/settings", json.dumps(save),
                                          dict(here, **cookie))[0], 200)
         self.assertEqual(done, [("/settings", save, "127.0.0.1")])
+
+    def test_reading_an_old_peers_settings_names_the_peer_and_why(self):
+        said = self.start(near=True, peers=lambda: {"tolu-mac": "http://10.0.0.6:8765"},
+                          fetch=lambda base, path, secret: (404, b"<html>Not Found</html>"))
+        answer = self.get(said, "/m/tolu-mac/settings.json")
+        self.assertEqual(answer.status, 404)
+        self.assertEqual(json.loads(answer.read())["error"],
+                         "tolu-mac's sq web has no settings yet; it gets them when its sq "
+                         "updates from main")
 
     def test_the_page_says_whether_it_holds_the_token_its_controls_ask_for(self):
         said = self.start(near=True)
@@ -827,10 +840,10 @@ class Controls(unittest.TestCase):
 
     def test_a_save_or_an_undo_for_a_peer_passes_on_only_what_it_takes(self):
         self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2", "revision": "r1",
-                                    "changes": {"effort": "high"}, "extra": 1}, "x")
+                                    "changes": {"dev2": {"effort": "high"}}, "extra": 1}, "x")
         self.door.act("/settings/undo", {"machine": "tolu-mac", "revision": "r2"}, "x")
         self.assertEqual([(path, body) for _, path, _, body, _ in self.posted], [
-            ("settings", {"where": "dev2", "changes": {"effort": "high"}, "revision": "r1"}),
+            ("settings", {"changes": {"dev2": {"effort": "high"}}, "revision": "r1"}),
             ("settings/undo", {"revision": "r2"})])
         self.answer = (404, b"<html>Not Found</html>")
         status, said = self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2"}, "x")

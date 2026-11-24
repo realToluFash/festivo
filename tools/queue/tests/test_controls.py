@@ -159,19 +159,22 @@ class Settings(unittest.TestCase):
         return [json.loads(line) for line in path.read_text().splitlines()]
 
     def test_a_save_says_what_changed_logs_old_and_new_and_answers_with_the_file(self):
-        status, answer = self.change({"where": "dev2", "changes": {"effort": "high"},
+        status, answer = self.change({"changes": {"dev2": {"effort": "high"},
+                                                  "machine": {"dailyBudgetUsd": 40}},
                                       "revision": self.revision()})
-        self.assertEqual((status, answer["said"]), (200, "effort None → high"))
+        said = "dev2: effort None → high; machine: dailyBudgetUsd None → 40"
+        self.assertEqual((status, answer["said"]), (200, said))
         self.assertEqual(answer["settings"]["roles"]["dev2"]["effort"]["value"], "high")
         self.assertEqual(self.logged(), [{
-            "at": NOW, "action": "settings", "where": "dev2", "from": "192.168.1.20",
-            "changes": {"effort": {"old": None, "new": "high"}},
-            "said": "effort None → high", "failed": False}])
+            "at": NOW, "action": "settings", "from": "192.168.1.20",
+            "changes": {"dev2": {"effort": {"old": None, "new": "high"}},
+                        "machine": {"dailyBudgetUsd": {"old": None, "new": 40}}},
+            "said": said, "failed": False}])
 
     def test_a_refused_save_is_logged_and_answers_with_the_file_as_it_now_is(self):
         stale = self.revision()
-        self.change({"where": "dev2", "changes": {"effort": "high"}, "revision": stale})
-        status, answer = self.change({"where": "dev2", "changes": {"effort": "low"},
+        self.change({"changes": {"dev2": {"effort": "high"}}, "revision": stale})
+        status, answer = self.change({"changes": {"dev2": {"effort": "low"}},
                                       "revision": stale})
         self.assertEqual(status, 409)
         self.assertIn("changed since the page read it", answer["error"])
@@ -179,20 +182,23 @@ class Settings(unittest.TestCase):
         self.assertTrue(self.logged()[-1]["failed"])
 
     def test_a_save_that_names_no_fields_is_refused(self):
-        self.assertEqual(self.change({"where": "dev2", "changes": {}})[0], 400)
-        self.assertEqual(self.change({"where": "dev2", "changes": "effort=high"})[0], 400)
+        self.assertEqual(self.change({"changes": {}})[0], 400)
+        self.assertEqual(self.change({"changes": "effort=high"})[0], 400)
 
     def test_an_undo_puts_the_file_back_once_and_is_logged(self):
         before = self.file.read_text()
-        self.change({"where": "dev2", "changes": {"effort": "high"},
-                     "revision": self.revision()})
+        self.change({"changes": {"dev2": {"effort": "high"}}, "revision": self.revision()})
         status, answer = controls.undo(self.home, {"revision": self.revision()},
                                        "192.168.1.20", self.file, now=NOW)
-        self.assertEqual(status, 200)
+        said = ("put back agents.json as it was before the last change: "
+                "dev2: effort high → None")
+        self.assertEqual((status, answer["said"]), (200, said))
         self.assertEqual(self.file.read_text(), before)
         self.assertFalse(answer["settings"]["undo"])
-        self.assertEqual((self.logged()[-1]["action"], self.logged()[-1]["failed"]),
-                         ("undo", False))
+        self.assertEqual(self.logged()[-1], {
+            "at": NOW, "action": "undo", "from": "192.168.1.20",
+            "changes": {"dev2": {"effort": {"old": "high", "new": None}}},
+            "said": said, "failed": False})
         status, answer = controls.undo(self.home, {"revision": self.revision()}, "x",
                                        self.file)
         self.assertEqual((status, answer["error"]), (409, "error: there is no change to undo"))

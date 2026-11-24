@@ -1377,7 +1377,7 @@
         );
         if (d.settings_undo && controlsOn)
           bits.push(
-            `<button class="copy quiet" type="button" data-settings-undo${failing ? ' disabled' : ''}>Undo last change</button>`,
+            `<button class="copy quiet" type="button" data-settings-undo="${esc(d.settings_undo)}"${failing ? ' disabled' : ''}>Undo last change</button>`,
           );
         if (!controlsOn)
           bits.push(
@@ -1432,10 +1432,7 @@
         const d = s.data;
         if (s.where !== 'defaults')
           return FIELDS.map(([key, label]) => ({ key, label, ...d.roles[s.where][key] }));
-        return FIELDS.map(([key, label]) => {
-          const value = d.defaults[key];
-          return { key, label, value, in_force: value, from: value == null ? 'unset' : 'defaults' };
-        }).concat([
+        return FIELDS.map(([key, label]) => ({ key, label, ...d.defaults[key] })).concat([
           {
             key: 'dailyBudgetUsd',
             label: 'Daily budget, USD',
@@ -1455,7 +1452,9 @@
             ? 'No daily cap'
             : role
               ? `From defaults${f.from === 'role' ? '' : ` (${f.in_force ?? 'unset'})`}`
-              : 'Unset';
+              : f.from === 'built-in'
+                ? `sq's floor (${f.in_force})`
+                : 'Unset';
         const attrs = `data-field="${f.key}" aria-label="${esc(f.label)}"${controlsOn ? '' : ' disabled'}`;
         if (['model', 'effort', 'inboxEffort'].includes(f.key)) {
           const model = fields.find((g) => g.key === 'model').in_force;
@@ -1569,45 +1568,39 @@
           Object.assign(s, { said: `${changes.unread.join(', ')}: not a number`, failed: true });
           return drawSettings();
         }
-        const saves = [
-          [s.where, changes.here],
-          ['machine', changes.machine],
-        ].filter(([, fields]) => Object.keys(fields).length);
-        if (!saves.length) {
+        const saves = Object.fromEntries(
+          [
+            [s.where, changes.here],
+            ['machine', changes.machine],
+          ].filter(([, fields]) => Object.keys(fields).length),
+        );
+        if (!Object.keys(saves).length) {
           Object.assign(s, { said: 'Nothing changed.', failed: false });
           return drawSettings();
         }
         s.saving = true;
         drawSettings();
-        const lines = [];
-        let failed = false;
-        for (const [where, fields] of saves) {
-          const answer = await postSettings('settings', {
-            machine: s.m,
-            where,
-            changes: fields,
-            revision: s.data.revision,
-          });
-          if (answer.settings) s.data = answer.settings;
-          lines.push(answer.said);
-          if (!answer.ok) {
-            failed = true;
-            break;
-          }
-        }
-        Object.assign(s, { saving: false, said: lines.join('\n'), failed });
+        const answer = await postSettings('settings', {
+          machine: s.m,
+          changes: saves,
+          revision: s.data.revision,
+        });
+        if (answer.settings) s.data = answer.settings;
+        Object.assign(s, { saving: false, said: answer.said, failed: !answer.ok });
         if (s === settingsOpen) drawSettings();
         refresh();
       }
 
+      // The revision the page last read, from an open Settings or the status: the server
+      // refuses the undo if agents.json changed since, so a hand edit is never put back.
       async function undoSettings(button) {
         button.disabled = true;
         const s = { m: machine || '' };
+        const open = settingsOpen && settingsOpen.m === s.m && settingsOpen.data;
         try {
-          const read = await readSettings(s);
           const answer = await postSettings('settings/undo', {
             machine: s.m,
-            revision: read.revision,
+            revision: open && open.undo ? open.revision : button.dataset.settingsUndo,
           });
           controlSaid = { text: answer.said, failed: !answer.ok };
           if (settingsOpen && settingsOpen.m === s.m && answer.settings) {
