@@ -50,7 +50,7 @@ import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 
 /** Under 10 seconds, so counts move while the screen is open (sc-3914). */
 export const POLL_MS = 8000;
-// iOS keeps the scroll view's pull offset when a refresh ends before it has shown, and the next tap only clears it (sc-3914).
+// A pull's result waits until its bounce has settled: a layout change mid-bounce leaves the scroll view thinking it still moves, and it takes the next tap (sc-3914).
 const PULL_SHOWN_MS = 1000;
 
 const PDF = { mimeType: 'application/pdf', UTI: 'com.adobe.pdf' };
@@ -98,24 +98,26 @@ export function EventMenu({
   const read = useCallback(() => {
     const mine = ++asked.current;
     out.current = true;
-    const landed = () => {
-      if (mine !== asked.current) return false;
+    const landed = (show: () => void) => {
+      if (mine !== asked.current) return;
       out.current = false;
       if (pullEnds.current != null) clearTimeout(pullEnds.current);
       pullEnds.current = setTimeout(
-        () => setPulling(false),
+        () => {
+          if (mine === asked.current) show();
+          setPulling(false);
+        },
         Math.max(0, pulledAt.current + PULL_SHOWN_MS - Date.now()),
       );
-
-      return true;
     };
     Promise.all([api.menuPicks(event.id), api.menu(event.id)]).then(
       ([picks, menu]) => {
-        if (landed()) setLoad({ kind: 'loaded', picks, menu, stale: false });
+        landed(() => setLoad({ kind: 'loaded', picks, menu, stale: false }));
       },
       () => {
-        if (landed())
-          setLoad((was) => (was.kind === 'loaded' ? { ...was, stale: true } : { kind: 'failed' }));
+        landed(() =>
+          setLoad((was) => (was.kind === 'loaded' ? { ...was, stale: true } : { kind: 'failed' })),
+        );
       },
     );
   }, [event.id]);
