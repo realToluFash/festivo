@@ -520,16 +520,10 @@ def demo_only(stories, prs):
 
 
 def demo_fixing(story, prs):
-    """Whether a failed demo-only story's fix is open, or merged since the failure: ux's
-    hold ends there, and pm's demo-merged item takes it on."""
-    failed = T.epoch(story.get("moved_at"))
-    for pr in prs:
-        if pr.get("story_id") != story["id"] or not design_pr(pr):
-            continue
-        merged = T.epoch(pr.get("merged_at")) if pr["state"] == "merged" else None
-        if pr["state"] == "open" or (merged and failed and merged > failed):
-            return True
-    return False
+    """Whether a failed demo-only story's fix is open, or pm's demo-merged item has it: ux's
+    hold ends there. Read from `demo_items`, so it ends exactly where pm's begins."""
+    return any(pr.get("story_id") == story["id"] and design_pr(pr) and pr["state"] == "open"
+               for pr in prs) or bool(demo_items([story], prs))
 
 
 def demo_items(stories, prs):

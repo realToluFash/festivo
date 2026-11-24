@@ -1198,6 +1198,13 @@ class DemoOnlyStories(unittest.TestCase):
         self.assertEqual([i["roles"] for i in self.pm_items([failed], [before, fixed])],
                          [["pm"]])
 
+    def test_uxs_hold_ends_only_where_pms_item_begins(self):
+        failed = self.on("Failed QA", moved_at=self.FAILED)
+        fixed = self.demo(41, merged_at="2026-10-18T11:00:00Z")
+        with mock.patch.object(work, "demo_items", return_value=[]):
+            self.assertEqual(len(work.queued("ux", [failed], prs=[fixed])), 1)
+        self.assertEqual(work.queued("ux", [failed], prs=[fixed]), [])
+
     def test_ux_is_offered_it_only_in_failed_qa(self):
         for state in self.WAITING + self.LATER:
             self.assertEqual(work.queued("ux", [self.on(state)], prs=[self.demo()]), [], state)
