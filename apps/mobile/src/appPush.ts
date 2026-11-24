@@ -10,6 +10,7 @@ import { AppState, Platform } from 'react-native';
 import { api } from './api.ts';
 import { config } from './config.ts';
 import { appPlace } from './kit/notificationPlace.ts';
+import { leaveThen } from './leaveHeld.ts';
 import { RUN_OF_SHOW_CHANNEL, openedFromCard } from './runOfShowCards.ts';
 
 const ASKED = 'soirely.pushAsked';
@@ -132,7 +133,8 @@ function openPushed(response: Notifications.NotificationResponse): void {
   const night = typeof place === 'string' ? /^\/events\/([^/?#]+)\/night/.exec(place) : null;
   if (response.notification.request.content.data?.silent === true && night?.[1] != null)
     openedFromCard(night[1]);
-  router.push(place);
+  // A form holding a change asks first, and the place then takes the discarded form's place (sc-82245).
+  leaveThen((discarding) => (discarding ? router.dismissTo(place) : router.push(place)));
 }
 
 /** In the signed-in frame, so a tap that launched the app opens once the account is known; every screen has a frame, and they share one listener. */

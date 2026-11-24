@@ -7,12 +7,12 @@ import {
   StyleSheet,
   type TextInputInstance,
   View,
-  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '../../components/Buttons.tsx';
 import { Field, focusChecked, TextField } from '../../components/Field.tsx';
+import { FocusNav } from '../../components/FocusNav.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useSendingWords } from '../../components/ReadOut.tsx';
 import {
@@ -41,6 +41,11 @@ import { MomentBox } from '../../components/MomentPick.tsx';
 import { W, say } from './BudgetWords.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
+
+// The symbol grows with the text, so the amount starts after the width it drew at rather than a fixed 34 (sc-31778).
+const PREFIX_LEFT = 14;
+const PREFIX_SYMBOL = 10;
+const PREFIX_GAP = 10;
 
 export interface MarkInput {
   amount: string;
@@ -112,6 +117,7 @@ export function MarkFields({
   const { input, setInput, scheduled, amountRef, referenceRef, submit } = hook;
   const typed = checkAmount(input.amount);
   const diff = typed.ok ? typed.pence - scheduled : 0;
+  const [symbolWidth, setSymbolWidth] = useState(PREFIX_SYMBOL);
 
   return (
     <View style={styles.fields}>
@@ -138,11 +144,15 @@ export function MarkFields({
                 keyboardType="decimal-pad"
                 wrong={input.amountError != null}
                 submitting={sending}
-                style={styles.prefixed}
+                style={{ paddingLeft: PREFIX_LEFT + symbolWidth + PREFIX_GAP }}
                 accessibilityLabel={W.amountPaid}
                 testID="budget.mark.amount"
               />
-              <View style={styles.prefix} pointerEvents="none">
+              <View
+                style={styles.prefix}
+                pointerEvents="none"
+                onLayout={(event) => setSymbolWidth(event.nativeEvent.layout.width)}
+              >
                 <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
                   {currencySymbol(locale, payment.currency)}
                 </Text>
@@ -359,7 +369,7 @@ function OpenForm({
           ? { label: W.close, on: true, onPress: onClose, testID: 'budget.mark.close' }
           : {
               label: W.markPaid,
-              on: true,
+              on: !sending,
               busy: sending,
               onPress: hook.submit,
               testID: 'budget.mark.send',
@@ -443,23 +453,27 @@ function Docked({
       onAccessibilityEscape={sending ? undefined : onClose}
       testID="budget.mark"
     >
-      <View style={styles.nav}>
-        {refused ? (
-          <View style={styles.navSide} />
-        ) : (
-          <NavButton label={W.cancel} off={sending} onPress={onClose} testID="budget.mark.cancel" />
-        )}
-        <Text ref={head} size={17} weight="bold" accessibilityRole="header" style={styles.navTitle}>
-          {W.markPaid}
-        </Text>
-        <NavButton
-          label={refused ? W.close : W.markPaid}
-          strong
-          busy={sending}
-          onPress={refused ? onClose : hook.submit}
-          testID={refused ? 'budget.mark.close' : 'budget.mark.send'}
-        />
-      </View>
+      <FocusNav
+        title={W.markPaid}
+        titleRef={head}
+        verb={
+          refused
+            ? { label: W.close, on: true, onPress: onClose, testID: 'budget.mark.close' }
+            : {
+                label: W.markPaid,
+                on: !sending,
+                busy: sending,
+                onPress: hook.submit,
+                testID: 'budget.mark.send',
+              }
+        }
+        back={undefined}
+        cancels={!refused}
+        cancelLabel={W.cancel}
+        waits={sending}
+        onCancel={onClose}
+        cancelTestID="budget.mark.cancel"
+      />
       <ScrollView
         contentContainerStyle={styles.dockedBody}
         keyboardShouldPersistTaps="handled"
@@ -471,52 +485,6 @@ function Docked({
   );
 }
 
-function NavButton({
-  label,
-  onPress,
-  strong = false,
-  busy = false,
-  off = false,
-  testID,
-  ref,
-}: {
-  label: string;
-  onPress: () => void;
-  strong?: boolean;
-  busy?: boolean;
-  off?: boolean;
-  testID: string;
-  ref?: RefObject<ViewInstance | null>;
-}) {
-  const ink = busy
-    ? tokens.colorInkSecondary
-    : off
-      ? tokens.colorInkTertiary
-      : tokens.colorAccentText;
-
-  return (
-    <Pressable
-      ref={ref}
-      onPress={busy || off ? undefined : onPress}
-      disabled={off}
-      style={({ pressed }) => [styles.navSide, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: off, busy }}
-      accessibilityLabel={label}
-      testID={testID}
-    >
-      <Text
-        size={17}
-        weight={strong ? 'semibold' : 'medium'}
-        accessible={false}
-        style={{ color: ink }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   secondary: { color: tokens.colorInkSecondary },
@@ -524,10 +492,9 @@ const styles = StyleSheet.create({
   lineHeight: { lineHeight: 15 * 1.45 },
   fields: { gap: 14 },
   date: { gap: tokens.spaceSm },
-  prefixed: { paddingLeft: 34 },
   prefix: {
     position: 'absolute',
-    left: 14,
+    left: PREFIX_LEFT,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
@@ -566,21 +533,5 @@ const styles = StyleSheet.create({
     ...tokens.elevationNative.popover.ios,
     elevation: tokens.elevationNative.popover.android.elevation,
   },
-  nav: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: tokens.spaceXs,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorBorder,
-  },
-  navSide: {
-    minWidth: tokens.sizeHit,
-    minHeight: tokens.sizeHit,
-    paddingHorizontal: tokens.spaceMd,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navTitle: { flex: 1, textAlign: 'center' },
   dockedBody: { padding: tokens.spaceXxl, paddingBottom: tokens.space6xl },
 });

@@ -40,6 +40,12 @@ const config: ExpoConfig = {
   // toggle no longer exists. Both keys typecheck as errors rather than being
   // ignored, which is the good outcome — a silently-accepted dead flag reads
   // as a decision somebody made.
+  locales: {
+    en: './locales/en.json',
+    es: './locales/es.json',
+    fr: './locales/fr.json',
+    pt: './locales/pt.json',
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.soirely.app',
@@ -94,7 +100,15 @@ const config: ExpoConfig = {
     'expo-system-ui',
     'expo-notifications',
     'expo-sharing',
-    // The system's photo picker needs no library access, so nothing asks for it or for the camera.
+    [
+      'expo-camera',
+      {
+        cameraPermission: 'Soirely uses the camera to scan the codes guests show at the door.',
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
+    // The system's photo picker needs no library access, so nothing asks for it.
     [
       'expo-image-picker',
       { photosPermission: false, cameraPermission: false, microphonePermission: false },

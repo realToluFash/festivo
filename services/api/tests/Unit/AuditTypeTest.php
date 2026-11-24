@@ -23,7 +23,7 @@ use SplFileInfo;
 final class AuditTypeTest extends TestCase
 {
     /** Areas about an event's guests, menu, seating, schedule, staff and budget: left out until sc-71986 gives them types (decided 19 Nov 2026). */
-    private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line', 'budget_markup', 'quote', 'scheduled_payment', 'payer'];
+    private const array LEFT_OUT = ['guest', 'guests', 'guest_group', 'menu', 'dish', 'seating', 'run_of_show', 'staff', 'stations', 'budget_line', 'budget_markup', 'staff_rate', 'quote', 'scheduled_payment', 'payer'];
 
     /** Areas about a person's own account, which the log never shows. */
     private const array PERSONAL = ['name', 'email', 'phone', 'provider', 'sessions', 'two_factor_recovery'];
@@ -32,7 +32,7 @@ final class AuditTypeTest extends TestCase
     private const array NOT_AN_ORGANISATION = ['catalogue'];
 
     /** Codes and areas the scan finds that name something other than an audited action. */
-    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'budget.payment_reminder', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'app'];
+    private const array NOT_ACTIONS = ['sign_in_rules.notice', 'budget.payment_reminder', 'catalogue.versions', 'replies.close', 'example.com', 'group.id', 'group.name', 'event_changes', 'event_day', 'guest_replies', 'app'];
 
     /** Every action whose entry shows what changed on something already there: a new action goes here or on AuditType::CREATES_OR_REMOVES (#74875). */
     private const array CHANGES_A_VALUE = [

@@ -1,14 +1,17 @@
 import { tokens } from '../theme/tokens.ts';
 
-/** Every field in the kit starts from these: the caret in the text's colour, never the platform blue, no guessing at what was typed, and on an Android phone on its side the form stays in sight rather than giving way to the keyboard's full-screen box (sc-35256). */
-export const FIELD_DEFAULTS = {
-  disableFullscreenUI: true,
-  cursorColor: tokens.colorInk,
-  selectionColor: tokens.colorInk,
-  placeholderTextColor: tokens.colorInkTertiary,
-  autoCorrect: false,
-  spellCheck: false,
-} as const;
+/** Every field in the kit starts from these: the caret in the text's colour, never the platform blue, no guessing at what was typed, and on an Android phone on its side the form stays in sight rather than giving way to the keyboard's full-screen box (sc-35256). Android paints the selection colour solid over the selected text, so there it is the ink at 25% with the handles in full ink; iOS draws its own tint from the ink (sc-80268). */
+export function fieldDefaults(os: string) {
+  return {
+    disableFullscreenUI: true,
+    cursorColor: tokens.colorInk,
+    selectionColor: os === 'android' ? `${tokens.colorInk}40` : tokens.colorInk,
+    selectionHandleColor: tokens.colorInk,
+    placeholderTextColor: tokens.colorInkTertiary,
+    autoCorrect: false,
+    spellCheck: false,
+  } as const;
+}
 
 export interface FieldName {
   accessibilityLabel?: string | undefined;
@@ -73,9 +76,9 @@ export function refusedHint(refused: Refused | null, own: string | undefined): s
 }
 
 /** Revealed or not, a password is never corrected, capitalised or kept from a paste. */
-export function passwordProps(revealed: boolean) {
+export function passwordProps(os: string, revealed: boolean) {
   return {
-    ...FIELD_DEFAULTS,
+    ...fieldDefaults(os),
     secureTextEntry: !revealed,
     autoCapitalize: 'none',
     contextMenuHidden: false,
@@ -83,9 +86,9 @@ export function passwordProps(revealed: boolean) {
 }
 
 /** A one-time code, never corrected. A recovery code has letters and a hyphen, so a field that takes one gets the full keyboard. */
-export function codeProps(takesRecoveryCode: boolean) {
+export function codeProps(os: string, takesRecoveryCode: boolean) {
   return {
-    ...FIELD_DEFAULTS,
+    ...fieldDefaults(os),
     keyboardType: takesRecoveryCode ? 'default' : 'number-pad',
     textContentType: 'oneTimeCode',
     autoCapitalize: 'none',

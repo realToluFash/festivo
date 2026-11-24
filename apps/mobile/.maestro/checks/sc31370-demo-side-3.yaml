@@ -1,0 +1,23 @@
+# sc-31370: the app demo's Messages (B), side, one screenshot per state. On a landscape-natural tablet pass SIDE=PORTRAIT and UPRIGHT=LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+env:
+  SIDE: LANDSCAPE_LEFT
+  UPRIGHT: PORTRAIT
+---
+- setOrientation: ${SIDE}
+- waitForAnimationToEnd
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: matched, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: later, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduledEdit, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sendNow, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: cancelAsk, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: scheduledCancelled, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: fixed, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: sentAgain, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkAll, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkNotReplied, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: checkChannels, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: noSubject, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: followUp, LAYOUT: side } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: tellPlace, LAYOUT: side } }
+- setOrientation: ${UPRIGHT}

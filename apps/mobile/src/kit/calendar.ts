@@ -189,6 +189,28 @@ export function weekHeight(week: Week, look: WeekLook): number {
   );
 }
 
+export interface ScrollReport {
+  y: number;
+  byHand: boolean;
+}
+
+/** The span a scroll we asked for runs over: one place for a jump, from and to for a glide. */
+export interface Asked {
+  from: number;
+  to: number;
+}
+
+/** Where the reader is after the grid reports a scroll. Only their hand and the scrolls we ask for move them; any other report, wherever it lands, is the list moving by itself, as an iPad's grid does under an event, and the place stays where it was (sc-83008). */
+export function placeAfter(kept: number, report: ScrollReport, asked: Asked | null): number {
+  const { y } = report;
+  const within =
+    asked != null &&
+    y >= Math.min(asked.from, asked.to) - 1 &&
+    y <= Math.max(asked.from, asked.to) + 1;
+
+  return report.byHand || within || Math.abs(y - kept) <= 1 ? y : kept;
+}
+
 export function offsetsOf(weeks: readonly Week[], look: WeekLook): number[] {
   const offsets = [0];
 

@@ -33,6 +33,6 @@ appId: host.exp.Exponent
       - tapOn: 'Not Now'
 - extendedWaitUntil:
     visible:
-      id: 'home.switchOrganisation'
+      id: 'frame.organisation|home.switchOrganisation'
     timeout: 60000
 - takeScreenshot: mobile-signed-in

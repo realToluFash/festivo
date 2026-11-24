@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __resetColourScheme, followAccountScheme } from '../../../colourScheme.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { pagedMembers } from '../../../test-members.ts';
@@ -192,6 +193,7 @@ function boxAbove(title: HTMLElement): HTMLElement {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  __resetColourScheme();
 });
 
 describe('Settings offline at a desk, where the band has gone (sc-39471)', () => {
@@ -202,6 +204,7 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     ['/app/account', 'Your account'],
     ['/app/account/security', 'Security'],
     ['/app/account/notifications', 'Notification settings'],
+    ['/app/account/personalisation', 'Personalisation'],
   ])('%s says so in the amber box above its title, with Try again', async (path, title) => {
     signedIn();
     const soirely = { reachable: true };
@@ -218,15 +221,46 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     expect(within(box).getByRole('button', { name: 'Try again' })).toBeDefined();
   });
 
-  it('keeps Personalisation, which loads nothing from Soirely, to the one box above its title', async () => {
+  it('keeps the colours and says so in the box when Personalisation is opened from Notifications offline', async () => {
     signedIn();
-    serving({ reachable: true });
+    followAccountScheme('cobalt');
+    const soirely = { reachable: true };
+    serving(soirely);
+    open('/app/account/notifications');
+    await screen.findByRole('heading', { level: 1, name: 'Notification settings' });
+    soirely.reachable = false;
+
+    fireEvent.click(screen.getByRole('link', { name: 'Personalisation' }));
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(within(boxAbove(heading)).getByText(/^Offline · as of /)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Choose colours/ })).toBeDefined();
+  });
+
+  it('says so in the box once a save on Personalisation is refused offline, before the account has answered', async () => {
+    signedIn();
+    followAccountScheme('cobalt');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (init?.method === 'PUT') throw new TypeError('Failed to fetch');
+      if (path === '/api/auth/me') return new Promise<Response>(() => {});
+
+      return json(ANSWERS[path]);
+    });
     open('/app/account/personalisation');
     const heading = await screen.findByRole('heading', { level: 1, name: 'Personalisation' });
 
-    goOffline();
+    fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Garden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('because you are offline');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    boxAbove(heading);
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+    expect(boxAbove(heading).querySelector('.ev-offline-words')?.textContent).toMatch(
+      /^Offline · as of /,
+    );
   });
 
   it('puts the box over a person opened beside the Members list', async () => {

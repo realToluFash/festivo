@@ -53,6 +53,7 @@ function budget(fields: Partial<EventBudget> = {}): EventBudget {
       fixed: { count: 1, source: 'fixed', reason: null },
     },
     lines: [line()],
+    staff: { total: '0', countedMinutes: 0, scheduledMinutes: 0, unrated: [] },
     ...fields,
   };
 }

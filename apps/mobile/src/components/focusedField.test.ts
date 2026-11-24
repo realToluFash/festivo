@@ -117,6 +117,46 @@ describe('moving on from the field a screen settled on (sc-37519)', () => {
     expect(moved).not.toHaveBeenCalled();
   });
 
+  it('lands on the field a step focuses itself, however late it comes (sc-80944)', () => {
+    const organisation = field('organisation');
+    const watch = store.watchMovedOn(moved);
+    watch.settled();
+    store.focusOwed(organisation);
+    store.fieldFocused(organisation);
+    store.fieldFocused(organisation);
+    expect(moved).not.toHaveBeenCalled();
+
+    store.controlTaken();
+    expect(moved).toHaveBeenCalledOnce();
+  });
+
+  it('moves on from a late landing as another field takes focus (sc-80944)', () => {
+    const organisation = field('organisation');
+    store.watchMovedOn(moved).settled();
+    store.focusOwed(organisation);
+    store.fieldFocused(organisation);
+    store.fieldFocused(field('country'));
+
+    expect(moved).toHaveBeenCalledOnce();
+  });
+
+  it('moves on as another field is taken before the owed one comes (sc-80944)', () => {
+    store.watchMovedOn(moved).settled();
+    store.focusOwed(field('organisation'));
+    store.fieldFocused(field('country'));
+
+    expect(moved).toHaveBeenCalledOnce();
+  });
+
+  it('owes nothing once the field unmounts before its focus came (sc-80944)', () => {
+    const organisation = field('organisation');
+    store.watchMovedOn(moved).settled();
+    store.focusOwed(organisation)();
+    store.fieldFocused(organisation);
+
+    expect(moved).toHaveBeenCalledOnce();
+  });
+
   it('hears nothing once stopped', () => {
     store.fieldFocused(name);
     const watch = store.watchMovedOn(moved);

@@ -212,6 +212,21 @@ describe('Remove from the list (sc-3774)', () => {
     expect(within(column()).queryByRole('button', { name: 'Remove from the list' })).toBeNull();
   });
 
+  it('Edit guest offers no Remove for an arrived companion, and says why', SLOW, async () => {
+    await guests('editCompanionArrived');
+    const field = await screen.findByRole(
+      'textbox',
+      { name: 'Companion’s full name, 1 of 1' },
+      WAIT,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Remove Rui Duarte' })).toBeNull();
+    expect(field.getAttribute('aria-describedby')).not.toBeNull();
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      'Rui Duarte has arrived, so they stay on the list.',
+    );
+  });
+
   it(
     'a 409 for a companion says one has just arrived, and goes back to their details',
     SLOW,

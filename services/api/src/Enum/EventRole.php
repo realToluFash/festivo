@@ -15,7 +15,7 @@ enum EventRole: string
     case CanView = 'can_view';
     case CanCheckIn = 'can_check_in';
 
-    /** @return list<Permission> guest contact details go with guests.manage, so neither read-only role reaches them */
+    /** @return list<Permission> guest contact details go with guests.manage, so neither read-only role reaches them; Can check guests in adds the door alone (sc-1454) */
     public function permissions(): array
     {
         $onTheEvent = Vec\filter(
@@ -27,7 +27,8 @@ enum EventRole: string
         return match ($this) {
             self::Lead => [...$onTheEvent, Permission::PeopleRead, Permission::PeopleManage],
             self::CanEdit => [...Vec\filter($onTheEvent, static fn (Permission $permission): bool => PermissionArea::Budget !== $permission->area()), Permission::PeopleRead],
-            self::CanView, self::CanCheckIn => [...$reads, Permission::PeopleRead],
+            self::CanView => [...$reads, Permission::PeopleRead],
+            self::CanCheckIn => [...$reads, Permission::PeopleRead, Permission::GuestsCheckIn],
         };
     }
 

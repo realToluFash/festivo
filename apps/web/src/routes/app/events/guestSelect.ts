@@ -4,8 +4,9 @@ import type {
   MarkedTogether,
   MovedTogether,
   RemovedTogether,
+  StayedGuest,
 } from '@soirely/api-client';
-import { type ListView, type ViewRow, listFormat, shownReply } from '@soirely/domain';
+import { type ListView, type ViewRow, listFormat, shownReply, staysBecause } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 import { currentLocale } from '../../../i18n/index.ts';
@@ -40,19 +41,58 @@ export interface RemoveQuestion {
   goes: number;
   companions: number;
   replied: number;
+  /** Selected guests an arrival keeps on the list, theirs or a companion's (sc-1454): named, and not counted in {n}. */
+  stays: StayedGuest[];
 }
 
+function stayed(guest: Guest): StayedGuest | null {
+  const why = staysBecause(guest);
+
+  return why == null ? null : { id: guest.id, fullName: guest.fullName, why };
+}
+
+/** {n} counts only the guests it will remove; who has arrived, or whose companion has, is named and stays (sc-1454). */
 export function removeQuestion(
   guests: readonly Guest[],
   selected: ReadonlySet<string>,
 ): RemoveQuestion {
-  const goes = chosen(guests, selected);
+  const picked = chosen(guests, selected);
+  const goes = picked.filter((one) => stayed(one) == null);
 
   return {
     goes: goes.length,
-    companions: companionsWith(guests, selected),
+    companions: goes.reduce((sum, one) => sum + one.companions.length, 0),
     replied: goes.filter((one) => one.reply !== 'noReply').length,
+    stays: picked.map(stayed).filter((one) => one != null),
   };
+}
+
+/** When every guest asked for stays, nothing is asked or sent: the line names them (sc-1454). */
+export function nothingRemoved(stays: StayedGuest[]): RemovedTogether {
+  return { removal: null, guests: 0, companions: 0, gone: 0, stayed: stays };
+}
+
+export function stayLine(t: TFunction, one: StayedGuest): string {
+  return t(one.why === 'arrived' ? 'guestSelect.staysArrived' : 'guestSelect.staysCompanion', {
+    name: one.fullName ?? '',
+  });
+}
+
+function notChanged(t: TFunction, stays: readonly StayedGuest[]): string[] {
+  if (stays.length === 0) return [];
+
+  return [
+    t('guestSelect.notChanged', {
+      count: stays.length,
+      reasons: listFormat(currentLocale(), { type: 'conjunction' }).format(
+        stays.map((one) =>
+          t(one.why === 'arrived' ? 'guestSelect.hasArrived' : 'guestSelect.companionHasArrived', {
+            name: one.fullName ?? '',
+          }),
+        ),
+      ),
+    }),
+  ];
 }
 
 /** sc-46880 (Decided, 14 Nov): the dialog names at most five already invited, then "and {r} more". */
@@ -144,17 +184,19 @@ export function lineWords(t: TFunction, line: Line): string[] {
       ];
     }
     case 'removed': {
-      const { guests, companions, gone, removal } = line.removed;
+      const { guests, companions, gone, removal, stayed: stays } = line.removed;
       const words = counted(t, guests, companions);
 
       if (removal == null)
         return [
           t('guestSelect.nothingRemoved'),
+          ...stays.map((one) => stayLine(t, one)),
           ...(gone > 0 ? [t('guestSelect.removedMeanwhile', { count: gone })] : []),
         ];
 
       return [
         t(companions === 0 ? 'guestSelect.removed' : 'guestSelect.removedWith', words),
+        ...notChanged(t, stays),
         ...(gone > 0 ? [t('guestSelect.removedMeanwhile', { count: gone })] : []),
         t('guestSelect.undoNote'),
       ];

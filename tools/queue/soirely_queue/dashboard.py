@@ -12,12 +12,23 @@ import time
 import urllib.parse
 import webbrowser
 
-from . import (drawing, leftovers, local, machine, permissions, remote, roles, runlog, runner,
-               sessions, store)
+from . import (drawing, leftovers, local, logins, machine, permissions, remote, roles, runlog,
+               runner, sessions, store)
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
 NEXT = 5
+# Asked of a peer, so two machines settling with each other never ask in a circle.
+OWN = "status.json?own=1"
+# A reading takes a second or more, and every open page and every peer asks for one every few
+# seconds: without these, two machines' pages slow each other past the peers' time limit.
+SHARED_SECONDS = 3
+ASK_SECONDS = 10
+# Long enough for a reading told once a minute to last until the next.
+KEPT_SECONDS = 150
+TOLD = "peer.json"
+TOLD_MOST_BYTES = 1 << 20
+ASKED_MOST_BYTES = 64 << 10
 
 
 def first_line(text):
@@ -60,7 +71,7 @@ def snapshot(db, platform, now, home, load=machine.load):
             "warnings": [], "machine": None, "manager": platform.timer_active(),
             "paused": runner.paused(db), "machines": [], "peers": [], "roles": [],
             "elsewhere": [], "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
-            "drawing": drawing_view(db)}
+            "drawing": drawing_view(db), "logins": []}
     try:
         config = load()
     except machine.ConfigError as error:
@@ -108,6 +119,8 @@ def snapshot(db, platform, now, home, load=machine.load):
                                     "machine has not applied: just agents permissions apply")
         view["machines"] = [{"name": name, "seen": seen["seen"], "started": seen["started"]}
                             for name, seen in sorted((agreed.get("machines") or {}).items())]
+        view["logins"] = logins.read(config)
+        view["warnings"] += logins.warnings(view["logins"], now)
         accounts = {role: machine.account(machine.claude_dir(config, role)) for role in ready}
         if "ux" in ready:
             folder = machine.claude_dir(config, "ux")
@@ -174,23 +187,289 @@ def snapshot(db, platform, now, home, load=machine.load):
     return view
 
 
+def own_view(base, secret, fetch=remote.fetch):
+    """A peer's own reading of itself, or None when it does not give one."""
+    status, body = fetch(base, OWN, secret)
+    try:
+        view = json.loads(body) if status == 200 else None
+    except ValueError:
+        return None
+    return view if isinstance(view, dict) else None
+
+
+def peer_views(peers, secret, fetch=remote.fetch):
+    """Each peer's own reading by name, asked all at once and waited for; a peer that does
+    not answer is left out."""
+    found = {}
+
+    def ask(name, base):
+        view = own_view(base, secret, fetch)
+        if view is not None:
+            found[name] = view
+
+    asking = [threading.Thread(target=ask, args=peer, daemon=True) for peer in peers.items()]
+    for thread in asking:
+        thread.start()
+    for thread in asking:
+        thread.join()
+    return found
+
+
+class PeerViews:
+    """The same for the page, which is read every few seconds and waits for no peer: a call
+    asks again behind it, each peer at most every `ASK_SECONDS`, and returns the answers
+    already in, while they are fresh."""
+
+    def __init__(self, peers, secret, fetch=remote.fetch):
+        self.peers, self.secret, self.fetch = peers, secret, fetch
+        self.kept, self.asked, self.asking, self.lock = {}, {}, set(), threading.Lock()
+
+    def ask(self, name, base):
+        try:
+            view = own_view(base, self.secret, self.fetch)
+            if view is not None:
+                with self.lock:
+                    self.kept[name] = (time.monotonic(), view)
+        finally:
+            with self.lock:
+                self.asking.discard(name)
+
+    def keep(self, name, view):
+        with self.lock:
+            self.kept[name] = (time.monotonic(), view)
+
+    def views(self):
+        peers = self.peers()
+        with self.lock:
+            now = time.monotonic()
+            unasked = [name for name in peers if name not in self.asking
+                       and now - self.asked.get(name, -ASK_SECONDS) >= ASK_SECONDS]
+            self.asking.update(unasked)
+            self.asked.update(dict.fromkeys(unasked, now))
+            fresh = {name: view for name, (at, view) in self.kept.items()
+                     if name in peers and now - at < KEPT_SECONDS}
+        for name in unasked:
+            threading.Thread(target=self.ask, args=(name, peers[name]), daemon=True).start()
+        return fresh
+
+
+def tell(view, peers, secret, send=remote.send):
+    """Sends this machine's own reading to each peer's page, all at once. A machine whose
+    page may not open a connection to the others, as macOS can refuse a background Python,
+    still takes one from them, so its counts come this way."""
+    body = json.dumps(view).encode()
+    path = f"{TOLD}?from={urllib.parse.quote(view.get('machine') or '')}"
+    telling = [threading.Thread(target=send, args=(base, path, secret, body), daemon=True)
+               for base in peers.values()]
+    for thread in telling:
+        thread.start()
+    for thread in telling:
+        thread.join()
+
+
+def settle(view, others):
+    """Counts a role another machine runs as that machine does. This one never hears what
+    was finished there, so its own queue for the role only grows; when that machine does
+    not answer, the count is unknown rather than this one's."""
+    theirs = {}
+    for name, other in others.items():
+        for row in other.get("roles") or []:
+            if row.get("state") not in ("refused", "elsewhere"):
+                theirs.setdefault(row["role"], (name, row))
+    unread = {role: seen["name"] for seen in view.get("machines") or []
+              if seen["name"] not in others for role in seen["started"]}
+
+    def counted(row, name):
+        if name in others and theirs.get(row["role"], (None,))[0] == name:
+            there = theirs[row["role"]][1]
+            return dict(row, waiting=there.get("waiting") or 0, next=there.get("next") or [],
+                        held=there.get("held"), counted_on=name)
+        if name and name not in others:
+            return dict(row, waiting=None, next=[], held=None, counted_on=name)
+        return row
+
+    if "roles" in view:
+        view["roles"] = [counted(row, (row.get("detail") or {}).get("machine"))
+                         if row.get("state") == "elsewhere" else row for row in view["roles"]]
+    if "elsewhere" in view:
+        away = [counted(row, theirs.get(row["role"], (unread.get(row["role"]),))[0])
+                for row in view["elsewhere"]]
+        view["elsewhere"] = [row for row in away
+                             if row["held"] or row["waiting"] or row["waiting"] is None]
+    if "logins" in view:
+        view["peer_logins"] = {name: other.get("logins") or [] for name, other in others.items()}
+    return view
+
+
+def relay(answer):
+    """A peer's `(status, body)` as `(status, dict)`."""
+    status, body = answer
+    try:
+        said = json.loads(body)
+    except ValueError:
+        said = None
+    return status, said if isinstance(said, dict) else {"error": f"it answered {status}"}
+
+
+class LoginDoor:
+    """The page's Claude logins: this machine's own, held by `desk`, and the other
+    machines', asked of them. Only a page looked at on this machine has its sign-in opened
+    in Chrome, since this machine's Chrome is the only one it can open."""
+
+    def __init__(self, desk, config, peers, secret, fetch=remote.fetch, post=remote.post,
+                 opener=logins.open_chrome, bridge=logins.bridge):
+        self.desk, self.config, self.peers, self.secret = desk, config, peers, secret
+        self.fetch, self.post, self.opener, self.bridge = fetch, post, opener, bridge
+        self.bridges = {}
+
+    def state(self, name, login_id):
+        if name:
+            base = self.peers().get(name)
+            if not base:
+                return 404, {"error": f"no machine called {name}"}
+            return relay(self.fetch(base, "login/state?id=" + urllib.parse.quote(login_id),
+                                    self.secret))
+        login = self.desk.get(login_id)
+        return (200, login.answer()) if login else (404, {"error": "no such login"})
+
+    def act(self, path, asked, here):
+        name = asked.get("machine") or ""
+        if name:
+            return self.elsewhere(name, path, asked, here)
+        if path == "/login/start":
+            folder = self.desk.folder(str(asked.get("folder") or ""))
+            if not folder:
+                return 404, {"error": "no role on this machine runs under that folder"}
+            said = self.desk.start(folder).answer()
+            if here and not asked.get("for_peer"):
+                self.open(said)
+            return 200, said
+        login = self.desk.get(str(asked.get("id") or ""))
+        if not login:
+            return 404, {"error": "no such login"}
+        if path == "/login/callback":
+            status, location, body = self.desk.callback(login, str(asked.get("query") or ""))
+            return 200, {"status": status, "location": location,
+                         "body": body.decode(errors="replace")}
+        if path == "/login/code":
+            self.desk.paste(login, str(asked.get("code") or ""))
+        elif path == "/login/cancel":
+            self.desk.cancel(login)
+        else:
+            return 404, {"error": "no such step"}
+        self.desk.check(login)
+        return 200, login.answer()
+
+    def elsewhere(self, name, path, asked, here):
+        base = self.peers().get(name)
+        if not base:
+            return 404, {"error": f"no machine called {name}"}
+        if path == "/login/start":
+            status, said = relay(self.post(base, "login/start", self.secret,
+                                           json.dumps({"folder": asked.get("folder"),
+                                                       "for_peer": True}).encode(),
+                                           timeout=logins.LINK_SECONDS + 10))
+            if status == 200 and here:
+                self.open(said, base)
+            return status, said
+        if path not in ("/login/code", "/login/cancel"):
+            return 404, {"error": "no such step"}
+        if path == "/login/cancel" and (bridged := self.bridges.pop(asked.get("id"), None)):
+            bridged.close()
+        return relay(self.post(base, path[1:], self.secret,
+                               json.dumps({key: asked.get(key) for key in ("id", "code")}).encode(),
+                               timeout=logins.CALLBACK_SECONDS))
+
+    def open(self, said, base=None):
+        """Opens the sign-in in this machine's Chrome: Claude's own link while its callback
+        can come back, through a bridge to `base` when the login is held there; otherwise
+        the link whose page shows a code to paste."""
+        said["opened"] = None
+        if said.get("ended"):
+            return
+        direct, made = said.get("direct"), None
+        if direct and base:
+            made = self.bridge(direct, lambda query: self.forward(base, said["id"], query))
+            direct = direct if made else None
+        url = direct or said.get("link")
+        if url and self.opener(said.get("email"), url, self.config()):
+            said["opened"] = "direct" if url == direct else "link"
+            if made:
+                self.bridges[said["id"]] = made
+        elif made:
+            made.close()
+
+    def forward(self, base, login_id, query):
+        status, said = relay(self.post(base, "login/callback", self.secret,
+                                       json.dumps({"id": login_id, "query": query}).encode(),
+                                       timeout=logins.CALLBACK_SECONDS + 5))
+        if status != 200:
+            return 502, None, (said.get("error") or "the other machine did not answer").encode()
+        return said.get("status") or 502, said.get("location"), (said.get("body") or "").encode()
+
+
+def named_here(host):
+    """Whether a `Host` names this machine's loopback, which a page that rebound its own
+    name to 127.0.0.1 cannot send."""
+    name = urllib.parse.urlsplit(f"//{host or ''}").hostname
+    return name in ("localhost", "127.0.0.1", "::1")
+
+
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
-          host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch):
+          host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch, config=dict,
+          desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge,
+          usage=None):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
-    for each peer under `/m/<name>/`, read through `fetch`. `read` returns a snapshot,
-    `session` one session's view or None, and `peers` the names and addresses of the other
-    machines. Loopback needs no token; anyone else does. Each request has a thread of its own,
-    so a peer that is slow to answer, or a connection left idle, holds only itself; the queue
-    is read by one request at a time."""
+    for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
+    reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
+    settled with the peers unless one of them is asking, `session` one session's view or
+    None, and `peers` the names and addresses of the other machines. `/login/…` starts and
+    follows a Claude login, here or on a peer, through `LoginDoor`, and `usage`, when given,
+    keeps each account's plan usage read behind the page. Loopback needs no
+    token; anyone else does. Each request has a thread of its own, so a peer that is slow to
+    answer, or a connection left idle, holds only itself; the queue is read by one request
+    at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
     if not remote.loopback(host) and not remote.usable(secret):
         say(f"error: sq web will not listen on {host} without {remote.TOKEN} of at least "
             f"{remote.TOKEN_MIN} characters in the env file")
         return
 
-    reading = threading.Lock()
+    reading, last = threading.Lock(), {}
+    others = PeerViews(peers, secret, fetch)
+    others.views()
+    door = LoginDoor(desk or logins.Desk(config), config, peers, secret, fetch, post, opener,
+                     bridge)
+
+    def shared():
+        with reading:
+            if "view" not in last or time.monotonic() - last["at"] >= SHARED_SECONDS:
+                last.update(view=read(time.time()), at=time.monotonic())
+            return last["view"]
 
     class Page(http.server.BaseHTTPRequestHandler):
         timeout = 10
+
+        def answer(self, status, body, kind="application/json"):
+            self.send_response(status)
+            self.send_header("Content-Type", kind)
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def asked(self, most):
+            """The posted JSON object, or the status that refuses it."""
+            try:
+                size = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                return 400
+            if not 0 < size <= most:
+                return 413
+            try:
+                found = json.loads(self.rfile.read(size))
+            except ValueError:
+                return 400
+            return found if isinstance(found, dict) else 400
 
         def do_GET(self):
             path, _, query = self.path.partition("?")
@@ -212,30 +491,71 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                     return self.send_error(404)
                 status, body = fetch(base, rest + (f"?{query}" if query else ""), secret)
             elif path == "/status.json":
-                with reading:
-                    body = json.dumps(read(time.time())).encode()
+                view = shared()
+                if "own=1" not in query.split("&"):
+                    view = settle(dict(view), others.views())
+                body = json.dumps(view).encode()
             elif path == "/session.json":
                 with reading:
                     found = session((urllib.parse.parse_qs(query).get("id") or [""])[0])
                 if found is None:
                     return self.send_error(404)
                 body = json.dumps(found).encode()
+            elif path == "/login/state":
+                asked = urllib.parse.parse_qs(query)
+                status, said = door.state((asked.get("machine") or [""])[0],
+                                          (asked.get("id") or [""])[0])
+                body = json.dumps(said).encode()
             elif path in ("/", "/index.html"):
                 body, kind = PAGE.read_bytes(), "text/html; charset=utf-8"
             else:
                 return self.send_error(404)
-            self.send_response(status)
-            self.send_header("Content-Type", kind)
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(body)))
+            self.answer(status, body, kind)
+            return None
+
+        def do_POST(self):
+            path, _, query = self.path.partition("?")
+            ok, _ = remote.allowed(self.client_address[0], self.headers, "", secret)
+            if not ok:
+                return self.send_error(401)
+            if path.startswith("/login/"):
+                return self.login(path)
+            name = (urllib.parse.parse_qs(query).get("from") or [""])[0]
+            if path != f"/{TOLD}" or name not in peers():
+                return self.send_error(404)
+            view = self.asked(TOLD_MOST_BYTES)
+            if isinstance(view, int):
+                return self.send_error(view)
+            others.keep(name, view)
+            self.send_response(204)
             self.end_headers()
-            self.wfile.write(body)
+            return None
+
+        def login(self, path):
+            """A login step. Only JSON from this page's own address is taken, so another
+            site open in the browser cannot post one to this machine."""
+            kind = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+            if kind != "application/json":
+                return self.send_error(415)
+            origin = self.headers.get("Origin")
+            if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):
+                return self.send_error(403)
+            near = remote.loopback(self.client_address[0])
+            if near and not named_here(self.headers.get("Host")):
+                return self.send_error(403)
+            asked = self.asked(ASKED_MOST_BYTES)
+            if isinstance(asked, int):
+                return self.send_error(asked)
+            status, said = door.act(path, asked, near)
+            self.answer(status, json.dumps(said).encode())
             return None
 
         def log_message(self, *_):
             pass
 
     server = http.server.ThreadingHTTPServer((host, port), Page)
+    if usage:
+        usage.start()
     url = f"http://127.0.0.1:{server.server_port}/"
     elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
     say(f"sq web: {url} (ctrl-c stops it){elsewhere}")

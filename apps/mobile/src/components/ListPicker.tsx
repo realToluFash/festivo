@@ -16,9 +16,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
-import { FIELD_DEFAULTS, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
+import { fieldDefaults, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -34,8 +35,6 @@ import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.t
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 import { useSystemBack } from './useSystemBack.ts';
-
-const CONTROL_TEXT_SIZE = 16;
 
 export interface Choice {
   code: string;
@@ -146,7 +145,7 @@ export function ListPicker({
       {/* TalkBack reads no placeholder once the search holds text, so these words name it then. */}
       <UnseenName nativeID={searchNameID}>{searchLabel}</UnseenName>
       <TextInput
-        {...FIELD_DEFAULTS}
+        {...fieldDefaults(Platform.OS)}
         style={inputFaced([styles.search, focusEdge(searchEdge.focused, false)], 'sans', bold)}
         {...searching}
         {...searchEdge.edging}

@@ -7,10 +7,12 @@ import { sampleEvents, TODAY_IDS } from './events.ts';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import { OrgSwitcher } from './OrgSwitcher.tsx';
 import { SearchRow } from './Search.tsx';
+import { usePaused } from './switcher.ts';
 import { SAMPLE } from './rules.ts';
 import { EVENTS, type EventKey } from './today.ts';
 import './narrowDesk.css';
 import './wideDesk.css';
+import './deskReflow.css';
 import type { Tell } from '../components/SettingsParts.tsx';
 import type { ShownEvent } from '../components/today.ts';
 
@@ -74,6 +76,7 @@ export function TodaySidebar({
   bell?: ReactNode;
 }) {
   const [params] = useSearchParams();
+  const shown = usePaused() ? { ...person, role: null } : person;
   const listed = sideEvents(events, params.get('sidebar'));
   const places = free || params.get('plan') === 'free' ? PLACES : WITH_ENQUIRIES;
 
@@ -95,10 +98,10 @@ export function TodaySidebar({
           <button
             type="button"
             className="today-person"
-            aria-label={person.role == null ? person.name : `${person.name}, ${person.role}`}
+            aria-label={shown.role == null ? shown.name : `${shown.name}, ${shown.role}`}
             onClick={() => tell('Your account has its own design.')}
           >
-            <DeskPersonFace person={person} />
+            <DeskPersonFace person={shown} />
           </button>
         </>
       }

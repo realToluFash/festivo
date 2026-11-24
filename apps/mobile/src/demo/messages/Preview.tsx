@@ -5,7 +5,9 @@ import { EventMesh } from '../../components/EventMesh.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Text } from '../../components/Text.tsx';
-import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
+import type { Anchor } from '../../components/Summary.tsx';
+import { measuredUnder } from '../measuredUnder.ts';
+import { openOnceSettled } from '../menuSettles.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { meshFor } from '../../kit/today.ts';
 import { MessageGlyph } from './MessageMarks.tsx';
@@ -29,6 +31,8 @@ import { noticeSmsOf } from './NoticeStates.ts';
 import { smsHead } from './Sms.ts';
 import { saySms } from './SmsWords.ts';
 import { PreviewAsChooser, PreviewAsControl } from './WriteItOnce.tsx';
+
+const MENU_AFTER_MS = 300;
 
 /** The message as the guest's own page shows it (GuestPage-A): the cover, then the hosts' words in a figure, signed. */
 function PagePreview({ draft, person }: { draft: Draft; person: PreviewPerson }) {
@@ -208,9 +212,7 @@ export function Preview({
 
   useEffect(() => {
     if (!as.choosing || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(control, setAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(control), setAt, MENU_AFTER_MS);
   }, [as.choosing, phone]);
 
   useEffect(() => {

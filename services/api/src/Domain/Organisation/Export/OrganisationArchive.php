@@ -232,6 +232,17 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, c.event_id, c.position, d.position, q.position, o.position, o.id
             SQL,
+        'meal_answers' => <<<'SQL'
+            SELECT a.id, a.guest_id, a.course_id, a.kind, a.dish_id, a.variant_id,
+                   array_to_string(ARRAY(SELECT json_array_elements_text(a.options)), ', ') AS options,
+                   a.created_at, a.updated_at
+              FROM meal_answers a
+              JOIN guests g ON g.id = a.guest_id
+              JOIN menu_courses c ON c.id = a.course_id
+              JOIN events ev ON ev.id = c.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND g.removed_at IS NULL
+             ORDER BY ev.starts_at_utc, c.event_id, c.position, g.position, a.id
+            SQL,
         'dish_library' => <<<'SQL'
             SELECT d.id, d.name, d.description, array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets,
                    d.last_price_minor, d.last_price_currency, d.archived_at, d.created_at
@@ -296,6 +307,13 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = j.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, j.event_id, j.position, s.starts_at, s.id, p.staff_member_id
+            SQL,
+        'staff_rates' => <<<'SQL'
+            SELECT r.id, r.event_id, r.job_id, r.person_id AS staff_id, r.pay, r.amount_minor, ev.currency AS amount_currency, r.set_at
+              FROM staff_rates r
+              JOIN events ev ON ev.id = r.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, r.event_id, r.id
             SQL,
         'staff_stations' => <<<'SQL'
             SELECT t.id, t.event_id, t.kind, t.name, t.section_id, t.lead_id, t.position, t.walk_position

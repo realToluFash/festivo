@@ -1,10 +1,15 @@
-/* sc-3774: Remove from the list at the foot of the details, and the question naming what goes. */
+/* sc-3774: Remove from the list at the foot of the details, and the question naming what goes; sc-1454: why an arrived guest stays. */
 .gr-foot {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--spaceSm);
   padding-top: var(--spaceMd);
+}
+
+.gr-stays {
+  color: var(--colorInkSecondary);
+  font: var(--deskSmall);
 }
 
 .desk-ask .gr-goes {

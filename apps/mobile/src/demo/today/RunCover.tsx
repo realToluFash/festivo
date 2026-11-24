@@ -4,6 +4,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import {
+  ArrivedFigure,
   BellButton,
   bandBody,
   type CoverLayout,
@@ -16,14 +17,13 @@ import {
 import { RunNowBlock } from '../../components/TodayRun.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { ArrivedFigure } from './ArrivedCover.tsx';
 import type { RunMoment } from './runOfShow.ts';
 
 function RunNow({ moment, wide }: { moment: RunMoment; wide: boolean }) {
   const { open: go } = useTodayShell();
   const { now } = moment;
 
-  const aside = moment.figure != null && <ArrivedFigure figure={moment.figure} />;
+  const aside = now.arrived != null && <ArrivedFigure figure={now.arrived} />;
   const onOpen = () => go({ to: 'event', id: now.event.id, name: now.name });
 
   return (

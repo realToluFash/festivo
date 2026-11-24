@@ -14,6 +14,7 @@ import { type DemoGroup } from './budgetSample.ts';
 import { type CeilingState } from './BudgetParts.tsx';
 import { type Category } from './vendors.ts';
 import { NO_COSTS_STATES, exampleIn, typedMinor } from './quotes.ts';
+import { headlineOf, ratesSample } from './staffRates.ts';
 import { CATEGORY_WORDS } from './vendorsWords.ts';
 
 /** The Budget home's states (spec §9: the Web board, the Ceiling board, and the margin and templates states drawn on the home). */
@@ -142,8 +143,11 @@ export function lineAmounts(line: CostLine, heads: Heads): { settled: number; if
       return { settled: line.rate * DAYS, ifAll: line.rate * DAYS };
     case 'perTable':
       return { settled: line.rate * TABLES, ifAll: line.rate * TABLES };
-    case 'perStaffHour':
-      return { settled: 0, ifAll: 0 };
+    case 'perStaffHour': {
+      const staff = headlineOf(ratesSample()).total;
+
+      return { settled: staff, ifAll: staff };
+    }
     default:
       return { settled: line.rate, ifAll: line.rate };
   }
@@ -198,6 +202,7 @@ export function linesOf(state: string): CostLine[] {
   )
     return [];
   if (state === 'add_cost_added') return [...lines, { ...WELCOME_DRINKS }];
+  if (state === 'staff_line') return [...lines, { ...STAFF_LINE }];
 
   return lines;
 }
@@ -302,6 +307,15 @@ export const WELCOME_DRINKS: CostLine = {
   category: 'catering',
   basis: 'perHead',
   rate: 1200,
+};
+
+/** sc-101: the Budget's one staff-time line, its amount the Staff rates headline. */
+export const STAFF_LINE: CostLine = {
+  id: 'staff',
+  name: 'Staff',
+  category: 'staffing',
+  basis: 'perStaffHour',
+  rate: 0,
 };
 
 export const STAFF_REFUSED =

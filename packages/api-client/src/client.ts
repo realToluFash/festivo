@@ -35,6 +35,8 @@ import {
   asMarkedTogether,
   asMovedTogether,
   asRemovedTogether,
+  asCheckIn,
+  type CheckIn,
   type CompanionChoice,
   type Guest,
   type GuestEdit,
@@ -43,7 +45,13 @@ import {
   type GuestGroup,
   type GuestList,
   type GuestPage,
+  type GuestMeals,
   type Headcount,
+  type MealAnswer,
+  type MealAnswerKind,
+  type MealChanged,
+  type MealCourse,
+  type MealPick,
   type MarkedTogether,
   type MovedTogether,
   type RemovedTogether,
@@ -70,6 +78,7 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
+import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -123,13 +132,15 @@ import {
   type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
+  type MenuAskedAgain,
   type MenuChange,
   type MenuCourseDetails,
   type MenuItem,
+  type SentCourseDefault,
   asEventMenu,
-  asUnwarnedOptions,
-  asUnwarnedPickers,
+  asMenuAskedAgain,
 } from './menu.ts';
+import { type EventPicks, type HostPick, asEventPicks } from './picks.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
@@ -140,6 +151,7 @@ import {
 } from './schedule.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
+import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
 import { type BudgetMargin, type LineCharge, asBudgetMargin } from './margin.ts';
 import {
   type EventPayers,
@@ -265,10 +277,10 @@ export type PushTarget =
   | { kind: 'web'; address: string; keys: { p256dh: string; auth: string } }
   | { kind: 'expo'; address: string };
 
-/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
+/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. `category` is kept as sent, so an item of a category this build does not know still shows (sc-84143). */
 export interface NotificationItem {
   id: string;
-  category: NotificationCategory;
+  category: string;
   title: string;
   lines: string[];
   eventId: string | null;
@@ -301,6 +313,42 @@ export interface NotificationArrival {
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
+/** What a guest did since a look (sc-4331): a reply outranks the rest on the guest's one row. */
+export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged';
+const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = ['replied', 'changed', 'needs', 'flagged'];
+
+export interface GuestChange {
+  guestId: string;
+  kind: GuestChangeKind;
+  at: string;
+}
+
+/** `since` is the time the rows count from, or `all` for a member who had never looked. */
+export interface GuestChanges {
+  since: string;
+  rows: GuestChange[];
+}
+
+const asking = (path: string, askAgain: boolean): string =>
+  askAgain ? `${path}?askAgain=1` : path;
+
+function guestChangesOf(body: Record<string, unknown>): GuestChanges {
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+
+  return {
+    since: typeof body.since === 'string' ? body.since : 'all',
+    rows: rows.flatMap((row: unknown): GuestChange[] => {
+      if (typeof row !== 'object' || row == null) return [];
+      const { guestId, kind, at } = row as Record<string, unknown>;
+      const known = GUEST_CHANGE_KINDS.find((each) => each === kind);
+
+      return typeof guestId === 'string' && typeof at === 'string' && known != null
+        ? [{ guestId, kind: known, at }]
+        : [];
+    }),
+  };
+}
+
 export interface EventMute {
   muted: boolean;
 }
@@ -658,6 +706,8 @@ export interface EventPeople {
 export interface AddableMember {
   membershipId: string;
   name: string;
+  /** Their seeded role in the organisation, as `MemberRole.seededAs` names it. */
+  role: string | null;
 }
 
 /** Stored, as /event-states.json declares them; what the clock makes of it is its phase (sc-3584). */
@@ -713,6 +763,9 @@ export interface EventGuestFigures {
   invited: number;
   coming: number;
   notReplied: number;
+  /** sc-99's attended and expected, the door's count (sc-1454), for Today's arrived line (sc-29978). */
+  attended: number;
+  expected: number;
 }
 
 /** As a list shows it: with its timeline's milestones, so the list's Next up is the timeline's (sc-3624), and its guest figures from the list, null without guests.read on it (sc-3786). */
@@ -985,6 +1038,8 @@ export interface InvitationPreview {
   refusal: InvitationRefusal | null;
   forYou: boolean | null;
   signedInAs: string | null;
+  /** sc-73668: the account is managed by another organisation, so this one cannot be accepted; worked out on every load. */
+  managed: ManagedAccount | null;
 }
 
 export type MemberStatus = 'pending_approval' | 'active' | 'suspended' | 'left_or_removed';
@@ -1676,6 +1731,48 @@ export class ApiClient {
     );
 
     return { muted: body.muted === true };
+  }
+
+  /** Changed since you looked (sc-4331): from `since` in the address (`all` for every change), or from the caller's last look when none is given. Marks nothing read. */
+  async guestChanges(eventId: string, since?: string): Promise<GuestChanges> {
+    const query = since == null ? '' : `?since=${encodeURIComponent(since)}`;
+
+    return guestChangesOf(
+      await this.get<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes${query}`,
+      ),
+    );
+  }
+
+  /** Choosing Changed since you looked from the menu: a look, which marks the event's Guest replies item read. */
+  async lookAtGuestChanges(eventId: string): Promise<GuestChanges> {
+    return guestChangesOf(
+      await this.post<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes/look`,
+        {},
+      ),
+    );
+  }
+
+  /** Where Guest replies email stands for the member the summary's link names (sc-4331); a link that does not work is a 404. */
+  async guestReplyEmails(token: string): Promise<boolean> {
+    const body = await this.post<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
+  }
+
+  async setGuestReplyEmails(token: string, emailOn: boolean): Promise<boolean> {
+    const body = await this.put<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token, emailOn },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */
@@ -3383,11 +3480,17 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
+    details: MenuCourseDetails & {
+      answer: MenuAnswer;
+      skippable: boolean;
+      ownItems?: string[];
+      default?: SentCourseDefault;
+      confirmMove?: boolean;
+    },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -3408,82 +3511,190 @@ export class ApiClient {
     eventId: string,
     courseId: string,
     dish: { libraryDishId: string } | (DishDetails & { onlyForEvent: boolean }),
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/dishes`, dish),
+      await this.post<unknown>(
+        asking(`${this.menuCoursePath(eventId, courseId)}/dishes`, askAgain),
+        dish,
+      ),
     );
   }
 
-  /** The event's copy only, never refused for picks; `unwarned` counts who picked it and has an allergen just added recorded. */
+  /** The event's copy only. Without `askAgain`, a change that asks guests to pick again (sc-3913) is refused 409 `menu_change_asks`, as every change below is. */
   async changeMenuDish(
     eventId: string,
     dishId: string,
     details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `menu_dish_picked` once a guest has picked it. */
-  async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  async removeMenuDish(eventId: string, dishId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain)),
+    );
   }
 
-  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants` (sc-3903). */
   async addMenuVariants(
     eventId: string,
     dishId: string,
     variants: VariantDetails[],
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+      await this.post<unknown>(asking(`${this.menuDishPath(eventId, dishId)}/variants`, askAgain), {
+        variants,
+      }),
     );
   }
 
-  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  /** Without `cost` the cost stays as it was. */
   async changeMenuVariant(
     eventId: string,
     variantId: string,
     details: VariantDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain), details),
+    );
   }
 
-  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
-  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone`. */
+  async removeMenuVariant(
+    eventId: string,
+    variantId: string,
+    askAgain = false,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain)),
+    );
   }
 
   private menuVariantPath(eventId: string, variantId: string): string {
     return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
-  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3. */
   async addMenuChoice(
     eventId: string,
     dishId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+      await this.post<unknown>(
+        asking(`${this.menuDishPath(eventId, dishId)}/choices`, askAgain),
+        details,
+      ),
     );
   }
 
-  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  /** An answered choice is refused under `draft`. */
   async changeMenuChoice(
     eventId: string,
     choiceId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `choice_answered` once guests have answered it. */
-  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  async removeMenuChoice(eventId: string, choiceId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain)),
+    );
+  }
+
+  /** The people a menu change asked again who have not answered yet, for Messaging to tell (sc-3913); refused 403 without guests.read. */
+  async menuAskedAgain(eventId: string): Promise<MenuAskedAgain[]> {
+    const body = await this.get<{ people?: unknown }>(`${this.menuPath(eventId)}/asked-again`);
+
+    return asMenuAskedAgain(body?.people);
   }
 
   private menuChoicePath(eventId: string, choiceId: string): string {
     return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
+  }
+
+  /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
+  async menuPicks(eventId: string): Promise<EventPicks> {
+    return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
+  async kitchenSheet(eventId: string): Promise<KitchenSheet> {
+    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
+    const sheet = asKitchenSheet(body?.sheet);
+
+    if (sheet == null)
+      throw new Error(
+        'The API answered the kitchen sheet in a shape this client does not know. Check KitchenSheet in services/api.',
+      );
+
+    return sheet;
+  }
+
+  /** The sheet as a tagged PDF, made when asked, in the request's language; 503 when it cannot be made. */
+  async kitchenSheetPdf(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
+      method: 'POST',
+    });
+
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+
+  /** Refused 403 without guests.manage, and 409 `meal_pick_ruled_out` with `people` until sent with `anyway`. */
+  async chooseForGuest(
+    eventId: string,
+    guestId: string,
+    courseId: string,
+    pick: HostPick,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/people/${encodeURIComponent(guestId)}/courses/${encodeURIComponent(courseId)}`,
+        pick,
+      ),
+    );
+  }
+
+  /** Gives a Children only variant to exactly `people` on its course; refused as `chooseForGuest`. */
+  async giveVariant(
+    eventId: string,
+    variantId: string,
+    people: readonly string[],
+    anyway = false,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/variants/${encodeURIComponent(variantId)}`,
+        { people, anyway },
+      ),
+    );
+  }
+
+  private picksOf(body: unknown): EventPicks {
+    const picks = asEventPicks((body as Record<string, unknown> | null)?.picks);
+
+    if (picks == null)
+      throw new Error(
+        'The API answered the picks in a shape this client does not know. Check PicksFigures in services/api.',
+      );
+
+    return picks;
   }
 
   /** A hub token for this event's menu topic alone. */
@@ -3513,8 +3724,6 @@ export class ApiClient {
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
       choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
-      unwarned: asUnwarnedPickers(record.unwarned),
-      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
@@ -3985,6 +4194,30 @@ export class ApiClient {
     };
   }
 
+  /** Budget / Staff rates (sc-101): each job's rate and scheduled hours, people on their own rate, and the headline; 403 without budget.read. */
+  async staffRates(eventId: string): Promise<StaffRates> {
+    return asStaffRates(await this.get<unknown>(`${this.budgetPath(eventId)}/staff-rates`));
+  }
+
+  /** A job's rate or flat fee, set or changed; 403 without budget.manage. Answers with the whole of Staff rates. */
+  async setJobRate(eventId: string, jobId: string, typed: StaffRateTyped): Promise<StaffRates> {
+    return asStaffRates(await this.put<unknown>(this.jobRatePath(eventId, jobId), typed));
+  }
+
+  async removeJobRate(eventId: string, jobId: string): Promise<StaffRates> {
+    return asStaffRates(await this.delete<unknown>(this.jobRatePath(eventId, jobId)));
+  }
+
+  /** A person's own rate, instead of their job's; 403 without budget.manage. */
+  async setOwnRate(eventId: string, memberId: string, typed: StaffRateTyped): Promise<StaffRates> {
+    return asStaffRates(await this.put<unknown>(this.ownRatePath(eventId, memberId), typed));
+  }
+
+  /** Back on their job's rate. */
+  async removeOwnRate(eventId: string, memberId: string): Promise<StaffRates> {
+    return asStaffRates(await this.delete<unknown>(this.ownRatePath(eventId, memberId)));
+  }
+
   /** Who is paying (sc-91): each payer's share, Paid and Still to come, and every cost with its split; 403 without budget.read. */
   async payers(eventId: string): Promise<EventPayers> {
     return asEventPayers(await this.get<unknown>(`${this.budgetPath(eventId)}/payers`));
@@ -4200,6 +4433,14 @@ export class ApiClient {
     return `${this.budgetPath(eventId)}/lines/${encodeURIComponent(lineId)}`;
   }
 
+  private jobRatePath(eventId: string, jobId: string): string {
+    return `${this.budgetPath(eventId)}/staff-rates/jobs/${encodeURIComponent(jobId)}`;
+  }
+
+  private ownRatePath(eventId: string, memberId: string): string {
+    return `${this.budgetPath(eventId)}/staff-rates/people/${encodeURIComponent(memberId)}`;
+  }
+
   /** Needs guests.read on the event (sc-99). */
   async headcount(eventId: string): Promise<Headcount> {
     const body = await this.get<{ headcount?: unknown }>(
@@ -4226,6 +4467,75 @@ export class ApiClient {
       token: typeof body.token === 'string' ? body.token : '',
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
     };
+  }
+
+  /** The door's list (sc-1454): names, replies and arrivals with sc-99's attended of expected; needs guests.check_in, refused 403 for Can view. */
+  async checkIn(eventId: string): Promise<CheckIn> {
+    return this.checkInOf(await this.get<unknown>(this.checkInPath(eventId)));
+  }
+
+  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. `arrivedAt` is when a device that was offline recorded it (sc-1301), and the earlier arrival stands. Refused 409 `check_in_closed` outside the window. */
+  async arrive(eventId: string, guestId: string, arrivedAt?: string): Promise<CheckIn> {
+    return this.checkInOf(
+      await this.post<unknown>(
+        `${this.checkInPath(eventId)}/arrivals`,
+        arrivedAt == null ? { guestId } : { guestId, arrivedAt },
+      ),
+    );
+  }
+
+  /** Undo arrival; asks nothing first. */
+  async undoArrival(eventId: string, guestId: string): Promise<CheckIn> {
+    return this.checkInOf(
+      await this.delete<unknown>(
+        `${this.checkInPath(eventId)}/arrivals/${encodeURIComponent(guestId)}`,
+      ),
+    );
+  }
+
+  /** A walk-in, by full name only, added arrived; refused 409 `guest_already_listed` with `guest` naming who is on the list unless `allowDuplicate`, and 422 on the name as addGuest. */
+  async addWalkIn(
+    eventId: string,
+    fullName: string,
+    allowDuplicate = false,
+  ): Promise<{ walkIn: string; checkIn: CheckIn }> {
+    const body = await this.post<{ walkIn?: { id?: unknown } }>(
+      `${this.checkInPath(eventId)}/walk-ins`,
+      {
+        fullName,
+        allowDuplicate,
+      },
+    );
+    const id = body.walkIn?.id;
+
+    return { walkIn: typeof id === 'string' ? id : '', checkIn: this.checkInOf(body) };
+  }
+
+  /** A hub token for the door's signal alone: it says the list changed and carries no name, reply or count, so the screen reads checkIn again. */
+  async checkInSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.checkInPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private checkInPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/check-in`;
+  }
+
+  private checkInOf(body: unknown): CheckIn {
+    const read = asCheckIn(body);
+    if (read == null) {
+      throw new Error(
+        'The API answered check-in in a shape this client does not know. Check CheckInSerialiser in services/api.',
+      );
+    }
+
+    return read;
   }
 
   /** A hub token for the headcounts of the events a list shows, those the caller reads guests on (sc-3786). */
@@ -4280,6 +4590,13 @@ export class ApiClient {
     );
   }
 
+  /** Preview as guest (sc-3907): the guest page's meal step for the signed-in member alone, with no allergies or companions; menu.read, and it reads no guest. */
+  async menuPreview(eventId: string): Promise<GuestPage> {
+    const route = `${this.menuPath(eventId)}/preview`;
+
+    return this.guestPageOf(await this.get<unknown>(route), `GET ${route}`);
+  }
+
   /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
@@ -4331,6 +4648,14 @@ export class ApiClient {
         { anonymous: true },
       ),
       'POST /api/guest-links/needs',
+    );
+  }
+
+  /** Each person's meal answers (sc-3907), sent after the kitchen note so its allergens count, and answers the page as it now stands. Refused 422 for a pick the person is not offered, a wrong count or a plate holding their allergen, nothing saved, and 409 `meal_picks_closed` with the closed `courses` once the open ones are saved. */
+  async sendMealPicks(token: string, picks: readonly MealPick[]): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/meals', { token, picks }, { anonymous: true }),
+      'POST /api/guest-links/meals',
     );
   }
 
@@ -5683,10 +6008,10 @@ function eventPersonOf(body: { person?: unknown }): EventPerson {
 function asAddableMember(raw: unknown): AddableMember | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { membershipId, name } = raw as Record<string, unknown>;
+  const { membershipId, name, role } = raw as Record<string, unknown>;
 
   return typeof membershipId === 'string' && typeof name === 'string'
-    ? { membershipId, name }
+    ? { membershipId, name, role: typeof role === 'string' ? role : null }
     : null;
 }
 
@@ -6093,10 +6418,17 @@ function asListedEvent(raw: unknown): ListedEvent | null {
 
 /** An event's guest figures, from the events list or from its headcount as published (sc-3786); undefined for a shape this client does not know. */
 export function asEventGuestFigures(raw: unknown): EventGuestFigures | undefined {
-  const { invited, coming, notReplied } = (raw ?? {}) as Record<string, unknown>;
+  const { invited, coming, notReplied, attended, expected } = (raw ?? {}) as Record<
+    string,
+    unknown
+  >;
 
-  return isCount(invited) && isCount(coming) && isCount(notReplied)
-    ? { invited, coming, notReplied }
+  return isCount(invited) &&
+    isCount(coming) &&
+    isCount(notReplied) &&
+    isCount(attended) &&
+    isCount(expected)
+    ? { invited, coming, notReplied, attended, expected }
     : undefined;
 }
 
@@ -6233,13 +6565,17 @@ function asGuestPage(raw: unknown): GuestPage | null {
     event,
     phase,
     started,
+    onTheDay,
     answersOpen,
     answersClosedOn,
     language,
     programme,
     seating,
+    checkInCode,
+    meals,
   } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
+  const door = checkInCode as Record<string, unknown> | null | undefined;
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
   const who = guest as Record<string, unknown>;
@@ -6272,7 +6608,8 @@ function asGuestPage(raw: unknown): GuestPage | null {
     typeof what.timeZone !== 'string' ||
     shown == null ||
     typeof started !== 'boolean' ||
-    typeof answersOpen !== 'boolean'
+    typeof answersOpen !== 'boolean' ||
+    (door != null && (typeof door.code !== 'string' || typeof door.qrSvg !== 'string'))
   )
     return null;
 
@@ -6321,10 +6658,77 @@ function asGuestPage(raw: unknown): GuestPage | null {
     answersClosedOn: typeof answersClosedOn === 'string' ? answersClosedOn : null,
     phase: shown,
     started,
+    onTheDay: onTheDay === true,
     answersOpen,
     calendar: null,
     programme: items.filter((one) => one != null),
     seating: asGuestSeating(seating),
+    checkInCode: door == null ? null : { code: door.code as string, qrSvg: door.qrSvg as string },
+    meals: asGuestMeals(meals),
+  };
+}
+
+/** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
+function asMealChanged(raw: unknown): MealChanged | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { picked, why, ways, allergens } = raw as Record<string, unknown>;
+
+  return {
+    picked: typeof picked === 'string' ? picked : '',
+    why: why === 'ways' || why === 'choices' || why === 'allergen' ? why : 'removed',
+    ways: typeof ways === 'number' ? ways : null,
+    allergens: Array.isArray(allergens)
+      ? allergens.filter((one): one is string => typeof one === 'string')
+      : [],
+  };
+}
+
+function asGuestMeals(raw: unknown): GuestMeals {
+  const { you, courses, answers, excluded } = (raw ?? {}) as Record<string, unknown>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
+  const known = Array.isArray(courses)
+    ? courses.filter(
+        (course): course is MealCourse =>
+          typeof course === 'object' &&
+          course != null &&
+          typeof (course as MealCourse).id === 'string' &&
+          Array.isArray((course as MealCourse).dishes) &&
+          typeof (course as MealCourse).picksClose?.at === 'string',
+      )
+    : [];
+  const byPerson: Record<string, MealAnswer[]> = {};
+
+  for (const [person, list] of Object.entries((answers ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    byPerson[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.answer === 'string')
+      .map((one) => ({
+        course: one.course as string,
+        answer: one.answer as MealAnswerKind,
+        dish: typeof one.dish === 'string' ? one.dish : null,
+        variant: typeof one.variant === 'string' ? one.variant : null,
+        options: strings(one.options),
+        changed: asMealChanged(one.changed),
+      }));
+  }
+
+  const never: Record<string, { course: string; reason: string }[]> = {};
+
+  for (const [person, list] of Object.entries((excluded ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    never[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.reason === 'string')
+      .map((one) => ({ course: one.course as string, reason: one.reason as string }));
+  }
+
+  return {
+    you: typeof you === 'string' ? you : '',
+    courses: known.map((course) => ({ ...course, default: course.default ?? null })),
+    answers: byPerson,
+    excluded: never,
   };
 }
 
@@ -6598,6 +7002,7 @@ function asInvitationPreview(raw: unknown): InvitationPreview | null {
     refusal: oneOf(preview.refusal, REFUSALS),
     forYou: typeof preview.forYou === 'boolean' ? preview.forYou : null,
     signedInAs: stringOrNull(preview.signedInAs),
+    managed: asManagedAccount(preview.managed),
   };
 }
 
@@ -7254,20 +7659,19 @@ export function asNotificationItem(raw: unknown): NotificationItem | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const category = notificationCategory(candidate.category);
 
   if (
     typeof candidate.id !== 'string' ||
     typeof candidate.title !== 'string' ||
     typeof candidate.createdAt !== 'string' ||
-    category == null
+    typeof candidate.category !== 'string'
   ) {
     return null;
   }
 
   return {
     id: candidate.id,
-    category,
+    category: candidate.category,
     title: candidate.title,
     lines: strings(candidate.lines),
     eventId: optionalString(candidate.eventId),

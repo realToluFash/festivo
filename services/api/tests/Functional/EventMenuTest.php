@@ -11,12 +11,15 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\Dish;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\Membership;
 use App\Entity\MenuDish;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\MealAnswerKind;
 use App\Enum\MembershipStatus;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
@@ -24,14 +27,16 @@ use App\Enum\RealtimeTopic;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingHub;
-use App\Tests\Double\ScriptedMenuPicks;
 use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
+use App\Tests\Traits\StoresMealAnswers;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -45,6 +50,7 @@ final class EventMenuTest extends ApiTestCase
 {
     use OnboardsAccounts;
     use PutsPeopleOnEvents;
+    use StoresMealAnswers;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -293,41 +299,130 @@ final class EventMenuTest extends ApiTestCase
     }
 
     #[Test]
-    public function aDishGuestsHavePickedCannotBeRemoved(): void
+    public function removingAPickedDishAsksTheHostFirstThenAsksOnlyThoseWhoPickedItForThatCourse(): void
+    {
+        $starter = $this->course('Starter');
+        $suya = $this->newDish($starter['id'], ['name' => 'Suya', 'allergens' => ['peanuts'], 'onlyForEvent' => true]);
+        $this->newDish($starter['id'], ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $asun = $this->newDish($main['id'], ['name' => 'Asun', 'containsNone' => true, 'onlyForEvent' => true]);
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $femi = $this->guest('Femi Ade', []);
+        $kemi = $this->guest('Kemi Ade', []);
+        $this->picks($jollof['id'], $tolu);
+        $this->picks($jollof['id'], $femi);
+        $this->picks($asun['id'], $kemi);
+        $this->picks($suya['id'], $tolu);
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null);
+        self::assertSame([2, ['id' => $main['id'], 'name' => 'Main'], 'picked'], [$this->last()['count'] ?? null, $this->last()['course'] ?? null, $this->last()['whom'] ?? null]);
+        self::assertSame(['Jollof rice', 'Asun'], $this->dishNames(1), 'nothing changes until the host confirms');
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id'] . '?askAgain=1'));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['Asun'], $this->dishNames(1));
+        self::assertSame([MealAnswerKind::MenuChanged, 'Jollof rice', null], $this->answered($tolu, 'Main'));
+        self::assertSame([MealAnswerKind::MenuChanged, 'Jollof rice', null], $this->answered($femi, 'Main'));
+        self::assertSame([MealAnswerKind::Chosen, null, 'Asun'], $this->answered($kemi, 'Main'), 'someone outside the change keeps their answer');
+        self::assertSame([MealAnswerKind::Chosen, null, 'Suya'], $this->answered($tolu, 'Starter'), 'only the course it touches is asked again');
+
+        $told = $this->as($this->owner, 'GET', $this->path('/asked-again'));
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['Femi Ade', 'Tolu Adeyemi'], Vec\sort(Vec\map(Type\vec(Type\shape(['person' => Type\shape(['name' => Type\string()], true)], true))->coerce($told['people'] ?? null), static fn (array $one): string => $one['person']['name'])));
+    }
+
+    #[Test]
+    public function removingADishNobodyPickedSavesAtOnce(): void
     {
         $main = $this->course('Main');
         $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
         $asun = $this->newDish($main['id'], ['name' => 'Asun', 'containsNone' => true, 'onlyForEvent' => true]);
         $this->picks($jollof['id'], $this->guest('Tolu Adeyemi', []));
 
-        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
-        self::assertTrue($this->dishes($this->courses()[0])[0]['picked']);
-
         $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $asun['id']));
         self::assertSame(200, $this->statusCode());
-        self::assertSame(['Jollof rice'], Vec\map($this->dishes($this->courses()[0]), static fn (array $dish): string => $dish['name']));
+        self::assertSame(['Jollof rice'], $this->dishNames(0));
     }
 
     #[Test]
-    public function anAllergenAddedToAPickedDishSavesAndCountsWhoHasItRecorded(): void
+    public function beforeAnyoneHasPickedAChangeAsksNothing(): void
+    {
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->guest('Tolu Adeyemi', ['sesame']);
+        $dessert = $this->course('Dessert');
+
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'allergens' => ['celery', 'sesame']]);
+        self::assertSame(200, $this->statusCode());
+        $this->newDish($dessert['id'], ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function aChoosingCoursesFirstDishAsksEveryoneComingOnceAnyoneHasPicked(): void
+    {
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->picks($jollof['id'], $this->guest('Tolu Adeyemi', []));
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
+        $dessert = $this->course('Dessert');
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([2, 'Dessert', 'everyone'], [$this->last()['count'] ?? null, Type\shape(['name' => Type\string()], true)->coerce($this->last()['course'] ?? null)['name'], $this->last()['whom'] ?? null]);
+        self::assertSame([], $this->dishNames(1));
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes?askAgain=1'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        self::assertSame(201, $this->statusCode());
+        $this->newDish($dessert['id'], ['name' => 'Chin chin', 'containsNone' => true, 'onlyForEvent' => true]);
+        self::assertSame(['Puff puff', 'Chin chin'], $this->dishNames(1), 'a second dish asks nobody');
+    }
+
+    #[Test]
+    public function aSkippableChoosingCoursesFirstDishAsksEveryoneComingToo(): void
+    {
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->picks($jollof['id'], $this->guest('Tolu Adeyemi', []));
+        $this->comes($this->guest('Femi Ade', []));
+        self::em()->flush();
+        $dessert = $this->course('Dessert');
+        $this->change($dessert['id'], ['name' => 'Dessert', 'skippable' => true]);
+        self::assertSame(200, $this->statusCode());
+
+        $this->as($this->owner, 'POST', $this->path('/courses/' . $dessert['id'] . '/dishes'), ['name' => 'Puff puff', 'containsNone' => true, 'onlyForEvent' => true]);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([2, 'everyone'], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null]);
+    }
+
+    #[Test]
+    public function anAllergenAddedToAPickedDishAsksAgainOnlyThoseWhoPickedItWithItRecorded(): void
     {
         $jollof = $this->pickedJollof();
 
-        $saved = $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof), ['name' => 'Jollof rice', 'allergens' => ['celery', 'peanuts', 'sesame', 'mustard']]);
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof), ['name' => 'Jollof rice', 'allergens' => ['celery', 'peanuts', 'sesame', 'mustard']]);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame([4, 'allergen', ['peanuts', 'sesame']], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null], 'a person counts once, an Other allergy is never matched');
+        self::assertSame(['celery'], $this->dishes($this->courses()[0])[0]['allergens']);
 
-        self::assertSame(200, $this->statusCode(), Json\encode($saved));
-        self::assertSame(['count' => 4, 'allergens' => ['peanuts', 'sesame']], $saved['unwarned'] ?? null);
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof . '?askAgain=1'), ['name' => 'Jollof rice', 'allergens' => ['celery', 'peanuts', 'sesame', 'mustard']]);
+        self::assertSame(200, $this->statusCode());
         self::assertSame(['peanuts', 'celery', 'mustard', 'sesame'], $this->dishes($this->courses()[0])[0]['allergens']);
+        $kinds = Vec\map(self::em()->getRepository(MealAnswer::class)->findAll(), static fn (MealAnswer $answer): string => $answer->getKind()->value);
+        self::assertSame(['chosen' => 2, 'menuChanged' => 4], Dict\sort_by_key(Dict\count_values($kinds)));
     }
 
     #[Test]
-    public function nobodyCountedHasNoLine(): void
+    public function nobodyWithAnAddedAllergenRecordedIsAskedSoItSavesAtOnce(): void
     {
         $jollof = $this->pickedJollof();
 
-        self::assertNull($this->unwarned($this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof), ['name' => 'Jollof rice', 'allergens' => ['celery', 'mustard']])));
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof), ['name' => 'Jollof rice', 'allergens' => ['celery', 'mustard']]);
         self::assertSame(200, $this->statusCode());
     }
 
@@ -338,19 +433,40 @@ final class EventMenuTest extends ApiTestCase
         $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
         $this->picks($jollof['id'], $this->guest('Bisi Ola', ['other'], 'sesame'));
 
-        self::assertNull($this->unwarned($this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'allergens' => ['celery', 'sesame']])));
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'allergens' => ['celery', 'sesame']]);
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]
-    public function removingAnAllergenOrTickingNoneHasNoLine(): void
+    public function removingAnAllergenOrTickingNoneAsksNobody(): void
     {
         $main = $this->course('Main');
         $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery', 'sesame'], 'onlyForEvent' => true]);
         $this->picks($jollof['id'], $this->guest('Bisi Ola', ['sesame', 'celery']));
 
-        self::assertNull($this->unwarned($this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'allergens' => ['celery']])));
-        self::assertNull($this->unwarned($this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'containsNone' => true])));
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'allergens' => ['celery']]);
         self::assertSame(200, $this->statusCode());
+        $this->as($this->owner, 'PUT', $this->path('/dishes/' . $jollof['id']), ['name' => 'Jollof rice', 'containsNone' => true]);
+        self::assertSame(200, $this->statusCode());
+    }
+
+    #[Test]
+    public function afterTheEventsDateItsMenuRefusesEveryChange(): void
+    {
+        $main = $this->course('Main');
+        $jollof = $this->newDish($main['id'], ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->picks($jollof['id'], $this->guest('Bisi Ola', []));
+        self::em()->flush();
+        self::service(Connection::class)->executeStatement("UPDATE events SET starts_at = '2020-06-12 16:00:00', ends_at = '2020-06-13 01:00:00' WHERE id = :id", ['id' => $this->eventId]);
+
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id']));
+        self::assertSame(ErrorCode::MenuChangeAsks->type(), $this->last()['type'] ?? null, 'the host is asked first, so the refusal shows in the dialog');
+        $this->as($this->owner, 'DELETE', $this->path('/dishes/' . $jollof['id'] . '?askAgain=1'));
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::MenuEventOver->type(), $this->last()['type'] ?? null);
+        $this->as($this->owner, 'POST', $this->path('/courses'), ['name' => 'Dessert']);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(['Jollof rice'], $this->dishNames(0), 'nothing was changed');
     }
 
     #[Test]
@@ -458,7 +574,7 @@ final class EventMenuTest extends ApiTestCase
     private function guest(string $name, array $allergens, ?string $other = null): Guest
     {
         $event = self::em()->find(Event::class, Uuid::fromString($this->eventId)) ?? self::fail('no event');
-        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122());
+        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122(), Uuid::v4()->toRfc4122());
         self::em()->persist($guest);
         $this->recordNeeds($guest, $allergens, $other);
 
@@ -485,11 +601,6 @@ final class EventMenuTest extends ApiTestCase
             null,
         ), $this->owner);
         self::em()->flush();
-    }
-
-    private function picks(string $dishId, Guest $person): void
-    {
-        self::service(ScriptedMenuPicks::class)->pick($dishId, $person);
     }
 
     /** @param list<string> $allergens */
@@ -582,13 +693,20 @@ final class EventMenuTest extends ApiTestCase
         ], true))->coerce(Type\shape(['dishes' => Type\mixed()], true)->coerce($course)['dishes']);
     }
 
-    /** @param array<string, mixed> $saved */
-    private function unwarned(array $saved): mixed
+    /** @return list<string> */
+    private function dishNames(int $course): array
     {
-        self::assertSame(200, $this->statusCode(), Json\encode($saved));
-        self::assertArrayHasKey('unwarned', $saved);
+        return Vec\map($this->dishes($this->courses()[$course]), static fn (array $dish): string => $dish['name']);
+    }
 
-        return $saved['unwarned'];
+    /** @return array{MealAnswerKind, ?string, ?string} the answer's kind, the pick it kept, and the dish it names */
+    private function answered(Guest $person, string $course): array
+    {
+        self::em()->clear();
+        $answers = Vec\filter(self::em()->getRepository(MealAnswer::class)->findBy(['person' => $person->getId()]), static fn (MealAnswer $answer): bool => $answer->getCourse()->getName() === $course);
+        $answer = Vec\values($answers)[0] ?? self::fail('no answer to ' . $course);
+
+        return [$answer->getKind(), $answer->getChangedFrom(), $answer->getDish()?->getName()];
     }
 
     /** @return list<string> */

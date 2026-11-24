@@ -572,4 +572,42 @@ describe('No organisation for a managed account (sc-563)', () => {
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
     expect(screen.getByText('Signed in as chidi@ire.events.')).toBeDefined();
   });
+
+  it('offers Accept and join and Decline on an invitation it cannot accept, under the one banner (sc-73668)', async () => {
+    inNone();
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    answering({
+      'GET /api/invitations': () =>
+        json({
+          invitations: [
+            {
+              id: 'inv_1',
+              organisation: { id: 'org_7', name: 'Lagos Hall' },
+              email: 'chidi@ire.events',
+              role: { id: 'role_3', seededAs: 'administrator', name: null },
+              invitedBy: { name: 'Bisi Adeyemi' },
+              expiresAt: '2026-10-23T09:00:00+00:00',
+              refusal: null,
+              forYou: true,
+              signedInAs: 'chidi@ire.events',
+              managed,
+            },
+          ],
+        }),
+      'GET /api/join-offers': () =>
+        json({ domain: 'ire.events', offers: [], request: null, managed }),
+    });
+    app();
+
+    expect(await screen.findByRole('button', { name: 'Accept and join Lagos Hall' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Decline the invitation to Lagos Hall' }),
+    ).toBeDefined();
+    expect(screen.getAllByRole('heading', { name: 'Managed by Ìrè Events' })).toHaveLength(1);
+  });
 });

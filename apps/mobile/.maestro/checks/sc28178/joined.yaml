@@ -11,7 +11,7 @@ appId: host.exp.Exponent
 # where a change before may have left Calendar or Events open.
 - runFlow: ../../return-home.yaml
 - tapOn:
-    id: 'tab-events'
+    id: 'tab-events|frame\.events'
 - waitForAnimationToEnd:
     timeout: 5000
 - runFlow:

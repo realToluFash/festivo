@@ -99,9 +99,12 @@ you as your next work, ahead of anything new: test it, or give it back.
 **One exception stays In QA: a side-by-side row whose driver or device would not start,
 with nothing failed** (section 3). Every other row is run and passed; the story stays
 `In QA` under your claim with the unrun rows in a `[ops]` comment, and you do not unclaim it.
-When sq hands it back to you as `held` while that `[ops]` thread is still open, finish the
-run with `sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim. Once
-ops answers, re-run only the unrun rows and post the report on the whole story.
+sq hands it back to you as `held` again and again, two hours after you last finished it and
+then at longer waits up to a day, whether or not anyone answered. Each time, try the driver
+or device yourself before anything else: what stopped it has often cleared with no reply
+in the thread. If it starts, re-run only the unrun rows and post the report on the whole
+story. If it still does not, finish the run with
+`sq qa done <id> --note "waiting on [ops] for <rows>"` and leave the claim.
 
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
@@ -574,7 +577,9 @@ Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` p
 item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
 missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
 **End each device pass by closing what it opened**: stop the background `ios` or `android`
-command (it is the bundler), then the device, with `node .qa/bin/qa-env.mjs android --stop`
+command (it is the bundler), or run `node .qa/bin/qa-env.mjs ios --stop`, which stops only
+the bundler on your own port. Never `pkill -f qa-env.mjs`: it matches every tester's
+bundler. Then the device, with `node .qa/bin/qa-env.mjs android --stop`
 or `xcrun simctl shutdown "Soirely QA<n> iPhone"` (and `iPad`, `iPhone SE`). A bundler left running
 holds your worker as busy, and an emulator holds several GB.
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the

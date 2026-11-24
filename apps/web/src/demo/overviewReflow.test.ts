@@ -12,9 +12,8 @@ describe("an event's Overview at 400% zoom, 320 CSS px (sc-74933)", () => {
     expect(SHEET.match(/@media/gu)).toHaveLength(1);
   });
 
-  it('stacks the event’s sidebar above the page, one column, the page scrolling with the window', () => {
-    expect(cssRule('.today.desk:has(.ev-overview)', AT_320)).toContain('flex-direction: column;');
-    expect(cssRule('.today.desk:has(.ev-overview) .today-side', AT_320)).toContain('width: auto;');
+  it('puts the Overview in one column, the desk stacked by the shared shell (sc-32279)', () => {
+    expect(SHEET).not.toContain('.today-side');
     expect(cssRule('.ev-overview .ev-columns', AT_320)).toContain(
       'grid-template-columns: minmax(0, 1fr);',
     );

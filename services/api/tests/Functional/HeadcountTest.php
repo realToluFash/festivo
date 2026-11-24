@@ -52,12 +52,15 @@ final class HeadcountTest extends ApiTestCase
         'onList' => 0,
         'notYetInvited' => 0,
         'invited' => 0,
+        'walkIns' => 0,
         'accepted' => 0,
         'maybe' => 0,
         'awaitingReply' => 0,
         'held' => 0,
         'heldBy' => ['hostNoReply' => 0, 'hostMaybe' => 0, 'hostNotComing' => 0],
         'declined' => 0,
+        'attended' => 0,
+        'expected' => 0,
     ];
 
     private User $owner;
@@ -103,12 +106,15 @@ final class HeadcountTest extends ApiTestCase
             'onList' => 10,
             'notYetInvited' => 1,
             'invited' => 9,
+            'walkIns' => 0,
             'accepted' => 3,
             'maybe' => 1,
             'awaitingReply' => 1,
             'held' => 3,
             'heldBy' => ['hostNoReply' => 1, 'hostMaybe' => 1, 'hostNotComing' => 1],
             'declined' => 1,
+            'attended' => 0,
+            'expected' => 3,
         ], $counts);
         self::assertSame($counts['invited'], $counts['accepted'] + $counts['maybe'] + $counts['awaitingReply'] + $counts['held'] + $counts['declined']);
         self::assertSame($counts['onList'], $counts['invited'] + $counts['notYetInvited']);
@@ -255,8 +261,8 @@ final class HeadcountTest extends ApiTestCase
 
         $figures = $this->listedFigures($this->owner);
 
-        self::assertSame(['invited' => 6, 'coming' => 2, 'notReplied' => 2], $figures[$this->eventId] ?? null);
-        self::assertSame(['invited' => 0, 'coming' => 0, 'notReplied' => 0], $figures[$empty] ?? null);
+        self::assertSame(['invited' => 6, 'coming' => 2, 'notReplied' => 2, 'attended' => 0, 'expected' => 2], $figures[$this->eventId] ?? null);
+        self::assertSame(['invited' => 0, 'coming' => 0, 'notReplied' => 0, 'attended' => 0, 'expected' => 0], $figures[$empty] ?? null);
     }
 
     #[Test]
@@ -265,12 +271,12 @@ final class HeadcountTest extends ApiTestCase
         $this->answer($this->add('Adaeze'), 'coming');
         $removed = $this->add('Bisi');
         $this->answer($removed, 'coming');
-        self::assertSame(['invited' => 2, 'coming' => 2, 'notReplied' => 0], $this->listedFigures($this->owner)[$this->eventId] ?? null);
+        self::assertSame(['invited' => 2, 'coming' => 2, 'notReplied' => 0, 'attended' => 0, 'expected' => 2], $this->listedFigures($this->owner)[$this->eventId] ?? null);
 
         $this->as($this->owner, 'DELETE', $this->guests() . '/' . $removed);
         self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
 
-        self::assertSame(['invited' => 1, 'coming' => 1, 'notReplied' => 0], $this->listedFigures($this->owner)[$this->eventId] ?? null);
+        self::assertSame(['invited' => 1, 'coming' => 1, 'notReplied' => 0, 'attended' => 0, 'expected' => 1], $this->listedFigures($this->owner)[$this->eventId] ?? null);
     }
 
     #[Test]
@@ -301,11 +307,11 @@ final class HeadcountTest extends ApiTestCase
         $other = $this->newEvent();
         $member = $this->member('ada@ire.events', EventRole::CanView);
 
-        self::assertSame([$this->eventId => ['invited' => 2, 'coming' => 2, 'notReplied' => 0]], $this->listedFigures($member));
+        self::assertSame([$this->eventId => ['invited' => 2, 'coming' => 2, 'notReplied' => 0, 'attended' => 0, 'expected' => 2]], $this->listedFigures($member));
 
         $body = $this->as($member, 'POST', $this->headcountsSubscription(), ['events' => [$this->eventId, $other, 'not-an-id']]);
         self::assertSame(200, $this->statusCode(), Json\encode($body));
-        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount']], $this->claims($body));
+        self::assertSame(['subscribe' => ['events/' . $this->eventId . '/headcount', 'events/' . $this->eventId . '/check-in']], $this->claims($body));
     }
 
     #[Test]

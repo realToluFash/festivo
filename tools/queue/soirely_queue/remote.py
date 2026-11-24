@@ -95,11 +95,13 @@ def allowed(client, headers, query, secret):
     return any(hmac.compare_digest(g.encode(), secret.encode()) for g in given), None
 
 
-def fetch(base, path, secret, timeout=PEER_SECONDS):
-    """A peer's JSON, as `(status, body)`. A peer that cannot be reached is a 502 whose body
-    says why, so the page can name it."""
-    request = urllib.request.Request(urllib.parse.urljoin(base.rstrip("/") + "/", path),
-                                     headers={"Authorization": f"Bearer {secret or ''}"})
+def address(base, path):
+    return urllib.parse.urljoin(base.rstrip("/") + "/", path)
+
+
+def answer_of(request, timeout):
+    """A peer's answer, as `(status, body)`. A peer that cannot be reached is a 502 whose
+    body says why, so the page can name it."""
     try:
         with urllib.request.urlopen(request, timeout=timeout) as answer:
             return answer.status, answer.read()
@@ -110,3 +112,23 @@ def fetch(base, path, secret, timeout=PEER_SECONDS):
     except (OSError, ValueError) as error:
         reason = getattr(error, "reason", None) or error
         return 502, json.dumps({"error": f"it did not answer ({reason})"}).encode()
+
+
+def fetch(base, path, secret, timeout=PEER_SECONDS):
+    """A peer's JSON."""
+    return answer_of(urllib.request.Request(address(base, path),
+                                            headers={"Authorization": f"Bearer {secret or ''}"}),
+                     timeout)
+
+
+def post(base, path, secret, body, timeout=PEER_SECONDS):
+    """Posts JSON to a peer and returns its answer."""
+    return answer_of(urllib.request.Request(address(base, path), data=body, method="POST",
+                                            headers={"Authorization": f"Bearer {secret or ''}",
+                                                     "Content-Type": "application/json"}),
+                     timeout)
+
+
+def send(base, path, secret, body, timeout=PEER_SECONDS):
+    """Posts JSON to a peer. True when it took it."""
+    return post(base, path, secret, body, timeout)[0] < 300

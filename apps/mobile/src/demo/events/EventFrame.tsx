@@ -95,6 +95,13 @@ export function BellRow({ children }: { children: ReactNode }) {
   );
 }
 
+/** The bell an event's page lends to every area's frame on an iPad, so an area drawn by its own screen, as Guests, opens it too (sc-84453). A frame given its own `onBell`, as Messages', keeps that. */
+export const EventBellAt = createContext<{
+  onBell?: (() => void) | undefined;
+  bellRef?: Ref<ViewInstance> | undefined;
+  place: ReactNode;
+} | null>(null);
+
 /** Messages' count, on its tab, its pill and its place in the sidebar, named in words (sc-3976). */
 export interface AreaBadge {
   count: number;
@@ -119,6 +126,7 @@ export function EventFrame({
   bellRef,
   back: pushed,
   phoneBack,
+  behind,
   besideBack,
   without,
   loading = false,
@@ -142,7 +150,9 @@ export function EventFrame({
   back?: { label: string; onPress: () => void } | null;
   /** On the phone, a way back other than Overview, as Seating's ‹ Guests. */
   phoneBack?: { label: string; onPress: () => void } | undefined;
-  /** On the phone, a status beside Back, as Guests' Refreshing…; told whether it had room there (sc-71821). */
+  /** On Overview, ‹ and the screen the event was opened over, in place of Events (sc-83008). */
+  behind?: { label: string; onPress: () => void } | undefined;
+  /** A status beside Back, as Guests' Refreshing… and Overview's; pass it on a phone or upright only, since landscape has no ‹ to sit beside. Told whether it had room there (sc-71821, sc-83008). */
   besideBack?: BesideBackStatus | undefined;
   /** An area this viewer has no part in, as Budget for Can edit: gone from More, the pills and the sidebar. */
   without?: AreaKey | undefined;
@@ -153,6 +163,11 @@ export function EventFrame({
   const shell = useShell();
   const insets = useSafeAreaInsets();
   const large = useAccessibilitySizes();
+  const lent = useContext(EventBellAt);
+  const ownBell = onBell != null;
+  const bellPress = ownBell ? onBell : lent?.onBell;
+  const bellAt = ownBell ? bellRef : lent?.bellRef;
+  const bellPlace = ownBell ? null : lent?.place;
   const phone = shell.layout === 'phone';
   const titleCap = useTitleCap(`${shell.layout}|${area}`, PAGE_TITLE);
   // As the product's frame: an area is capped only once its body's title says the size it drew at (sc-67338, sc-67659).
@@ -198,12 +213,13 @@ export function EventFrame({
         overlay={
           <>
             {overlay}
+            {bellPlace}
             {told}
           </>
         }
       >
         <PaneBellAt.Provider
-          value={{ bell: <Bell tell={shell.tell} onPress={onBell} ref={bellRef} /> }}
+          value={{ bell: <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} /> }}
         >
           {capped(
             fill ? (
@@ -230,7 +246,7 @@ export function EventFrame({
       ? phoneBack
       : phone && area !== 'overview'
         ? { label: W.overview, onPress: () => onArea('overview') }
-        : { label: W.backToEvents, onPress: backToEvents });
+        : (behind ?? { label: W.backToEvents, onPress: backToEvents }));
   const at = PHONE_TABS.includes(area) ? AREA_WORDS[area] : W.more;
 
   return (
@@ -243,10 +259,10 @@ export function EventFrame({
             : { paddingTop: insets.top + tokens.spaceMd, paddingHorizontal: tokens.space5xl },
         ]}
       >
-        <BackSlot beside={phone ? besideBack : undefined} capped={capped}>
+        <BackSlot beside={besideBack} capped={capped}>
           <Back label={back.label} onPress={back.onPress} />
         </BackSlot>
-        <Bell tell={shell.tell} onPress={onBell} ref={bellRef} />
+        <Bell tell={shell.tell} onPress={bellPress} ref={bellAt} />
       </View>
       {!phone && <AreaPills area={area} onArea={onArea} badge={badge} without={without} />}
       {capped(
@@ -295,6 +311,7 @@ export function EventFrame({
         </>
       )}
       {overlay}
+      {bellPlace}
       {told}
     </View>
   );
@@ -537,13 +554,22 @@ function AreaPills({
   without: AreaKey | undefined;
 }) {
   const strip = useRef<ScrollViewInstance>(null);
-  const starts = useRef<Partial<Record<AreaKey, number>>>({});
+  const ends = useRef<Partial<Record<AreaKey, number>>>({});
+  const shown = useRef(0);
+  const content = useRef(0);
   const reveal = (one: AreaKey) => {
-    const x = starts.current[one];
-    if (x != null)
-      strip.current?.scrollTo({ x: Math.max(0, x - tokens.space3xl), animated: false });
+    const end = ends.current[one];
+    if (end != null && shown.current > 0 && content.current > 0)
+      strip.current?.scrollTo({
+        x: Math.max(
+          0,
+          Math.min(content.current - shown.current, end + tokens.space3xl - shown.current),
+        ),
+        animated: false,
+      });
   };
-  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge.
+  // The chosen area's pill is kept in view, so Budget is never cut to "Bud" at the iPad's edge, and the strip
+  // moves no further than that, so it opens at Overview wherever the chosen pill fits (sc-31370).
   useEffect(() => reveal(area), [area]);
 
   return (
@@ -555,6 +581,14 @@ function AreaPills({
         style={styles.pillsBar}
         contentContainerStyle={styles.pills}
         accessibilityRole="tablist"
+        onLayout={(event: LayoutChangeEvent) => {
+          shown.current = event.nativeEvent.layout.width;
+          reveal(area);
+        }}
+        onContentSizeChange={(width: number) => {
+          content.current = width;
+          reveal(area);
+        }}
       >
         {AREAS.filter((one) => one !== without).map((one) => {
           const on = one === area;
@@ -566,7 +600,7 @@ function AreaPills({
               key={one}
               onPress={() => onArea(one)}
               onLayout={(event: LayoutChangeEvent) => {
-                starts.current[one] = event.nativeEvent.layout.x;
+                ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
               style={[styles.pill, on && styles.pillOn]}

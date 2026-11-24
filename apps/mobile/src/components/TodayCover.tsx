@@ -23,12 +23,12 @@ import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
-import type { Moment, Now } from '../kit/today.ts';
+import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
 import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
-import { useTodayShell } from './todayShell.ts';
+import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -190,24 +190,30 @@ export function OrgButton({
 
 export function BellButton() {
   const { t } = useTranslation();
-  const { unread, open } = useTodayShell();
+  const { unread, open, useBell = usePlainBell } = useTodayShell();
+  const bell = useBell(() => open({ to: 'notifications' }));
+  const { ref: bellRef, open: openBell, popover } = bell;
 
   return (
-    <Pressable
-      onPress={() => open({ to: 'notifications' })}
-      accessibilityRole="button"
-      accessibilityLabel={
-        unread > 0
-          ? t('todayScreen.notificationsUnread', { count: unread })
-          : t('todayScreen.notifications')
-      }
-      hitSlop={tokens.spaceXxs}
-    >
-      <Glass style={styles.bell}>
-        <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
-        {unread > 0 && <View style={styles.unread} />}
-      </Glass>
-    </Pressable>
+    <>
+      <Pressable
+        ref={bellRef}
+        onPress={openBell}
+        accessibilityRole="button"
+        accessibilityLabel={
+          unread > 0
+            ? t('todayScreen.notificationsUnread', { count: unread })
+            : t('todayScreen.notifications')
+        }
+        hitSlop={tokens.spaceXxs}
+      >
+        <Glass style={styles.bell}>
+          <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
+          {unread > 0 && <View style={styles.unread} />}
+        </Glass>
+      </Pressable>
+      {popover}
+    </>
   );
 }
 
@@ -277,7 +283,7 @@ export function TabCapsule({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t(`todayScreen.tab.${glyph}`)}
-            testID={SETTINGS_ID[label]}
+            testID={SETTINGS_ID[label] ?? `tab-${label.toLowerCase()}`}
           >
             <Glyph name={glyph} ink={ink} />
             <Text
@@ -424,6 +430,35 @@ function Ring({ share, side = 44, line = 4 }: { share: number; side?: number; li
   );
 }
 
+/** Now's arrived figure (sc-29978), read as its words: "141/152" over "arrived" beside a ring, or "37" over "arrived" with no ring while nobody is Coming. */
+export function ArrivedFigure({ figure }: { figure: Figure }) {
+  return (
+    <View style={styles.arrived} accessible accessibilityLabel={figure.spoken}>
+      {figure.share != null && <Ring share={figure.share} />}
+      <View style={styles.shrink}>
+        <View style={styles.figureLine}>
+          <Text size={18} weight="bold" accessible={false} style={[styles.white, styles.figures]}>
+            {figure.count}
+          </Text>
+          {figure.of != null && (
+            <Text
+              size={18}
+              weight="semibold"
+              accessible={false}
+              style={[styles.white, styles.figures, styles.soft, styles.tight]}
+            >
+              {`/${figure.of}`}
+            </Text>
+          )}
+        </View>
+        <Text size={12.5} weight="medium" accessible={false} style={[styles.white, styles.soft]}>
+          {figure.label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function NextAndArrived({ now }: { now: Now }) {
   const { t } = useTranslation();
 
@@ -442,31 +477,7 @@ function NextAndArrived({ now }: { now: Now }) {
           </Text>
         </View>
       </View>
-      <View
-        style={styles.arrived}
-        accessible
-        accessibilityLabel={`${now.arrived} of ${now.expected} arrived`}
-      >
-        <Ring share={now.arrived / now.expected} />
-        <View>
-          <View style={styles.nextLine}>
-            <Text size={18} weight="bold" accessible={false} style={[styles.white, styles.figures]}>
-              {String(now.arrived)}
-            </Text>
-            <Text
-              size={18}
-              weight="semibold"
-              accessible={false}
-              style={[styles.white, styles.figures, styles.soft, styles.tight]}
-            >
-              {`/${now.expected}`}
-            </Text>
-          </View>
-          <Text size={12.5} weight="medium" accessible={false} style={[styles.white, styles.soft]}>
-            {t('todayScreen.arrivedCount')}
-          </Text>
-        </View>
-      </View>
+      {now.arrived != null && <ArrivedFigure figure={now.arrived} />}
     </View>
   );
 }
@@ -485,6 +496,7 @@ export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
         run={run}
         asOf={moment.asOf ?? null}
         wide={wide}
+        aside={now.arrived != null && <ArrivedFigure figure={now.arrived} />}
         onOpen={() =>
           go({ to: 'runOfShow', id: now.event.id, name: now.name, track: run.track ?? null })
         }
@@ -521,11 +533,19 @@ export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
     return wide ? (
       <View style={styles.wideRow}>
         <View style={[styles.grow, styles.gapMd]}>{words}</View>
-        {open}
+        {now.arrived == null ? (
+          open
+        ) : (
+          <View style={styles.right}>
+            <ArrivedFigure figure={now.arrived} />
+            {open}
+          </View>
+        )}
       </View>
     ) : (
       <View style={styles.gapLg}>
         {words}
+        {now.arrived != null && <ArrivedFigure figure={now.arrived} />}
         <View style={styles.hair} />
         {open}
       </View>
@@ -1183,6 +1203,8 @@ const styles = StyleSheet.create({
   nextLabel: { letterSpacing: 12 * 0.08 },
   nextLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 5 },
   arrived: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
+  figureLine: { flexDirection: 'row', alignItems: 'baseline' },
+  shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },

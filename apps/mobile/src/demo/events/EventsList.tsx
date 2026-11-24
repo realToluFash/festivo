@@ -79,6 +79,7 @@ import {
   SunkTabs,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
@@ -192,9 +193,7 @@ export function EventsList({
 
   useEffect(() => {
     if (state !== 'filterOpen' && state !== 'manyFiltersOpen') return;
-    const wait = setTimeout(() => anchorUnder(filterRef, setMenuAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(filterRef, then), setMenuAt, MENU_AFTER_MS);
   }, [state]);
 
   const clearSearch = () => {

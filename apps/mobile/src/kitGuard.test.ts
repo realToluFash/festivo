@@ -82,7 +82,7 @@ describe("every TextInput starts from the kit's defaults", () => {
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
+      'Spread fieldDefaults(), codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
@@ -96,7 +96,7 @@ describe("every TextInput starts from the kit's defaults", () => {
       0,
     );
     expect(
-      selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
+      selfClosing('TextInput', '<TextInput {...fieldDefaults(Platform.OS)} style={x} />').filter(
         (tag) => !startsFromKitDefaults(tag.markup),
       ),
     ).toHaveLength(0);
@@ -492,6 +492,19 @@ describe('a screen reader reaches each button in a group', () => {
   });
 });
 
+describe('a field that hides its selection hides its handles too (sc-80268)', () => {
+  it('in every TextInput with a transparent selection, on Android where the kit gives the handles ink', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      selfClosing('TextInput', text)
+        .filter(({ markup }) => markup.includes('selectionColor="transparent"'))
+        .filter(({ markup }) => !markup.includes('selectionHandleColor="transparent"'))
+        .map(({ line }) => `${path}:${line}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
@@ -660,9 +673,8 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts);
-  // Security's proofs, Sign out everywhere else among them, take ConfirmScreen's.
-  const RECOVERY_CODE_FIELDS = ['${testID}.code', '${idPrefix}.code'];
+  // Every proof, Sign out everywhere else among them, takes ConfirmScreen's.
+  const RECOVERY_CODE_FIELDS = ['${testID}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
@@ -730,6 +742,19 @@ describe('every field reports its focus to the lift (sc-29076)', () => {
   });
 });
 
+describe('a shown password hides again on a send, a screen left and the app sent away (sc-79989)', () => {
+  it('in every component that can show a password', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => /(?:\.|&\s*)passwordProps\(/u.test(text))
+      .filter(({ text }) => !/=\s*useRevealed\(/u.test(text))
+      .map(({ path }) => path.replace(/^.*\/apps\/mobile\//u, ''));
+
+    expect(offenders, 'Take what is shown from useRevealed in src/components/Field.tsx.').toEqual(
+      [],
+    );
+  });
+});
+
 describe('a button or link taking keyboard focus moves on from the landing toast (sc-41296)', () => {
   const pressables = (file: string) => {
     const text = readFileSync(join(__dirname, file), 'utf8');
@@ -759,10 +784,29 @@ describe('a button or link taking keyboard focus moves on from the landing toast
 describe('Your organisation mounts once it knows whether it lists invitations (sc-41296)', () => {
   it('so Organisation name never takes focus on a step that then drops it', () => {
     const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
-    const waits = text.indexOf('if (!loaded.read || !offersRead) return null;');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
 
     expect(waits).toBeGreaterThan(0);
     expect(waits).toBeLessThan(text.indexOf('<StepScreen nav={nav} foot={foot}>'));
+  });
+});
+
+describe('a step still reading is not a landing the landing toast is said over (sc-87539)', () => {
+  it('Your organisation waits as waiting', () => {
+    const text = readFileSync(join('app', 'complete-profile.tsx'), 'utf8');
+    const waits = text.indexOf('if (!loaded.read || !offersRead) {');
+
+    expect(text.indexOf('<StepScreen nav={nav} waiting>', waits)).toBe(
+      text.indexOf('<StepScreen', waits),
+    );
+  });
+
+  it('StepScreen registers the step only once it is no longer waiting', () => {
+    const text = readFileSync(join('src', 'steps', 'StepScreen.tsx'), 'utf8');
+    const holds = text.indexOf('if (waiting) return undefined;');
+
+    expect(holds).toBeGreaterThan(0);
+    expect(holds).toBeLessThan(text.indexOf('const step = stepShown();'));
   });
 });
 
@@ -811,7 +855,7 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   // sc-20208: Confirm it's you, Sign out everywhere else and Two-factor.
   // sc-20209 carries it to adding and checking an address or a number, and to A few details. sc-20210: the signed-out forms.
   const HELD_FORMS = [
-    'src/components/ConfirmItsYou.tsx',
+    'src/components/AccountConfirm.tsx',
     'src/components/SecurityPassword.tsx',
     'src/components/AccountName.tsx',
     'src/components/AccountZone.tsx',
@@ -1181,11 +1225,6 @@ describe('a submit with the keys down keeps them down (sc-20209)', () => {
 });
 
 describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
-  const offWhile = (file: string, busy: string) =>
-    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
-      .filter(({ markup }) => markup.includes(`off={${busy}}`))
-      .map(({ markup }) => propValue(markup, 'testID'));
-
   it('in Password, where each screen that sends waits on Cancel while it is busy', () => {
     const source = readFileSync(join('src', 'components', 'SecurityPassword.tsx'), 'utf8');
     const screens = [...source.matchAll(/<FocusedScreen\b/gu)].map(({ index }) =>
@@ -1205,16 +1244,13 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
     ['AccountName.tsx', 'saving'],
     ['AccountZone.tsx', 'saving'],
     ['AccountAdd.tsx', 'sending'],
+    ['AccountConfirm.tsx', 'checking'],
   ])('in %s, where the focused screen waits on Cancel while %s', (file, busy) => {
     const source = readFileSync(join('src', 'components', file), 'utf8');
     const start = source.indexOf('<FocusedScreen');
     const screen = source.slice(start, tagEnd(source, start));
 
     expect(propValue(screen, 'waits')).toBe(`{${busy}}`);
-  });
-
-  it("in Confirm it's you, beside Continue", () => {
-    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
   });
 });
 
@@ -1616,7 +1652,7 @@ function fixedAroundText(text: string): number[] {
 }
 
 function startsFromKitDefaults(markup: string): boolean {
-  return /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup);
+  return /\{\.\.\.(fieldDefaults\(|codeProps\(|passwordProps\()/u.test(markup);
 }
 
 function takesRecoveryCode(markup: string): boolean {

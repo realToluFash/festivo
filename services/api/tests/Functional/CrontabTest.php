@@ -48,4 +48,16 @@ final class CrontabTest extends FunctionalTestCase
             Str\split(File\read(__DIR__ . '/../../config/crontab'), "\n"),
         );
     }
+
+    #[Test]
+    public function unansweredRecoveriesExpireEveryFiveMinutes(): void
+    {
+        $application = new Application(self::$kernel ?? throw new LogicException('No kernel.'));
+
+        self::assertTrue($application->has('app:two-factor-recovery:expire'));
+        self::assertContains(
+            '*/5 * * * * php /app/bin/console app:two-factor-recovery:expire --no-interaction',
+            Str\split(File\read(__DIR__ . '/../../config/crontab'), "\n"),
+        );
+    }
 }

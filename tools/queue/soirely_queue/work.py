@@ -221,6 +221,32 @@ def held_by(holders):
     return "held by " + ", ".join(f"sc-{s['id']} ({s['state']})" for s in holders)
 
 
+# A blocker in one of these is waiting for a role to pick it up; from Needs Design on, one is.
+IDLE_BLOCKER = ("Backlog", "To Do", R.WAITING)
+
+
+def idle(blocker, epics):
+    """A blocker no role will pick up: one waiting in an idle state, or one ready to build
+    whose own epic is not in progress, so no developer is offered it."""
+    return not blocker.get("archived") and (blocker["state"] in IDLE_BLOCKER
+                                            or bool(held_epic(blocker, epics)))
+
+
+def stuck_blockers(stories, epics):
+    """Each idle blocker with the stories it holds in epics in progress, most held first:
+    the holds no role will clear, because nobody is working on the story that clears them."""
+    by_id = {s["id"]: s for s in stories}
+    held = {}
+    for story in stories:
+        if story.get("archived") or held_epic(dict(story, state="Ready For Dev"), epics):
+            continue
+        for blocker in holding(story, by_id):
+            if idle(blocker, epics):
+                held.setdefault(blocker["id"], []).append(story)
+    found = [(by_id[b], sorted(h, key=lambda s: s["id"])) for b, h in held.items()]
+    return sorted(found, key=lambda pair: (-len(pair[1]), pair[0]["id"]))
+
+
 def builds(role):
     return role in R.DEVS or role == "ops"
 

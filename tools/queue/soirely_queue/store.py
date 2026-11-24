@@ -67,6 +67,10 @@ LEASE_MINUTES = 90
 # A review finished while its head still has no verdict was never posted (sc-56909).
 REVIEW_RETRY_MINUTES = 30
 REVIEW_RETRIES = 3
+# A tester that ended a run with a story still In QA under its claim was waiting on someone,
+# and nothing else wakes it for that story once the wait is over.
+HELD_RETRY_MINUTES = 120
+HELD_RETRY_MOST_MINUTES = 24 * 60
 
 
 def connect(path, threads=False):
@@ -162,7 +166,8 @@ def record(db, items, now=None):
 
     Open work follows the roles it is now derived for. Claimed work is left alone: the run
     holding it finishes or its lease runs out. A finished review still derived comes back
-    up to `REVIEW_RETRIES` times, each wait twice the last.
+    up to `REVIEW_RETRIES` times, each wait twice the last. A finished reminder of a story
+    held In QA comes back for as long as it is derived, each wait twice the last up to a day.
     """
     now = now or time.time()
     db.execute("begin immediate")
@@ -188,6 +193,13 @@ def record(db, items, now=None):
                               "and kind = 'review' and reopened < ? "
                               "and done_at <= ? - ? * (1 << reopened)",
                               (REVIEW_RETRIES, now, REVIEW_RETRY_MINUTES * 60)).fetchall():
+            if row["fingerprint"] in current:
+                db.execute("update work set status = 'open', claimed_by = null, worker = null, "
+                           "done_at = null, reopened = reopened + 1 where id = ?", (row["id"],))
+        for row in db.execute("select id, fingerprint from work where status = 'done' "
+                              "and kind = 'held' and done_at <= ? - min(?, ? * (1 << "
+                              "min(reopened, 20)))", (now, HELD_RETRY_MOST_MINUTES * 60,
+                                                      HELD_RETRY_MINUTES * 60)).fetchall():
             if row["fingerprint"] in current:
                 db.execute("update work set status = 'open', claimed_by = null, worker = null, "
                            "done_at = null, reopened = reopened + 1 where id = ?", (row["id"],))

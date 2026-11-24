@@ -422,6 +422,10 @@ export function payersPath(eventId: string): string {
   return `${budgetPath(eventId)}/payers`;
 }
 
+export function staffRatesPath(eventId: string): string {
+  return `${budgetPath(eventId)}/staff-rates`;
+}
+
 export function vendorPagePath(eventId: string, vendorId: string): string {
   return `${budgetPath(eventId)}/vendors/${encodeURIComponent(vendorId)}`;
 }
@@ -430,6 +434,7 @@ export type BudgetView =
   | { kind: 'home' }
   | { kind: 'due' }
   | { kind: 'payers' }
+  | { kind: 'staffRates' }
   | { kind: 'vendor'; vendorId: string }
   | { kind: 'unknown' };
 
@@ -438,6 +443,7 @@ export function budgetView(rest: string): BudgetView {
   if (parts.length === 0) return { kind: 'home' };
   if (parts.length === 1 && parts[0] === 'due') return { kind: 'due' };
   if (parts.length === 1 && parts[0] === 'payers') return { kind: 'payers' };
+  if (parts.length === 1 && parts[0] === 'staff-rates') return { kind: 'staffRates' };
   if (parts.length === 2 && parts[0] === 'vendors' && parts[1] != null)
     return { kind: 'vendor', vendorId: parts[1] };
 

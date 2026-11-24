@@ -1,0 +1,28 @@
+# sc-39340: on the iPad on its side, a row in the sidebar's Your events on Events opens that event's page, whose sidebar shows its areas and no list; its Events goes back. ORIENT: LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    text: '${EVENT}'
+    index: 0
+- extendedWaitUntil:
+    visible: 'Overview'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event-page
+- assertNotVisible: '{{t:todayScreen.yourEvents}}'
+- tapOn:
+    text: '.*Events.*'
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: back

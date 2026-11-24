@@ -34,6 +34,8 @@ export interface Companion {
   meal?: boolean;
   /** sc-5519: their own needs (sc-3777); none is None recorded. */
   needs?: Needs;
+  /** sc-1454: when door staff marked them arrived; Edit guest then offers no Remove for them. */
+  arrived?: string;
   /** sc-3779: the guest's last choice for them, kept while a reply that isn't Coming holds them; none is a place nobody has chosen for. */
   chose?: 'coming' | 'notcoming';
 }

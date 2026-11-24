@@ -5,6 +5,7 @@ export const REALTIME_TOPICS = {
   EventSeatingChoices: 'events/{id}/seating/choices',
   EventGuests: 'events/{id}/guests',
   EventHeadcount: 'events/{id}/headcount',
+  EventCheckIn: 'events/{id}/check-in',
   EventStaff: 'events/{id}/staff',
   EventSchedule: 'events/{id}/schedule',
   EventMenu: 'events/{id}/menu',

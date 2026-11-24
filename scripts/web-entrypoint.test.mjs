@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -47,6 +47,41 @@ describe('the web entrypoint', () => {
       'CC"\\',
       'DD',
     ]);
+  });
+
+  it('lets the app use the passkeys and the links of this host on Android (sc-87083)', () => {
+    const [statement] = json(
+      run({ SOIRELY_ANDROID_CERT_SHA256: 'AA:BB' }),
+      '.well-known/assetlinks.json',
+    );
+
+    expect(statement.relation).toEqual([
+      'delegate_permission/common.handle_all_urls',
+      'delegate_permission/common.get_login_creds',
+    ]);
+    expect(statement.target.package_name).toBe('com.soirely.app');
+  });
+
+  it('names the iOS app for passkeys in apple-app-site-association (sc-87083)', () => {
+    const root = run({ SOIRELY_APPLE_APP_ID: 'TEAM123.com.soirely.app' });
+
+    expect(json(root, '.well-known/apple-app-site-association')).toEqual({
+      webcredentials: { apps: ['TEAM123.com.soirely.app'] },
+    });
+  });
+
+  it('writes neither passkey file when nothing names the app', () => {
+    const root = run({});
+
+    expect(existsSync(join(root, '.well-known/assetlinks.json'))).toBe(false);
+    expect(existsSync(join(root, '.well-known/apple-app-site-association'))).toBe(false);
+  });
+
+  it('lets styles and fonts come from its own origin alone (sc-80882)', () => {
+    const policy = readFileSync(join(run({}), 'headers.conf'), 'utf8');
+
+    expect(policy).toMatch(/style-src 'self';/);
+    expect(policy).toMatch(/font-src 'self';/);
   });
 
   it('refuses to start on a control character, naming the variable', () => {

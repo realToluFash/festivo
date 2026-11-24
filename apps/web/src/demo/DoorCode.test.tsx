@@ -151,7 +151,7 @@ describe('making a door code in a 540 dialog', () => {
     const time = make.getByLabelText('Time');
     expect(document.activeElement).toBe(time);
     expect(time.getAttribute('aria-invalid')).toBe('true');
-    expect(description(time)).toBe('Choose a time that hasn’t passed yet.');
+    expect(description(time)).toBe('Choose a time that has not passed yet.');
     expect(make.getByLabelText('Day').getAttribute('aria-invalid')).toBe('false');
   });
 
@@ -161,7 +161,7 @@ describe('making a door code in a 540 dialog', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(time));
     expect(time.getAttribute('aria-invalid')).toBe('true');
-    expect(description(time)).toBe('Choose a time that hasn’t passed yet.');
+    expect(description(time)).toBe('Choose a time that has not passed yet.');
   });
 
   it('keeps the form as it was when making fails, with the line at its top and Try again', async () => {

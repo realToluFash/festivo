@@ -22,6 +22,8 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { SAMPLE } from '../samples.ts';
+import { openEvent } from '../events/openEvent.ts';
+import { openedOver } from '../events/opener.ts';
 import {
   type BellStart,
   fixedAboveOnSide,
@@ -36,6 +38,8 @@ interface Item {
   title: string;
   lines: readonly string[];
   event: string | null;
+  /** The sample event the row opens; the others only say what they open. */
+  opens?: string;
   when: string;
   read: boolean;
   muted: boolean;
@@ -46,7 +50,8 @@ const ITEMS: readonly Item[] = [
     id: 'reply',
     title: 'Ada Obi replied: coming, with 1 guest',
     lines: ['Dietary: vegetarian'],
-    event: 'Adeyemi wedding',
+    event: 'Adaeze & Tunde’s wedding',
+    opens: 'evt-wed-4',
     when: 'at 09:40',
     read: false,
     muted: false,
@@ -55,7 +60,8 @@ const ITEMS: readonly Item[] = [
     id: 'change',
     title: 'Ana Souza changed the event',
     lines: ['Starts at 19:30, was 19:00', 'Venue: The Glasshouse, Ikoyi'],
-    event: 'Adeyemi wedding',
+    event: 'Adaeze & Tunde’s wedding',
+    opens: 'evt-wed-4',
     when: 'at 08:15',
     read: false,
     muted: false,
@@ -233,7 +239,8 @@ export function BellScreen({ start }: { start: BellStart }) {
               setItems((now) =>
                 now.map((one) => (one.id === item.id ? { ...one, read: true } : one)),
               );
-              setTold(`${item.title}: opens its page, as on main.`);
+              if (item.opens != null) openEvent(item.opens, openedOver('notifications'));
+              else setTold(`${item.title}: opens its page, as on main.`);
             }}
             onMore={() => setTold('More opens Mute this event in its sheet, as on main.')}
           />

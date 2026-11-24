@@ -292,31 +292,8 @@ a.sn-tab {
   }
 }
 
+/* At 720 px and under the page beside the sidebar is narrower than a phone's, as for Jobs and shifts, Budget, Quotes and Schedule; at 400% zoom (deskReflow.css) the same rules hold the full-width page. */
 @media (width <= 720px) {
-  .today.desk:has(.rs) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.rs) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.rs) .desk-main {
-    min-width: 0;
-    margin: 0 var(--spaceMd) var(--spaceMd);
-    overflow: visible;
-  }
-
-  .rs.desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
-    overflow: visible;
-  }
-
-  .rs .ev-crumb ol,
   .rs .gs-top,
   .rs .sn-card-top,
   .rs .mn-panel-acts {
@@ -327,7 +304,7 @@ a.sn-tab {
     flex-basis: 12rem;
   }
 
-  /* At 400% zoom a cell breaks only between words and the frame scrolls further (sc-70540); here the rule also holds Jobs and shifts' coverage table, an .rs-table outside the Roster's frame. */
+  /* A cell breaks only between words and the frame scrolls further (sc-70540); here the rule also holds Jobs and shifts' coverage table, an .rs-table outside the Roster's frame. */
   .rs-table :is(th, td),
   .rs-table :is(th, td) * {
     overflow-wrap: normal;

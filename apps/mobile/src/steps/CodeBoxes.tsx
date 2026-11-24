@@ -109,7 +109,7 @@ export function CodeBoxes({
         ))}
       </Animated.View>
       <TextInput
-        {...codeProps(false)}
+        {...codeProps(Platform.OS, false)}
         autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
         {...refusedName(Platform.OS, fieldName(Platform.OS, label, {}), refused, label)}
         accessibilityHint={refusedHint(refused, undefined)}
@@ -120,6 +120,7 @@ export function CodeBoxes({
         caretHidden
         contextMenuHidden={false}
         selectionColor="transparent"
+        selectionHandleColor="transparent"
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={inputFaced(styles.input, 'sans', bold)}

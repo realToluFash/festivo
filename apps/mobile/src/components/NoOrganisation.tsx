@@ -6,7 +6,7 @@ import type { ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
-import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
+import { type WaitingInvitations, useInvitationAnswers } from '../invitations.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { invitationRowOf } from '../kit/noOrgInvitations.ts';
 import { noOrganisationEnd } from '../kit/orgSwitcher.ts';
@@ -28,7 +28,7 @@ export function NoOrganisation({
   notices?: ReactNode;
 } = {}) {
   const { account } = useSignedIn();
-  const waiting = useWaitingInvitations();
+  const waiting = useInvitationAnswers();
   const startOrganisation = useStartOrganisation();
   const startButton = useRef<ViewInstance>(null);
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');

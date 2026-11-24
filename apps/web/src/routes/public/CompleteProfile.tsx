@@ -30,7 +30,7 @@ import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
-import { useWaitingInvitations } from '../../invitations.ts';
+import { useInvitationAnswers } from '../../invitations.ts';
 import { offButton } from '../../offButton.ts';
 import { focusWhereSent, offField } from '../../offField.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
@@ -246,7 +246,7 @@ function Details({
   const [askingToJoin, setAskingToJoin] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
-  const waiting = useWaitingInvitations(needsOrganisation);
+  const waiting = useInvitationAnswers(needsOrganisation);
   // Finishing lands in the first one accepted; another is a membership reached from the switcher.
   const firstJoined = waiting.firstJoined;
   const stillOpen = waitingInvitations(waiting.invitations, waiting.outcomes);
@@ -386,7 +386,7 @@ function Details({
         phoneNumber: values.phoneNumber.trim(),
       });
 
-      if (firstJoined != null) rememberOrganisation(firstJoined);
+      if (firstJoined != null) rememberOrganisation(saved.account.id, firstJoined);
       // Before the session says it is waiting, so the waiting screen knows a click brought it as it mounts.
       if (askToJoin != null) onAsked();
       await adoptAccount(saved.account);

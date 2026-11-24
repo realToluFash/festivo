@@ -152,6 +152,28 @@ class Claims(unittest.TestCase):
         store.record(self.db, [review], at + 24 * 60 * 60)
         self.assertEqual(store.waiting(self.db, "lead"), [])
 
+    def finish_held(self, at):
+        row = store.claim(self.db, "qa4", at)
+        store.finish(self.db, row["id"], "waiting on [ops] for the app rows", at)
+
+    def test_a_story_left_in_qa_reminds_its_tester_again_each_wait_twice_the_last(self):
+        held = item("qa4:held:sc-7:2026-11-16", ["qa4"], "held")
+        store.record(self.db, [held], NOW)
+        at = NOW
+        for hours in (2, 4, 8, 16, 24, 24):
+            self.finish_held(at)
+            store.record(self.db, [held], at + hours * 3600 - 60)
+            self.assertEqual(store.waiting(self.db, "qa4"), [])
+            at += hours * 3600
+            store.record(self.db, [held], at)
+            self.assertEqual(len(store.waiting(self.db, "qa4")), 1)
+
+    def test_a_story_that_left_in_qa_reminds_nobody(self):
+        store.record(self.db, [item("qa4:held:sc-7:2026-11-16", ["qa4"], "held")], NOW)
+        self.finish_held(NOW)
+        store.record(self.db, [], NOW + 48 * 3600)
+        self.assertEqual(store.waiting(self.db, "qa4"), [])
+
     def test_a_finished_review_no_longer_due_stays_finished(self):
         store.record(self.db, [item("lead:review:#40@abc", ["lead"], "review")], NOW)
         self.finish_review(NOW)

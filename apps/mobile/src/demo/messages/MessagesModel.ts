@@ -89,6 +89,7 @@ import {
 import { sayNotice } from './NoticeWords.ts';
 import { reasonPerson } from './ReasonsSample.ts';
 import { SMS_STATES, smsStart } from './Sms.ts';
+import { BELL_STATES } from './BellStates.ts';
 import { TAP_STATES, type TapCase, isTapState, tapStart } from './TapStates.ts';
 import {
   REASON_STATES,
@@ -199,6 +200,7 @@ export const MESSAGES_STATES = [
   'scheduledTooLate',
   ...REASON_STATES,
   ...TELL_KINDS,
+  ...BELL_STATES,
 ] as const;
 
 export type MessagesState = (typeof MESSAGES_STATES)[number];
@@ -815,6 +817,18 @@ export function startOf(state: MessagesState | null, wide: boolean): Messages {
     case 'invited':
       return { ...BASE, open: { kind: 'many', key: 'invite' } };
     case 'bell':
+    case 'bellPush':
+    case 'bellLoading':
+    case 'bellFailed':
+    case 'bellEmpty':
+    case 'bellMore':
+    case 'bellMoreFailed':
+    case 'bellMute':
+    case 'bellMuted':
+    case 'bellGone':
+    case 'bellOffline':
+    case 'bellRefreshing':
+    case 'bellUnknown':
       return { ...BASE, bell: true, open: wide ? ines : null };
     case 'forbidden':
       return { ...BASE, forbidden: true };

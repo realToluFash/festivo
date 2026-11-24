@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import lockupUrl from '../brand/lockup.svg';
 import { Glyph } from '../components/Glyph.tsx';
 import { useMatches } from '../phoneWidth.ts';
 import { LAYOUT_MEDIA, layoutOf, startOf, twoColumns, wordsFor } from './guest.ts';
-import { Cover, Filled, Notice, TextAction } from './GuestParts.tsx';
+import { Cover, Filled, Notice, PhaseNotice, TextAction } from './GuestParts.tsx';
+import { Closed } from './Guest.tsx';
 import { AllergyMark } from './GuestNeeds.tsx';
 import { MealParty, PreviewBand } from './MealParty.tsx';
-import { isPartyState, partyStart } from './mealParty.ts';
+import { MENU_WITH_PREVIEW, isPartyState, partyStart } from './mealParty.ts';
 import { DishScreen, Refused } from './MealParts.tsx';
 import { Summary } from './MealSummary.tsx';
 import { GUEST_PICKS } from './mealClose.ts';
@@ -45,7 +46,13 @@ export function MealStepPage() {
   const raw = params.get('state');
   const party = isPartyState(raw) ? raw : null;
   const state = isMealState(raw) ? raw : 'variant';
-  const preview = party != null && params.get('preview') === '1';
+  const preview = party != null && (party === 'preview' || params.get('preview') === '1');
+  const navigate = useNavigate();
+  const from = params.get('from');
+  const back = from?.startsWith('/demo/') === true ? from : MENU_WITH_PREVIEW;
+  const closePreview = preview
+    ? () => void navigate(`${back}${back.includes('?') ? '&' : '?'}told=preview`)
+    : null;
   const format = params.get('format');
   const lang: Lang = LANGS.includes(format as Lang) ? (format as Lang) : 'en';
   const layout = layoutOf({
@@ -54,9 +61,10 @@ export function MealStepPage() {
     wide: useMatches(LAYOUT_MEDIA.wide),
     desk: useMatches(LAYOUT_MEDIA.desk),
   });
-  const visit = useMemo(() => startOf(null), []);
-  const words = useMemo(() => wordsFor('en'), []);
   const summary = party == null ? (mealStart(state).summary ?? null) : null;
+  const paused = summary?.paused === true;
+  const visit = useMemo(() => startOf(paused ? 'paused' : null), [paused]);
+  const words = useMemo(() => wordsFor('en'), []);
   const again = `/demo/guest/meal?state=${party ?? state}${preview ? '&preview=1' : ''}${lang === 'en' ? '' : `&format=${lang}`}`;
 
   return (
@@ -65,9 +73,10 @@ export function MealStepPage() {
         <header className="gp-header">
           <img className="gp-lockup" src={lockupUrl} alt="Soirely" />
         </header>
-        {preview && <PreviewBand />}
+        {closePreview != null && <PreviewBand onClose={closePreview} />}
         <main id="content" className={twoColumns(layout) ? 'gp-main is-two' : 'gp-main is-one'}>
           <div className="gp-columns">
+            {paused && <PhaseNotice phase="paused" words={words} />}
             <Cover visit={visit} words={words} ended={false} />
             <div className="gp-under">
               {party != null ? (
@@ -77,9 +86,13 @@ export function MealStepPage() {
                   lang={lang}
                   preview={preview}
                   again={again}
+                  onClosePreview={closePreview}
                 />
               ) : summary != null ? (
-                <Summary key={`${state}|${lang}`} first={summary} lang={lang} />
+                <>
+                  {paused && <Closed visit={visit} words={words} onKitchen={() => undefined} />}
+                  <Summary key={`${state}|${lang}`} first={summary} lang={lang} />
+                </>
               ) : (
                 <Flow key={`${state}|${lang}`} first={mealStart(state)} again={again} lang={lang} />
               )}

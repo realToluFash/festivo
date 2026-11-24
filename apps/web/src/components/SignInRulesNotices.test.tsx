@@ -67,7 +67,7 @@ describe('a notice closed with its own button (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
     const title = screen.getByText('Sign-in rules changed');
-    expect(document.activeElement).toBe(title.closest('.notice-words'));
+    expect(document.activeElement).toBe(title.closest('.rn-words'));
     expect(document.activeElement?.textContent).toMatch(/Ìrè Events/);
     expect(document.activeElement?.textContent).not.toMatch(/See what changed/u);
     expect(title.hasAttribute('aria-describedby')).toBe(false);
@@ -88,7 +88,7 @@ describe('a notice closed with its own button (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
     expect(document.activeElement).toBe(
-      screen.getByText('Sign-in rules changed').closest('.notice-words'),
+      screen.getByText('Sign-in rules changed').closest('.rn-words'),
     );
   });
 
@@ -112,15 +112,15 @@ describe('the notices in [fd] (sc-23252)', () => {
     expect(screen.queryByText('✕')).toBeNull();
   });
 
-  it('draws the way forward as a button and leaves Not now a text action beside it', () => {
+  it('draws the way forward as the board’s white pill and leaves Not now a text action beside it (#87594)', () => {
     inside(membership({ id: 'org_actions', ...GATED }));
 
     const onward = screen.getByRole('link', { name: 'Turn on two-factor' });
     const later = screen.getByRole('button', { name: 'Not now' });
 
-    expect(onward.classList.contains('button')).toBe(true);
+    expect(onward.classList.contains('desk-step')).toBe(true);
     expect(onward.getAttribute('href')).toBe('/app/account/security');
-    expect(later.classList.contains('link-button')).toBe(true);
+    expect(later.classList.contains('desk-text')).toBe(true);
     expect(later.parentElement).toBe(onward.parentElement);
   });
 
@@ -137,7 +137,7 @@ describe('the notices in [fd] (sc-23252)', () => {
     });
 
     expect(
-      Array.from(document.querySelectorAll('.notice-rule .notice-actions .button')).map(
+      Array.from(document.querySelectorAll('.rn-box .rn-actions .desk-step')).map(
         (action) => action.textContent,
       ),
     ).toEqual(['Turn it on now', 'Link Google or Apple', 'Turn on two-factor', 'See what changed']);
@@ -148,7 +148,7 @@ describe('the ring where a closed notice lands (sc-23252)', () => {
   it('marks only the words focus lands on, and only until focus leaves them', () => {
     inside({ ...changed('org_ring'), ...GATED });
 
-    const words = screen.getByText('Sign-in rules changed').closest<HTMLElement>('.notice-words');
+    const words = screen.getByText('Sign-in rules changed').closest<HTMLElement>('.rn-words');
     expect(words?.hasAttribute('data-notice-landing')).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
@@ -184,7 +184,7 @@ describe('the overdue screen in [fd] (sc-23252)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
       'Turn on two-factor to carry on',
     );
-    expect(document.querySelector('.notice-rule')).toBeNull();
+    expect(document.querySelector('.rn-box')).toBeNull();
     expect(screen.getByRole('link', { name: 'Turn on two-factor' }).className).toContain(
       'button-primary',
     );

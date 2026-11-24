@@ -12,6 +12,7 @@ import {
   Field,
   TextAction,
 } from '../../../components/SettingsParts.tsx';
+import { useDeskTop } from '../../../deskTop.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -37,6 +38,7 @@ export function PaymentReminders() {
 function RemindersDesk({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const { layers, covered, setHost } = useDeskLayers();
+  const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [changing, setChanging] = useState(false);
@@ -62,6 +64,8 @@ function RemindersDesk({ organisation }: { organisation: Membership }) {
     <DeskPage layers={layers}>
       <div className="desk-page" inert={covered}>
         <div className="desk-column">
+          {desk.above}
+          {desk.said}
           {load.kind === 'loading' && <PageLoading words={t('paymentReminders.loading')} />}
           {load.kind === 'failed' && (
             <div className="desk-failed" role="alert">

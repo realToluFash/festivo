@@ -209,6 +209,23 @@ class Checked(unittest.TestCase):
         self.assertIn(f"no Claude login in {self.root / 'claude-empty'}", refused["dev2"])
         self.assertIn("ops", ready)
 
+    def test_a_folder_is_signed_in_by_its_own_token_then_the_plain_one(self):
+        empty, own = self.root / ".claude-empty", "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_EMPTY"
+        self.assertEqual(machine.token_name(empty), own)
+        self.assertEqual(machine.token_name(pathlib.Path("/home/x/.claude")),
+                         "CLAUDE_CODE_OAUTH_TOKEN_CLAUDE")
+        changed = config(self.root, roles={"ops": {}, "dev2": {"claudeConfigDir": str(empty)}})
+        with mock.patch.dict("os.environ", {"CLAUDE_CODE_OAUTH_TOKEN_CLAUDE_OTHER": "o"}):
+            self.assertIsNone(machine.account(empty))
+            self.assertIn(f"or set {own} in the env file", machine.check(changed)[1]["dev2"])
+        with mock.patch.dict("os.environ", {"CLAUDE_CODE_OAUTH_TOKEN": "plain"}):
+            self.assertEqual(machine.account(empty), "token")
+            self.assertEqual(machine.account(self.root / "claude"), "token")
+            with mock.patch.dict("os.environ", {own: "t"}):
+                self.assertEqual(machine.token_source(empty), own)
+                self.assertEqual(machine.account(empty), "token CLAUDE_EMPTY")
+                self.assertIn("dev2", machine.check(changed)[2])
+
     def test_without_its_credentials_file_a_linux_folder_is_not_logged_in(self):
         folder = login(self.root / "half")
         (folder / ".credentials.json").unlink()
@@ -226,10 +243,13 @@ class Checked(unittest.TestCase):
 
     def test_machine_wide_limits_are_checked(self):
         changed = config(self.root, onVersionDrift="halt", dailyBudgetUsd="ten", minFreeGb=-1,
-                         sliceMemoryMax="plenty")
+                         sliceMemoryMax="plenty", chromeProfiles={"qa@example.com": 3})
         errors = " ".join(machine.check(changed)[0])
-        for field in ("onVersionDrift", "dailyBudgetUsd", "minFreeGb", "sliceMemoryMax"):
+        for field in ("onVersionDrift", "dailyBudgetUsd", "minFreeGb", "sliceMemoryMax",
+                      "chromeProfiles"):
             self.assertIn(field, errors)
+        named = config(self.root, chromeProfiles={"qa@example.com": "Profile 3"})
+        self.assertNotIn("chromeProfiles", " ".join(machine.check(named)[0]))
 
     def test_the_workers_share_16G_unless_the_file_says_otherwise(self):
         self.assertEqual(machine.slice_memory(config(self.root)), "16G")

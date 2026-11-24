@@ -7,6 +7,7 @@ export const W = {
   events: 'Events',
   loading: 'Loading events…',
   loadingEvent: 'Loading the event…',
+  failedLoadEvent: 'The event did not load. Check your connection and try again.',
   newEvent: 'New event',
   search: 'Search events',
   clearSearch: 'Clear search',

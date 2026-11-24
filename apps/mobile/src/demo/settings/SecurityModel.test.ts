@@ -69,7 +69,7 @@ describe('two-factor not loaded', () => {
 
 describe('a state link', () => {
   it('opens the state it names, and the page at rest for anything else', () => {
-    expect(SECURITY_STATES).toHaveLength(26);
+    expect(SECURITY_STATES).toHaveLength(48);
     expect(securityStateOf('forgotSent')).toBe('forgotSent');
     expect(securityStateOf('nonsense')).toBe('rest');
     expect(securityStateOf(undefined)).toBe('rest');
@@ -219,5 +219,72 @@ describe('the key Add to my authenticator app hands over', () => {
     expect(otpauthLink(AUTHENTICATOR_KEY)).toBe(
       `otpauth://totp/Soirely:${SAMPLE.email}?secret=${AUTHENTICATOR_KEY}&issuer=Soirely`,
     );
+  });
+});
+
+describe('the passkey states (sc-86888)', () => {
+  it('open Turn on two-factor’s choice in each wording, two-factor off', () => {
+    expect(securityStart('chooseTouchId')).toMatchObject({
+      twoFactor: false,
+      screen: 'passkey',
+      keyMode: 'choose',
+      unlock: 'touchId',
+      sheet: false,
+    });
+    expect(securityStart('chooseSheet')).toMatchObject({ keyMode: 'choose', sheet: true });
+  });
+
+  it('open the app’s step as Add an authenticator app beside passkeys', () => {
+    expect(securityStart('addApp')).toMatchObject({ screen: 'setup', addsApp: true });
+    expect(securityStart('addApp').factors?.app).toBeNull();
+    expect(securityStart('setup').addsApp).toBe(false);
+  });
+
+  it('draw the card with the app only, passkeys only, both, and at 10', () => {
+    expect(securityStart('cardApp').factors?.passkeys).toHaveLength(0);
+    expect(securityStart('cardPasskeys').factors?.app).toBeNull();
+    expect(securityStart('cardTen').factors?.passkeys).toHaveLength(10);
+    expect(securityStart('rest').factors).toBeNull();
+  });
+
+  it('take the current factor for Remove… and for Confirm it’s you with the sheet open', () => {
+    expect(securityStart('removePasskey')).toMatchObject({ ask: 'remove', removing: 'passkey-1' });
+    expect(securityStart('removeProof')).toMatchObject({ proof: 'remove', screen: 'passkey' });
+    expect(securityStart('confirmRefused')).toMatchObject({ sheet: false, keyRefused: true });
+  });
+});
+
+describe("the provider states: Confirm it's you with no password (sc-22601)", () => {
+  it('open on an account that signs in with Google alone, or Apple alone', () => {
+    expect(securityStart('proveGoogle').ways).toEqual({
+      password: false,
+      google: true,
+      apple: false,
+    });
+    expect(securityStart('everywhereApple').ways).toEqual({
+      password: false,
+      google: false,
+      apple: true,
+    });
+    expect(securityStart('proveGoogle')).toMatchObject({ screen: 'confirm', proof: 'link' });
+  });
+
+  it('take two-factor only where the code step is drawn', () => {
+    expect(securityStart('everywhereGoogle').twoFactor).toBe(false);
+    expect(securityStart('everywhereGoogleCode').twoFactor).toBe(true);
+    expect(securityStart('everywhereLimitedCode')).toMatchObject({
+      twoFactor: true,
+      limited: true,
+      codeStep: true,
+      proof: 'everywhere',
+    });
+  });
+
+  it('confirm with the provider in place of the password', () => {
+    const start = securityStart('everywhereLimited');
+    const asks = proofAsks('everywhere', 'google', start.ways, start.twoFactor, t);
+
+    expect(start.limited).toBe(true);
+    expect(asks).toMatchObject({ password: false, code: false, instead: 'Google' });
   });
 });

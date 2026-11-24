@@ -1,6 +1,17 @@
-import { type ReactNode, type Ref, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  type LayoutChangeEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,9 +27,11 @@ import {
   PERSON_GLYPH,
   ROOMS,
   glyphSide,
+  listLeast,
   rowPad,
+  sidebarRow,
 } from '../layout/sidebarSize.ts';
-import { LABEL_LINE, SIDEBAR_WIDTH } from '../layout/textSize.ts';
+import { SIDEBAR_WIDTH } from '../layout/textSize.ts';
 import { useNameLines } from '../layout/useLayout.ts';
 import { Text } from './Text.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -399,14 +412,64 @@ function SidebarCardWords({ event, tags }: { event: Shown; tags: readonly string
   );
 }
 
-export function SidebarColumn({ children }: { children: ReactNode }) {
+type Room = { short: boolean; laid: (room: number, least: number) => void };
+
+const ListRoom = createContext<Room>({ short: false, laid: () => {} });
+
+/** Layout rounding, so a list that fits to the point is not taken for one that does not. */
+const SLACK = 1;
+
+/** With no events the spacer squeezed to nothing is the column overflowing, so it needs more than the rounding to count as fitting. */
+const EMPTY_LEAST = 2 * SLACK;
+
+/** Under a scroll view Yoga ignores the list's flex basis, so a column carrying your events scrolls only where four rows do not fit; `listing` stays put while they load, so the column is not rebuilt under VoiceOver's focus (sc-39340). */
+export function SidebarColumn({
+  listing = false,
+  children,
+}: {
+  listing?: boolean;
+  children: ReactNode;
+}) {
+  const [short, setShort] = useState(false);
+  const sizes = useRef({ viewport: 0, content: 0 });
+  const laid = useCallback((room: number, least: number) => {
+    if (room + SLACK >= least) return;
+    sizes.current = { viewport: 0, content: 0 };
+    setShort(true);
+  }, []);
+  const room = useMemo(() => ({ short: listing && short, laid }), [listing, short, laid]);
+  const fitsAgain = () => {
+    const { viewport, content } = sizes.current;
+    if (viewport > 0 && content > 0 && content <= viewport + SLACK) setShort(false);
+  };
+  const onViewport = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.viewport = nativeEvent.layout.height;
+    fitsAgain();
+  };
+  const onContent = ({ nativeEvent }: LayoutChangeEvent) => {
+    sizes.current.content = nativeEvent.layout.height;
+    fitsAgain();
+  };
+
+  if (listing && !short)
+    return (
+      <ListRoom.Provider value={room}>
+        <View style={[styles.column, styles.side]}>{children}</View>
+      </ListRoom.Provider>
+    );
+
   return (
     <ScrollView
       style={styles.column}
-      contentContainerStyle={[styles.side, styles.fills]}
+      contentContainerStyle={styles.fills}
+      onLayout={listing ? onViewport : undefined}
       showsVerticalScrollIndicator={false}
     >
-      {children}
+      <ListRoom.Provider value={room}>
+        <View style={[styles.side, styles.fills]} onLayout={listing ? onContent : undefined}>
+          {children}
+        </View>
+      </ListRoom.Provider>
     </ScrollView>
   );
 }
@@ -419,24 +482,32 @@ export function SidebarPlaces({ children }: { children: ReactNode }) {
   );
 }
 
-/** The least the list's region shows before the whole sidebar scrolls instead (sc-39340). */
-const LEAST_ROWS = 4;
-
 /** Your events under the places: no heading over nothing, and a list longer than the sidebar holds scrolls in its own region while the places and the foot stay (sc-39340). */
 export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const heading = t('todayScreen.yourEvents').toLocaleUpperCase();
   const { size, measure } = useSideFit(heading, ROOMS.heading, fontScale, 'semibold');
-  const row = Math.max(
-    tokens.sizeHit,
-    ROOMS.event.size * fontScale * LABEL_LINE + 2 * rowPad(fontScale),
-  );
+  const [headed, setHeaded] = useState<number | null>(null);
+  const least =
+    events.length === 0
+      ? EMPTY_LEAST
+      : listLeast({ heading: headed, size, rows: events.length, row: sidebarRow(fontScale) });
+  const { short, laid } = useContext(ListRoom);
+  const room = useRef<number | null>(null);
+  useEffect(() => {
+    if (!short && room.current != null) laid(room.current, least);
+  }, [short, laid, least]);
+  const onLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+    room.current = nativeEvent.layout.height;
+    if (!short) laid(room.current, least);
+  };
 
-  if (events.length === 0) return <View style={styles.grow} />;
+  if (events.length === 0)
+    return <View style={short ? { height: least } : styles.grow} onLayout={onLayout} />;
 
   return (
-    <View style={styles.list}>
+    <View style={short ? { height: least } : styles.list} onLayout={onLayout}>
       {measure}
       <Text
         size={size}
@@ -444,13 +515,11 @@ export function SidebarEvents({ events }: { events: readonly ShownEvent[] }) {
         allowFontScaling={false}
         accessibilityRole="header"
         style={[styles.secondary, styles.caps]}
+        onLayout={({ nativeEvent }) => setHeaded(nativeEvent.layout.height)}
       >
         {heading}
       </Text>
-      <ScrollView
-        style={[styles.rows, { minHeight: Math.min(events.length, LEAST_ROWS) * row }]}
-        nestedScrollEnabled
-      >
+      <ScrollView style={styles.rows} nestedScrollEnabled>
         {events.map((event) => (
           <SidebarEventRow key={event.id} event={event} />
         ))}
@@ -506,7 +575,7 @@ export function TodaySidebar({
   org?: boolean;
 }) {
   return (
-    <SidebarColumn>
+    <SidebarColumn listing>
       <SidebarHead org={org} />
       <SidebarPlaces>
         {PLACES.filter(([tab]) => org || tab === 'Today').map(([label, glyph]) => (
@@ -585,7 +654,7 @@ const styles = StyleSheet.create({
   sunkTags: { width: '45%' },
   column: { width: SIDEBAR_WIDTH, flexGrow: 0 },
   fills: { flexGrow: 1 },
-  list: { flexGrow: 1 },
+  list: { flexGrow: 1, flexBasis: 0 },
   rows: { flexGrow: 1, flexBasis: 0 },
   place: {
     minHeight: tokens.sizeHit,

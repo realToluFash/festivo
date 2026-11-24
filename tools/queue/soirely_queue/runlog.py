@@ -8,6 +8,8 @@ import re
 OWNER = re.compile(r"waiting on (?:the )?owner|owner'?s? (?:decision|call|go-ahead)|"
                    r"needs the owner|for the owner to", re.IGNORECASE)
 
+PARSED = {}
+
 
 def folder(home):
     path = home / "runs"
@@ -21,16 +23,25 @@ def append(home, role, entry):
 
 
 def entries(home, role):
+    """Every run of the role, oldest first. A log is parsed once for as long as it is
+    unchanged: a week of spend alone reads each role's seven times, and a log runs to
+    thousands of lines."""
     path = folder(home) / f"{role}.jsonl"
-    if not path.exists():
+    try:
+        seen = path.stat()
+    except FileNotFoundError:
         return []
-    found = []
-    for line in path.read_text().splitlines():
-        try:
-            found.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return found
+    stamp = (seen.st_mtime_ns, seen.st_size)
+    kept = PARSED.get(path)
+    if not kept or kept[0] != stamp:
+        found = []
+        for line in path.read_text().splitlines():
+            try:
+                found.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        kept = PARSED[path] = (stamp, found)
+    return list(kept[1])
 
 
 def last(home, role):

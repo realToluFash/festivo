@@ -1,0 +1,15 @@
+# sc-85893 the demo's states this story shows
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorSearch
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorSearch-${LAYOUT}-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=doorNoMatch
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: doorNoMatch-${LAYOUT}-demo
+- openLink: ${METRO_URL}/--/demo/guests/check-in?state=walkInDuplicate
+- extendedWaitUntil: { visible: { text: 'Check-in|Add walk-in' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: walkInDuplicate-${LAYOUT}-demo

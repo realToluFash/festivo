@@ -308,6 +308,27 @@ describe('who sees the Budget (sc-85)', () => {
     expect(screen.queryByRole('heading', { name: 'Adaeze and Tunde' })).toBeNull();
     expect(sent.some((one) => one.line === 'GET /api/events/ev_1/budget')).toBe(false);
   });
+
+  it('draws the not available page as its demo does: the event, Not available, Back to Events', async () => {
+    signedIn();
+    const without = OWNER_PERMISSIONS.filter((one) => !one.startsWith('budget.'));
+    serve({}, { permissions: without, at: '/app/events/ev_1/budget/staff-rates' });
+
+    const heading = await screen.findByRole('heading', { name: 'This event is not available' });
+    const crumb = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumb).getByRole('link', { name: 'Adaeze and Tunde' })).toBeTruthy();
+    expect(within(crumb).getByText('Not available')).toBeTruthy();
+    expect(heading.closest('.card')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to Events' }).getAttribute('href')).toBe(
+      '/app/events',
+    );
+    const side = screen.getByRole('navigation', { name: 'Event' });
+    await waitFor(() =>
+      expect(
+        within(side).getByRole('link', { name: 'Overview' }).getAttribute('aria-current'),
+      ).toBe('page'),
+    );
+  });
 });
 
 describe('changing a rate in place (sc-85)', () => {
@@ -711,6 +732,7 @@ describe('the Budget while others change it (sc-85)', () => {
       realtimeTopic('EventBudget', 'ev_1'),
       realtimeTopic('EventHeadcount', 'ev_1'),
       realtimeTopic('EventQuotes', 'ev_1'),
+      realtimeTopic('EventCheckIn', 'ev_1'),
     ]);
 
     return one;
@@ -2141,5 +2163,14 @@ describe('a schedule from the vendor’s terms (sc-1332)', () => {
     expect(
       (within(dialog).getAllByLabelText('Percentage of the quote')[0] as HTMLInputElement).value,
     ).toBe('40');
+  });
+});
+
+describe('the crumbs of the Budget and Staff rates in every language (sc-79848)', () => {
+  it('wraps them whole at word breaks rather than truncating them', () => {
+    expect(cssRule('.bt .ev-crumb ol', BUDGET_CSS)).toContain('flex-wrap: wrap;');
+    expect(cssRule('.bt .ev-crumb-part', BUDGET_CSS)).toContain('min-width: auto;');
+    expect(cssRule('.bt .ev-crumb-part', BUDGET_CSS)).toContain('overflow-wrap: break-word;');
+    expect(cssRule('.bt .ev-crumb-name', BUDGET_CSS)).toContain('white-space: normal;');
   });
 });

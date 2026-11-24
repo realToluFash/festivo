@@ -42,6 +42,11 @@ final readonly class EmailSender implements ChannelSenderInterface
         // Postmark returns X-PM-Metadata-* in its webhooks, which is how a report finds its delivery (MailWebhook).
         $email->getHeaders()->addTextHeader('X-PM-Metadata-delivery', $deliveryId->toRfc4122());
 
+        if (null !== $notification->unsubscribe) {
+            $email->getHeaders()->addTextHeader('List-Unsubscribe', '<' . $notification->unsubscribe . '>');
+            $email->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+        }
+
         $this->mailer->send($email);
 
         return $messageId;

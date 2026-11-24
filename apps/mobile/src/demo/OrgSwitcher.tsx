@@ -35,6 +35,7 @@ import {
   foundedPlace,
   walkFor,
 } from './createOrg/CreateWalk.ts';
+import { linkMoved } from './events/EventLink.ts';
 import { ManagedBanner } from './Managed.tsx';
 import {
   type DropFrame,
@@ -98,6 +99,8 @@ interface Switcher {
   answerInvite: (id: string, yes: boolean) => void;
   /** Open, once joined from no organisation: into it, the notice focused. */
   openJoined: (id: string) => void;
+  /** An event's link from another organisation, once the event has loaded: into it, the notice read where it lands (sc-80863). */
+  linkMove: (id: string) => void;
 }
 
 const SwitcherContext = createContext<Switcher | null>(null);
@@ -337,9 +340,26 @@ export function OrgSwitcherProvider({
     },
     [t],
   );
+  const linkMove = useCallback(
+    (id: string) => {
+      const next = linkMoved(store.session, id);
+      setSession(next);
+      setSwitched({ words: t('switcher.switched', { name: currentPlace(next).name }) });
+    },
+    [t],
+  );
   const switcher = useMemo<Switcher>(
-    () => ({ register, show, openedBy, startWalk, registerStart, answerInvite, openJoined }),
-    [register, show, openedBy, startWalk, registerStart, answerInvite, openJoined],
+    () => ({
+      register,
+      show,
+      openedBy,
+      startWalk,
+      registerStart,
+      answerInvite,
+      openJoined,
+      linkMove,
+    }),
+    [register, show, openedBy, startWalk, registerStart, answerInvite, openJoined, linkMove],
   );
 
   return (
@@ -399,11 +419,15 @@ export function OrgSwitcherProvider({
   );
 }
 
+/** True under the paused page (?held=paused), where the openers name the paused organisation with no role (sc-83881). */
+export const PausedHere = createContext(false);
+
 /** What an opener draws and does; the one drawn first and in view is what ?switcher= opens from. */
 export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
   const { t } = useTranslation();
   const { register, show, openedBy } = useSwitcher();
   const session = useSession();
+  const paused = useContext(PausedHere);
   const place = currentPlace(session);
   const waiting = waitingOf(session);
 
@@ -414,7 +438,7 @@ export function useOrgOpener(ref: OpenerRef, primary = true): OrgOpening {
     name: place.name,
     waiting: waiting > 0 ? t('invitations.count', { count: waiting }) : null,
     expanded: openedBy === ref,
-    label: openerLabel(place, waiting),
+    label: openerLabel(place, waiting, paused),
     onPress: () => show(ref),
   };
 }
@@ -426,6 +450,16 @@ export function useStartWalk(opener: OpenerRef): () => void {
   useEffect(() => registerStart(opener), [registerStart, opener]);
 
   return () => startWalk(opener);
+}
+
+/** An event's link (sc-80863): `start` puts the account in Ire Events, as it was before the link; `move` moves it once the event has loaded. */
+export function useLinkMove(): { start: () => void; move: (id: string) => void } {
+  const { linkMove } = useSwitcher();
+
+  return useMemo(
+    () => ({ start: () => setSession(sessionFor('populated')), move: linkMove }),
+    [linkMove],
+  );
 }
 
 /** The organisation being worked in, or null for someone in none. */

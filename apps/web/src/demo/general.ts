@@ -666,6 +666,10 @@ function general(
   return { to: settingsPath('general', viewer, state), name };
 }
 
+function notice(which: string, name: string): DemoLink {
+  return { to: `${settingsPath('general', VIEWERS.julien)}&notice=${which}`, name };
+}
+
 export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
     name: 'The page',
@@ -675,6 +679,16 @@ export const GENERAL_PAGES: readonly { name: string; states: readonly DemoLink[]
       general(undefined, 'Member, read only', VIEWERS.ana),
       general('heldTwoFactor', 'Admin, held until two-factor', VIEWERS.julien),
       general('heldLinked', 'Admin, held until Google or Apple', VIEWERS.julien),
+    ],
+  },
+  {
+    name: 'The sign-in rules’ notices, above the title row (#87355)',
+    states: [
+      notice('due', 'Two-factor due by a date'),
+      notice('unlinked', 'Read-only until you link Google or Apple'),
+      notice('gate', 'Two-factor required, with Not now'),
+      notice('changed', 'Sign-in rules changed, with Close this notice'),
+      notice('gate,changed&offline', 'Offline, then two notices'),
     ],
   },
   {

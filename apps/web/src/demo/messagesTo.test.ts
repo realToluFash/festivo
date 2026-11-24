@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GUESTS_N, MESSAGE_STATES, MW, sectionsOf, seedOf } from './messages.ts';
+import { POPULATION } from './messagesPopulation.ts';
 import {
   type Audience,
   type Book,
@@ -9,7 +10,6 @@ import {
   BOOK,
   GROUPS,
   LONG_NAME,
-  POPULATION,
   SAVED,
   SAVED_MOST,
   TAKEN_NAME,

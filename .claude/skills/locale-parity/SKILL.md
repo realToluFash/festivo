@@ -50,6 +50,13 @@ Languages have plural rules that are not "one versus everything else".
 It formats in the shown language, not the device region, and English copy is British, so
 "Ana, Ben and Cleo" has no serial comma.
 
+**A term shown mid-sentence comes from one shared helper, never a per-screen
+`toLocaleLowerCase`.** Allergen names are capitalised in the catalogue and lower-cased
+inside a sentence; on the web, `allergensInSentence` in `routes/app/events/allergenWords.ts`
+does that and joins the list. Two screens each lower-casing and joining on their own word
+the same allergy two ways the day one of them changes. Lower-case with the shown language
+(`toLocaleLowerCase(i18n.language)`), never with no argument.
+
 **Check for a key you are about to overwrite.** A namespace can hold both a count called
 `guests` and a heading called `Guests`. Overwriting is silent — the broken one renders as
 its own key path, and no test fails.

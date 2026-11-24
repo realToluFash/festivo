@@ -54,7 +54,8 @@ import {
   reviewProblems,
   sameNameAs,
 } from './GuestsModel.ts';
-import { Amber, AmberLine, Choices, DoneLine } from './GuestsParts.tsx';
+import { Amber, AmberChoices, AmberLine } from '../../components/Amber.tsx';
+import { DoneLine } from './GuestsParts.tsx';
 import { GreetAsField } from './GuestGreetAs.tsx';
 import { LanguageField } from './GuestLanguage.tsx';
 import {
@@ -467,7 +468,7 @@ export function AddGuest({
       </View>
       {same && (
         <Amber title={say.sameName(name.trim())} testID="guests.add.same">
-          <Choices
+          <AmberChoices
             primary
             first={{ label: W.addAnyway, onPress: () => add(true), testID: 'guests.add.anyway' }}
             second={{

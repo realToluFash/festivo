@@ -8,6 +8,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { demoOpens } from './gate.ts';
+import { PASSKEY_WORDS as P } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
 
 const tested = config();
@@ -551,6 +552,16 @@ describe('the demo gets a password back (sc-29064)', () => {
     expect(screen.getByRole('link', { name: /This link has already been used/ })).toBeDefined();
   });
 
+  it('names the passkeys and the app in the lost link at the code step after a passkey (sc-86885)', async () => {
+    await page('?page=code&state=has-passkey', 'Enter your code');
+
+    expect(
+      screen.getByRole('link', {
+        name: 'Lost your passkeys, your authenticator and your recovery codes?',
+      }),
+    ).toBeDefined();
+  });
+
   it('opens from sign-in with the email typed there, and Back returns to that sign-in', async () => {
     await signInBoard('signed-out');
     type('Email', 'ade@ire.events');
@@ -865,6 +876,52 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     ).toBeNull();
   });
 
+  it.each([
+    ['?page=recovery&state=passkeys-only', 'Lost your passkeys and your recovery codes?'],
+    [
+      '?page=recovery&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+    ],
+  ])('names the factors the member has in the lost link, at %s (sc-86885)', async (query, lost) => {
+    await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+
+    expect(screen.getByRole('link', { name: lost })).toBeDefined();
+  });
+
+  it.each([
+    [
+      '?page=recovery&state=passkeys-only',
+      'Lost your passkeys and your recovery codes?',
+      'Get back in without your passkeys',
+      'For when you have lost your passkeys and your recovery codes.',
+    ],
+    [
+      '?page=code&state=has-passkey',
+      'Lost your passkeys, your authenticator and your recovery codes?',
+      'Get back in without your passkeys or authenticator',
+      'For when you have lost your passkeys, your authenticator app and your recovery codes.',
+    ],
+    [
+      '?page=code',
+      'Lost your authenticator and your recovery codes?',
+      'Get back in without your authenticator',
+      'For when you have lost your authenticator app and your recovery codes.',
+    ],
+  ])(
+    'opens the lost page named for the factors the link named, from %s (sc-86885, #87331)',
+    async (query, lost, title, line) => {
+      await page(query, query.includes('recovery') ? 'Enter a recovery code' : 'Enter your code');
+      fireEvent.click(screen.getByRole('link', { name: lost }));
+
+      expect(await screen.findByRole('heading', { name: title })).toBeDefined();
+      expect(screen.getByText(line)).toBeDefined();
+    },
+  );
+
   it('takes a recovery code in any case with the dash put in, and says a used one is used', async () => {
     await page('?page=code', 'Enter your code');
     fireEvent.click(screen.getByRole('link', { name: 'Use a recovery code instead' }));
@@ -1041,6 +1098,28 @@ describe('the demo signs in with two-factor (sc-29063)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
     await wait();
     expect(screen.getByRole('heading', { name: 'Cancelled and signed out' })).toBeDefined();
+  });
+
+  it('says a refused passkey until Use a passkey, and pauses after the fifth with a code still offered (sc-86885)', async () => {
+    await page('?page=passkey&state=refused', P.waitTitle);
+    expect(screen.getByText(P.refused).closest('[role="alert"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+    expect(screen.queryByText(P.refused)).toBeNull();
+
+    for (let refusal = 2; refusal <= TRIES; refusal += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Demo: a passkey that does not work' }));
+      if (refusal < TRIES) {
+        expect(screen.getByText(P.refused)).toBeDefined();
+        fireEvent.click(screen.getByRole('button', { name: P.usePasskey }));
+      }
+    }
+
+    expect(screen.getByText(P.pausedTitle)).toBeDefined();
+    expect(screen.queryByText(P.refused)).toBeNull();
+    expect(screen.getByRole('button', { name: /^Try again at \d{2}:\d{2}$/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: P.useCode })).toBeDefined();
   });
 });
 
@@ -1478,6 +1557,22 @@ describe('the signed-out frame’s foot and ways out (sc-29561)', () => {
     fireEvent.click(screen.getByRole(role, { name }));
     expect(await screen.findByRole('heading', TODAY)).toBeDefined();
     expect(screen.queryByText('New to Soirely?')).toBeNull();
+  });
+
+  it('refuses an invitation to a phone-only account until it adds the email (sc-4235)', async () => {
+    await open('/demo/ways-in?page=invitation&state=no-email', 'Add your email address first');
+
+    expect(
+      screen.getByText(
+        `This invitation is for ${SAMPLE.email}. Add that address to your account and verify it, then accept the invitation.`,
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('+44 ••• ••• 3456')).toBeDefined();
+    expect(screen.queryByText(SAMPLE.email, { selector: 'span' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Add an email address' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Your account' })).toBeDefined();
   });
 
   it('lands A few details saved with no number on Today', async () => {

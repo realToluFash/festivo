@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Variant } from './dishVariants.ts';
+
 import {
   type PicksWorld,
   PICKS_PAGES,
+  PUFF_PUFF,
+  SW,
   asksNothing,
   chooseFor,
+  containsOf,
   courseFigures,
   defaultedOn,
+  dishRuled,
   giveVariant,
   givenDefault,
   goesBackTo,
@@ -19,6 +25,8 @@ import {
   openWords,
   percentOf,
   picksStart,
+  ruledOut,
+  ruledWords,
   samplePicks,
   shownCourses,
   spotOf,
@@ -173,6 +181,40 @@ describe('Needs the host', () => {
   });
 });
 
+describe('Menu changed (sc-3913)', () => {
+  it('lists each person under their party with the course and the pick they kept, and opens Choose for them there', () => {
+    const { world } = picksStart('picksMenuChanged');
+    const listed = whoHasnt(world)
+      .flatMap((one) => one.people)
+      .filter((one) => one.changed.length > 0);
+
+    expect(listed.map((one) => one.person.id)).toEqual([
+      'lucia-ruiz',
+      'louis-martin',
+      'femi-adeyemi',
+    ]);
+    expect(listed[0]?.changed.map((one) => [one.course.id, one.picked])).toEqual([
+      ['k3', 'Puff puff'],
+    ]);
+    expect(listed[0]?.courses.map((one) => one.id)).toEqual(['k3']);
+    expect(openFor(world, person(world, 'lucia-ruiz')).map((one) => one.id)).toEqual(['k3']);
+    expect(courseFigures(world, course(world, 'k3')).changed).toBe(3);
+  });
+
+  it('counts only a stored Menu changed, never a dish pick whose dish has gone', () => {
+    const { world } = picksStart('picksMenuChanged');
+    const k2 = world.picks.k2 ?? {};
+    const [who, pick] = Object.entries(k2).find(([, one]) => one.kind === 'dish') ?? [];
+    if (who == null || pick?.kind !== 'dish') throw new Error('no dish pick on Main');
+    const gone: PicksWorld = {
+      ...world,
+      picks: { ...world.picks, k2: { ...k2, [who]: { ...pick, dishId: 'gone' } } },
+    };
+
+    expect(spotOf(gone, course(gone, 'k2'), person(gone, who)).kind).not.toBe('changed');
+  });
+});
+
 describe('Choose for them', () => {
   it('opens only the courses still open for the person', () => {
     const world = samplePicks();
@@ -308,9 +350,9 @@ describe('a course’s default (sc-1362)', () => {
     );
     expect(names(neverGiven(world))).toEqual(['Bea Mensah', 'Kojo Asante', 'Nadia Petrova']);
     expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
-      'Not chosen: Main · Vegetarian, Dessert',
+      'Not chosen: Main · Vegetarian and Dessert',
       'Not chosen: Main · allergy',
-      'Not chosen: Main · Other diet, Dessert',
+      'Not chosen: Main · Other diet and Dessert',
     ]);
     const listed = whoHasnt(world).flatMap((one) => one.people.map((each) => each.person.name));
     expect(listed).not.toContain('Bea Mensah');
@@ -355,11 +397,99 @@ describe('a course’s default (sc-1362)', () => {
     expect(neverGiven(world).map((one) => openWords(one.open))).toEqual([
       'Not chosen: Main · Vegetarian',
       'Not chosen: Main · allergy',
-      'Not chosen: Main · Other diet, Dessert · Other diet',
+      'Not chosen: Main · Other diet and Dessert · Other diet',
     ]);
   });
 
   it('opens Choose for them on the courses the person was defaulted on', () => {
     expect(picksStart('chooseForDefaulted').opened).toMatchObject({ given: true });
+  });
+});
+
+describe('a dish whose allergens were never stated (sc-87421)', () => {
+  const list = (codes: readonly string[]) => codes.join(' and ');
+  const base = person(samplePicks(), 'kwame-asante');
+  const someone = (allergies: PicksWorld['people'][number]['allergies']) => ({
+    ...base,
+    allergies,
+  });
+  const words = (who: PicksWorld['people'][number]) => {
+    const contains = containsOf(PUFF_PUFF, null, []);
+    return ruledWords(ruledOut(who, contains), contains == null, who.name, list);
+  };
+
+  it('is ruled out, with these words, for a person with one of the 14', () => {
+    expect(containsOf(PUFF_PUFF, null, [])).toBeNull();
+    expect(ruledOut(base, null)).toEqual(['peanuts', 'celery']);
+    expect(words(base)).toBe('Allergens not stated. You can still pick it.');
+  });
+
+  it('is not ruled out for a person with no allergy, or only an Other one', () => {
+    expect(words(someone([]))).toBeNull();
+    expect(words(someone(['other']))).toBeNull();
+  });
+
+  it('words a stated dish as before, including one stated as holding none of the 14', () => {
+    const world = samplePicks();
+    const chinchin = course(world, 'k3').dishes.find((one) => one.id === 'k3-chinchin')!;
+    const ada = person(world, 'ada-obi');
+    const contains = containsOf(chinchin, null, []);
+    expect(ruledWords(ruledOut(ada, contains), contains == null, ada.name, list)).toBe(
+      'Contains milk, which Ada Obi is allergic to. You can still pick it.',
+    );
+    expect(ruledOut(base, containsOf({ ...PUFF_PUFF, contains: 'none' }, null, []))).toEqual([]);
+  });
+
+  it('says not stated for a dish with variants when every Everyone variant is ruled out and one was never stated', () => {
+    const way = (id: string, contains: Variant['contains']): Variant => ({
+      id,
+      name: id,
+      for: 'everyone',
+      contains,
+      diets: [],
+      price: null,
+      pickers: [],
+    });
+    const ways = (...variants: Variant[]) => ({ ...PUFF_PUFF, contains: [], variants });
+
+    expect(dishRuled(ways(way('v-nuts', ['peanuts']), way('v-blank', null)), base, list)).toBe(
+      'Allergens not stated. You can still pick it.',
+    );
+    expect(
+      dishRuled(ways(way('v-nuts', ['peanuts']), way('v-celery', ['celery'])), base, list),
+    ).toBe(
+      'Contains peanuts and celery, which Kwame Asante is allergic to. You can still pick it.',
+    );
+    expect(
+      dishRuled(ways(way('v-nuts', ['peanuts']), way('v-plain', 'none')), base, list),
+    ).toBeNull();
+  });
+
+  it('words the override body and the saved line without a claim about the dish', () => {
+    expect(SW.overrideBodyNotStated('Puff-puff', 'Kwame Asante')).toBe(
+      'Nobody has stated what’s in Puff-puff. If you know it is safe for Kwame Asante, the pick is saved with your name and the time you confirmed it.',
+    );
+    expect(SW.savedOverrideNotStated('Kwame Asante', 'Puff-puff')).toBe(
+      'Recorded as your pick for Kwame Asante, though nobody has stated what’s in Puff-puff.',
+    );
+  });
+
+  it('holds a never-stated pick under Needs the host, saying so', () => {
+    const world = picksStart('picksNotStatedHost').world;
+    const kojo = needsHost(world).find(
+      (one) => one.person.id === 'kojo-asante' && one.course.id === 'k3',
+    );
+    expect(kojo?.reason).toEqual({
+      kind: 'allergy',
+      dish: 'Puff-puff',
+      allergens: ['celery'],
+      notStated: true,
+    });
+    expect(SW.allergyForNotStated('Dessert', 'Puff-puff', 'celery')).toBe(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to celery was recorded after they picked it.',
+    );
+    expect(SW.allergyForNotStated('Dessert', 'Puff-puff', 'peanuts and milk')).toBe(
+      'Dessert: their pick, Puff-puff, has no allergens stated, and their allergy to peanuts and milk was recorded after they picked it.',
+    );
   });
 });

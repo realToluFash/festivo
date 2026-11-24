@@ -1,0 +1,12 @@
+# sc-39534: the app demo's tablet palette with results, alone, so the route mounts fresh. Needs ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/search?state=mixed
+- extendedWaitUntil:
+    visible:
+      id: 'demo.search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: demo-mixed

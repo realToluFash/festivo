@@ -1,5 +1,5 @@
 import type { Membership, OutsideEvent } from '@soirely/api-client';
-import { type InvitationOutcome, isWaiting, waitingInvitations } from '@soirely/domain';
+import { type InvitationOutcome, stillListed, waitingInvitations } from '@soirely/domain';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
@@ -281,7 +281,7 @@ export function switcherSession({
   role: (role: Membership['role']) => string;
 }): Session {
   const invitations = waiting.invitations.filter(
-    (invitation) => isWaiting(waiting.outcomes[invitation.id]) || answeredHere.has(invitation.id),
+    (invitation) => stillListed(waiting.outcomes[invitation.id]) || answeredHere.has(invitation.id),
   );
   const joinedHere = new Set(
     invitations.flatMap((invitation) => {
@@ -311,8 +311,8 @@ export function switcherSession({
       signedInAs: invitation.signedInAs,
     })),
     outcomes: waiting.outcomes,
-    managed: invitations.find((invitation) => waiting.outcomes[invitation.id]?.kind === 'managed')
-      ?.id,
+    managed:
+      expanded != null && waiting.outcomes[expanded]?.kind === 'managed' ? expanded : undefined,
     offer:
       offer.organisation == null
         ? null

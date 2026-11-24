@@ -10,11 +10,11 @@ describe('phonePillAlone', () => {
     expect(phonePillAlone(false, false, false)).toBe(false);
   });
 
-  it('keeps the pill while a screen stands in, where the screen had a primary or on Home', () => {
+  it('keeps the pill on every screen a page stands in for, Settings and Calendar among them', () => {
     expect(phonePillAlone(false, true, true)).toBe(true);
     expect(phonePillAlone(true, true, true)).toBe(true);
     expect(phonePillAlone(true, false, true)).toBe(true);
-    expect(phonePillAlone(false, false, true)).toBe(false);
+    expect(phonePillAlone(false, false, true)).toBe(true);
   });
 });
 

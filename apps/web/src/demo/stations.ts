@@ -164,7 +164,11 @@ export function stationById(state: Stations, id: string): Station | undefined {
   return state.stations.find((one) => one.id === id);
 }
 
-export function dishedAt(state: Stations, courseId: string, item: string): string {
+export function dishedAt(
+  state: Pick<Stations, 'dishedAt'>,
+  courseId: string,
+  item: string,
+): string {
   return state.dishedAt[itemKey(courseId, item)] ?? PASS;
 }
 

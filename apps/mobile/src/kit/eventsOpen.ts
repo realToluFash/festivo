@@ -1,4 +1,5 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import { eventMovesInto } from '@soirely/domain';
 
 /** The event open, and the organisation it was opened in: undefined while the account was still loading. */
 export interface Selection {
@@ -36,6 +37,38 @@ export function openedOf(
     (answer.error.status === 404 || answer.error.status === 403)
     ? { kind: 'notFound' }
     : { kind: 'failed' };
+}
+
+/** Where an event's link may still move the account from: the organisation it was opened in, until the move lands or the person picks another (null), and so once (sc-46032). */
+export interface LinkFrom {
+  eventId: string;
+  from: string | null | undefined;
+}
+
+export function linkFromIn(
+  link: LinkFrom,
+  eventId: string,
+  organisationId: string | undefined,
+): LinkFrom {
+  if (link.eventId !== eventId) return { eventId, from: organisationId };
+  if (link.from === undefined)
+    return organisationId === undefined ? link : { eventId, from: organisationId };
+  if (link.from !== null && link.from !== organisationId) return { eventId, from: null };
+
+  return link;
+}
+
+/** A link to the Overview of an event in another of the account's organisations moves the account there, only from the organisation it was opened in; a link to any other area, or a read after the move or a pick, reads as not found, as on main, since only Overview says the move (sc-80863). */
+export function openedOrMoved(
+  event: OrganisationEvent,
+  holder: string | null,
+  memberships: readonly { id: string }[],
+  overview: boolean,
+  linkFrom: string | null | undefined,
+): { moves: string } | { opened: Opened } {
+  const into = overview && linkFrom === holder ? eventMovesInto(event, holder, memberships) : null;
+
+  return into == null ? { opened: openedOf({ event }, holder) } : { moves: into };
 }
 
 /** Settled without asking the API: loading until the account has loaded, then not found with no organisation; a Member's other events are the API's 404 (sc-29914). */

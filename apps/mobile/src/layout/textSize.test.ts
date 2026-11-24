@@ -9,6 +9,7 @@ import {
   drawnLine,
   drawnSize,
   besideGlyph,
+  besideGlyphInPill,
   fitWidest,
   grownPad,
   labelStart,
@@ -230,6 +231,27 @@ describe('besideGlyph, Sign out at the foot of Settings (sc-66900)', () => {
 
   it('never draws the label under the default size', () => {
     expect(besideGlyph(16, 49.92, 2000, glyph, inside)).toBe(16);
+  });
+});
+
+describe('besideGlyphInPill, Sign out on one line in its pill (sc-84920)', () => {
+  const inside = 362 - 2 * (20 + 1.5) - 8;
+  const glyph = 18 / 16;
+  const inPill = (start: number) =>
+    besideGlyphInPill({
+      size: 16,
+      start,
+      wrap: { pieces: [[2.1 * start], [1.6 * start]], space: 0.25 * start },
+      glyph,
+      beside: 8,
+      width: 362,
+      sides: 20 + 1.5,
+      pad: grownPad(52, 16, 1.5) + 1.5,
+      ring: 1.5,
+    });
+
+  it.each([16, 16 * 2.14])('sizes a one-line label at %d as besideGlyph does', (start) => {
+    expect(inPill(start)).toBe(besideGlyph(16, start, 2.1 * start, glyph, inside));
   });
 });
 

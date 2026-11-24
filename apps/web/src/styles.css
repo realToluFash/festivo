@@ -13,6 +13,7 @@
  * for the design rather than a number to invent.
  */
 
+@import url('./fonts.css');
 @import url('./tokens.css');
 @import url('./brand.css');
 
@@ -2374,53 +2375,14 @@ span {
 
 /* ── The sign-in rule notices and the overdue card (sc-23252) ─────────────── */
 
-.shell-content > .notice-rule:has(+ :not(.notice)) {
+.shell-content > .rn-box:has(+ :not(.rn-box)) {
   margin-bottom: var(--space3xl);
-}
-
-.notice-rule .notice-body {
-  flex: 1;
-  min-width: 0;
-  gap: var(--spaceSm);
-}
-
-.notice-words {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  max-width: 47.5rem;
-  border-radius: var(--radiusCheckbox);
-  font: var(--typeBody);
 }
 
 /* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
 [data-notice-landing]:focus {
   outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
-}
-
-.notice-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXxs) var(--spaceSm);
-}
-
-.notice-actions .button {
-  padding: var(--spaceMd) var(--spaceXl);
-  overflow-wrap: anywhere;
-}
-
-.notice-text-action {
-  max-width: 100%;
-  padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusPill);
-  line-height: 1.3;
-  text-align: start;
-}
-
-.notice-text-action:hover {
-  background: var(--colorInsetBorder);
 }
 
 .two-factor-overdue {
@@ -2462,7 +2424,7 @@ span {
 }
 
 @media (width <= 40rem) {
-  .shell-content > .notice-rule:has(+ :not(.notice)) {
+  .shell-content > .rn-box:has(+ :not(.rn-box)) {
     margin-bottom: var(--spaceXl);
   }
 
@@ -4997,254 +4959,6 @@ button.members-row {
   text-align: center;
 }
 
-.notifications-panel {
-  position: absolute;
-  top: calc(100% + var(--spaceSm));
-  left: 0;
-  z-index: 6;
-  display: flex;
-  flex-direction: column;
-  width: 24rem;
-  max-width: calc(100vw - 48px);
-  max-height: 80vh;
-  overflow-y: auto;
-  background: var(--colorCard);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  box-shadow: var(--shadowPopover);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-/* It opens from the header band's or the title row's end, so it reaches back across the page. */
-:is(.shell-band, .notifications.is-desk) .notifications-panel {
-  right: 0;
-  left: auto;
-}
-
-.notifications-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spaceSm);
-  padding: var(--spaceLg) var(--spaceXl);
-  border-bottom: var(--borderCard);
-}
-
-.notifications-header h2 {
-  flex: none;
-  margin: 0;
-  font: var(--typeTitleSection);
-}
-
-.notifications-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceXs) var(--spaceMd);
-}
-
-/* The feed's own band (sc-27096): under the popover's header, at its width, with the popover's sides. */
-.notifications-band {
-  flex: none;
-  margin: 0;
-  padding-inline: var(--spaceXl);
-}
-
-.notifications-band.still {
-  animation: none;
-}
-
-.notifications-header .link-button {
-  text-align: start;
-}
-
-.notifications-header [aria-disabled='true'] {
-  color: var(--colorInkSecondary);
-  cursor: default;
-}
-
-.notifications-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.notifications-list[aria-busy='true'] {
-  padding-block: var(--spaceSm);
-}
-
-.notification-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceXxs);
-  width: 100%;
-  min-height: var(--sizeHit);
-  padding: var(--spaceLg) var(--spaceXl);
-  border: 0;
-  background: var(--colorCard);
-  color: var(--colorInk);
-  font: var(--typeBody);
-  text-align: left;
-  overflow-wrap: anywhere;
-  cursor: pointer;
-}
-
-.notification-item:hover {
-  background: var(--colorInset);
-}
-
-.notification-title {
-  font: var(--typeBodyPhone);
-}
-
-.notification-item.unread .notification-title {
-  font-weight: 700;
-}
-
-.notification-where {
-  font: var(--typeMeta);
-  color: var(--colorInkSecondary);
-}
-
-.notification-marks {
-  display: flex;
-  gap: var(--spaceLg);
-  font: var(--typeMeta);
-}
-
-.notification-unread,
-.notification-muted {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceXxs);
-}
-
-.notification-unread {
-  color: var(--colorAccentText);
-  font-weight: 600;
-}
-
-.notification-muted {
-  color: var(--colorInkSecondary);
-}
-
-.notification-muted .bell-mark {
-  width: 14px;
-  height: 14px;
-}
-
-.notification-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radiusPill);
-  background: var(--colorAccent);
-}
-
-.notification-gone {
-  margin: 0;
-  padding: 0 var(--spaceXl) var(--spaceLg);
-  font: var(--typeSmall);
-  color: var(--colorInkSecondary);
-}
-
-.notifications-skeleton {
-  height: 64px;
-  margin: var(--spaceSm) var(--spaceXl);
-  border-radius: var(--radiusSmall);
-  background: var(--colorInset);
-  animation: skeleton-pulse var(--motionPulse) ease-in-out var(--motionPulseTimes);
-}
-
-.notifications-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spaceSm);
-  padding: var(--space3xl) var(--spaceXl);
-  color: var(--colorInkSecondary);
-  text-align: center;
-}
-
-.notifications-empty p {
-  margin: 0;
-}
-
-.notifications-failed {
-  margin: var(--spaceLg) var(--spaceXl);
-  padding: var(--spaceLg);
-  animation: drop-in var(--motionFast) var(--motionEase);
-}
-
-.notifications-failed .notice-body {
-  flex: 1;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.notifications-failed .notice-title {
-  font: var(--typeBody);
-  font-weight: 600;
-}
-
-/* The bell's two failure lines, Mark all read's and Show more's. */
-.notifications-failure-line {
-  gap: var(--spaceSm);
-  padding: var(--spaceMd) var(--spaceLg);
-  border-radius: var(--radiusRow);
-  color: var(--colorAttentionText);
-  font: var(--typeBody);
-  font-weight: 600;
-  animation: drop-in var(--motionFast) var(--motionEase);
-}
-
-.notifications-panel > .notifications-failure-line {
-  flex: none;
-  margin: var(--spaceLg) var(--spaceXl) 0;
-}
-
-.notifications-failure-line .mark {
-  width: var(--sizeMark);
-  height: var(--sizeMark);
-  background: var(--colorAttention);
-  color: var(--colorInkOnDark);
-}
-
-.notifications-failure-line p {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-}
-
-.notifications-more {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--spaceSm);
-  padding: var(--spaceSm) var(--spaceXl);
-  border-top: var(--borderCard);
-}
-
-.notifications-more button {
-  min-height: var(--sizeHit);
-}
-
-.notifications-more p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.notifications-settings {
-  display: flex;
-  align-items: center;
-  min-height: var(--sizeHit);
-  padding: 0 var(--spaceXl);
-  border-top: var(--borderCard);
-  color: var(--colorAccentText);
-  font: var(--typeButton);
-  text-decoration: none;
-}
-
 /* One card with no padding of its own: the blocked line is an inset band, rows divide, the footer sits under a rule. */
 .card.notification-settings {
   gap: 0;
@@ -5322,19 +5036,6 @@ button.members-row {
   border-top: var(--borderInset);
   font: var(--typeSmall);
   color: var(--colorInkSecondary);
-}
-
-.notification-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spaceXs);
-  min-width: 88px;
-  min-height: var(--sizeHit);
-}
-
-.notification-switch span {
-  overflow-wrap: normal;
-  white-space: nowrap;
 }
 
 /* The checkbox lies over the pill it draws, so a click and Space still switch it. */
@@ -5423,12 +5124,6 @@ button.members-row {
   .notification-settings-grid .notification-settings-channel {
     padding-inline: var(--spaceXxs);
     text-align: center;
-  }
-
-  .notification-switch {
-    flex-direction: column;
-    justify-content: center;
-    min-width: var(--sizeHit);
   }
 
   .notification-settings-switch {
@@ -5526,163 +5221,6 @@ button.members-row {
   .notification-settings-grid tbody td:nth-child(3) {
     grid-column: 3;
   }
-}
-
-.notification-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  border-top: var(--borderInset);
-}
-
-.notification-row > :not(.notification-item, .notification-more) {
-  grid-column: 1 / -1;
-}
-
-.notification-more {
-  width: var(--sizeHit);
-  height: var(--sizeHit);
-  margin: var(--spaceSm) var(--spaceSm) 0 0;
-  border: 0;
-  border-radius: var(--radiusNav);
-  background: var(--colorCard);
-  color: var(--colorInk);
-  cursor: pointer;
-}
-
-.notification-more:hover {
-  background: var(--colorInset);
-}
-
-.notification-mute {
-  padding: var(--spaceSm) var(--spaceXl) var(--spaceLg);
-  background: var(--colorInset);
-  animation: rise-in var(--motionBase) var(--motionEase);
-}
-
-.notification-switch-track {
-  display: none;
-}
-
-/* In More the name comes first and the switch is drawn at the row's end; the checkbox lies over the row, so a click and Space still switch it. */
-.notification-mute .notification-switch {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  gap: var(--spaceLg);
-  font: var(--typeButton);
-}
-
-.notification-mute .notification-switch input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.notification-mute .notification-switch input:disabled,
-.notification-mute .notification-switch input[aria-disabled='true'] {
-  cursor: default;
-}
-
-.notification-mute .notification-switch-name {
-  flex: 1;
-  order: -1;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.notification-mute .notification-switch-track {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  width: var(--sizeToggleW);
-  height: var(--sizeToggleH);
-  padding: var(--spaceHair);
-  border-radius: var(--radiusPill);
-  background: var(--colorMarkEmpty);
-  transition: background var(--motionBase) var(--motionEase);
-}
-
-.notification-mute .notification-switch-knob {
-  width: var(--sizeToggleKnob);
-  height: var(--sizeToggleKnob);
-  border-radius: var(--radiusPill);
-  background: var(--colorCard);
-  box-shadow: var(--shadowKnob);
-  transition: transform var(--motionBase) var(--motionEase);
-}
-
-.notification-mute .notification-switch:has(input:checked) .notification-switch-track {
-  background: var(--colorAccent);
-}
-
-.notification-mute .notification-switch:has(input:checked) .notification-switch-knob {
-  transform: translateX(calc(var(--sizeToggleW) - var(--sizeToggleKnob) - var(--spaceHair) * 2));
-}
-
-.notification-mute .notification-switch:has(input:disabled) .notification-switch-track {
-  background: var(--colorInset);
-  box-shadow: inset 0 0 0 1px var(--colorBorder);
-}
-
-.notification-mute .notification-switch:has(input:disabled) .notification-switch-knob {
-  background: var(--colorBorder);
-}
-
-.notification-mute .notification-switch:has(input:focus-visible) .notification-switch-track {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .notifications-panel,
-  .notification-mute,
-  .notifications-failure-line,
-  .notifications-failed {
-    animation-name: fade-in;
-  }
-
-  .notifications-skeleton {
-    animation: none;
-  }
-
-  .notification-mute .notification-switch-track,
-  .notification-mute .notification-switch-knob {
-    transition: none;
-  }
-}
-
-.notifications-push-ask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spaceSm);
-  margin: var(--spaceLg) var(--spaceXl) 0;
-  padding: var(--spaceLg);
-  border: var(--borderCard);
-  border-radius: var(--radiusCardDesktop);
-  background: var(--colorInset);
-}
-
-.notifications-push-ask h3,
-.notifications-push-ask p {
-  margin: 0;
-}
-
-.notifications-push-ask h3 {
-  font: var(--typeRowTitle);
-  font-weight: 700;
-}
-
-.notifications-push-ask-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--spaceLg);
 }
 
 /* ── Toast (sc-22092): the dark surface, its Undo a text action on it ───────── */

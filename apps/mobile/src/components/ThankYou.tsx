@@ -22,6 +22,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
 import { type AskProps, FocusedScreen, Section, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 
@@ -204,14 +205,21 @@ export function ThankYouScreen({
     setDiscarding(false);
     onClose();
   };
+  const leaves = useLeaveAsk(open && changed && !busy, () => setDiscarding(true), close);
   const discard: AskProps | null = discarding
     ? {
         title: t('thankYou.discardTitle'),
         line: t('thankYou.discardLine'),
         keep: { label: t('eventEdit.keepEditing'), testID: 'event.thankYou.keep' },
         confirm: { label: t('thankYou.discard'), testID: 'event.thankYou.discard', removes: true },
-        onKeep: () => setDiscarding(false),
-        onConfirm: close,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
 
@@ -228,6 +236,7 @@ export function ThankYouScreen({
     api.setThankYou(event.id, draft).then(
       ({ event: saved }) => {
         setBusy(false);
+        leaves.release();
         onChange(saved);
         onClose();
         if (said != null) onSaid(t(said));
@@ -252,7 +261,7 @@ export function ThankYouScreen({
         testID: 'event.thankYou.save',
       }}
       waits={busy}
-      onCancel={() => (changed ? setDiscarding(true) : close())}
+      onCancel={() => leaves.leave()}
       cancelTestID="event.thankYou.cancel"
       opener={opener}
       ask={discard}

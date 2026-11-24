@@ -91,7 +91,7 @@ export function TitleRow({
 
   return (
     <>
-      {!topped && desk.offline}
+      {!topped && desk.above}
       <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
         <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
           {title}
@@ -118,7 +118,7 @@ export function BackRow({
 
   return (
     <>
-      {desk.offline}
+      {desk.above}
       <div className="desk-top">
         <button type="button" className="desk-back" onClick={onBack}>
           <Glyph name="back" size={17} weight={2.4} />

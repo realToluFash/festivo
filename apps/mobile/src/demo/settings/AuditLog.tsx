@@ -22,6 +22,7 @@ import {
   SummaryCard,
   TextAction,
 } from '../../components/Summary.tsx';
+import { openOnceSettled } from '../menuSettles.ts';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -56,6 +57,7 @@ import { memberLooking } from './sample.ts';
 import { SummaryPage } from './SummaryPage.tsx';
 import { pageStateOf } from './EnterpriseAsk.ts';
 import { EnterpriseStep } from './EnterpriseStep.tsx';
+import { withFrom } from '../events/opener.ts';
 
 /** A linked menu opens once the page has laid out, from its button. */
 const MENU_AFTER_MS = 600;
@@ -114,7 +116,7 @@ function AuditPage({ start }: { start: AuditStart }) {
     );
 
   const entry = entryOf(open);
-  const openEvent = (href: string) => router.push(href as Href);
+  const openEvent = (href: string) => router.push(withFrom(href, 'audit') as Href);
 
   if (phone && entry != null)
     return (
@@ -210,10 +212,7 @@ function AuditPage({ start }: { start: AuditStart }) {
           say={say}
           lang={start.lang}
           opener={opener}
-          onEvent={(id) => {
-            setOpen(null);
-            openEvent(id);
-          }}
+          onEvent={openEvent}
           onClose={() => setOpen(null)}
         />
       )}
@@ -324,9 +323,7 @@ function MenuButton({
 
   useEffect(() => {
     if (!open || at != null) return;
-    const wait = setTimeout(() => anchorUnder(trigger, setAt), MENU_AFTER_MS);
-
-    return () => clearTimeout(wait);
+    return openOnceSettled((then) => anchorUnder(trigger, then), setAt, MENU_AFTER_MS);
   }, [open, at]);
 
   const close = () => {

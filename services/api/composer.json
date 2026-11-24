@@ -114,6 +114,7 @@
         }
     },
     "require-dev": {
+        "brianium/paratest": "^7.8",
         "carthage-software/mago": "^1.57",
         "dama/doctrine-test-bundle": "^8.7",
         "doctrine/doctrine-fixtures-bundle": "^4.3",

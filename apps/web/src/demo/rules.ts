@@ -240,6 +240,11 @@ export const GET_BACK_IN_PAGES: { name: string; states: { name: string; to: stri
     name: 'A code first',
     states: [
       { name: 'Enter your code', to: backIn('code') },
+      { name: 'A passkey first (sc-86885)', to: backIn('code-passkey') },
+      { name: 'A passkey after a cancel', to: backIn('code-passkey', 'cancelled') },
+      { name: 'A passkey first, passkeys only', to: backIn('code-passkey', 'passkeys-only') },
+      { name: 'The code, after a passkey', to: backIn('code', 'has-passkey') },
+      { name: 'No passkeys in this browser', to: backIn('code', 'no-passkeys') },
       { name: 'Contact Soirely support', to: backIn('support') },
     ],
   },
@@ -266,9 +271,31 @@ export const TWO_FACTOR_PAGES: { name: string; states: { name: string; to: strin
     ],
   },
   {
+    name: 'A passkey (sc-86885)',
+    states: [
+      { name: 'The waiting state, the sheet open', to: twoFactorAt('passkey') },
+      { name: 'After a cancel', to: twoFactorAt('passkey', 'cancelled') },
+      { name: 'A refused passkey', to: twoFactorAt('passkey', 'refused') },
+      { name: 'Paused after five refused passkeys', to: twoFactorAt('passkey', 'paused') },
+      { name: 'With the app, Use a code instead', to: twoFactorAt('code', 'has-passkey') },
+      { name: 'With the app, a recovery code', to: twoFactorAt('recovery', 'has-passkey') },
+      {
+        name: 'Passkeys only, Use a code instead',
+        to: twoFactorAt('recovery', 'passkeys-only'),
+      },
+      { name: 'No passkeys in this browser, the app', to: twoFactorAt('code', 'no-passkeys') },
+      {
+        name: 'No passkeys in this browser, passkeys only',
+        to: twoFactorAt('recovery', 'no-passkeys-passkeys-only'),
+      },
+    ],
+  },
+  {
     name: 'Lost authenticator',
     states: [
       { name: 'Start', to: twoFactorAt('start') },
+      { name: 'Start, passkeys only (sc-86885)', to: twoFactorAt('start', 'passkeys-only') },
+      { name: 'Start, passkeys and the app (sc-86885)', to: twoFactorAt('start', 'both') },
       { name: 'Start, no verified phone', to: twoFactorAt('start', 'email-only') },
       { name: 'Sending the code', to: twoFactorAt('start', 'email-only-sending') },
       { name: 'Too many requests', to: twoFactorAt('start', 'limited') },
@@ -335,6 +362,10 @@ export const WAYS_IN_PAGES: { name: string; states: { name: string; to: string }
       { name: 'Withdrawn', to: way('invitation', 'withdrawn') },
       { name: 'Already declined', to: way('invitation', 'declined') },
       { name: 'Not yours', to: way('invitation', 'not-yours') },
+      {
+        name: 'A phone-only account: Add your email address first',
+        to: way('invitation', 'no-email'),
+      },
       { name: 'Deleted', to: way('invitation', 'deleted') },
     ],
   },

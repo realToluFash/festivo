@@ -1,5 +1,6 @@
 {
   "es": [
+    "web:staffRates.hoursMinutes",
     "web:app.name",
     "web:orgGeneral.title",
     "mobile:app.name",
@@ -58,9 +59,13 @@
     "mobile:auditLog.csv",
     "mobile:auditLog.jsonLines",
     "messagesCounts:audit.value.baby_shower",
-    "messagesCounts:audit.field.plan"
+    "messagesCounts:audit.field.plan",
+    "messagesCounts:guestReplies.push.title",
+    "web:eventForm.creditStadia",
+    "mobile:eventForm.creditStadia"
   ],
   "fr": [
+    "web:staffRates.hoursMinutes",
     "web:nav.menu",
     "web:menuLibrary.desc",
     "mobile:app.name",
@@ -223,9 +228,16 @@
     "messagesCounts:audit.value.baby_shower",
     "messagesCounts:audit.field.type",
     "messagesCounts:audit.field.format",
-    "messagesCounts:audit.value.invitation"
+    "messagesCounts:audit.value.invitation",
+    "messagesCounts:guestReplies.push.title",
+    "web:seePicks.side",
+    "web:kitchenSheet.allergies",
+    "messagesCounts:kitchen_sheet.allergies",
+    "web:eventForm.creditStadia",
+    "mobile:eventForm.creditStadia"
   ],
   "pt": [
+    "web:staffRates.hoursMinutes",
     "web:seating.shapeCocktailShort",
     "web:nav.menu",
     "web:app.name",
@@ -285,6 +297,9 @@
     "web:auditLog.formats.csv",
     "web:auditLog.formats.jsonl",
     "mobile:auditLog.csv",
-    "mobile:auditLog.jsonLines"
+    "mobile:auditLog.jsonLines",
+    "messagesCounts:guestReplies.push.title",
+    "web:eventForm.creditStadia",
+    "mobile:eventForm.creditStadia"
   ]
 }

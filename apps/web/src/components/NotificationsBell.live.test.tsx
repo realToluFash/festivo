@@ -131,6 +131,24 @@ describe("the web bell's live line (sc-3980)", () => {
     expect(await screen.findByRole('button', { name: 'Notifications, 2 unread' })).toBeTruthy();
   });
 
+  it('an item of a category it does not know arrives with the bell open, and a read elsewhere clears its Unread (sc-84143)', async () => {
+    feedAnswers(async () => json(page([])));
+    bell();
+    const source = await line();
+    source.open();
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications' }));
+
+    source.publish({ ...item('n', { category: 'venue_news' }), unreadCount: 1 });
+
+    expect(await screen.findByRole('button', { name: 'Notifications, 1 unread' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Item n .* Unread$/ })).toBeTruthy();
+
+    source.publish({ readId: 'n', unreadCount: 0 });
+
+    expect(await screen.findByRole('button', { name: 'Notifications' })).toBeTruthy();
+    expect(screen.queryByText('Unread')).toBeNull();
+  });
+
   it('a read made in another session reads the row, and Mark all read there clears the badge', async () => {
     feedAnswers(async () => json(page([item('b'), item('a')])));
     bell();
@@ -326,7 +344,7 @@ describe('the live line beside the offline band (sc-27096)', () => {
     return state;
   }
 
-  const band = () => document.querySelector('.notifications-band');
+  const band = () => document.querySelector('.bell-band');
 
   async function offlineWithBand() {
     const state = serving();

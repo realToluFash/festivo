@@ -57,12 +57,14 @@ import {
   TOOLS_BUTTON,
   MENU_ONBOARDED,
   SCREEN_READER_OFF,
+  TEXT_SIZE_RESET,
   STYLUS_HANDWRITING_OFF,
   driverBuilds,
   driverPids,
   leftDriverSay,
   clearForBatch,
   bundlerArgs,
+  bundlerGroups,
   bundlerEnv,
   commitTarget,
   checkId,
@@ -74,6 +76,7 @@ import {
   parseBatch,
   parseCode,
   parseVars,
+  checkOrientation,
   readyReport,
   accountKind,
   REBUILD,
@@ -156,6 +159,11 @@ import {
   lanProxy,
   lanAddress,
   qaConfig,
+  browserHostOf,
+  defaultBrowserHost,
+  savedBrowserHost,
+  configFor,
+  BROWSER_HOST_FILE,
   qrPng,
   APP_SERVICES,
   launchVideo,
@@ -212,6 +220,10 @@ describe('the QA .env', () => {
 
   it('names its own compose project', () => {
     expect(values.COMPOSE_PROJECT_NAME).toBe(COMPOSE_PROJECT);
+  });
+
+  it('asks the address stand-in, never the public Nominatim server (sc-80880)', () => {
+    expect(values.ADDRESS_ENDPOINT).toBe('http://smocker:8080/nominatim');
   });
 
   it('moves every port the example publishes', () => {
@@ -393,6 +405,93 @@ describe('the stack a person tests on', () => {
     }
   });
 
+  it('moves what a browser reaches to the browser host, and leaves the app on 127.0.0.1', () => {
+    for (const tester of TESTERS) {
+      const host = defaultBrowserHost(tester);
+      const { ports, urls, browser, overrides, app } = qaConfig(tester, undefined, {
+        browserHost: host,
+      });
+      const named = (port) => `http://${host}:${ports[port]}`;
+      const address = (port) => `http://127.0.0.1:${ports[port]}`;
+
+      expect(urls.web).toBe(named('WEB_PORT'));
+      expect(overrides.CORS_WEB_ORIGIN).toBe(named('WEB_PORT'));
+      expect(overrides.SOIRELY_API_URL).toBe(named('API_PORT'));
+      expect(browser.api).toBe(named('API_PORT'));
+      expect(overrides.SOIRELY_MERCURE_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_PUBLIC_URL).toBe(`${named('MERCURE_PORT')}/.well-known/mercure`);
+      expect(overrides.MERCURE_CORS_ORIGINS.split(' ')).toEqual([
+        named('WEB_PORT'),
+        address('METRO_PORT'),
+      ]);
+      expect(overrides.SOIRELY_GOOGLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/google/authorize`);
+      expect(overrides.SOIRELY_APPLE_AUTHORIZE_URL).toBe(`${named('OIDC_PORT')}/apple/authorize`);
+      for (const provider of ['google', 'apple']) {
+        const issuers = overrides[`OAUTH_${provider.toUpperCase()}_ISSUERS`].split(',');
+        expect(issuers).toContain(`${named('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`${address('OIDC_PORT')}/${provider}`);
+        expect(issuers).toContain(`http://oidc:8080/${provider}`);
+      }
+
+      expect(urls.api).toBe(address('API_PORT'));
+      expect(overrides.STORAGE_PUBLIC_ENDPOINT).toBe(address('STORAGE_PORT'));
+      expect(overrides.OAUTH_APPLE_RETURN_URI).toMatch(new RegExp(`^${address('API_PORT')}/`));
+      expect(overrides.CORS_EXPO_WEB_ORIGIN).toBe(address('METRO_PORT'));
+      for (const value of Object.values(app)) expect(value).not.toContain(host);
+      expect(app).toEqual(qaConfig(tester).app);
+    }
+  });
+
+  it('changes nothing for a stack with no browser host', () => {
+    for (const tester of TESTERS) {
+      const { overrides, browser } = qaConfig(tester);
+      expect(Object.values(overrides).join(' ')).not.toContain('localhost');
+      expect(browser.api).toBe(qaConfig(tester).urls.api);
+      expect(overrides.OAUTH_GOOGLE_ISSUERS).toBe(
+        `http://127.0.0.1:${qaConfig(tester).ports.OIDC_PORT}/google,http://oidc:8080/google`,
+      );
+    }
+  });
+
+  it('takes localhost or a name under it as the browser host, and nothing else', () => {
+    expect(defaultBrowserHost(3)).toBe('qa3.localhost');
+    expect(browserHostOf(' QA2.localhost\n')).toBe('qa2.localhost');
+    expect(browserHostOf('localhost')).toBe('localhost');
+    for (const bad of ['127.0.0.1', 'qa2.example.com', 'localhost.evil', 'qa2..localhost', '']) {
+      expect(() => browserHostOf(bad), bad).toThrow(/not localhost/);
+    }
+    expect(() => qaConfig(LAN, '192.168.1.40', { browserHost: 'qa.localhost' })).toThrow(
+      /no browser host/,
+    );
+  });
+
+  it('reads the browser host a tester turned on from the worktree, and none when unset', () => {
+    const files = { [`/qa2/${BROWSER_HOST_FILE}`]: 'qa2.localhost\n' };
+    const read = (path) => {
+      if (path in files) return files[path];
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    expect(savedBrowserHost('/qa2', read)).toBe('qa2.localhost');
+    expect(savedBrowserHost('/qa3', read)).toBeNull();
+    files[`/qa4/${BROWSER_HOST_FILE}`] = 'qa4.example.com';
+    expect(() => savedBrowserHost('/qa4', read)).toThrow(/not localhost/);
+  });
+
+  it('keeps a saved browser host for a simulated stack, and the lan stack ignores it', () => {
+    const read = (path) => {
+      if (path.endsWith(BROWSER_HOST_FILE)) return 'qa2.localhost\n';
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const missing = () => {
+      throw Object.assign(new Error('missing'), { code: 'ENOENT' });
+    };
+    const saved = configFor(2, '/qa2', read);
+    expect(saved.browserHost).toBe('qa2.localhost');
+    expect(saved.urls.web).toContain('qa2.localhost');
+    expect(configFor(2, '/qa2', missing).browserHost).toBeNull();
+    expect(configFor(LAN, '/lan', read).browserHost).toBeNull();
+  });
+
   it('puts the proxy on every proxied port and takes those ports off the services', () => {
     const { ports } = qaConfig(LAN, '192.168.1.40');
     const { caddyfile, compose } = lanProxy(ports, '192.168.1.40', '/ca', 'AB:CD');
@@ -513,6 +612,23 @@ describe('the bundler command', () => {
       '18081',
       '--clear',
     ]);
+  });
+});
+
+describe('ios --stop', () => {
+  it("stops only the group listening on this tester's own port", () => {
+    const asked = [];
+    const look = (command, args) => {
+      asked.push([command, ...args].join(' '));
+      if (command === 'lsof') return '4101\n4102';
+      return { 4101: ' 4100', 4102: '4100' }[args.at(-1)];
+    };
+    expect(bundlerGroups(38081, look)).toEqual([4100]);
+    expect(asked[0]).toBe('lsof -nP -t -iTCP:38081 -sTCP:LISTEN');
+  });
+
+  it('stops nothing when no bundler listens', () => {
+    expect(bundlerGroups(38081, () => null)).toEqual([]);
   });
 });
 
@@ -676,6 +792,18 @@ describe('the screen reader on an emulator android opens', () => {
 
   it('says so, so a tester turns it on again', () => {
     expect(ANDROID_START[off].say).toMatch(/TalkBack is off/);
+  });
+});
+
+describe('the text size on an emulator android opens', () => {
+  const at = (name) => ANDROID_START.findIndex((part) => part.name === name);
+
+  it('goes back to default before Expo Go is launched, and says so', () => {
+    const reset = ANDROID_START[at('text size reset')];
+    expect(reset.adb).toBe(TEXT_SIZE_RESET);
+    expect(TEXT_SIZE_RESET).toEqual([['shell', 'settings', 'put', 'system', 'font_scale', '1.0']]);
+    expect(at('text size reset')).toBeLessThan(at('Expo Go launched'));
+    expect(reset.say).toMatch(/Text size is back to default/);
   });
 });
 
@@ -2130,6 +2258,24 @@ describe('an account line', () => {
   });
 });
 
+describe('an ORIENT', () => {
+  it('refuses a bare LANDSCAPE, which Maestro knows only when it turns the device', () => {
+    expect(() => parseBatch(['tour', 'home', 'ORIENT=LANDSCAPE'])).toThrow(/LANDSCAPE_LEFT/);
+  });
+
+  it("takes Maestro's own four, a lowercase label and none at all", () => {
+    for (const orient of [
+      'PORTRAIT',
+      'LANDSCAPE_LEFT',
+      'LANDSCAPE_RIGHT',
+      'UPSIDE_DOWN',
+      'landscape',
+    ])
+      expect(() => checkOrientation({ ORIENT: orient })).not.toThrow();
+    expect(() => checkOrientation({})).not.toThrow();
+  });
+});
+
 describe('the code command', () => {
   it('reads whose code from the account line', () => {
     expect(parseCode(['EMAIL=a@b.test', 'TOTP_SECRET=GEZDGNBV'])).toEqual({
@@ -3568,6 +3714,8 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].steps.invitedTitle).toMatch(landed);
         expect(invitation.replace('{{email}}', 'qa@\u200Bsoirely.test')).toMatch(namesAccount);
         expect(invitation.replace('{{email}}', 'other@soirely.test')).not.toMatch(namesAccount);
+        expect(catalogues[code].accessPaused.badge).toMatch(landed);
+        expect(catalogues[code].accessPaused.badge).toMatch(namesAccount);
       }
       const detailsAt = signOut.indexOf('file: ../sign-out-from-complete-profile.yaml');
       expect(detailsAt).toBeGreaterThan(-1);
@@ -3622,13 +3770,13 @@ describe('the flows a batch runs', () => {
         expect(catalogues[code].todayScreen.tab.today).toMatch(someoneSignedIn);
       }
       for (const flow of ['session', 'sign-in-form']) {
-        const toSettings = new RegExp(
-          `^(?:${readFileSync(join(target, `batch/${flow}.yaml`), 'utf8')
-            .match(/when:\s+visible: '(.*)'\s+file: to-settings\.yaml/)[1]
-            .replaceAll("''", "'")})$`,
+        const [, paused, today] = readFileSync(join(target, `batch/${flow}.yaml`), 'utf8').match(
+          /when:\s+notVisible: '(.*)'\s+visible: '(.*)'\s+file: to-settings\.yaml/,
         );
+        const pattern = (alternatives) => new RegExp(`^(?:${alternatives.replaceAll("''", "'")})$`);
         for (const code of ['en', 'es', 'fr', 'pt']) {
-          expect(catalogues[code].todayScreen.tab.today).toMatch(toSettings);
+          expect(catalogues[code].todayScreen.tab.today).toMatch(pattern(today));
+          expect(catalogues[code].accessPaused.badge).toMatch(pattern(paused));
         }
       }
       const atSettings = new RegExp(
@@ -3743,6 +3891,46 @@ describe('a check that runs a sibling check', () => {
       expect(readFileSync(join(checks, 'outer.en.once.inner.flow.yaml'), 'utf8')).toContain(
         "'Hello'",
       );
+    } finally {
+      rmSync(source, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true });
+    }
+  });
+
+  it('rewrites the file of an inline runFlow map', () => {
+    const source = mkdtempSync(join(tmpdir(), 'qa-source-'));
+    const target = mkdtempSync(join(tmpdir(), 'qa-batch-'));
+    mkdirSync(join(source, 'checks', 'part'), { recursive: true });
+    writeFileSync(
+      join(source, 'checks', 'outer.yaml'),
+      'appId: x\n---\n- runFlow: { file: part/state.yaml, env: { STATE: first } }\n- runFlow: {file: \'part/state.yaml\'}\n- runFlow: { env: { STATE: first }, file: part/state.yaml }\n- runFlow: { when: { platform: iOS }, file: "part/state.yaml" }\n',
+    );
+    writeFileSync(
+      join(source, 'checks', 'part', 'state.yaml'),
+      'appId: x\n---\n- takeScreenshot: shot\n',
+    );
+    try {
+      composeBatch(source, target, {
+        checks: ['outer'],
+        languages: ['en'],
+        cold: false,
+        catalogues: { en: {} },
+        email: 'qa@soirely.test',
+        onAndroid: false,
+      });
+      const checks = join(target, '_checks');
+      const outer = readFileSync(join(checks, 'outer.en.yaml'), 'utf8');
+      expect(outer).toContain(
+        '- runFlow: { file: part/outer.en.part.state.flow.yaml, env: { STATE: first } }\n',
+      );
+      expect(outer).toContain('- runFlow: {file: part/outer.en.part.state.flow.yaml}\n');
+      expect(outer).toContain(
+        '- runFlow: { env: { STATE: first }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(outer).toContain(
+        '- runFlow: { when: { platform: iOS }, file: part/outer.en.part.state.flow.yaml }\n',
+      );
+      expect(readdirSync(join(checks, 'part'))).toEqual(['outer.en.part.state.flow.yaml']);
     } finally {
       rmSync(source, { recursive: true, force: true });
       rmSync(target, { recursive: true, force: true });

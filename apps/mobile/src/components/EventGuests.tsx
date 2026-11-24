@@ -1,5 +1,6 @@
 import {
   type Guest,
+  type GuestChange,
   type GuestDetails as Details,
   type GuestInvitationHow,
   type GuestList,
@@ -31,7 +32,10 @@ import {
   exportNarrowing,
   exportsGuests,
   peopleInView,
+  zonedAt,
+  changedRows,
 } from '@soirely/domain';
+import { router } from 'expo-router';
 import {
   type ReactNode,
   type RefObject,
@@ -66,6 +70,8 @@ import {
   markOf,
   phaseCardOf,
 } from '../kit/guestRows.ts';
+import { checksIn, onEventDay } from '../kit/checkIn.ts';
+import { CHANGED, changeLine, filterMenuWidth, readerZoneOf } from '../kit/guestChanges.ts';
 import { pasteBeside, pasteShown, waiting, whoseRows } from '../kit/pasteReply.ts';
 import { type GuestReplies, guestRepliesOf, guestReplyBy } from '../kit/replyBy.ts';
 import { type ScreenOffline, useHandOffline, useOffline, usePullToRefresh } from '../offline.ts';
@@ -135,6 +141,7 @@ const CHOICE_KEY: Record<Choice, string> = {
   held: REPLY_KEY.held,
   notComing: REPLY_KEY.notComing,
   notYetInvited: REPLY_KEY.notYetInvited,
+  walkIn: REPLY_KEY.walkIn,
 };
 
 /** What Guests puts in the frame's top: Add guest at the end of the title row, and on a phone the ‹ back to the list from a guest's details. */
@@ -150,6 +157,7 @@ export interface GuestsTop {
 export function EventGuests({
   event,
   filter = 'all',
+  changedSince,
   opens,
   leave,
   phase,
@@ -167,6 +175,8 @@ export function EventGuests({
   event: OrganisationEvent;
   /** The choice it opens on: a figure elsewhere opens the guests it counts (sc-3786). */
   filter?: Choice;
+  /** Changed since you looked, from the look it counts from (sc-4331). */
+  changedSince?: string | undefined;
   /** The guest whose details it opens on (sc-39534). */
   opens?: string | undefined;
   /** Back from the guest it opened on leaves the event, so a phone returns to Search with its term and matches (sc-39534). */
@@ -195,7 +205,33 @@ export function EventGuests({
   const invites = phase != null && eventAllows(phase, 'invite');
   const { kind } = useListAndPageLayout(SPACING, 'nothing');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const [choice, setChoice] = useState<Choice>(filter);
+  const [choice, setReplyChoice] = useState<Choice>(filter);
+  const [since, setSince] = useState<string | null>(changedSince ?? null);
+  const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [changedFailed, setChangedFailed] = useState(false);
+  const [unseen, setUnseen] = useState(0);
+  const readerZone = readerZoneOf(account?.timezone);
+  const sinceNow = useRef(since);
+  useEffect(() => {
+    sinceNow.current = since;
+  }, [since]);
+  const setChoice = useCallback((next: Choice) => {
+    setSince(null);
+    setChangedFailed(false);
+    setReplyChoice(next);
+  }, []);
+  const chooseChanged = () => {
+    setChangedFailed(false);
+    api.lookAtGuestChanges(eventId).then(
+      (from) => {
+        setChanges(from.rows);
+        setUnseen(0);
+        setReplyChoice('all');
+        setSince(from.since);
+      },
+      () => setChangedFailed(true),
+    );
+  };
   const [typed, setTyped] = useState('');
   const [expanded, setExpanded] = useState<ReadonlySet<Standing>>(new Set());
   const [open, setOpen] = useState<string | null>(opens ?? null);
@@ -262,6 +298,19 @@ export function EventGuests({
             setLoad((was) => (was.kind === 'loaded' ? was : { kind: 'failed' }));
         },
       );
+      api.guestChanges(eventId).then(
+        (from) => {
+          if (mine === reading.current.list) setUnseen(from.rows.length);
+        },
+        () => undefined,
+      );
+      if (sinceNow.current != null)
+        api.guestChanges(eventId, sinceNow.current).then(
+          (from) => {
+            if (mine === reading.current.list) setChanges(from.rows);
+          },
+          () => undefined,
+        );
       // The wrong-person notice is read with the list, never in it: Can view reads the list (sc-1526).
       if (manages)
         api.flaggedGuests(eventId).then(
@@ -332,7 +381,7 @@ export function EventGuests({
   useEffect(
     () =>
       followReadingAgain(
-        realtimeTopic('EventGuests', eventId),
+        [realtimeTopic('EventGuests', eventId), realtimeTopic('EventCheckIn', eventId)],
         () => api.guestsSubscription(eventId),
         () => reloadRef.current(),
         READ_AGAIN_MS,
@@ -582,6 +631,15 @@ export function EventGuests({
       <PhaseLine event={event} phase={phase} now={now} onChange={onEventChange} />
     );
   const phaseCard = phaseCardOf(t, event, shown, phase, now);
+  const doorStep: StepProps | null =
+    checksIn(event) && onEventDay(event, zonedAt(now, event.timeZone))
+      ? {
+          label: t('checkIn.open'),
+          onPress: () =>
+            router.push({ pathname: '/events/[id]/check-in', params: { id: event.id } }),
+          testID: 'guests.openCheckIn',
+        }
+      : null;
   const liveStep: StepProps = {
     label: t('eventLive.makeLive'),
     ref: liveOpener,
@@ -612,7 +670,7 @@ export function EventGuests({
           says={t('guestList.noGuests')}
           heading
           line={phaseCard?.line ?? null}
-          also={phaseCard?.offersMakeLive === true ? liveStep : null}
+          also={phaseCard?.offersMakeLive === true ? liveStep : doorStep}
           step={
             manages
               ? {
@@ -631,6 +689,13 @@ export function EventGuests({
         counts={counts}
         choice={choice}
         onChoice={setChoice}
+        changed={{
+          inUse: since != null,
+          count: since != null ? (changes?.length ?? 0) : unseen,
+          rows: changes,
+          failed: changedFailed,
+          onChoose: chooseChanged,
+        }}
         typed={typed}
         onTyped={setTyped}
         expanded={expanded}
@@ -641,9 +706,11 @@ export function EventGuests({
         card={shown}
         phaseCard={phaseCard}
         makeLive={liveStep}
+        door={doorStep}
         kind={kind}
         searchRef={searchField}
         timeZone={timeZone}
+        readerZone={readerZone}
         locale={locale}
         manages={manages}
         replies={replies}
@@ -801,7 +868,8 @@ export function EventGuests({
         }}
         backInFrame
         headingInList
-        spacing={SPACING}
+        spacing={stale != null ? OFFLINE_SPACING : SPACING}
+        pageFills={exporting && docked}
       />
       {!docked && exportProps != null && (
         <ExportSheet
@@ -936,6 +1004,7 @@ function GuestRows({
   counts,
   choice,
   onChoice,
+  changed,
   typed,
   onTyped,
   expanded,
@@ -946,9 +1015,11 @@ function GuestRows({
   card,
   phaseCard,
   makeLive,
+  door,
   kind,
   searchRef,
   timeZone,
+  readerZone,
   locale,
   manages,
   replies,
@@ -959,6 +1030,7 @@ function GuestRows({
   counts: Counts;
   choice: Choice;
   onChoice: (choice: Choice) => void;
+  changed: ChangedFilter;
   typed: string;
   onTyped: (typed: string) => void;
   expanded: ReadonlySet<Standing>;
@@ -969,9 +1041,13 @@ function GuestRows({
   card: Shown | null;
   phaseCard: PhaseCard | null;
   makeLive: StepProps;
+  /** Open check-in, on each of the event's days, for whoever checks guests in (sc-1454). */
+  door: StepProps | null;
   kind: LayoutKind;
   searchRef: React.RefObject<TextInputInstance | null>;
   timeZone: string;
+  /** The member's (sc-868, else the device's): when a guest changed since the last look. */
+  readerZone: string;
   locale: string;
   /** The allergy mark is for people who manage guests (sc-3777). */
   manages: boolean;
@@ -981,8 +1057,12 @@ function GuestRows({
   pasteUnder: ReactNode;
 }) {
   const { t } = useTranslation();
-  const { view, shown } = viewOf(list.guests, counts, choice, typed, expanded);
-  const looking = choice !== 'all' || typed.trim() !== '';
+  const changedOnes = changed.inUse ? changedRows(list.guests, changed.rows ?? [], typed) : null;
+  const { view, shown } =
+    changedOnes == null
+      ? viewOf(list.guests, counts, choice, typed, expanded)
+      : { view: { kind: 'rows' as const, rows: [] }, shown: changedOnes.length };
+  const looking = changed.inUse || choice !== 'all' || typed.trim() !== '';
   const noReply = choice === 'noReply';
   const clear = () => {
     onTyped('');
@@ -1048,6 +1128,31 @@ function GuestRows({
     };
   };
 
+  const changedRow = (person: Person, change: GuestChange) => {
+    const name = person.guest.fullName;
+    const line = changeLine(t, change, person, readerZone, locale, new Date());
+    const selected = open === person.guest.id;
+
+    return {
+      key: person.id,
+      inset: 40,
+      selected,
+      row: (
+        <Row
+          title={name}
+          line={line}
+          lead={<MarkSlot kind={markOf(person.standing)} />}
+          opens
+          selected={selected}
+          pad={11}
+          onPress={() => onOpen(person.guest.id)}
+          accessibilityLabel={`${name}, ${line}`}
+          testID={`guests.row.${person.id}`}
+        />
+      ),
+    };
+  };
+
   return (
     <View style={styles.rows}>
       {done?.kind === 'added' && <DoneLine words={t('guestList.justAdded', { name: done.name })} />}
@@ -1061,7 +1166,7 @@ function GuestRows({
           tags={phaseCard?.tags ?? []}
           says={says}
           line={phaseCard?.line ?? (counts.invited > 0 ? haventLine(t, counts) : null)}
-          step={phaseCard?.offersMakeLive === true ? makeLive : null}
+          step={phaseCard?.offersMakeLive === true ? makeLive : door}
         />
       )}
       <View style={styles.searchRow}>
@@ -1077,10 +1182,11 @@ function GuestRows({
           testID="guests.search"
           ref={searchRef}
         />
-        <FilterChoice choice={choice} counts={counts} onChoose={onChoice} />
+        <FilterChoice choice={choice} counts={counts} onChoose={onChoice} changed={changed} />
         {pastes && pasteInRow}
       </View>
       {pastes && pasteUnder}
+      {changed.failed && <ChangedFailed onRetry={changed.onChoose} />}
       {view.kind === 'rows' ? (
         <View>
           {looking && (
@@ -1095,7 +1201,17 @@ function GuestRows({
               <TextAction label={t('guestList.clear')} onPress={clear} testID="guests.clear" />
             </View>
           )}
-          {view.rows.length === 0 ? (
+          {changedOnes != null ? (
+            changed.rows == null ? null : changedOnes.length > 0 ? (
+              <RowList
+                items={changedOnes.map(({ person, change }) => changedRow(person, change))}
+              />
+            ) : typed.trim() === '' ? (
+              <NothingChanged onShowAll={clear} />
+            ) : (
+              <NoMatch onClear={clear} />
+            )
+          ) : view.rows.length === 0 ? (
             <NoMatch onClear={clear} />
           ) : (
             <RowList items={view.rows.map(({ person, indent }) => row(person, indent))} />
@@ -1126,18 +1242,23 @@ function FilterChoice({
   choice,
   counts,
   onChoose,
+  changed,
 }: {
   choice: Choice;
   counts: Counts;
   onChoose: (choice: Choice) => void;
+  changed: ChangedFilter;
 }) {
   const { t } = useTranslation();
   const trigger = useRef<ViewInstance>(null);
   const first = useRef<ViewInstance>(null);
   const [at, setAt] = useState<Anchor | null>(null);
   useAnchorFollowsTurn(trigger, at != null, setAt);
-  const word = t(CHOICE_KEY[choice]);
-  const figure = t('guestList.figure', { count: counts[choice] });
+  const apart = changed.inUse || changed.count > 0;
+  const word = changed.inUse ? t('guestList.changed.filter') : t(CHOICE_KEY[choice]);
+  const figure = t('guestList.figure', {
+    count: changed.inUse ? changed.count : counts[choice],
+  });
 
   return (
     <>
@@ -1154,17 +1275,28 @@ function FilterChoice({
         onClose={() => setAt(null)}
         opener={trigger}
         first={first}
-        width={230}
+        width={filterMenuWidth(apart)}
         testID="guests.filter.menu"
       >
+        {apart && (
+          <ChangedRow
+            ref={first}
+            on={changed.inUse}
+            count={changed.count}
+            onPress={() => {
+              setAt(null);
+              changed.onChoose();
+            }}
+          />
+        )}
         {filterChoices(counts, choice).map((key, index) => {
-          const on = key === choice;
+          const on = !changed.inUse && key === choice;
           const n = t('guestList.figure', { count: counts[key] });
 
           return (
             <Pressable
               key={key}
-              ref={index === 0 ? first : undefined}
+              ref={index === 0 && !apart ? first : undefined}
               onPress={() => {
                 setAt(null);
                 onChoose(key);
@@ -1203,6 +1335,99 @@ function FilterChoice({
         })}
       </AnchoredMenu>
     </>
+  );
+}
+
+interface ChangedFilter {
+  inUse: boolean;
+  count: number;
+  rows: readonly GuestChange[] | null;
+  /** Choosing it failed: nothing is marked read, and the list stays as it was. */
+  failed: boolean;
+  onChoose: () => void;
+}
+
+/** sc-4331: Changed since you looked, first in the menu and set apart from the reply choices. */
+function ChangedRow({
+  ref,
+  on,
+  count,
+  onPress,
+}: {
+  ref: RefObject<ViewInstance | null>;
+  on: boolean;
+  count: number;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const word = t('guestList.changed.filter');
+  const n = t('guestList.figure', { count });
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      style={({ pressed }) => [styles.menuRow, styles.menuApart, pressed && styles.menuPressed]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={`${word}, ${n}`}
+      testID={`guests.filter.${CHANGED}`}
+    >
+      <View style={styles.menuTick}>
+        {on && <Glyph name="tick" size={16} ink={tokens.colorAccentText} weight={2.6} />}
+      </View>
+      <Text
+        size={16}
+        weight={on ? 'semibold' : 'medium'}
+        accessible={false}
+        style={[styles.grow, on && styles.accent]}
+      >
+        {word}
+      </Text>
+      <Text size={15} weight="medium" accessible={false} style={[styles.secondary, styles.figures]}>
+        {n}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ChangedFailed({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  useReadOut(t('guestList.changed.failed'));
+
+  return (
+    <View style={styles.changedFailed} accessibilityRole="alert" testID="guests.changedFailed">
+      <View style={styles.shownRow}>
+        <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.2} />
+        <Text size={14} weight="medium" style={styles.grow}>
+          {t('guestList.changed.failed')}
+        </Text>
+      </View>
+      <TextAction
+        label={t('guestList.changed.retry')}
+        glyph="refresh"
+        onPress={onRetry}
+        testID="guests.changedFailed.retry"
+      />
+    </View>
+  );
+}
+
+function NothingChanged({ onShowAll }: { onShowAll: () => void }) {
+  const { t } = useTranslation();
+  useReadOut(t('guestList.changed.nothing'));
+
+  return (
+    <View style={styles.noMatch} testID="guests.nothingChanged">
+      <Text size={18} weight="bold" accessibilityRole="header">
+        {t('guestList.changed.nothing')}
+      </Text>
+      <TextAction
+        label={t('guestList.changed.showAll')}
+        onPress={onShowAll}
+        testID="guests.nothingChanged.showAll"
+      />
+    </View>
   );
 }
 
@@ -1301,8 +1526,15 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   figures: { fontVariant: ['tabular-nums'] },
   rows: { gap: LIST_GAP },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 10,
+    rowGap: tokens.spaceXxs,
+  },
   shownRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  changedFailed: { gap: tokens.spaceXs, paddingTop: tokens.spaceXs },
   indent: { paddingLeft: 40 },
   pick: { paddingTop: 120, alignItems: 'center' },
   added: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
@@ -1333,6 +1565,7 @@ const styles = StyleSheet.create({
   },
   barThick: { height: 14, borderRadius: 7, backgroundColor: tokens.colorNeutralFill },
   phone: { ...LIST_EDGES.phone, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
+  phoneUnderBand: { paddingTop: LIST_GAP },
   portrait: { ...LIST_EDGES.tabletPortrait, gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
   landscape: { ...LIST_EDGES.tabletLandscape, gap: LIST_GAP },
   column: { gap: LIST_GAP, paddingBottom: tokens.space6xl * 2 },
@@ -1358,4 +1591,9 @@ const SPACING: ListAndPageSpacing = {
   listWidth: 400,
   between: tokens.spaceXxl,
   ruled: { list: styles.ruledList, page: styles.ruledPage },
+};
+
+const OFFLINE_SPACING: ListAndPageSpacing = {
+  ...SPACING,
+  phone: [styles.phone, styles.phoneUnderBand],
 };

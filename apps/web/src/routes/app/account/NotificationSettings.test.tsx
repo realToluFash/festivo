@@ -54,6 +54,23 @@ function permission(state: NotificationPermission): void {
 }
 
 describe('Notification settings (sc-3980)', () => {
+  it('says what is loading while the settings load (sc-88403)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>(() => {}));
+    const router = createMemoryRouter(
+      [{ path: '/app/account/notifications', element: <NotificationSettings /> }],
+      { initialEntries: ['/app/account/notifications'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    const words = await screen.findByText(
+      'Loading your notification settings…',
+      {},
+      { timeout: 3000 },
+    );
+    expect(words.getAttribute('role')).toBe('status');
+    expect(screen.queryByText('Loading…')).toBeNull();
+  });
+
   it('names every switch by its row and column, and Account & security email stays on', async () => {
     settings(() => json({ categories: CATEGORIES }));
 

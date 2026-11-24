@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { rememberedFor } from '@soirely/domain';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -581,6 +582,7 @@ function preview(id: string, organisation: { id: string; name: string }, inviter
     refusal: null,
     forYou: true,
     signedInAs: 'folake@ire.events',
+    managed: null,
   };
 }
 
@@ -635,6 +637,36 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     ).toBeDefined();
   });
 
+  it('lists those a managed account cannot accept as on any other, until a press is refused (sc-73668)', async () => {
+    const managed = {
+      domain: 'ire.events',
+      organisation: { id: 'org_1', name: 'Ìrè Events' },
+      message:
+        'Your ire.events address is managed by Ìrè Events, so you can only be a member there.',
+    };
+    answering(
+      invited(
+        { ...preview('inv_1', ADUNNI, 'Bisi Adeyemi'), managed },
+        { ...preview('inv_2', KOLA, 'Kola Bello'), managed },
+      ),
+    );
+    at('/complete-profile');
+
+    expect(
+      await screen.findByText(
+        'You have 2 invitations waiting. Accept one to join that organisation, or start your own below.',
+      ),
+    ).toBeDefined();
+    const group = screen.getByRole('group', { name: 'Adunni Weddings' });
+    expect(
+      within(group).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
+    ).toBeDefined();
+    expect(
+      within(group).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Managed by Ìrè Events' })).toBeNull();
+  });
+
   it('asks for an organisation or an invitation when Save is pressed with neither', async () => {
     const sent = answering(invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')));
     at('/complete-profile');
@@ -684,7 +716,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
       phoneCountryCode: expect.any(String),
       phoneNumber: '',
     });
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_7',
+    );
   });
 
   it('holds Save while an accept is in flight, so a typed organisation is never sent beside it', async () => {
@@ -761,7 +795,9 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
-    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+    expect(rememberedFor(window.localStorage.getItem('soirely.organisation'), 'acc_1')).toBe(
+      'org_9',
+    );
   });
 
   it('declining every one leaves the organisation fields as they were, and the row says so', async () => {

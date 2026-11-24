@@ -1,0 +1,10 @@
+# sc-29978 tablet landscape: sc29978-demo-runday-on-thousands, with the tablet turned landscape first (the reset turns it back).
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc29978-demo-runday-on-thousands.yaml
