@@ -4986,6 +4986,12 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       await screen.findByRole('heading', { level: 1, name: 'New event' });
       chooseHeic();
       await screen.findByText('Uploading…');
+      // The guard takes hold in an effect after this render; under load, going back can beat it.
+      await waitFor(() => {
+        const leaving = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(leaving);
+        expect(leaving.defaultPrevented).toBe(true);
+      });
 
       await act(() => router.navigate(-1));
 
