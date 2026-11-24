@@ -194,6 +194,28 @@
       .alert.warning {
         background: var(--warning-soft);
       }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: -8px 0 20px;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .controls:empty {
+        display: none;
+      }
+      .control-said {
+        white-space: pre-wrap;
+      }
+      .control-said.fail {
+        color: var(--critical);
+      }
+      .card .control {
+        margin-left: auto;
+        padding: 3px 10px;
+      }
       .kpis {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -849,6 +871,7 @@
         <div class="meta" id="meta"></div>
       </header>
       <div class="alerts" id="alerts"></div>
+      <div class="controls" id="controls" aria-live="polite"></div>
       <div class="kpis" id="kpis"></div>
       <section id="logins-section" hidden>
         <h2>Claude logins <span class="count" id="logins-count"></span></h2>
@@ -922,9 +945,15 @@
         refused: ['critical', 'Refused'],
         prompt: ['critical', 'Stopped on a prompt'],
       };
+      // Stop is offered for every state a started role can be in.
+      const STOPPABLE = ['running', 'busy', 'started', 'elsewhere', 'prompt'];
       let data = null,
         fetchedAt = 0,
         failing = false;
+      // Whether this page holds the token its controls ask for, and what they last said.
+      let controlsOn = false,
+        controlSaid = null;
+      const controlling = new Set();
       // The machine shown, null for this one; the others are read through this one's server.
       let machine = null,
         peerNames = [],
@@ -1295,6 +1324,55 @@
           .join('');
       }
 
+      const controlMachine = (action) => (action.endsWith('everywhere') ? '' : machine || '');
+      const controlKey = (action, role) => [controlMachine(action), action, role || ''].join('|');
+
+      function controlButton(action, label, role, cls = 'copy') {
+        const off = !controlsOn || failing || controlling.has(controlKey(action, role));
+        return `<button class="${cls}" type="button" data-control="${action}"${role ? ` data-control-role="${esc(role)}"` : ''}${off ? ' disabled' : ''}>${esc(label)}</button>`;
+      }
+
+      function controlsBar(d) {
+        const name = d.machine || 'this machine';
+        const bits = [
+          d.paused
+            ? controlButton('resume', `Resume ${name}`)
+            : controlButton('pause', `Pause ${name}`),
+          d.paused_everywhere
+            ? controlButton('resume-everywhere', 'Resume every machine', null, 'copy quiet')
+            : controlButton('pause-everywhere', 'Pause every machine', null, 'copy quiet'),
+        ];
+        if (!controlsOn)
+          bits.push(
+            `<span>Controls are off on this page. Open it once as <code>${esc(location.origin)}/?token=…</code>, with <code>SQ_WEB_TOKEN</code> from <code>~/.config/soirely/env</code>.</span>`,
+          );
+        if (controlSaid)
+          bits.push(
+            `<span class="control-said${controlSaid.failed ? ' fail' : ''}">${esc(controlSaid.text)}</span>`,
+          );
+        document.getElementById('controls').innerHTML = bits.join('');
+      }
+
+      async function control(action, role) {
+        const key = controlKey(action, role);
+        if (controlling.has(key)) return;
+        controlling.add(key);
+        render();
+        try {
+          const said = await postJSON('control', { machine: controlMachine(action), action, role });
+          controlSaid = { text: said.said, failed: false };
+        } catch (error) {
+          controlSaid = { text: error.message, failed: true };
+        }
+        controlling.delete(key);
+        await refresh();
+      }
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-control]');
+        if (button) control(button.dataset.control, button.dataset.controlRole || null);
+      });
+
       function roleCard(r) {
         const [cls, label] = STATES[r.state] || ['', r.state];
         const stateLabel =
@@ -1316,6 +1394,11 @@
         if (r.wake_every && r.wake_every !== '3m')
           tags.push(`<span class="tag">wakes every ${esc(r.wake_every)}</span>`);
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
+        tags.push(
+          STOPPABLE.includes(r.state)
+            ? controlButton('stop', 'Stop', r.role, 'copy quiet control')
+            : controlButton('start', 'Start', r.role, 'copy control'),
+        );
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
         if (r.prompt)
@@ -1683,6 +1766,7 @@
         if (shown !== machine) {
           machine = shown;
           data = null;
+          controlSaid = null;
           peerError = null;
           failing = false;
           sessionId = null;
@@ -1748,6 +1832,7 @@
           : 'Roles on this machine';
         drawings(data);
         header(data);
+        controlsBar(data);
         kpis(data);
         loginsTable(data);
         const here = data.roles;
@@ -1787,6 +1872,7 @@
       function learnPeers(d) {
         peerNames = d.peers || [];
         localName = d.machine;
+        controlsOn = !!d.controls;
       }
 
       async function findPeers() {
