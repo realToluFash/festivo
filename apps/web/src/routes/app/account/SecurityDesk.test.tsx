@@ -107,7 +107,12 @@ type Answers = Record<string, () => Response | Promise<Response>>;
 function answering(answers: Answers, twoFactorOn = false): Sent[] {
   const sent: Sent[] = [];
   const all: Answers = {
-    'GET /api/auth/two-factor': () => json({ on: twoFactorOn, recoveryCodesLeft: 10 }),
+    'GET /api/auth/two-factor': () =>
+      json({
+        on: twoFactorOn,
+        recoveryCodesLeft: 10,
+        factors: twoFactorOn ? [{ kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' }] : [],
+      }),
     'GET /api/auth/sessions': () => json(SESSIONS),
     'GET /api/auth/me': () => json(ME),
     'GET /api/orgs': () => json({ organisations: [MEMBERSHIP] }),
@@ -244,7 +249,13 @@ describe('Security at a desk (sc-30411)', () => {
     let fails = true;
     answering({
       'GET /api/auth/two-factor': () =>
-        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+        fails
+          ? json({ title: 'Down' }, 500)
+          : json({
+              on: true,
+              recoveryCodesLeft: 8,
+              factors: [{ kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' }],
+            }),
     });
     openSecurity();
 
@@ -259,7 +270,7 @@ describe('Security at a desk (sc-30411)', () => {
     );
 
     expect(await screen.findByText('Two-factor is on')).toBeDefined();
-    expect(screen.getByText('On · every sign-in asks for a code')).toBeDefined();
+    expect(screen.getByText('Turned on Oct 3')).toBeDefined();
   });
 
   it('says the devices could not be listed', async () => {
@@ -387,7 +398,12 @@ describe('two-factor at a desk', () => {
   it('sets it up, shows the recovery codes once, and says it is on', async () => {
     let on = false;
     const sent = answering({
-      'GET /api/auth/two-factor': () => json({ on, recoveryCodesLeft: 10 }),
+      'GET /api/auth/two-factor': () =>
+        json({
+          on,
+          recoveryCodesLeft: 10,
+          factors: on ? [{ kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' }] : [],
+        }),
       'POST /api/auth/two-factor/enrol': () => json(ENROLMENT),
       'POST /api/auth/two-factor/activate': () => {
         on = true;
@@ -415,7 +431,7 @@ describe('two-factor at a desk', () => {
       { call: 'POST /api/auth/two-factor/enrol', body: null },
       { call: 'POST /api/auth/two-factor/activate', body: { code: '123456' } },
     ]);
-    expect(await screen.findByText('On · every sign-in asks for a code')).toBeDefined();
+    expect(await screen.findByText('Turned on Oct 3')).toBeDefined();
   });
 
   it('opens on two-factor’s set-up when a held step sent the person here', async () => {
@@ -441,7 +457,7 @@ describe('two-factor at a desk', () => {
       />,
     );
 
-    expect(await screen.findByText('On · every sign-in asks for a code')).toBeDefined();
+    expect(await screen.findByText('Turned on Oct 3')).toBeDefined();
     expect(screen.queryByRole('dialog', { name: 'Turn on two-factor' })).toBeNull();
   });
 
@@ -488,6 +504,56 @@ describe('two-factor at a desk', () => {
     ).toBeDefined();
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/two-factor/disable', body: { code: '123456' } },
+    ]);
+  });
+
+  it('lists a passkey beside the app, and removes it with a code (sc-86885)', async () => {
+    const sent = answering(
+      {
+        'GET /api/auth/two-factor': () =>
+          json({
+            on: true,
+            recoveryCodesLeft: 10,
+            passkeysOffered: true,
+            mostPasskeys: 10,
+            factors: [
+              {
+                kind: 'passkey',
+                id: 'pk-1',
+                provider: 'Apple Passwords',
+                synced: true,
+                addedAt: '2026-11-20T10:00:00+00:00',
+              },
+              { kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' },
+            ],
+          }),
+        'POST /api/auth/two-factor/remove': () => new Response(null, { status: 204 }),
+      },
+      true,
+    );
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Apple Passwords/ }),
+    );
+    expect(screen.getByText('Added Nov 20')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Turn off two-factor…' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Remove…/ }));
+    fireEvent.click(
+      asked('Remove the Apple Passwords passkey?').getByRole('button', {
+        name: 'Remove the passkey',
+      }),
+    );
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByText(
+        'Passkey removed. It stays in Apple Passwords until you delete it there. We emailed folake@ire.events to say so.',
+      ),
+    ).toBeDefined();
+    expect(posts(sent)).toEqual([
+      { call: 'POST /api/auth/two-factor/remove', body: { factor: 'pk-1', code: '123456' } },
     ]);
   });
 
@@ -619,6 +685,45 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     expect(posts(sent)).toHaveLength(1);
   });
 
+  it('says this browser can’t use passkeys, and asks a passkey-only member for a recovery code (sc-86885)', async () => {
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: 'Apple Passwords',
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+    });
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    openSecurity();
+
+    fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    expect(await dialog("Confirm it's you").findByLabelText('Recovery code')).toBeDefined();
+    expect(dialog("Confirm it's you").getByText('This browser can’t use passkeys.')).toBeDefined();
+    expect(
+      dialog("Confirm it's you").getByText(
+        'One of the codes you saved when you turned on two-factor.',
+      ),
+    ).toBeDefined();
+  });
+
   it('back from Google to sign out everywhere else, proves with it although two-factor failed', async () => {
     signedInAs(GOOGLE_ONLY);
     returnedFrom({ kind: 'signOutOthers' });
@@ -673,7 +778,13 @@ describe('linking and unlinking at a desk', () => {
     let fails = true;
     answering({
       'GET /api/auth/two-factor': () =>
-        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+        fails
+          ? json({ title: 'Down' }, 500)
+          : json({
+              on: true,
+              recoveryCodesLeft: 8,
+              factors: [{ kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' }],
+            }),
       'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
       'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
     });
@@ -741,7 +852,13 @@ describe('linking and unlinking at a desk', () => {
     let fails = true;
     answering({
       'GET /api/auth/two-factor': () =>
-        fails ? json({ title: 'Down' }, 500) : json({ on: true, recoveryCodesLeft: 8 }),
+        fails
+          ? json({ title: 'Down' }, 500)
+          : json({
+              on: true,
+              recoveryCodesLeft: 8,
+              factors: [{ kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' }],
+            }),
       'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
       'GET /api/auth/me': () => json({ ...ME, providers: [{ provider: 'google', email: GMAIL }] }),
     });

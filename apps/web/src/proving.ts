@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type PasskeyAnswer,
   type Provider,
   type ProviderSignInAttempt,
   proofRefusal,
@@ -17,6 +18,9 @@ export type ProveWith =
   | { password: string }
   | { provider: Provider; signIn: ProviderSignInAttempt }
   | { pendingProof: string };
+
+/** The second factor: a code, or what a passkey signed. */
+export type Second = string | { passkey: PasskeyAnswer };
 
 export type ProvingRefusal = { field: 'password' | 'code' | 'failed'; message: string };
 
@@ -37,7 +41,7 @@ export function useProving({
   via: 'password' | Provider | null;
   twoFactorOn: boolean;
   returned: ProviderSignInAttempt | null;
-  prove: (first: ProveWith, code?: string) => Promise<string>;
+  prove(first: ProveWith, code?: Second): Promise<string>;
   onProved: (proof: string) => void;
   /** Called as each try starts, so focus can be read before the answer; returns what to do once the answer is not a proof. */
   onSend: () => (outcome: Unproved) => void;
@@ -55,7 +59,7 @@ export function useProving({
   const provider = via === 'password' ? null : via;
   const askPassword = via === 'password' && signIn == null;
 
-  async function send(password: string, second: string | undefined): Promise<void> {
+  async function send(password: string, second: Second | undefined): Promise<void> {
     setChecking(true);
     const after = onSend();
 
@@ -137,6 +141,9 @@ export function useProving({
 }
 
 function provingRefusal(error: unknown, t: TFunction, providerName: string | null): ProvingRefusal {
+  if (error instanceof ApiError && error.is('passkey_refused'))
+    return { field: 'code', message: t('passkey.refused') };
+
   const refusal = proofRefusal(error, providerName == null);
 
   if (refusal.kind === 'trip')

@@ -1,4 +1,10 @@
-import { type Account, ApiError, ApiUnreachableError, awaiting } from '@soirely/api-client';
+import {
+  type Account,
+  ApiError,
+  ApiUnreachableError,
+  awaiting,
+  type HeldFactors,
+} from '@soirely/api-client';
 import { PASSWORD_MINIMUM_LENGTH, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +40,7 @@ type Status =
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
   | { kind: 'done'; email: string; account: Account }
-  | { kind: 'code'; email: string }
+  | { kind: 'code'; email: string; factors: HeldFactors }
   | { kind: 'used' }
   | { kind: 'expired' }
   | { kind: 'invalid' };
@@ -70,10 +76,10 @@ export function ResetPassword() {
 
     api
       .checkResetLink(token)
-      .then(({ email, twoFactor }) => {
+      .then(({ email, twoFactor, factors }) => {
         // With two-factor on the code comes first, and nothing changes until it passes.
         if (!live) return;
-        setStatus({ kind: twoFactor ? 'code' : 'ready', email });
+        setStatus(twoFactor ? { kind: 'code', email, factors } : { kind: 'ready', email });
         if (reads > 0) arriveAtStep();
       })
       .catch((error: unknown) => {
@@ -202,6 +208,11 @@ export function ResetPassword() {
           failedBody={t('recovery.failedBody')}
           lostBoth={{ to: `?token=${encodeURIComponent(token)}`, state: { lostBoth: true } }}
           headingRef={stepHeading}
+          factors={status.factors}
+          passkey={{
+            lead: t('passkey.resetLead'),
+            options: () => api.resetPasskeyOptions(token),
+          }}
           onVerify={async (factor) => {
             try {
               await api.passResetCode(token, factor);

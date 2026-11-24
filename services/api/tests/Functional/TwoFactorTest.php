@@ -26,6 +26,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
@@ -69,18 +70,18 @@ final class TwoFactorTest extends ApiTestCase
 
         self::assertStringStartsWith('otpauth://totp/Soirely', Type\string()->coerce($enrolled['otpauthUri']));
         self::assertStringContainsString('<svg', Type\string()->coerce($enrolled['qrSvg']));
-        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->call('GET', '/api/auth/two-factor'));
+        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->switchedOn());
 
         $this->call('POST', '/api/auth/two-factor/activate', ['code' => '000000']);
         self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
-        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->call('GET', '/api/auth/two-factor'), 'a wrong code turns nothing on');
+        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->switchedOn(), 'a wrong code turns nothing on');
         self::assertSame(200, $this->login()[0], 'and sign-in still issues tokens');
 
         $this->authenticated();
         $codes = $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow(Type\string()->coerce($enrolled['secret']))]);
 
         self::assertCount(10, Type\vec(Type\string())->coerce($codes['recoveryCodes']));
-        self::assertSame(['on' => true, 'recoveryCodesLeft' => 10], $this->call('GET', '/api/auth/two-factor'));
+        self::assertSame(['on' => true, 'recoveryCodesLeft' => 10], $this->switchedOn());
     }
 
     #[Test]
@@ -237,7 +238,7 @@ final class TwoFactorTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), 'typed in either case');
 
         $this->authenticated();
-        self::assertSame(['on' => true, 'recoveryCodesLeft' => 9], $this->call('GET', '/api/auth/two-factor'));
+        self::assertSame(['on' => true, 'recoveryCodesLeft' => 9], $this->switchedOn());
 
         $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'recoveryCode' => $recovery]);
         self::assertSame(ErrorCode::RecoveryCodeUsed->type(), $this->last()['type']);
@@ -535,5 +536,13 @@ final class TwoFactorTest extends ApiTestCase
     private function statusCode(): int
     {
         return $this->client->getResponse()->getStatusCode();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function switchedOn(): array
+    {
+        return Dict\select_keys($this->call('GET', '/api/auth/two-factor'), ['on', 'recoveryCodesLeft']);
     }
 }

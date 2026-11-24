@@ -36,7 +36,7 @@ final readonly class SignInMethodsController
     ) {
     }
 
-    /** The password, or `provider` with its `providerSignIn`, then `code` when two-factor is on; `pendingProof` retries a code. */
+    /** The password, or `provider` with its `providerSignIn`, then `code` or `passkey` when two-factor is on; `pendingProof` retries a code. */
     #[Route('/api/auth/proof', name: 'auth_proof', methods: ['POST'])]
     public function prove(Request $request): JsonResponse
     {
@@ -46,6 +46,7 @@ final readonly class SignInMethodsController
             'providerSignIn' => Type\optional(ProviderAssertion::shape()),
             'code' => Type\optional(Type\mixed()),
             'pendingProof' => Type\optional(Type\nullable(Type\string())),
+            'passkey' => Type\optional(Type\dict(Type\string(), Type\mixed())),
         ]));
 
         $provider = $body['provider'] ?? null;
@@ -55,6 +56,7 @@ final readonly class SignInMethodsController
             null === $provider ? null : [$provider, $this->providerAssertion->claims($provider, $body['providerSignIn'] ?? [])],
             $this->codeField->optional($body, 'code', CodeField::FROM_APP_OR_RECOVERY),
             $body['pendingProof'] ?? null,
+            $body['passkey'] ?? null,
         );
 
         return new JsonResponse(['proof' => $proof, 'expiresAt' => $expiresAt->format(\DATE_ATOM)]);

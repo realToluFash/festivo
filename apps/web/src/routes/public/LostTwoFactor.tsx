@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type HeldFactors,
   type RecoveryOpening,
   type RecoveryState,
   type TwoFactorChallenge,
@@ -186,6 +187,7 @@ export function LostTwoFactor() {
       {view.kind === 'start' && (
         <Start
           opening={view.opening}
+          factors={signingIn?.factors}
           limitedUntil={view.limitedUntil}
           sending={view.sending}
           onSend={() => void start(view.opening, view.asked)}
@@ -309,12 +311,15 @@ function BackToSignIn() {
 
 function Start({
   opening,
+  factors,
   limitedUntil,
   sending,
   onSend,
   onBack,
 }: {
   opening: RecoveryOpening;
+  /** What the sign-in asked for: the page names what was lost (sc-86885). */
+  factors?: HeldFactors | undefined;
   limitedUntil: string | null;
   sending: boolean;
   onSend: () => void;
@@ -322,11 +327,15 @@ function Start({
 }) {
   const { t } = useTranslation();
   const organisations = listed(opening.organisations, 'disjunction');
+  const lostSuffix = factors?.passkeys !== true ? '' : factors.app ? 'Both' : 'Passkeys';
 
   return (
     <>
       <ColumnBack onClick={onBack} />
-      <Heading title={t('lostTwoFactor.startTitle')} intro={t('lostTwoFactor.startIntro')}>
+      <Heading
+        title={t(`lostTwoFactor.startTitle${lostSuffix}`)}
+        intro={t(`lostTwoFactor.startIntro${lostSuffix}`)}
+      >
         {limitedUntil != null && (
           <Notice
             title={t('lostTwoFactor.limitedTitle')}

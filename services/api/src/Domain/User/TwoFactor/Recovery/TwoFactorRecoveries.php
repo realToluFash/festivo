@@ -7,6 +7,7 @@ namespace App\Domain\User\TwoFactor\Recovery;
 use App\Audit\Auditor;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\PhoneCodeDispatch;
 use App\Domain\User\Verification\VerificationCodeIssuer;
@@ -21,7 +22,6 @@ use App\Enum\ErrorCode;
 use App\Enum\TwoFactorRecoveryStatus;
 use App\Http\Exception\ApiException;
 use App\Repository\TwoFactorChallengeRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
@@ -42,7 +42,7 @@ final readonly class TwoFactorRecoveries
 
     public function __construct(
         private TwoFactorChallengeRepository $twoFactorChallengeRepository,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
         private TwoFactorRecoveryRepository $twoFactorRecoveryRepository,
         private VerificationChallengeRepository $verificationChallengeRepository,
         private VerificationCodeIssuer $verificationCodeIssuer,
@@ -63,7 +63,7 @@ final readonly class TwoFactorRecoveries
     {
         $challenge = $this->twoFactorChallengeRepository->findOneByHash(TokenIssuer::hash($challengeToken));
 
-        if (null === $challenge || !$challenge->isOpenAt($this->clock->now()) || null === $this->twoFactorFactorRepository->findActiveFor($challenge->getUser())) {
+        if (null === $challenge || !$challenge->isOpenAt($this->clock->now()) || !$this->secondFactors->isOn($challenge->getUser())) {
             throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
         }
 

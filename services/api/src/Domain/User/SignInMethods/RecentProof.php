@@ -6,18 +6,20 @@ namespace App\Domain\User\SignInMethods;
 
 use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Attempts\WrongSecret;
+use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Provider\ProviderClaims;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Entity\SignInProof;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
+use App\Enum\PasskeyStep;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\SignInProofRepository;
-use App\Repository\TwoFactorFactorRepository;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
@@ -37,7 +39,7 @@ final readonly class RecentProof
     public function __construct(
         private PasswordResolver $passwordResolver,
         private SecondFactorCheck $secondFactorCheck,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
         private ProviderIdentityRepository $providerIdentityRepository,
         private SignInProofRepository $signInProofRepository,
         private EntityManagerInterface $entityManager,
@@ -55,6 +57,7 @@ final readonly class RecentProof
      * sign-in vouched for, as the provider wrote it.
      *
      * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
+     * @param array<string, mixed>|null                          $passkey
      *
      * @return array{0: string, 1: DateTimeImmutable} the proof this client sends with the change, and when it lapses
      */
@@ -67,23 +70,24 @@ final readonly class RecentProof
         ?string $code,
         #[SensitiveParameter]
         ?string $pendingProof = null,
+        ?array $passkey = null,
     ): array {
         $pending = null === $pendingProof || '' === $pendingProof ? null : $this->awaitingCode($user, $pendingProof);
 
         $provedAt = null === $pending ? $this->passFirstFactor($user, $password, $provider) : $pending[1]->provedAt();
         $vouched = null === $pending && null !== $provider && $provider[1]->emailVerified ? $provider[1]->email : null;
 
-        $factor = $this->twoFactorFactorRepository->findActiveFor($user);
-
-        if (null !== $factor) {
+        if ($this->secondFactors->isOn($user)) {
             [$plain, $held] = $pending ?? $this->issue($user, $provedAt, awaitingCode: true);
 
             try {
-                if (null === $code || '' === Str\trim($code)) {
+                if (null !== $passkey) {
+                    $this->secondFactorCheck->pass($user, new SecondFactorAnswer(passkey: $passkey), PasskeyStep::Proof);
+                } elseif (null === $code || '' === Str\trim($code)) {
                     throw new ApiException(ErrorCode::TwoFactorRequired, 'validation.code_app_or_recovery_required');
+                } else {
+                    $this->secondFactorCheck->passEither($user, $code);
                 }
-
-                $this->secondFactorCheck->passEither($factor, $code);
             } catch (ApiException $refusal) {
                 $members = [...$refusal->members, 'pendingProof' => $plain];
                 if (ErrorCode::TwoFactorRequired === $refusal->errorCode && null !== $vouched) {

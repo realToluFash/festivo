@@ -1,8 +1,13 @@
 import {
   ApiError,
+  type CurrentFactor,
   type DeviceSession,
+  type HeldFactors,
+  type PasskeyOptions,
   type Provider,
   type ProviderSignInAttempt,
+  type TwoFactorEnrolment,
+  type TwoFactorFactor,
   type TwoFactorStatus,
 } from '@soirely/api-client';
 import { PROOF_MINUTES, confirmWith, othersOf, proveWith, thisDeviceFirst } from '@soirely/domain';
@@ -17,6 +22,12 @@ import { ProveDialog } from '../../../components/AccountDialogs.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Bones } from '../../../components/GeneralParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
+import {
+  AddRow,
+  ChoiceDialog,
+  FactorOpenable,
+  MakeDialog,
+} from '../../../components/PasskeyParts.tsx';
 import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   ChangePasswordDialog,
@@ -41,6 +52,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, useDeskLayers } from '../../../layers.ts';
+import { canUsePasskeys } from '../../../passkey.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import {
   PROVIDER_NAMES,
@@ -83,7 +95,8 @@ import { currentSessionId } from '../../../tokens.ts';
 import '../../../components/SettingsParts.css';
 
 type Load<T> = T | 'failed' | null;
-type AskKind = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere';
+type AskKind = 'unlink' | 'turnOff' | 'newCodes' | 'signOut' | 'everywhere' | 'remove';
+type FactorPurpose = 'turnOff' | 'newCodes' | 'remove' | 'add' | 'addApp';
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 type Opened =
   | { kind: 'change' }
@@ -92,8 +105,11 @@ type Opened =
   | { kind: 'setCode'; expired: boolean }
   | { kind: 'choose'; stepUp: string }
   | { kind: 'setup' }
-  | { kind: 'recovery'; codes: readonly string[]; made: 'on' | 'new' }
-  | { kind: 'factor'; purpose: 'turnOff' | 'newCodes' }
+  | { kind: 'choice' }
+  | { kind: 'make'; options: PasskeyOptions }
+  | { kind: 'addApp'; enrolment: TwoFactorEnrolment }
+  | { kind: 'recovery'; codes: readonly string[]; made: 'on' | 'new'; held: HeldFactors }
+  | { kind: 'factor'; purpose: FactorPurpose; factor?: string }
   | { kind: 'prove'; act: Act | 'everywhere'; returned: ProviderSignInAttempt | null };
 
 const RETURNS = ['prove', 'link', 'signOutOthers'] as const;
@@ -133,6 +149,8 @@ export function SecurityDesk() {
   const sessions = devices != null && devices !== 'failed' ? thisDeviceFirst(devices) : null;
   const others = sessions == null ? { count: 0, sessionId: null } : othersOf(sessions);
   const status = twoFactor != null && twoFactor !== 'failed' ? twoFactor : null;
+  const held = heldOf(status);
+  const passkeysHere = status?.passkeysOffered === true && canUsePasskeys();
   const { watch, refreshing } = useOffline({
     loaded: status != null && sessions != null,
     reload: () => setRefresh((n) => n + 1),
@@ -330,6 +348,9 @@ export function SecurityDesk() {
   };
   const openWay = ways.providers.find((way) => way.provider === open) ?? null;
   const openDevice = sessions?.find((device) => device.id === open) ?? null;
+  const openFactor = status?.factors.find((factor) => factorKey(factor) === open) ?? null;
+  const onlyFactor = status?.factors.length === 1 ? status.factors[0] : undefined;
+  const offRow = onlyFactor == null ? 'auth' : factorKey(onlyFactor);
   const last = lastWayIn(ways);
   const error = (row: string) =>
     rowError?.row === row && (
@@ -342,17 +363,22 @@ export function SecurityDesk() {
         ? turnOffAsk(session.email, t)
         : ask === 'newCodes'
           ? newCodesAsk(t)
-          : ask === 'signOut' && openDevice != null
-            ? signOutAsk(deviceName(openDevice, t), t)
-            : ask === 'everywhere'
-              ? everywhereAsk(others.count, others.sessionId != null, t)
-              : null;
+          : ask === 'remove' && openFactor != null
+            ? removeAsk(openFactor, session.email, t)
+            : ask === 'signOut' && openDevice != null
+              ? signOutAsk(deviceName(openDevice, t), t)
+              : ask === 'everywhere'
+                ? everywhereAsk(others.count, others.sessionId != null, t)
+                : null;
 
   function goAsk(): void {
     if (ask === 'unlink' && openWay != null) void unlink(openWay.provider);
     else if (ask === 'turnOff' || ask === 'newCodes') {
       setAsk(null);
       setDialog({ kind: 'factor', purpose: ask });
+    } else if (ask === 'remove' && openFactor != null) {
+      setAsk(null);
+      setDialog({ kind: 'factor', purpose: 'remove', factor: factorKey(openFactor) });
     } else if (ask === 'signOut' && openDevice != null) void endDevice(openDevice);
     else if (ask === 'everywhere') {
       setAsk(null);
@@ -426,6 +452,65 @@ export function SecurityDesk() {
     );
   }
 
+  const turnOff = (
+    <>
+      <div className="account-acts">
+        {rules.twoFactor != null ? (
+          <KeptAction label={t('twoFactorCard.turnOff')} />
+        ) : (
+          <button
+            type="button"
+            className="desk-text is-red"
+            onClick={() => {
+              setRowError(null);
+              setAsk('turnOff');
+            }}
+          >
+            {t('twoFactorCard.turnOffAsks')}
+          </button>
+        )}
+      </div>
+      <p className="desk-note">
+        {rules.twoFactor != null
+          ? t('twoFactorCard.keptByRule', { organisation: rules.twoFactor })
+          : t('security.turnOffNote', { email: session.email })}
+      </p>
+      {status?.factors.length !== 1 && error('auth')}
+    </>
+  );
+
+  function turnOn(): Opened {
+    return passkeysHere ? { kind: 'choice' } : { kind: 'setup' };
+  }
+
+  async function passFactor(
+    purpose: FactorPurpose,
+    current: CurrentFactor,
+    factor: string | undefined,
+  ): Promise<void> {
+    if (purpose === 'turnOff') return api.disableTwoFactor(current);
+    if (purpose === 'newCodes')
+      return setDialog({
+        kind: 'recovery',
+        codes: await api.newRecoveryCodes(current),
+        made: 'new',
+        held,
+      });
+    if (purpose === 'add')
+      return setDialog({ kind: 'make', options: await api.passkeyCreationOptions(current) });
+    if (purpose === 'addApp')
+      return setDialog({ kind: 'addApp', enrolment: await api.enrolTwoFactor(current) });
+
+    const gone = status?.factors.find((one) => factorKey(one) === factor);
+    await api.removeTwoFactorFactor(factor === 'auth' ? 'app' : (factor ?? ''), current);
+    done(
+      gone?.kind === 'passkey'
+        ? t('passkey.passkeyRemoved', { place: keptIn(gone, t), email: session.email })
+        : t('passkey.appRemoved', { email: session.email }),
+    );
+    rereadFactor();
+  }
+
   const proving = dialog?.kind === 'prove' ? dialog : null;
   const provingAct = proving != null && proving.act !== 'everywhere' ? proving.act : null;
 
@@ -453,7 +538,7 @@ export function SecurityDesk() {
             step={
               status.on
                 ? null
-                : { label: t('twoFactorCard.turnOn'), onClick: () => setDialog({ kind: 'setup' }) }
+                : { label: t('twoFactorCard.turnOn'), onClick: () => setDialog(turnOn()) }
             }
           />
         )}
@@ -496,52 +581,79 @@ export function SecurityDesk() {
           ) : status == null ? (
             <Bones count={1} label={t('pending.loading')} />
           ) : status.on ? (
-            <ul className="desk-rows account-rows">
-              <Openable
-                title={t('security.authenticator')}
-                line={t('security.authenticatorOn')}
-                lead="shield"
-                on={open === 'auth'}
-                onToggle={() => toggle('auth')}
-              >
-                <div className="account-acts">
-                  {rules.twoFactor != null ? (
-                    <KeptAction label={t('twoFactorCard.turnOff')} />
-                  ) : (
-                    <button
-                      type="button"
-                      className="desk-text is-red"
-                      onClick={() => {
-                        setRowError(null);
-                        setAsk('turnOff');
-                      }}
-                    >
-                      {t('twoFactorCard.turnOffAsks')}
+            <>
+              <ul className="desk-rows account-rows">
+                {status.factors.map((factor) => (
+                  <FactorOpenable
+                    key={factorKey(factor)}
+                    row={
+                      factor.kind === 'app'
+                        ? { kind: 'app', day: shortDay(factor.addedAt, locale) }
+                        : {
+                            kind: 'passkey',
+                            provider: factor.provider,
+                            synced: factor.synced,
+                            day: shortDay(factor.addedAt, locale),
+                          }
+                    }
+                    on={open === factorKey(factor)}
+                    onToggle={() => toggle(factorKey(factor))}
+                  >
+                    {status.factors.length === 1 ? (
+                      turnOff
+                    ) : (
+                      <>
+                        <div className="account-acts">
+                          <button
+                            type="button"
+                            className="desk-text is-red"
+                            onClick={() => {
+                              setRowError(null);
+                              setAsk('remove');
+                            }}
+                          >
+                            {t('passkey.remove')}
+                          </button>
+                        </div>
+                        <p className="desk-note">{t('passkey.removeLine')}</p>
+                      </>
+                    )}
+                    {error(factorKey(factor))}
+                  </FactorOpenable>
+                ))}
+                <Openable
+                  title={t('twoFactorCard.recoveryCodes')}
+                  line={t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
+                  lead="lock"
+                  on={open === 'codes'}
+                  onToggle={() => toggle('codes')}
+                >
+                  <div className="account-acts">
+                    <button type="button" className="desk-text" onClick={() => setAsk('newCodes')}>
+                      {t('twoFactorCard.makeNewCodes')}
                     </button>
-                  )}
-                </div>
-                <p className="desk-note">
-                  {rules.twoFactor != null
-                    ? t('twoFactorCard.keptByRule', { organisation: rules.twoFactor })
-                    : t('security.turnOffNote', { email: session.email })}
-                </p>
-                {error('auth')}
-              </Openable>
-              <Openable
-                title={t('twoFactorCard.recoveryCodes')}
-                line={t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
-                lead="lock"
-                on={open === 'codes'}
-                onToggle={() => toggle('codes')}
-              >
-                <div className="account-acts">
-                  <button type="button" className="desk-text" onClick={() => setAsk('newCodes')}>
-                    {t('twoFactorCard.makeNewCodes')}
-                  </button>
-                </div>
-                <p className="desk-note">{t('twoFactorCard.newWarningBody')}</p>
-              </Openable>
-            </ul>
+                  </div>
+                  <p className="desk-note">{t('twoFactorCard.newWarningBody')}</p>
+                </Openable>
+                {passkeysHere && passkeyCount(status) < status.mostPasskeys && (
+                  <AddRow
+                    label={t('passkey.addPasskey')}
+                    onClick={() => setDialog({ kind: 'factor', purpose: 'add' })}
+                  />
+                )}
+                {!held.app && held.passkeys && (
+                  <AddRow
+                    label={t('passkey.addApp')}
+                    onClick={() => setDialog({ kind: 'factor', purpose: 'addApp' })}
+                  />
+                )}
+              </ul>
+              {passkeysHere && passkeyCount(status) >= status.mostPasskeys && (
+                <p className="desk-foot">{t('passkey.atMost', { count: status.mostPasskeys })}</p>
+              )}
+              {passkeysHere && <p className="desk-foot">{t('passkey.ownDevice')}</p>}
+              {status.factors.length > 1 && <div className="passkey-end">{turnOff}</div>}
+            </>
           ) : (
             <>
               <ul className="desk-rows account-rows">
@@ -549,7 +661,7 @@ export function SecurityDesk() {
                   <button
                     type="button"
                     className="desk-row account-row"
-                    onClick={() => setDialog({ kind: 'setup' })}
+                    onClick={() => setDialog(turnOn())}
                   >
                     <Lead name="shield" />
                     <RowWords
@@ -740,15 +852,67 @@ export function SecurityDesk() {
           onClose={() => setDialog(null)}
           onOn={(codes) => {
             void refreshAccount();
-            setDialog({ kind: 'recovery', codes, made: 'on' });
+            setDialog({
+              kind: 'recovery',
+              codes,
+              made: 'on',
+              held: { app: true, passkeys: false },
+            });
+          }}
+        />
+      )}
+      {dialog?.kind === 'choice' && (
+        <ChoiceDialog
+          options={() => api.passkeyCreationOptions()}
+          add={async (passkey) => {
+            const codes = await api.addPasskey(passkey);
+            void refreshAccount();
+            setDialog({
+              kind: 'recovery',
+              codes,
+              made: 'on',
+              held: { app: false, passkeys: true },
+            });
+          }}
+          onClose={() => setDialog(null)}
+          onApp={() => setDialog({ kind: 'setup' })}
+        />
+      )}
+      {dialog?.kind === 'make' && (
+        <MakeDialog
+          options={() => Promise.resolve(dialog.options)}
+          add={async (passkey) => {
+            await api.addPasskey(passkey);
+            done(t('passkey.passkeyAdded', { email: session.email }));
+            rereadFactor();
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'addApp' && (
+        <SetupDialog
+          adding
+          enrol={() => Promise.resolve(dialog.enrolment)}
+          activate={(code) => api.activateTwoFactor(code)}
+          onClose={() => setDialog(null)}
+          onOn={() => {
+            done(t('passkey.appAdded', { email: session.email }));
+            rereadFactor();
           }}
         />
       )}
       {dialog?.kind === 'recovery' && (
         <RecoveryDialog
           codes={dialog.codes}
+          held={dialog.held}
           onFinish={() => {
-            done(dialog.made === 'on' ? t('security.twoFactorOn') : t('security.newCodesDone'));
+            done(
+              dialog.made === 'new'
+                ? t('security.newCodesDone')
+                : dialog.held.passkeys
+                  ? t('passkey.onDone')
+                  : t('security.twoFactorOn'),
+            );
             rereadFactor();
           }}
         />
@@ -757,19 +921,18 @@ export function SecurityDesk() {
         <FactorDialog
           purpose={dialog.purpose}
           email={session.email}
-          submit={async (code) => {
-            if (dialog.purpose === 'turnOff') await api.disableTwoFactor(code);
-            else
-              setDialog({ kind: 'recovery', codes: await api.newRecoveryCodes(code), made: 'new' });
-          }}
+          held={held}
+          passkeyOptions={() => api.passkeyOptions(PASSKEY_STEPS[dialog.purpose])}
+          submit={(current) => passFactor(dialog.purpose, current, dialog.factor)}
           onClose={() => setDialog(null)}
           onDone={() => {
-            if (dialog.purpose !== 'turnOff') return;
-            done(t('security.twoFactorOff', { email: session.email }));
-            rereadFactor();
+            if (dialog.purpose === 'turnOff') {
+              done(t('security.twoFactorOff', { email: session.email }));
+              rereadFactor();
+            }
           }}
           onKept={(organisation) =>
-            refuseOn('auth', t('twoFactorCard.keptByRule', { organisation }))
+            refuseOn(offRow, t('twoFactorCard.keptByRule', { organisation }))
           }
         />
       )}
@@ -781,6 +944,10 @@ export function SecurityDesk() {
               : proveWith(ways.password, session.providers, provingAct.provider)
           }
           twoFactorOn={status?.on ?? false}
+          passkey={
+            held.passkeys && canUsePasskeys() ? () => api.passkeyOptions('proof') : undefined
+          }
+          held={held}
           returned={proving.returned}
           purpose={
             provingAct == null ? { kind: 'signOutOthers' } : { kind: 'prove', then: provingAct }
@@ -853,4 +1020,61 @@ function returnedProof(back: ProviderReturn | null): Opened | null {
   return back.purpose.kind === 'signOutOthers'
     ? { kind: 'prove', act: 'everywhere', returned: back.signIn }
     : null;
+}
+
+const PASSKEY_STEPS = {
+  turnOff: 'turn_off',
+  newCodes: 'new_codes',
+  remove: 'remove',
+  add: 'add',
+  addApp: 'add_app',
+} as const;
+
+/** The app's row keeps the key it always had, so a refusal still lands under it. */
+function factorKey(factor: TwoFactorFactor): string {
+  return factor.kind === 'app' ? 'auth' : factor.id;
+}
+
+function passkeyCount(status: TwoFactorStatus): number {
+  return status.factors.filter((factor) => factor.kind === 'passkey').length;
+}
+
+function heldOf(status: TwoFactorStatus | null): HeldFactors {
+  const factors = status?.factors ?? [];
+
+  return {
+    app: factors.some((factor) => factor.kind === 'app'),
+    passkeys: factors.some((factor) => factor.kind === 'passkey'),
+  };
+}
+
+function shortDay(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(iso));
+}
+
+function keptIn(factor: TwoFactorFactor, t: TFunction): string {
+  return factor.kind === 'passkey' && factor.provider != null
+    ? factor.provider
+    : t('passkey.keptElsewhere');
+}
+
+function removeAsk(factor: TwoFactorFactor, email: string, t: TFunction): AskWords {
+  return factor.kind === 'app'
+    ? {
+        title: t('passkey.removeAppTitle'),
+        line: t('passkey.removeAppLine', { email }),
+        keep: t('passkey.keep'),
+        confirm: t('passkey.removeAppGo'),
+        removes: true,
+      }
+    : {
+        title:
+          factor.provider == null
+            ? t('passkey.removeThisTitle')
+            : t('passkey.removeTitle', { provider: factor.provider }),
+        line: t('passkey.removePasskeyLine', { place: keptIn(factor, t), email }),
+        keep: t('passkey.keep'),
+        confirm: t('passkey.removePasskeyGo'),
+        removes: true,
+      };
 }
