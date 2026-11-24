@@ -1,5 +1,5 @@
 # sc-3914 r10 (phone): in ${ORIENT}, the product's Menu (top, scrolled, Choose who gets it on ${VARIANT}, Choose for them on ${PERSON}, no menu on ${NOMENU}) beside the demo's matching states, each shot at the top.
-# Pass METRO_URL, EVENT_ID, VARIANT (a Children only variant), PERSON (under Who hasn't picked), NOMENU (an event with no menu), ORIENT.
+# Pass METRO_URL, EVENT_ID, VARIANT (a Children only variant), PERSON (under Who hasn't picked), NOMENU (an event with no menu), ORIENT. The Menu is reopened after the scrolled shots so VARIANT and PERSON are found scrolling down from the top.
 appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
@@ -9,6 +9,17 @@ appId: host.exp.Exponent
       id: 'menu.header'
     timeout: 30000
 - takeScreenshot: populated-product
+- scroll
+- takeScreenshot: populated-2-product
+- scroll
+- takeScreenshot: populated-3-product
+- scroll
+- takeScreenshot: populated-4-product
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
 - scrollUntilVisible:
     element:
       id: 'menu.who.${VARIANT}'
