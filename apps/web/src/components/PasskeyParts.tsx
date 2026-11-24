@@ -157,6 +157,7 @@ export function NoBrowser() {
 function useMaking(
   options: () => Promise<PasskeyOptions>,
   add: (passkey: PasskeyAnswer) => Promise<void>,
+  onExists?: () => void,
 ) {
   const { t } = useTranslation();
   const [making, setMaking] = useState(false);
@@ -170,6 +171,11 @@ function useMaking(
       const made = await makePasskey(await options());
       if (made != null) await add(made);
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'InvalidStateError') {
+        setMaking(false);
+        onExists?.();
+        return;
+      }
       setRefused(
         error instanceof ApiError && error.is('passkey_limit')
           ? t('passkey.atMost', { count: 10 })
@@ -263,7 +269,7 @@ export function MakeDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { making, refused, make } = useMaking(options, add);
+  const { making, refused, make } = useMaking(options, add, onClose);
   const opened = useRef(false);
 
   useEffect(() => {
