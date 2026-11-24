@@ -29,7 +29,7 @@
     display: none;
   }
 
-  /* The rest of Settings and Your account keep their desk page under the product shell's phone bar (sc-13413), its bell in the bar rather than the title row. */
+  /* The rest of Settings and Your account sit under the product shell's phone bar (sc-13413), its bell in the bar rather than the title row. */
   .dp-bar .desk-main .desk-bell {
     display: none;
   }
@@ -108,5 +108,12 @@
     min-height: 0;
     padding-bottom: 0;
     overflow: hidden;
+  }
+
+  /* Under the bar the page runs flat to the window's edges, as the product's shell does at this width. */
+  .today.desk.dp-bar:not(.dp-fit) > .desk-main {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 }
