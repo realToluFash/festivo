@@ -3,19 +3,15 @@ import { hostsLine } from '@soirely/domain';
 import { type Mesh, meshFor } from '../mesh.ts';
 import { EVENT } from './guest.ts';
 import { type Guest, type GuestLanguage, LINK, sampleGuests } from './guests.ts';
-import draftJpeg from './linkCards/draft.jpg';
-import iretiJpeg from './linkCards/ireti.jpg';
-import partyJpeg from './linkCards/party.jpg';
-import wedJpeg from './linkCards/wed.jpg';
 import type { DemoLink } from './settings.ts';
 import { messageLanguage, messageOf } from './whatsAppSend.ts';
 
-/** The four colours an event without a photo is drawn in, exported once at 1200 × 675 with no words (sc-89272). */
+/** The four colours an event without a photo is drawn in, exported once at 1200 × 675 with no words (sc-89272); the API's link card names the same files. */
 export const MESH_JPEGS: Record<Mesh, string> = {
-  wed: wedJpeg,
-  ireti: iretiJpeg,
-  party: partyJpeg,
-  draft: draftJpeg,
+  wed: '/link-cards/wed.jpg',
+  ireti: '/link-cards/ireti.jpg',
+  party: '/link-cards/party.jpg',
+  draft: '/link-cards/draft.jpg',
 };
 
 export const MESHES: readonly Mesh[] = ['wed', 'ireti', 'party', 'draft'];

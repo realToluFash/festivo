@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, dashboard, digests, github, launchd, logins, machine,
+from . import (actions, agents, controls, dashboard, digests, github, launchd, logins, machine,
                payloads, permissions, remote, roles, runlog, runner, sessions, shared, store, sync,
                systemd, update, work)
 from . import text as T
@@ -696,6 +696,16 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
+def control(platform, action, role, by):
+    """One of `sq web`'s controls, on a connection of its own: a start can wait on Docker
+    while the page goes on reading through the other."""
+    db = open_db()
+    try:
+        return controls.act(db, home(), platform, action, role, by)
+    finally:
+        db.close()
+
+
 def tell_peers(db, platform):
     peers = remote.peers(remote.config())
     if peers and remote.usable(remote.token()):
@@ -929,7 +939,8 @@ def admin(argv):
                         session=lambda found: sessions.view(db, home(), platform, found),
                         host=a.listen or host, secret=remote.token(),
                         peers=lambda: remote.peers(remote.config()), config=remote.config,
-                        usage=logins.Usage(remote.config))
+                        usage=logins.Usage(remote.config),
+                        control=lambda action, role, by: control(platform, action, role, by))
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -956,21 +967,14 @@ def admin(argv):
             return sys.exit(agents.start(db, home(), platform, names))
         return sys.exit(agents.stop(db, names))
     elif a.command == "pause" and a.everywhere:
-        name = machine.load().get("machine") or "machine"
-        done = shared.pause_everywhere(shared.GitHubRefs(), name)
-        print("paused every machine: no role ticks anywhere, running workers finish their "
-              "item" if done else "every machine was already paused")
+        controls.pause_everywhere(db, shared.GitHubRefs(),
+                                  machine.load().get("machine") or "machine", print)
     elif a.command == "resume" and a.everywhere:
-        shared.resume_everywhere(shared.GitHubRefs())
-        print("resumed every machine; a machine paused on its own stays paused")
+        controls.resume_everywhere(db, shared.GitHubRefs(), print)
     elif a.command == "pause":
-        store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
-        print("paused: no role ticks, running workers finish their item")
+        controls.pause(db, print)
     elif a.command == "resume":
-        store.set_meta(db, "paused", None)
-        pause = (store.get_meta(db, "shared_view") or {}).get("paused")
-        print("resumed" + (f"; every machine is still paused by {pause.get('machine')}: "
-                           "sq resume --everywhere" if pause else ""))
+        controls.resume(db, print)
     elif a.command == "cost":
         cost(a.days)
     elif a.command == "agents":
