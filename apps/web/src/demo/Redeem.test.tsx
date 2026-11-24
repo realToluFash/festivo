@@ -308,6 +308,7 @@ describe('who is not asked again', () => {
     await wait(1000);
 
     expect(screen.getByText('Signed in as Kemi Okafor')).toBeDefined();
+    expect(screen.queryByText('You’ll be signed out at 23:30.')).toBeNull();
   });
 
   it('tells a member of the organisation to ask its lead or an admin, and grants nothing', async () => {
