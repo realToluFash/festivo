@@ -1,4 +1,4 @@
-import { ApiUnreachableError } from '@soirely/api-client';
+import { ApiUnreachableError, gateOf } from '@soirely/api-client';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -10,7 +10,7 @@ import { DevTools } from '../src/components/DevTools.tsx';
 import { Welcome } from '../src/components/Welcome.tsx';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingAfterRestart } from '../src/colourScheme.ts';
-import { gateOf, landingFor } from '../src/landing.ts';
+import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
 import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';

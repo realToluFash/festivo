@@ -1,6 +1,7 @@
+import { gateOf, heldByDevice } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { gateOf, heldByDevice, landingFor, skipDropsPhone } from './landing.ts';
+import { landingFor, skipDropsPhone } from './landing.ts';
 
 describe('where an account lands', () => {
   it('verifies the email, then a phone it has, then completes, then reaches the app', () => {

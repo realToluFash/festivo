@@ -5,7 +5,7 @@
  * the correlation id and the error shape are decided once. Written per client,
  * each grows its own error path and most of those are never exercised.
  */
-import { type Account, ApiClient, type Problem } from '@soirely/api-client';
+import { type Account, ApiClient, type Problem, gateOf, heldByDevice } from '@soirely/api-client';
 import { type NetworkKind, connection } from '@soirely/domain';
 import {
   type NetworkState,
@@ -21,7 +21,7 @@ import { heardFrom, readsMe } from './colourScheme.ts';
 import { config } from './config.ts';
 import { dateLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
-import { gateOf, heldByDevice, landingFor } from './landing.ts';
+import { landingFor } from './landing.ts';
 import { leaveWithoutAsking } from './leaveHeld.ts';
 import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
 import { dropRegistration } from './pendingRegistration.ts';

@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type {
-  Account,
-  InvitationPreview,
-  Membership,
-  PausedOrganisation,
+import {
+  type Account,
+  type InvitationPreview,
+  type Membership,
+  type PausedOrganisation,
+  heldByDevice,
 } from '@soirely/api-client';
 import {
   type InvitationOutcome,
@@ -21,7 +22,6 @@ import { api } from './api.ts';
 import { registerAppPush } from './appPush.ts';
 import { currentLocale } from './i18n/index.ts';
 import { forgetDoor } from './kit/doorStore.ts';
-import { heldByDevice } from './landing.ts';
 import { leaveThen, leaveWithoutAsking } from './leaveHeld.ts';
 import { takeDownRunOfShowCards } from './runOfShowCards.ts';
 import { tokens } from './tokens.ts';

@@ -6075,6 +6075,23 @@ export function awaiting(
   return account.waitingFor == null ? null : 'approval';
 }
 
+/** No address at all, as only a door code's account is until sc-4235 asks it for a number (the API's OnboardingGate::heldByDevice). */
+export function heldByDevice(
+  account: Pick<Account, 'verified' | 'emailAddresses' | 'phoneNumbers'>,
+): boolean {
+  return (
+    !account.verified && account.emailAddresses.length === 0 && account.phoneNumbers.length === 0
+  );
+}
+
+/** The gate an account is behind; a door code's account has none to pass and lands inside its event. */
+export function gateOf(
+  account: Pick<Account, 'verified' | 'complete' | 'emailAddresses' | 'phoneNumbers'> &
+    Partial<Pick<Account, 'waitingFor'>>,
+): Awaiting | null {
+  return heldByDevice(account) ? null : awaiting(account);
+}
+
 /** The events list's largest page (EventsController::MOST_PER_PAGE). */
 const MOST_EVENTS_PER_PAGE = 200;
 

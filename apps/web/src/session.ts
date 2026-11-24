@@ -9,7 +9,8 @@ import {
   type OutsideEvent,
   type PausedOrganisation,
   type Problem,
-  awaiting,
+  gateOf,
+  heldByDevice,
   primaryEmailAddress,
 } from '@soirely/api-client';
 import {
@@ -296,20 +297,6 @@ export async function rereadOrganisations(): Promise<void> {
     status: 'signedIn',
     session: { ...current, organisations: read.organisations, organisation, pausedIn },
   });
-}
-
-/** No address at all, as only a door code's account is until sc-4235 asks it for a number (the API's OnboardingGate::heldByDevice). */
-export function heldByDevice(
-  account: Pick<Account, 'verified' | 'emailAddresses' | 'phoneNumbers'>,
-): boolean {
-  return (
-    !account.verified && account.emailAddresses.length === 0 && account.phoneNumbers.length === 0
-  );
-}
-
-/** The gate an account is behind; a door code's account has none to pass and lands inside its event. */
-export function gateOf(account: Account): Awaiting | null {
-  return heldByDevice(account) ? null : awaiting(account);
 }
 
 /** Where a signed-in account belongs: the gate it is behind, or the product. */
