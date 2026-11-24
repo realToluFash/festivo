@@ -33,6 +33,8 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Ref;
@@ -50,6 +52,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Throwable;
 
 /** sc-3933: Paddle's signed webhooks are the only thing that changes what an organisation has paid for, each event once and in Paddle's order. */
 final class PaddleWebhookTest extends ApiTestCase
@@ -366,6 +369,41 @@ final class PaddleWebhookTest extends ApiTestCase
         $this->client->jsonRequest('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing/checkout', ['plan' => 'enterprise', 'interval' => 'month']);
 
         self::assertSame([[409, ErrorCode::PlanNotPriced->type()], []], [$this->refusal(), $sent->value]);
+    }
+
+    #[Test]
+    public function aFailedCustomerLookupLogsNoEmail(): void
+    {
+        $terms = self::service(CatalogueVersionRepository::class)->findOneByName(CataloguePart::Plans, '2026-10-19')?->getTerms() ?? self::fail('The first version is missing.');
+        $terms['enterprise'] = ['sales' => 'self_serve'] + Type\dict(Type\string(), Type\mixed())->coerce($terms['enterprise']);
+        self::service(CatalogueKeeper::class)->publish(CataloguePart::Plans, 'self-serve enterprise', $terms, 'Enterprise sold through the checkout, for this test', 'Ada at Soirely');
+        $records = new TestHandler();
+        self::serviceById('logger', Logger::class)->pushHandler($records);
+        $this->client->disableReboot();
+        $this->signIn($this->owner);
+
+        self::getContainer()->set(PaddleApi::class, new PaddleApi(
+            new MockHttpClient([new MockResponse('', ['http_code' => 429]), new MockResponse('', ['error' => 'timed out'])]),
+            self::em(),
+            self::service(PaddleSubscriptions::class),
+            self::service(ClockInterface::class),
+            'https://paddle.test',
+            'test-key',
+        ));
+
+        foreach ([1, 2] as $_) {
+            $this->client->jsonRequest('POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/billing/checkout', ['plan' => 'enterprise', 'interval' => 'month']);
+            self::assertResponseStatusCodeSame(503);
+        }
+
+        self::assertCount(2, $records->getRecords());
+        foreach ($records->getRecords() as $record) {
+            $logged = [$record->message];
+            for ($e = $record->context['exception'] ?? null; $e instanceof Throwable; $e = $e->getPrevious()) {
+                $logged[] = $e->getMessage();
+            }
+            self::assertStringNotContainsString('folake', Str\join($logged, ' '));
+        }
     }
 
     #[Test]

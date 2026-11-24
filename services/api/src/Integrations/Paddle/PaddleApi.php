@@ -17,6 +17,7 @@ use Psl\Type;
 use Psr\Clock\ClockInterface;
 use RuntimeException;
 use SensitiveParameter;
+use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpClientException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /** Paddle Billing's API: the sandbox until epic 552 sets production keys. The price is the catalogue's, sent as a non-catalogue item, so Paddle holds no price of its own. */
@@ -160,12 +161,20 @@ final readonly class PaddleApi implements PaymentProviderInterface
             $options['json'] = $body;
         }
 
-        $response = $this->http->request($method, Str\trim_right($this->apiBase, '/') . $path, $options);
+        // The query can carry the billing contact's email, and whatever is thrown here is logged.
+        $endpoint = Str\before($path, '?') ?? $path;
 
-        if ($response->getStatusCode() >= 300) {
-            throw new RuntimeException('Paddle answered ' . $path . ' with ' . $response->getStatusCode() . '.');
+        try {
+            $response = $this->http->request($method, Str\trim_right($this->apiBase, '/') . $path, $options);
+            $status = $response->getStatusCode();
+
+            if ($status >= 300) {
+                throw new RuntimeException('Paddle answered ' . $endpoint . ' with ' . $status . '.');
+            }
+
+            return $response->toArray();
+        } catch (HttpClientException) {
+            throw new RuntimeException('Paddle could not be reached on ' . $endpoint . '.');
         }
-
-        return $response->toArray();
     }
 }
