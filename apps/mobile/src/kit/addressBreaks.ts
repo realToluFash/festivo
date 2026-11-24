@@ -15,6 +15,10 @@ export function addressRuns(name: string): readonly [string, string] | null {
 const JOIN = '\u2060';
 const UNSEEN = /[\u200B\u2060\n]/g;
 
+function joinHyphens(part: string): string {
+  return part.replaceAll('-', `-${JOIN}`);
+}
+
 /** How far a heading address has had to break: not at all, after its @, or after its @ and before its domain's dots too. */
 export type HeadingBreaks = 'none' | 'at' | 'wide';
 
@@ -23,7 +27,7 @@ export function headingAddress(name: string, breaks: HeadingBreaks = 'none'): st
   const runs = addressRuns(name);
   if (runs == null) return null;
 
-  const [local, domain] = runs.map((run) => run.replaceAll('-', `-${JOIN}`));
+  const [local, domain] = [joinHyphens(runs[0]), joinHyphens(runs[1])];
   if (breaks === 'none')
     return `${local.replaceAll(BREAK, '')}${BREAK}${domain.replaceAll(BREAK, '')}`;
 
