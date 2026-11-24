@@ -160,7 +160,8 @@ final readonly class CatalogueParser
         self::countries(Vec\keys($terms['sms_per_segment']));
 
         foreach ($terms['whatsapp'] as $category => $byCountry) {
-            self::known(null !== WhatsAppCategory::tryFrom($category), $category, 'WhatsApp category');
+            // A service message is priced at the utility rate, so a version never prices it apart (sc-3929, 7 Nov).
+            self::known(!Iter\contains([null, WhatsAppCategory::Service], WhatsAppCategory::tryFrom($category)), $category, 'WhatsApp category');
             self::countries(Vec\keys($byCountry));
         }
 

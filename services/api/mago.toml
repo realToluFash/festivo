@@ -319,10 +319,11 @@ permit = [
 # the answer; billing never reaches back. Staff actions on the plan catalogue
 # are audited (sc-3928), and its unit-cost countries are checked against the one
 # country list (Regions), not the scope around it. A purge takes a billing account
-# nothing is paid for by any more.
+# nothing is paid for by any more. The meter's usage reaches an open billing page
+# through the one realtime publisher (sc-3929).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "App\\Domain\\Organisation\\Regions"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
