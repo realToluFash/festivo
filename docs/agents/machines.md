@@ -416,6 +416,31 @@ through its own server, so the browser holds one token and talks to one address.
   and the box for the code. Each login step is taken only as JSON from the page's own
   address, so another site open in the browser cannot start one.
 
+### Controls on the page
+
+**The page pauses and resumes a machine, pauses and resumes every machine, and starts and
+stops each role**, on the machine it shows: a peer's are asked of that peer's own page,
+which does them. Each says what the `sq` command says, its `error:` included, and is kept
+in `<sq home>/runs/controls.jsonl` with the address it came from.
+
+- **Every control asks for the token, this machine's own page included.** A worker shares
+  the loopback with the owner, not the owner's cookie. Open the page once as
+  `http://127.0.0.1:8765/?token=<SQ_WEB_TOKEN>` (a hand-run `sq web` opens it that way
+  itself), and the cookie lasts a year. Until then the buttons are off and the page says how.
+- **Workers are never given `SQ_WEB_TOKEN`**, and reading the env file is among their
+  denied tools. Like the `OWNER_ONLY` refusals, that is a guard against a worker that
+  misreads a thread, not a boundary: a worker runs as the owner.
+- **Start starts the role and its stack, and leaves the manager as it is.** Unlike
+  `sq start`, it neither installs the manager nor lifts a pause, since the page is served
+  by one of the manager's own units. A started role on a paused machine ticks once the
+  machine is resumed, and the page says so.
+- **Stop lets a running worker finish its item**, as `sq stop` does. Stopping one at once
+  is `just agents down --now`, at the machine.
+- **Pause every machine is shown here at once**, and on the other machines at their next
+  tick, within a minute.
+- A peer whose `sq` predates the controls is named on the page; it gets them once its `sq`
+  updates from `main`.
+
 ## An emulator on another computer
 
 A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,

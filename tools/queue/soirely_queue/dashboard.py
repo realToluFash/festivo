@@ -29,6 +29,8 @@ KEPT_SECONDS = 150
 TOLD = "peer.json"
 TOLD_MOST_BYTES = 1 << 20
 ASKED_MOST_BYTES = 64 << 10
+# Starting a role starts its stack, which Docker can take a minute or two over.
+CONTROL_SECONDS = 180
 
 
 def first_line(text):
@@ -69,7 +71,8 @@ def snapshot(db, platform, now, home, load=machine.load):
     view = {"now": now, "synced_ago": now - synced_at if synced_at else None,
             "errors": [f"sync: {e}" for e in store.get_meta(db, "sync_errors") or []],
             "warnings": [], "machine": None, "manager": platform.timer_active(),
-            "paused": runner.paused(db), "machines": [], "peers": [], "roles": [],
+            "paused": runner.paused(db), "paused_everywhere": None, "machines": [],
+            "peers": [], "roles": [],
             "elsewhere": [], "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
             "drawing": drawing_view(db), "logins": []}
     try:
@@ -107,6 +110,7 @@ def snapshot(db, platform, now, home, load=machine.load):
         unreachable = store.get_meta(db, "shared_unreachable")
         if unreachable:
             view["warnings"].append(f"could not reach the shared leases ({unreachable})")
+        view["paused_everywhere"] = agreed.get("paused")
         if agreed.get("paused"):
             view["warnings"].append(f"paused everywhere by {agreed['paused'].get('machine')}: "
                                     "sq resume --everywhere")
@@ -408,6 +412,33 @@ class LoginDoor:
         return said.get("status") or 502, said.get("location"), (said.get("body") or "").encode()
 
 
+class ControlDoor:
+    """The page's pause, resume, start and stop: done here by `here`, or asked of the
+    machine the page names, whose own page does it."""
+
+    def __init__(self, here, peers, secret, post=remote.post):
+        self.here, self.peers, self.secret, self.post = here, peers, secret, post
+
+    def act(self, asked, by):
+        action, role = str(asked.get("action") or ""), asked.get("role") or None
+        name = asked.get("machine") or ""
+        if not name:
+            return self.here(action, role and str(role), by)
+        base = self.peers().get(name)
+        if not base:
+            return 404, {"error": f"no machine called {name}"}
+        status, body = self.post(base, "control", self.secret,
+                                 json.dumps({"action": action, "role": role}).encode(),
+                                 timeout=CONTROL_SECONDS)
+        if status == 404 and not body.lstrip().startswith(b"{"):
+            return 404, {"error": f"{name}'s sq web has no controls yet; it gets them when its "
+                                  "sq updates from main"}
+        status, said = relay((status, body))
+        if "error" in said:
+            said = dict(said, error=f"{name}: {said['error']}")
+        return status, said
+
+
 def named_here(host):
     """Whether a `Host` names this machine's loopback, which a page that rebound its own
     name to 127.0.0.1 cannot send."""
@@ -418,15 +449,16 @@ def named_here(host):
 def serve(read, port, open_page=True, say=print, session=lambda session_id: None,
           host=remote.LOOPBACK, secret=None, peers=dict, fetch=remote.fetch, config=dict,
           desk=None, post=remote.post, opener=logins.open_chrome, bridge=logins.bridge,
-          usage=None):
+          usage=None, control=None):
     """Serves the page, `/status.json` and `/session.json?id=` until interrupted, and the same
     for each peer under `/m/<name>/`, read through `fetch`. A peer may also post its own
     reading to `/peer.json?from=<name>`. `read` returns a snapshot, which is
     settled with the peers unless one of them is asking, `session` one session's view or
     None, and `peers` the names and addresses of the other machines. `/login/…` starts and
     follows a Claude login, here or on a peer, through `LoginDoor`, and `usage`, when given,
-    keeps each account's plan usage read behind the page. Loopback needs no
-    token; anyone else does. Each request has a thread of its own, so a peer that is slow to
+    keeps each account's plan usage read behind the page. `/control` pauses, resumes, starts
+    and stops through `control`, here or on a peer, through `ControlDoor`. Loopback needs no
+    token to read; anyone else does, and every control does, wherever it comes from. Each request has a thread of its own, so a peer that is slow to
     answer, or a connection left idle, holds only itself; the queue is read by one request
     at a time, and requests within `SHARED_SECONDS` of each other share a reading."""
     if not remote.loopback(host) and not remote.usable(secret):
@@ -439,6 +471,8 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
     others.views()
     door = LoginDoor(desk or logins.Desk(config), config, peers, secret, fetch, post, opener,
                      bridge)
+    controls = ControlDoor(control or (lambda *_: (404, {"error": "no controls here"})), peers,
+                           secret, post)
 
     def shared():
         with reading:
@@ -494,6 +528,7 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                 view = shared()
                 if "own=1" not in query.split("&"):
                     view = settle(dict(view), others.views())
+                    view["controls"] = remote.presented(self.headers, secret)
                 body = json.dumps(view).encode()
             elif path == "/session.json":
                 with reading:
@@ -520,6 +555,8 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
                 return self.send_error(401)
             if path.startswith("/login/"):
                 return self.login(path)
+            if path == "/control":
+                return self.control()
             name = (urllib.parse.parse_qs(query).get("from") or [""])[0]
             if path != f"/{TOLD}" or name not in peers():
                 return self.send_error(404)
@@ -531,22 +568,38 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
             self.end_headers()
             return None
 
-        def login(self, path):
-            """A login step. Only JSON from this page's own address is taken, so another
-            site open in the browser cannot post one to this machine."""
+        def own_json(self):
+            """The posted JSON object, or the status that refuses it. Only JSON from this
+            page's own address is taken, so another site open in the browser cannot post one
+            to this machine."""
             kind = (self.headers.get("Content-Type") or "").split(";")[0].strip()
             if kind != "application/json":
-                return self.send_error(415)
+                return 415
             origin = self.headers.get("Origin")
             if origin and urllib.parse.urlsplit(origin).netloc != self.headers.get("Host"):
-                return self.send_error(403)
-            near = remote.loopback(self.client_address[0])
-            if near and not named_here(self.headers.get("Host")):
-                return self.send_error(403)
-            asked = self.asked(ASKED_MOST_BYTES)
+                return 403
+            if remote.loopback(self.client_address[0]) and \
+                    not named_here(self.headers.get("Host")):
+                return 403
+            return self.asked(ASKED_MOST_BYTES)
+
+        def login(self, path):
+            asked = self.own_json()
             if isinstance(asked, int):
                 return self.send_error(asked)
-            status, said = door.act(path, asked, near)
+            status, said = door.act(path, asked, remote.loopback(self.client_address[0]))
+            self.answer(status, json.dumps(said).encode())
+            return None
+
+        def control(self):
+            """A pause, resume, start or stop. The token is asked of every address, this
+            machine's own included: a worker shares its loopback, not the owner's cookie."""
+            if not remote.presented(self.headers, secret):
+                return self.send_error(401)
+            asked = self.own_json()
+            if isinstance(asked, int):
+                return self.send_error(asked)
+            status, said = controls.act(asked, self.client_address[0])
             self.answer(status, json.dumps(said).encode())
             return None
 
@@ -560,7 +613,9 @@ def serve(read, port, open_page=True, say=print, session=lambda session_id: None
     elsewhere = "" if remote.loopback(host) else f", and on {host} with the token"
     say(f"sq web: {url} (ctrl-c stops it){elsewhere}")
     if open_page:
-        webbrowser.open(url)
+        # Through the address once, so the page holds the cookie its controls need.
+        webbrowser.open(url + (f"?token={urllib.parse.quote(secret, safe='')}"
+                               if remote.usable(secret) else ""))
     try:
         server.serve_forever()
     except KeyboardInterrupt:
