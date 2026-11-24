@@ -10,6 +10,9 @@ import {
   AMAKA,
   DOTTED,
   LONG_MOBILE,
+  LONG_ORGANISATION,
+  ONE_WORD_ORGANISATION,
+  outsideTag,
   UNBROKEN,
   outsideRefusal,
   outsideView,
@@ -436,6 +439,23 @@ describe('adding someone from outside (sc-71)', () => {
     expect(
       peopleStart('longAddress').onEvent.filter((one) => one.outside && one.initials == null),
     ).toHaveLength(4);
+  });
+});
+
+describe('an organisation name wider than the tag’s line (sc-90472)', () => {
+  it('tags everyone from outside with the long name, and keeps the list as People’s', () => {
+    for (const [state, name] of [
+      ['longOrganisation', LONG_ORGANISATION],
+      ['oneWordOrganisation', ONE_WORD_ORGANISATION],
+    ] as const) {
+      const start = peopleStart(peopleStateOf(state));
+
+      expect(start.world?.organisation).toBe(name);
+      expect(start.onEvent).toEqual(peopleStart('people').onEvent);
+      expect(outsideTag(name)).toBe(`Outside ${name}`);
+    }
+    expect(ONE_WORD_ORGANISATION).toHaveLength(50);
+    expect(ONE_WORD_ORGANISATION).not.toMatch(/\s/u);
   });
 });
 
