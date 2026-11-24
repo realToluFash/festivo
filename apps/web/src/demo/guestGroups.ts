@@ -233,10 +233,19 @@ export function groupNameOf(groups: readonly GuestGroup[], id: string | undefine
   return id == null ? null : (groups.find((one) => one.id === id)?.name ?? null);
 }
 
-export function inGroupFilter(one: Guest, filter: GroupFilter | null): boolean {
-  if (filter == null) return true;
+/** sc-90684: the chips pressed combine OR; none pressed narrows nothing. */
+export function inGroupFilter(one: Guest, filters: readonly GroupFilter[]): boolean {
+  if (filters.length === 0) return true;
 
-  return filter === NO_GROUP ? one.group == null : one.group === filter;
+  return filters.some((filter) => (filter === NO_GROUP ? one.group == null : one.group === filter));
+}
+
+/** sc-90684: pressing a chip toggles only that chip. */
+export function toggledGroup(
+  filters: readonly GroupFilter[],
+  chip: GroupFilter,
+): readonly GroupFilter[] {
+  return filters.includes(chip) ? filters.filter((one) => one !== chip) : [...filters, chip];
 }
 
 /** The wedding's groups in the sample: four with people in them; the rest of the list has none. */
