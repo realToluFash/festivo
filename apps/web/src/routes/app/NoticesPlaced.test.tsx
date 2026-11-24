@@ -66,6 +66,7 @@ describe('every page that places its own notices at a desk (sc-39471, #88228)', 
   it('is found by walking the routes', () => {
     expect(placing).toContain('/app/settings/vendors/payment-reminders');
     expect(placing).toContain('/app/calendar');
+    expect(placing).toContain('/app/menu-library');
   });
 
   it.each(placing)('%s shows the sign-in rules’ notice once', async (path) => {
@@ -95,6 +96,19 @@ describe('"Google linked" on Settings at a desk (sc-39471, #88228)', () => {
     const notice = (await screen.findByText(LINKED)).closest('.notice');
 
     expect(notice?.closest('.settings-desk-page')).not.toBeNull();
+  });
+});
+
+describe('the sign-in rules’ notices on the Menu library at a desk (sc-39471, #88656)', () => {
+  it('stand in the page’s own column, above its title', async () => {
+    signedIn();
+    at('/app/menu-library');
+
+    const notice = (await screen.findByText('Two-factor required by Ìrè Events')).closest(
+      '.rn-box',
+    );
+
+    expect(notice?.closest('.desk.lib-page')).not.toBeNull();
   });
 });
 

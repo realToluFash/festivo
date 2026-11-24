@@ -18,6 +18,7 @@ export function placesItsNotices(pathname: string): boolean {
   return (
     pathname === '/app/events' ||
     pathname === '/app/calendar' ||
+    pathname === '/app/menu-library' ||
     ['/app/settings', '/app/account'].some(
       (place) => pathname === place || pathname.startsWith(`${place}/`),
     )
