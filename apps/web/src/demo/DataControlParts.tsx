@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router';
 import { LockTag as ProductLockTag } from '../components/DataControlParts.tsx';
 import { BackRow, type Tell, TextAction, TitleRow } from '../components/SettingsParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
+import { DemoRuleNotices } from './RuleNotices.tsx';
 import { type DataControlPage, SHARED_WORDS as S, dataControlPath } from './dataControl.ts';
 import type { Viewer } from './settings.ts';
 import './dataControl.css';
@@ -35,12 +37,15 @@ export function SubPage({
   title,
   viewer,
   tell,
+  loaded,
   children,
 }: {
   page: DataControlPage;
   title: string;
   viewer: Viewer;
   tell: Tell;
+  /** What stands above the title: the offline box once the page has loaded, the sign-in rules' notices before (sc-88912). */
+  loaded?: boolean;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -54,6 +59,7 @@ export function SubPage({
   return (
     <div className="desk-page">
       <div className="desk-column">
+        {loaded === true ? <DemoOffline /> : loaded === false && <DemoRuleNotices />}
         {page === 'hub' ? (
           <TitleRow title={title} bell={<DemoBell tell={tell} />} />
         ) : (

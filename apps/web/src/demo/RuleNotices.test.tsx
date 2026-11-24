@@ -104,3 +104,43 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
     expect(rule).toContain('margin-bottom: 18px;');
   });
 });
+
+describe('The offline box on Vendors and Data and control’s pages (sc-88912)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+
+  const pages = [
+    ['/demo/settings/vendors', 'Vendors'],
+    ['/demo/settings/data-and-control', 'Data and control'],
+    ['/demo/settings/data-and-control/export', 'Export all data'],
+    ['/demo/settings/data-and-control/email-domains', 'Email domains'],
+    ['/demo/settings/data-and-control/audit-log', 'Audit log'],
+  ] as const;
+
+  for (const [path, heading] of pages) {
+    it(`stands in ${heading}’s column above its title once loaded`, async () => {
+      const page = await open(`${path}?offline&notice=changed`, heading);
+      const offline = await screen.findByText(/Offline · as of/);
+      const changed = screen.getByText('Sign-in rules changed');
+
+      expect(page.title.closest('.desk-column')?.contains(offline)).toBe(true);
+      expect(follows(offline, changed)).toBe(true);
+      expect(follows(changed, page.title)).toBe(true);
+    });
+
+    it(`is not on ${heading} online`, async () => {
+      await open(path, heading);
+
+      expect(screen.queryByText(/Offline · as of/)).toBeNull();
+    });
+  }
+
+  it('is not on a page that has loaded nothing, which keeps the notices', async () => {
+    await open(
+      '/demo/settings/data-and-control?state=failed&offline&notice=changed',
+      'Data and control',
+    );
+
+    expect(screen.queryByText(/Offline · as of/)).toBeNull();
+    expect(screen.getByText('Sign-in rules changed')).toBeDefined();
+  });
+});

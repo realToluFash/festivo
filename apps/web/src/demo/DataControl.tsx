@@ -106,7 +106,7 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
 
   if (load !== 'loaded')
     return (
-      <SubPage page="hub" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="hub" title={W.title} viewer={viewer} tell={tell} loaded={false}>
         {load === 'failed' ? (
           <PageFailed words={W.failed} onRetry={retry} />
         ) : (
@@ -128,7 +128,7 @@ function Hub({ viewer, state, tell }: { viewer: Viewer; state: string; tell: Tel
   const rows = hubRows(view, viewer, locale);
 
   return (
-    <SubPage page="hub" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="hub" title={W.title} viewer={viewer} tell={tell} loaded>
       <Card>
         <div ref={said} className="desk-said-lines" tabIndex={-1} aria-live="polite">
           <Says>{card.says}</Says>
