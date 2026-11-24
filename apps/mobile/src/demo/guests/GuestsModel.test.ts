@@ -41,6 +41,7 @@ import {
   filtersFor,
   groupRows,
   guestOf,
+  guestPageShows,
   guestsAt,
   handMarked,
   invitationWords,
@@ -102,6 +103,15 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(guestOf('editCompanionArrived')).toBe('ines');
     expect(guestOf('edit412')).toBe('kwame');
     expect(guestOf('inUse')).toBeNull();
+  });
+
+  it('shows a guest no longer there over the guest it opened on (sc-31780)', () => {
+    const start = areaStart('notFound');
+    expect(start.open).toBe('emeka');
+    expect(guestPageShows(start.guestPhase, true)).toBe('notFound');
+    expect(guestPageShows(areaStart('guestLoading').guestPhase, true)).toBe('loading');
+    expect(guestPageShows(areaStart('guest').guestPhase, true)).toBe('guest');
+    expect(guestPageShows('ok', false)).toBe('loading');
   });
 
   it('starts each group with its screen open', () => {

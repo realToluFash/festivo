@@ -1374,6 +1374,14 @@ const QUIET: AreaStart = {
   walkIn: false,
 };
 
+export function guestPageShows(
+  phase: AreaStart['guestPhase'],
+  hasGuest: boolean,
+): 'guest' | 'loading' | 'notFound' {
+  if (phase === 'notFound') return 'notFound';
+  return phase === 'loading' || !hasGuest ? 'loading' : 'guest';
+}
+
 export function guestOf(state: GuestsState | null): string | null {
   switch (state) {
     case 'guest':
