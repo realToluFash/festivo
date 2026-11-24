@@ -1,0 +1,22 @@
+# sc-90472: an event's People with an outsider's Outside tag at the device's text size, shot at each third of a screen down, so a tall tag is seen whole.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: '.*{{t:eventPeople.title}}.*', timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: s0
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s1
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s2
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s3
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s4
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 800 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: s5
