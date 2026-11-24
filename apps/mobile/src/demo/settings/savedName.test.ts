@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { lookingAs, memberLooking } from './sample.ts';
-import { forgetName, saveName, savedName, underSavedName } from './savedName.ts';
+import {
+  forgetName,
+  saveName,
+  savedName,
+  startAgain,
+  starts,
+  underSavedName,
+} from './savedName.ts';
 
 describe('a name saved on Your account', () => {
   afterEach(() => forgetName());
@@ -51,5 +58,21 @@ describe('a name saved on Your account', () => {
     forgetName();
 
     expect(savedName()).toBeNull();
+  });
+
+  it('is forgotten when a deep link starts the page again', () => {
+    saveName('Oluwafolakemi Bello');
+    const before = starts();
+    startAgain();
+
+    expect(savedName()).toBeNull();
+    expect(starts()).toBe(before + 1);
+  });
+
+  it('starts the page again on a deep link even with no name saved', () => {
+    const before = starts();
+    startAgain();
+
+    expect(starts()).toBe(before + 1);
   });
 });
