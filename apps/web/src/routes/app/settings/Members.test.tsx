@@ -1345,7 +1345,7 @@ describe('making somebody an owner asks for a recent proof (sc-18930)', () => {
       json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
   };
   const INTRO =
-    "To make somebody an owner of Ìrè Events, confirm it's you. You won't be asked again for 5 minutes.";
+    'To make somebody an owner of Ìrè Events, confirm it’s you. You won’t be asked again for 5 minutes.';
   const SENT = () =>
     json(
       {

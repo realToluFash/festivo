@@ -28,10 +28,10 @@ describe('the proof window, counted from PROOF_MINUTES (sc-2197)', () => {
     const t = await english();
 
     expect(proveIntro(t, 'link', 'Google')).toBe(
-      "To link Google, confirm it's you. You won't be asked again for a minute.",
+      'To link Google, confirm it’s you. You won’t be asked again for a minute.',
     );
     expect(proveIntro(t, 'unlink', 'Apple')).toBe(
-      "To unlink Apple, confirm it's you. You won't be asked again for a minute.",
+      'To unlink Apple, confirm it’s you. You won’t be asked again for a minute.',
     );
   });
 
