@@ -72,7 +72,7 @@ export const WA_INVITATION = {
   },
   fr: {
     dear: 'Bonjour {{greeting}},',
-    invitation: 'Voici votre invitation de la part de {{hosts}} pour {{event}}, le {{date}}.',
+    invitation: 'Voici votre invitation, envoyée par {{hosts}}, pour {{event}}, le {{date}}.',
     replyBy:
       'Merci de répondre au plus tard le {{replyBy}}. Le bouton ci-dessous ouvre votre page personnelle, où vous pouvez répondre. Cette page n’est qu’à vous, merci donc de ne pas transférer ce message.',
     noDate:

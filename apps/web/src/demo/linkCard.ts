@@ -58,7 +58,7 @@ export function meshOf(raw: string | null, fallback: Mesh): Mesh {
 const LINE: Record<GuestLanguage, (hosts: string) => string> = {
   en: (hosts) => `Your invitation from ${hosts}`,
   es: (hosts) => `Su invitación de ${hosts}`,
-  fr: (hosts) => `Votre invitation de la part de ${hosts}`,
+  fr: (hosts) => `Votre invitation, envoyée par ${hosts}`,
   pt: (hosts) => `O seu convite da parte de ${hosts}`,
 };
 
