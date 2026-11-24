@@ -104,3 +104,56 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
     expect(rule).toContain('margin-bottom: 18px;');
   });
 });
+
+describe('The offline box on Vendors and Data and control’s pages (sc-88912)', () => {
+  beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
+
+  const pages = [
+    ['/demo/settings/vendors', 'Vendors'],
+    ['/demo/settings/data-and-control', 'Data and control'],
+    ['/demo/settings/data-and-control/export', 'Export all data'],
+    ['/demo/settings/data-and-control/email-domains', 'Email domains'],
+    ['/demo/settings/data-and-control/audit-log', 'Audit log'],
+  ] as const;
+
+  for (const [path, heading] of pages) {
+    it(`stands in ${heading}’s column above its title once loaded`, async () => {
+      const page = await open(`${path}?offline&notice=changed`, heading);
+      const offline = await screen.findByText(/Offline · as of/);
+      const changed = screen.getByText('Sign-in rules changed');
+
+      expect(page.title.closest('.desk-column')?.contains(offline)).toBe(true);
+      expect(follows(offline, changed)).toBe(true);
+      expect(follows(changed, page.title)).toBe(true);
+    });
+
+    it(`is not on ${heading} online`, async () => {
+      await open(path, heading);
+
+      expect(screen.queryByText(/Offline · as of/)).toBeNull();
+    });
+  }
+
+  it('stands above Audit log’s Enterprise lock, which counts as loaded', async () => {
+    const page = await open(
+      '/demo/settings/data-and-control/audit-log?state=locked&offline',
+      'Audit log',
+    );
+    const offline = await screen.findByText(/Offline · as of/);
+
+    expect(screen.getByText('Available on Enterprise')).toBeDefined();
+    expect(follows(offline, page.title)).toBe(true);
+  });
+
+  for (const [path, heading] of [
+    ['/demo/settings/data-and-control', 'Data and control'],
+    ['/demo/settings/vendors', 'Vendors'],
+  ] as const) {
+    it(`is not on ${heading} when it has loaded nothing, which keeps the notices`, async () => {
+      await open(`${path}?state=failed&offline&notice=changed`, heading);
+
+      expect(screen.queryByText(/Offline · as of/)).toBeNull();
+      expect(screen.getByText('Sign-in rules changed')).toBeDefined();
+    });
+  }
+});

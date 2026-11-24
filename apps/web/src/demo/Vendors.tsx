@@ -15,6 +15,8 @@ import { Glyph } from '../components/Glyph.tsx';
 import { focusWhenFree } from '../layers.ts';
 import { AlertInset, BudgetRow, Rows } from './BudgetParts.tsx';
 import { DemoBell } from './DemoBell.tsx';
+import { DemoOffline } from './DemoOffline.tsx';
+import { DemoRuleNotices } from './RuleNotices.tsx';
 import { REMINDER_DAYS, remindersPath } from './payments.ts';
 import { PW } from './paymentsWords.ts';
 import { owedBy, usedOn } from './quotes.ts';
@@ -155,6 +157,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
   if (load !== 'loaded')
     return (
       <Page>
+        <DemoRuleNotices />
         <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
         {load === 'failed' ? <Failed onRetry={() => setLoad('retrying')} /> : <Loading />}
       </Page>
@@ -174,6 +177,7 @@ export function Vendors({ state, tell, bell }: { state: string; tell: Tell; bell
 
   return (
     <Page>
+      <DemoOffline />
       <TitleRow title={VW.title} bell={bell && <DemoBell tell={tell} />} />
       <Card>
         {card.tags.length > 0 && (
