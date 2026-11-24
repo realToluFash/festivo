@@ -114,6 +114,19 @@ JSON
     echo "soirely: wrote $WELL_KNOWN/apple-app-site-association for ${SOIRELY_APPLE_APP_ID}"
 fi
 
+# ── The API inside the network ───────────────────────────────────────────────
+#
+# A guest's link asks the API for its chat card (sc-89272) as nginx serves it.
+# Resolved when asked rather than at start, so the web starts without the API.
+API_INTERNAL="${SOIRELY_API_INTERNAL_URL:-http://api}"
+case "$API_INTERNAL" in
+    *[!a-zA-Z0-9:/._-]*) echo "soirely: SOIRELY_API_INTERNAL_URL is not a plain URL" >&2; exit 1 ;;
+esac
+cat > /etc/nginx/soirely-api.conf <<CONF
+resolver ${SOIRELY_RESOLVER:-127.0.0.11} valid=30s ipv6=off;
+set \$soirely_api ${API_INTERNAL};
+CONF
+
 # ── Security headers ─────────────────────────────────────────────────────────
 #
 # Generated rather than committed because the sources name the API, Mercure and

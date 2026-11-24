@@ -102,6 +102,7 @@
     "validation.seating_copy_outside_room": "The copy of {name} would sit outside the room, so nothing was added.",
     "validation.seating_row_outside_room": "Row {label} would sit outside the room.",
     "seating.no_such_item": "This table, row or seat is not on the plan.",
+    "guest_link_card.line": "Your invitation from {hosts}",
     "guest_export.file": "{event} – guests – {day}",
     "guest_export.sheet": "Guests",
     "guest_export.column.full_name": "Full name",

@@ -197,6 +197,9 @@ services:
     App\Domain\Guest\Link\InvitationLinks:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Guest\Link\LinkCard:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Staff\Link\StaffLinks:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
