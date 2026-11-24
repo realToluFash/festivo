@@ -1,14 +1,7 @@
-import { useContext, useState } from 'react';
+import { useContext, useSyncExternalStore } from 'react';
 
-import {
-  type SideFit,
-  type SideRoom,
-  lettersIn,
-  sideStart,
-  sideTextSize,
-} from '../layout/sidebarSize.ts';
-import { SIDE_WIDTHS } from '../layout/sideWidths.ts';
-import { piecesIn, wordsIn, wrapOf } from '../layout/textSize.ts';
+import { type SideFit, type SideRoom, sideStart, sideTextSize } from '../layout/sidebarSize.ts';
+import { SIDE_WIDTHS, sideReadings } from '../layout/sideWidths.ts';
 import type { WeightName } from '../theme/fonts.ts';
 import { TitleCap } from './Text.tsx';
 import { MeasuredWords } from './Title.tsx';
@@ -23,40 +16,17 @@ export function useSideFit(
 ) {
   const cap = useContext(TitleCap);
   const start = sideStart(room, scale, cap);
-  const words = wordsIn([text]);
-  const pieces = fit === 'lines' ? piecesIn([text]) : [];
-  const [, setReadings] = useState(0);
-  const width = (piece: string) => SIDE_WIDTHS.width(start, weight, piece);
-  const whole = width(`\n${text}`);
-  const widths: Record<string, number> = {};
-  for (const piece of [...words, ...pieces]) {
-    const read = width(piece);
-    if (read != null) widths[piece] = read;
-  }
-  const known = whole != null && [...words, ...pieces].every((piece) => widths[piece] != null);
-  const size = sideTextSize(
-    room,
-    scale,
-    known
-      ? {
-          words: words.map((word) => ({ width: widths[word] ?? 0, letters: lettersIn(word) })),
-          whole: { width: whole, letters: lettersIn(text) },
-          ...(fit === 'lines' ? { wrap: wrapOf(text, widths, whole) } : {}),
-        }
-      : null,
-    fit,
-    cap,
-  );
-  const keep = (piece: string, read: number) => {
-    if (SIDE_WIDTHS.keep(start, weight, piece, read)) setReadings((readings) => readings + 1);
-  };
+  useSyncExternalStore(SIDE_WIDTHS.subscribe, SIDE_WIDTHS.version);
+  const { pieces, read } = sideReadings(SIDE_WIDTHS, text, start, weight, fit);
+  const size = sideTextSize(room, scale, read, fit, cap);
+  const keep = (piece: string, width: number) => SIDE_WIDTHS.keep(start, weight, piece, width);
 
   return {
     size,
     measure: (
       <>
         <MeasuredWords
-          words={[...words, ...pieces]}
+          words={pieces}
           size={start}
           weight={weight}
           allowFontScaling={false}
