@@ -443,9 +443,23 @@ in `<sq home>/runs/controls.jsonl` with the address it came from.
 
 **Settings, on each role and on each machine's header, changes `agents.json` there**: a
 role's `model`, `effort`, `inboxEffort`, `wakeEvery`, `workers` and `maxBudgetUsd`, the same
-six in `defaults`, and the machine's `dailyBudgetUsd`. The rest of the file is changed by
+six in `defaults`, and the machine's `dailyBudgetUsd`, and the **Claude account**
+(`claudeConfigDir`) of each role and of the machine. The rest of the file is changed by
 hand, since a mistake there stops the machine.
 
+- **A Claude account is one of the folders the machine's logins list**: the folders its
+  roles run under, `~/.claude`, and each `~/.claude-*` with an account file, settings or a
+  login, named with who it runs as and the roles on it. Any other folder is refused, since
+  a folder's settings and hooks run in every worker started under it. Make a new one and
+  log in to it at the keyboard ([Claude accounts](#claude-accounts)). A folder is matched
+  by the path it resolves to and written in the `~/` form the logins show.
+- **A folder with no login is refused** with `sq run`'s `no Claude login in …`, for a role
+  even when it is refused for something else already, and for the machine's own folder
+  even when no role runs under it. A role's account can be cleared, so it runs under the
+  machine's (**The machine's**); naming the machine's folder instead keeps the role on it
+  when the machine's changes. The machine's cannot be cleared. The next run starts under
+  the new folder, with its account, settings and memory; a worker already running finishes
+  under the old one.
 - **Each field shows the value in force and where it is set**: the role, `defaults`, or
   sq's own floor (`wakeEvery` 3m, `workers` 1). A cleared role field falls back to
   `defaults`.
