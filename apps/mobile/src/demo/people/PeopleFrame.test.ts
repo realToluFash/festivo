@@ -3,7 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { EVENT as DOOR } from '../doorCode/DoorCodeModel.ts';
+import { EVENT as DOOR, doorStartOf } from '../doorCode/DoorCodeModel.ts';
+import { instantOf } from '../events/EventsModel.ts';
 import { DOOR_WEDDING, EVENTS, sampleEvent } from '../events/EventsSample.ts';
 
 const frame = readFileSync(join('src', 'demo', 'people', 'PeopleFrame.tsx'), 'utf8');
@@ -47,5 +48,21 @@ describe('the door code’s event is one the event’s frame can open (sc-72)', 
     expect(DOOR_WEDDING.venue?.name).toBe(DOOR.venue.split(',')[0]);
     expect(DOOR_WEDDING.timeZone).toBe('Europe/Lisbon');
     expect(EVENTS.some((one) => one.id === DOOR.id)).toBe(false);
+  });
+});
+
+describe('the door code’s event frame reads the door sample’s clock (sc-72)', () => {
+  it('passes the door start’s moment through as the frame’s now', () => {
+    expect(route).toMatch(/instantOf\(doorDate, doorTime, DOOR_WEDDING\.timeZone\)/u);
+    expect(route).toMatch(/clock=\{clock\}/u);
+  });
+
+  it('puts a code on the day inside the wedding, not days before it', () => {
+    const door = doorStartOf('code', undefined, undefined);
+    const at = Date.parse(instantOf(door!.now.date, door!.now.time, DOOR_WEDDING.timeZone));
+
+    expect(door!.now.date).toBe(DOOR.day);
+    expect(at).toBeGreaterThan(Date.parse(DOOR_WEDDING.startsAt) - 24 * 3600 * 1000);
+    expect(at).toBeLessThan(Date.parse(DOOR_WEDDING.endsAt));
   });
 });
