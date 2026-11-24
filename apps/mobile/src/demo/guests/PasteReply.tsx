@@ -1,9 +1,8 @@
-import * as Clipboard from 'expo-clipboard';
 import { type Ref, type RefObject, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { SearchField } from '../../components/EventsSearch.tsx';
+import { PasteButton } from '../../components/PasteReply.tsx';
 import { readOut, useReadOut } from '../../components/ReadOut.tsx';
 import { MarkSlot } from '../../components/ReplyMark.tsx';
 import { Row, RowList, TextAction } from '../../components/Summary.tsx';
@@ -22,76 +21,7 @@ import {
   hasText,
 } from './PasteReplyModel.ts';
 
-const FIELD_HEIGHT = 48;
-const RING = 1.5;
-
-function ClipboardMark({ ink }: { ink: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M8 4H6.5A2.5 2.5 0 0 0 4 6.5v12A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 4H16M9.5 2.5h5A1.5 1.5 0 0 1 16 4v1a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 5V4a1.5 1.5 0 0 1 1.5-1.5z"
-        stroke={ink}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-/** Soirely's own secondary button: Android's, and iOS's before 16, where reading the clipboard asks first. */
-function OwnPaste({ onText }: { onText: (text: string) => void }) {
-  const press = () => {
-    Clipboard.getStringAsync().then(onText, () => onText(''));
-  };
-
-  return (
-    <Pressable
-      onPress={press}
-      style={({ pressed }) => [styles.own, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={PW.pasteReply}
-      testID="guests.paste"
-    >
-      <ClipboardMark ink={tokens.colorInk} />
-      <Text size={15} weight="semibold" numberOfLines={1} accessible={false}>
-        {PW.pasteReply}
-      </Text>
-    </Pressable>
-  );
-}
-
-/** iOS 16 on: Apple's Paste, whose word follows the phone's language, so it is never given a fixed width. */
-function ApplePaste({ onText, inRow }: { onText: (text: string) => void; inRow: boolean }) {
-  return (
-    <View style={[styles.appleRing, inRow ? styles.appleInRow : styles.appleAlone]}>
-      <Clipboard.ClipboardPasteButton
-        onPress={(data) => onText(data.type === 'text' ? data.text : '')}
-        acceptedContentTypes={['plain-text']}
-        displayMode="iconAndLabel"
-        cornerStyle="capsule"
-        backgroundColor={tokens.colorCard}
-        foregroundColor={tokens.colorInk}
-        style={styles.apple}
-        testID="guests.paste"
-      />
-    </View>
-  );
-}
-
-export function PasteButton({
-  onText,
-  inRow = false,
-}: {
-  onText: (text: string) => void;
-  inRow?: boolean;
-}) {
-  return Platform.OS === 'ios' && Clipboard.isPasteButtonAvailable ? (
-    <ApplePaste onText={onText} inRow={inRow} />
-  ) : (
-    <OwnPaste onText={onText} />
-  );
-}
+export { PasteButton };
 
 export function PasteNotice() {
   return (
@@ -327,27 +257,6 @@ const styles = StyleSheet.create({
   secondary: { color: tokens.colorInkSecondary },
   lines: { lineHeight: 15 * 1.45 },
   pressed: { opacity: 0.6 },
-  own: {
-    height: FIELD_HEIGHT,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceXs,
-    paddingHorizontal: tokens.spaceLg,
-    borderRadius: FIELD_HEIGHT / 2,
-    borderWidth: RING,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  appleRing: {
-    height: FIELD_HEIGHT,
-    padding: RING,
-    borderRadius: FIELD_HEIGHT / 2,
-    backgroundColor: tokens.colorBorder,
-  },
-  appleAlone: { width: '100%' },
-  appleInRow: { flexGrow: 1, flexBasis: 0 },
-  apple: { flex: 1 },
   pasteBlock: { gap: tokens.spaceSm },
   pasteRow: {
     flexDirection: 'row',
