@@ -1,0 +1,37 @@
+# sc-89866: an owner turning an Admin into an Owner sees Confirm it’s you with its lead.
+# Needs OWNER_ROLE_ID, the organisation's Owner role (role rows are members.role.<roleId>).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- tapOn: 'Admin'
+- waitForAnimationToEnd
+- takeScreenshot: owner-member
+- tapOn: 'Change role.*'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'members.role.${OWNER_ROLE_ID}'
+    direction: DOWN
+- tapOn:
+    id: 'members.role.${OWNER_ROLE_ID}'
+- scrollUntilVisible:
+    element:
+      id: 'members.role.save'
+    direction: DOWN
+- tapOn:
+    id: 'members.role.save'
+- waitForAnimationToEnd
+- takeScreenshot: owner-ask
+- runFlow:
+    when:
+      notVisible: 'Confirm it’s you'
+    commands:
+      - tapOn: 'Make .* an owner|Make owner|Continue'
+      - waitForAnimationToEnd
+- takeScreenshot: owner-prove
+- assertVisible: 'Confirm it’s you'
+- assertVisible: 'To make somebody an owner of QA Organisation, confirm it’s you\. You won’t be asked again for 5 minutes\.'
