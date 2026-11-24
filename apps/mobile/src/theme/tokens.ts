@@ -48,6 +48,7 @@ const base = {
   "optionPurple": "#8B6CD6",
   "optionTeal": "#2A9D8F",
   "optionRose": "#D96C8A",
+  "coverParty": "#5A3DF0",
   "optionNone": "#D6D9E0",
   "scrimSheet": "rgba(21,23,28,0.35)",
   "scrimDialog": "rgba(21,23,28,0.4)",
