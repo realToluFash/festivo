@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useId, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { type BellRow, BellMute, BellPanel } from '../components/BellPanel.tsx';
@@ -57,6 +57,9 @@ export function UsageWarning() {
 function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell: Tell }) {
   const [current, setCurrent] = useState(state === 'other' ? OTHER : NAMED);
   const [switched, setSwitched] = useState('');
+  const [items, setItems] = useState<readonly FeedItem[]>(() => feedOf(state));
+  const [arrived, setArrived] = useState('');
+  const played = items.some((item) => item.id === ARRIVAL.id);
 
   return (
     <div className="desk-page">
@@ -65,7 +68,8 @@ function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell:
           title="Events"
           bell={
             <UsageBell
-              state={state}
+              items={items}
+              setItems={setItems}
               lang={lang}
               onUsage={(organisation) => {
                 if (organisation !== current) {
@@ -83,7 +87,31 @@ function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell:
         <p className="uw-said" role="status" aria-live="polite">
           {switched}
         </p>
+        <p className="visually-hidden" role="status" aria-live="polite">
+          {arrived}
+        </p>
         <div className="uw-demo-only">
+          {state === 'live' && (
+            <>
+              <p>
+                Stand-in for the server, in the demo only. The arrival joins the top, the badge
+                counts up and the polite region says it; focus and scroll stay where they are.
+              </p>
+              <button
+                type="button"
+                className="desk-text"
+                disabled={played}
+                onClick={() => {
+                  setItems((now) => [ARRIVAL, ...now]);
+                  setArrived(
+                    arrivedSaid(said(ARRIVAL.warning ?? WARNINGS.drafts100, lang).heading),
+                  );
+                }}
+              >
+                Play the arrival
+              </button>
+            </>
+          )}
           <p>
             Tweak, in the demo only. Current organisation: <strong>{current}</strong>. The warnings
             name {NAMED}; opening one from another organisation switches to {NAMED} first, with
@@ -110,19 +138,19 @@ function UsagePage({ state, lang, tell }: { state: UsageState; lang: Lang; tell:
 }
 
 function UsageBell({
-  state,
+  items,
+  setItems,
   lang,
   onUsage,
   onEvent,
 }: {
-  state: UsageState;
+  items: readonly FeedItem[];
+  setItems: Dispatch<SetStateAction<readonly FeedItem[]>>;
   lang: Lang;
   onUsage: (organisation: string) => void;
   onEvent: () => void;
 }) {
   const [open, setOpen] = useState(true);
-  const [items, setItems] = useState<readonly FeedItem[]>(() => feedOf(state));
-  const [arrived, setArrived] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -130,7 +158,6 @@ function UsageBell({
   const box = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const unread = items.filter((item) => !item.read).length;
-  const playedAlready = items.some((item) => item.id === ARRIVAL.id);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -185,17 +212,9 @@ function UsageBell({
     };
   });
 
-  function play(): void {
-    setItems((now) => [ARRIVAL, ...now]);
-    setArrived(arrivedSaid(said(ARRIVAL.warning ?? WARNINGS.drafts100, lang).heading));
-  }
-
   return (
     <div className="uw-bell-at">
       <Bell ref={button} unread={unread} expanded={open} onOpen={() => setOpen((now) => !now)} />
-      <p className="visually-hidden" role="status" aria-live="polite">
-        {arrived}
-      </p>
       {open && (
         <div ref={box}>
           <BellPanel
@@ -230,17 +249,6 @@ function UsageBell({
               </Link>
             }
           />
-        </div>
-      )}
-      {state === 'live' && (
-        <div className="uw-demo-only uw-play">
-          <p>
-            Stand-in for the server, in the demo only. The arrival joins the top, the badge counts
-            up and the polite region says it; focus and scroll stay where they are.
-          </p>
-          <button type="button" className="desk-text" disabled={playedAlready} onClick={play}>
-            Play the arrival
-          </button>
         </div>
       )}
     </div>

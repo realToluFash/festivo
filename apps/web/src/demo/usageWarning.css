@@ -8,6 +8,12 @@
   max-width: calc(100vw - 48px);
 }
 
+.uw {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 2 * var(--spaceXxl));
+}
+
 .uw-said {
   margin: 0;
   font: var(--typeBody);
@@ -35,6 +41,11 @@
   margin: 0;
 }
 
+.uw > .uw-demo-only {
+  max-width: 280px;
+  margin-top: auto;
+}
+
 .uw-demo-only button,
 .uw-demo-only a {
   min-height: 24px;
@@ -44,15 +55,6 @@
 .uw-demo-only [aria-current='page'] {
   font-weight: 700;
   text-decoration: underline;
-}
-
-.uw-play {
-  position: fixed;
-  right: var(--spaceXl);
-  bottom: var(--spaceXl);
-  z-index: 40;
-  max-width: 320px;
-  background: var(--colorCard);
 }
 
 .uw-mail-page {
@@ -132,4 +134,11 @@
   text-align: center;
   text-decoration: none;
   overflow-wrap: anywhere;
+}
+
+.uw-mail-page > .uw-demo-only {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 0;
 }
