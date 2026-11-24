@@ -7,7 +7,6 @@ import type {
   PicksRow,
 } from '@soirely/api-client';
 import {
-  clockOf,
   courseHostCount,
   defaultPick,
   hostCount,
@@ -20,7 +19,7 @@ import { AppState, RefreshControl, StyleSheet, View, type ViewInstance } from 'r
 
 import { api } from '../api.ts';
 import { dateLocale, useShownLanguage } from '../i18n/index.ts';
-import { headerClose, hostLine, openWords, picksAccess } from '../kit/menuPicksWords.ts';
+import { freshLine, headerClose, hostLine, openWords, picksAccess } from '../kit/menuPicksWords.ts';
 import { writeToShare } from '../kit/sharedFile.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { Confirmed } from '../steps/Lines.tsx';
@@ -331,7 +330,6 @@ function Picks({
   const access = picksAccess(picks);
   const manage = access === 'manage';
   const names = access !== 'counts';
-  const at = clockOf(picks.updatedAt);
   const courseName = (id: string) => picks.courses.find((one) => one.id === id)?.name ?? '';
   const close = headerClose(t, menu, event.timeZone, dateLocale());
   const figures = {
@@ -354,12 +352,12 @@ function Picks({
         <View style={parts.markLine} testID="menu.stale">
           <Glyph name="warn" size={16} ink={tokens.colorAttentionText} />
           <View style={parts.flex}>
-            <AmberLine text={t('menuPicks.stale', { at })} ink />
+            <AmberLine text={freshLine(t, picks.updatedAt, true, dateLocale())} ink />
           </View>
         </View>
       ) : (
         <Text size={15} style={parts.secondary} testID="menu.live">
-          {t('menuPicks.live', { at })}
+          {freshLine(t, picks.updatedAt, false, dateLocale())}
         </Text>
       )}
       {download === 'downloading' && (

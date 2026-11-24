@@ -86,8 +86,6 @@ export const courseHostCount = (course: PicksCourse): number =>
 export const hostCount = (picks: EventPicks): number =>
   picks.courses.reduce((sum, course) => sum + courseHostCount(course), 0);
 
-export const clockOf = (at: string): string => at.slice(11, 16);
-
 /** A course default's words, "Jollof rice, Chicken": the dish, its variant and its options, from the menu. */
 export function defaultPick(
   menu: EventMenu,

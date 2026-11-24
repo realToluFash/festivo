@@ -11,6 +11,7 @@ import {
   defaultPick,
   defaultedOn,
   excludedOf,
+  formatTimeOfDay,
   listFormat,
   menuClose,
   menuCloseFrom,
@@ -51,6 +52,13 @@ export function headerClose(
   if (close.closed) return t('menuPicks.closeAll', { date });
 
   return t(menuCloseFrom(menu.courses) ? 'menuPicks.closeFrom' : 'menuPicks.closeOne', { date });
+}
+
+/** The counts' freshness, in the device's zone as the offline band above it is; the event's zone is for times the event sets (sc-89448). */
+export function freshLine(t: TFunction, updatedAt: string, stale: boolean, locale: string): string {
+  const at = formatTimeOfDay(updatedAt, locale);
+
+  return t(stale ? 'menuPicks.stale' : 'menuPicks.live', { at });
 }
 
 /** Under a course with a default: what it is and when it is given, or, once given, to how many. */
