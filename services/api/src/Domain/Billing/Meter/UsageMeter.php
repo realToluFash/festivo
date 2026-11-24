@@ -116,7 +116,7 @@ final readonly class UsageMeter
             }
 
             $units = $delivered->kind === $reservation->getKind() ? $delivered->quantity : $heldUnits ?? $delivered->quantity;
-            $existing = $this->recordUnder($delivered->kind, $idempotencyKey);
+            $existing = $this->recordUnder($owner['organisation'], $delivered->kind, $idempotencyKey);
 
             if (null !== $existing) {
                 return $this->settledBefore($existing, $reservation, $idempotencyKey, $units);
@@ -184,7 +184,7 @@ final readonly class UsageMeter
 
         $record = $this->connection()->transactional(function () use ($organisation, $account, $idempotencyKey, $use, $version, $creditsPerUnit, $now, $period, $allowance): UsageRecord {
             $this->lockAccount($account->getId());
-            $existing = $this->recordUnder($use->kind, $idempotencyKey);
+            $existing = $this->recordUnder($organisation->getId(), $use->kind, $idempotencyKey);
 
             if (null !== $existing) {
                 return $existing;
@@ -217,7 +217,7 @@ final readonly class UsageMeter
 
         $record = $this->connection()->transactional(function () use ($organisation, $account, $bytes, $now, $period, $key): UsageRecord {
             $this->lockAccount($account->getId());
-            $record = $this->recordUnder(UsageKind::StorageBytes, $key);
+            $record = $this->recordUnder($organisation->getId(), UsageKind::StorageBytes, $key);
 
             if (null === $record) {
                 $record = new UsageRecord($organisation, $account, UsageKind::StorageBytes, $key, $bytes, null, null, $now, $period->start, UsagePayer::Included, $bytes, 0, null, 0, null, false);
@@ -396,9 +396,9 @@ final readonly class UsageMeter
         return $reservation;
     }
 
-    private function recordUnder(UsageKind $kind, string $idempotencyKey): ?UsageRecord
+    private function recordUnder(Uuid $organisationId, UsageKind $kind, string $idempotencyKey): ?UsageRecord
     {
-        return $this->entityManager->getRepository(UsageRecord::class)->findOneBy(['keyScope' => $kind->keyScope(), 'idempotencyKey' => $idempotencyKey]);
+        return $this->entityManager->getRepository(UsageRecord::class)->findOneBy(['organisation' => $organisationId, 'keyScope' => $kind->keyScope(), 'idempotencyKey' => $idempotencyKey]);
     }
 
     private function allowance(Uuid $organisationId, UsageKind $kind): Allowance

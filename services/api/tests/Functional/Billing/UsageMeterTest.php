@@ -369,6 +369,24 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function twoOrganisationsSettlingUnderTheSameKeyAreEachChargedForTheirOwnMessage(): void
+    {
+        $other = $this->found('bayo@eko.events', 'Eko Events');
+        $this->credit(100);
+        $this->credit(100, $other);
+        $ours = $this->meter->reserve($this->organisation, self::sms());
+        $theirs = $this->meter->reserve($other, self::sms());
+
+        $first = $this->meter->settle($ours->reservationId, 'message-1', self::sms());
+        $second = $this->meter->settle($theirs->reservationId, 'message-1', self::sms());
+
+        self::assertFalse($first->getId()->equals($second->getId()));
+        self::assertTrue($second->getOrganisation()->getId()->equals($other));
+        self::assertSame([62, 62], [$first->getCreditsTaken(), $second->getCreditsTaken()]);
+        self::assertSame(2, self::recordCount());
+    }
+
+    #[Test]
     public function aSettleNamingAnUnknownReservationIsRefusedAndRecordsNothing(): void
     {
         try {
@@ -560,11 +578,11 @@ final class UsageMeterTest extends FunctionalTestCase
         return new MeteredUse(UsageKind::WhatsApp, $messages, 'NG', WhatsAppCategory::Utility);
     }
 
-    private function credit(int $credits): void
+    private function credit(int $credits, ?Uuid $organisation = null): void
     {
         self::em()->getConnection()->executeStatement(
             'UPDATE billing_accounts SET credit_balance = credit_balance + ? WHERE id = (SELECT billing_account_id FROM subscriptions WHERE organisation_id = ?)',
-            [$credits, $this->organisation->toRfc4122()],
+            [$credits, ($organisation ?? $this->organisation)->toRfc4122()],
         );
     }
 

@@ -78,7 +78,7 @@ final class Version20261124120000 extends AbstractMigration
                 )
             )
             SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_usage_record_key ON usage_records (key_scope, idempotency_key)');
+        $this->addSql('CREATE UNIQUE INDEX uniq_usage_record_key ON usage_records (organisation_id, key_scope, idempotency_key)');
         $this->addSql('CREATE INDEX idx_usage_record_period ON usage_records (organisation_id, period_start, kind)');
         $this->addSql('CREATE INDEX IDX_C2192E599E6B1585 ON usage_records (organisation_id)');
         $this->addSql('CREATE INDEX IDX_C2192E59170C302B ON usage_records (billing_account_id)');
