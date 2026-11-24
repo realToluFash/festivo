@@ -557,12 +557,10 @@ function MakeDialog({
         {busy ? W.making : ''}
       </p>
       {refused && phase === 'open' && (
-        <div className="desk-error dc-failed" role="alert">
+        <p className="desk-error dc-failed" role="alert">
           <Glyph name="alert" size={15} weight={2.2} />
-          <span>
-            {W.runRefused} {W.runRefusedLine}
-          </span>
-        </div>
+          {W.runRefused} {W.runRefusedLine}
+        </p>
       )}
       {phase === 'failed' && (
         <p className="desk-error dc-failed" role="alert">

@@ -84,6 +84,20 @@ describe('People on an event in the demo, as one list', () => {
     ]);
   });
 
+  it('places a service level after Can check guests in, as the web demo does (sc-4002)', () => {
+    const ana = on('Ana Souza');
+    const order = listed(withRole(onEvent, ana.id, 'Can run the floor'));
+
+    expect(order[0]?.role).toBe('Lead');
+    expect(names(order)).toEqual([
+      'Priya Shah',
+      'Sade Bello',
+      'Kemi Okafor',
+      'Tom Becker',
+      'Ana Souza',
+    ]);
+  });
+
   it('names the owners and admins at the foot', () => {
     expect(seesEveryEvent(members)).toBe(
       'Folake Adeyemi and Julien Moreau see every event, as owner and admin of Ire Events.',

@@ -220,8 +220,10 @@ export function seenBy(onEvent: readonly OnEvent[], seesAddresses: boolean): OnE
       );
 }
 
+const LISTED_ORDER: readonly Level[] = [...EVENT_ROLES, ...SERVICE_LEVELS];
+
 export function listed(onEvent: readonly OnEvent[]): OnEvent[] {
-  return inRoleOrder(onEvent, EVENT_ROLES, (one) => one, 'en');
+  return inRoleOrder(onEvent, LISTED_ORDER, (one) => one, 'en');
 }
 
 /** An owner, an admin or the event's lead changes who is on it. */

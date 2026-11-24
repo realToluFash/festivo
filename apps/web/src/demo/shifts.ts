@@ -1,3 +1,4 @@
+import { SERVICE_LINES } from './people.ts';
 import { sample as rosterSample } from './roster.ts';
 import type { DemoLink } from './settings.ts';
 import { STATIONS_EVENT } from './stations.ts';
@@ -23,17 +24,17 @@ export const LEVELS: readonly { level: Level; words: string; hint: string }[] = 
   {
     level: 'floor',
     words: 'Can work the floor',
-    hint: 'Marks plates and requests at their own tables.',
+    hint: SERVICE_LINES['Can work the floor'],
   },
   {
     level: 'pass',
     words: 'Can work the pass',
-    hint: 'Marks plates at the pass and the kitchen stations.',
+    hint: SERVICE_LINES['Can work the pass'],
   },
   {
     level: 'run',
     words: 'Can run the floor',
-    hint: 'Starts service, fires courses and acts on any table. Nothing else of the event.',
+    hint: SERVICE_LINES['Can run the floor'],
   },
 ];
 

@@ -1,7 +1,13 @@
 import { formattingLocale } from '@soirely/domain';
 
 import { writtenTime } from './clock.ts';
-import type { EventPlace, OnEvent, OrgMember, PeopleStart } from './people.ts';
+import {
+  type EventPlace,
+  LEVEL_LINES,
+  type OnEvent,
+  type OrgMember,
+  type PeopleStart,
+} from './people.ts';
 import type { DemoLink } from './settings.ts';
 
 /** The door code at a desk (Access-A-Web, page e28): its words, the boards' sample and the states. */
@@ -91,10 +97,10 @@ export const CODE_ROLES = [
 export type CodeRole = (typeof CODE_ROLES)[number];
 
 export const CODE_LINES: Record<CodeRole, string> = {
-  'Can view': 'Sees the event and changes nothing. No contact details.',
-  'Can check guests in': 'Checks guests in on the day. Names only, no contact details.',
-  'Can work the floor': 'Marks plates and requests at their own tables.',
-  'Can work the pass': 'Marks plates at the pass and the kitchen stations.',
+  'Can view': LEVEL_LINES['Can view'],
+  'Can check guests in': LEVEL_LINES['Can check guests in'],
+  'Can work the floor': LEVEL_LINES['Can work the floor'],
+  'Can work the pass': LEVEL_LINES['Can work the pass'],
 };
 
 export type Ends = { kind: 'event' } | { kind: 'earlier'; day: string; time: string };
