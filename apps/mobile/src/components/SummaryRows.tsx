@@ -1,4 +1,13 @@
-import { Fragment, type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   type AccessibilityRole,
   type AccessibilityState,
@@ -19,6 +28,7 @@ import { addressRuns } from '../kit/addressBreaks.ts';
 import { Text, type TextProps } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
 import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
+import { TAG_END, TAG_GAP, tagChrome } from '../layout/tagLine.ts';
 import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -56,6 +66,9 @@ export const SELECTED_ROW = {
 /** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it and the title wraps at the row's full width (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
 
+/** The width of the line a tag sits on: its title row's, the words column of a row (sc-90472). */
+const TagLine = createContext<number | null>(null);
+
 /** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
 export function TitleBesideTag({
   title,
@@ -68,16 +81,19 @@ export function TitleBesideTag({
 }) {
   const measured = useRef(UNMEASURED_TITLE);
   const [key, setKey] = useState(UNMEASURED_TITLE.key);
+  const [line, setLine] = useState<number | null>(null);
   return (
     <View
       style={[styles.titleRow, style]}
       onLayout={(event) => {
-        measured.current = titleAtWidth(measured.current, event.nativeEvent.layout.width);
+        const { width } = event.nativeEvent.layout;
+        measured.current = titleAtWidth(measured.current, width);
         setKey(measured.current.key);
+        setLine(width);
       }}
     >
       <Fragment key={key}>{title}</Fragment>
-      {tag}
+      <TagLine.Provider value={line}>{tag}</TagLine.Provider>
     </View>
   );
 }
@@ -159,7 +175,9 @@ export function TurningMark({ side = 12 }: { side?: number }) {
   );
 }
 
-/** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. */
+const TAG_SIZE = 12.5;
+
+/** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. On a row at the accessibility sizes its words stay whole, stepping down to fit its line, never under 12.5 (sc-90472). */
 export function Tag({
   kind,
   word,
@@ -174,13 +192,27 @@ export function Tag({
 }) {
   const look = TAGS[kind];
   const { fontScale } = useWindowDimensions();
-  const wraps = wrapsAlways || atAccessibilitySizes(fontScale);
+  const grown = atAccessibilitySizes(fontScale);
+  const wraps = wrapsAlways || grown;
+  const line = useContext(TagLine);
+  const room =
+    line == null
+      ? 0
+      : Math.max(
+          0,
+          line -
+            tagChrome({
+              marks: (turning ? 1 : 0) + (kind === 'now' ? 0 : 1),
+              turning,
+              ringed: look.ring != null,
+            }),
+        );
 
   return (
     <View
       style={[
         styles.tag,
-        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? 9 : 7 },
+        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? TAG_END : 7 },
         turning && styles.tagTurning,
         look.ring != null && { borderWidth: 1, borderColor: look.ring },
         wraps && styles.tagWraps,
@@ -188,14 +220,26 @@ export function Tag({
     >
       {turning && <TurningMark />}
       {kind !== 'now' && <ShapeMark kind={kind} ink={look.ink} />}
-      <Text
-        size={12.5}
-        weight="semibold"
-        numberOfLines={wraps ? undefined : 1}
-        style={{ color: look.ink }}
-      >
-        {word}
-      </Text>
+      {grown && line != null ? (
+        <CappedWholeWords
+          size={TAG_SIZE}
+          weight="semibold"
+          room={room}
+          breakAfterHyphens
+          style={[styles.tagWords, { color: look.ink }]}
+        >
+          {word}
+        </CappedWholeWords>
+      ) : (
+        <Text
+          size={TAG_SIZE}
+          weight="semibold"
+          numberOfLines={wraps ? undefined : 1}
+          style={{ color: look.ink }}
+        >
+          {word}
+        </Text>
+      )}
     </View>
   );
 }
@@ -598,10 +642,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     flexShrink: 0,
-    gap: 5,
-    paddingRight: 9,
+    gap: TAG_GAP,
+    paddingRight: TAG_END,
     borderRadius: 12,
   },
+  tagWords: { flexShrink: 1 },
   tagTurning: { gap: tokens.spaceXs },
   tagWraps: { flexShrink: 1 },
   head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
