@@ -52,6 +52,13 @@ class Snapshot(unittest.TestCase):
         return dashboard.snapshot(self.db, self.platform, NOW, self.home,
                                   load=lambda: self.settings)
 
+    def test_the_header_offers_an_undo_while_the_last_change_is_kept(self):
+        kept = self.root / "agents.json"
+        with mock.patch("soirely_queue.machine.path", return_value=kept):
+            self.assertFalse(self.snap()["settings_undo"])
+            (self.root / "agents.json.prev").write_text("{}")
+            self.assertTrue(self.snap()["settings_undo"])
+
     def test_each_role_shows_its_state_last_run_and_next_items(self):
         store.record(self.db, [work("ops"), work("dev2")], NOW)
         store.claim(self.db, "dev2", NOW)
@@ -632,7 +639,7 @@ class ServeElsewhere(unittest.TestCase):
         cookie = answer.getheader("Set-Cookie").split(";")[0]
         self.assertEqual(self.control(said, {"action": "pause"}, dict(here, Cookie=cookie)),
                          (200, {"said": "paused"}))
-        self.assertEqual(done, [("pause", None, "127.0.0.1")])
+        self.assertEqual(done, [("/control", {"action": "pause"}, "127.0.0.1")])
         rebound = dict(here, Cookie=cookie, Host=f"evil.example:{port}",
                        Origin=f"http://evil.example:{port}")
         self.assertEqual(self.control(said, {"action": "pause"}, rebound)[0], 403)
@@ -649,7 +656,32 @@ class ServeElsewhere(unittest.TestCase):
         self.assertEqual(self.post_login(said, "/control", "[1]", bearer)[0], 400)
         self.assertEqual(done, [])
         self.assertEqual(self.control(said, body, bearer)[0], 200)
-        self.assertEqual(done, [("stop", "ops", "127.0.0.1")])
+        self.assertEqual(done, [("/control", {"action": "stop", "role": "ops"}, "127.0.0.1")])
+
+    def test_the_settings_are_read_like_the_status_and_changed_only_with_the_token(self):
+        done, fetched = [], []
+
+        def fetch(base, path, secret):
+            fetched.append(path)
+            return 200, b'{"revision": "peer"}'
+
+        said = self.start(near=True, settings=lambda: (200, {"revision": "here"}), fetch=fetch,
+                          peers=lambda: {"tolu-mac": "http://10.0.0.6:8765"},
+                          control=lambda *asked: done.append(asked) or (200, {"said": "ok"}))
+        self.assertEqual(json.loads(self.get(said, "/settings.json").read()),
+                         {"revision": "here"})
+        self.assertEqual(self.get(said, "/m/tolu-mac/settings.json").status, 200)
+        self.assertIn("settings.json", fetched)
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        here = {"Content-Type": "application/json", "Host": f"127.0.0.1:{port}"}
+        save = {"where": "dev2", "changes": {"effort": "high"}, "revision": "here"}
+        for path in ("/settings", "/settings/undo"):
+            self.assertEqual(self.post_login(said, path, json.dumps(save), here)[0], 401)
+        self.assertEqual(done, [])
+        cookie = {"Cookie": f"sq_token={SECRET}"}
+        self.assertEqual(self.post_login(said, "/settings", json.dumps(save),
+                                         dict(here, **cookie))[0], 200)
+        self.assertEqual(done, [("/settings", save, "127.0.0.1")])
 
     def test_the_page_says_whether_it_holds_the_token_its_controls_ask_for(self):
         said = self.start(near=True)
@@ -788,13 +820,30 @@ class Controls(unittest.TestCase):
             lambda: {"tolu-mac": "http://10.0.0.6:8765"}, SECRET, post)
 
     def test_a_control_without_a_machine_is_done_here(self):
-        self.assertEqual(self.door.act({"action": "pause"}, "10.0.0.9"),
+        self.assertEqual(self.door.act("/control", {"action": "pause"}, "10.0.0.9"),
                          (200, {"said": "here"}))
-        self.assertEqual(self.here, [("pause", None, "10.0.0.9")])
+        self.assertEqual(self.here, [("/control", {"action": "pause"}, "10.0.0.9")])
         self.assertEqual(self.posted, [])
 
+    def test_a_save_or_an_undo_for_a_peer_passes_on_only_what_it_takes(self):
+        self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2", "revision": "r1",
+                                    "changes": {"effort": "high"}, "extra": 1}, "x")
+        self.door.act("/settings/undo", {"machine": "tolu-mac", "revision": "r2"}, "x")
+        self.assertEqual([(path, body) for _, path, _, body, _ in self.posted], [
+            ("settings", {"where": "dev2", "changes": {"effort": "high"}, "revision": "r1"}),
+            ("settings/undo", {"revision": "r2"})])
+        self.answer = (404, b"<html>Not Found</html>")
+        status, said = self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2"}, "x")
+        self.assertEqual(status, 404)
+        self.assertIn("tolu-mac's sq web has no settings yet", said["error"])
+
+    def test_a_path_that_is_not_a_control_is_not_found(self):
+        self.assertEqual(self.door.act("/settings/redo", {}, "x")[0], 404)
+        self.assertEqual(self.posted + self.here, [])
+
     def test_a_peers_control_is_asked_of_its_own_page_with_the_token(self):
-        answer = self.door.act({"machine": "tolu-mac", "action": "stop", "role": "ops"}, "x")
+        answer = self.door.act("/control", {"machine": "tolu-mac", "action": "stop",
+                                            "role": "ops"}, "x")
         self.assertEqual(answer, (200, {"said": "stopped ops"}))
         self.assertEqual(self.posted, [("http://10.0.0.6:8765", "control", SECRET,
                                         {"action": "stop", "role": "ops"},
@@ -803,22 +852,23 @@ class Controls(unittest.TestCase):
 
     def test_a_peers_refusal_is_passed_on_and_a_peer_without_controls_is_named(self):
         self.answer = (409, b'{"error": "error: qa not in agents.json"}')
-        self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "start",
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "start",
                                         "role": "qa"}, "x"),
                          (409, {"error": "tolu-mac: error: qa not in agents.json"}))
         self.answer = (404, b"<html>Not Found</html>")
-        status, said = self.door.act({"machine": "tolu-mac", "action": "pause"}, "x")
+        status, said = self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x")
         self.assertEqual(status, 404)
         self.assertIn("tolu-mac's sq web has no controls yet", said["error"])
         self.answer = (502, b'{"error": "it did not answer"}')
-        self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "pause"}, "x"),
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x"),
                          (502, {"error": "tolu-mac: it did not answer"}))
         self.answer = (401, b"<html>Unauthorized</html>")
-        self.assertEqual(self.door.act({"machine": "tolu-mac", "action": "pause"}, "x"),
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x"),
                          (401, {"error": "tolu-mac: it answered 401"}))
 
     def test_an_unknown_machine_is_not_found(self):
-        self.assertEqual(self.door.act({"machine": "nowhere", "action": "pause"}, "x")[0], 404)
+        self.assertEqual(self.door.act("/control", {"machine": "nowhere", "action": "pause"},
+                                       "x")[0], 404)
         self.assertEqual(self.posted + self.here, [])
 
 

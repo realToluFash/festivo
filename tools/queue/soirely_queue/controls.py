@@ -5,7 +5,7 @@ page asked for is kept in `<sq home>/runs/controls.jsonl`, with the address it c
 import subprocess
 import time
 
-from . import agents, github, machine, runlog, shared, store
+from . import agents, github, machine, runlog, settings, shared, store
 
 LOG = "controls"
 MACHINE = ("pause", "resume", "pause-everywhere", "resume-everywhere")
@@ -82,3 +82,39 @@ def act(db, home, platform, action, role=None, by=None, refs=shared.GitHubRefs,
     runlog.append(home, LOG, {"at": now or time.time(), "action": action, "role": role,
                               "from": by, "said": said, "failed": status != 200})
     return status, {"said": said} if status == 200 else {"error": said}
+
+
+def change(home, asked, by, path=None, now=None):
+    """A save from the page's Settings. The answer carries the file as it now is, so a page
+    refused for reading an older one shows what is there."""
+    where, changes = str(asked.get("where") or ""), asked.get("changes")
+    if not isinstance(changes, dict) or not changes:
+        return 400, {"error": "error: a save names the fields it changes"}
+    try:
+        done = settings.save(where, changes, asked.get("revision"), path)
+    except settings.Refused as refused:
+        status, answer, done = refused.status, {"error": str(refused)}, None
+    else:
+        status = 200
+        answer = {"said": ", ".join(f"{key} {value['old']} → {value['new']}"
+                                    for key, value in done.items()) or "nothing changed"}
+    if done or status != 200:
+        runlog.append(home, LOG, {"at": now or time.time(), "action": "settings",
+                                  "where": where, "changes": done or changes, "from": by,
+                                  "said": answer.get("said") or answer["error"],
+                                  "failed": status != 200})
+    return status, dict(answer, settings=settings.read(path))
+
+
+def undo(home, asked, by, path=None, now=None):
+    try:
+        undone = settings.undo(asked.get("revision"), path)
+    except settings.Refused as refused:
+        status, answer = refused.status, {"error": str(refused)}
+    else:
+        status, answer = (200, {"said": "put back agents.json as it was before the last change"}) \
+            if undone else (409, {"error": "error: there is no change to undo"})
+    runlog.append(home, LOG, {"at": now or time.time(), "action": "undo", "from": by,
+                              "said": answer.get("said") or answer["error"],
+                              "failed": status != 200})
+    return status, dict(answer, settings=settings.read(path))

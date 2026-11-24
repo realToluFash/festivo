@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import controls, github, runner, shared, store
+from soirely_queue import controls, github, runner, settings, shared, store
 
 from tests.fakes import FakeRefs
 from tests.test_runner import FakePlatform, config
@@ -132,3 +132,67 @@ class Act(unittest.TestCase):
             [(e["action"], e["role"], e["from"], e["failed"]) for e in self.logged()],
             [("stop", "ops", "192.168.1.20", False), ("start", "qa", "192.168.1.20", True)])
         self.assertEqual(self.logged()[0]["at"], NOW)
+
+
+class Settings(unittest.TestCase):
+    """A save and an undo from the page's Settings, against agents.json in a temporary folder."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = pathlib.Path(self.folder.name)
+        for name in ("festivo", "soirely-ops", "soirely-dev2"):
+            (self.root / name).mkdir()
+        self.home = self.root / "home"
+        self.file = self.root / "agents.json"
+        self.file.write_text(json.dumps(config(self.root, roles={"ops": {}, "dev2": {}}),
+                                        indent=2) + "\n")
+
+    def revision(self):
+        return settings.read(self.file)["revision"]
+
+    def change(self, asked):
+        return controls.change(self.home, asked, "192.168.1.20", self.file, now=NOW)
+
+    def logged(self):
+        path = self.home / "runs" / f"{controls.LOG}.jsonl"
+        return [json.loads(line) for line in path.read_text().splitlines()]
+
+    def test_a_save_says_what_changed_logs_old_and_new_and_answers_with_the_file(self):
+        status, answer = self.change({"where": "dev2", "changes": {"effort": "high"},
+                                      "revision": self.revision()})
+        self.assertEqual((status, answer["said"]), (200, "effort None → high"))
+        self.assertEqual(answer["settings"]["roles"]["dev2"]["effort"]["value"], "high")
+        self.assertEqual(self.logged(), [{
+            "at": NOW, "action": "settings", "where": "dev2", "from": "192.168.1.20",
+            "changes": {"effort": {"old": None, "new": "high"}},
+            "said": "effort None → high", "failed": False}])
+
+    def test_a_refused_save_is_logged_and_answers_with_the_file_as_it_now_is(self):
+        stale = self.revision()
+        self.change({"where": "dev2", "changes": {"effort": "high"}, "revision": stale})
+        status, answer = self.change({"where": "dev2", "changes": {"effort": "low"},
+                                      "revision": stale})
+        self.assertEqual(status, 409)
+        self.assertIn("changed since the page read it", answer["error"])
+        self.assertEqual(answer["settings"]["roles"]["dev2"]["effort"]["value"], "high")
+        self.assertTrue(self.logged()[-1]["failed"])
+
+    def test_a_save_that_names_no_fields_is_refused(self):
+        self.assertEqual(self.change({"where": "dev2", "changes": {}})[0], 400)
+        self.assertEqual(self.change({"where": "dev2", "changes": "effort=high"})[0], 400)
+
+    def test_an_undo_puts_the_file_back_once_and_is_logged(self):
+        before = self.file.read_text()
+        self.change({"where": "dev2", "changes": {"effort": "high"},
+                     "revision": self.revision()})
+        status, answer = controls.undo(self.home, {"revision": self.revision()},
+                                       "192.168.1.20", self.file, now=NOW)
+        self.assertEqual(status, 200)
+        self.assertEqual(self.file.read_text(), before)
+        self.assertFalse(answer["settings"]["undo"])
+        self.assertEqual((self.logged()[-1]["action"], self.logged()[-1]["failed"]),
+                         ("undo", False))
+        status, answer = controls.undo(self.home, {"revision": self.revision()}, "x",
+                                       self.file)
+        self.assertEqual((status, answer["error"]), (409, "error: there is no change to undo"))

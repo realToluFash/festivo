@@ -441,6 +441,28 @@ in `<sq home>/runs/controls.jsonl` with the address it came from.
 - A peer whose `sq` predates the controls is named on the page; it gets them once its `sq`
   updates from `main`.
 
+**Settings, on each role and on each machine's header, changes `agents.json` there**: a
+role's `model`, `effort`, `inboxEffort`, `wakeEvery`, `workers` and `maxBudgetUsd`, the same
+six in `defaults`, and the machine's `dailyBudgetUsd`. The rest of the file is changed by
+hand, since a mistake there stops the machine.
+
+- **Each field shows the value in force and where it is set**: the role, `defaults`, or
+  sq's own floor (`wakeEvery` 3m, `workers` 1). A cleared role field falls back to
+  `defaults`.
+- **A save is checked as `sq run` checks the whole file after it.** A save that would put
+  the file in error, or refuse a role that was not refused, is refused with `sq run`'s own
+  line, and nothing is written. So `workers: 2` in `defaults` is refused, naming every role
+  it would stop.
+- **Only the changed fields' lines change**, on a file indented as `just agents setup`
+  writes it. The file a save replaced is kept as `agents.json.prev`, and **Undo last
+  change** puts it back: one step, not a history.
+- **A save or an undo is refused when the file changed since the page read it**, by hand
+  or from another page, and the page shows the file as it now is.
+- `sq run` reads the file every minute, so a change is in force by the next tick. A worker
+  already running finishes its item on the values it started with.
+- Without the token, Settings shows the values and offers no Save or Undo. Each save and
+  undo is kept in `runs/controls.jsonl` with each field's old and new value.
+
 ## An emulator on another computer
 
 A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,
