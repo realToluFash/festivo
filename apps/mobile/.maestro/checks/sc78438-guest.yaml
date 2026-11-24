@@ -71,9 +71,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd
 - runFlow:
     when:
-      visible: 'Terminé'
+      visible: '(Terminé|Done)'
     commands:
-      - tapOn: 'Terminé'
+      - tapOn: '(Terminé|Done)'
       - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
@@ -84,6 +84,7 @@ appId: host.exp.Exponent
     start: 50%, 55%
     end: 50%, 80%
 - waitForAnimationToEnd
+- assertVisible: '.*\+44.*'
 - takeScreenshot: guest-gb
 - scrollUntilVisible:
     element:
