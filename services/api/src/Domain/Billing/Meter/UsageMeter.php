@@ -291,7 +291,7 @@ final readonly class UsageMeter
             [$pricedBy, $creditsPerUnit] = $this->unitPricer->fromVersion($this->catalogue->unitCostsVersion($reservation->getUnitCostVersion()->getId()), $delivered);
             $version = $this->versionNamed($pricedBy->versionId);
             $paidByReservedUnit = $creditsPerUnit > 0 && ($late ? $this->includedFree($organisationId, $periodStart, $reservation->getKind(), $this->allowance($organisationId, $reservation->getKind())) > 0 : $fromIncluded > 0);
-            $included = $paidByReservedUnit ? $delivered->quantity : Math\minva($delivered->quantity, $free);
+            $included = $paidByReservedUnit ? 1 : Math\minva($delivered->quantity, $free);
             // Never above the hold: Soirely absorbs a dearer delivery, so the check at reserve still guarantees the credits (sc-3929, 26 Oct).
             $credits = $paidByReservedUnit ? 0 : Math\minva(($delivered->quantity - $included) * $creditsPerUnit, ($fromCredits + $beyond) * $reservedPrice);
         }
@@ -301,7 +301,7 @@ final readonly class UsageMeter
         if ($sameKind) {
             $this->addToTotals($organisationId, $periodStart, $delivered->kind, used: $delivered->quantity, includedUsed: $included, includedHeld: -$fromIncluded, creditsTaken: $credits);
         } elseif ($paidByReservedUnit) {
-            $this->addToTotals($organisationId, $periodStart, $reservation->getKind(), used: 1, includedUsed: 1, includedHeld: -$fromIncluded);
+            $this->addToTotals($organisationId, $periodStart, $reservation->getKind(), used: $included, includedUsed: $included, includedHeld: -$fromIncluded);
         } else {
             $this->addToTotals($organisationId, $periodStart, $reservation->getKind(), includedHeld: -$fromIncluded);
             $this->addToTotals($organisationId, $periodStart, $delivered->kind, used: $delivered->quantity, includedUsed: $included, creditsTaken: $credits);
@@ -340,7 +340,7 @@ final readonly class UsageMeter
             $use->whatsAppCategory,
             $now,
             $periodStart,
-            $included >= $use->quantity ? UsagePayer::Included : UsagePayer::Credits,
+            $included > 0 && 0 === $credits ? UsagePayer::Included : UsagePayer::Credits,
             $included,
             $credits,
             $version,

@@ -319,6 +319,19 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function anIncludedSmsUnitPaysForOneMessageOfSeveralUnitsAndTheRecordSaysOne(): void
+    {
+        $this->includeSms(100);
+        $hold = $this->meter->reserve($this->organisation, self::sms());
+
+        $record = $this->meter->settle($hold->reservationId, 'message-1', self::whatsApp(3));
+
+        self::assertSame([3, UsagePayer::Included, 1, 0], [$record->getQuantity(), $record->getPaidBy(), $record->getIncludedQuantity(), $record->getCreditsTaken()]);
+        $sms = $this->read()->of(UsageKind::Sms);
+        self::assertSame([$record->getIncludedQuantity(), $record->getIncludedQuantity(), 0], [$sms->used, 100 - ($sms->left ?? 0), $this->read()->of(UsageKind::WhatsApp)->used]);
+    }
+
+    #[Test]
     public function aMessageDeliveredByEmailSpendsNoIncludedUnit(): void
     {
         $this->includeSms(100);
