@@ -20,6 +20,7 @@ const NONE = {
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
 const SELECT_CSS = stylesheet(import.meta.dirname, 'guestSelect.css');
+const GROUPS_CSS = stylesheet(import.meta.dirname, 'guestGroups.css');
 const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -3611,6 +3612,46 @@ describe('Groups (sc-3775)', () => {
     expect(rows()).toEqual(['Chief Amaka ObiNot sure yet']);
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
     expect(rows()).toHaveLength(4);
+  });
+
+  it('names a 60-character group whole in its chip and its guest’s tag, wrapping, never cut short (sc-51198)', async () => {
+    const LONG = {
+      id: 'gr_long',
+      name: 'Thecousinsfromthebridesmotherssidewhoalltravelledinfromlagos',
+    };
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () =>
+        json(grouped([{ ...TOBI, group: LONG }, SADE], [LONG, BRIDE])),
+    });
+
+    expect(await screen.findByText('Tobi Bello')).toBeDefined();
+    const chip = within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+      name: LONG.name,
+    });
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(chip.querySelector('svg')).not.toBeNull();
+    expect(chip.querySelector('.gs-chip-word')?.textContent).toBe(LONG.name);
+    const row = screen.getByRole('link', {
+      name: new RegExp(`^Tobi Bello.*Group: ${LONG.name}$`, 'u'),
+    });
+    expect(row.querySelector('.gs-row-mid .gs-row-tags .gg-tag')).not.toBeNull();
+
+    const chipRule = cssRule('.gs-filters .gs-chip', GUESTS_CSS);
+    expect(chipRule).toContain('min-height: var(--sizeHit);');
+    expect(chipRule).toContain('height: auto;');
+    expect(chipRule).toContain('white-space: normal;');
+    expect(cssRule('.gs-row', GUESTS_CSS)).toContain('gap: var(--spaceLg);');
+    expect(cssRule('.gs-row-mid', GUESTS_CSS)).toContain('gap: var(--spaceXs) var(--spaceLg);');
+    expect(cssRule('.gs-chip-word', GUESTS_CSS)).toContain('overflow-wrap: anywhere;');
+    expect(cssRule('.gs-row-mid > .desk-row-words', GUESTS_CSS)).toContain(
+      'min-width: min(100%, 12rem);',
+    );
+    const tag = cssRule('.gs-row-mid .gg-tag', GROUPS_CSS);
+    expect(tag).toContain('white-space: normal;');
+    expect(GROUPS_CSS).not.toContain('text-overflow: ellipsis');
   });
 
   it('opens Groups beside the list: each group’s count, No group last, adding up, and Done goes back', async () => {
