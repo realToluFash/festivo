@@ -555,6 +555,23 @@ final class UsageMeterTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function aPeriodWhoseStartMovedForwardThenBackEndsAtTheEarlierMove(): void
+    {
+        $this->clock->modify('2026-11-10 10:00:00');
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        $this->changer()->movePeriodStart($subscription, new DateTimeImmutable('2026-12-01 09:00:00'), ChangedBy::staff('Ada at Soirely', 'Moved to yearly'));
+        self::em()->clear();
+        $this->clock->modify('2026-11-15 12:00:00');
+        $this->upgradeMovingThePeriodStartTo('2026-11-15 12:00:00');
+
+        $ended = $this->read(new DateTimeImmutable('2026-11-12 00:00:00'))->period;
+        $next = $this->read(new DateTimeImmutable('2026-11-20 00:00:00'))->period;
+
+        self::assertSame(['2026-11-01T09:00:00+00:00', '2026-11-15T12:00:00+00:00'], [$ended->start->format(\DATE_ATOM), $ended->end->format(\DATE_ATOM)]);
+        self::assertSame(['2026-11-15T12:00:00+00:00', '2026-12-15T12:00:00+00:00'], [$next->start->format(\DATE_ATOM), $next->end->format(\DATE_ATOM)]);
+    }
+
+    #[Test]
     public function aLateSettleIntoAPeriodEndedByAnUpgradeIsPaidFromTheIncludedAmountsItEndedWith(): void
     {
         $this->includeSms(1);

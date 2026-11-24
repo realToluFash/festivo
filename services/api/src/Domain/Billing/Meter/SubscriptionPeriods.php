@@ -50,13 +50,19 @@ final readonly class SubscriptionPeriods
         }
 
         $period = SubscriptionPeriod::containing($starts[$anchor], $at);
-        $endedBy = $moves[$anchor] ?? null;
+        $endedBy = null;
+
+        foreach (Vec\slice($moves, $anchor) as $move) {
+            if (null === $endedBy || self::moment($move['to_value']) < self::moment($endedBy['to_value'])) {
+                $endedBy = $move;
+            }
+        }
 
         if (null === $endedBy) {
             return new PeriodTerms($period, $this->termsInForceBefore($subscription, $changes, $period->end));
         }
 
-        $period = $period->endingAt($starts[$anchor + 1]);
+        $period = $period->endingAt(self::moment($endedBy['to_value']));
 
         // A move recorded before the start it names ends the period's terms at the move: the upgrade's plan is not the ended period's.
         return new PeriodTerms($period, $this->termsInForceBefore($subscription, $changes, $endedBy['occurred_at'] < $period->end ? $endedBy['occurred_at'] : $period->end));
