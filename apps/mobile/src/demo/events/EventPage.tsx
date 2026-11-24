@@ -132,6 +132,7 @@ import {
   clockOf as guestsClock,
   invitedOn,
   isIn,
+  overviewCountsOf,
   peopleOn,
 } from '../guests/GuestsModel.ts';
 import { lastLooked, markLooked, resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
@@ -579,6 +580,7 @@ export function EventScreen({
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
+      counts={overviewCountsOf(event.id, shown.phase)}
       onOpen={openGuests}
     />
   );
