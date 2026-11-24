@@ -137,11 +137,16 @@ export function outsideOn(
   return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
 }
 
-export async function restoreSession(): Promise<void> {
-  if (state.status !== 'unknown') return;
+let restoring: Promise<void> = Promise.resolve();
+
+/** Settles once the cookie's account is known, so a page that called it second still waits for the first ask. */
+export function restoreSession(): Promise<void> {
+  if (state.status !== 'unknown') return restoring;
 
   set({ status: 'checking' });
-  await askForAccount();
+  restoring = askForAccount();
+
+  return restoring;
 }
 
 /** Stays on the unreachable screen while asking, so the button can say it is trying. */

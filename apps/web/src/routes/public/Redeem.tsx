@@ -9,7 +9,7 @@ import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
-import { useSessionState } from '../../session.ts';
+import { refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import { dayWords } from '../app/events/staffTimes.ts';
@@ -28,11 +28,11 @@ type Step =
       code: string;
       opened: OpenedDoorCode;
       busy: boolean;
-      refused: boolean;
+      trouble: 'refused' | 'failed' | null;
       named: string;
       checked: boolean;
     }
-  | { kind: 'member'; organisation: string }
+  | { kind: 'member'; organisation: string; eventId: string }
   | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event']; held: boolean };
 
 /** A door code as typed: any case, spaces and hyphens ignored (sc-72). */
@@ -77,14 +77,17 @@ function Redeem({ code }: { code: string }) {
   };
 
   function open(typed: string): Promise<void> {
-    return opening(typed).then(({ next, to }) => go(next, to));
+    return restoreSession()
+      .then(() => opening(typed))
+      .then(({ next, to }) => go(next, to));
   }
 
-  // A code in the address, as the QR carries it, is opened as soon as the page is.
+  // A code in the address, as the QR carries it, is opened as soon as the page is, and as whoever this browser's cookie signs in.
   useEffect(() => {
-    if (code === '') return;
     let current = true;
-    void opening(code).then(({ next, to }) => {
+    void restoreSession().then(async () => {
+      if (code === '') return;
+      const { next, to } = await opening(code);
       if (!current) return;
       setStep(next);
       setFocus((was) => ({ to, n: was.n + 1 }));
@@ -96,14 +99,26 @@ function Redeem({ code }: { code: string }) {
   }, [code]);
 
   async function join(event: Extract<Step, { kind: 'event' }>): Promise<void> {
-    setStep({ ...event, busy: true, refused: false });
+    setStep({ ...event, busy: true, trouble: null });
     try {
       const redeemed = await api.redeemDoorCode(event.code, signedIn ? null : event.named.trim());
+      if (!signedIn) await refreshAccount();
       go({ kind: 'in', redeemed, event: event.opened.event, held: !signedIn });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409)
-        go({ kind: 'member', organisation: event.opened.event.organisation });
-      else setStep({ ...event, busy: false, refused: true });
+        go({
+          kind: 'member',
+          organisation: event.opened.event.organisation,
+          eventId: event.opened.event.id,
+        });
+      else if (error instanceof ApiError && error.status === 429) go(tooMany(error));
+      else
+        setStep({
+          ...event,
+          busy: false,
+          trouble:
+            error instanceof ApiError && error.is('door_code_invalid') ? 'refused' : 'failed',
+        });
     }
   }
 
@@ -148,10 +163,10 @@ function Redeem({ code }: { code: string }) {
             <Tile id={step.opened.event.id} />
             <Title titleRef={title}>{step.opened.event.name}</Title>
             <p className="rd-intro">{eventLine(step.opened, t)}</p>
-            {step.refused && (
+            {step.trouble != null && (
               <p className="rd-alert" role="alert">
                 <Glyph name="alert" size={17} weight={2.2} />
-                {t('redeem.refused')}
+                {t(step.trouble === 'refused' ? 'redeem.refused' : 'redeem.line.failed')}
               </p>
             )}
             {!signedIn && (
@@ -184,6 +199,7 @@ function Redeem({ code }: { code: string }) {
       case 'member':
         return (
           <>
+            <Tile id={step.eventId} />
             <Title titleRef={title}>
               {t('redeem.memberTitle', { organisation: step.organisation })}
             </Title>
@@ -250,7 +266,10 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
   try {
     const opened = await api.openDoorCode(normal);
     if (opened.standing === 'member')
-      return { next: { kind: 'member', organisation: opened.event.organisation }, to: 'title' };
+      return {
+        next: { kind: 'member', organisation: opened.event.organisation, eventId: opened.event.id },
+        to: 'title',
+      };
 
     return {
       next: {
@@ -258,7 +277,7 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
         code: normal,
         opened,
         busy: false,
-        refused: false,
+        trouble: null,
         named: '',
         checked: false,
       },
@@ -266,18 +285,19 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
     };
   } catch (error) {
     if (error instanceof ApiError && error.status === 429)
-      return {
-        next: {
-          kind: 'tooMany',
-          when: error.problem.retryAt ?? null,
-          words: error.problem.detail ?? error.problem.title,
-        },
-        to: 'title',
-      };
+      return { next: tooMany(error), to: 'title' };
     const line: Line = error instanceof ApiError && error.status === 404 ? 'refused' : 'failed';
 
     return { next: { kind: 'enter', typed, line, busy: false, signedOut: false }, to: 'field' };
   }
+}
+
+function tooMany(error: ApiError): Step {
+  return {
+    kind: 'tooMany',
+    when: error.problem.retryAt ?? null,
+    words: error.problem.detail ?? error.problem.title,
+  };
 }
 
 /** "Sat 14 Nov · Lumen Feiras · Can check guests in · Bar and drinks", the day on the event's clock. */

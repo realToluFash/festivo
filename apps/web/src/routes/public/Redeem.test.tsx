@@ -29,6 +29,34 @@ const REFUSED = {
   code: 'door_code_invalid',
 };
 
+/** As /api/me answers for an account the cookie signs in. */
+function account(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'u_kemi',
+    name: 'Kemi Okafor',
+    businessName: null,
+    countryCode: 'PT',
+    organisationCountry: null,
+    locale: 'en',
+    timezone: null,
+    waitingFor: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: true,
+    hasPassword: true,
+    emailAddresses: [{ id: 'a1', address: 'kemi@example.com', verified: true, primary: true }],
+    phoneNumbers: [],
+    outsideEvents: [],
+    ...overrides,
+  };
+}
+
+const ISSUED = {
+  accessToken: 'an-access-token',
+  refreshExpiresAt: '2030-11-15T00:00:00+00:00',
+  sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
+};
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -65,18 +93,36 @@ function signedOut(): void {
   __setSessionState({ status: 'signedOut', ended: false });
 }
 
-function at(
-  path: string,
-  answers: Record<string, () => Response>,
-): { line: string; body: unknown }[] {
-  const sent: { line: string; body: unknown }[] = [];
+/** Only the refresh cookie: nothing in memory, so the page has to ask who this browser is. */
+function cookieOnly(): void {
+  tokens.clear();
+  __setSessionState({ status: 'unknown' });
+}
+
+interface Sent {
+  line: string;
+  body: unknown;
+  bearer: string | null;
+}
+
+let router: ReturnType<typeof createMemoryRouter>;
+
+function at(path: string, answers: Record<string, (sent: Sent) => Response>): Sent[] {
+  const sent: Sent[] = [];
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
-    sent.push({ line, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
+    const bearer = new Headers(init?.headers).get('Authorization');
+    const one = {
+      line,
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+      bearer,
+    };
+    sent.push(one);
 
-    return answers[line]?.() ?? json({});
+    return answers[line]?.(one) ?? json({});
   });
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  router = createMemoryRouter(routes, { initialEntries: [path] });
+  render(<RouterProvider router={router} />);
 
   return sent;
 }
@@ -132,9 +178,9 @@ describe('the browser’s redeem pages (sc-72)', () => {
         json(
           {
             type: 'https://soirely.com/errors/too_many_attempts',
-            title: 'Too many tries. Try again at 13:32 UTC.',
+            title: 'Too many tries. Try again Tuesday 24 Nov at 13:32 UTC.',
             status: 429,
-            retryAt: 'at 13:32 UTC',
+            retryAt: 'Tuesday 24 Nov at 13:32 UTC',
             code: 'too_many_attempts',
           },
           429,
@@ -142,7 +188,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
     });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Too many tries' })).toBeDefined();
-    expect(screen.getByText('Try again at 13:32 UTC.')).toBeDefined();
+    expect(screen.getByText('Try again Tuesday 24 Nov at 13:32 UTC.')).toBeDefined();
   });
 
   it('opens a code from the address and joins a signed-in person by their account', async () => {
@@ -284,5 +330,116 @@ describe('the browser’s redeem pages (sc-72)', () => {
       ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Open Events' })).toBeDefined();
+    expect(document.querySelector('.rd-tile')).not.toBeNull();
+  });
+
+  it('opens a scanned code as the account the cookie signs in, and joins as it', async () => {
+    cookieOnly();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/auth/me': ({ bearer }) =>
+        bearer == null ? json({ status: 401 }, 401) : json(account()),
+      'POST /api/auth/refresh': () => json(ISSUED),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+    });
+
+    expect(await screen.findByRole('button', { name: 'Join as Kemi Okafor' })).toBeDefined();
+    expect(screen.queryByLabelText('Your name')).toBeNull();
+    expect(sent.find((one) => one.line === 'GET /api/door-codes/K7P2QX9M')?.bearer).toBe(
+      'Bearer an-access-token',
+    );
+  });
+
+  it('turns away a member the cookie signs in, with no name asked', async () => {
+    cookieOnly();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/auth/me': ({ bearer }) =>
+        bearer == null ? json({ status: 401 }, 401) : json(account()),
+      'POST /api/auth/refresh': () => json(ISSUED),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/door-codes/K7P2QX9M': ({ bearer }) =>
+        json({ ...OPENED, standing: bearer == null ? null : 'member' }),
+    });
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'You’re already a member of Lumen Feiras',
+      }),
+    ).toBeDefined();
+    expect(sent.some((one) => one.line.startsWith('POST /api/door-codes'))).toBe(false);
+  });
+
+  it('signed out, adopts the account the code makes, so Open the event opens it', async () => {
+    cookieOnly();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/auth/me': ({ bearer }) =>
+        bearer == null
+          ? json({ status: 401 }, 401)
+          : json(
+              account({
+                name: 'Hugo Brandão',
+                verified: false,
+                emailAddresses: [],
+                hasPassword: false,
+              }),
+            ),
+      'POST /api/auth/refresh': () => json({ status: 401 }, 401),
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () =>
+        json(
+          {
+            ...ISSUED,
+            eventId: 'ev_1',
+            name: 'Hugo Brandão',
+            role: 'can_check_in',
+            jobLabel: 'Bar and drinks',
+            endsAt: '2030-11-14T23:30:00+00:00',
+            again: false,
+          },
+          201,
+        ),
+    });
+
+    fireEvent.change(await screen.findByLabelText('Your name'), {
+      target: { value: 'Hugo Brandão' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the event' }));
+
+    expect(
+      sent.some(
+        (one) => one.line === 'GET /api/auth/me' && one.bearer === 'Bearer an-access-token',
+      ),
+    ).toBe(true);
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+    expect(router.state.location.pathname).not.toBe('/sign-in');
+  });
+
+  it.each([
+    ['the API fails', () => json({ status: 500, title: 'Internal' }, 500)],
+    [
+      'the request never arrives',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+  ])('says something went wrong, not that the code does not work, when %s', async (_, fails) => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': fails,
+    });
+
+    fireEvent.change(await screen.findByLabelText('Your name'), {
+      target: { value: 'Hugo Brandão' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Something went wrong on the way. Try again in a moment.',
+    );
+    expect(screen.queryByText(/That code does not work/u)).toBeNull();
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Brandão');
   });
 });
