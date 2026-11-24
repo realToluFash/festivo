@@ -19,7 +19,7 @@ import { type Shell, ShellContext, type ShellSection } from '../../components/se
 import { PageToast } from '../../components/Summary.tsx';
 
 /** The Calendar on sample data, in the tabs' shell: Today, Events and Settings a tab away. */
-function CalendarShell({
+export function CalendarShell({
   switcher,
   children,
 }: {
