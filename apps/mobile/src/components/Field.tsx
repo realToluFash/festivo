@@ -49,7 +49,8 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { useFocusOnAnswer } from './Screen.tsx';
+import { holdOpenedFocus, WindowArriving } from './openedFocus.ts';
+import { bothRefs, SETTLED_MS, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
@@ -396,6 +397,36 @@ export function focusNewField(input: TextInputInstance | null): () => void {
   return () => clearTimeout(bound);
 }
 
+/** A field a sliding Android window opens with loses focus as the window arrives, the keys staying up over a field that takes no typing (sc-91027): it takes focus again as `holdOpenedFocus` has it. */
+export function useAutoFocusHeld(
+  autoFocus: boolean | undefined,
+): RefObject<TextInputInstance | null> {
+  const input = useRef<TextInputInstance>(null);
+  const arriving = useContext(WindowArriving);
+  const [opensFocused] = useState(() => arriving && autoFocus === true);
+
+  useEffect(() => {
+    if (!opensFocused) return;
+
+    return holdOpenedFocus({
+      field: () => (input.current?.isConnected === true ? input.current : null),
+      holder: () => TextInput.State.currentlyFocusedInput(),
+      raise: raiseKeysOn,
+      onKeys: (up, down) => {
+        const risen = Keyboard.addListener('keyboardDidShow', up);
+        const fallen = Keyboard.addListener('keyboardDidHide', down);
+        return () => {
+          risen.remove();
+          fallen.remove();
+        };
+      },
+      settledMs: SETTLED_MS,
+    });
+  }, [opensFocused]);
+
+  return input;
+}
+
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
 export function keysStayDown(): void {
   // A header tap on an iPhone hides the keys and leaves the field focused, and iOS raises them again as the held field changes.
@@ -454,6 +485,7 @@ export function TextField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
+  const opened = useAutoFocusHeld(rest.autoFocus);
 
   return (
     <TextInput
@@ -461,7 +493,7 @@ export function TextField({
       {...rest}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={ref}
+      ref={bothRefs(opened, ref)}
       {...edging}
       style={inputFaced([styles.input, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
@@ -492,6 +524,7 @@ export function CodeField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
+  const opened = useAutoFocusHeld(rest.autoFocus);
 
   return (
     <TextInput
@@ -500,7 +533,7 @@ export function CodeField({
       {...rest}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={ref}
+      ref={bothRefs(opened, ref)}
       {...edging}
       style={inputFaced([styles.code, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
