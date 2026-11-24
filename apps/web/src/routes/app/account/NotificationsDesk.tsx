@@ -165,7 +165,7 @@ export function NotificationsDesk() {
       <div className="desk-column account-desk" inert={covered}>
         {refreshing && <Refreshing />}
         <TitleRow title={t('notificationSettings.title')} titleRef={title} />
-        {settings == null && <KindsLoading label={t('pending.loading')} />}
+        {settings == null && <KindsLoading label={t('notificationSettings.loading')} />}
         {settings === 'failed' && (
           <div className="desk-failed" role="alert">
             <h2>{t('notificationSettings.couldNotLoad')}</h2>

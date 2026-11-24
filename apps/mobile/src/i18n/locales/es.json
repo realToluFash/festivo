@@ -1959,6 +1959,7 @@
     "emailNotSaved": "No se ha guardado el cambio del correo electrónico. Vuelva a intentarlo.",
     "couldNotLoad": "No se ha podido cargar su configuración de notificaciones.",
     "tryAgain": "Reintentar",
+    "loading": "Cargando su configuración de notificaciones…",
     "pushBlocked": "Las notificaciones push están desactivadas en este dispositivo, así que aquí no le llegarán.",
     "quietHours": "De {{start}} a {{end}} (su hora local), solo llegan las notificaciones push de «Día del evento».",
     "kinds": "Qué notificaciones recibe",

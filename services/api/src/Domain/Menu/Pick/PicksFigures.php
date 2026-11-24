@@ -215,6 +215,7 @@ final readonly class PicksFigures
             'needsHost' => $host,
             'notChosen' => $none,
             'menuChanged' => $changed,
+            'menuChangedAllergen' => $count(static fn (array $spot): bool => 'changed' === $spot['state'] && 'allergen' === ($spot['why'] ?? null)),
             'room' => $room,
             'answered' => $room - $host - $none - $changed,
         ];

@@ -545,7 +545,7 @@ function Library({
 
   return (
     <div className="desk desk-page lib-page">
-      {desk.offline}
+      {desk.above}
       <TitleRow
         title={t('menuLibrary.title')}
         titleRef={title}

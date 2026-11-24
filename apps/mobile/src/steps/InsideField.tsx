@@ -170,7 +170,7 @@ export function InsideField({
       </Animated.View>
       {password && (
         <Pressable
-          style={styles.eye}
+          style={[styles.eye, { top: (restingHeight - tokens.sizeHit) / 2 }]}
           onPress={() => setRevealed((shown) => !shown)}
           accessibilityRole="button"
           accessibilityLabel={revealed ? t('steps.hidePassword') : t('steps.showPassword')}
@@ -262,7 +262,6 @@ const styles = StyleSheet.create({
   eye: {
     position: 'absolute',
     right: tokens.spaceXxs,
-    top: (HEIGHT - 2 - tokens.sizeHit) / 2,
     width: tokens.sizeHit,
     height: tokens.sizeHit,
     alignItems: 'center',

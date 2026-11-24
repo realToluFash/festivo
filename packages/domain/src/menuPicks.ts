@@ -79,8 +79,12 @@ export function sumOf(course: PicksCourse): number {
   );
 }
 
+/** Who is in Needs the host for a course: those the host must choose for, and those a menu change flagged for an added allergen. */
+export const courseHostCount = (course: PicksCourse): number =>
+  course.needsHost + course.menuChangedAllergen;
+
 export const hostCount = (picks: EventPicks): number =>
-  picks.courses.reduce((sum, course) => sum + course.needsHost, 0);
+  picks.courses.reduce((sum, course) => sum + courseHostCount(course), 0);
 
 export const clockOf = (at: string): string => at.slice(11, 16);
 

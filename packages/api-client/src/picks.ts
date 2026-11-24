@@ -30,6 +30,8 @@ export interface PicksCourse {
   notChosen: number;
   /** Asked again by a menu change (sc-3913), and not counted as in. */
   menuChanged: number;
+  /** Of menuChanged, those asked because a dish now contains an allergen they have recorded: also in Needs the host. */
+  menuChangedAllergen: number;
   room: number;
   answered: number;
 }
@@ -162,6 +164,7 @@ function asCourse(raw: unknown): PicksCourse {
     needsHost: num(one.needsHost),
     notChosen: num(one.notChosen),
     menuChanged: num(one.menuChanged),
+    menuChangedAllergen: num(one.menuChangedAllergen),
     room: num(one.room),
     answered: num(one.answered),
   };

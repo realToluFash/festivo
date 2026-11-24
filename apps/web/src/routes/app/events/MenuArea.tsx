@@ -494,19 +494,16 @@ function Courses({
     focusAfter.current = 'mc-said';
   }
 
+  /** A refusal shows on the item's own Remove? line, or on the page's note when that line is not open. */
   function keepAsking(id: string, error: unknown, words: string) {
-    setAsking((was) =>
-      was?.id === id
-        ? {
-            ...was,
-            failed:
-              pastDate(error) ??
-              (error instanceof ApiError && error.status === 403
-                ? t('eventMenu.forbidden')
-                : words),
-          }
-        : was,
-    );
+    const failed =
+      pastDate(error) ??
+      (error instanceof ApiError && error.status === 403 ? t('eventMenu.forbidden') : words);
+    if (asking?.id !== id) {
+      tellFailed(failed);
+      return;
+    }
+    setAsking({ ...asking, failed });
     focusAfter.current = `mc-ask-failed-${id}`;
   }
 
@@ -576,11 +573,12 @@ function Courses({
   }
 
   const allergenAsks = (dish: string, added: readonly string[]) => (asked: Asked) => {
-    const names = (codes: readonly string[]) =>
+    const names = (codes: readonly string[], type?: 'disjunction') =>
       allergensInSentence(
         t,
         i18n.language,
         DISH_ALLERGENS.filter((code) => codes.includes(code)),
+        type,
       );
 
     return {
@@ -590,7 +588,7 @@ function Courses({
       }),
       count: t('menuChange.pickedWith', {
         count: asked.count,
-        allergens: names(asked.recorded),
+        allergens: names(asked.recorded, 'disjunction'),
         course: asked.course,
       }),
       stays: t('menuChange.staysAgain', { course: asked.course }),

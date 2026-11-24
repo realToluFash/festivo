@@ -2457,6 +2457,7 @@
     "emailNotSaved": "The email switch was not saved. Try again.",
     "couldNotLoad": "Your notification settings did not load.",
     "tryAgain": "Try again",
+    "loading": "Loading your notification settings…",
     "pushBlocked": "Push is off in this browser, so pushes will not reach you here. Turn it on in your browser settings.",
     "quietHours": "Between {{start}} and {{end}} your time, only Event day pushes come through.",
     "category": {

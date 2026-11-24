@@ -195,7 +195,9 @@ describe('Notification settings at a desk (sc-30243)', () => {
       'Your notification settings did not load.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(screen.getByRole('status', { name: 'Loading…' })).toBeDefined();
+    expect(
+      screen.getByRole('status', { name: 'Loading your notification settings…' }),
+    ).toBeDefined();
     expect(await screen.findByText('You hear by push and email', {}, SLOW)).toBeDefined();
   });
 

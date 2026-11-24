@@ -2537,6 +2537,7 @@
     "emailNotSaved": "A alteração do e-mail não foi guardada. Tente novamente.",
     "couldNotLoad": "Não foi possível carregar as suas definições de notificações.",
     "tryAgain": "Tentar novamente",
+    "loading": "A carregar as suas definições de notificações…",
     "pushBlocked": "As notificações push estão desativadas neste navegador, por isso não as vai receber aqui. Ative-as nas definições do navegador.",
     "quietHours": "Entre {{start}} e {{end}} (hora local), só chegam as notificações push de «Dia do evento».",
     "category": {
@@ -6213,7 +6214,7 @@
     "number": "{{n, number}}",
     "dish": "Prato",
     "chosen": "Escolhido",
-    "defaulted": "Por omissão",
+    "defaulted": "Predefinido",
     "everyoneElse": "Todos os outros",
     "people": "Pessoas",
     "variant": "Variante ·",
