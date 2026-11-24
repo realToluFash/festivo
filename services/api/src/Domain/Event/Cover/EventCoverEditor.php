@@ -135,7 +135,7 @@ final readonly class EventCoverEditor
         $this->unpublish($cover->getPhotoKey());
     }
 
-    /** Under a key of the copy's own, so a later change to either cover, or a purge of either event, never reaches the other (sc-3593). */
+    /** Under a key of the copy's own, so a later change to either cover, or a purge of either event, never reaches the other (sc-3593). The card is made, not copied: a cover saved before cards has none. */
     public function copy(Event $from, Event $to): ?EventCover
     {
         $cover = $this->eventCoverRepository->findOneForEvent($from);
@@ -150,9 +150,8 @@ final readonly class EventCoverEditor
             $this->objectStore->copyPublished(self::sizeKey($cover->getPhotoKey(), $size), self::sizeKey($photoKey, $size));
         }
 
-        $this->objectStore->copyPublished(self::cardKey($cover->getPhotoKey()), self::cardKey($photoKey));
-
         $copy = new EventCover($to, $photoKey, $cover->getPosition(), $cover->getDescription());
+        $this->publishCard($copy);
         $this->entityManager->persist($copy);
 
         return $copy;
