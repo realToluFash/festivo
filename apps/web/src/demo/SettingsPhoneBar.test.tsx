@@ -55,4 +55,10 @@ describe('Settings and Your account at a phone’s width, under the product shel
     expect(AT_PHONE).toMatch(/\.dp-bar \.today-side \.sw-opener-name,/u);
     expect(AT_PHONE).toMatch(/\.dp-bar \.desk-main \.desk-bell \{\s+display: none;/u);
   });
+
+  it('runs the page flat to the window’s edges under the bar, as the product’s shell does', () => {
+    expect(AT_PHONE).toMatch(
+      /\.today\.desk\.dp-bar:not\(\.dp-fit\) > \.desk-main \{\s+margin: 0;\s+border-radius: 0;\s+box-shadow: none;/u,
+    );
+  });
 });
