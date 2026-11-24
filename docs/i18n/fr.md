@@ -17,34 +17,35 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | French                                 | Notes                            |
-| ------------------------- | -------------------------------------- | -------------------------------- |
-| Settings                  | Paramètres                             | Settled: also the app's tab      |
-| Home                      | Accueil                                | Settled: the app's tab           |
-| Account / Security        | Compte / Sécurité                      | Settled: section names           |
-| Ways to sign in           | Moyens de connexion                    | Settled                          |
-| Signed-in devices         | Appareils connectés                    | Settled                          |
-| Start again               | Recommencer                            | Settled                          |
-| Organisation              | Organisation                           | Settled: section name, same word |
-| Sign in                   | Se connecter                           |                                  |
-| Sign out                  | Déconnecter                            |                                  |
-| Email                     | Adresse e-mail                         | Settled 29 Oct: plain hyphen     |
-| Password                  | Mot de passe                           |                                  |
-| Continue                  | Continuer                              |                                  |
-| Cancel                    | Annuler                                |                                  |
-| Two-factor authentication | Double authentification                | Settled: also "two-factor" alone |
-| Recovery code             | Code de récupération                   |                                  |
-| Primary (address, number) | Principale / principal                 | Settled 18 Oct: agrees with noun |
-| Other addresses, numbers  | Les autres adresses                    | Settled 18 Oct: never secondaire |
-| Phone number              | Numéro de téléphone                    | Settled 18 Oct: any number       |
-| Mobile number             | Numéro de portable                     | Settled 18 Oct: the SMS field    |
-| Remove (from the account) | Retirer                                | Settled 18 Oct: not Supprimer    |
-| Linked (to an account)    | Associé                                | Settled 18 Oct: as `waysCard`    |
-| Unverified                | À vérifier                             | Settled 18 Oct: no agreement     |
-| Account mail              | Les e-mails du compte                  | Settled 18 Oct                   |
-| Sign-in rules             | Règles de connexion                    | Settled 19 Oct                   |
-| Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974          |
-| Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914          |
+| English                   | French                                 | Notes                                                                                               |
+| ------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Settings                  | Paramètres                             | Settled: also the app's tab                                                                         |
+| Home                      | Accueil                                | Settled: the app's tab                                                                              |
+| Account / Security        | Compte / Sécurité                      | Settled: section names                                                                              |
+| Ways to sign in           | Moyens de connexion                    | Settled                                                                                             |
+| Signed-in devices         | Appareils connectés                    | Settled                                                                                             |
+| Start again               | Recommencer                            | Settled                                                                                             |
+| Organisation              | Organisation                           | Settled: section name, same word                                                                    |
+| Sign in                   | Se connecter                           |                                                                                                     |
+| Sign out                  | Déconnecter                            |                                                                                                     |
+| Email                     | Adresse e-mail                         | Settled 29 Oct: plain hyphen                                                                        |
+| Password                  | Mot de passe                           |                                                                                                     |
+| Continue                  | Continuer                              |                                                                                                     |
+| Cancel                    | Annuler                                |                                                                                                     |
+| Two-factor authentication | Double authentification                | Settled: also "two-factor" alone                                                                    |
+| Recovery code             | Code de récupération                   |                                                                                                     |
+| Passkey                   | Clé d’accès                            | Settled 24 Nov 2026 (sc-86976): feminine. Two-factor methods: « moyens de double authentification » |
+| Primary (address, number) | Principale / principal                 | Settled 18 Oct: agrees with noun                                                                    |
+| Other addresses, numbers  | Les autres adresses                    | Settled 18 Oct: never secondaire                                                                    |
+| Phone number              | Numéro de téléphone                    | Settled 18 Oct: any number                                                                          |
+| Mobile number             | Numéro de portable                     | Settled 18 Oct: the SMS field                                                                       |
+| Remove (from the account) | Retirer                                | Settled 18 Oct: not Supprimer                                                                       |
+| Linked (to an account)    | Associé                                | Settled 18 Oct: as `waysCard`                                                                       |
+| Unverified                | À vérifier                             | Settled 18 Oct: no agreement                                                                        |
+| Account mail              | Les e-mails du compte                  | Settled 18 Oct                                                                                      |
+| Sign-in rules             | Règles de connexion                    | Settled 19 Oct                                                                                      |
+| Try again (button)        | Réessayer                              | Settled 1 Nov, sc-26974                                                                             |
+| Owner / Admin / Member    | Propriétaire / Administrateur / Membre | Settled 5 Nov, sc-29914                                                                             |
 
 - **23 nov. 2026. La fiche cuisine par poste** (sc-4042 pour sc-34244, `web:kitchenSheet.byStation|chefsChoice`, `kitchen_sheet.by_station|chefs_choice` de l’API). By station est « Par poste », comme Station dans l’Équipe. Chef’s choice, la ligne du passe, est « Au choix du chef » : ce n’est pas « Au choix de la cuisine » (Kitchen’s choice), un état du choix de l’invité, mais l’ensemble qui part du passe (sc-4005), d’où un mot à lui.
 - **22 nov. 2026. Le code de l’invité pour l’entrée et le scanner à la porte** (sc-80603 pour sc-1301, `web:guest.door*`, `mobile:checkIn.scan.*`, `ios.NSCameraUsageDescription`). Ce que l’invité présente est « votre code pour l’entrée », jamais « code d’accès », qui est celui de l’équipe (sc-72). Scan se dit **scanner** (verbe et nom). Screenshot est **capture d’écran**. Camera est **appareil photo**, le mot d’iOS et d’Android. Un accompagnant held à la porte est « En attente · jusqu’à ce que l’invitation soit acceptée », comme `guestList.heldLine`, sans accord avec l’hôte. Settings est ici l’app de l’appareil : iOS dit Réglages et Android Paramètres, donc « les réglages de l’appareil » en minuscules, comme `notificationSettings.openSettings`. Waiting to sync est **en attente de synchronisation**. `doorLine` n’a pas de pluriel et s’affiche avec un ou plusieurs accompagnants, donc il ne compte pas : « toute personne qui vous accompagne », jamais « vos accompagnants ».
@@ -109,6 +110,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 ## Decided phrasings
 
+- **24 nov. 2026. La double authentification par clé d’accès sur le web** (sc-86976 pour sc-86885, `web:passkey.*`, `twoFactor.lost*`, `lostTwoFactor.start*`, `emails:twoFactor.added|removed|factor.*`). « Clé d’accès », au féminin : « Ajoutée le {{day}} », « Synchronisée », « La garder ». Retirer une clé ou l’application, c’est « Supprimer » ; ce que la personne fait ensuite dans son gestionnaire, c’est « l’en effacer », pour ne pas répéter le verbe. Les deux méthodes ensemble sont des « moyens de double authentification ». `{factor}` ouvre la phrase des e-mails d’ajout et de suppression, avec une majuscule, et le participe s’accorde au féminin (« a été ajoutée »), les deux moyens étant féminins. `{{place}}` suit « dans » : un nom de gestionnaire, ou « votre gestionnaire de mots de passe ou votre clé de sécurité ». `passkey.codeLabel` reste « Code », comme `twoFactor.code`, dans `same-as-english.json`.
 - **23 nov. 2026. Un changement de menu repose la question** (sc-4042 pour sc-3913, `web:menuChange.*`, `guestMeal.changed.*|pickNew|menuChanged|changedOpen_*`, `seePicks.changed*|menuChanged`, `kitchenSheet.changed|cellChanged`, `mobile:menuPicks.changed*|menuChanged`, `kitchen_sheet.menu_changed|cell_changed` de l’API). Menu changed, nom d’état, est **« Menu modifié »** partout. Dans la boîte de dialogue, {{course}} arrive tel quel : « pour le service « {{course}} » » ; dans `pickNew`, en minuscules après « en », comme `which` : « Que prendre à la place en {{course}} ? ». They’ll be asked est « On lui/leur demandera de choisir à nouveau », et les confirmations finissent par « On demandera à {{count}} invités de choisir à nouveau », sans accord à faire. Une confirmation commence par son nom (« Plat », « Variante », « Question ») pour que le participe s’accorde. Ce qui pourrait porter un genre passe par « cette personne » / « ces personnes » (`pickedWith`). Les allergènes suivent un deux-points (« a dans sa fiche : », « contient désormais : »). `allComing` est une étiquette (« Invités qui viennent : {{count}}. »). `staysAgain` ne reçoit pas {{count}} : ni possessif ni verbe au pluriel (« Le reste des réponses ne change pas »), pour valoir pour un ou plusieurs invités. `menuChanged` dit « a changé ou a été retiré », car il s’affiche aussi après un allergène ou des variantes ajoutés.
 - **23 nov. 2026. Le Menu et ses choix dans l’app** (sc-4042 pour sc-3914, `mobile:menuPicks.*`). Reprend mot pour mot ce qui est décidé pour Voir les choix (`web:seePicks.*`), la fiche cuisine et le plat par défaut ; propre au mobile : Variant et Side d’une ligne sont « Variante · {{name}} » et « Option · {{name}} » ; la feuille de partage n’est pas nommée (« Vous pourrez la partager dès que le PDF sera prêt »). Pull down to refresh est « Tirez vers le bas pour actualiser ». Le bouton cité par `failedSave` est entre guillemets : « appuyez de nouveau sur « {{button}} » ». `givenOn` prend l’espace insécable avant le deux-points, contrairement à `web:seePicks.givenOn`. `rowSaid` est une étiquette de lecteur d’écran : « choisi : 2, par défaut : 1 ».
 - **23 nov. 2026. La fiche cuisine** (sc-4042 pour sc-3911, `web:kitchenSheet.*`, `kitchen_sheet.*` de l’API). C’est **la fiche cuisine**, sur l’écran, dans le PDF et dans le nom du fichier, « {event} – fiche cuisine – {day} », comme `guest_export.file`. Elle reprend les noms d’état de Voir les choix : « Au choix de la cuisine », « Sans ce service », « En attente de l’hôte », « Sans choix » ; The room est « Toute la salle » en ligne de total. Side est l’option d’une question, d’où « Option · {{name}} » comme `seePicks.side`, et Sides « Les options », même si l’anglais dit side. Coming est « personnes attendues » ; les décomptes sans nom prennent « personne ». As of est « Mise à jour : {{at}} », car {{at}} commence par le jour. Allergies reste « Allergies » (dans `same-as-english.json`). Letter est « Lettre US ». L’avis de santé dit « détruisez-la » : ce sont des données de santé.

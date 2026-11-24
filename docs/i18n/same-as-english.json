@@ -86,6 +86,7 @@
     "web:rolesScreen.area.menu",
     "web:rolesScreen.area.messages",
     "web:rolesScreen.area.organisation",
+    "web:passkey.codeLabel",
     "web:twoFactor.code",
     "web:waysCard.code",
     "mobile:rolesScreen.area.budget",
