@@ -546,6 +546,11 @@ describe('two-factor at a desk', () => {
       }),
     );
     fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '123456' } });
+    expect(
+      dialog("Confirm it's you").getByText(
+        'To remove it, confirm it’s you. We will email folake@ire.events to say it was removed.',
+      ),
+    ).toBeDefined();
     fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
 
     expect(

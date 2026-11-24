@@ -63,6 +63,7 @@ function problem(code: string, status: number, headers: Record<string, string> =
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('asking for a reset link', () => {
@@ -726,6 +727,29 @@ describe('setting a new password from the link', () => {
       '/api/orgs',
     ]);
     expect(sent[1]?.body).toEqual({ token: 't1', code: '123456' });
+  });
+
+  it('keeps the lost link under the passkey’s waiting state at the reset (sc-86885)', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: { get: () => new Promise(() => {}) },
+      configurable: true,
+    });
+    answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({
+          email: 'folake@ire.events',
+          twoFactor: true,
+          factors: { app: false, passkeys: true },
+        }),
+      'POST /api/auth/password/reset/passkey-options': () => json({ challenge: 'AAEC' }),
+    });
+    at('/reset-password?token=t1');
+
+    await screen.findByRole('button', { name: 'Use a code instead' });
+    expect(
+      screen.getByRole('link', { name: 'Lost your passkeys and your recovery codes?' }),
+    ).toBeDefined();
   });
 
   it('sends somebody who has lost both to Soirely support, asks the API nothing, and ‹ Back keeps the code step working (Decided, 8 Nov)', async () => {

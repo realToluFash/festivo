@@ -207,6 +207,7 @@ export function ResetPassword() {
           failedTitle={t('recovery.failedTitle')}
           failedBody={t('recovery.failedBody')}
           lostBoth={{ to: `?token=${encodeURIComponent(token)}`, state: { lostBoth: true } }}
+          lostWhileWaiting
           headingRef={stepHeading}
           factors={status.factors}
           passkey={{

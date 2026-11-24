@@ -520,7 +520,11 @@ export function ProveDialog({
   const asksPasskey = codeAsked && !byCode;
   const passwordStillAsked = askPassword && !(passkey != null && codeAsked);
   const recovery = held?.passkeys === true && !held.app;
-  const help = recovery ? t('passkey.recoveryHelp') : (codeHelp ?? t('waysCard.codeHelp'));
+  const help = recovery
+    ? t('passkey.recoveryHelp')
+    : held?.passkeys === true
+      ? t('passkey.codeHelp')
+      : (codeHelp ?? t('waysCard.codeHelp'));
 
   async function openSheet(): Promise<void> {
     if (passkey == null || checking || sheetOpen) return;
