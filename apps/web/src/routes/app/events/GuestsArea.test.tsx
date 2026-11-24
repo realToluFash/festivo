@@ -3609,9 +3609,61 @@ describe('Groups (sc-3775)', () => {
 
     fireEvent.click(within(chips).getByRole('button', { name: 'No group' }));
 
-    expect(rows()).toEqual(['Chief Amaka ObiNot sure yet']);
+    expect(rows()).toEqual([
+      'Chief Amaka ObiNot sure yet',
+      'Sade OjoComing · 1 companion · 1 of 1 namedGroup: Bride’s side',
+      'Femi OjoComing',
+    ]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
     expect(rows()).toHaveLength(4);
+    expect(shownRouter!.state.location.search).toBe('');
+  });
+
+  it('keeps several group chips on, each a step in the address Back undoes (sc-90684)', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])),
+    });
+    await screen.findByText('Tobi Bello');
+    const chips = screen.getByRole('group', { name: 'Groups' });
+    const pressed = () =>
+      within(chips)
+        .getAllByRole('button')
+        .filter((one) => one.getAttribute('aria-pressed') === 'true')
+        .map((one) => one.textContent);
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'Work' }));
+    fireEvent.click(within(chips).getByRole('button', { name: 'Bride’s side' }));
+
+    expect(pressed()).toEqual(['Bride’s side', 'Work']);
+    expect(rows()).toHaveLength(3);
+    expect(shownRouter!.state.location.search).toBe('?group=gr_work&group=gr_bride');
+
+    await act(() => shownRouter!.navigate(-1));
+    expect(pressed()).toEqual(['Work']);
+    await act(() => shownRouter!.navigate(1));
+    expect(pressed()).toEqual(['Bride’s side', 'Work']);
+
+    fireEvent.click(within(chips).getByRole('button', { name: /Work/u }));
+    expect(pressed()).toEqual(['Bride’s side']);
+  });
+
+  it('opens on the chips the address names, ignoring a group the event no longer has (sc-90684)', async () => {
+    signedIn();
+    await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])) },
+      OWNER_PERMISSIONS,
+      '?group=gr_gone&group=gr_work&group=none',
+    );
+    await screen.findByText('Tobi Bello');
+
+    expect(rows()).toEqual(['Chief Amaka ObiNot sure yet', 'Tobi BelloComingGroup: Work']);
+    expect(
+      within(screen.getByRole('group', { name: 'Groups' }))
+        .getAllByRole('button')
+        .filter((one) => one.getAttribute('aria-pressed') === 'true')
+        .map((one) => one.textContent),
+    ).toEqual(['Work', 'No group']);
   });
 
   it('names a 60-character group whole in its chip and its guest’s tag, wrapping, never cut short (sc-51198)', async () => {

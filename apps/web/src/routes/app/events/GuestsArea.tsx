@@ -54,7 +54,6 @@ import {
   needsInputOf,
   needsViolations,
   problemsByWho,
-  NO_GROUP,
   exportNarrowing,
   exportsGuests,
   peopleInView,
@@ -124,7 +123,7 @@ import {
   removeQuestion,
   shownGuests,
 } from './guestSelect.ts';
-import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
+import { choiceLine, groupChipsOf, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
 import {
@@ -279,13 +278,16 @@ export function GuestsArea({
     setChoice,
     setChanged,
     setQ,
+    groups,
+    dietary: dietaryOnly,
+    toggleGroup,
+    setDietary,
+    dropGroup,
     clear,
   } = useGuestsAddress();
   const [unseen, setUnseen] = useState(0);
   const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
   const [changedFailed, setChangedFailed] = useState(false);
-  const [dietaryOnly, setDietary] = useState(false);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [grouping, setGrouping] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
@@ -703,6 +705,16 @@ export function GuestsArea({
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
   const dietaryOn = manages && dietaryOnly;
+  // A group the address names that the event no longer has narrows nothing (sc-90684).
+  const groupChips = useMemo(
+    () => (load.kind === 'loaded' ? groupChipsOf(load.list, t('guestGroups.noGroup')) : []),
+    [load, t],
+  );
+  const groupsOn = useMemo(
+    () => groupChips.filter((chip) => groups.includes(chip.key)),
+    [groupChips, groups],
+  );
+  const groupFilter = useMemo(() => groupsOn.map((chip) => chip.key), [groupsOn]);
   const { view, shown } = useMemo(() => {
     if (changedOn) {
       const rows = changedRows(guests, changes ?? [], q);
@@ -715,8 +727,8 @@ export function GuestsArea({
       : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter);
   }, [guests, counts, changedOn, changes, choice, q, expanded, dietaryOn, groupFilter]);
   const looking =
-    changedOn || choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
-  const listLook = `${changedOn ? `changed ${since ?? ''}` : choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+    changedOn || choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter.length > 0;
+  const listLook = `${changedOn ? `changed ${since ?? ''}` : choice}\n${q}\n${dietaryOn}\n${groupFilter.join(' ')}`;
   const [lookedAt, setLookedAt] = useState(listLook);
 
   // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
@@ -975,8 +987,6 @@ export function GuestsArea({
 
   function clearLook(): void {
     clear();
-    setDietary(false);
-    setGroupFilter(null);
   }
 
   function chooseChanged(): void {
@@ -1143,20 +1153,14 @@ export function GuestsArea({
                               className={dietaryOnly ? 'gs-chip is-on' : 'gs-chip'}
                               aria-pressed={dietaryOnly}
                               data-focus="dietary"
-                              onClick={() => setDietary((was) => !was)}
+                              onClick={() => setDietary(!dietaryOnly)}
                             >
                               {dietaryOnly && <Glyph name="tick" size={16} weight={2.6} />}
                               {t('guestNeeds.dietaryNotes')}
                             </button>
                           </div>
                         )}
-                        {load.kind === 'loaded' && (
-                          <GroupChips
-                            list={load.list}
-                            filter={groupFilter}
-                            onFilter={setGroupFilter}
-                          />
-                        )}
+                        <GroupChips chips={groupChips} on={groupFilter} onToggle={toggleGroup} />
                         {changedFailed && (
                           <div className="gs-shown gs-changed-failed" role="alert">
                             <p>
@@ -1307,7 +1311,7 @@ export function GuestsArea({
                         manages={manages}
                         focus={focus}
                         onChanged={(deleted) => {
-                          if (deleted != null && groupFilter === deleted) setGroupFilter(null);
+                          if (deleted != null) dropGroup(deleted);
                           setAttempt((n) => n + 1);
                         }}
                         onDone={closeGroups}
@@ -1480,15 +1484,7 @@ export function GuestsArea({
             everyone={peopleInView(guests, 'all', '').map((one) => one.id)}
             narrowing={exportNarrowing(t, t(CHOICE_KEY[choice]), q, [
               ...(dietaryOn ? [t('guestNeeds.dietaryNotes')] : []),
-              ...(groupFilter == null
-                ? []
-                : [
-                    groupFilter === NO_GROUP
-                      ? t('guestGroups.noGroup')
-                      : ((load.kind === 'loaded'
-                          ? load.list.groups.find((one) => one.id === groupFilter)?.name
-                          : null) ?? ''),
-                  ]),
+              ...groupsOn.map((chip) => chip.word),
             ])}
             needs={manages}
             onClose={() => {
