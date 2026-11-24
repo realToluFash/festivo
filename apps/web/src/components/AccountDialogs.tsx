@@ -499,6 +499,7 @@ export function ProveDialog({
   const [password, setPassword] = useState(start?.password ?? '');
   const [code, setCode] = useState(start?.typed ?? '');
   const [byCode, setByCode] = useState(passkey == null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const proving = useProving({
     via,
     twoFactorOn: twoFactorOn && passkey == null,
@@ -517,12 +518,18 @@ export function ProveDialog({
   const providerName = provider == null ? null : PROVIDER_NAMES[provider];
   const showsCode = codeAsked && byCode && (askPassword || signIn != null);
   const asksPasskey = codeAsked && !byCode;
+  const passwordStillAsked = askPassword && !(passkey != null && codeAsked);
   const recovery = held?.passkeys === true && !held.app;
   const help = recovery ? t('passkey.recoveryHelp') : (codeHelp ?? t('waysCard.codeHelp'));
 
   async function openSheet(): Promise<void> {
-    if (passkey == null || checking) return;
-    const answer = await askPasskey(await passkey()).catch(() => null);
+    if (passkey == null || checking || sheetOpen) return;
+    setRefusal(null);
+    setSheetOpen(true);
+    const answer = await passkey()
+      .then((options) => askPasskey(options))
+      .catch(() => null);
+    setSheetOpen(false);
     if (answer != null) void proving.send(password, { passkey: answer });
   }
 
@@ -578,9 +585,9 @@ export function ProveDialog({
             ? t('waysCard.continueWith', { provider: providerName })
             : t('waysCard.continue')
       }
-      on={!checking}
+      on={!checking && !sheetOpen}
       locked={checking}
-      first={askPassword ? passwordRef : codeRef}
+      first={passwordStillAsked ? passwordRef : codeRef}
       onDismiss={onClose}
       onConfirm={go}
     >
@@ -609,9 +616,9 @@ export function ProveDialog({
       )}
       {stepTwo != null && <Note strong>{t('waysCard.signedInWith', { provider: stepTwo })}</Note>}
       {showsCode && held?.passkeys === true && !canUsePasskeys() && <NoBrowser />}
-      {(askPassword || showsCode) && (
+      {(passwordStillAsked || showsCode) && (
         <div className="desk-fields">
-          {askPassword && (
+          {passwordStillAsked && (
             <Field
               label={t('waysCard.yourPassword')}
               value={password}
@@ -649,7 +656,7 @@ export function ProveDialog({
         <>
           <Note strong>{t('passkey.waitTitle')}</Note>
           <p className="desk-note">{t('passkey.waitLine')}</p>
-          {checking && <Waiting />}
+          {(sheetOpen || checking) && <Waiting />}
           {refusal?.field === 'code' && <Refused line={refusal.message} />}
           <div className="account-acts">
             <button
@@ -664,6 +671,21 @@ export function ProveDialog({
             </button>
           </div>
         </>
+      )}
+      {showsCode && passkey != null && (
+        <div className="account-acts">
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => {
+              setRefusal(null);
+              setByCode(false);
+              void openSheet();
+            }}
+          >
+            {t('passkey.useInstead')}
+          </button>
+        </div>
       )}
       {refusal?.field === 'failed' && (
         <FieldError id="account-prove-failed" message={refusal.message} />
