@@ -1165,6 +1165,31 @@ class DemoOnlyStories(unittest.TestCase):
                 self.assertEqual([r for i in offered for r in i["roles"] if work.builds(r)],
                                  [], (state, prs))
 
+    def woken(self, stories, prs, role="ux"):
+        return [(i["reason"], i["priority"]) for i in work.derive(stories, prs)
+                if i["kind"] == "story" and role in i["roles"]]
+
+    def test_in_failed_qa_ux_who_built_it_is_woken_without_a_tag(self):
+        for prs in ([self.demo()], [self.demo(state="open")], []):
+            self.assertEqual([reason for reason, _ in self.woken([self.on("Failed QA")], prs)],
+                             ["sc-1 moved to Failed QA"], prs)
+        drawing = dict(self.on("Needs Design"), id=2)
+        (_, rework), (_, draw) = sorted(
+            self.woken([self.on("Failed QA"), drawing], [self.demo()]), key=lambda x: x[0])
+        self.assertLess(rework, draw)
+
+    def test_ux_is_not_offered_a_failed_story_a_developer_built(self):
+        own = pr(41, 1, state="merged")
+        for stories, prs in (([self.on("Failed QA", ("dev2",))], [self.demo()]),
+                             ([self.on("Failed QA")], [self.demo(), own])):
+            self.assertEqual(self.woken(stories, prs), [], (stories, prs))
+            self.assertEqual(work.queued("ux", stories, prs=prs), [])
+            self.assertIn("dev2", self.builders(stories, prs))
+
+    def test_ux_is_offered_it_only_in_failed_qa(self):
+        for state in self.WAITING + self.LATER:
+            self.assertEqual(work.queued("ux", [self.on(state)], prs=[self.demo()]), [], state)
+
     def test_the_lead_is_not_told_it_has_no_pull_request(self):
         items = work.review_items([self.on("In Review")], [self.demo()])
         self.assertEqual(items, [])

@@ -266,6 +266,7 @@ def queued(role, stories, epics=None, ios=None, testers=None, prs=None):
             and not held_epic(story, epics)
             and not (builds(role) and holding(story, by_id))
             and not (builds(role) and story["id"] in only)
+            and not (role == "ux" and story["state"] == "Failed QA" and story["id"] not in only)
             and not (builds(role) and demo_open(story, prs or []))]
 
 

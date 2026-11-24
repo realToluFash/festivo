@@ -49,6 +49,27 @@ class Developers(unittest.TestCase):
                          "sc-9")
 
 
+class Designer(unittest.TestCase):
+    def lines(self, stories, prs=()):
+        p = Digest("ux")
+        with mock.patch.object(digests.store, "prs", return_value=list(prs)):
+            digests.designer(p, None, stories)
+        return p.lines
+
+    def test_a_failed_demo_only_story_is_listed_first_with_what_to_do(self):
+        failed = dict(ready(1), state="Failed QA", labels=["demo only"])
+        drawing = dict(ready(2), state="Needs Design")
+        lines = self.lines([failed, drawing])
+        self.assertEqual(lines[0], "Failed QA, demo only (1): fix the demo on a ux/ branch; "
+                                   "once it merges pm moves it to Ready For QA:")
+        self.assertIn("sc-1", lines[1])
+        self.assertTrue(lines[3].startswith("Needs Design (1)"))
+
+    def test_a_failed_story_a_developer_built_is_not_listed(self):
+        failed = dict(ready(1), state="Failed QA", labels=["dev2"])
+        self.assertTrue(self.lines([failed])[0].startswith("Needs Design (0)"))
+
+
 def blocks(subject, object_):
     return {"verb": "blocks", "subject": subject, "object": object_}
 
