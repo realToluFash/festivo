@@ -230,7 +230,7 @@ function CodeEntry({ recovery, state }: { recovery: boolean; state: string }) {
         {backToPasskey && (
           <Link
             className="link-button demo-link"
-            to={twoFactorAt('passkey', passkeysOnly ? 'cancelled-passkeys-only' : 'cancelled')}
+            to={twoFactorAt('passkey', passkeysOnly ? 'passkeys-only' : undefined)}
           >
             Use a passkey instead
           </Link>
