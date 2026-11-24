@@ -23,8 +23,8 @@ const EVENT_MESH: Record<MeshKey, { base: string; glows: readonly Glow[] }> = {
       { id: 'c', x: '40%', y: '100%', r: '60%', colour: tokens.optionBlue, opacity: 0.45 },
     ],
   },
-  accent: {
-    base: tokens.colorAccent,
+  party: {
+    base: tokens.coverParty,
     glows: [
       { id: 'a', x: '20%', y: '20%', r: '60%', colour: tokens.optionPurple, opacity: 0.8 },
       { id: 'b', x: '85%', y: '15%', r: '55%', colour: tokens.optionBlue, opacity: 0.8 },
