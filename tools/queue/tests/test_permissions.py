@@ -100,6 +100,11 @@ class Permissions(unittest.TestCase):
         self.assertIn("Edit(~/.claude-b/**)", denied)
         self.assertTrue(any(rule.startswith("Write(") and "config" in rule for rule in denied))
 
+    def test_no_worker_may_read_the_env_file_which_holds_sq_webs_token(self):
+        with mock.patch.dict("os.environ", {"SOIRELY_CONFIG": "/etc/soirely-test"}):
+            denied = permissions.denied(self.home / "sq" / "sq", pathlib.Path("~/.claude-b"))
+        self.assertIn("Read(//etc/soirely-test/env)", denied)
+
     def test_no_worker_gets_the_artifacts_server_in_place_of_the_built_in_tools(self):
         denied = permissions.denied(self.home / "sq" / "sq", pathlib.Path("~/.claude-b"))
         self.assertIn("mcp__claude-artifacts", denied)

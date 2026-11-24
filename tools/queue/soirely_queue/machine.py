@@ -57,6 +57,7 @@ def path():
     return config_dir() / "agents.json"
 
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
+WEB_TOKEN = "SQ_WEB_TOKEN"
 
 
 def env_file():
@@ -248,9 +249,11 @@ def token_source(folder):
 
 def account_env(folder, spare=False):
     """The environment a folder's Claude runs in: its workers' token (`token_source`) when
-    the env file holds one, and never another account's. A `spare` folder, one no role
-    uses, gets only its own token, never the plain one every role's folder shares."""
-    env = {key: value for key, value in os.environ.items() if not key.startswith(TOKEN)}
+    the env file holds one, never another account's, and never `sq web`'s, which works its
+    controls. A `spare` folder, one no role uses, gets only its own token, never the plain
+    one every role's folder shares."""
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(TOKEN) and key != WEB_TOKEN}
     source = token_name(folder) if spare else token_source(folder)
     if source and os.environ.get(source):
         env[TOKEN] = os.environ[source]

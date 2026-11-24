@@ -106,6 +106,8 @@ def denied(sq, claude_folder):
     for folder in (machine.config_dir(), claude_folder):
         if folder:
             rules += [f"Edit({as_path(folder)}/**)", f"Write({as_path(folder)}/**)"]
+    # It holds sq web's token, which pauses and stops the machines.
+    rules.append(f"Read({as_path(machine.env_file())})")
     return rules
 
 
