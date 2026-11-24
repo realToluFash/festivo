@@ -1,5 +1,5 @@
 # sc-89866: an owner turning an Admin into an Owner sees Confirm it’s you with its lead.
-# Needs OWNER_ROLE_ID, the organisation's Owner role (role rows are members.role.<roleId>).
+# Needs an owner signed in to ${ORG_NAME}, and OWNER_ROLE_ID, the organisation's Owner role (role rows are members.role.<roleId>).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/members
@@ -34,4 +34,4 @@ appId: host.exp.Exponent
       - waitForAnimationToEnd
 - takeScreenshot: owner-prove
 - assertVisible: 'Confirm it’s you'
-- assertVisible: 'To make somebody an owner of QA Organisation, confirm it’s you\. You won’t be asked again for 5 minutes\.'
+- assertVisible: 'To make somebody an owner of ${ORG_NAME}, confirm it’s you\. You won’t be asked again for 5 minutes\.'
