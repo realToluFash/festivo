@@ -1,5 +1,6 @@
 import { formatWallDay, phoneLengthProblem } from '@soirely/domain';
 
+import type { Place } from '../../kit/orgSwitcher.ts';
 import { writtenTime } from '../clock.ts';
 import {
   atWords,
@@ -18,6 +19,8 @@ export { atWords, type Moment };
 
 /** The sample, access-a-spec.md §6: Lumen Feiras in Porto and Joana & Rui's wedding. It is not spec. */
 export const ORGANISATION = 'Lumen Feiras';
+/** Inês's one organisation, which the switcher names above the event as the boards do (sc-31774). */
+export const DOOR_PLACE: Place = { id: 'org-lumen-feiras', name: ORGANISATION, role: 'Owner' };
 export const EVENT = {
   id: 'evt-joana-rui',
   name: 'Joana & Rui’s wedding',

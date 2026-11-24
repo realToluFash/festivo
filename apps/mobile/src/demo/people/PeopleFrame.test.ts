@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { EVENT as DOOR, doorStartOf } from '../doorCode/DoorCodeModel.ts';
+import { DOOR_PLACE, EVENT as DOOR, doorStartOf } from '../doorCode/DoorCodeModel.ts';
 import { instantOf } from '../events/EventsModel.ts';
 import { DOOR_WEDDING, EVENTS, sampleEvent } from '../events/EventsSample.ts';
 
@@ -35,7 +35,9 @@ describe('on a phone, People keeps the event’s tab bar with More lit (sc-70351
   });
 
   it('draws /demo/people in its event’s frame on the phone too, the door code’s states in theirs', () => {
-    expect(route).toMatch(/return \(\n\s*<EventsShell>\n\s*<EventScreen/u);
+    expect(route).toMatch(
+      /return \(\n\s*<EventsShell place=\{door == null \? null : DOOR_PLACE\}>\n\s*<EventScreen/u,
+    );
     expect(route).toMatch(/door == null \? SAMPLE_EVENT_ID : DOOR_WEDDING\.id/u);
     expect(route).not.toMatch(/PeopleSection|PageToast/u);
     expect(frame).toMatch(/if \(inEvent != null\)\n/u);
@@ -64,5 +66,20 @@ describe('the door code’s event frame reads the door sample’s clock (sc-72)'
     expect(door!.now.date).toBe(DOOR.day);
     expect(at).toBeGreaterThan(Date.parse(DOOR_WEDDING.startsAt) - 24 * 3600 * 1000);
     expect(at).toBeLessThan(Date.parse(DOOR_WEDDING.endsAt));
+  });
+});
+
+describe('the door code’s People sits under its own organisation (sc-31774)', () => {
+  const switcher = readFileSync(join('src', 'demo', 'OrgSwitcher.tsx'), 'utf8');
+  const shell = readFileSync(join('src', 'demo', 'events', 'Route.tsx'), 'utf8');
+
+  it('names Lumen Feiras alone in the switcher, with no invitations waiting', () => {
+    expect(DOOR_PLACE).toEqual({ id: 'org-lumen-feiras', name: 'Lumen Feiras', role: 'Owner' });
+    expect(shell).toMatch(
+      /<OrgSwitcherProvider state=\{switcherStateOf\(switcher\)\} place=\{place\}/u,
+    );
+    expect(switcher).toMatch(
+      /setSession\(\{ \.\.\.sessionFor\('one'\), places: \[place\], current: place\.id \}\);\s*return \(\) => setSession\(before\);/u,
+    );
   });
 });

@@ -49,6 +49,7 @@ import {
   youreIn,
 } from './DoorCodeWords.ts';
 import { SEND_MS } from './HoldItUp.tsx';
+import { TurningButton } from './TurningButton.tsx';
 import { InsideEvent, You } from './Inside.tsx';
 import {
   afterPhoneCode,
@@ -294,7 +295,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
     <DemoScreen
       nav={<NavBar onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.continue}
           busy={sending}
           onPress={send}
@@ -375,7 +376,7 @@ function NameStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) 
     <DemoScreen
       nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={joining ? W.joining : W.join}
           busy={joining}
           onPress={join}
@@ -468,7 +469,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     <DemoScreen
       nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.sendCode}
           busy={sending}
           onPress={send}
