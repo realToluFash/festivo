@@ -773,6 +773,52 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     ).toBeDefined();
   });
 
+  it('still takes a code when the passkey request fails (sc-86885)', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    const sent = answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: null,
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+      'POST /api/auth/two-factor/passkeys/options': () => json({ title: 'Down' }, 500),
+    });
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    openSecurity();
+
+    fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(dialog("Confirm it's you").queryByText('Waiting for your passkey…')).toBeNull(),
+    );
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Use a code instead' }));
+    fireEvent.change(dialog("Confirm it's you").getByLabelText('Recovery code'), {
+      target: { value: 'abcd-efgh' },
+    });
+    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(sent.filter((s) => s.call === 'POST /api/auth/proof')).toHaveLength(2),
+    );
+  });
+
   it('back from Google to sign out everywhere else, proves with it although two-factor failed', async () => {
     signedInAs(GOOGLE_ONLY);
     returnedFrom({ kind: 'signOutOthers' });

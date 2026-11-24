@@ -518,8 +518,7 @@ export function ProveDialog({
   const providerName = provider == null ? null : PROVIDER_NAMES[provider];
   const showsCode = codeAsked && byCode && (askPassword || signIn != null);
   const asksPasskey = codeAsked && !byCode;
-  // A member with passkeys proves in two steps: once the password has passed it is no longer asked.
-  const showsPassword = askPassword && !(passkey != null && codeAsked);
+  const passwordStillAsked = askPassword && !(passkey != null && codeAsked);
   const recovery = held?.passkeys === true && !held.app;
   const help = recovery ? t('passkey.recoveryHelp') : (codeHelp ?? t('waysCard.codeHelp'));
 
@@ -527,7 +526,9 @@ export function ProveDialog({
     if (passkey == null || checking || sheetOpen) return;
     setRefusal(null);
     setSheetOpen(true);
-    const answer = await askPasskey(await passkey()).catch(() => null);
+    const answer = await passkey()
+      .then((options) => askPasskey(options))
+      .catch(() => null);
     setSheetOpen(false);
     if (answer != null) void proving.send(password, { passkey: answer });
   }
@@ -586,7 +587,7 @@ export function ProveDialog({
       }
       on={!checking && !sheetOpen}
       locked={checking}
-      first={showsPassword ? passwordRef : codeRef}
+      first={passwordStillAsked ? passwordRef : codeRef}
       onDismiss={onClose}
       onConfirm={go}
     >
@@ -615,9 +616,9 @@ export function ProveDialog({
       )}
       {stepTwo != null && <Note strong>{t('waysCard.signedInWith', { provider: stepTwo })}</Note>}
       {showsCode && held?.passkeys === true && !canUsePasskeys() && <NoBrowser />}
-      {(showsPassword || showsCode) && (
+      {(passwordStillAsked || showsCode) && (
         <div className="desk-fields">
-          {showsPassword && (
+          {passwordStillAsked && (
             <Field
               label={t('waysCard.yourPassword')}
               value={password}
