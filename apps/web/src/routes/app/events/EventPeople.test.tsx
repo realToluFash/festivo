@@ -162,6 +162,7 @@ async function onPeople(
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, permissions: holding } });
     if (line === 'GET /api/events/ev_1/people')
       return json({ people, owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+    if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
     if (line === 'GET /api/events/ev_1/people/addable')
       return json({
         members: MEMBERS.filter(
@@ -761,6 +762,7 @@ describe('coming back to People while offline (sc-65646)', () => {
       if (line === 'GET /api/events/ev_1') return json({ event: EVENT });
       if (line === 'GET /api/events/ev_1/people')
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: ['Julien Moreau'] });
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
       if (line === 'PATCH /api/events/ev_1/people/p_tom')
         return json({ person: { ...TOM, role: 'can_edit' } });
@@ -1001,6 +1003,7 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
         await held;
         return json({ people: [TOM], owners: ['Folake Adeyemi'], admins: [] });
       }
+      if (line === 'GET /api/events/ev_1/door-codes') return json({ doorCodes: [] });
       if (line === 'GET /api/events/ev_1/people/addable') return json({ members: [] });
 
       return json({});

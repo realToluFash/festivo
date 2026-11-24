@@ -151,13 +151,14 @@ function Shell() {
   const menuId = useId();
   const organisation = session.organisation;
   const routedEvent = useRoutedEventId();
-  const answers = useInvitationAnswers();
+  const reads = session.heldByDevice !== true;
+  const answers = useInvitationAnswers(reads);
   const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
   const [provider, dropProvider] = useLinkedProvider();
   const [gateLaterFor, setGateLaterFor] = useState<string | null>(null);
   const linked = <LinkedNoticeFor provider={provider} onDismiss={dropProvider} />;
-  const offer = useDomainOffer();
+  const offer = useDomainOffer(reads);
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const atPhone = usePhoneWidth();

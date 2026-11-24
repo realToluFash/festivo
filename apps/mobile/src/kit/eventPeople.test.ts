@@ -41,6 +41,8 @@ function person(id: string, name: string, role: EventRole, jobLabel: string | nu
     address: null,
     addressKind: null,
     endsAt: null,
+    doorCode: null,
+    joinedAt: null,
   } satisfies EventPerson;
 }
 
@@ -59,6 +61,8 @@ function fromOutside(
     address,
     addressKind,
     endsAt: '2026-12-12T23:00:00+01:00',
+    doorCode: null,
+    joinedAt: null,
   };
 }
 

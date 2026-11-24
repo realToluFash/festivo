@@ -151,7 +151,7 @@
     "plan_required": "The organisation's plan does not include this.",
     "email_domain_taken": "Another organisation has already proved this domain.",
     "audit_export_too_many": "Too many entries to export.",
-    "door_code_invalid": "That code doesn’t work. Check it with whoever gave it to you.",
+    "door_code_invalid": "That code does not work. Check it with whoever gave it to you.",
     "menu_is_default": "This is part of the course’s default. Choose another default first.",
     "menu_default_move": "Changing the default moves the guests given it. Confirm to change it.",
     "menu_change_asks": "This change asks guests to pick again. Confirm to change it.",

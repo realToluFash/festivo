@@ -58,6 +58,8 @@ export interface Session {
   waitingFor: JoinRequest | null;
   /** The events it holds from outside an organisation, the one it lands on first (sc-71). */
   outsideEvents?: readonly OutsideEvent[];
+  /** A door code's account (sc-72): no address to prove, so no gate, and nothing but its events and itself to read. */
+  heldByDevice?: boolean;
 }
 
 export type SessionState =
@@ -135,11 +137,16 @@ export function outsideOn(
   return session.outsideEvents?.find((one) => one.id === eventId) ?? null;
 }
 
-export async function restoreSession(): Promise<void> {
-  if (state.status !== 'unknown') return;
+let restoring: Promise<void> = Promise.resolve();
+
+/** Settles once the cookie's account is known, so a page that called it second still waits for the first ask. */
+export function restoreSession(): Promise<void> {
+  if (state.status !== 'unknown') return restoring;
 
   set({ status: 'checking' });
-  await askForAccount();
+  restoring = askForAccount();
+
+  return restoring;
 }
 
 /** Stays on the unreachable screen while asking, so the button can say it is trying. */
@@ -240,7 +247,12 @@ export function onMovedOn(listener: (organisation: Membership) => void): () => v
 
 /** Read again on a language pick (sc-9267), a move or a return to the tab (sc-16229); a failed read leaves them as they were. */
 export async function rereadOrganisations(): Promise<void> {
-  if (state.status !== 'signedIn' || state.session.awaiting != null) return;
+  if (
+    state.status !== 'signedIn' ||
+    state.session.awaiting != null ||
+    state.session.heldByDevice === true
+  )
+    return;
 
   const asked = generation;
   const known = state.session.organisations;
@@ -284,6 +296,20 @@ export async function rereadOrganisations(): Promise<void> {
     status: 'signedIn',
     session: { ...current, organisations: read.organisations, organisation, pausedIn },
   });
+}
+
+/** No address at all, as only a door code's account is until sc-4235 asks it for a number (the API's OnboardingGate::heldByDevice). */
+export function heldByDevice(
+  account: Pick<Account, 'verified' | 'emailAddresses' | 'phoneNumbers'>,
+): boolean {
+  return (
+    !account.verified && account.emailAddresses.length === 0 && account.phoneNumbers.length === 0
+  );
+}
+
+/** The gate an account is behind; a door code's account has none to pass and lands inside its event. */
+export function gateOf(account: Account): Awaiting | null {
+  return heldByDevice(account) ? null : awaiting(account);
 }
 
 /** Where a signed-in account belongs: the gate it is behind, or the product. */
@@ -390,7 +416,8 @@ function sessionFrom(
     email: primaryEmailAddress(account) ?? '',
     verified: account.verified,
     complete: account.complete,
-    awaiting: awaiting(account),
+    awaiting: gateOf(account),
+    heldByDevice: heldByDevice(account),
     providers: account.providers,
     hasPassword: account.hasPassword,
     needsOrganisation: account.needsOrganisation,
@@ -462,6 +489,6 @@ if (typeof window !== 'undefined') {
 
   // The API said the account is behind a gate this session did not know about, so read it again.
   window.addEventListener(GATED, () => {
-    if (state.status === 'signedIn') void refreshAccount();
+    if (state.status === 'signedIn' && state.session.heldByDevice !== true) void refreshAccount();
   });
 }
