@@ -662,7 +662,7 @@ final class OrganisationExportTest extends ApiTestCase
         $this->as($someone, 'POST', $this->path(''));
 
         self::assertSame([403, ErrorCode::OwnerRequired->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
-        self::assertSame("Only an owner can export the organisation's data.", $this->last()['detail'] ?? null);
+        self::assertSame('Only an owner can export the organisation’s data.', $this->last()['detail'] ?? null);
         self::assertCount(0, self::em()->getRepository(OrganisationExport::class)->findAll());
     }
 

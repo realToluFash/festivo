@@ -107,8 +107,8 @@ final class SeatingPlanTest extends ApiTestCase
     /** @return iterable<string, array{array<string, mixed>, string, string}> */
     public static function refusedRooms(): iterable
     {
-        yield 'no width' => [['lengthCm' => 1000], 'widthCm', "Enter the room's width."];
-        yield 'no length' => [['widthCm' => 1000, 'lengthCm' => null], 'lengthCm', "Enter the room's length."];
+        yield 'no width' => [['lengthCm' => 1000], 'widthCm', 'Enter the room’s width.'];
+        yield 'no length' => [['widthCm' => 1000, 'lengthCm' => null], 'lengthCm', 'Enter the room’s length.'];
         yield 'too narrow' => [['widthCm' => 199, 'lengthCm' => 1000], 'widthCm', 'The room must be between 2 m and 500 m.'];
         yield 'too long' => [['widthCm' => 1000, 'lengthCm' => 50_001], 'lengthCm', 'The room must be between 2 m and 500 m.'];
         yield 'a long room name' => [['roomName' => Str\repeat('a', 61), 'widthCm' => 1000, 'lengthCm' => 1000], 'roomName', 'Shorten the room name to 60 characters or fewer.'];
