@@ -311,6 +311,19 @@ describe('who is not asked again', () => {
     expect(screen.queryByText('You’ll be signed out at 23:30.')).toBeNull();
   });
 
+  it('opens an account join from its link with no sign-out time, unlike a browser join', async () => {
+    await redeem('browser-in-account');
+
+    expect(screen.getByText('Signed in as Kemi Okafor')).toBeDefined();
+    expect(screen.queryByText('You’ll be signed out at 23:30.')).toBeNull();
+  });
+
+  it('opens a browser join from its link with its sign-out time', async () => {
+    await redeem('browser-in');
+
+    expect(screen.getByText('You’ll be signed out at 23:30.')).toBeDefined();
+  });
+
   it('tells a member of the organisation to ask its lead or an admin, and grants nothing', async () => {
     await redeem('member');
 
