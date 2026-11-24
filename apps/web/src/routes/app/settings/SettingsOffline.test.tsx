@@ -79,10 +79,25 @@ const ANSWERS: Record<string, unknown> = {
   '/api/orgs/org_1/domains': { domains: [] },
   '/api/orgs/org_1/email-domains': { plan: 'enterprise', domains: [] },
   '/api/orgs/org_1/vendors': {
-    vendors: [],
+    vendors: [
+      {
+        id: 'v1',
+        name: 'Bloom & Co',
+        category: 'flowers',
+        contactName: 'Ngozi Eze',
+        emailAddress: 'ngozi@bloomandco.co.uk',
+        phoneNumber: null,
+        phoneCountryCode: null,
+        website: null,
+        address: null,
+        note: null,
+        archivedAt: null,
+        events: 0,
+      },
+    ],
     page: 1,
-    total: 0,
-    inUse: 0,
+    total: 1,
+    inUse: 1,
     archived: 0,
     categories: Object.fromEntries(VENDOR_CATEGORIES.map((category) => [category, 0])),
   },
@@ -271,6 +286,45 @@ describe('Settings offline at a desk, where the band has gone (sc-39471)', () =>
     fireEvent.click(within(boxAbove(heading)).getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it("keeps the vendor rows and the box when the box's Try again still reaches nothing (sc-88912)", async () => {
+    signedIn();
+    const soirely = { reachable: true };
+    serving(soirely);
+    open('/app/settings/vendors');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Vendors' });
+    await screen.findByText('Bloom & Co');
+
+    soirely.reachable = false;
+    goOffline();
+    await waitFor(() => expect(document.querySelector('.offline-box .ev-offline')).not.toBeNull());
+
+    fireEvent.click(within(boxAbove(heading)).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.queryByText('Refreshing…')).toBeNull());
+    expect(screen.getByText('Bloom & Co')).toBeDefined();
+    expect(screen.queryByText(/did not load/)).toBeNull();
+    boxAbove(heading);
+  });
+
+  it('shows Data and control no box when only one of its two loads answered (sc-88912)', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/email-domains')) throw new TypeError('Failed to fetch');
+
+      return json(ANSWERS[path]);
+    });
+    open('/app/settings/data-and-control');
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'We could not load Data and control',
+    );
+
+    goOffline();
+
+    await waitFor(() => expect(screen.queryByText('Refreshing…')).toBeNull());
+    expect(document.querySelector('.offline-box .ev-offline')).toBeNull();
   });
 
   it('keeps the colours and says so in the box when Personalisation is opened from Notifications offline', async () => {

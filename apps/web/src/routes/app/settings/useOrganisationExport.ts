@@ -12,6 +12,8 @@ export type ExportLoad =
 export function useOrganisationExport(
   organisationId: string,
   title: RefObject<HTMLElement | null>,
+  /** False while a page that shows this beside another load still waits on that one. */
+  alongside = true,
 ): {
   load: ExportLoad;
   show: (page: OrganisationExportPage) => void;
@@ -24,7 +26,11 @@ export function useOrganisationExport(
     setLoad((before) => (before.kind === 'failed' ? { kind: 'loading' } : before));
     setAttempt((n) => n + 1);
   }, []);
-  const { watch, refreshing } = useOffline({ loaded: load.kind === 'loaded', reload, title });
+  const { watch, refreshing } = useOffline({
+    loaded: alongside && load.kind === 'loaded',
+    reload,
+    title,
+  });
 
   useEffect(() => {
     let current = true;

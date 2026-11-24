@@ -52,8 +52,11 @@ function Hub({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const { layers } = useDeskLayers();
   const title = useRef<HTMLHeadingElement>(null);
-  const exported = useOrganisationExport(organisation.id, title);
-  const domains = useEmailDomains(organisation.id, title);
+  const [both, setBoth] = useState(false);
+  const exported = useOrganisationExport(organisation.id, title, both);
+  const domains = useEmailDomains(organisation.id, title, both);
+  const bothNow = exported.load.kind === 'loaded' && domains.load.kind === 'loaded';
+  if (bothNow !== both) setBoth(bothNow);
   const failed = exported.load.kind === 'failed' || domains.load.kind === 'failed';
   const reload = () => {
     exported.reload();
