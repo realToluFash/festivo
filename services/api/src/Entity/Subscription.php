@@ -125,6 +125,12 @@ class Subscription
         return $this->periodStart;
     }
 
+    /** Only `SubscriptionChanger` calls this, so the move is recorded in the history. */
+    public function startPeriodAt(DateTimeImmutable $periodStart): void
+    {
+        $this->periodStart = $periodStart;
+    }
+
     public function getPeriodEnd(): ?DateTimeImmutable
     {
         return $this->periodEnd;

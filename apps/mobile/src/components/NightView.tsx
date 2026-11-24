@@ -485,13 +485,15 @@ function Shown({
             }}
           />
         )}
-        <NightStrip
-          online={night.online}
-          age={minutesOld(night.freshAt, serverNow)}
-          waiting={night.waiting.length}
-          onTry={night.tryNow}
-        />
-        {event != null && !manage && <ViewOnly />}
+        {shown != null && (
+          <NightStrip
+            online={night.online}
+            age={minutesOld(night.freshAt, serverNow)}
+            waiting={night.waiting.length}
+            onTry={night.tryNow}
+          />
+        )}
+        {shown != null && event != null && !manage && <ViewOnly />}
         {night.lost != null && (
           <LostAlert
             title={night.lost.title}

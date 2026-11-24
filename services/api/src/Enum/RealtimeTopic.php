@@ -23,6 +23,7 @@ enum RealtimeTopic: string
     case EventBudget = 'events/{id}/budget';
     case EventBudgetMargin = 'events/{id}/budget/margin';
     case EventQuotes = 'events/{id}/budget/quotes';
+    case OrganisationUsage = 'orgs/{id}/usage';
 
     public function for(string $id): string
     {

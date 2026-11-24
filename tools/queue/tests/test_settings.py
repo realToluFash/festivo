@@ -9,10 +9,12 @@ from unittest import mock
 
 from soirely_queue import settings
 
-from tests.test_runner import config
+from tests.test_runner import config, login
 
 
-class Settings(unittest.TestCase):
+class File(unittest.TestCase):
+    """agents.json in a temporary folder, and Claude config folders in a temporary home."""
+
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
@@ -25,19 +27,30 @@ class Settings(unittest.TestCase):
                        dailyBudgetUsd=None)
         self.file.write_text(json.dumps(start, indent=2) + "\n")
         self.file.chmod(0o600)
+        self.machine_folder = str(self.root / "claude")
+        self.home = self.root / "home"
+        self.spare = str(login(self.home / ".claude-spare"))
+        self.unused = self.home / ".claude-unused"
+        self.unused.mkdir()
+        (self.unused / "settings.json").write_text("{}")
+
+    def logged_in(self, folder):
+        return None if folder.name == ".claude-unused" else f"{folder.name}@example.test"
 
     def read(self):
-        return settings.read(self.file)
+        return settings.read(self.file, home=self.home, logged_in=self.logged_in)
 
     def save(self, where, changes=None, revision=None):
         """One where and its fields, or `{where: fields}` as a page's Save sends them."""
         asked = {where: changes} if changes is not None else where
         return settings.save(asked, revision or self.read()["revision"], self.file,
-                             logged_in=lambda folder: "owner@example.com")
+                             logged_in=self.logged_in, home=self.home)
 
     def on_disk(self):
         return json.loads(self.file.read_text())
 
+
+class Settings(File):
     def test_each_role_shows_its_own_value_and_the_one_in_force_with_where_it_comes_from(self):
         found = self.read()
         self.assertEqual(found["roles"]["pm"]["effort"],
@@ -53,7 +66,8 @@ class Settings(unittest.TestCase):
                          {"value": None, "in_force": "3m", "from": "built-in"})
         self.assertEqual(found["defaults"]["inboxEffort"],
                          {"value": None, "in_force": None, "from": None})
-        self.assertEqual(found["machine"], {"dailyBudgetUsd": None})
+        self.assertEqual(found["machine"], {"dailyBudgetUsd": None,
+                                            "claudeConfigDir": self.machine_folder})
         self.assertIn("claude-opus-5-5", found["models"])
         self.assertIn("pm", found["parallel"])
         self.assertFalse(found["undo"])
@@ -210,3 +224,91 @@ class Settings(unittest.TestCase):
     def test_an_unchanged_value_writes_nothing(self):
         self.assertEqual(self.save("pm", {"effort": "high"}), {})
         self.assertFalse(settings.previous(self.file).exists())
+
+
+class Accounts(File):
+    """A role's, or the machine's, Claude account: the folder its workers run under."""
+
+    def test_the_folders_sq_found_are_offered_with_who_each_runs_as_and_its_roles(self):
+        found = self.read()
+        self.assertEqual(found["accounts"], [
+            {"folder": self.machine_folder, "account": "claude@example.test",
+             "roles": ["ops", "dev2", "pm"]},
+            {"folder": self.spare, "account": ".claude-spare@example.test", "roles": []},
+            {"folder": str(self.unused), "account": None, "roles": []}])
+        self.assertEqual(found["roles"]["dev2"]["claudeConfigDir"],
+                         {"value": None, "in_force": self.machine_folder, "from": "machine"})
+
+    def test_a_role_moves_to_another_folder_and_back_to_the_machines(self):
+        done = self.save("dev2", {"claudeConfigDir": self.spare})
+        self.assertEqual(done, {"dev2": {"claudeConfigDir": {"old": None, "new": self.spare}}})
+        self.assertEqual(self.read()["roles"]["dev2"]["claudeConfigDir"],
+                         {"value": self.spare, "in_force": self.spare, "from": "role"})
+        self.save("dev2", {"claudeConfigDir": None})
+        self.assertNotIn("claudeConfigDir", self.on_disk()["roles"]["dev2"])
+
+    def test_a_folder_with_no_login_is_refused_in_sq_runs_words(self):
+        before = self.file.read_text()
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("dev2", {"claudeConfigDir": str(self.unused)})
+        self.assertEqual(refused.exception.status, 409)
+        self.assertIn(f"refused dev2: no Claude login in {self.unused}", str(refused.exception))
+        self.assertEqual(self.file.read_text(), before)
+
+    def test_a_folder_sq_did_not_find_is_refused_and_nothing_is_written(self):
+        before = self.file.read_text()
+        elsewhere = self.root / "elsewhere"
+        login(elsewhere)
+        for value in (str(elsewhere), "/etc", "", 3, ["~/.claude"]):
+            with self.subTest(value=value), self.assertRaises(settings.Refused) as refused:
+                self.save("dev2", {"claudeConfigDir": value})
+            self.assertEqual(refused.exception.status, 400)
+            self.assertIn("is not a Claude config folder sq found", str(refused.exception))
+        self.assertEqual(self.file.read_text(), before)
+
+    def test_the_machines_folder_changes_and_cannot_be_cleared(self):
+        self.save("machine", {"claudeConfigDir": self.spare})
+        self.assertEqual(self.on_disk()["claudeConfigDir"], self.spare)
+        self.assertEqual(self.read()["roles"]["ops"]["claudeConfigDir"]["in_force"], self.spare)
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("machine", {"claudeConfigDir": None})
+        self.assertIn("error: no claudeConfigDir", str(refused.exception))
+
+    def test_moving_the_machine_to_a_folder_with_no_login_names_each_role_it_would_stop(self):
+        self.save("pm", {"claudeConfigDir": self.spare})
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("machine", {"claudeConfigDir": str(self.unused)})
+        self.assertEqual(sorted(line.split(":")[0] for line in
+                                str(refused.exception).splitlines()),
+                         ["refused dev2", "refused ops"])
+
+    def test_a_folder_with_no_login_is_refused_for_a_role_already_refused_for_more(self):
+        (self.root / "soirely-pm").rmdir()
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("pm", {"claudeConfigDir": str(self.unused)})
+        self.assertIn(f"refused pm: no Claude login in {self.unused}", str(refused.exception))
+        self.assertNotIn("claudeConfigDir", self.on_disk()["roles"]["pm"])
+
+    def test_the_machines_folder_needs_a_login_when_no_role_runs_under_it(self):
+        for role in ("ops", "dev2", "pm"):
+            self.save(role, {"claudeConfigDir": self.spare})
+        with self.assertRaises(settings.Refused) as refused:
+            self.save("machine", {"claudeConfigDir": str(self.unused)})
+        self.assertEqual(str(refused.exception).split(":")[:2],
+                         ["error", f" no Claude login in {self.unused}"])
+        self.assertEqual(self.on_disk()["claudeConfigDir"], self.machine_folder)
+
+    def test_a_folder_is_matched_where_it_resolves_and_written_as_the_logins_show_it(self):
+        with mock.patch("pathlib.Path.home", return_value=self.home), \
+                mock.patch.dict("os.environ", {"HOME": str(self.home)}):
+            self.save("dev2", {"claudeConfigDir": self.spare})
+            self.assertEqual(self.on_disk()["roles"]["dev2"]["claudeConfigDir"],
+                             "~/.claude-spare")
+            self.assertEqual(self.read()["roles"]["dev2"]["claudeConfigDir"]["value"],
+                             "~/.claude-spare")
+            self.assertEqual(self.save("dev2", {"claudeConfigDir": "~/.claude-spare/"}), {})
+
+    def test_an_undo_puts_the_account_back_and_says_so(self):
+        self.save("dev2", {"claudeConfigDir": self.spare})
+        self.assertEqual(settings.undo(self.read()["revision"], self.file),
+                         {"dev2": {"claudeConfigDir": {"old": self.spare, "new": None}}})

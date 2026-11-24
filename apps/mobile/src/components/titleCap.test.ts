@@ -167,7 +167,9 @@ describe('every line under the cap wraps whole, and nothing is cut (sc-67338)', 
   });
 
   it('wraps a row’s tag at the accessibility sizes rather than cut it', () => {
-    expect(rows).toMatch(/const wraps = wrapsAlways \|\| atAccessibilitySizes\(fontScale\);/u);
+    expect(rows).toMatch(
+      /const grown = atAccessibilitySizes\(fontScale\);\n\s*const wraps = wrapsAlways \|\| grown;/u,
+    );
   });
 });
 

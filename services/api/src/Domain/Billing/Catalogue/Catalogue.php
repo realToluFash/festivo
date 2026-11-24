@@ -65,6 +65,31 @@ final class Catalogue
         return $this->costs($versionId->toRfc4122());
     }
 
+    /**
+     * The version `$versionId` and each published after it, oldest first, for a price the first lacks (sc-3929).
+     *
+     * @return list<UnitCosts>
+     */
+    public function unitCostsFrom(Uuid $versionId): array
+    {
+        $ids = [];
+        $reached = false;
+
+        foreach ($this->versions() as $version) {
+            if (CataloguePart::UnitCosts->value !== $version['part']) {
+                continue;
+            }
+
+            $reached = $reached || $versionId->toRfc4122() === $version['id'];
+
+            if ($reached) {
+                $ids[] = $version['id'];
+            }
+        }
+
+        return Vec\map($ids, $this->costs(...));
+    }
+
     /** The next published rise not yet in force, for the notice on Plan and billing (sc-3934). */
     public function upcomingUnitCosts(): ?UnitCosts
     {

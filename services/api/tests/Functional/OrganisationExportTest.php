@@ -167,6 +167,10 @@ final class OrganisationExportTest extends ApiTestCase
         'two_factor_recoveries' => "sign-in credentials (sc-611's rule)",
         'two_factor_recovery_handles' => "sign-in credentials (sc-611's rule)",
         'verification_challenges' => "sign-in credentials (sc-611's rule)",
+        'usage_hold_releases' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_records' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_reservations' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_totals' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
     ];
 
     private User $owner;
