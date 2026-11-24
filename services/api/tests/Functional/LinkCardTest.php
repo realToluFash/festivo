@@ -162,6 +162,8 @@ final class LinkCardTest extends ApiTestCase
         $removed = $this->token($guest = $this->add(['fullName' => 'Removed Guest']));
         $this->as('DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
         self::assertSame(LinkCard::NOTHING, $this->card($removed), 'removed');
+        $this->as('DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest . '/removal');
+        self::assertStringContainsString('og:image', $this->card($removed), 'removal undone');
 
         $erased = $this->token($guest = $this->add(['fullName' => 'Erased Guest']));
         $this->as('DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
