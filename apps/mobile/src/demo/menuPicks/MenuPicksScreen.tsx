@@ -14,7 +14,6 @@ import { AmberLine } from '../../components/Amber.tsx';
 import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { FailureLine } from '../../components/FailureLine.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
-import { OfflineBand } from '../../components/OfflineBand.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
 import { Sheet, SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
@@ -24,6 +23,7 @@ import { useLayout } from '../../layout/useLayout.ts';
 import { Confirmed, DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
+import { OfflineBand } from '../events/EventsList.tsx';
 import {
   type Access,
   type ChangedCourse,
@@ -104,12 +104,6 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
   const [system, setSystem] = useState<System | null>(start.system);
   const [download, setDownload] = useState<Download>(start.download);
   const [offline, setOffline] = useState(start.system === 'stale' || start.download === 'failed');
-  const [offlineAt] = useState(() => {
-    const day = new Date();
-    day.setHours(Number(UPDATED_AT.slice(0, 2)), Number(UPDATED_AT.slice(3)), 0, 0);
-
-    return day;
-  });
   const [opened, setOpened] = useState<Opened | null>(settled.opened);
   const [who, setWho] = useState<WhoOpened | null>(settled.who);
   const [said, setSaid] = useState<string[]>(settled.said);
@@ -130,11 +124,17 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
   };
   const refresh = () => {
     setSystem('refreshing');
-    later(REFRESH_MS, () => setSystem(null));
+    later(REFRESH_MS, () => {
+      setSystem(null);
+      setOffline(false);
+    });
   };
   const downloadSheet = () => {
     setDownload('downloading');
-    later(DOWNLOAD_MS, () => setDownload('shared'));
+    later(DOWNLOAD_MS, () => {
+      setDownload('shared');
+      setOffline(false);
+    });
   };
   const open = (
     personId: string,
@@ -220,15 +220,11 @@ function MenuPicks({ start, onReset }: { start: MenuStart; onReset: () => void }
 
   const band = offline && (
     <OfflineBand
-      stale={{
-        at: offlineAt,
-        retry: () => {
-          setOffline(false);
-          if (system === 'stale') setSystem(null);
-        },
-        unanswered: 0,
+      at={UPDATED_AT}
+      onRetry={() => {
+        setOffline(false);
+        if (system === 'stale') setSystem(null);
       }}
-      inFront
     />
   );
 
