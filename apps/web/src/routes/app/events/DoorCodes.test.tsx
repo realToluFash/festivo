@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -373,5 +373,45 @@ describe('door codes on People, at a desk (sc-72)', () => {
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/door-codes')?.body).toMatchObject(
       { replaces: CARD.id },
     );
+  });
+
+  it('keeps the open sheet on its renewed code when the next read lists the codes in another order', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const other = { ...CARD, id: 'b', code: 'M4TR8WZ2', createdAt: '2026-11-07T17:00:00+00:00' };
+      const fresh = {
+        ...CARD,
+        id: 'new',
+        code: 'H3WD9RN6',
+        used: 0,
+        createdAt: '2026-11-08T09:00:00+00:00',
+      };
+      const listed: unknown[] = [other, CARD];
+      await onPeople([], {
+        'GET /api/events/ev_1/door-codes': () => json({ doorCodes: listed }),
+        'POST /api/events/ev_1/door-codes': () => {
+          listed.splice(0, listed.length, fresh, other);
+
+          return json({ doorCode: fresh }, 201);
+        },
+      });
+
+      fireEvent.click(screen.getAllByRole('button', { name: 'Show the code' })[0]!);
+      const shown = await screen.findByRole('dialog', { name: 'Door code' });
+      expect(within(shown).getByText('K7P2 QX9M')).toBeDefined();
+
+      fireEvent.click(within(shown).getByRole('button', { name: 'Make a new code' }));
+      const ask = screen.getByRole('alertdialog', { name: 'Make a new code?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Make a new code' }));
+      expect(await within(shown).findByText('H3WD 9RN6')).toBeDefined();
+
+      await act(() => vi.advanceTimersByTimeAsync(5_000));
+
+      const still = screen.getByRole('dialog', { name: 'Door code' });
+      expect(within(still).getByText('H3WD 9RN6')).toBeDefined();
+      expect(within(still).queryByText('M4TR 8WZ2')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

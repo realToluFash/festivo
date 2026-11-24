@@ -51,6 +51,7 @@ interface Row {
   address: string | null;
   addressKind: 'email' | 'mobile' | null;
   endsAt: string | null;
+  doorCode?: string | null;
 }
 
 function person(id: string, name: string, role: string, jobLabel: string | null = null): Row {
@@ -793,6 +794,32 @@ describe('coming back to People while offline (sc-65646)', () => {
         'We could not load the people on this event. Check your connection and try again.',
       ),
     ).toBeNull();
+  });
+});
+
+describe('People keeping up while it is open (sc-72)', () => {
+  it('lists someone who joins by a door code within 10 seconds, reading the codes first, with a dialog left open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      signedIn();
+      const rows = [PRIYA, TOM];
+      const sent = await onPeople(rows);
+      fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+      const before = sent.length;
+
+      rows.push({ ...outsider('kemi', { name: 'Kemi Ade' }, 'can_view'), doorCode: 'K7P2QX9M' });
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+
+      expect(within(people()).getByRole('button', { name: /Kemi Ade.*Door code/ })).toBeDefined();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+      const reads = sent.slice(before).map((one) => one.line);
+      expect(reads.slice(0, 2)).toEqual([
+        'GET /api/events/ev_1/door-codes',
+        'GET /api/events/ev_1/people',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
