@@ -41,7 +41,7 @@ final readonly class LinkCard
     {
         $guest = $this->invitationLinks->guestFor($token);
 
-        return null === $guest ? self::NOTHING : $this->of($guest);
+        return null === $guest || $guest->isRemoved() ? self::NOTHING : $this->of($guest);
     }
 
     private function of(Guest $guest): string

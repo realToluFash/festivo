@@ -158,6 +158,22 @@ final class LinkCardTest extends ApiTestCase
         $this->as('POST', '/api/events/' . $this->eventId . '/guests/' . $guest . '/link/replace');
 
         self::assertSame(LinkCard::NOTHING, $this->card($token), 'replaced');
+
+        $removed = $this->token($guest = $this->add(['fullName' => 'Removed Guest']));
+        $this->as('DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
+        self::assertSame(LinkCard::NOTHING, $this->card($removed), 'removed');
+
+        $erased = $this->token($guest = $this->add(['fullName' => 'Erased Guest']));
+        $this->as('DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
+        $this->as('POST', '/api/events/' . $this->eventId . '/guests/' . $guest . '/erasure');
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(LinkCard::NOTHING, $this->card($erased), 'erased');
+
+        $live = $this->token($this->add(['fullName' => 'Kept Guest']));
+        $this->as('DELETE', '/api/events/' . $this->eventId, ['name' => self::NAME]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(LinkCard::NOTHING, $this->card($live), 'event deleted');
+
         self::assertSame(LinkCard::NOTHING, $this->card('made-up'), 'made up');
         self::assertSame(LinkCard::NOTHING, $this->card(''), 'none');
         self::assertSame('<title>Soirely</title>', LinkCard::NOTHING);
