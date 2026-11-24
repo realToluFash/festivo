@@ -1,4 +1,5 @@
 import { ApiError, type OpenedDoorCode, type RedeemedDoorCode } from '@soirely/api-client';
+import { formatDay, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +10,12 @@ import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
-import { refreshAccount, restoreSession, useSessionState } from '../../session.ts';
+import {
+  refreshAccount,
+  rereadOutsideEvents,
+  restoreSession,
+  useSessionState,
+} from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import { dayWords } from '../app/events/staffTimes.ts';
@@ -102,7 +108,8 @@ function Redeem({ code }: { code: string }) {
     setStep({ ...event, busy: true, trouble: null });
     try {
       const redeemed = await api.redeemDoorCode(event.code, signedIn ? null : event.named.trim());
-      if (!signedIn) await refreshAccount();
+      if (signedIn) await rereadOutsideEvents().catch(() => undefined);
+      else await refreshAccount();
       go({ kind: 'in', redeemed, event: event.opened.event, held: !signedIn });
     } catch (error) {
       if (error instanceof ApiError && error.status === 409)
@@ -292,12 +299,23 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
   }
 }
 
+/** Too many tries, lifting at the minute Retry-After gives on the reader's clock, with the day only when it is not today's. */
 function tooMany(error: ApiError): Step {
+  const lifts = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+  const words = error.problem.detail ?? error.problem.title;
+  if (lifts == null) return { kind: 'tooMany', when: null, words };
+
+  const time = formatTimeOfDay(lifts, dateLocale());
+
   return {
     kind: 'tooMany',
-    when: error.problem.retryAt ?? null,
-    words: error.problem.detail ?? error.problem.title,
+    when: isSameLocalDay(lifts, new Date()) ? time : `${formatDay(lifts, dateLocale())} ${time}`,
+    words,
   };
+}
+
+function isSameLocalDay(one: Date, other: Date): boolean {
+  return one.toDateString() === other.toDateString();
 }
 
 /** "Sat 14 Nov · Lumen Feiras · Can check guests in · Bar and drinks", the day on the event's clock. */

@@ -95,7 +95,9 @@ Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `ret
 member, because **Get back in without your authenticator** quotes them. A client quotes
 `retryAt` as it is, and falls back to `Retry-After` only when it is absent. A door code's
 open and redeem (`/api/door-codes/{code}`, sc-72) carry `retryAt` too, in UTC ("Tuesday
-24 Nov at 13:32 UTC"), because the redeem page's **Too many tries** quotes it. Any
+24 Nov at 13:32 UTC"), for API callers; the redeem page's **Too many tries** does not
+quote it, but writes the minute `Retry-After` gives on the reader's clock ("Try again at
+13:32."), with the day before it only when that is not today. Any
 other such limit names it in UTC ("Try again Monday 26 Oct at 16:32 UTC."), in its `detail`
 only (sc-12379): no screen quotes it, and whoever reads a raw `detail` reads it from
 anywhere. `Retry-After` stays in seconds either way (RFC 9110

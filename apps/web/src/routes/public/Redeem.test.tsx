@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { formatDay } from '@soirely/domain';
+
+import { dateLocale } from '../../i18n/index.ts';
 import { __setSessionState } from '../../session.ts';
 import { membership } from '../../test-memberships.ts';
 import { tokens } from '../../tokens.ts';
@@ -57,10 +60,10 @@ const ISSUED = {
   sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
 };
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
   });
 }
 
@@ -128,6 +131,7 @@ function at(path: string, answers: Record<string, (sent: Sent) => Response>): Se
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -171,7 +175,17 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect(screen.getByLabelText('Door code')).toHaveProperty('value', 'Q7KM 4XP3');
   });
 
-  it('says when too many tries were made, with the time the server gives', async () => {
+  it.each([
+    ['the minute it lifts on the reader’s clock', new Date(2030, 10, 24, 13, 30, 40), 60, '13:32'],
+    [
+      'the day as well, when it lifts on another',
+      new Date(2030, 10, 24, 23, 59, 30),
+      120,
+      `${formatDay(new Date(2030, 10, 25), dateLocale())} 00:02`,
+    ],
+  ])('says when too many tries were made, with %s', async (_, now, seconds, when) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(now);
     signedOut();
     at('/d/Q7KM4XP3', {
       'GET /api/door-codes/Q7KM4XP3': () =>
@@ -184,11 +198,12 @@ describe('the browser’s redeem pages (sc-72)', () => {
             code: 'too_many_attempts',
           },
           429,
+          { 'Retry-After': String(seconds) },
         ),
     });
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Too many tries' })).toBeDefined();
-    expect(screen.getByText('Try again Tuesday 24 Nov at 13:32 UTC.')).toBeDefined();
+    expect(screen.getByText(`Try again at ${when}.`)).toBeDefined();
   });
 
   it('opens a code from the address and joins a signed-in person by their account', async () => {
@@ -414,6 +429,50 @@ describe('the browser’s redeem pages (sc-72)', () => {
     ).toBe(true);
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
     expect(router.state.location.pathname).not.toBe('/sign-in');
+  });
+
+  it('signed in, reads the events held from outside again, so Open the event opens it outside', async () => {
+    signedIn();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () =>
+        json(
+          {
+            eventId: 'ev_1',
+            name: 'Kemi Okafor',
+            role: 'can_check_in',
+            jobLabel: 'Bar and drinks',
+            endsAt: '2030-11-14T23:30:00+00:00',
+            again: false,
+          },
+          201,
+        ),
+      'GET /api/auth/me': () =>
+        json(
+          account({
+            needsOrganisation: false,
+            outsideEvents: [
+              {
+                id: 'ev_1',
+                name: OPENED.event.name,
+                organisationName: 'Lumen Feiras',
+                role: 'can_check_in',
+                jobLabel: 'Bar and drinks',
+                startsAt: OPENED.event.startsAt,
+                endsAt: OPENED.event.endsAt,
+              },
+            ],
+          }),
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open the event' }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+    await waitFor(() => expect(sent.some((one) => one.line === 'GET /api/events/ev_1')).toBe(true));
+    await waitFor(() => expect(document.querySelector('.outside-person')).not.toBeNull());
+    expect(sent.some((one) => one.line.startsWith('GET /api/orgs/org_2/'))).toBe(false);
   });
 
   it.each([

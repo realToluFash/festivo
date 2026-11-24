@@ -3484,7 +3484,7 @@
     },
     "refused": "That code does not work. Check it with whoever gave it to you.",
     "tooMany": "Too many tries",
-    "tryAt": "Try again {{when}}.",
+    "tryAt": "Try again at {{when}}.",
     "joinAs": "Join as {{name}}",
     "yourName": "Your name",
     "nameBlank": "Enter your full name.",
