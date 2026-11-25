@@ -17,6 +17,16 @@ export interface Previewing {
   choosing: boolean;
   filling: boolean;
   held: boolean;
+  /** It could not be filled in (offline, a timeout, a server error): Try again fills it in for the same guest. */
+  failed?: boolean;
+  /** The preview answers 404 for them: removed from the guest list while the host writes, or a companion. */
+  gone?: readonly PreviewKey[];
+  /** Out of Preview as, once the preview found they are no longer a guest. */
+  dropped?: readonly PreviewKey[];
+  /** The one the status line names, until the host picks someone or closes the preview. */
+  goneSaid?: PreviewKey;
+  /** Nobody was left in Preview as: the preview closed, and Preview is not offered. */
+  nobodyLeft?: string;
 }
 
 /** B's preview was Kwame Mensah's, and it still opens on him. */
@@ -39,6 +49,14 @@ const STARTS: Partial<Record<string, Partial<Previewing>>> = {
   previewGreetAs: { who: 'bisi' },
   previewChose: { who: 'camille' },
   previewLoading: { who: 'camille', filling: true, held: true },
+  previewFailed: { who: 'camille', failed: true },
+  previewGone: {
+    who: 'amaka',
+    gone: ['camille', 'lucia'],
+    dropped: ['camille'],
+    goneSaid: 'camille',
+  },
+  previewGoneLast: { nobodyLeft: 'Camille Dubois' },
   previewMarkup: { who: 'kemi' },
   previewFirstText: { who: 'amaka' },
 };
@@ -55,9 +73,51 @@ export function previewOf(m: { preview?: Previewing | undefined }): Previewing {
   return m.preview ?? FIRST_PREVIEW;
 }
 
-/** Someone new is filled in first; choosing the one shown only closes Preview as. */
+export function previewOffOf(m: { preview?: Previewing | undefined }): string | undefined {
+  const name = m.preview?.nobodyLeft;
+
+  return name == null ? undefined : sayPreview.nobodyLeft(name);
+}
+
+/** Someone new is filled in first; choosing the one shown only closes Preview as, unless it had failed. */
 export function chosen(now: Previewing, who: PreviewKey): Previewing {
-  return { who, choosing: false, filling: who !== now.who, held: false };
+  const { failed, goneSaid: _said, ...kept } = now;
+
+  return {
+    ...kept,
+    who,
+    choosing: false,
+    filling: who !== now.who || failed === true,
+    held: false,
+  };
+}
+
+export function retried(now: Previewing): Previewing {
+  const { failed: _failed, ...kept } = now;
+
+  return { ...kept, filling: true };
+}
+
+/** Preview as's people: those in To, A to Z, without anyone the preview found is no longer a guest. */
+export function previewAsLeft(now: Previewing): readonly PreviewPerson[] {
+  return PREVIEW_AS.filter((person) => !(now.dropped ?? []).includes(person.key));
+}
+
+/** Once filled in: the page, or for someone no longer a guest (the 404), the first person left, A to Z, filled in next. */
+export function filledIn(now: Previewing): Previewing {
+  if (!(now.gone ?? []).includes(now.who)) return { ...now, filling: false };
+  const dropped = [...(now.dropped ?? []), now.who];
+  const next = PREVIEW_AS.find((person) => !dropped.includes(person.key));
+
+  if (next == null)
+    return {
+      ...FIRST_PREVIEW,
+      gone: now.gone ?? [],
+      dropped,
+      nobodyLeft: PREVIEW_PEOPLE[now.who].name,
+    };
+
+  return { ...now, who: next.key, filling: true, dropped, goneSaid: now.who };
 }
 
 export type Reader = 'en' | 'fr';

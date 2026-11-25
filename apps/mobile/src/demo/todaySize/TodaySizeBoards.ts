@@ -4,8 +4,33 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312) and upright (sc-93211), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312) and upright (its chips sc-93211; its name, end line and Open the event sc-93578), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'Dîner en direct · AX5, upright',
+    what: 'Dîner en direct whole across the cover, or Dîner en / direct, never Dîn / er or dire / ct; Ouvrir l’événement on its own line under the end line, at the name’s left edge, every word whole; one tap opens Dîner en direct (a toast here)',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner',
+  },
+  {
+    title: 'Live now · AX5, upright, English',
+    what: 'Dîner en direct whole, never Dîner / en / direc / t; Ends today at 23:30 and Open the event each whole, the button under the end line',
+    href: '/demo/today-size?size=ax5&lang=en&live=dinner',
+  },
+  {
+    title: 'En cours · AX5, upright, several long words',
+    what: 'Atelier Céleste Réceptions et Mariages on as many lines as its words need, each line one size, the cover grown down to hold it, Vos événements clear below',
+    href: '/demo/today-size?size=ax5&lang=fr&live=several',
+  },
+  {
+    title: 'Live now · AX5, upright, one long word',
+    what: 'Internationalisationsorganisationsgesellschaft at 48, its default size, breaking inside itself only, read in full; nothing ends in …',
+    href: '/demo/today-size?size=ax5&lang=en&live=oneWord',
+  },
+  {
+    title: 'Live now · seventh step, upright',
+    what: 'As on main: the chips on one line, Open the event at the right of the words',
+    href: '/demo/today-size?size=seventh&lang=en&live=dinner',
+  },
   {
     title: 'En cours · AX5, upright',
     what: 'En cours and Jour 1 sur 1 at their full size, each chip grown to hold its words, the second under the first where both do not fit, both clear of the tabs above and the name below',
@@ -13,12 +38,12 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   },
   {
     title: 'Live now · AX1, upright',
-    what: 'Live now with its dot and Day 1 of 1, each whole in its chip at the size chosen, nothing in “…”',
+    what: 'Live now with its dot and Day 1 of 1, each whole in its chip at the size chosen, nothing in “…”; from AX1 Open the event on its own line under the end line',
     href: '/demo/today-size?size=ax1&lang=en&live=dinner',
   },
   {
     title: 'Jour 1 sur 1 · AX5, upright, a venue',
-    what: 'Jour 1 sur 1 · Salle des fêtes du Château de Chantilly in full on as many lines as it needs, each ending between words, the dot on the word before it, the cover grown down',
+    what: 'Jour 1 sur 1 · Salle des fêtes du Château de Chantilly in full on as many lines as it needs, each ending between words, the dot on the word before it, the cover grown down; scroll Today to bring Ouvrir l’événement whole into view, one tap opens Dîner en direct',
     href: '/demo/today-size?size=ax5&lang=fr&live=dinner&venue=chantilly',
   },
   {
