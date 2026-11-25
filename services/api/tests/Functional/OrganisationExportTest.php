@@ -133,6 +133,7 @@ final class OrganisationExportTest extends ApiTestCase
         'door_code_redemptions' => 'a link that opens without signing in',
         'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
+        'guest_complaints' => 'a keyed hash only, which shows nowhere and is in no export (pm, 25 Nov, sc-3942)',
         'guest_reply_changes' => 'change history',
         'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
