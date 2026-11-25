@@ -1,7 +1,12 @@
 import { type ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
 
-import { CAPSULE_LABEL, fittedLabelSize, pillGivesWay } from '../layout/capsuleFit.ts';
+import {
+  CAPSULE_LABEL,
+  capsuleWidth,
+  fittedLabelSize,
+  pillGivesWay,
+} from '../layout/capsuleFit.ts';
 import { useMeasuredAt } from './Title.tsx';
 
 export interface CapsuleLabels {
@@ -9,6 +14,8 @@ export interface CapsuleLabels {
   labelSize: number | undefined;
   /** The labels are under their own size, so the pill beside them is its tile. */
   givesWay: boolean;
+  /** The capsule's width at `labelSize`, 0 until it is known. */
+  width: number;
   /** The labels drawn unseen at their own size, to be measured; it goes in the row. */
   measure: ReactNode;
 }
@@ -26,6 +33,7 @@ export function useCapsuleLabels(
   return {
     labelSize,
     givesWay: labelSize != null && pillGivesWay(fontScale, labelSize),
+    width: capsuleWidth(fontScale, widths, labelSize),
     measure,
   };
 }

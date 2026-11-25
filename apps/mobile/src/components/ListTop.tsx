@@ -4,13 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
-import {
-  CAPSULE_LABEL,
-  type CapsuleMeasures,
-  LABEL_IN_BAND,
-  measuredAt,
-  withMeasure,
-} from '../layout/capsuleFit.ts';
+import { CAPSULE_LABEL, LABEL_IN_BAND } from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text, type TextHandle } from './Text.tsx';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
@@ -133,10 +127,8 @@ export function PortraitRow({
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
   const [endWidth, setEndWidth] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
-  const [measures, setMeasures] = useState<CapsuleMeasures>({});
-  const tabsWidth = measuredAt(measures, labelSize);
-  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
+  const besideTabs = pillBesideTabs(rowWidth, width);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
@@ -168,16 +160,7 @@ export function PortraitRow({
       </View>
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        <View
-          key={labelSize}
-          onLayout={(event) => {
-            if (labelSize == null) return;
-            const { width } = event.nativeEvent.layout;
-            setMeasures((prev) => withMeasure(prev, labelSize, width));
-          }}
-        >
-          {labelSize != null && renderTabs(labelSize)}
-        </View>
+        <View key={labelSize}>{labelSize != null && renderTabs(labelSize)}</View>
       </View>
     </View>
   );
