@@ -3265,7 +3265,9 @@
     "endsOn": "{{time}} on {{date}}",
     "notSignedIn": "Not signed in yet",
     "serviceHead": "For the service",
-    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget."
+    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget.",
+    "serviceNotMembers": "For someone from outside only. Untick the members to give it.",
+    "membersNotService": "Members take one of the four roles above. Pick one to add them as well."
   },
   "doorCodes": {
     "doorCode": "Door code",

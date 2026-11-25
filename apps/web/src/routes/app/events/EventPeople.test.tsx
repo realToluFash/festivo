@@ -922,6 +922,75 @@ describe('People from outside the organisation (sc-71)', () => {
     expect(within(dialog).queryByRole('radio', { name: /Can work the floor/ })).toBeNull();
   });
 
+  it('gives someone added from outside a service level, never a ticked member (sc-4002, #93365)', async () => {
+    signedIn();
+    const sent = await onPeople([TOM], {
+      'POST /api/events/ev_1/people': () =>
+        json({ person: outsider('new', { address: 'kemi@example.com' }, 'can_work_floor') }, 201),
+    });
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.change(find, { target: { value: 'kemi@example.com' } });
+
+    expect(within(dialog).getByText('For the service')).toBeDefined();
+    expect(
+      (within(dialog).getByRole('radio', { name: /Can work the floor/ }) as HTMLInputElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      within(dialog).getAllByText('For someone from outside only. Untick the members to give it.'),
+    ).toHaveLength(3);
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /Kofi Mensah/ }));
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can work the floor/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
+
+    expect(await screen.findByText('kemi@example.com can work the floor now.')).toBeDefined();
+    expect(sent.find((one) => one.line === 'POST /api/events/ev_1/people')?.body).toEqual({
+      address: 'kemi@example.com',
+      role: 'can_work_floor',
+      jobLabel: null,
+    });
+  });
+
+  it('keeps members off while a service level is picked (sc-4002)', async () => {
+    signedIn();
+    await onPeople([TOM]);
+
+    fireEvent.click(
+      await within(people()).findByRole('button', { name: 'Add by name, email or mobile' }),
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Add people' });
+    const find = within(dialog).getByRole('textbox', { name: 'Name, email or mobile number' });
+    fireEvent.change(find, { target: { value: 'kemi@example.com' } });
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can run the floor/ }));
+    fireEvent.change(find, { target: { value: '' } });
+
+    expect(
+      within(dialog).getByText(
+        'Members take one of the four roles above. Pick one to add them as well.',
+      ),
+    ).toBeDefined();
+    for (const box of within(dialog).getAllByRole('checkbox')) {
+      expect((box as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(within(dialog).getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe(
+      'true',
+    );
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can view/ }));
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
+  });
+
   it('adds someone by email address with a job label', async () => {
     signedIn();
     const sent = await onPeople([TOM], {

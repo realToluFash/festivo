@@ -637,6 +637,10 @@ export const EVENT_LEVELS = [...EVENT_ROLES, ...SERVICE_LEVELS] as const;
 
 export type EventRole = (typeof EVENT_LEVELS)[number];
 
+export function isServiceLevel(level: EventRole): level is ServiceLevel {
+  return (SERVICE_LEVELS as readonly EventRole[]).includes(level);
+}
+
 /** Somebody with a role on an event: a member, or someone from outside the organisation (sc-71). */
 export interface EventPerson {
   id: string;

@@ -6,6 +6,7 @@ import {
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
+  isServiceLevel,
   SERVICE_LEVELS,
   type OrganisationEvent,
   type StaffLinkHolder,
@@ -30,7 +31,6 @@ import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import {
   Ask,
   Avatar,
-  Choices,
   Dialog,
   Field,
   Head,
@@ -820,8 +820,34 @@ function AddDialog({
         member.name.toLocaleLowerCase(currentLocale()).includes(wording),
     );
   const touched = ticked.length > 0 || role !== 'can_view' || sendsOutside;
+  const forService = isServiceLevel(role);
+  const radios = useId();
   const cancel = useCallback(() => (touched ? setDiscarding(true) : onClose()), [touched, onClose]);
   const inOrganisation = t('eventPeople.inOrganisation', { organisation: organisationName });
+
+  function roleRow(level: EventRole, off: boolean) {
+    const rowClass = ['desk-row', level === role && 'is-picked', off && 'is-off'];
+
+    return (
+      <li key={level}>
+        <label className={rowClass.filter(Boolean).join(' ')}>
+          <RowWords
+            title={t(`eventPeople.role.${level}`)}
+            lines={[off ? t('eventPeople.serviceNotMembers') : t(`eventPeople.roleMeans.${level}`)]}
+          />
+          <input
+            type="radio"
+            className="desk-radio"
+            name={radios}
+            value={level}
+            checked={level === role}
+            disabled={off || busy}
+            onChange={() => setRole(level)}
+          />
+        </label>
+      </li>
+    );
+  }
 
   async function add(): Promise<void> {
     if (busy || (ticked.length === 0 && !sendsOutside)) return;
@@ -867,17 +893,19 @@ function AddDialog({
       >
         <div className="people-add-body">
           {failed != null && <Lost words={failed} />}
-          <Choices
-            legend={t('eventPeople.theirRole')}
-            choices={EVENT_ROLES.map((one) => ({
-              name: t(`eventPeople.role.${one}`),
-              line: t(`eventPeople.roleMeans.${one}`),
-            }))}
-            picked={t(`eventPeople.role.${role}`)}
-            onPick={(word) =>
-              setRole(EVENT_ROLES.find((one) => t(`eventPeople.role.${one}`) === word) ?? role)
-            }
-          />
+          <fieldset className="desk-choices">
+            <legend className="desk-legend">{t('eventPeople.theirRole')}</legend>
+            <ul className="desk-rows">{EVENT_ROLES.map((one) => roleRow(one, false))}</ul>
+            {(sendsOutside || forService) && (
+              <>
+                <p className="desk-legend">{t('eventPeople.serviceHead')}</p>
+                <ul className="desk-rows">
+                  {SERVICE_LEVELS.map((one) => roleRow(one, ticked.length > 0))}
+                </ul>
+                <p className="desk-line">{t('eventPeople.serviceClosing')}</p>
+              </>
+            )}
+          </fieldset>
           <Field
             label={t(role === 'lead' ? 'eventPeople.find' : 'eventPeople.findAny')}
             value={typed}
@@ -890,6 +918,9 @@ function AddDialog({
           />
           <section className="desk-block" aria-label={inOrganisation}>
             <Head title={inOrganisation} level={3} />
+            {forService && shown.length > 0 && (
+              <p className="desk-line">{t('eventPeople.membersNotService')}</p>
+            )}
             {shown.length > 0 && (
               <ul className="desk-rows has-lead">
                 {shown.map((member, tone) => {
@@ -897,14 +928,18 @@ function AddDialog({
 
                   return (
                     <li key={member.membershipId}>
-                      <label className={on ? 'desk-row is-picked' : 'desk-row'}>
+                      <label
+                        className={['desk-row', on && 'is-picked', forService && 'is-off']
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
                         <Avatar initials={initials(member.name)} tone={tone} />
                         <RowWords title={member.name} lines={[]} />
                         <input
                           type="checkbox"
                           className="people-check"
                           checked={on}
-                          disabled={busy}
+                          disabled={busy || forService}
                           onChange={(change) =>
                             setTicked(
                               change.target.checked
