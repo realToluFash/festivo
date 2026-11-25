@@ -583,6 +583,29 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     );
   });
 
+  it('follows Parking at The Landmark with no To and no Subject', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 142 guests, under the first message on their page.';
+
+    await messages(null);
+    fireEvent.click(row(/^Parking at The Landmark/));
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(mini.querySelector('.mg-to-chip')).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
+      target: { value: 'One more thing.' },
+    });
+
+    const field = await screen.findByRole('textbox', { name: 'Message' });
+
+    expect(field.textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(within(field.closest('form')!).getByText(goes)).toBeDefined();
+  });
+
   it('names a message with no Subject by its first line, shortened', SLOW, async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     await messages('inUse');
@@ -1592,13 +1615,20 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       expectFieldOff(field);
       expectOff(screen.getByRole('button', { name: 'Send' }));
-      const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
-      expectOff(to);
-      fireEvent.click(to);
       expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
       expect(screen.getAllByTestId('messages-closed')).toHaveLength(1);
     },
   );
+
+  it('turns off the invitation’s To on closedEnded', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Invitation/));
+
+    const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
+    expectOff(to);
+    fireEvent.click(to);
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+  });
 
   it('turns off a guest’s answer on closedEnded, and offers no R', SLOW, async () => {
     await messages('closedEnded');

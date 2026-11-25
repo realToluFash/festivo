@@ -10,6 +10,7 @@ import {
   type Draft,
   type GuestId,
   type MessagesState,
+  type Out,
   type Sched,
   ANSWERS,
   RECEIPTS,
@@ -18,6 +19,7 @@ import {
   MW,
   NOW,
   PARKING,
+  PARKING_OF,
   READER,
   TICKS,
   UNKNOWN,
@@ -49,7 +51,7 @@ import { Composer, ComposePane, ResendCard } from './MessagesCompose.tsx';
 import { NoManage, SentToThread } from './MessagesSentTo.tsx';
 import { INVITE_WORLD } from './messagesInvite.ts';
 import { InviteCompose } from './MessagesInvite.tsx';
-import { type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
+import { type Group, type World, MESSAGES_WORLD, isSentTo } from './messagesTo.ts';
 import { TW } from './messagesToWords.ts';
 import { type Bit, useInbox, whereBits } from './messagesContext.ts';
 import { LaterDialog, MatchPicker } from './MessagesDialogs.tsx';
@@ -68,11 +70,11 @@ import {
 import { NoticeExtras, RefusedNotice, WindowClosed } from './MessagesNotice.tsx';
 import {
   DayRule,
+  FollowLine,
   GuestBubble,
   HostBubble,
   LeadMark,
   Stub,
-  FollowLine,
   SystemLine,
   Words,
   WhereGlyph,
@@ -745,6 +747,16 @@ function AnswerBox({
   );
 }
 
+function followsOf(
+  first: Out | undefined,
+  fixed: boolean,
+  groups: readonly Group[],
+): number | undefined {
+  if (first != null) return outReach(first, groups).count;
+
+  return fixed ? PARKING_OF : undefined;
+}
+
 function ManyThread({ id }: { id: ConvoId }) {
   const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
@@ -792,7 +804,7 @@ function ManyThread({ id }: { id: ConvoId }) {
           placeholder={toThem ? MW.writeToThem : MW.writeFollowUp}
           thread={id}
           world={world}
-          follows={toThem || first == null ? undefined : outReach(first, event.book.groups).count}
+          follows={toThem ? undefined : followsOf(first, fixed, event.book.groups)}
         />
       )}
     </div>
