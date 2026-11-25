@@ -234,6 +234,11 @@ const SHARED: readonly Family[] = [
     part: 'Stations (Stations), whose cards the Roster and Schedule reuse',
   },
   {
+    prefix: 'st',
+    sheets: [REFLOW, 'seating.css'],
+    part: 'Seating (SeatingPage) at 400% zoom, its room inset by the phone gutter',
+  },
+  {
     prefix: 'sw',
     sheets: ['phone.css', 'switcher.css'],
     part: 'the organisation switcher (OrgSwitcher) on a phone',

@@ -43,6 +43,19 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
     expect(cssRule(`${DESK} .desk-page`, AT_320)).toContain('overflow: visible;');
   });
 
+  it('runs the page flat to the window, its column at the product shell’s 16 px phone gutter (sc-91763)', () => {
+    expect(cssRule(`${DESK} > .desk-main`, AT_320)).toMatch(/margin: 0;[\s\S]+box-shadow: none;/u);
+    expect(cssRule(`${DESK} .desk-page`, AT_320)).toContain(
+      'padding: var(--spaceXl) var(--spaceXl) var(--space3xl);',
+    );
+    expect(cssRule(`${DESK} > .desk-main > .st`, AT_320)).toContain(
+      'margin-inline: var(--spaceXl);',
+    );
+    expect(cssRule(`${DESK} .st-top`, AT_320)).toContain('padding-inline: 0;');
+    expect(cssRule(`${DESK} .mg-list`, AT_320)).toContain('padding-inline: var(--spaceXl);');
+    expect(cssRule(`${DESK} .mg-in`, AT_320)).toContain('padding-inline: var(--spaceXl);');
+  });
+
   it('is the only copy: no area stacks the desk itself', () => {
     const copies = readdirSync(import.meta.dirname)
       .filter((file) => file.endsWith('.css') && file !== 'deskReflow.css')

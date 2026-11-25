@@ -12,15 +12,28 @@
     overflow: visible;
   }
 
+  /* sc-91763: the page runs flat to the window's edges and its column keeps the product shell's 16 px phone gutter, on every page. */
   .today.desk:not(.dp-fit) > .desk-main {
     min-width: 0;
-    margin: 0 var(--spaceMd) var(--spaceMd);
+    margin: 0;
     overflow: visible;
+    border-top: var(--borderCard);
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .today.desk:not(.dp-fit) .desk-page {
-    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    padding: var(--spaceXl) var(--spaceXl) var(--space3xl);
     overflow: visible;
+  }
+
+  /* Seating has no .desk-page: the product insets the room by the gutter and its band keeps none of its own. */
+  .today.desk:not(.dp-fit) > .desk-main > .st {
+    margin-inline: var(--spaceXl);
+  }
+
+  .today.desk:not(.dp-fit) .st-top {
+    padding-inline: 0;
   }
 
   .today.desk:not(.dp-fit) :is(.ev-crumb ol, .desk-row) {
@@ -40,7 +53,22 @@
 
   .today.desk:not(.dp-fit) .mg-list {
     width: auto;
+    padding-inline: var(--spaceXl);
     border-right: 0;
     border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .today.desk:not(.dp-fit) .mg-in {
+    padding-inline: var(--spaceXl);
+  }
+
+  /* The open conversation's name takes the line beside its picture, and what acts on it steps down under them. */
+  .today.desk:not(.dp-fit) .mg-head {
+    flex-wrap: wrap;
+  }
+
+  .today.desk:not(.dp-fit) .mg-head-words {
+    flex: 1 1 10rem;
+    overflow-wrap: anywhere;
   }
 }
