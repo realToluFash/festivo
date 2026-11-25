@@ -13,11 +13,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
+import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { capUnderTitle, piecesIn, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  capUnderTitle,
+  piecesIn,
+  wholeLineHeight,
+  wordsIn,
+} from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
+import { CAPSULE_TOP } from '../layout/bandLive.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -31,7 +39,12 @@ import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
 import { OPENER, OpenerColumn, OpenerWords, quietTap } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
-import { phoneNameRoom, phoneTileAlone, phoneWaitingRoom } from '../layout/pillFit.ts';
+import {
+  phoneNameRoom,
+  uprightNameRoom,
+  wholeTileAlone,
+  waitingRoomUnder,
+} from '../layout/pillFit.ts';
 import { titleWithInkRoom } from './titleWidth.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -133,7 +146,7 @@ export function OrgButton({
   maxWidth?: number | undefined;
   /** The tabs beside it took their room first, so it is its tile (sc-40401). */
   givesWay?: boolean;
-  /** On the phone's cover from AX1, the name's line, 0 until the row is measured (sc-92247). */
+  /** On the cover from AX1, the name's line, 0 until the row is measured (sc-92247, sc-92314). */
   nameRoom?: number | undefined;
 }) {
   const ref = useRef<ViewInstance>(null);
@@ -142,13 +155,13 @@ export function OrgButton({
   const large = useAccessibilitySizes();
   const lines = useNameLines();
   const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
-  const whole = phone && large && !compact && nameRoom != null;
+  const whole = large && !compact && nameRoom != null;
   const atDefault = useMeasuredAt(NAME, whole ? piecesIn([org.name]) : []);
   const known = atDefault.widths.length > 0 && atDefault.widths.every((width) => width != null);
   const wholeTile =
     whole &&
     known &&
-    phoneTileAlone(Math.max(...atDefault.widths.map((width) => width ?? 0)), nameRoom ?? 0);
+    wholeTileAlone(Math.max(...atDefault.widths.map((width) => width ?? 0)), nameRoom ?? 0);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -215,7 +228,7 @@ export function OrgButton({
   );
 }
 
-/** From AX1 on the phone's cover, the name and the invitation line each step down alone rather than break a word, never under their default sizes, the invitation line never larger than the name; hidden until measured (sc-92247). */
+/** From AX1 on the cover, the name and the invitation line each step down alone rather than break a word, never under their default sizes, the invitation line never larger than the name; hidden until measured (sc-92247). */
 function WholeOpenerWords({
   name,
   waiting,
@@ -259,7 +272,7 @@ function WholeOpenerWords({
               weight="semibold"
               accessible={false}
               under={named}
-              room={given == null ? undefined : phoneWaitingRoom(given)}
+              room={given == null ? undefined : waitingRoomUnder(given)}
               onDrawn={setLine}
               style={[
                 styles.white,
@@ -887,7 +900,7 @@ export function TodayCover({
   );
 }
 
-/** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
+/** The upright iPad's top row: the opener keeps to the left of the centred capsule; from AX1 its words stay whole and it grows down while the tabs, Search and the bell keep to the top (sc-92314). */
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
   const [end, setEnd] = useState<number>();
@@ -897,14 +910,19 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
     end,
   );
   const room = openerRoom(row, width);
+  const large = useAccessibilitySizes();
 
   return (
     <View
-      style={[styles.topTablet, { marginTop: top }]}
+      style={[styles.topTablet, large && styles.topTabletTall, { marginTop: top }]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {measure}
-      <OrgButton maxWidth={room} givesWay={givesWay} />
+      <OrgButton
+        maxWidth={room}
+        givesWay={givesWay}
+        nameRoom={large ? uprightNameRoom(room) : undefined}
+      />
       <View style={styles.grow} />
       <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
         <SearchAndBell />
@@ -946,10 +964,19 @@ export function Band({
   const [row, setRow] = useState<number>();
   const [end, setEnd] = useState<number>();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row), end);
+  const named =
+    now == null || moment.run != null || moment.full
+      ? null
+      : t('todayScreen.liveName', { name: now.name });
+  const grown = !phone && named != null && atAccessibilitySizes(fontScale);
 
   return (
-    <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
+    <View
+      style={[styles.band, { [grown ? 'minHeight' : 'height']: top + bandBody(moment, layout) }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
       {now == null ? (
         <>
           <Cover pieces={[]} shade="foot" />
@@ -962,10 +989,9 @@ export function Band({
       )}
       <View
         style={[
-          phone ? [styles.topPhone, coverRowSides(insets)] : styles.topTablet,
+          phone ? [styles.topPhone, coverRowSides(insets)] : [styles.topTablet, styles.capsuleRoom],
           { marginTop: top },
         ]}
-        onLayout={(event) => setRow(event.nativeEvent.layout.width)}
       >
         {!phone && measure}
         <OrgButton compact />
@@ -983,17 +1009,20 @@ export function Band({
           )}
         </View>
       </View>
-      {now != null && (
-        <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
-          <View style={styles.liveDot} />
-          <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
-            {moment.run != null
-              ? moment.run.band
-              : moment.full
-                ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
-                : t('todayScreen.liveName', { name: now.name })}
-          </Text>
-        </View>
+      {grown ? (
+        <BandLiveLine scale={fontScale} said={named} width={row} />
+      ) : (
+        now != null && (
+          <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
+            <View style={styles.liveDot} />
+            <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
+              {moment.run != null
+                ? moment.run.band
+                : (named ??
+                  t('todayScreen.nowLine', { happening: now.happening, until: now.until }))}
+            </Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -1301,7 +1330,8 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
   capsuleOn: { backgroundColor: tokens.colorCard },
-  capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
+  capsuleAt: { position: 'absolute', left: 0, right: 0, top: CAPSULE_TOP, alignItems: 'center' },
+  capsuleRoom: { minHeight: CAPSULE_TOP + CAPSULE_HEIGHT },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
   subLine: { flexDirection: 'row', flexWrap: 'wrap' },
   liveDot: {
@@ -1390,6 +1420,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.space3xl,
   },
+  topTabletTall: { alignItems: 'flex-start' },
   footPhone: { marginBottom: SHEET_RISE + 22 },
   footTablet: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + 30, maxWidth: 620 },
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },

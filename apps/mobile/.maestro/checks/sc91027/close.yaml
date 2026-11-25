@@ -1,7 +1,8 @@
 # sc-91027: Cancel the screen on top, and Discard if it asks. Ends with no Discard ask showing.
 appId: host.exp.Exponent
 ---
-- tapOn: 'Cancel'
+- tapOn:
+    id: '.*\.cancel'
 - waitForAnimationToEnd:
     timeout: 4000
 - runFlow:
