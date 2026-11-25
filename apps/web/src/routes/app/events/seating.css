@@ -1489,6 +1489,43 @@
   accent-color: var(--colorAccent);
 }
 
+/* sc-91971: at 40rem and under the zoom bar wraps by rule in every locale, Fit the room across its own row, so whatever stands above it steps up by that one 46 px row, and the room grows to hold the stacks from the top and from the floor 12 px apart, with one row to spare for a longer locale. */
+@media (width <= 40rem) {
+  .st-zoom {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    place-items: center;
+    max-width: calc(100% - 2 * var(--spaceLg));
+  }
+
+  .st-zoom > .st-tool {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  .st-main:not(.is-none) .st-canvas.is-plan {
+    height: 704px;
+  }
+
+  .st-minimap,
+  .st-another {
+    bottom: 126px;
+  }
+
+  .st-keys {
+    bottom: 124px;
+  }
+
+  .st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another) {
+    bottom: 190px;
+  }
+
+  .st-canvas:has(> .st-add.is-crowded) .st-keys {
+    bottom: 188px;
+  }
+}
+
 .st-handle {
   fill: var(--colorCard);
   stroke: var(--colorAccent);

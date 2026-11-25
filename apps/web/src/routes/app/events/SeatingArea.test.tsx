@@ -8,7 +8,7 @@ import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
@@ -6777,6 +6777,37 @@ describe('The keyboard focus ring on the Floor plan (sc-64879)', () => {
     );
     expect(cssRule('.st-focus-halo', SHEET)).toMatch(
       /stroke: color-mix\(in srgb, var\(--colorAccent\) 22%, transparent\);\s*stroke-width: 5;/u,
+    );
+  });
+});
+
+describe('the zoom bar at 40rem and under (sc-91971)', () => {
+  const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+  const NARROW = mediaBlock('(width <= 40rem)', SHEET.slice(SHEET.indexOf('sc-91971')));
+
+  it('wraps by rule onto two rows, Fit the room across the second, and stays 12 px inside the room', () => {
+    expect(cssRule('.st-zoom', NARROW)).toMatch(
+      /display: grid;\s+grid-template-columns: repeat\(3, auto\);[\s\S]+max-width: calc\(100% - 2 \* var\(--spaceLg\)\);/u,
+    );
+    expect(cssRule('.st-zoom > .st-tool', NARROW)).toMatch(
+      /grid-column: 1 \/ -1;\s+justify-self: stretch;/u,
+    );
+    expect(cssRule('.st-tool', SHEET)).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
+  it('steps what stands above it up by that 46 px row, crowded or not, in a 704 px room', () => {
+    expect(cssRule('.st-minimap,\n  .st-another', NARROW)).toContain('bottom: 126px;');
+    expect(cssRule('.st-keys', NARROW)).toContain('bottom: 124px;');
+    expect(
+      cssRule('.st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another)', NARROW),
+    ).toContain('bottom: 190px;');
+    expect(cssRule('.st-canvas:has(> .st-add.is-crowded) .st-keys', NARROW)).toContain(
+      'bottom: 188px;',
+    );
+    expect(cssRule('.st-main:not(.is-none) .st-canvas.is-plan', NARROW)).toContain(
+      'height: 704px;',
     );
   });
 });
