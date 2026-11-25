@@ -20,6 +20,7 @@ export function FitWords({
   style,
   onDrawn,
   testID,
+  pieces: given,
 }: {
   text: string;
   size: number;
@@ -33,10 +34,12 @@ export function FitWords({
   style?: StyleProp<TextStyle> | undefined;
   onDrawn?: (size: number) => void;
   testID?: string;
+  /** Where the text may wrap, when not only between its words. */
+  pieces?: readonly string[];
 }) {
   const start = wordsStart(size, scale, cap);
   const key = `${start}|${weight}|${text}`;
-  const pieces = piecesOfLine(text);
+  const pieces = given ?? piecesOfLine(text);
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
     key: '',
     widths: {},

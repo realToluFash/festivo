@@ -8,9 +8,11 @@ import {
   LIVE_ENDS,
   LIVE_NAME,
   ONE_WORD,
+  SWITCHER_NAME,
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
+  dotKept,
   dayChipRoom,
   dayLineShares,
   daysUntil,
@@ -18,6 +20,8 @@ import {
   liveChipRoom,
   liveName,
   openRoom,
+  piecesKeepingDot,
+  switcherOrgs,
   openUnder,
   orgName,
   pillNameRoom,
@@ -34,6 +38,7 @@ import {
 } from './todaySizeRules.ts';
 
 const AX1 = 1.786;
+const NB = String.fromCharCode(0xa0);
 const AX5 = 3.571;
 const SEVENTH = 1.353;
 
@@ -251,5 +256,26 @@ describe('the live cover on its side (sc-92312)', () => {
     expect(liveChipRoom(500)).toBe(456);
     expect(openRoom(500)).toBe(430);
     expect(liveChipRoom(10)).toBe(0);
+  });
+});
+
+describe('the switcher’s rows from AX1 (sc-92465)', () => {
+  it('puts the organisation you are in first, then the others once each', () => {
+    expect(switcherOrgs('several')).toEqual(['several', 'qa', 'lumen', 'ire']);
+    expect(switcherOrgs('lumen')).toEqual(['lumen', 'qa', 'ire']);
+  });
+
+  it('keeps the role line’s dot on the word before it', () => {
+    expect(dotKept('Votre rôle · Owner')).toBe(`Votre rôle${NB}· Owner`);
+    expect(piecesKeepingDot(dotKept('Your role · Owner'))).toEqual(['Your', `role${NB}·`, 'Owner']);
+  });
+
+  it('steps a name only as far as its widest word needs, never under its default size', () => {
+    const start = wordsStart(SWITCHER_NAME, 3.571, Infinity);
+    expect(wordsSize(SWITCHER_NAME, 3.571, Infinity, 100, 238)).toBe(start);
+    expect(wordsSize(SWITCHER_NAME, 3.571, Infinity, 311, 238)).toBe(
+      Math.floor((start * 238) / 311),
+    );
+    expect(wordsSize(SWITCHER_NAME, 3.571, Infinity, 2000, 238)).toBe(SWITCHER_NAME);
   });
 });

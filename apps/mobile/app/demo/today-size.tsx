@@ -17,17 +17,19 @@ import {
 } from '../../src/demo/todaySize/todaySizeRules.ts';
 
 export default function DemoTodaySize() {
-  const { size, lang, name, greeting, event, org, invite, live, week } = useLocalSearchParams<{
-    size?: string;
-    lang?: string;
-    name?: string;
-    greeting?: string;
-    event?: string;
-    org?: string;
-    invite?: string;
-    live?: string;
-    week?: string;
-  }>();
+  const { size, lang, name, greeting, event, org, invite, live, week, switcher } =
+    useLocalSearchParams<{
+      size?: string;
+      lang?: string;
+      name?: string;
+      greeting?: string;
+      event?: string;
+      org?: string;
+      invite?: string;
+      live?: string;
+      week?: string;
+      switcher?: string;
+    }>();
   const start = {
     size: keyOf(FILTER_SIZES, size, 'device'),
     language: keyOf(FILTER_LANGUAGES, lang, 'en'),
@@ -38,6 +40,7 @@ export default function DemoTodaySize() {
     invite: keyOf(TODAY_INVITES, invite, 'none'),
     live: keyOf(TODAY_LIVES, live, 'none'),
     week: keyOf(TODAY_WEEKS, week, 'quiet'),
+    switcher: switcher === 'open',
   };
 
   return <TodaySizeScreen key={JSON.stringify(start)} start={start} />;
