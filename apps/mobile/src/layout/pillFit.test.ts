@@ -5,6 +5,9 @@ import {
   answersStack,
   answerWidth,
   nameStart,
+  phoneNameRoom,
+  phoneTileAlone,
+  phoneWaitingRoom,
   PILL_CHROME,
   pillShowsWords,
   WAITING_RING,
@@ -48,5 +51,23 @@ describe('the invitation’s two answers (sc-38149)', () => {
   it('shares a row only where both fit at their sending width', () => {
     expect(answersStack(300, 150, 150 - ANSWER.gap)).toBe(false);
     expect(answersStack(300, 150, 151 - ANSWER.gap)).toBe(true);
+  });
+});
+
+describe('the phone cover’s pill from AX1 (sc-92247)', () => {
+  it('gives the name 186 on an iPhone 17 Pro, and the invitation line 169', () => {
+    expect(phoneNameRoom(370, 88)).toBe(186);
+    expect(phoneWaitingRoom(186)).toBe(169);
+  });
+
+  it('never gives a negative line', () => {
+    expect(phoneNameRoom(100, 88)).toBe(0);
+    expect(phoneWaitingRoom(10)).toBe(0);
+  });
+
+  it('is its tile alone only where the widest word at its default size is wider than the line', () => {
+    expect(phoneTileAlone(186, 186)).toBe(false);
+    expect(phoneTileAlone(186.5, 186)).toBe(true);
+    expect(phoneTileAlone(400, 0)).toBe(false);
   });
 });
