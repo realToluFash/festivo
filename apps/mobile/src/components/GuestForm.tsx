@@ -46,7 +46,7 @@ import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
 import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { FocusedScreen } from './SummaryOverlays.tsx';
+import { ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -347,6 +347,7 @@ export function GuestForm({
                 setAsk(null);
                 leaves.discard();
               },
+              width: ASK_WIDTH,
             }
           : ask === 'duplicate'
             ? {
