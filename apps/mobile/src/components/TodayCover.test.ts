@@ -7,6 +7,7 @@ const cover = readFileSync(join('src', 'components', 'TodayCover.tsx'), 'utf8');
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const tabLabel = readFileSync(join('src', 'layout', 'tabLabel.ts'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+const run = readFileSync(join('src', 'components', 'TodayRun.tsx'), 'utf8');
 
 describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
@@ -74,5 +75,29 @@ describe('the phone cover’s pill from AX1 (sc-92247)', () => {
   it('caps the pill under the greeting, and keeps main’s pill below AX1', () => {
     expect(cover).toMatch(/<TitleCap\.Provider value=\{greeting\}>\s+<OrgButton/u);
     expect(cover).toMatch(/const whole = phone && large && !compact && nameRoom != null;/u);
+  });
+});
+
+describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () => {
+  it('is drawn whole on the side banner, from the accessibility sizes', () => {
+    expect(cover).toMatch(/<NowBlock moment=\{moment\} wide side \/>/u);
+    expect(cover).toMatch(/const whole = useAccessibilitySizes\(\);/u);
+    expect(cover).toMatch(
+      /if \(side && whole && run == null && !moment\.full\) return <WholeNowBlock now=\{now\} \/>;/u,
+    );
+  });
+
+  it('holds the end line, the chips and Open the event under the size the name draws', () => {
+    const block = /function WholeNowBlock\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(block).toMatch(/const under = name \?\? Infinity;/u);
+    expect(block).toMatch(/onDrawn=\{setName\}/u);
+    expect(block.match(/under=\{under\}/gu)).toHaveLength(3);
+    expect(block).toMatch(/<WholeChips now=\{now\} column=\{column\} under=\{under\} \/>/u);
+    expect(block).toMatch(/<WholeWhiteButton[\s\S]*?under=\{under\}/u);
+
+    const chips = /export function WholeChips\([\s\S]*?\n\}\n/u.exec(run)?.[0] ?? '';
+    expect(chips.match(/under=\{under\}/gu)).toHaveLength(2);
+    const button = /export function WholeWhiteButton\([\s\S]*?\n\}\n/u.exec(run)?.[0] ?? '';
+    expect(button.match(/under=\{under\}/gu)).toHaveLength(1);
   });
 });
