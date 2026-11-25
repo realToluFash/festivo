@@ -2,7 +2,6 @@ import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } fr
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
-  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -20,7 +19,6 @@ import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.
 import {
   atAccessibilitySizes,
   capUnderTitle,
-  piecesIn,
   wholeLineHeight,
   wordsIn,
 } from '../layout/textSize.ts';
@@ -36,16 +34,10 @@ import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
-import { OPENER, OpenerColumn, OpenerWords, quietTap } from './OrgPill.tsx';
+import { OPENER, OpenerWords, WholeOpenerWords, quietTap, useWholeTile } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
-import {
-  phoneNameRoom,
-  uprightNameRoom,
-  wholeTileAlone,
-  waitingRoomUnder,
-} from '../layout/pillFit.ts';
-import { titleWithInkRoom } from './titleWidth.ts';
+import { phoneNameRoom, uprightNameRoom } from '../layout/pillFit.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -131,9 +123,6 @@ export type Tab = (typeof TABS)[number][0];
 /** The ways out that the Maestro flows open Settings and the switcher by, from the signed-in home before Today too. */
 export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openSettings' };
 
-const NAME = 15;
-const WAITING = 12.5;
-
 /** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
 export function OrgButton({
   compact = false,
@@ -156,12 +145,7 @@ export function OrgButton({
   const lines = useNameLines();
   const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
   const whole = large && !compact && nameRoom != null;
-  const atDefault = useMeasuredAt(NAME, whole ? piecesIn([org.name]) : []);
-  const known = atDefault.widths.length > 0 && atDefault.widths.every((width) => width != null);
-  const wholeTile =
-    whole &&
-    known &&
-    wholeTileAlone(Math.max(...atDefault.widths.map((width) => width ?? 0)), nameRoom ?? 0);
+  const fit = useWholeTile(org.name, whole ? nameRoom : undefined);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -189,11 +173,11 @@ export function OrgButton({
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
   const wrap = phone || large;
 
-  if (tileAlone || givesWay || wholeTile)
+  if (tileAlone || givesWay || fit.tileAlone)
     return (
       <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
         {measure}
-        {whole && atDefault.measure}
+        {fit.measure}
         {tile}
       </View>
     );
@@ -201,7 +185,7 @@ export function OrgButton({
   return (
     <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
       {measure}
-      {whole && atDefault.measure}
+      {fit.measure}
       <Pressable {...shared} style={styles.orgWide}>
         <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
           <OrgMark id={org.id} name={org.name} side={28} glass />
@@ -210,7 +194,8 @@ export function OrgButton({
               name={org.name}
               waiting={org.waiting}
               room={nameRoom ?? 0}
-              hidden={!known || !nameRoom}
+              hidden={!fit.known || !nameRoom}
+              onDark
             />
           ) : (
             <OpenerWords
@@ -225,66 +210,6 @@ export function OrgButton({
         </Glass>
       </Pressable>
     </View>
-  );
-}
-
-/** From AX1 on the cover, the name and the invitation line each step down alone rather than break a word, never under their default sizes, the invitation line never larger than the name; hidden until measured (sc-92247). */
-function WholeOpenerWords({
-  name,
-  waiting,
-  room,
-  hidden,
-}: {
-  name: string;
-  waiting: string | null;
-  room: number;
-  hidden: boolean;
-}) {
-  const [named, setNamed] = useState<number>();
-  const [line, setLine] = useState<number>();
-  const given = room > 0 ? room : undefined;
-
-  return (
-    <OpenerColumn
-      onDark
-      style={hidden && styles.hidden}
-      name={
-        <CappedWholeWords
-          size={NAME}
-          weight="semibold"
-          accessible={false}
-          room={given}
-          breakAfterHyphens
-          onDrawn={setNamed}
-          style={[
-            styles.white,
-            named != null && { lineHeight: wholeLineHeight(NAME, named, 1.25) },
-          ]}
-        >
-          {titleWithInkRoom(name, Platform.OS)}
-        </CappedWholeWords>
-      }
-      waiting={
-        waiting == null ? null : (
-          <View style={styles.grow}>
-            <CappedWholeWords
-              size={WAITING}
-              weight="semibold"
-              accessible={false}
-              under={named}
-              room={given == null ? undefined : waitingRoomUnder(given)}
-              onDrawn={setLine}
-              style={[
-                styles.white,
-                line != null && { lineHeight: wholeLineHeight(WAITING, line, 1.3) },
-              ]}
-            >
-              {waiting}
-            </CappedWholeWords>
-          </View>
-        )
-      }
-    />
   );
 }
 
@@ -1287,7 +1212,6 @@ const styles = StyleSheet.create({
   gapLg: { gap: tokens.spaceXl },
   gapXl: { gap: 22 },
   orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
-  hidden: { opacity: 0 },
   orgWide: { flexShrink: 1 },
   orgGlass: {
     flexShrink: 1,

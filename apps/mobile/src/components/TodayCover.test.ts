@@ -7,6 +7,7 @@ const cover = readFileSync(join('src', 'components', 'TodayCover.tsx'), 'utf8');
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const tabLabel = readFileSync(join('src', 'layout', 'tabLabel.ts'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
+const pill = readFileSync(join('src', 'components', 'OrgPill.tsx'), 'utf8');
 
 describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
@@ -72,7 +73,7 @@ describe('the upright iPad’s pill from AX1 (sc-92314)', () => {
 
 describe('the phone cover’s pill from AX1 (sc-92247)', () => {
   it('fits its name and invitation line on the shared whole-words rule, the line under the name', () => {
-    const words = /function WholeOpenerWords\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    const words = /function WholeOpenerWords\([\s\S]*?\n\}\n/u.exec(pill)?.[0] ?? '';
     expect(words.match(/<CappedWholeWords/gu)).toHaveLength(2);
     expect(words).toMatch(/under=\{named\}/u);
     expect(words).not.toMatch(/numberOfLines/u);
@@ -81,5 +82,16 @@ describe('the phone cover’s pill from AX1 (sc-92247)', () => {
   it('caps the pill under the greeting, and keeps main’s pill below AX1', () => {
     expect(cover).toMatch(/<TitleCap\.Provider value=\{greeting\}>\s+<OrgButton/u);
     expect(cover).toMatch(/const whole = large && !compact && nameRoom != null;/u);
+  });
+});
+
+describe('the white pill above a phone’s Events, Calendar and Settings from AX1 (sc-92464)', () => {
+  it('draws the cover’s whole-words opener on its measured row, with no line limit', () => {
+    expect(cover).toMatch(/<WholeOpenerWords[\s\S]*?onDark\s+\/>/u);
+    expect(frame).toMatch(/row > 0 && ends > 0 \? barePhoneNameRoom\(row, ends\) : 0/u);
+    expect(frame).toMatch(
+      /nameRoom=\{large && phoneRow != null \? measuredLine\(phoneRow\) : undefined\}/u,
+    );
+    expect(pill).toMatch(/whole\.whole \? \(\s+<WholeOpenerWords/u);
   });
 });
