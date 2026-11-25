@@ -8,6 +8,7 @@ import unittest
 from unittest import mock
 
 from soirely_queue import github, roles, store, sync
+from soirely_queue.shortcut import ShortcutError
 
 NOW = 1_000_000.0
 
@@ -135,10 +136,10 @@ class DesignBranchMoves(unittest.TestCase):
     def branch(self, name):
         return {"references": [{"entity_type": "branch", "id": 7, "name": name}]}
 
-    def sync(self, history, branch="ux/sc-5-pill", prs=()):
+    def sync(self, history, branch="ux/sc-5-pill", prs=(), failures=0, runs=1):
         db, test = store.connect(":memory:"), self
         store.put_prs(db, list(prs))
-        updates = []
+        updates, failing = [], [failures]
 
         class Pushed(FakeShortcut):
             def find(self, **filters):
@@ -151,12 +152,17 @@ class DesignBranchMoves(unittest.TestCase):
                         "branches": [{"name": branch}]}
 
             def history(self, story_id):
+                if failing[0]:
+                    failing[0] -= 1
+                    raise ShortcutError("503 Service Unavailable")
                 return history
 
             def update(self, story_id, **fields):
                 updates.append((story_id, fields))
                 return dict(self.story(story_id), **fields, updated_at="t2")
-        sync.sync_shortcut(db, Pushed(), NOW)
+        for run in range(runs):
+            sync.sync_shortcut(db, Pushed(), NOW + run * 60)
+        self.synced_at = store.get_meta(db, "shortcut_at")
         return updates, store.story(db, 5)["state"]
 
     def test_a_ux_branch_push_out_of_needs_design_is_undone(self):
@@ -187,6 +193,13 @@ class DesignBranchMoves(unittest.TestCase):
         updates, _ = self.sync([self.move("To Do", "Ready For Dev",
                                           **self.branch("ux/sc-5-pill"))])
         self.assertEqual(updates, [])
+
+    def test_a_history_shortcut_fails_on_is_read_again_next_sync(self):
+        moved = [self.move("Needs Design", "Ready For Dev", **self.branch("ux/sc-5-pill"))]
+        updates, state = self.sync(moved, failures=1)
+        self.assertEqual((updates, state, self.synced_at), ([], "Ready For Dev", NOW))
+        updates, state = self.sync(moved, failures=1, runs=2)
+        self.assertEqual((len(updates), state), (1, "Needs Design"))
 
     def test_only_the_last_move_counts(self):
         updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",

@@ -18,7 +18,7 @@ from . import (actions, agents, controls, dashboard, digests, github, launchd, l
 from . import text as T
 from . import views as V
 from .ledger import Printer
-from .shortcut import Shortcut
+from .shortcut import Shortcut, history_moves, history_vcs
 
 HERE = pathlib.Path(__file__).resolve().parent
 CHECKS_POLL = 30
@@ -433,18 +433,14 @@ def cmd_history(s, a):
     story_id = actions.story_number(a.story)
     states = store.get_meta(s.db, "states") or {}
     for entry in Shortcut().history(story_id)[-a.limit:]:
-        moves = []
-        for action in entry.get("actions", []):
-            change = (action.get("changes") or {}).get("workflow_state_id")
-            if change:
-                moves.append(f"{states.get(str(change.get('old')), '?')} → "
-                             f"{states.get(str(change.get('new')), '?')}")
+        moves = [f"{states.get(str(change.get('old')), '?')} → "
+                 f"{states.get(str(change.get('new')), '?')}" for change in history_moves(entry)]
         if moves:
             print(f"{entry['changed_at'][:16].replace('T', ' ')} {'; '.join(moves)}"
                   f"{''.join(f' · {part}' for part in history_source(entry))}")
 
 
-VCS_KINDS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
+VCS_LABELS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
 
 
 def history_source(entry):
@@ -456,10 +452,8 @@ def history_source(entry):
         parts.append(f"by {actor}")
     elif entry.get("automation_id"):
         parts.append("by an automation")
-    for thing in [*entry.get("references", []), *entry.get("actions", [])]:
-        kind = VCS_KINDS.get(thing.get("entity_type"))
-        if not kind:
-            continue
+    for thing in history_vcs(entry):
+        kind = VCS_LABELS[thing["entity_type"]]
         label = (f"PR #{thing['number']}" if kind == "PR" and thing.get("number")
                  else f"{kind} {thing.get('name') or thing.get('hash') or thing.get('id')}")
         if label not in parts:
