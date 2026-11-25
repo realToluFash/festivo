@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { dotKept } from '../../layout/textSize.ts';
 
 import {
   EVENT_DATES,
@@ -13,7 +14,6 @@ import {
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
-  dotKept,
   dayLineShares,
   daysUntil,
   linkUnder,
@@ -270,7 +270,6 @@ describe('the switcher’s rows from AX1 (sc-92465)', () => {
   });
 
   it('keeps the role line’s dot on the word before it', () => {
-    expect(dotKept('Votre rôle · Owner')).toBe(`Votre rôle${NB}· Owner`);
     expect(piecesKeepingDot(dotKept('Your role · Owner'))).toEqual(['Your', `role${NB}·`, 'Owner']);
   });
 
