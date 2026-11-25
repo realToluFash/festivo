@@ -1,3 +1,4 @@
+import { maskedPhone } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +20,14 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
     <TwoFactorStep
       mode={recovery ? 'recovery' : 'app'}
       intro={
-        recovery ? t('twoFactor.recoveryIntro') : t('twoFactor.intro', { email: challenge.email })
+        recovery
+          ? t('twoFactor.recoveryIntro')
+          : t('twoFactor.intro', {
+              email:
+                challenge.email === '' && challenge.phone != null
+                  ? maskedPhone(challenge.phone)
+                  : challenge.email,
+            })
       }
       failedTitle={t('signIn.failedTitle')}
       failedBody={t('signIn.failedBody')}

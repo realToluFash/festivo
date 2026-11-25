@@ -3527,7 +3527,20 @@
     "inTitleNoJob": "Se ha unido a {{event}}",
     "endsLine": "Su acceso dura hasta que termine el evento.",
     "openEvent": "Abrir el evento",
-    "signedInAs": "Sesión iniciada como {{name}}"
+    "signedInAs": "Sesión iniciada como {{name}}",
+    "phone": {
+      "mobile": "Mobile number",
+      "countryCode": "Country code",
+      "sendCode": "Send code",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
+      "checkWhatsApp": "Check WhatsApp",
+      "checkMessages": "Check your messages",
+      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
+      "texted": "We texted a code to {{number}}.",
+      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
+      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
+      "textInstead": "Text it to me instead"
+    }
   },
   "doorCodes": {
     "doorCode": "Código de acceso",
