@@ -60,6 +60,7 @@ import {
   roleOf,
   rowsOf,
   sameNameAs,
+  addHoldsChange,
 } from './GuestsModel.ts';
 import {
   CLOCKS,
@@ -89,7 +90,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(190);
+    expect(GUESTS_STATES).toHaveLength(191);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -118,6 +119,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(areaStart('edit412').overlay).toBe('edit');
     expect(areaStart('recordComing').overlay).toBe('record');
     expect(areaStart('addOffline').overlay).toBe('add');
+    expect(areaStart('addDiscard').overlay).toBe('add');
     expect(areaStart('picker').overlay).toBe('picker');
     expect(areaStart('androidPick').overlay).toBe('android');
     expect(areaStart('androidNone').overlay).toBe('android');
@@ -927,5 +929,29 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
     expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
     expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
     expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
+  });
+});
+
+describe('Add guest asks on Cancel only while it holds a change (sc-82245)', () => {
+  const empty = {
+    texts: ['', ' '],
+    country: 'GB',
+    language: null,
+    companions: 0,
+    needs: false,
+    group: false,
+  };
+
+  it('leaves an empty form without asking', () => {
+    expect(addHoldsChange(empty)).toBe(false);
+  });
+
+  it('asks once anything is typed or chosen', () => {
+    expect(addHoldsChange({ ...empty, texts: ['Bimpe Adeyemi', ''] })).toBe(true);
+    expect(addHoldsChange({ ...empty, country: 'NG' })).toBe(true);
+    expect(addHoldsChange({ ...empty, language: 'fr' })).toBe(true);
+    expect(addHoldsChange({ ...empty, companions: 1 })).toBe(true);
+    expect(addHoldsChange({ ...empty, needs: true })).toBe(true);
+    expect(addHoldsChange({ ...empty, group: true })).toBe(true);
   });
 });
