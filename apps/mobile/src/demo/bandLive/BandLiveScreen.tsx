@@ -45,7 +45,7 @@ import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { SearchGlass } from '../SearchGlass.tsx';
 import { momentOf, sayIn } from '../today.ts';
-import { LIVE_EVENTS, type LiveEvent, liveEventName } from './bandLiveRules.ts';
+import { LIVE_EVENTS, type LiveEvent, capsuleRoomHeight, liveEventName } from './bandLiveRules.ts';
 
 const UPRIGHT_ONLY =
   'This page is the upright iPad’s band: hold an iPad upright to see it as the board draws it. The phone’s band is sc-92248’s, and on its side Today has a banner, not a band. ';
@@ -171,13 +171,7 @@ function Band({
       ) : (
         <EventMesh event={now.event} shade="day" />
       )}
-      <View
-        style={[
-          styles.capsuleRoom,
-          { marginTop: top },
-          capsule > CAPSULE_HEIGHT && { minHeight: CAPSULE_TOP + capsule },
-        ]}
-      >
+      <View style={{ marginTop: top, minHeight: capsuleRoomHeight(capsule) }}>
         <View style={styles.row} onLayout={(layout) => setRow(layout.nativeEvent.layout.width)}>
           {measure}
           <OrgButton compact />
@@ -236,7 +230,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: tokens.colorPage },
   page: { gap: tokens.spaceMd, paddingHorizontal: tokens.spaceXxl, paddingTop: tokens.spaceLg },
   band: { overflow: 'hidden' },
-  capsuleRoom: { minHeight: CAPSULE_TOP + CAPSULE_HEIGHT },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
