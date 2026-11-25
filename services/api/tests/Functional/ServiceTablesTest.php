@@ -8,6 +8,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Staff\Model\StaffDetails;
 use App\Domain\Staff\StaffRoster;
 use App\Domain\Staff\Station\ServiceTables;
+use App\Domain\Staff\VerifiedContactOwners;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\PhoneNumber;
@@ -26,7 +27,6 @@ use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
 use App\Repository\EmailAddressRepository;
-use App\Repository\PhoneNumberRepository;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffStationRepository;
 use App\Tests\ApiTestCase;
@@ -128,7 +128,7 @@ final class ServiceTablesTest extends ApiTestCase
     private function assertReaches(Grants $grants, User $user, SeatingTable $table, ?ErrorCode $refusal): void
     {
         try {
-            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class), self::service(PhoneNumberRepository::class), self::service(EmailAddressRepository::class))->requireYours($grants, $user, $table);
+            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class), self::service(VerifiedContactOwners::class))->requireYours($grants, $user, $table);
             self::assertNull($refusal, $table->getName() . ' should be refused');
         } catch (ApiException $refused) {
             self::assertSame($refusal, $refused->errorCode, $table->getName());

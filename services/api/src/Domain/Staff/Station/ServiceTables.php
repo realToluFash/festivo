@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\Station;
 
-use App\Entity\EmailAddress;
-use App\Entity\PhoneNumber;
+use App\Domain\Staff\VerifiedContactOwners;
 use App\Entity\SeatingTable;
 use App\Entity\StaffMember;
 use App\Entity\User;
@@ -14,8 +13,6 @@ use App\Enum\Permission;
 use App\Enum\ServicePlace;
 use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
-use App\Repository\EmailAddressRepository;
-use App\Repository\PhoneNumberRepository;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffStationRepository;
 use Psl\Iter;
@@ -26,8 +23,7 @@ final readonly class ServiceTables
     public function __construct(
         private StaffStationRepository $staffStationRepository,
         private StaffMemberRepository $staffMemberRepository,
-        private PhoneNumberRepository $phoneNumberRepository,
-        private EmailAddressRepository $emailAddressRepository,
+        private VerifiedContactOwners $verifiedContactOwners,
     ) {
     }
 
@@ -56,11 +52,6 @@ final readonly class ServiceTables
             return true;
         }
 
-        $mobile = $entry->getMobile();
-        $email = $entry->getEmail();
-        $byPhone = null === $mobile || '' === $mobile ? null : $this->phoneNumberRepository->findOneByNumber($mobile);
-        $byEmail = null === $email || '' === $email ? null : $this->emailAddressRepository->findOneByAddress($email);
-
-        return Iter\any([$byPhone, $byEmail], static fn (PhoneNumber|EmailAddress|null $contact): bool => null !== $contact && $contact->isVerified() && $contact->getUser()->getId()->equals($user->getId()));
+        return Iter\any($this->verifiedContactOwners->of($entry->getMobile(), $entry->getEmail()), static fn (User $owner): bool => $owner->getId()->equals($user->getId()));
     }
 }
