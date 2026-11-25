@@ -26,17 +26,8 @@ export const BESIDE_GAP = tokens.spaceSm;
 /** Mark all read's 44 tap area under the heading's line, with this between. */
 export const UNDER_GAP = tokens.spaceXxs;
 
-// Neither grows under a title's cap: the panel has no title above it, so each grows with the text size as main does.
+// Mark all read grows with the text size as main does, under no title's cap; the heading's size is `FitWords`'s, given the same no cap.
 const NO_CAP = Number.POSITIVE_INFINITY;
-
-export function headingStart(scale: number): number {
-  return wordsStart(HEADING, scale, NO_CAP);
-}
-
-/** The heading's size: main's at every size, from AX1 the largest at which its one word fits the panel's top, never under 18. */
-export function headingSize(scale: number, word: number, room: number): number {
-  return wordsSize(HEADING, scale, NO_CAP, word, room);
-}
 
 export function markAllStart(scale: number): number {
   return wordsStart(MARK_ALL, scale, NO_CAP);

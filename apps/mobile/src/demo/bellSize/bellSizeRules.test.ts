@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BELL_LANGUAGES,
   BESIDE_GAP,
-  HEADING,
   MARK_ALL,
-  headingSize,
-  headingStart,
   markAllSize,
   markAllStart,
   markAllUnder,
@@ -20,31 +17,18 @@ const AX5 = 3.571;
 const ROOM = 348;
 
 describe('the iPad bell panel’s top at the accessibility sizes (sc-92580)', () => {
-  it('grows both as main does, with no cap', () => {
-    expect(headingStart(DEFAULT)).toBe(HEADING);
-    expect(headingStart(AX5)).toBeCloseTo(HEADING * AX5);
+  it('grows Mark all read as main does, with no cap', () => {
+    expect(markAllStart(DEFAULT)).toBe(MARK_ALL);
     expect(markAllStart(AX2)).toBeCloseTo(MARK_ALL * AX2);
-  });
-
-  it('keeps the heading at its full size while its word fits', () => {
-    expect(headingSize(AX2, 300, ROOM)).toBeCloseTo(HEADING * AX2);
-  });
-
-  it('steps the heading down to the largest size at which its word fits, never under 18', () => {
-    const start = headingStart(AX5);
-
-    expect(headingSize(AX5, 480, ROOM)).toBe(Math.floor((start * ROOM) / 480));
-    expect(headingSize(AX5, 480, ROOM)).toBeLessThan(start);
-    expect(headingSize(AX5, 5000, ROOM)).toBe(HEADING);
-  });
-
-  it('never steps below AX1, where main draws it', () => {
-    expect(headingSize(SEVENTH, 480, ROOM)).toBeCloseTo(HEADING * SEVENTH);
   });
 
   it('steps Mark all read down only for its widest word, never under 15', () => {
     expect(markAllSize(AX5, 170, ROOM)).toBeCloseTo(MARK_ALL * AX5);
     expect(markAllSize(AX5, 5000, ROOM)).toBe(MARK_ALL);
+  });
+
+  it('never steps Mark all read below AX1, where main draws it', () => {
+    expect(markAllSize(SEVENTH, 5000, ROOM)).toBeCloseTo(MARK_ALL * SEVENTH);
   });
 
   it('keeps Mark all read beside the heading only where both fit whole on one row', () => {
