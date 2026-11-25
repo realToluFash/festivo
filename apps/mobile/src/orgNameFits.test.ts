@@ -42,7 +42,7 @@ describe('a 100-character organisation name in the frame (sc-486)', () => {
   });
 
   it("keeps the demo's upright pill to the room beside the tabs, as the product's (sc-39471)", () => {
-    expect(DEMO_FRAME).toMatch(/usePillFit\(org\.name, org\.waiting, room, false\)/u);
+    expect(DEMO_FRAME).toMatch(/usePillFit\(org\.name, org\.waiting, room, large\)/u);
     expect(DEMO_FRAME).toMatch(
       /renderPill=\{\(room, givesWay\) => <OrgPill room=\{room\} givesWay=\{givesWay\} \/>\}/u,
     );
