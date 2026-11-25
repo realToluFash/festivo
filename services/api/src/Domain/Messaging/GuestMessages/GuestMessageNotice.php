@@ -34,6 +34,7 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         private GuestMessageRepository $guestMessageRepository,
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
+        private GuestEmailUnsubscribe $guestEmailUnsubscribe,
         #[Autowire(env: 'CORS_WEB_ORIGIN')]
         private string $webOrigin,
     ) {
@@ -135,6 +136,7 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         return new RenderedNotification(
             $subject,
             Str\join($lines, "\n"),
+            unsubscribe: null === $guest ? null : $this->guestEmailUnsubscribe->url($guest),
             senderName: $this->trans('guest_message.notice.from', ['organisation' => $hosts], $locale),
         );
     }

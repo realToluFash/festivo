@@ -88,6 +88,12 @@ import type {
 } from './guestMessages.ts';
 import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
+  type MessageChannel,
+  type YourMessages,
+  type YourMessagesKey,
+  yourMessagesOf,
+} from './yourMessages.ts';
+import {
   type AuditExportOutcome,
   type AuditFilters,
   type AuditFormat,
@@ -1882,6 +1888,22 @@ export class ApiClient {
     );
 
     return body.emailOn === true;
+  }
+
+  /** Your messages (sc-3969) for the guest the key names; a link that does not work is a 404. */
+  async yourMessages(key: YourMessagesKey): Promise<YourMessages> {
+    return yourMessagesOf(await this.post<unknown>('/api/your-messages', key, { anonymous: true }));
+  }
+
+  /** Turns one channel on or off for this organisation, answering the page as it now stands. */
+  async setYourMessages(
+    key: YourMessagesKey,
+    channel: MessageChannel,
+    on: boolean,
+  ): Promise<YourMessages> {
+    return yourMessagesOf(
+      await this.put<unknown>('/api/your-messages', { ...key, channel, on }, { anonymous: true }),
+    );
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */
@@ -6929,6 +6951,7 @@ function asGuestPage(raw: unknown): GuestPage | null {
         ? what.hosts.filter((host): host is string => typeof host === 'string')
         : [],
       thankYou: typeof what.thankYou === 'string' ? what.thankYou : null,
+      organisation: typeof what.organisation === 'string' ? what.organisation : '',
       startsAt: what.startsAt,
       timeZone: what.timeZone,
       venue:

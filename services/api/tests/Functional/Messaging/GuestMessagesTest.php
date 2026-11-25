@@ -259,7 +259,7 @@ final class GuestMessagesTest extends ApiTestCase
         $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
 
         self::assertSame([['Emeka Nwosu', 'not_sent', 'complained'], ['Emeka Other', 'queued', null]], $this->states($second));
-        $kept = Type\vec(Type\string())->coerce(self::service(Connection::class)->fetchFirstColumn('SELECT address_hash FROM guest_complaints'));
+        $kept = Type\vec(Type\string())->coerce(self::service(Connection::class)->fetchFirstColumn('SELECT address_hash FROM guest_suppressions'));
         self::assertCount(1, $kept);
         self::assertNotSame(\hash('sha256', 'emeka@example.test'), $kept[0]);
     }

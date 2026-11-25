@@ -837,6 +837,8 @@ function reasonWords(reason: NotSentReason | null, t: TFunction): string {
       return t('eventMessages.addressBouncing');
     case 'complained':
       return t('eventMessages.complained');
+    case 'unsubscribed':
+      return t('eventMessages.unsubscribed');
     case 'provider_blocked':
       return t('eventMessages.cannotEmailAddress');
     default:

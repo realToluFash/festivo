@@ -45,7 +45,8 @@ final readonly class EmailSender implements ChannelSenderInterface
         $email->getHeaders()->addTextHeader('X-PM-Metadata-delivery', $deliveryId->toRfc4122());
 
         if (null !== $notification->unsubscribe) {
-            $email->getHeaders()->addTextHeader('List-Unsubscribe', '<' . $notification->unsubscribe . '>');
+            $mailto = 'mailto:unsubscribe@' . (Str\after_last(Address::create($this->mailFrom)->getAddress(), '@') ?? '') . '?subject=' . \rawurlencode($notification->unsubscribe);
+            $email->getHeaders()->addTextHeader('List-Unsubscribe', '<' . $notification->unsubscribe . '>, <' . $mailto . '>');
             $email->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         }
 

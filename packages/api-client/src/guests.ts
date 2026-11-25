@@ -341,6 +341,8 @@ export interface GuestPage {
     hosts: string[];
     /** The hosts' own words, never translated; only once it is Finished (sc-6476). */
     thankYou: string | null;
+    /** The organisation's display name, which Your messages' way in names (sc-3969); empty from an API without it. */
+    organisation: string;
     /** With the event's own offset. */
     startsAt: string;
     timeZone: string;

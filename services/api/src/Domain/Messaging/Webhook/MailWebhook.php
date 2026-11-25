@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Webhook;
 
 use App\Domain\Messaging\EmailSuppressions;
-use App\Domain\Messaging\GuestMessages\GuestComplaints;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
+use App\Domain\Messaging\GuestMessages\GuestSuppressions;
 use App\Enum\DeliveryNotSentReason;
 use App\Enum\MailProviderReport;
 use App\Enum\NotificationAudienceKind;
@@ -19,16 +19,19 @@ use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, a hard bounce or complaint suppresses the address, and a guest's complaint is kept for the organisation (sc-3942). */
+/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, a hard bounce, a third soft bounce in a row or a complaint suppresses the address, and a guest's complaint is kept for the organisation (sc-3942). */
 final readonly class MailWebhook
 {
     /** Postmark's report of an email it would not hand over, the address being on its inactive list. */
     private const string PROVIDER_BLOCKED = 'ManuallyDeactivated';
 
+    /** Postmark's mailbox that would not take it now, full say: three in a row stop the address as a hard bounce does (sc-3969). */
+    private const string SOFT_BOUNCE = 'SoftBounce';
+
     public function __construct(
         private Connection $connection,
         private EmailSuppressions $emailSuppressions,
-        private GuestComplaints $guestComplaints,
+        private GuestSuppressions $guestSuppressions,
         private GuestMessagesChanged $guestMessagesChanged,
         private ClockInterface $clock,
     ) {
@@ -39,7 +42,7 @@ final readonly class MailWebhook
      *
      * @param array<array-key, mixed> $report
      *
-     * @return ?MailProviderReport what it said, or null for a report that changes nothing, a soft bounce say
+     * @return ?MailProviderReport what it said, or null for a report that changes nothing, a first soft bounce say
      */
     public function receive(array $report): ?MailProviderReport
     {
@@ -63,9 +66,14 @@ final readonly class MailWebhook
             return null;
         }
 
+        $address = $shape['Email'] ?? $shape['Recipient'] ?? null;
         $said = match ($shape['RecordType']) {
             'Delivery' => MailProviderReport::Delivered,
-            'Bounce' => 'HardBounce' === ($shape['Type'] ?? null) ? MailProviderReport::Bounced : null,
+            'Bounce' => match ($shape['Type'] ?? null) {
+                'HardBounce' => MailProviderReport::Bounced,
+                self::SOFT_BOUNCE => null !== $address && '' !== $address && $this->emailSuppressions->softBounced($address) ? MailProviderReport::Bounced : null,
+                default => null,
+            },
             'SpamComplaint' => MailProviderReport::Complained,
             default => null,
         };
@@ -74,7 +82,9 @@ final readonly class MailWebhook
             return null;
         }
 
-        $address = $shape['Email'] ?? $shape['Recipient'] ?? null;
+        if (MailProviderReport::Delivered === $said && null !== $address && '' !== $address) {
+            $this->emailSuppressions->delivered($address);
+        }
 
         if ($said->suppresses() && null !== $address && '' !== $address) {
             $this->emailSuppressions->suppress($address, $said);
@@ -113,7 +123,7 @@ final readonly class MailWebhook
             );
 
             if (MailProviderReport::Complained === $said) {
-                $this->guestComplaints->keep($deliveryId);
+                $this->guestSuppressions->keepComplaint($deliveryId);
             }
         });
 

@@ -507,6 +507,7 @@
     "guest_message.notice.link": "{label}: {url}",
     "guest_message.notice.from": "{organisation} via Soirely",
     "validation.guest_message_required": "Enter a message.",
+    "validation.your_messages_no_address": "Nothing is on record to turn off on this channel.",
     "validation.guest_message_subject_too_long": "Shorten the subject to {count, number, ::group-auto} characters or fewer.",
     "validation.guest_message_too_long": "Shorten the message to {count, number, ::group-auto} characters or fewer.",
     "validation.guest_message_choose_guests": "Choose at least one guest.",

@@ -42,6 +42,7 @@ import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { YourMessagesFromEmail, YourMessagesFromPage } from './guest/YourMessages.tsx';
 import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
 import { RedeemPage } from './public/Redeem.tsx';
@@ -103,6 +104,7 @@ export const routes = [
       { path: '/status', element: <Status /> },
       { path: '/join/:token', element: <Join /> },
       { path: '/unsubscribe/guest-replies', element: <GuestReplyEmails /> },
+      { path: '/your-messages', element: <YourMessagesFromEmail /> },
       {
         path: '/app',
         element: <AppLayout />,
@@ -156,7 +158,10 @@ export const routes = [
       {
         path: '/i/:token',
         element: <GuestLayout />,
-        children: [{ index: true, element: <Invitation /> }],
+        children: [
+          { index: true, element: <Invitation /> },
+          { path: 'messages', element: <YourMessagesFromPage /> },
+        ],
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/w/:token', element: <StaffLinkPage /> },
