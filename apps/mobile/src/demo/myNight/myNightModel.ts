@@ -75,7 +75,8 @@ export const MN = {
   yoursAlone: (when: string) =>
     `This link is yours alone. You’ll be signed out at ${when}, and nothing stays on this device.`,
   signOut: 'Sign out',
-  signOutLater: 'Sign out lands on sc-4235’s Confirm it’s you, once its demo (PR #3365) merges.',
+  signOutLands:
+    'Sign out returns to Confirm it’s you with “Signed out.” (sc-4235). That page is in the web’s demo, /demo/staff-sign-in?state=signed-out.',
   backToDemo: 'Back to the demo list',
   events: 'Events',
   demoMove: 'Demo: the organiser moves Grace to Section C',

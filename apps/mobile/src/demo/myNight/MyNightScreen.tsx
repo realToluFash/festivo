@@ -57,7 +57,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   useReadOut(told);
 
   const you = (
-    <You night={night} onSignOut={() => setTold(MN.signOutLater)} inBar={wide} told={told} />
+    <You night={night} onSignOut={() => setTold(MN.signOutLands)} inBar={wide} told={told} />
   );
 
   const left = (
