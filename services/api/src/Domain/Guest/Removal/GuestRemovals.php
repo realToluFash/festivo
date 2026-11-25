@@ -7,7 +7,6 @@ namespace App\Domain\Guest\Removal;
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Model\RemovedTogether;
-use App\Domain\Messaging\GuestMessages\GuestComplaints;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -43,7 +42,6 @@ final readonly class GuestRemovals
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
         private ClockInterface $clock,
-        private GuestComplaints $guestComplaints,
     ) {
     }
 
@@ -252,7 +250,6 @@ final readonly class GuestRemovals
         $this->auditor->record($action, 'Event', $first->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), changes: $changes, occurredAt: $first->getRemovedAt());
         $this->entityManager->flush();
         $people = Vec\map(Vec\flatten($parties), static fn (Guest $person): string => $person->getId()->toRfc4122());
-        $this->guestComplaints->keepBeforeErasing($people);
         $this->connection->executeStatement(
             'UPDATE notification_deliveries SET address = NULL WHERE recipient_kind = :guest AND recipient_id IN (:ids)',
             ['guest' => NotificationAudienceKind::Guest->value, 'ids' => $people],

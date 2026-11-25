@@ -7,7 +7,7 @@ namespace App\Entity;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/** An address a guest reported as spam, kept past the guest's removal as a keyed hash only, so the organisation never emails it again (sc-3942). Written by `GuestComplaints` alone. */
+/** An address a guest reported as spam, kept as a keyed hash only from the moment the report lands, so the organisation never emails it again (sc-3942). Written by `GuestComplaints` alone. */
 #[ORM\Entity(readOnly: true)]
 #[ORM\Table(name: 'guest_complaints')]
 class GuestComplaint

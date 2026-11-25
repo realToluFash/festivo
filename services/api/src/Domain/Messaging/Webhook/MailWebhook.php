@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Webhook;
 
 use App\Domain\Messaging\EmailSuppressions;
+use App\Domain\Messaging\GuestMessages\GuestComplaints;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Enum\DeliveryNotSentReason;
 use App\Enum\MailProviderReport;
@@ -18,7 +19,7 @@ use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, and a hard bounce or complaint suppresses the address. */
+/** One provider report on one email Soirely sent (sc-4332): the delivery it names is updated, a hard bounce or complaint suppresses the address, and a guest's complaint is kept for the organisation (sc-3942). */
 final readonly class MailWebhook
 {
     /** Postmark's report of an email it would not hand over, the address being on its inactive list. */
@@ -27,6 +28,7 @@ final readonly class MailWebhook
     public function __construct(
         private Connection $connection,
         private EmailSuppressions $emailSuppressions,
+        private GuestComplaints $guestComplaints,
         private GuestMessagesChanged $guestMessagesChanged,
         private ClockInterface $clock,
     ) {
@@ -108,6 +110,10 @@ final readonly class MailWebhook
             ['report' => $said->value, 'code' => $code, 'now' => $now, 'id' => $deliveryId],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
+
+        if (MailProviderReport::Complained === $said) {
+            $this->guestComplaints->keep($deliveryId);
+        }
 
         if (MailProviderReport::Bounced === $said && NotificationAudienceKind::Guest->value === $earlier['recipient_kind'] && null !== $earlier['address']) {
             $this->connection->executeStatement(

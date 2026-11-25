@@ -11,7 +11,7 @@ final class Version20261125191957 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Guest messages (sc-3942): each organisation keeps a keyed hash of every address its guests reported as spam, so removing a guest does not lift the complaint. Complaints already on deliveries are read from there until a removal hashes them.';
+        return 'Guest messages (sc-3942): each organisation keeps a keyed hash of every address its guests reported as spam, under its own key. Written when the complaint lands, so neither a removal nor an event purge lifts it.';
     }
 
     public function up(Schema $schema): void

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\GuestMessages;
 
-use App\Enum\MailProviderReport;
 use App\Enum\NotificationAudienceKind;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use LogicException;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
@@ -17,23 +17,46 @@ use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
-/** The addresses each organisation's guests reported as spam (RFC 6449 §4.3.1): on the deliveries, and as a keyed hash (RFC 2104) once a removal takes the address off them. */
+/** The addresses each organisation's guests reported as spam (RFC 6449 §4.3.1), kept as a keyed hash (RFC 2104) from the moment the report lands, so neither the guest's removal nor the event's purge lifts it. */
 final readonly class GuestComplaints
 {
-    private const string PURPOSE = 'guest-complaint:';
-
     public function __construct(
         private Connection $connection,
         #[SensitiveParameter]
-        #[Autowire('%kernel.secret%')]
-        private string $secret,
+        #[Autowire('%env(GUEST_COMPLAINT_KEY)%')]
+        private string $key,
     ) {
+    }
+
+    /** Keeps the complaint against the guest delivery it names; any other delivery is not a guest's and keeps nothing. */
+    public function keep(string $deliveryId): void
+    {
+        $row = $this->connection->fetchAssociative(
+            <<<'SQL'
+                SELECT e.organisation_id, d.address
+                FROM notification_deliveries d
+                JOIN events e ON e.id = d.event_id
+                WHERE d.id = :id
+                  AND d.recipient_kind = :guest
+                  AND d.address IS NOT NULL
+                SQL,
+            ['id' => $deliveryId, 'guest' => NotificationAudienceKind::Guest->value],
+        );
+
+        if (false === $row) {
+            return;
+        }
+
+        $this->connection->executeStatement(
+            'INSERT INTO guest_complaints (organisation_id, address_hash) VALUES (:organisation, :hash) ON CONFLICT DO NOTHING',
+            ['organisation' => $row['organisation_id'], 'hash' => $this->hash(Type\string()->coerce($row['address']))],
+        );
     }
 
     /**
      * @param list<string> $addresses
      *
-     * @return list<string> those among them a guest of this organisation complained from, compared lowercased and trimmed
+     * @return list<string> those among them a guest of this organisation complained from, lowercased and trimmed
      */
     public function among(Uuid $organisation, array $addresses): array
     {
@@ -41,66 +64,26 @@ final readonly class GuestComplaints
             return [];
         }
 
-        $keys = Vec\map($addresses, self::key(...));
-        $byHash = Dict\from_keys($keys, $this->hash(...));
-        $org = $organisation->toRfc4122();
-
-        $onDeliveries = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
-            <<<'SQL'
-                SELECT DISTINCT LOWER(TRIM(d.address))
-                FROM notification_deliveries d
-                JOIN events e ON e.id = d.event_id
-                WHERE e.organisation_id = :organisation
-                  AND d.provider_report = :complained
-                  AND LOWER(TRIM(d.address)) IN (:addresses)
-                SQL,
-            ['organisation' => $org, 'complained' => MailProviderReport::Complained->value, 'addresses' => $keys],
-            ['addresses' => ArrayParameterType::STRING],
-        ));
+        $byHash = Dict\from_keys(Vec\map($addresses, self::normalised(...)), $this->hash(...));
         $kept = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
             'SELECT address_hash FROM guest_complaints WHERE organisation_id = :organisation AND address_hash IN (:hashes)',
-            ['organisation' => $org, 'hashes' => Vec\values($byHash)],
+            ['organisation' => $organisation->toRfc4122(), 'hashes' => Vec\values($byHash)],
             ['hashes' => ArrayParameterType::STRING],
         ));
 
-        return Vec\unique([...$onDeliveries, ...Vec\keys(Dict\filter($byHash, static fn (string $hash): bool => Iter\contains($kept, $hash)))]);
+        return Vec\keys(Dict\filter($byHash, static fn (string $hash): bool => Iter\contains($kept, $hash)));
     }
 
-    /** @param list<string> $guestIds */
-    public function keepBeforeErasing(array $guestIds): void
+    private function hash(string $address): string
     {
-        if ([] === $guestIds) {
-            return;
+        if ('' === $this->key) {
+            throw new LogicException('GUEST_COMPLAINT_KEY is not set.');
         }
 
-        $rows = $this->connection->fetchAllAssociative(
-            <<<'SQL'
-                SELECT DISTINCT e.organisation_id, LOWER(TRIM(d.address)) AS address
-                FROM notification_deliveries d
-                JOIN events e ON e.id = d.event_id
-                WHERE d.recipient_kind = :guest
-                  AND d.recipient_id IN (:ids)
-                  AND d.provider_report = :complained
-                  AND d.address IS NOT NULL
-                SQL,
-            ['guest' => NotificationAudienceKind::Guest->value, 'ids' => $guestIds, 'complained' => MailProviderReport::Complained->value],
-            ['ids' => ArrayParameterType::STRING],
-        );
-
-        foreach ($rows as $row) {
-            $this->connection->executeStatement(
-                'INSERT INTO guest_complaints (organisation_id, address_hash) VALUES (:organisation, :hash) ON CONFLICT DO NOTHING',
-                ['organisation' => $row['organisation_id'], 'hash' => $this->hash(Type\string()->coerce($row['address']))],
-            );
-        }
+        return \hash_hmac('sha256', self::normalised($address), $this->key);
     }
 
-    private function hash(string $key): string
-    {
-        return \hash_hmac('sha256', self::PURPOSE . $key, $this->secret);
-    }
-
-    private static function key(string $address): string
+    private static function normalised(string $address): string
     {
         return Str\lowercase(Str\trim($address));
     }
