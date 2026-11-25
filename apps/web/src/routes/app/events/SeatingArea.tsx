@@ -2336,7 +2336,7 @@ function Plan({
     canvas = (
       <>
         {empty && !readOnly && placing == null && bar == null ? (
-          <div className="st-float st-bar is-tint" role="status" aria-live="polite">
+          <div className="st-float st-bar is-tint is-floor" role="status" aria-live="polite">
             <Glyph name="info" size={17} weight={2.2} />
             <p>{t('seating.firstItem')}</p>
           </div>
