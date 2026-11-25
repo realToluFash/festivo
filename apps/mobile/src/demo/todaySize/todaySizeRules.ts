@@ -1,4 +1,12 @@
+import { PILL_BESIDE_TABS, pillBesideTabs } from '../../kit/frameBand.ts';
+import {
+  capsuleLabelSize,
+  capsuleRoom,
+  capsuleWidth,
+  pillGivesWay,
+} from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
+import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
 import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
@@ -255,6 +263,50 @@ export function pillTileAlone(
   return (
     atAccessibilitySizes(scale) && widestAtDefault != null && room > 0 && widestAtDefault > room
   );
+}
+
+/** Search and the bell at the upright iPad's right, 40 each with 8 between (`SearchAndBell`). */
+export const UPRIGHT_END = 40 + tokens.spaceSm + 40;
+
+export interface UprightTop {
+  /** The one size the tabs' labels draw at. */
+  labelSize: number;
+  capsule: number;
+  /** The widest the pill may be, 12 short of the centred capsule (sc-30410, sc-92188). */
+  pill: number;
+  /** The tabs are under their own size, so the pill gives way to its tile (sc-40401). */
+  givesWay: boolean;
+  nameRoom: number;
+  waitingRoom: number;
+}
+
+/** The upright iPad's top row at a stand-in scale, as main fits it: the tabs take their room first, from their labels `labels` wide at their own size in a row `row` wide inside its side margins. */
+export function uprightTop(scale: number, labels: readonly number[], row: number): UprightTop {
+  const total = labels.reduce((sum, width) => sum + width, 0);
+  const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, UPRIGHT_END));
+  const capsule = capsuleWidth(scale, labels, labelSize);
+  const pill = pillBesideTabs(row, capsule)?.maxWidth ?? 0;
+  const nameRoom = Math.max(pill - PILL_CHROME, 0);
+
+  return {
+    labelSize,
+    capsule,
+    pill,
+    givesWay: pillGivesWay(scale, labelSize),
+    nameRoom,
+    waitingRoom: Math.max(nameRoom - WAITING_RING, 0),
+  };
+}
+
+/** Before the name's own words are weighed, the upright pill is its tile where the tabs left their own size, or left it under 120 (sc-30410); below AX1 also where its first word and "…" or its invitation line would not fit one line, as on main (sc-38149). */
+export function uprightTile(
+  scale: number,
+  top: UprightTop,
+  widths: { nameStart: number; waitingLine: number | null },
+): boolean {
+  if (top.givesWay || top.pill < PILL_BESIDE_TABS.fewest) return true;
+
+  return !atAccessibilitySizes(scale) && !pillShowsWords(top.pill, widths, false);
 }
 
 export type TodayLive = 'none' | 'dinner' | 'several' | 'oneWord';
