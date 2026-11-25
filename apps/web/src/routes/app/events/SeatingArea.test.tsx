@@ -6854,6 +6854,41 @@ describe('the save line beside the switch (sc-91971)', () => {
     },
   );
 
+  it("measures the row as drawn in the page's language: Floor plan · Saved steps down, Plan · Enregistré stays", async () => {
+    signedIn();
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const drawn =
+          this.classList.contains('st-views') || this.classList.contains('st-top-right');
+        const width = drawn ? 33 * (this.textContent ?? '').length : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+      await screen.findByRole('group', { name: 'View' });
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).not.toBeNull());
+
+      await act(() => i18next.changeLanguage('fr'));
+      await screen.findByText('Enregistré');
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).toBeNull());
+    } finally {
+      measured.mockRestore();
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
   it('steps the save line one line down, and what stood on that line a line further', () => {
     const SHEET = stylesheet(import.meta.dirname, 'seating.css');
 

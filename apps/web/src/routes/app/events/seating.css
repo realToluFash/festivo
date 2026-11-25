@@ -1489,7 +1489,7 @@
   accent-color: var(--colorAccent);
 }
 
-/* sc-91971: at 40rem and under the zoom bar wraps by rule in every locale, Fit the room across its own row, so whatever stands above it steps up by that one 46 px row, and the room grows to hold the stacks from the top and from the floor 12 px apart, with one row to spare for a longer locale. */
+/* sc-91971: the zoom bar wraps onto two rows; what stands above it steps up 46 px. */
 @media (width <= 40rem) {
   .st-zoom {
     display: grid;
