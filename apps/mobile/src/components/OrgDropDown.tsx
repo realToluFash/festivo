@@ -38,7 +38,7 @@ import {
 } from '../kit/orgSwitcher.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { answersStack, answerWidth } from '../layout/pillFit.ts';
-import { labelStart } from '../layout/textSize.ts';
+import { dotKept, labelStart } from '../layout/textSize.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { fadeAway, glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -764,11 +764,6 @@ function WholeRowWords({
       </TitleCap.Provider>
     </View>
   );
-}
-
-/** The dot after "Your role" stays on the word before it, so no line starts with it (sc-92250). */
-function dotKept(line: string): string {
-  return line.replaceAll(' ·', '\u00a0·');
 }
 
 function TileFace({
