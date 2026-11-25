@@ -12,3 +12,9 @@ describe('A new number survives a live text-size change (sc-78438)', () => {
     expect(phoneEntry).toContain('number={typed}');
   });
 });
+
+describe('Add a phone number opens on Mobile number to add (sc-91027)', () => {
+  it('has PhoneEntry focus the number once the screen has settled', () => {
+    expect(phoneEntry).toContain('opensFocused');
+  });
+});

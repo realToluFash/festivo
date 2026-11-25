@@ -18,6 +18,16 @@ export function openedFocus(autoFocus: boolean | undefined, arrival: WindowArriv
   return arrival !== 'still' && autoFocus === true ? 'arrived' : 'mount';
 }
 
+/** How a field that opens focused once its screen has settled, as Add a phone number's does, gets there: in a window that slides in on an Android phone, once the window has arrived, since a focus sent on a timer while Android gives the window focus is lost (sc-91027); anywhere else, `SETTLED_MS` after it shows. */
+export function settledFocus(
+  opensFocused: boolean,
+  arrival: WindowArrival,
+): 'none' | 'timer' | 'arrival' {
+  if (!opensFocused) return 'none';
+
+  return arrival === 'still' ? 'timer' : 'arrival';
+}
+
 /** Ticks, `NEW_FIELD_BOUND_MS` apart, through which a field that waited for its window holds the focus it opens with: Android can give the window focus late, and a focus sent before that is lost (qa2 #91741). */
 export const ARRIVED_FOCUS_TICKS = 20;
 

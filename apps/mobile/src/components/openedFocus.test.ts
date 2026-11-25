@@ -5,6 +5,7 @@ import {
   type ArrivedFocus,
   arrivedFocusStep,
   openedFocus,
+  settledFocus,
   windowArrival,
 } from './openedFocus.ts';
 
@@ -69,5 +70,17 @@ describe('a field a sliding Android window opens with takes typing at once (sc-9
 
   it('moves nothing for a field that took its focus at mount', () => {
     expect(arrivedFocusStep({ ...waiting, opened: 'mount' })).toBe('done');
+  });
+});
+
+describe('Add a phone number takes digits with no tap once it has settled (sc-91027)', () => {
+  it('waits for a sliding window to arrive, not for a timer whose focus Android loses', () => {
+    expect(settledFocus(true, 'arriving')).toBe('arrival');
+    expect(settledFocus(true, 'arrived')).toBe('arrival');
+  });
+
+  it('keeps its timer on an iPhone and a tablet, and does nothing for a number that does not open focused', () => {
+    expect(settledFocus(true, 'still')).toBe('timer');
+    expect(settledFocus(false, 'arriving')).toBe('none');
   });
 });
