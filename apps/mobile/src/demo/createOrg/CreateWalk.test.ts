@@ -87,7 +87,7 @@ describe('the states', () => {
 describe('step 1 checks the name', () => {
   it('refuses a blank name in main’s words', () => {
     expect(stepRefusal({ ...freshWalk(SAMPLE_DEVICE), name: '   ' }, t)).toBe(
-      "Enter the organisation's name.",
+      'Enter the organisation’s name.',
     );
   });
 

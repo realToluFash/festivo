@@ -8,6 +8,7 @@ import {
   CAPSULE_HEIGHT,
   fittedLabelSize,
   LABEL_IN_BAND,
+  openerRoom,
   pillGivesWay,
 } from './capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -111,5 +112,20 @@ describe('the capsule’s width, upright (sc-91290)', () => {
   it('is nothing before the labels are measured and fitted', () => {
     expect(laidOut(2, [60, undefined], 20)).toBe(0);
     expect(laidOut(2, [60, 80], undefined)).toBe(0);
+  });
+});
+
+describe('the upright opener beside the capsule (sc-92188)', () => {
+  it('stops short of the capsule centred in the row, inside the row’s margin', () => {
+    expect(openerRoom(800, 400)).toBe(200 - tokens.space3xl - tokens.spaceSm);
+  });
+
+  it('has no limit before the row is laid out or the capsule is drawn', () => {
+    expect(openerRoom(undefined, 400)).toBeUndefined();
+    expect(openerRoom(800, 0)).toBeUndefined();
+  });
+
+  it('is never under nothing', () => {
+    expect(openerRoom(400, 400)).toBe(0);
   });
 });

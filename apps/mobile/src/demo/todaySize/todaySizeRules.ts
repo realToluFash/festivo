@@ -1,4 +1,13 @@
+import { PILL_BESIDE_TABS } from '../../kit/frameBand.ts';
+import {
+  capsuleLabelSize,
+  capsuleRoom,
+  capsuleWidth,
+  openerRoom,
+  pillGivesWay,
+} from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
+import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
 import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
@@ -162,4 +171,210 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   return SIZE_EVENTS.map((event, index) =>
     index === 0 && name === 'oneWord' ? { ...event, name: ONE_WORD } : event,
   );
+}
+
+export type TodayWeek = 'quiet' | 'days';
+
+export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
+  { key: 'quiet', label: 'Nothing on' },
+  { key: 'days', label: 'Days with events' },
+];
+
+export const DAY_NAME = 14;
+export const DAY_DATE = 13.5;
+
+export interface WeekDay {
+  date: string;
+  rows: readonly { time: string; title: string; key: SizeEvent['key']; note: string }[];
+}
+
+/** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an item on it as main's agenda draws one; the last has no note. */
+export const WEEK_DAYS: readonly WeekDay[] = [
+  {
+    date: SIZE_TODAY,
+    rows: [{ time: '19:00', title: 'Replies close', key: 'ireti', note: 'Automatic' }],
+  },
+  {
+    date: '2026-11-26',
+    rows: [{ time: '10:30', title: 'Meal choices close', key: 'wed', note: 'Automatic' }],
+  },
+  {
+    date: '2026-11-29',
+    rows: [{ time: '20:00', title: 'The party starts', key: 'party', note: '' }],
+  },
+];
+
+/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
+export function dayLineShares(
+  name: number,
+  dottedDate: number,
+  gap: number,
+  room: number,
+): boolean {
+  return name + gap + dottedDate <= room;
+}
+
+export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
+export type TodayInvite = 'none' | 'one';
+
+export const TODAY_ORGS: readonly { key: TodayOrg; label: string }[] = [
+  { key: 'qa', label: 'QA Organisation' },
+  { key: 'lumen', label: 'Lumen Studio' },
+  { key: 'ire', label: 'Ìrè Events' },
+  { key: 'several', label: 'Atelier Céleste Réceptions et Mariages' },
+  { key: 'oneWord', label: ONE_WORD },
+];
+
+export const TODAY_INVITES: readonly { key: TodayInvite; label: string }[] = [
+  { key: 'none', label: 'None waiting' },
+  { key: 'one', label: 'One waiting' },
+];
+
+export function orgName(org: TodayOrg): string {
+  return TODAY_ORGS.find((one) => one.key === org)?.label ?? 'QA Organisation';
+}
+
+/** Main's pill on the phone's cover: the name at 15, the invitation line at 12.5, the tile 28, the caret 14. */
+export const PILL_NAME = 15;
+export const PILL_WAITING = 12.5;
+export const PILL_WAITING_LINE = 1.3;
+
+/** The invitation line's first line at `drawn`, the height the ring is centred on where the line wraps (sc-92912). */
+export function waitingFirstLine(drawn: number): number {
+  return Math.ceil(drawn * PILL_WAITING_LINE);
+}
+const PILL_TILE = 28;
+const PILL_CARET = 14;
+const PILL_RING = 11;
+// Search and the bell, 40 each with 8 between, and the row's gap either side of its spacer.
+const PILL_ENDS = 40 + tokens.spaceSm + 40 + 2 * tokens.spaceSm;
+const PILL_INSIDE =
+  tokens.spaceSm + PILL_TILE + tokens.spaceSm + tokens.spaceSm + PILL_CARET + tokens.spacePillEnd;
+
+/** The name's line in the pill, from the cover row's width between its sides: 186 on an iPhone 17 Pro (370). */
+export function pillNameRoom(row: number): number {
+  return Math.max(row - PILL_ENDS - PILL_INSIDE, 0);
+}
+
+/** The invitation line's room: the name's, less its ring and the gap after it. */
+export function pillWaitingRoom(row: number): number {
+  return Math.max(pillNameRoom(row) - PILL_RING - tokens.spaceXs, 0);
+}
+
+/** From AX1 the pill is its tile alone only where its widest word, at the name's default size, is wider than its line (sc-38149's tile). */
+export function pillTileAlone(
+  scale: number,
+  widestAtDefault: number | null,
+  room: number,
+): boolean {
+  return (
+    atAccessibilitySizes(scale) && widestAtDefault != null && room > 0 && widestAtDefault > room
+  );
+}
+
+/** Search and the bell at the upright iPad's right, 40 each with 8 between (`SearchAndBell`). */
+export const UPRIGHT_END = 40 + tokens.spaceSm + 40;
+
+export interface UprightTop {
+  /** The one size the tabs' labels draw at. */
+  labelSize: number;
+  capsule: number;
+  /** The widest the pill may be, 8 short of the centred capsule, as the app's `openerRoom` leaves it (sc-30410, sc-92188). */
+  pill: number;
+  /** The tabs are under their own size, so the pill gives way to its tile (sc-40401). */
+  givesWay: boolean;
+  nameRoom: number;
+  waitingRoom: number;
+}
+
+/** The upright iPad's top row at a stand-in scale, as main fits it: the tabs take their room first, from their labels `labels` wide at their own size in a row `row` wide inside its side margins, `end` wide at its right. */
+export function uprightTop(
+  scale: number,
+  labels: readonly number[],
+  row: number,
+  end = UPRIGHT_END,
+): UprightTop {
+  const total = labels.reduce((sum, width) => sum + width, 0);
+  const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, end));
+  const capsule = capsuleWidth(scale, labels, labelSize);
+  const pill = openerRoom(row + 2 * tokens.space3xl, capsule) ?? 0;
+  const nameRoom = Math.max(pill - PILL_CHROME, 0);
+
+  return {
+    labelSize,
+    capsule,
+    pill,
+    givesWay: pillGivesWay(scale, labelSize),
+    nameRoom,
+    waitingRoom: Math.max(nameRoom - WAITING_RING, 0),
+  };
+}
+
+/** Before the name's own words are weighed, the upright pill is its tile where the tabs left their own size, or left it under 120 (sc-30410); below AX1 also where its first word and "…" or its invitation line would not fit one line, as on main (sc-38149). */
+export function uprightTile(
+  scale: number,
+  top: UprightTop,
+  widths: { nameStart: number; waitingLine: number | null },
+): boolean {
+  if (top.givesWay || top.pill < PILL_BESIDE_TABS.fewest) return true;
+
+  return !atAccessibilitySizes(scale) && !pillShowsWords(top.pill, widths, false);
+}
+
+export type TodayLive = 'none' | 'dinner' | 'several' | 'oneWord';
+
+export const TODAY_LIVES: readonly { key: TodayLive; label: string }[] = [
+  { key: 'none', label: 'Nothing live' },
+  { key: 'dinner', label: 'Dîner en direct' },
+  { key: 'several', label: 'Atelier Céleste Réceptions et Mariages' },
+  { key: 'oneWord', label: 'One long word' },
+];
+
+export function liveName(live: TodayLive): string | null {
+  if (live === 'none') return null;
+
+  return live === 'oneWord'
+    ? ONE_WORD
+    : (TODAY_LIVES.find((one) => one.key === live)?.label ?? null);
+}
+
+/** Main's live cover on its side (NowBlock, wide): the name at 48, the end line and Open the event at 16, the chips at 13. */
+export const LIVE_NAME = 48;
+export const LIVE_ENDS = 16;
+export const LIVE_CHIP = 13;
+export const LIVE_OPEN = 16;
+/** The one-day event is live until 23:30 today, with no venue, so its chip reads Day 1 of 1 alone. */
+export const LIVE_ENDS_AT = '23:30';
+
+/** From AX1 Open the event takes the line under the end line, so the name keeps the cover's width (sc-92312). */
+export function openUnder(scale: number): boolean {
+  return atAccessibilitySizes(scale);
+}
+
+/** Main's switcher rows from AX1 (`ROWS`): the question at 18, the name at 15, the role line and Current at 13, the tile 56. */
+export const SWITCHER_ASKS = 18;
+export const SWITCHER_NAME = 15;
+export const SWITCHER_LINE = 13;
+export const SWITCHER_TILE = 56;
+
+/** The switcher's rows in the demo: the organisation you are in first, then every other the demo knows, so each stays reachable from any of them. */
+export function switcherOrgs(current: TodayOrg): TodayOrg[] {
+  return [current, ...TODAY_ORGS.map((one) => one.key).filter((key) => key !== current)];
+}
+
+const NO_BREAK = String.fromCharCode(0xa0);
+
+/** The pieces a dot-kept line wraps between: a lone · stays on the word before it. */
+export function piecesKeepingDot(line: string): string[] {
+  const pieces: string[] = [];
+  for (const word of line
+    .split(' ')
+    .flatMap((part) => part.split(NO_BREAK))
+    .filter((one) => one !== '')) {
+    const last = pieces.length - 1;
+    if (word === '·' && last >= 0) pieces[last] = `${pieces[last]}${NO_BREAK}·`;
+    else pieces.push(...piecesOfLine(word));
+  }
+
+  return [...new Set(pieces)];
 }

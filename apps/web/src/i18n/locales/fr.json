@@ -2796,6 +2796,7 @@
     "roomSettings": "Paramètres de la salle",
     "roomLine": "{{name}} · {{width}} × {{roomLength}}",
     "roomLineUnnamed": "{{width}} × {{roomLength}}",
+    "roomNameCut": "{{name}}…",
     "roomGroup": "Plan de la salle, {{name}}, {{width}} sur {{roomLength}}",
     "roomGroupUnnamed": "Plan de la salle, {{width}} sur {{roomLength}}",
     "firstItem": "Ajoutez votre première table, rangée ou place depuis la barre ci-dessous.",

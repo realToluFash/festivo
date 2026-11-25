@@ -5,6 +5,7 @@ import {
   capChipInDisc,
   capInDisc,
   capUnderTitle,
+  dotKept,
   drawnLine,
   drawnSize,
   besideGlyph,
@@ -149,6 +150,17 @@ describe('wordsIn', () => {
       'votre',
       'application',
     ]);
+  });
+
+  it('keeps the two sides of a no-break space one word', () => {
+    expect(wordsIn([dotKept('Your role · Owner')])).toEqual(['Your', 'role\u00a0·', 'Owner']);
+  });
+});
+
+describe('dotKept', () => {
+  it('ties the dot to the word before it', () => {
+    expect(dotKept('Your role · Owner')).toBe('Your role\u00a0· Owner');
+    expect(dotKept('Votre rôle · Owner')).toBe('Votre rôle\u00a0· Owner');
   });
 });
 

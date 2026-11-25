@@ -48,6 +48,8 @@ export const SW = {
   room: 'Room',
   roomSettings: 'Room settings',
   roomLine: '{{name}} · {{width}} × {{length}}',
+  roomSize: '{{width}} × {{length}}',
+  roomNameCut: '{{name}}…',
   snap: 'Snap to grid',
   sections: 'Sections',
   sectionsCount: 'Sections · {{n}}',

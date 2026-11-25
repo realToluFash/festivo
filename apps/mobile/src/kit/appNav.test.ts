@@ -233,7 +233,7 @@ describe('The bell titles itself once (sc-3980)', () => {
     const parts = source(join(SRC, 'components', 'BellParts.tsx'));
 
     expect(feed).not.toMatch(/notifications\.heading/u);
-    expect(parts.match(/\{t\('notifications\.heading'\)\}/gu)).toHaveLength(2);
+    expect(parts.match(/t\('notifications\.heading'\)/gu)).toHaveLength(2);
     expect(screen).toMatch(/title=\{t\('notifications\.heading'\)\}\s*titleRef=\{title\}/u);
     expect(screen).toMatch(/kind: 'framed', heading: title, onOffline: setOffline/u);
   });

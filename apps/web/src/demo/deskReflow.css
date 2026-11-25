@@ -56,7 +56,8 @@
     flex-basis: 100%;
   }
 
-  .today.desk:not(.dp-fit) :is(.st-float.st-bar, .st-under-views, .st-view-wrap) {
+  /* sc-92210: the first-table banner keeps the room's middle, so it is the one floating bar that does not step down. */
+  .today.desk:not(.dp-fit) :is(.st-float.st-bar:not(.is-floor), .st-under-views, .st-view-wrap) {
     top: 118px;
   }
 

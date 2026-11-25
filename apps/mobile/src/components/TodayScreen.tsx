@@ -108,7 +108,9 @@ function Scrolled({
   const scroller = useRef<ScrollViewInstance>(null);
   // The cover grows past the board's height when its words wrap, so the fold follows what it measures.
   const [body, setBody] = useState(() => coverBody(moment, layout));
-  const foldAt = body - bandBody(moment, layout) - SHEET_RISE;
+  // At the accessibility sizes the tablet's band grows past its body to keep the live line whole, so the fold follows what the band measures.
+  const [bandHeight, setBandHeight] = useState(() => bandBody(moment, layout));
+  const foldAt = body - bandHeight - SHEET_RISE;
   const bandFrom = foldAt - tokens.space3xl;
   const band = offset.interpolate({
     inputRange: [bandFrom, foldAt],
@@ -182,6 +184,7 @@ function Scrolled({
       </Animated.ScrollView>
       <Animated.View
         style={[styles.band, { opacity: band }]}
+        onLayout={(event) => setBandHeight(event.nativeEvent.layout.height - insets.top)}
         pointerEvents={folded ? 'box-none' : 'none'}
         accessibilityElementsHidden={!folded}
         importantForAccessibility={folded ? 'auto' : 'no-hide-descendants'}

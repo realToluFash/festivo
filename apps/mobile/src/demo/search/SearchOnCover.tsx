@@ -19,7 +19,9 @@ import {
 import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
-import { useLayout } from '../../layout/useLayout.ts';
+import { useAccessibilitySizes, useLayout } from '../../layout/useLayout.ts';
+import { openerRoom } from '../../layout/capsuleFit.ts';
+import { uprightNameRoom } from '../../layout/pillFit.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { demoShell } from '../demoShell.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
@@ -122,7 +124,7 @@ function PhoneTop({ now, top }: { now: boolean; top: number }) {
   );
 }
 
-/** `TodayCover`'s `TabletTop` with the 88 end: the capsule sizes its labels clear of it, and the opener keeps to the left of the capsule, giving way where the tabs took its room. */
+/** `TodayCover`'s `TabletTop` with the 88 end: the capsule sizes its labels clear of it, and the opener keeps to the left of the capsule, giving way where the tabs took its room; from AX1 its words stay whole and it grows down (sc-92314). */
 function TabletTop({
   compact,
   top,
@@ -134,30 +136,32 @@ function TabletTop({
 }) {
   const { t } = useTranslation();
   const [row, setRow] = useState<number>();
-  const [capsule, setCapsule] = useState<number>();
   const labels = TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
   const inside = row == null ? 0 : Math.max(0, row - 2 * tokens.space3xl);
-  const { labelSize, givesWay, measure } = useCapsuleLabels(labels, inside, ENDS);
-  const room =
-    row == null || capsule == null
-      ? undefined
-      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(labels, inside, ENDS);
+  const room = openerRoom(row, width);
+  const large = useAccessibilitySizes();
 
   return (
     <View
-      style={[styles.topTablet, { marginTop: top }]}
+      style={[styles.topTablet, large && styles.topTabletTall, { marginTop: top }]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {measure}
-      <OrgButton compact={compact} maxWidth={room} givesWay={givesWay} />
+      <OrgButton
+        compact={compact}
+        maxWidth={room}
+        givesWay={givesWay}
+        nameRoom={large ? uprightNameRoom(room) : undefined}
+      />
       <View style={styles.grow} />
       <View style={styles.ends}>
         <GlassSearchButton />
         <BellButton />
       </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
-        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} labelSize={labelSize} />
+        <View key={labelSize}>
+          {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
     </View>
@@ -190,6 +194,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.space3xl,
   },
+  topTabletTall: { alignItems: 'flex-start' },
   grow: { flex: 1, minWidth: 0 },
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   title: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },

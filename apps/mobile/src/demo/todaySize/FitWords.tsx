@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { type Ref, useEffect, useState } from 'react';
 import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 
-import { Text } from '../../components/Text.tsx';
+import { Text, type TextHandle } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { piecesOfLine, wordsSize, wordsStart } from './todaySizeRules.ts';
@@ -20,6 +20,8 @@ export function FitWords({
   style,
   onDrawn,
   testID,
+  ref,
+  pieces: given,
 }: {
   text: string;
   size: number;
@@ -33,10 +35,13 @@ export function FitWords({
   style?: StyleProp<TextStyle> | undefined;
   onDrawn?: (size: number) => void;
   testID?: string;
+  ref?: Ref<TextHandle>;
+  /** Where the text may wrap, when not only between its words. */
+  pieces?: readonly string[];
 }) {
   const start = wordsStart(size, scale, cap);
   const key = `${start}|${weight}|${text}`;
-  const pieces = piecesOfLine(text);
+  const pieces = given ?? piecesOfLine(text);
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
     key: '',
     widths: {},
@@ -72,6 +77,7 @@ export function FitWords({
       <Text
         // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
         key={drawn}
+        ref={ref}
         size={drawn}
         weight={weight}
         allowFontScaling={false}

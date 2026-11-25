@@ -38,7 +38,12 @@ import {
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { EVENTS, type EventKey, sample, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
+import { LiveBanner } from './TodaySizeLive.tsx';
+import { PillRow } from './TodaySizePill.tsx';
 import { SizeEvents } from './TodaySizeEvents.tsx';
+import { SizeOrg, orgId } from './TodaySizeSwitcher.tsx';
+import { UprightRow } from './TodaySizeUpright.tsx';
+import { WeekDays } from './TodaySizeWeek.tsx';
 import {
   HEAD,
   HEAD_LINK,
@@ -46,14 +51,24 @@ import {
   SIZE_EVENTS,
   TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
+  TODAY_INVITES,
+  TODAY_LIVES,
   TODAY_NAMES,
+  TODAY_ORGS,
+  TODAY_WEEKS,
   type TodayEventName,
   type TodayGreeting,
+  type TodayInvite,
+  type TodayLive,
   type TodayName,
+  type TodayOrg,
+  type TodayWeek,
   greetingMost,
   greetingName,
   greetingSize,
   linkUnder,
+  liveName,
+  orgName,
   sizeEvents,
   subSize,
   weekWidth,
@@ -66,6 +81,11 @@ export interface TodaySizeStart {
   name: TodayName;
   greeting: TodayGreeting;
   event: TodayEventName;
+  org: TodayOrg;
+  invite: TodayInvite;
+  live: TodayLive;
+  week: TodayWeek;
+  switcher: boolean;
 }
 
 const TODAY = '2026-11-25';
@@ -94,6 +114,11 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   const [name, setName] = useState(start.name);
   const [greeting, setGreeting] = useState(start.greeting);
   const [event, setEvent] = useState(start.event);
+  const [org, setOrg] = useState(start.org);
+  const [invite, setInvite] = useState(start.invite);
+  const [live, setLive] = useState(start.live);
+  const place = useMemo(() => ({ id: orgId(org), name: orgName(org), role: 'Owner' }), [org]);
+  const [week, setWeek] = useState(start.week);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -112,21 +137,37 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
     [tell],
   );
 
+  const sizeOrg = useMemo(
+    () => ({
+      org,
+      onSwitch: (to: TodayOrg, said: string) => {
+        setOrg(to);
+        tell(said);
+      },
+      openAtStart: start.switcher,
+    }),
+    [org, tell, start.switcher],
+  );
   const page = (
     <I18nextProvider i18n={words}>
-      <TodayPage
-        kind={kind}
-        scale={scale}
-        language={language}
-        name={name}
-        greeting={greeting}
-        event={event}
-      />
+      <SizeOrg.Provider value={sizeOrg}>
+        <TodayPage
+          kind={kind}
+          scale={scale}
+          language={language}
+          name={name}
+          greeting={greeting}
+          event={event}
+          waiting={invite === 'one' ? 1 : 0}
+          live={side ? liveName(live) : null}
+          week={week}
+        />
+      </SizeOrg.Provider>
     </I18nextProvider>
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day and the events’ names. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. Under This week each day’s date follows its name after a dot only while both fit one line whole; otherwise the date takes the line under, without its dot. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. From AX1 one tap on the phone’s pill opens a stand-in for Where are you working?, drawn at the size chosen as main draws its rows from AX1: each row’s name wraps only between its words and steps down only as far as its widest word needs, never under its default size and with no line limit; a word too wide even then draws at its default size and breaks only where its line is full, every letter shown; the role line and Current each step alone, never larger than the name, and the role line’s dot stays on the word before it. The organisation you are in comes first, one tap on another switches to it, and Create an organisation, at the foot, opens its walk. Below AX1, and on the iPad, the pill opens main’s switcher at this device’s size. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. On its side, with an event live, the cover is its banner: Live now and Day 1 of 1 each step alone inside their chips and the second takes the line under the first where both do not fit, the name steps until its widest word fits and never draws smaller than the end line under it, and from AX1 Open the event takes the line under the end line; Open the event shows a toast here, as the event page has its own design. Upright and on the phone the live cover is not drawn here (sc-92312 is on its side only). At the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -167,6 +208,38 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           id="event"
           prefix="demo.todaySize"
         />
+        <Choices
+          heading="Organisation"
+          options={TODAY_ORGS}
+          chosen={org}
+          onChoose={setOrg}
+          id="org"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="Invitations"
+          options={TODAY_INVITES}
+          chosen={invite}
+          onChoose={setInvite}
+          id="invite"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="Live event"
+          options={TODAY_LIVES}
+          chosen={live}
+          onChoose={setLive}
+          id="live"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="This week"
+          options={TODAY_WEEKS}
+          chosen={week}
+          onChoose={setWeek}
+          id="week"
+          prefix="demo.todaySize"
+        />
       </DemoOnly>
     </View>
   );
@@ -201,15 +274,24 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   }
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}
-      >
-        <NavBar />
-        {page}
-        {choices}
-      </ScrollView>
-    </View>
+    <OrgSwitcherProvider state={null} place={place} tell={tell}>
+      <TodayShellProvider value={shell}>
+        <View style={styles.screen}>
+          <ScrollView
+            contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}
+          >
+            <NavBar />
+            {page}
+            {choices}
+          </ScrollView>
+          {told != null && (
+            <View style={[styles.toast, { bottom: insets.bottom + tokens.spaceXl }]}>
+              <Toast key={told} words={told} onClose={() => setTold(null)} />
+            </View>
+          )}
+        </View>
+      </TodayShellProvider>
+    </OrgSwitcherProvider>
   );
 }
 
@@ -220,6 +302,9 @@ function TodayPage({
   name,
   greeting,
   event,
+  waiting,
+  live,
+  week,
 }: {
   kind: LayoutKind;
   scale: number;
@@ -227,6 +312,9 @@ function TodayPage({
   name: TodayName;
   greeting: TodayGreeting;
   event: TodayEventName;
+  waiting: number;
+  live: string | null;
+  week: TodayWeek;
 }) {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
@@ -238,10 +326,11 @@ function TodayPage({
     weekday: say.weekdayLong(PARTY_DAY),
   });
   const [greetingDrawn, setGreetingDrawn] = useState<number | null>(null);
-  const cap = greetingDrawn ?? Infinity;
+  // While an event is live no greeting shows, so nothing caps the headings, as on main.
+  const cap = live == null ? (greetingDrawn ?? Infinity) : Infinity;
 
   const needs = <Head title={t('todayScreen.needsYou')} count={2} scale={scale} cap={cap} />;
-  const week = (
+  const thisWeek = (
     <>
       <Head
         title={t('todayScreen.thisWeek')}
@@ -250,7 +339,11 @@ function TodayPage({
         scale={scale}
         cap={cap}
       />
-      <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
+      {week === 'days' ? (
+        <WeekDays locale={language} scale={scale} cap={cap} wide={kind !== 'phone'} />
+      ) : (
+        <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
+      )}
     </>
   );
   const events = (
@@ -274,19 +367,24 @@ function TodayPage({
 
   return (
     <View style={styles.today}>
-      <Cover
-        kind={kind}
-        scale={scale}
-        eyebrow={say.long(TODAY)}
-        hello={hello}
-        sub={sub}
-        onDrawn={setGreetingDrawn}
-      />
+      {live != null ? (
+        <LiveBanner name={live} scale={scale} />
+      ) : (
+        <Cover
+          kind={kind}
+          scale={scale}
+          eyebrow={say.long(TODAY)}
+          hello={hello}
+          sub={sub}
+          waiting={waiting}
+          onDrawn={setGreetingDrawn}
+        />
+      )}
       {kind === 'tabletLandscape' ? (
         <View style={styles.columns}>
           <View style={styles.grow}>
             {needs}
-            <View style={styles.gapAbove}>{week}</View>
+            <View style={styles.gapAbove}>{thisWeek}</View>
           </View>
           <View style={styles.eventsColumn}>{events}</View>
         </View>
@@ -294,14 +392,14 @@ function TodayPage({
         <View style={styles.sections}>
           {needs}
           <View style={[styles.columns, styles.gapAbove]}>
-            <View style={{ width: weekWidth(width) }}>{week}</View>
+            <View style={{ width: weekWidth(width) }}>{thisWeek}</View>
             <View style={styles.grow}>{events}</View>
           </View>
         </View>
       ) : (
         <View style={styles.sections}>
           {needs}
-          <View style={styles.gapAbove}>{week}</View>
+          <View style={styles.gapAbove}>{thisWeek}</View>
           <View style={styles.gapAbove}>{events}</View>
         </View>
       )}
@@ -315,6 +413,7 @@ function Cover({
   eyebrow,
   hello,
   sub,
+  waiting,
   onDrawn,
 }: {
   kind: LayoutKind;
@@ -322,6 +421,7 @@ function Cover({
   eyebrow: string;
   hello: string;
   sub: string;
+  waiting: number;
   onDrawn: (size: number) => void;
 }) {
   const [room, setRoom] = useState(0);
@@ -332,6 +432,16 @@ function Cover({
 
   return (
     <View style={kind === 'tabletLandscape' ? styles.banner : styles.cover}>
+      {kind === 'phone' && (
+        <View style={styles.coverTop}>
+          <PillRow scale={scale} cap={drawn ?? Infinity} waiting={waiting} />
+        </View>
+      )}
+      {kind === 'tabletPortrait' && (
+        <View style={styles.coverTop}>
+          <UprightRow scale={scale} cap={drawn ?? Infinity} waiting={waiting} onTab={toTab} />
+        </View>
+      )}
       <View
         style={[styles.foot, greetingMost(kind) != null && { maxWidth: greetingMost(kind) }]}
         onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
@@ -544,6 +654,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space4xl,
     paddingHorizontal: 30,
   },
+  coverTop: { marginTop: -tokens.space4xl, marginBottom: tokens.space4xl },
   foot: { gap: tokens.spaceSm },
   white: { color: tokens.colorInkOnDark },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
