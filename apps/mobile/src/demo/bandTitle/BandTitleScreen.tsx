@@ -77,7 +77,7 @@ export function BandTitleScreen({ start }: { start: BandTitleStart }) {
           <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
             <NavBar />
             <View style={styles.page}>
-              <DemoOnly title="Stand-ins for the device’s text size, its language and the moment. The band’s title draws at the size chosen; the tile, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s. From AX1 the title is one line, whole, at least 8 clear of the tile and of Search: centred on the screen while it fits there, else centred in the room between them, stepped down to the largest size that fits that room and the row’s height, never under its default size. Nothing is sent and no string is added.">
+              <DemoOnly title="Stand-ins for the device’s text size, its language and the moment. The band’s title draws at the size chosen; the tile, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s, less the three confetti pieces main draws on a day with no event, which this demo leaves out. From AX1 the title is one line, whole, at least 8 clear of the tile and of Search: centred on the screen while it fits there, else centred in the room between them, stepped down to the largest size that fits that room and the row’s height, never under its default size. Nothing is sent and no string is added.">
                 <Choices
                   heading="Text size"
                   options={FILTER_SIZES}

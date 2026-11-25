@@ -1,4 +1,4 @@
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
+import { atAccessibilitySizes, fitWidest } from '../../layout/textSize.ts';
 
 export const BAND_TITLE = 17;
 export const BAND_LINE = 1.2;
@@ -51,8 +51,7 @@ export function bandTitle(scale: number, wideAtStart: number, row: BandRow): Ban
 
   const tallest = Math.floor(BAND_TALLEST / BAND_LINE);
   const room = bandRoom(row);
-  const wideFit = wideAtStart <= room ? start : Math.floor((start * room) / wideAtStart);
-  const size = Math.max(BAND_TITLE, Math.min(start, tallest, wideFit));
+  const size = Math.min(tallest, fitWidest(BAND_TITLE, start, wideAtStart, room));
   const wide = (wideAtStart * size) / start;
 
   return { size, centred: fitsOnScreen(row, wide) ? 'screen' : 'room' };
