@@ -41,6 +41,7 @@ import {
   MESSAGE_MAXIMUM,
   SUBJECT_MAXIMUM,
   closedOf,
+  conversationsOf,
   fieldOfPath,
   firstRefused,
   matching,
@@ -53,11 +54,13 @@ import './messages.css';
 const CHIPS_SHOWN = 6;
 const CANT_SHOWN = 2;
 
+type Draft = { who: Who; openTo: boolean; body: string; follows: string | null };
+
 type Pane =
   | { kind: 'idle' }
-  | { kind: 'compose'; who: Who; openTo: boolean }
+  | ({ kind: 'compose' } & Draft)
   | { kind: 'message'; id: string }
-  | { kind: 'reached'; id: string };
+  | { kind: 'reached'; id: string; of: string };
 
 type ListLoad =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; messages: GuestMessageRow[] };
@@ -120,6 +123,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     if (target == null) return;
     pending.current = null;
     target.focus();
+    if (target instanceof HTMLTextAreaElement)
+      target.setSelectionRange(target.value.length, target.value.length);
   });
 
   const say = useCallback((words: string) => {
@@ -138,11 +143,13 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
 
   function startNew(): void {
     if (closed != null || !manage) return;
-    if (pane.kind !== 'compose') setPane({ kind: 'compose', who: { kind: 'all' }, openTo: false });
+    if (pane.kind !== 'compose')
+      setPane({ kind: 'compose', who: { kind: 'all' }, openTo: false, body: '', follows: null });
     focus('subject');
   }
 
-  const lit = pane.kind === 'message' || pane.kind === 'reached' ? pane.id : null;
+  const lit = pane.kind === 'message' ? pane.id : pane.kind === 'reached' ? pane.of : null;
+  const conversations = list.kind === 'loaded' ? conversationsOf(list.messages) : [];
 
   return (
     <div ref={root} className="desk ev desk-page ev-msgs">
@@ -185,7 +192,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               </div>
             ) : (
               <Rows
-                messages={list.messages}
+                conversations={conversations}
                 lit={lit}
                 onOpen={(id) => {
                   setPane({ kind: 'message', id });
@@ -203,7 +210,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               first={pane}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
-                setPane({ kind: 'message', id });
+                setPane({ kind: 'message', id: pane.follows ?? id });
                 again();
                 focus('heading');
               }}
@@ -212,14 +219,18 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
             <MessagePane
               key={pane.id}
               desk={desk}
-              id={pane.id}
+              ids={
+                conversations.find((one) => one.id === pane.id)?.messages.map((one) => one.id) ?? [
+                  pane.id,
+                ]
+              }
               ask={ask}
-              onWho={() => {
-                setPane({ kind: 'reached', id: pane.id });
+              onWho={(id) => {
+                setPane({ kind: 'reached', id, of: pane.id });
                 focus('heading');
               }}
-              onFollow={(who) => {
-                setPane({ kind: 'compose', who, openTo: false });
+              onFollow={(who, body) => {
+                setPane({ kind: 'compose', who, openTo: false, body, follows: pane.id });
                 focus('body');
               }}
             />
@@ -230,7 +241,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               id={pane.id}
               ask={ask}
               onBack={() => {
-                setPane({ kind: 'message', id: pane.id });
+                setPane({ kind: 'message', id: pane.of });
                 focus('heading');
               }}
             />
@@ -238,8 +249,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
             <Idle
               desk={desk}
               empty={list.kind === 'loaded' && list.messages.length === 0}
-              onWrite={(openTo) => {
-                setPane({ kind: 'compose', who: { kind: 'all' }, openTo });
+              onWrite={(openTo, body) => {
+                setPane({ kind: 'compose', who: { kind: 'all' }, openTo, body, follows: null });
                 if (!openTo) focus('body');
               }}
             />
@@ -290,25 +301,34 @@ function titleOf(message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>): s
   return message.subject?.trim() ? guestMessageTitle(message) : shortTitle(message.firstLine);
 }
 
+type Conversation = { id: string; messages: GuestMessageRow[] };
+
 function Rows({
-  messages,
+  conversations,
   lit,
   onOpen,
 }: {
-  messages: readonly GuestMessageRow[];
+  conversations: readonly Conversation[];
   lit: string | null;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const sending = messages.filter((message) => message.sending);
-  const done = messages.filter((message) => !message.sending);
+  const latest = (one: Conversation) => one.messages[one.messages.length - 1] ?? one.messages[0];
+  const sending = conversations.filter((one) => latest(one)?.sending);
+  const done = conversations.filter((one) => !latest(one)?.sending);
 
-  const rows = (some: readonly GuestMessageRow[]) => (
+  const rows = (some: readonly Conversation[]) => (
     <ul className="mg-rows">
-      {some.map((message) => {
-        const on = message.id === lit;
-        const title = titleOf(message);
+      {some.map((conversation) => {
+        const first = conversation.messages[0];
+        const message = latest(conversation);
+        if (first == null || message == null) return null;
+        const on = conversation.id === lit;
+        const title = titleOf(first);
         const line = [
+          ...(conversation.messages.length > 1 && message.sending
+            ? [t('eventMessages.followUp')]
+            : []),
           audienceWords(message, t),
           message.sentBy,
           t('eventMessages.email'),
@@ -319,14 +339,14 @@ function Rows({
         const when = whenWords(message.sentAt);
 
         return (
-          <li key={message.id}>
+          <li key={conversation.id}>
             <button
               type="button"
               className={on ? 'mg-row is-on' : 'mg-row'}
               aria-label={[title, line, when].join(', ')}
               aria-current={on ? 'true' : undefined}
-              data-focus={`row:${message.id}`}
-              onClick={() => onOpen(message.id)}
+              data-focus={`row:${conversation.id}`}
+              onClick={() => onOpen(conversation.id)}
             >
               <GroupMark />
               <span className="desk-row-words">
@@ -363,7 +383,7 @@ function Idle({
 }: {
   desk: Desk;
   empty: boolean;
-  onWrite: (openTo: boolean) => void;
+  onWrite: (openTo: boolean, body: string) => void;
 }) {
   const { t } = useTranslation();
   const line = empty
@@ -388,6 +408,7 @@ function Idle({
   );
 }
 
+/** The composer waiting at the foot: its To, and a field that opens the full composer on the first key and keeps it. */
 function MiniComposer({
   desk,
   chip,
@@ -397,7 +418,7 @@ function MiniComposer({
   desk: Desk;
   chip: string;
   placeholder: string;
-  onWrite: (openTo: boolean) => void;
+  onWrite: (openTo: boolean, body: string) => void;
 }) {
   const { t } = useTranslation();
   const off = desk.whyOff != null;
@@ -412,7 +433,7 @@ function MiniComposer({
           aria-haspopup="dialog"
           aria-expanded="false"
           aria-describedby={desk.whyOff}
-          onClick={() => onWrite(true)}
+          onClick={() => onWrite(true, '')}
           {...offButton(off)}
         >
           {chip}
@@ -428,10 +449,7 @@ function MiniComposer({
           data-focus="follow"
           disabled={off}
           value=""
-          onChange={() => onWrite(false)}
-          onFocus={() => {
-            if (!off) onWrite(false);
-          }}
+          onChange={(event) => onWrite(false, event.target.value)}
         />
         <button
           type="button"
@@ -484,13 +502,13 @@ function ComposePane({
   onSent,
 }: {
   desk: Desk;
-  first: { who: Who; openTo: boolean };
+  first: Draft;
   onSent: (id: string, count: number) => void;
 }) {
   const { t } = useTranslation();
   const [who, setWho] = useState<Who>(first.who);
   const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(first.body);
   const [toOpen, setToOpen] = useState(first.openTo);
   const [choosing, setChoosing] = useState(false);
   const [wrong, setWrong] = useState<Partial<Record<Field, string>>>({});
@@ -566,6 +584,7 @@ function ComposePane({
         ...audienceOf(who),
         subject: subject.trim() === '' ? null : subject,
         message,
+        follows: first.follows,
       })
       .then((sent) => onSent(sent.id, check.people))
       .catch(fromApi);
@@ -1104,7 +1123,7 @@ function ChoosePanel({
   const list = useRef<HTMLUListElement>(null);
   const ids = useId();
   const loading = guests == null;
-  const shown = matching(guests ?? [], typed);
+  const shown = matching(guests ?? [], typed, addresses);
   const total = guests?.length ?? 0;
   const active = shown.some((guest) => guest.id === at) ? at : (shown[0]?.id ?? null);
 
@@ -1352,19 +1371,20 @@ function reachedOf(message: GuestMessageDetails): { reached: number; of: number 
 
 function MessagePane({
   desk,
-  id,
+  ids,
   ask,
   onWho,
   onFollow,
 }: {
   desk: Desk;
-  id: string;
+  ids: readonly string[];
   ask: number;
-  onWho: () => void;
-  onFollow: (who: Who) => void;
+  onWho: (id: string) => void;
+  onFollow: (who: Who, body: string) => void;
 }) {
   const { t } = useTranslation();
-  const message = useMessage(desk.event.id, id, ask);
+  const [firstId = '', ...rest] = ids;
+  const message = useMessage(desk.event.id, firstId, ask);
 
   if (message == null) return <Bones />;
   if (message === 'failed')
@@ -1377,7 +1397,6 @@ function MessagePane({
     );
 
   const title = titleOf(message);
-  const { reached, of } = reachedOf(message);
 
   return (
     <div className="mg-in">
@@ -1391,53 +1410,82 @@ function MessagePane({
         </div>
       </header>
       <ol className="mg-stream" role="log" aria-label={title}>
-        <li className="mg-said is-host">
-          <div className="mg-bubble is-host is-sent">
-            {message.subject != null && message.subject.trim() !== '' && (
-              <p className="mg-subject-line">{message.subject}</p>
-            )}
-            <p>{message.message}</p>
-          </div>
-          <p className="mg-meta is-end">
-            <span className="mg-bit">{t('eventMessages.onTheirPage')}</span>
-            <span aria-hidden="true">·</span>
-            <span className="mg-bit">{`${message.sentBy} · ${whenWords(message.sentAt)}`}</span>
-          </p>
-          {message.sending ? (
-            <p className="mg-sending">
-              <span className="mg-spin" aria-hidden="true" />
-              {t('eventMessages.sending')} ·{' '}
-              {t('eventMessages.reached', { count: reached, total: of })}
-            </p>
-          ) : (
-            <div className="mg-receipt">
-              <ReachBar reached={reached} of={of} />
-              <p className="mg-receipt-words">
-                {t('eventMessages.reached', { count: reached, total: of })}
-              </p>
-              <button type="button" className="desk-text mg-who" onClick={onWho}>
-                {t('eventMessages.whoItReached')}
-                <Glyph name="chevron" size={15} weight={2.4} />
-              </button>
-            </div>
-          )}
-        </li>
+        <Said message={message} onWho={() => onWho(message.id)} />
+        {rest.map((id) => (
+          <FollowUp key={id} eventId={desk.event.id} id={id} ask={ask} onWho={() => onWho(id)} />
+        ))}
       </ol>
       {desk.manage && (
         <MiniComposer
           desk={desk}
           chip={audienceWords(message, t)}
           placeholder={t('eventMessages.writeFollowUp')}
-          onWrite={() =>
+          onWrite={(_openTo, body) =>
             onFollow(
               message.audience === 'all'
                 ? { kind: 'all' }
                 : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
+              body,
             )
           }
         />
       )}
     </div>
+  );
+}
+
+function FollowUp({
+  eventId,
+  id,
+  ask,
+  onWho,
+}: {
+  eventId: string;
+  id: string;
+  ask: number;
+  onWho: () => void;
+}) {
+  const message = useMessage(eventId, id, ask);
+
+  return message == null || message === 'failed' ? null : <Said message={message} onWho={onWho} />;
+}
+
+/** One message in its conversation: the words on the guests' page, and who it reached. */
+function Said({ message, onWho }: { message: GuestMessageDetails; onWho: () => void }) {
+  const { t } = useTranslation();
+  const { reached, of } = reachedOf(message);
+
+  return (
+    <li className="mg-said is-host">
+      <div className="mg-bubble is-host is-sent">
+        {message.subject != null && message.subject.trim() !== '' && (
+          <p className="mg-subject-line">{message.subject}</p>
+        )}
+        <p>{message.message}</p>
+      </div>
+      <p className="mg-meta is-end">
+        <span className="mg-bit">{t('eventMessages.onTheirPage')}</span>
+        <span aria-hidden="true">·</span>
+        <span className="mg-bit">{`${message.sentBy} · ${whenWords(message.sentAt)}`}</span>
+      </p>
+      {message.sending ? (
+        <p className="mg-sending">
+          <span className="mg-spin" aria-hidden="true" />
+          {t('eventMessages.sending')} · {t('eventMessages.reached', { count: reached, total: of })}
+        </p>
+      ) : (
+        <div className="mg-receipt">
+          <ReachBar reached={reached} of={of} />
+          <p className="mg-receipt-words">
+            {t('eventMessages.reached', { count: reached, total: of })}
+          </p>
+          <button type="button" className="desk-text mg-who" onClick={onWho}>
+            {t('eventMessages.whoItReached')}
+            <Glyph name="chevron" size={15} weight={2.4} />
+          </button>
+        </div>
+      )}
+    </li>
   );
 }
 

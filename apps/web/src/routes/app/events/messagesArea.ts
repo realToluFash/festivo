@@ -1,4 +1,4 @@
-import type { OrganisationEvent, PickableGuest } from '@soirely/api-client';
+import type { GuestMessageRow, OrganisationEvent, PickableGuest } from '@soirely/api-client';
 import { foldedName, visibleLength } from '@soirely/domain';
 
 export const SUBJECT_MAXIMUM = 150;
@@ -59,8 +59,12 @@ export function closedOf(
   return now >= until ? 'closedEnded' : null;
 }
 
-/** Find a guest, as sc-3772's search: any part of the name, case and accents aside; the address too when it is shown. */
-export function matching(guests: readonly PickableGuest[], typed: string): PickableGuest[] {
+/** Find a guest, as sc-3772's search: any part of the name, case and accents aside; the address too only with guests.manage (sc-3773). */
+export function matching(
+  guests: readonly PickableGuest[],
+  typed: string,
+  addresses: boolean,
+): PickableGuest[] {
   const sought = foldedName(typed);
 
   if (sought === '') return [...guests];
@@ -68,7 +72,7 @@ export function matching(guests: readonly PickableGuest[], typed: string): Picka
   return guests.filter(
     (guest) =>
       foldedName(guest.name).includes(sought) ||
-      (guest.email != null && guest.email.toLowerCase().includes(sought)),
+      (addresses && guest.email != null && guest.email.toLowerCase().includes(sought)),
   );
 }
 
@@ -80,4 +84,18 @@ export function shortTitle(title: string, most = 40): string {
   const end = cut.lastIndexOf(' ');
 
   return `${(end > 0 ? cut.slice(0, end) : cut).replace(/[\s.,;:!?]+$/u, '')}…`;
+}
+
+/** All messages as conversations, a follow-up under the message it continues: each oldest first, the latest activity first. */
+export function conversationsOf(
+  rows: readonly GuestMessageRow[],
+): { id: string; messages: GuestMessageRow[] }[] {
+  const byId = new Map<string, GuestMessageRow[]>();
+
+  for (const row of rows) {
+    const id = row.follows ?? row.id;
+    byId.set(id, [row, ...(byId.get(id) ?? [])]);
+  }
+
+  return [...byId].map(([id, messages]) => ({ id, messages }));
 }

@@ -6684,6 +6684,7 @@
     "pickOne": "Pick a conversation, or write to your guests below.",
     "pickOneClosed": "Pick a conversation.",
     "writeToGuests": "Write to your guests",
+    "followUp": "Follow-up",
     "writeFollowUp": "Write a follow-up",
     "loading": "Loading messages…",
     "loadFailed": "The messages did not load.",

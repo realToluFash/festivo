@@ -18,6 +18,8 @@ export interface GuestMessageSummary {
   sentAt: string;
   reached: number;
   sending: boolean;
+  /** The conversation's first message, on a follow-up; null on the first itself. */
+  follows: string | null;
 }
 
 export interface GuestMessageRow extends GuestMessageSummary {
@@ -61,6 +63,7 @@ export interface GuestMessageInput {
   guestIds?: string[];
   subject?: string | null;
   message: string;
+  follows?: string | null;
 }
 
 export interface GuestMessageSent {

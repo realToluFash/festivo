@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { closedOf, firstRefused, matching, refusalsOf, shortTitle } from './messagesArea.ts';
+import type { GuestMessageRow } from '@soirely/api-client';
+
+import {
+  closedOf,
+  conversationsOf,
+  firstRefused,
+  matching,
+  refusalsOf,
+  shortTitle,
+} from './messagesArea.ts';
 
 const all = { kind: 'all' } as const;
 
@@ -53,11 +62,27 @@ describe('matching', () => {
     { id: '2', name: 'Ada Bello', flag: 'no_address' as const },
   ];
 
-  it('matches any part of the name, ignoring case and accents, and the address when shown', () => {
-    expect(matching(guests, 'emi').map((guest) => guest.id)).toEqual(['1']);
-    expect(matching(guests, 'BELL').map((guest) => guest.id)).toEqual(['2']);
-    expect(matching(guests, 'example.test').map((guest) => guest.id)).toEqual(['1']);
-    expect(matching(guests, '  ')).toHaveLength(2);
+  it('matches any part of the name, ignoring case and accents, and the address with guests.manage', () => {
+    expect(matching(guests, 'emi', true).map((guest) => guest.id)).toEqual(['1']);
+    expect(matching(guests, 'BELL', true).map((guest) => guest.id)).toEqual(['2']);
+    expect(matching(guests, 'example.test', true).map((guest) => guest.id)).toEqual(['1']);
+    expect(matching(guests, 'example.test', false)).toEqual([]);
+    expect(matching(guests, '  ', false)).toHaveLength(2);
+  });
+});
+
+describe('conversationsOf', () => {
+  const row = (id: string, follows: string | null = null) => ({ id, follows }) as GuestMessageRow;
+
+  it('puts each follow-up under its first message, oldest first, the latest conversation first', () => {
+    const newestFirst = [row('d', 'a'), row('c'), row('b', 'a'), row('a')];
+
+    expect(
+      conversationsOf(newestFirst).map(({ id, messages }) => [id, messages.map((one) => one.id)]),
+    ).toEqual([
+      ['a', ['a', 'b', 'd']],
+      ['c', ['c']],
+    ]);
   });
 });
 

@@ -159,6 +159,66 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
   });
 
+  it('threads a follow-up under its message, and writes the next one into the same conversation', async () => {
+    const FOLLOW = {
+      ...SENT,
+      id: 'm_2',
+      firstLine: 'Parking is behind the hall',
+      message: 'Parking is behind the hall',
+      sentAt: '2030-11-10T20:05:00+01:00',
+      sending: true,
+      deliveries: [{ ...SENT.deliveries[0], state: 'queued' }],
+      follows: 'm_1',
+    };
+    const row = ({ message: _body, deliveries, ...summary }: typeof FOLLOW) => ({
+      ...summary,
+      deliveries: deliveries.length,
+    });
+    const sent = onMessages({
+      'GET /api/events/ev_1/messages': () =>
+        json({ messages: [row(FOLLOW), row({ ...FOLLOW, ...SENT, follows: null })] }),
+      'GET /api/events/ev_1/messages/m_1': () => json({ message: { ...SENT, follows: null } }),
+      'GET /api/events/ev_1/messages/m_2': () => json({ message: FOLLOW }),
+      'POST /api/events/ev_1/messages/check': () =>
+        json({ people: 3, toldByEmail: 2, cantBeTold: [] }),
+      'POST /api/events/ev_1/messages': () =>
+        json({ id: 'm_3', queued: { email: 2 }, notSent: { email: 1 } }, 202),
+    });
+
+    const rows = await screen.findAllByRole('button', { name: /Dinner starts at seven/ });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.getAttribute('aria-label')).toMatch(/^Dinner starts at seven, Follow-up · /);
+
+    fireEvent.click(rows[0] as HTMLElement);
+    expect(await screen.findByText('Parking is behind the hall')).toBeTruthy();
+    expect(screen.getAllByText('Dinner starts at seven').length).toBeGreaterThan(0);
+
+    const field = screen.getByRole('textbox', { name: 'Write a follow-up' });
+    fireEvent.focus(field);
+    expect(screen.queryByRole('textbox', { name: 'Message' })).toBeNull();
+
+    fireEvent.change(field, { target: { value: 'G' } });
+    const body = await screen.findByRole('textbox', { name: 'Message' });
+    expect((body as HTMLTextAreaElement).value).toBe('G');
+
+    fireEvent.change(body, { target: { value: 'Gates open at six' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Send to 3 people',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/messages')?.body).toEqual({
+        audience: 'all',
+        subject: null,
+        message: 'Gates open at six',
+        follows: 'm_1',
+      }),
+    );
+  });
+
   it('checks, then sends to all guests, and opens what went', async () => {
     const sent = onMessages({
       'POST /api/events/ev_1/messages/check': () =>
@@ -189,6 +249,7 @@ describe('Messages at a desk (sc-3942)', () => {
       audience: 'all',
       subject: null,
       message: 'Dinner starts at seven',
+      follows: null,
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Who it reached/ }));
