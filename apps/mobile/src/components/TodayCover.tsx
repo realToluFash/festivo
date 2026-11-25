@@ -44,7 +44,7 @@ import {
 import { OPENER, OpenerWords, WholeOpenerWords, quietTap, useWholeTile } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
-import { phoneNameRoom, uprightNameRoom } from '../layout/pillFit.ts';
+import { phoneNameRoom, rowMeasured, uprightNameRoom } from '../layout/pillFit.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -236,7 +236,7 @@ function PhoneTop({ top, greeting }: { top: number; greeting: number | null }) {
     >
       <TitleCap.Provider value={greeting}>
         <OrgButton
-          nameRoom={large ? (row > 0 && ends > 0 ? phoneNameRoom(inside, ends) : 0) : undefined}
+          nameRoom={large ? (rowMeasured(row, ends) ? phoneNameRoom(inside, ends) : 0) : undefined}
         />
       </TitleCap.Provider>
       <View style={styles.grow} />

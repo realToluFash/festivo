@@ -141,7 +141,7 @@ import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop, usePillRowWidths } from './ListTop.tsx';
-import { barePhoneNameRoom } from '../layout/pillFit.ts';
+import { barePhoneNameRoom, rowMeasured } from '../layout/pillFit.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -2177,7 +2177,7 @@ function OrgPill({
 
 /** The bare pill's name line on a phone's row, 0 until the row and its end are both measured (sc-92464). */
 function measuredLine({ row, ends }: { row: number; ends: number }): number {
-  return row > 0 && ends > 0 ? barePhoneNameRoom(row, ends) : 0;
+  return rowMeasured(row, ends) ? barePhoneNameRoom(row, ends) : 0;
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;

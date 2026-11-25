@@ -7,6 +7,7 @@ import {
   barePhoneNameRoom,
   nameStart,
   phoneNameRoom,
+  rowMeasured,
   uprightNameRoom,
   wholeTileAlone,
   waitingRoomUnder,
@@ -97,5 +98,13 @@ describe('the white pill above a phone’s Events, Calendar and Settings from AX
   it('keeps Organisation in words and turns a word wider than the line to its tile', () => {
     expect(wholeTileAlone(165, barePhoneNameRoom(362, 96))).toBe(false);
     expect(wholeTileAlone(400, barePhoneNameRoom(362, 96))).toBe(true);
+  });
+});
+
+describe('when a phone’s top row counts as measured (sc-92464)', () => {
+  it('waits for both the row and what sits at its end', () => {
+    expect(rowMeasured(0, 96)).toBe(false);
+    expect(rowMeasured(362, 0)).toBe(false);
+    expect(rowMeasured(362, 96)).toBe(true);
   });
 });

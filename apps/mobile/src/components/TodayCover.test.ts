@@ -9,6 +9,7 @@ const tabLabel = readFileSync(join('src', 'layout', 'tabLabel.ts'), 'utf8');
 const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
 const pill = readFileSync(join('src', 'components', 'OrgPill.tsx'), 'utf8');
 const run = readFileSync(join('src', 'components', 'TodayRun.tsx'), 'utf8');
+const listTop = readFileSync(join('src', 'components', 'ListTop.tsx'), 'utf8');
 
 describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
@@ -89,11 +90,23 @@ describe('the phone cover’s pill from AX1 (sc-92247)', () => {
 describe('the white pill above a phone’s Events, Calendar and Settings from AX1 (sc-92464)', () => {
   it('draws the cover’s whole-words opener on its measured row, with no line limit', () => {
     expect(cover).toMatch(/<WholeOpenerWords[\s\S]*?onDark\s+\/>/u);
-    expect(frame).toMatch(/row > 0 && ends > 0 \? barePhoneNameRoom\(row, ends\) : 0/u);
+    expect(frame).toMatch(/rowMeasured\(row, ends\) \? barePhoneNameRoom\(row, ends\) : 0/u);
     expect(frame).toMatch(
       /nameRoom=\{large && phoneRow != null \? measuredLine\(phoneRow\) : undefined\}/u,
     );
     expect(pill).toMatch(/whole\.whole \? \(\s+<WholeOpenerWords/u);
+  });
+
+  it('gives the pill the row’s width and the bell’s, each from its own layout', () => {
+    const row = /export function PillRow\([\s\S]*?\n\}\n/u.exec(listTop)?.[0] ?? '';
+    expect(row).toMatch(/onLayout=\{\(event\) => setRow\(event\.nativeEvent\.layout\.width\)\}/u);
+    expect(row).toMatch(
+      /<PillRowWidths\.Provider value=\{\{ row, ends \}\}>\{pill\}<\/PillRowWidths\.Provider>/u,
+    );
+    expect(row).toMatch(
+      /<View onLayout=\{\(event\) => setEnds\(event\.nativeEvent\.layout\.width\)\}>\{bell\}<\/View>/u,
+    );
+    expect(frame).toMatch(/const phoneRow = usePillRowWidths\(\);/u);
   });
 });
 
