@@ -204,3 +204,55 @@ export function dayLineShares(
 ): boolean {
   return name + gap + dottedDate <= room;
 }
+
+export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
+export type TodayInvite = 'none' | 'one';
+
+export const TODAY_ORGS: readonly { key: TodayOrg; label: string }[] = [
+  { key: 'qa', label: 'QA Organisation' },
+  { key: 'lumen', label: 'Lumen Studio' },
+  { key: 'ire', label: 'Ìrè Events' },
+  { key: 'several', label: 'Atelier Céleste Réceptions et Mariages' },
+  { key: 'oneWord', label: ONE_WORD },
+];
+
+export const TODAY_INVITES: readonly { key: TodayInvite; label: string }[] = [
+  { key: 'none', label: 'None waiting' },
+  { key: 'one', label: 'One waiting' },
+];
+
+export function orgName(org: TodayOrg): string {
+  return TODAY_ORGS.find((one) => one.key === org)?.label ?? 'QA Organisation';
+}
+
+/** Main's pill on the phone's cover: the name at 15, the invitation line at 12.5, the tile 28, the caret 14. */
+export const PILL_NAME = 15;
+export const PILL_WAITING = 12.5;
+const PILL_TILE = 28;
+const PILL_CARET = 14;
+const PILL_RING = 11;
+// Search and the bell, 40 each with 8 between, and the row's gap either side of its spacer.
+const PILL_ENDS = 40 + tokens.spaceSm + 40 + 2 * tokens.spaceSm;
+const PILL_INSIDE =
+  tokens.spaceSm + PILL_TILE + tokens.spaceSm + tokens.spaceSm + PILL_CARET + tokens.spacePillEnd;
+
+/** The name's line in the pill, from the cover row's width between its sides: 186 on an iPhone 17 Pro (370). */
+export function pillNameRoom(row: number): number {
+  return Math.max(row - PILL_ENDS - PILL_INSIDE, 0);
+}
+
+/** The invitation line's room: the name's, less its ring and the gap after it. */
+export function pillWaitingRoom(row: number): number {
+  return Math.max(pillNameRoom(row) - PILL_RING - tokens.spaceXs, 0);
+}
+
+/** From AX1 the pill is its tile alone only where its widest word, at the name's default size, is wider than its line (sc-38149's tile). */
+export function pillTileAlone(
+  scale: number,
+  widestAtDefault: number | null,
+  room: number,
+): boolean {
+  return (
+    atAccessibilitySizes(scale) && widestAtDefault != null && room > 0 && widestAtDefault > room
+  );
+}

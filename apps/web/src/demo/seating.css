@@ -967,8 +967,14 @@
 .st-bar.is-floor {
   top: 50%;
   left: 50%;
+  align-items: flex-start;
   width: min(470px, calc(100% - 2 * var(--spaceLg)));
   transform: translate(-50%, -50%);
+}
+
+/* sc-92210: on two lines or three the info icon stays at the start of the first. */
+.st-bar.is-floor > :first-child {
+  margin-top: calc(var(--spaceLg) + (14.5px * 1.4 - 17px) / 2);
 }
 
 .st-bar.is-inline {

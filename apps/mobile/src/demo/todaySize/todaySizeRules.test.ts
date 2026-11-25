@@ -11,6 +11,10 @@ import {
   dayLineShares,
   daysUntil,
   linkUnder,
+  orgName,
+  pillNameRoom,
+  pillTileAlone,
+  pillWaitingRoom,
   piecesOfLine,
   sizeEvents,
   thumbAbove,
@@ -120,5 +124,36 @@ describe('a This week day line (sc-92250)', () => {
       expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
       expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
     }
+  });
+});
+
+describe('the organisation pill on the phone (sc-92247)', () => {
+  it('gives the name 186 on an iPhone 17 Pro, and the invitation line 169', () => {
+    expect(pillNameRoom(370)).toBe(186);
+    expect(pillWaitingRoom(370)).toBe(169);
+  });
+
+  it('steps QA Organisation down until Organisation fits, never under 15', () => {
+    const start = wordsStart(15, AX5, Infinity);
+    const organisation = 6.6 * start;
+    const at = wordsSize(15, AX5, Infinity, organisation, pillNameRoom(370));
+    expect(at).toBeLessThan(start);
+    expect(at).toBeGreaterThanOrEqual(15);
+    expect((organisation * at) / start).toBeLessThanOrEqual(pillNameRoom(370));
+  });
+
+  it('is its tile alone only from AX1, and only for a word too wide at 15', () => {
+    expect(pillTileAlone(AX5, 380, 186)).toBe(true);
+    expect(pillTileAlone(AX5, 99, 186)).toBe(false);
+    expect(pillTileAlone(SEVENTH, 380, 186)).toBe(false);
+    expect(pillTileAlone(AX1, null, 186)).toBe(false);
+  });
+
+  it('names the five organisations the AC renames it to', () => {
+    expect(orgName('qa')).toBe('QA Organisation');
+    expect(orgName('lumen')).toBe('Lumen Studio');
+    expect(orgName('ire')).toBe('Ìrè Events');
+    expect(orgName('several')).toBe('Atelier Céleste Réceptions et Mariages');
+    expect(orgName('oneWord')).toBe(ONE_WORD);
   });
 });

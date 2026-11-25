@@ -33,6 +33,7 @@ import {
 import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
 import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
+import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
 import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
@@ -186,6 +187,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Today · the greeting and headings whole at the largest text sizes (sc-91291)',
     boards: TODAY_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the scrolled band’s title between the tile and Search at the largest text sizes (sc-92248)',
+    boards: BAND_TITLE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
