@@ -31,7 +31,7 @@ export function WholeAddress({ text }: { text: string }) {
       <span className="whole-address-at">{sides.at}</span>
       <wbr />
       <span ref={domain} className={wide ? 'whole-address-domain is-wide' : 'whole-address-domain'}>
-        {pieces(sides.domain)}
+        {wide ? pieces(sides.domain) : sides.domain.join('')}
       </span>
     </span>
   );
