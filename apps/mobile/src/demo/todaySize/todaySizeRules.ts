@@ -164,6 +164,47 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   );
 }
 
+export type TodayWeek = 'quiet' | 'days';
+
+export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
+  { key: 'quiet', label: 'Nothing on' },
+  { key: 'days', label: 'Days with events' },
+];
+
+export const DAY_NAME = 14;
+export const DAY_DATE = 13.5;
+
+export interface WeekDay {
+  date: string;
+  rows: readonly { time: string; title: string; key: SizeEvent['key']; note: string }[];
+}
+
+/** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an item on it as main's agenda draws one; the last has no note. */
+export const WEEK_DAYS: readonly WeekDay[] = [
+  {
+    date: SIZE_TODAY,
+    rows: [{ time: '19:00', title: 'Replies close', key: 'ireti', note: 'Automatic' }],
+  },
+  {
+    date: '2026-11-26',
+    rows: [{ time: '10:30', title: 'Meal choices close', key: 'wed', note: 'Automatic' }],
+  },
+  {
+    date: '2026-11-29',
+    rows: [{ time: '20:00', title: 'The party starts', key: 'party', note: '' }],
+  },
+];
+
+/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
+export function dayLineShares(
+  name: number,
+  dottedDate: number,
+  gap: number,
+  room: number,
+): boolean {
+  return name + gap + dottedDate <= room;
+}
+
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';
 
