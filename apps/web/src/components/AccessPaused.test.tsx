@@ -224,12 +224,12 @@ describe('AccessPaused', () => {
     ).toBeDefined();
     expect(screen.getByText('Ownership passes on Tuesday 27 Oct at 10:00 WAT.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
-    expect(document.activeElement).toBe(screen.getByText("Stop Bisi’s claim?"));
+    expect(document.activeElement).toBe(screen.getByText('Stop Bisi’s claim?'));
     fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
 
     expect(
       await screen.findByText(
-        "You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+        'You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.',
       ),
     ).toBeDefined();
     expect(String(stopped.mock.calls[0]?.[0])).toBe(
@@ -280,7 +280,7 @@ describe('AccessPaused', () => {
       );
 
       const line = await screen.findByText(
-        "You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+        'You stopped Bisi’s claim. Ownership of Ìrè Events now has to be restored by Soirely support.',
       );
       await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
       expect(line.closest('[role="status"]')).toBeNull();

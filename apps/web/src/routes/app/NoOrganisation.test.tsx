@@ -284,7 +284,7 @@ describe('No organisation starts one with the walk (sc-30412)', () => {
 
     fireEvent.click(within(walk).getByRole('button', { name: 'Continue' }));
 
-    expect(within(walk).getByRole('alert').textContent).toBe("Enter the organisation’s name.");
+    expect(within(walk).getByRole('alert').textContent).toBe('Enter the organisation’s name.');
     expect(document.activeElement).toBe(field);
     expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
   });
