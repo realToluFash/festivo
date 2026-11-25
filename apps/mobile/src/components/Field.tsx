@@ -49,8 +49,8 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { holdOpenedFocus, WindowArriving } from './openedFocus.ts';
-import { bothRefs, SETTLED_MS, useFocusOnAnswer } from './Screen.tsx';
+import { openedFocus, takesArrivedFocus, WindowArriving } from './openedFocus.ts';
+import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
@@ -397,34 +397,21 @@ export function focusNewField(input: TextInputInstance | null): () => void {
   return () => clearTimeout(bound);
 }
 
-/** A field a sliding Android window opens with loses focus as the window arrives, the keys staying up over a field that takes no typing (sc-91027): it takes focus again as `holdOpenedFocus` has it. */
-export function useAutoFocusHeld(
-  autoFocus: boolean | undefined,
-): RefObject<TextInputInstance | null> {
+/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount (sc-91027). Spread `autoFocus` after the field's own props. */
+export function useOpenedFocus(autoFocus: boolean | undefined): {
+  input: RefObject<TextInputInstance | null>;
+  autoFocus: boolean | undefined;
+} {
   const input = useRef<TextInputInstance>(null);
   const arriving = useContext(WindowArriving);
-  const [opensFocused] = useState(() => arriving && autoFocus === true);
+  const [opened] = useState(() => openedFocus(autoFocus, arriving));
 
   useEffect(() => {
-    if (!opensFocused) return;
+    if (takesArrivedFocus(opened, arriving, TextInput.State.currentlyFocusedInput()))
+      focusChecked(input);
+  }, [opened, arriving]);
 
-    return holdOpenedFocus({
-      field: () => (input.current?.isConnected === true ? input.current : null),
-      holder: () => TextInput.State.currentlyFocusedInput(),
-      raise: raiseKeysOn,
-      onKeys: (up, down) => {
-        const risen = Keyboard.addListener('keyboardDidShow', up);
-        const fallen = Keyboard.addListener('keyboardDidHide', down);
-        return () => {
-          risen.remove();
-          fallen.remove();
-        };
-      },
-      settledMs: SETTLED_MS,
-    });
-  }, [opensFocused]);
-
-  return input;
+  return { input, autoFocus: opened === 'arrived' ? false : autoFocus };
 }
 
 /** At a submit the client checks passed: keys hidden over a focused field stay hidden while it runs and after it. */
@@ -485,15 +472,16 @@ export function TextField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useAutoFocusHeld(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus);
 
   return (
     <TextInput
       {...fieldDefaults(Platform.OS)}
       {...rest}
+      autoFocus={opened.autoFocus}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={bothRefs(opened, ref)}
+      ref={bothRefs(opened.input, ref)}
       {...edging}
       style={inputFaced([styles.input, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(
@@ -524,16 +512,17 @@ export function CodeField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useAutoFocusHeld(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus);
 
   return (
     <TextInput
       {...codeProps(Platform.OS, takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
+      autoFocus={opened.autoFocus}
       {...refusedField(refused, rest, labelID)}
       {...holding}
-      ref={bothRefs(opened, ref)}
+      ref={bothRefs(opened.input, ref)}
       {...edging}
       style={inputFaced([styles.code, focusEdge(focused, wrong), style], 'sans', bold)}
       maxFontSizeMultiplier={useUnderTitle(

@@ -18,7 +18,7 @@ import {
   fieldStyles,
   focusEdge,
   refusedField,
-  useAutoFocusHeld,
+  useOpenedFocus,
   useFieldLabel,
   useFocusEdge,
   useHeld,
@@ -54,16 +54,17 @@ export function PasswordField({
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useAutoFocusHeld(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus);
 
   return (
     <View>
       <TextInput
         {...rest}
+        autoFocus={opened.autoFocus}
         {...refusedField(refused, rest, labelID)}
         {...passwordProps(Platform.OS, revealed)}
         {...holding}
-        ref={bothRefs(opened, ref)}
+        ref={bothRefs(opened.input, ref)}
         {...edging}
         style={inputFaced(
           [
