@@ -1,10 +1,12 @@
-import type { Ref } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
   Platform,
   Pressable,
+  type StyleProp,
   StyleSheet,
   View,
   type ViewInstance,
+  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 
@@ -50,25 +52,23 @@ export function OpenerWords({
   const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
 
   return (
-    <View style={[styles.words, grow && styles.grow]}>
-      <Text
-        size={size ?? 15}
-        weight="semibold"
-        numberOfLines={lines ?? (wrap ? undefined : 1)}
-        allowFontScaling={size == null}
-        accessible={false}
-        style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
-      >
-        {titleWithInkRoom(name, Platform.OS)}
-      </Text>
-      {waiting != null && (
-        <View style={styles.waitingLine}>
-          <View
-            style={[
-              styles.waitingRing,
-              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
-            ]}
-          />
+    <OpenerColumn
+      onDark={onDark}
+      style={grow && styles.grow}
+      name={
+        <Text
+          size={size ?? 15}
+          weight="semibold"
+          numberOfLines={lines ?? (wrap ? undefined : 1)}
+          allowFontScaling={size == null}
+          accessible={false}
+          style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </Text>
+      }
+      waiting={
+        waiting == null ? null : (
           <Text
             size={waitingSize ?? 12.5}
             weight="semibold"
@@ -83,6 +83,37 @@ export function OpenerWords({
           >
             {waiting}
           </Text>
+        )
+      }
+    />
+  );
+}
+
+/** The opener's column, whatever draws its words: the name, and under it the ring before the invitation line. */
+export function OpenerColumn({
+  name,
+  waiting,
+  onDark,
+  style,
+}: {
+  name: ReactNode;
+  /** The invitation line, or null when no invitation waits. */
+  waiting: ReactNode | null;
+  onDark: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.words, style]}>
+      {name}
+      {waiting != null && (
+        <View style={styles.waitingLine}>
+          <View
+            style={[
+              styles.waitingRing,
+              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
+            ]}
+          />
+          {waiting}
         </View>
       )}
     </View>

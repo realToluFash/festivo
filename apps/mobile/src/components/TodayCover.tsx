@@ -28,7 +28,7 @@ import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
-import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
+import { OPENER, OpenerColumn, OpenerWords, quietTap } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 import { phoneNameRoom, phoneTileAlone, phoneWaitingRoom } from '../layout/pillFit.ts';
@@ -232,21 +232,27 @@ function WholeOpenerWords({
   const given = room > 0 ? room : undefined;
 
   return (
-    <View style={[styles.openerWords, hidden && styles.hidden]}>
-      <CappedWholeWords
-        size={NAME}
-        weight="semibold"
-        accessible={false}
-        room={given}
-        breakAfterHyphens
-        onDrawn={setNamed}
-        style={[styles.white, named != null && { lineHeight: wholeLineHeight(NAME, named, 1.25) }]}
-      >
-        {titleWithInkRoom(name, Platform.OS)}
-      </CappedWholeWords>
-      {waiting != null && (
-        <View style={styles.openerLine}>
-          <View style={styles.openerRing} />
+    <OpenerColumn
+      onDark
+      style={hidden && styles.hidden}
+      name={
+        <CappedWholeWords
+          size={NAME}
+          weight="semibold"
+          accessible={false}
+          room={given}
+          breakAfterHyphens
+          onDrawn={setNamed}
+          style={[
+            styles.white,
+            named != null && { lineHeight: wholeLineHeight(NAME, named, 1.25) },
+          ]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </CappedWholeWords>
+      }
+      waiting={
+        waiting == null ? null : (
           <View style={styles.grow}>
             <CappedWholeWords
               size={WAITING}
@@ -263,9 +269,9 @@ function WholeOpenerWords({
               {waiting}
             </CappedWholeWords>
           </View>
-        </View>
-      )}
-    </View>
+        )
+      }
+    />
   );
 }
 
@@ -1252,15 +1258,6 @@ const styles = StyleSheet.create({
   gapLg: { gap: tokens.spaceXl },
   gapXl: { gap: 22 },
   orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
-  openerWords: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
-  openerLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
-  openerRing: {
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    borderWidth: 2,
-    borderColor: tokens.colorInkOnDark,
-  },
   hidden: { opacity: 0 },
   orgWide: { flexShrink: 1 },
   orgGlass: {
