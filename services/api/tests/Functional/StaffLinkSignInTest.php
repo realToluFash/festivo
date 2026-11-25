@@ -6,8 +6,6 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
-use App\Domain\User\Verification\RecordingTextMessageSender;
-use App\Domain\User\Verification\RecordingWhatsAppSender;
 use App\Entity\EmailAddress;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
@@ -20,12 +18,12 @@ use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
-use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -38,6 +36,7 @@ final class StaffLinkSignInTest extends ApiTestCase
     use ClockSensitiveTrait;
     use InvitesPeople;
     use OnboardsAccounts;
+    use ReadsSentPhoneCodes;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -425,23 +424,6 @@ final class StaffLinkSignInTest extends ApiTestCase
         $this->post('/api/staff-links/sign-in', ['token' => $token, 'handle' => $handle, 'code' => $code, 'refreshTokenIn' => $delivery]);
 
         return $this->last();
-    }
-
-    private function codeTo(string $number): string
-    {
-        foreach (Vec\reverse(self::service(RecordingWhatsAppSender::class)->sent) as $sent) {
-            if ($sent['to'] === $number) {
-                return $sent['code'];
-            }
-        }
-
-        foreach (Vec\reverse(self::service(RecordingTextMessageSender::class)->sent) as $text) {
-            if ($text['to'] === $number) {
-                return Regex\first_match($text['body'], '/(\d{6})/')[1] ?? '';
-            }
-        }
-
-        self::fail('nothing sent to ' . $number);
     }
 
     private function accountOn(string $number): ?User

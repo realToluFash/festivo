@@ -24,6 +24,7 @@ use App\Http\LinkTokens;
 use App\Repository\PhoneNumberRepository;
 use App\Repository\PhoneSignInRepository;
 use App\Repository\VerificationChallengeRepository;
+use Closure;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Encoding\Base64;
@@ -126,8 +127,14 @@ final readonly class PhoneSignIns
         $this->phoneCodeDispatch->textInstead($signIn);
     }
 
-    /** @return array{user: User, made: bool} the account whose verified primary it is, or a new one; an alternative signs into nothing, and an unverified number elsewhere is released */
-    public function prove(PhoneSignIn $signIn, #[SensitiveParameter] string $code, string $name, ?Request $request): array
+    /**
+     * `$admits` sees the account the number would sign into, or null for a new one, once the code is right and before anything is written; it refuses by throwing.
+     *
+     * @param (Closure(?User): void)|null $admits
+     *
+     * @return array{user: User, made: bool} the account whose verified primary it is, or a new one; an alternative signs into nothing, and an unverified number elsewhere is released
+     */
+    public function prove(PhoneSignIn $signIn, #[SensitiveParameter] string $code, string $name, ?Request $request, ?Closure $admits = null): array
     {
         $refusal = $this->contactVerifier->attempt($signIn, $code);
 
@@ -142,10 +149,18 @@ final readonly class PhoneSignIns
                 throw new ApiException(ErrorCode::PhoneAlternative, 'phone_sign_in.alternative');
             }
 
+            if (null !== $admits) {
+                $admits($held->getUser());
+            }
+
             $signIn->forgetTypedName();
             $this->entityManager->flush();
 
             return ['user' => $held->getUser(), 'made' => false];
+        }
+
+        if (null !== $admits) {
+            $admits(null);
         }
 
         return $this->entityManager->wrapInTransaction(function () use ($signIn, $held, $name, $request): array {
