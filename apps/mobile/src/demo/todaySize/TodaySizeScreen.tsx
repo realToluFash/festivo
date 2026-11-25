@@ -1,13 +1,11 @@
 import { type Href, router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
   Pressable,
   ScrollView,
-  type StyleProp,
   StyleSheet,
-  type TextStyle,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -15,11 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import type { Tab } from '../../components/TodayCover.tsx';
-import { EventThumb } from '../../components/TodayParts.tsx';
 import type { LayoutKind } from '../../layout/classify.ts';
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -37,21 +32,26 @@ import {
 } from '../filterSize/filterSizeRules.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { EVENTS, type EventKey, sample, sayIn } from '../today.ts';
+import { FitWords } from './FitWords.tsx';
+import { SizeEvents } from './TodaySizeEvents.tsx';
 import {
   HEAD,
   HEAD_LINK,
   NEXT_UP,
+  SIZE_EVENTS,
+  TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
   TODAY_NAMES,
+  type TodayEventName,
   type TodayGreeting,
   type TodayName,
   greetingMost,
   greetingName,
   greetingSize,
   linkUnder,
-  piecesOfLine,
+  sizeEvents,
   subSize,
-  wordsSize,
+  weekWidth,
   wordsStart,
 } from './todaySizeRules.ts';
 
@@ -60,10 +60,13 @@ export interface TodaySizeStart {
   language: FilterLanguage;
   name: TodayName;
   greeting: TodayGreeting;
+  event: TodayEventName;
 }
 
 const TODAY = '2026-11-25';
 const KEYS: readonly EventKey[] = ['wed', 'ireti', 'party', 'draft'];
+// The party is on Sunday 29 November here, so Your events reads dimanche 29 nov. (sc-92090).
+const PARTY_DAY = SIZE_EVENTS[0]?.first ?? EVENTS.party.first;
 
 function toTab(tab: Tab) {
   if (tab === 'Events') router.replace('/demo/events');
@@ -85,6 +88,7 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   const [language, setLanguage] = useState(start.language);
   const [name, setName] = useState(start.name);
   const [greeting, setGreeting] = useState(start.greeting);
+  const [event, setEvent] = useState(start.event);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -94,12 +98,19 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
 
   const page = (
     <I18nextProvider i18n={words}>
-      <TodayPage kind={kind} scale={scale} language={language} name={name} greeting={greeting} />
+      <TodayPage
+        kind={kind}
+        scale={scale}
+        language={language}
+        name={name}
+        greeting={greeting}
+        event={event}
+      />
     </I18nextProvider>
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name and the time of day. The greeting and every section heading draw at the size chosen; the sidebar and the rows under the headings stay as main draws them at this device’s size. From AX1 each heading and the greeting wrap only between words, a word too wide for its line steps the whole text down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, and no heading starts larger than the greeting. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day and the events’ names. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -130,6 +141,14 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           chosen={greeting}
           onChoose={setGreeting}
           id="greeting"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="Event names"
+          options={TODAY_EVENT_NAMES}
+          chosen={event}
+          onChoose={setEvent}
+          id="event"
           prefix="demo.todaySize"
         />
       </DemoOnly>
@@ -170,20 +189,23 @@ function TodayPage({
   language,
   name,
   greeting,
+  event,
 }: {
   kind: LayoutKind;
   scale: number;
   language: FilterLanguage;
   name: TodayName;
   greeting: TodayGreeting;
+  event: TodayEventName;
 }) {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
   const say = sayIn(language);
   const hello = t(`todayScreen.helloName.${greeting}`, { name: greetingName(name) });
   const party = EVENTS.party;
   const sub = t('todayScreen.startsOnWeekday', {
     name: party.name,
-    weekday: say.weekdayLong(party.first),
+    weekday: say.weekdayLong(PARTY_DAY),
   });
   const [greetingDrawn, setGreetingDrawn] = useState<number | null>(null);
   const cap = greetingDrawn ?? Infinity;
@@ -198,7 +220,7 @@ function TodayPage({
         scale={scale}
         cap={cap}
       />
-      <NextUp scale={scale} cap={cap} when={say.day(party.first)} />
+      <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
     </>
   );
   const events = (
@@ -210,31 +232,13 @@ function TodayPage({
         scale={scale}
         cap={cap}
       />
-      <View style={styles.panel}>
-        {KEYS.map((key, index) => (
-          <Pressable
-            key={key}
-            onPress={() => open(key)}
-            style={({ pressed }) => [
-              styles.eventRow,
-              index < KEYS.length - 1 && styles.ruled,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-            testID={`demo.todaySize.event.${key}`}
-          >
-            <EventThumb event={sample(key)} side={56} radius={16} />
-            <View style={styles.words}>
-              <Text size={15} weight="semibold">
-                {EVENTS[key].name}
-              </Text>
-              <Text size={13} weight="medium" style={styles.secondary}>
-                {say.day(EVENTS[key].first)}
-              </Text>
-            </View>
-          </Pressable>
-        ))}
-      </View>
+      <SizeEvents
+        events={sizeEvents(event)}
+        locale={language}
+        scale={scale}
+        cap={cap}
+        tiles={kind === 'phone'}
+      />
     </>
   );
 
@@ -255,6 +259,14 @@ function TodayPage({
             <View style={styles.gapAbove}>{week}</View>
           </View>
           <View style={styles.eventsColumn}>{events}</View>
+        </View>
+      ) : kind === 'tabletPortrait' ? (
+        <View style={styles.sections}>
+          {needs}
+          <View style={[styles.columns, styles.gapAbove]}>
+            <View style={{ width: weekWidth(width) }}>{week}</View>
+            <View style={styles.grow}>{events}</View>
+          </View>
         </View>
       ) : (
         <View style={styles.sections}>
@@ -471,83 +483,6 @@ function NextUp({ scale, cap, when }: { scale: number; cap: number; when: string
   );
 }
 
-/** A text at the stand-in size whose lines break only between its pieces, all of them one size (sc-69816's rule). */
-function FitWords({
-  text,
-  size,
-  scale,
-  cap,
-  room,
-  weight,
-  line,
-  role,
-  style,
-  onDrawn,
-  testID,
-}: {
-  text: string;
-  size: number;
-  scale: number;
-  cap: number;
-  room: number;
-  weight: 'semibold' | 'bold';
-  line: number;
-  role?: 'header';
-  style?: StyleProp<TextStyle>;
-  onDrawn?: (size: number) => void;
-  testID?: string;
-}) {
-  const start = wordsStart(size, scale, cap);
-  const key = `${start}|${weight}|${text}`;
-  const pieces = piecesOfLine(text);
-  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
-    key: '',
-    widths: {},
-  });
-  const widths = measured.key === key ? measured.widths : {};
-  const widest = pieces.every((piece) => widths[piece] != null)
-    ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
-    : null;
-  // Below AX1 the text is main's and waits for nothing; from AX1 it is hidden until its room and its widest piece are known.
-  const pending = atAccessibilitySizes(scale) && (widest == null || room === 0);
-  const drawn =
-    pending || widest == null ? start : wordsSize(size, scale, cap, widest, Math.max(room, 1));
-
-  useEffect(() => {
-    if (!pending) onDrawn?.(drawn);
-  }, [pending, drawn, onDrawn]);
-
-  return (
-    <>
-      <MeasuredWords
-        words={pieces}
-        size={start}
-        weight={weight}
-        allowFontScaling={false}
-        onWidth={(piece, width) =>
-          setMeasured((now) => {
-            const kept = now.key === key ? now.widths : {};
-
-            return kept[piece] === width ? now : { key, widths: { ...kept, [piece]: width } };
-          })
-        }
-      />
-      <Text
-        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
-        key={drawn}
-        size={drawn}
-        weight={weight}
-        allowFontScaling={false}
-        accessibilityRole={role}
-        style={[{ lineHeight: Math.ceil(drawn * line) }, style, pending && styles.waiting]}
-        testID={testID}
-      >
-        {text}
-      </Text>
-    </>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: tokens.colorPage },
   chrome: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorNeutralFill },
@@ -621,13 +556,6 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceXxs,
     paddingHorizontal: tokens.spaceXl,
   },
-  eventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: tokens.spaceLg,
-    minHeight: tokens.sizeHit,
-  },
   nextUp: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -635,13 +563,11 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.spaceLg,
     minHeight: tokens.sizeHit,
   },
-  ruled: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   secondary: { color: tokens.colorInkSecondary },
   caps: { letterSpacing: 12 * 0.06 },
   accent: { color: tokens.colorAccent },
   onAccent: { color: tokens.colorInkOnDark },
   pressed: { opacity: 0.7 },
-  waiting: { opacity: 0 },
   choices: { paddingHorizontal: tokens.spaceXl, paddingTop: tokens.spaceLg },
 });

@@ -4,8 +4,23 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's greeting and section headings at the sizes sc-91291 asks for; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'Vos événements · AX5, on its side',
+    what: 'dimanche 29 nov. whole in the 316 column, the thumbnail above the words',
+    href: '/demo/today-size?size=ax5&lang=fr&greeting=evening',
+  },
+  {
+    title: 'Vos événements · AX5, one long word',
+    what: 'Internationalisationsorganisationsgesellschaft at its default size, breaking inside itself only',
+    href: '/demo/today-size?size=ax5&lang=fr&event=oneWord',
+  },
+  {
+    title: 'Your events · AX1, upright',
+    what: 'Beside This week, every word whole, the name never smaller than its dates',
+    href: '/demo/today-size?size=ax1&lang=en',
+  },
   {
     title: 'Aujourd’hui · AX5, on its side',
     what: 'Vos événements whole in its column, stepped down or Vos / événements; Tout voir under it',
