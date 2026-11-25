@@ -140,10 +140,7 @@ final readonly class GuestMessageSender
     }
 
     /**
-     * Who a message goes to, the one rule for the check and for Send: a follow-up goes to whom its conversation's first message went, whatever the audience says.
-     *
      * @param list<string> $guestIds
-     *
      * @return array{string, list<string>, ?GuestMessage, list<array{propertyPath: string, message: string, code: string}>}
      */
     private function audience(Event $event, string $choice, array $guestIds, ?string $follows): array
@@ -163,7 +160,6 @@ final readonly class GuestMessageSender
 
     /**
      * @param list<string> $guestIds
-     *
      * @return list<string>
      */
     private static function uuids(array $guestIds): array
