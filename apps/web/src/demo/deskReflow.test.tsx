@@ -45,6 +45,10 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
 
   it('runs the page flat to the window, its column at the product shell’s 16 px phone gutter (sc-91763)', () => {
     expect(cssRule(`${DESK} > .desk-main`, AT_320)).toMatch(/margin: 0;[\s\S]+box-shadow: none;/u);
+    expect(cssRule(`${DESK} > .desk-main`, AT_320)).not.toContain('border-top');
+    expect(cssRule('.today.desk:not(.dp-fit, .dp-bar) > .desk-main', AT_320)).toContain(
+      'border-top: var(--borderCard);',
+    );
     expect(cssRule(`${DESK} .desk-page`, AT_320)).toContain(
       'padding: var(--spaceXl) var(--spaceXl) var(--space3xl);',
     );

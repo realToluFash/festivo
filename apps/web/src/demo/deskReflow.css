@@ -17,9 +17,13 @@
     min-width: 0;
     margin: 0;
     overflow: visible;
-    border-top: var(--borderCard);
     border-radius: 0;
     box-shadow: none;
+  }
+
+  /* A line parts the stacked sidebar from the page; under Settings' bar (.dp-bar) the bar draws its own. */
+  .today.desk:not(.dp-fit, .dp-bar) > .desk-main {
+    border-top: var(--borderCard);
   }
 
   .today.desk:not(.dp-fit) .desk-page {
