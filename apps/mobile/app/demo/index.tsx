@@ -35,6 +35,7 @@ import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
 import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
 import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
 import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
+import { BELL_SIZE_BOARDS } from '../../src/demo/bellSize/BellSizeBoards.ts';
 import { BAND_LIVE_BOARDS } from '../../src/demo/bandLive/BandLiveBoards.ts';
 import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
@@ -197,6 +198,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Settings, Events and the Calendar · the organisation pill keeps its words whole at the largest text sizes (sc-92464)',
     boards: TOP_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPad bell’s panel · its heading whole and Mark all read beside it or under it at the largest text sizes (sc-92580)',
+    boards: BELL_SIZE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
