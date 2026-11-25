@@ -27,7 +27,8 @@ import {
   tabBarFoot,
 } from './TodayCover.tsx';
 import { sidePadding } from './bodyEdges.ts';
-import { FirstRun, GreetingDrawn, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
+import { TitleCap } from './Text.tsx';
+import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
 export const TAB_BAR = 64;
@@ -174,9 +175,9 @@ function Scrolled({
           ]}
         >
           {notices}
-          <GreetingDrawn.Provider value={greeting}>
+          <TitleCap.Provider value={greeting}>
             <Body moment={moment} wide={!phone} />
-          </GreetingDrawn.Provider>
+          </TitleCap.Provider>
         </View>
       </Animated.ScrollView>
       <Animated.View
@@ -224,7 +225,7 @@ function Landscape({
             onGreeting={setGreeting}
           />
           {notices}
-          <GreetingDrawn.Provider value={greeting}>
+          <TitleCap.Provider value={greeting}>
             {moment.kind === 'first' ? (
               <View style={styles.firstPad}>
                 <FirstRun wide />
@@ -240,7 +241,7 @@ function Landscape({
                 </View>
               </View>
             )}
-          </GreetingDrawn.Provider>
+          </TitleCap.Provider>
         </ScrollView>
       </View>
     </View>

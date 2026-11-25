@@ -489,6 +489,11 @@ describe('wholeLineHeight', () => {
   it('keeps four lines of a stepped-down row line at four whole lines', () => {
     expect(4 * wholeLineHeight(13, 40) * (40 / 13)).toBeCloseTo(196, 9);
   });
+
+  it("rounds a heading's own line spacing to whole points", () => {
+    expect(wholeLineHeight(22, 50, 1.15) * (50 / 22)).toBeCloseTo(58, 9);
+    expect(wholeLineHeight(38, 61, 1.08) * (61 / 38)).toBeCloseTo(66, 9);
+  });
 });
 
 describe('drawnSize', () => {

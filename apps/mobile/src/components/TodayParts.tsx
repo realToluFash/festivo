@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
@@ -45,9 +45,6 @@ export function Panel({ children, style }: { children: ReactNode; style?: StyleP
   return <View style={[styles.panel, style]}>{children}</View>;
 }
 
-/** The size Today's greeting drew at, which no heading under it starts larger than from AX1 (sc-67338, sc-91291). */
-export const GreetingDrawn = createContext<number | null>(null);
-
 export function SectionHead({
   title,
   count,
@@ -64,7 +61,6 @@ export function SectionHead({
   size?: number;
 }) {
   const { fontScale } = useWindowDimensions();
-  const greeting = useContext(GreetingDrawn);
   const [row, setRow] = useState(0);
   const [badge, setBadge] = useState(0);
   const [drawn, setDrawn] = useState<number | null>(null);
@@ -130,7 +126,6 @@ export function SectionHead({
           <CappedWholeWords
             size={size}
             weight="bold"
-            under={greeting ?? Infinity}
             room={Math.max(room, 0)}
             breakAfterHyphens
             onDrawn={setDrawn}
@@ -570,7 +565,6 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
 /** Next up's label: main's below AX1; from AX1 whole words in its room, no larger than the greeting (sc-91291). */
 function NextUpLabel({ words }: { words: string }) {
   const { fontScale } = useWindowDimensions();
-  const greeting = useContext(GreetingDrawn);
   const [room, setRoom] = useState(0);
   const look = {
     size: 12,
@@ -583,7 +577,7 @@ function NextUpLabel({ words }: { words: string }) {
 
   return (
     <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
-      <CappedWholeWords {...look} under={greeting ?? Infinity} room={room} breakAfterHyphens>
+      <CappedWholeWords {...look} room={room} breakAfterHyphens>
         {words}
       </CappedWholeWords>
     </View>
