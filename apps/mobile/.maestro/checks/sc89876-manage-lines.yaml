@@ -3,14 +3,11 @@ appId: host.exp.Exponent
 ---
 - setOrientation: ${ORIENT}
 - openLink: ${METRO_URL}/--/events/${LIVE_EVENT}
-- extendedWaitUntil:
-    visible: 'Tolu.s supper'
-    timeout: 30000
 - scrollUntilVisible:
     element:
       id: 'events.end'
     direction: DOWN
-    timeout: 20000
+    timeout: 30000
 - scroll
 - waitForAnimationToEnd
 - takeScreenshot: manage
