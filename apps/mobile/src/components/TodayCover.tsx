@@ -33,7 +33,14 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
-import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
+import {
+  Chips,
+  CoverLine,
+  RunNowBlock,
+  WhiteButton,
+  WholeChips,
+  WholeWhiteButton,
+} from './TodayRun.tsx';
 import { OPENER, OpenerWords, WholeOpenerWords, quietTap, useWholeTile } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
@@ -570,12 +577,83 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
+/** The live cover on its side from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312). */
+function WholeNowBlock({ now }: { now: Now }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
+  const [column, setColumn] = useState(0);
+  const [name, setName] = useState<number | null>(null);
+  const under = name ?? Infinity;
+  const open = (
+    <WholeWhiteButton
+      label={t('todayScreen.openEvent')}
+      onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
+      column={column}
+      under={under}
+    />
+  );
+  const words = (
+    <View
+      style={[styles.grow, styles.gapMd]}
+      onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
+    >
+      <WholeChips now={now} column={column} under={under} />
+      <CoverLine
+        size={48}
+        line={1.06}
+        weight="bold"
+        accessibilityRole="header"
+        room={column}
+        onDrawn={setName}
+        style={[styles.white, { letterSpacing: 48 * -0.02 }]}
+      >
+        {now.name}
+      </CoverLine>
+      <CoverLine
+        size={16}
+        line={1.3}
+        weight="semibold"
+        room={column}
+        under={under}
+        style={styles.white}
+      >
+        {now.ends}
+      </CoverLine>
+      {now.arrived == null && <View style={styles.openUnder}>{open}</View>}
+    </View>
+  );
+
+  return now.arrived == null ? (
+    words
+  ) : (
+    <View style={styles.wideRow}>
+      {words}
+      <View style={styles.right}>
+        <ArrivedFigure figure={now.arrived} />
+        {open}
+      </View>
+    </View>
+  );
+}
+
+export function NowBlock({
+  moment,
+  wide,
+  side = false,
+}: {
+  moment: Moment;
+  wide: boolean;
+  /** On the iPad's side banner, where from AX1 the live cover keeps every word whole (sc-92312). */
+  side?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { open: go } = useTodayShell();
+  const whole = useAccessibilitySizes();
   const { now, run } = moment;
 
   if (now == null) return null;
+
+  if (side && whole && run == null && !moment.full) return <WholeNowBlock now={now} />;
 
   if (run != null)
     return (
@@ -766,7 +844,7 @@ export function TodayCover({
         </View>
         <View style={day ? styles.bannerNow : styles.bannerGreeting}>
           {day ? (
-            <NowBlock moment={moment} wide />
+            <NowBlock moment={moment} wide side />
           ) : (
             <Greeting
               moment={moment}
@@ -1319,6 +1397,7 @@ const styles = StyleSheet.create({
   figureLine: { flexDirection: 'row', alignItems: 'baseline' },
   shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
+  openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },

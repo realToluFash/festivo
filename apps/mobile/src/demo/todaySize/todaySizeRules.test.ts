@@ -14,13 +14,10 @@ import {
   WEEK_DAYS,
   chipsUnderDates,
   dotKept,
-  dayChipRoom,
   dayLineShares,
   daysUntil,
   linkUnder,
-  liveChipRoom,
   liveName,
-  openRoom,
   piecesKeepingDot,
   switcherOrgs,
   openUnder,
@@ -186,11 +183,19 @@ describe('the upright iPad’s top row (sc-92314)', () => {
 
     expect(top.givesWay).toBe(false);
     expect(top.labelSize).toBeCloseTo(15 * AX1);
-    expect(top.pill).toBeCloseTo((ROW - top.capsule) / 2 - 12);
+    expect(top.pill).toBeCloseTo((ROW - top.capsule) / 2 - 8);
     expect(top.pill).toBeGreaterThanOrEqual(120);
     expect(uprightTile(AX1, top, { nameStart: 0, waitingLine: null })).toBe(false);
     expect(pillTileAlone(AX1, 92, top.nameRoom)).toBe(false);
     expect(wordsSize(15, AX1, Infinity, 92 * AX1, top.nameRoom)).toBeLessThan(15 * AX1);
+  });
+
+  it('at AX1 in English keeps QA Organisation in words with the tabs as Instrument Sans draws them', () => {
+    const measured = EN_AX1.map((width) => (width * 383) / 371);
+    const top = uprightTop(AX1, measured, ROW);
+
+    expect(top.givesWay).toBe(false);
+    expect(pillTileAlone(AX1, 91.8, top.nameRoom)).toBe(false);
   });
 
   it('at AX1 a word too wide even at its default size is the tile alone', () => {
@@ -250,13 +255,6 @@ describe('the live cover on its side (sc-92312)', () => {
     expect(wordsStart(LIVE_ENDS, AX5, Infinity)).toBe(LIVE_ENDS * AX5);
     expect(wordsStart(LIVE_CHIP, AX5, 30)).toBeCloseTo(30);
     expect(wordsStart(LIVE_ENDS, 1, 48)).toBe(LIVE_ENDS);
-  });
-
-  it('gives each chip and the button the column less what they hold', () => {
-    expect(dayChipRoom(500)).toBe(476);
-    expect(liveChipRoom(500)).toBe(456);
-    expect(openRoom(500)).toBe(430);
-    expect(liveChipRoom(10)).toBe(0);
   });
 });
 

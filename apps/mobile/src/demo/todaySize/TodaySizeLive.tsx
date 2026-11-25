@@ -5,6 +5,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-nativ
 import { Glyph } from '../../components/Glyph.tsx';
 import { BellButton } from '../../components/TodayCover.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
+import { dayChipRoom, liveChipRoom, openRoom } from '../../layout/liveCoverFit.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { FitWords } from './FitWords.tsx';
@@ -14,9 +15,6 @@ import {
   LIVE_ENDS_AT,
   LIVE_NAME,
   LIVE_OPEN,
-  dayChipRoom,
-  liveChipRoom,
-  openRoom,
   openUnder,
 } from './todaySizeRules.ts';
 
