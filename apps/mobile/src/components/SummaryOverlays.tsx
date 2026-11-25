@@ -29,7 +29,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { remeasureAfter } from './anchorRemeasure.ts';
-import { WindowArriving } from './openedFocus.ts';
+import { windowArrival, WindowArriving } from './openedFocus.ts';
 import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { reachableOffset } from './reachableOffset.ts';
@@ -122,7 +122,8 @@ function Window({
   const here = useIsFocused();
   const clear = useClearOfGoing();
   const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
-  const arriving = useArriving(shown && slides && Platform.OS === 'android');
+  const slidesIn = slides && Platform.OS === 'android';
+  const arriving = useArriving(shown && slidesIn);
   const showing = useRef(false);
 
   useLayoutEffect(() => {
@@ -151,7 +152,9 @@ function Window({
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
-      <WindowArriving.Provider value={arriving}>{children}</WindowArriving.Provider>
+      <WindowArriving.Provider value={windowArrival(slidesIn, arriving)}>
+        {children}
+      </WindowArriving.Provider>
     </Modal>
   );
 }
