@@ -75,3 +75,16 @@
   border: 1.5px dashed var(--colorInkSecondary);
   border-radius: var(--radiusPill);
 }
+
+/* An outsider's address (sc-91529): its domain goes whole to the next line, and breaks before a dot only when wider than a line by itself. */
+.whole-address {
+  overflow-wrap: anywhere;
+}
+
+.whole-address-domain {
+  white-space: nowrap;
+}
+
+.whole-address-domain.is-wide {
+  white-space: normal;
+}

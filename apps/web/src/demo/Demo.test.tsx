@@ -10,6 +10,7 @@ import { routes } from '../routes/index.tsx';
 import { demoOpens } from './gate.ts';
 import { PASSKEY_WORDS as P } from './passkeys.ts';
 import { SAMPLE, TRIES } from './rules.ts';
+import { readAddressesInline } from './wholeAddressTesting.ts';
 
 const tested = config();
 
@@ -2086,6 +2087,8 @@ describe('Settings at a desk (sc-29708)', () => {
 });
 
 describe('People on an event at a desk (sc-29915)', () => {
+  readAddressesInline();
+
   beforeEach(() => inEnvironment('development'));
 
   async function people(state?: string) {
