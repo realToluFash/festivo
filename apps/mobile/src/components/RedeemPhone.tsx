@@ -49,7 +49,6 @@ export function NumberFields({
             onChange={onCountry}
             disabled={sending}
             withCallingCode
-            wrong={false}
             testID="redeem.event.country"
           />
         </View>
