@@ -9,6 +9,7 @@ import {
   LIVE_NAME,
   ONE_WORD,
   SWITCHER_NAME,
+  TODAY_ORGS,
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
@@ -260,9 +261,14 @@ describe('the live cover on its side (sc-92312)', () => {
 });
 
 describe('the switcher’s rows from AX1 (sc-92465)', () => {
-  it('puts the organisation you are in first, then the others once each', () => {
-    expect(switcherOrgs('several')).toEqual(['several', 'qa', 'lumen', 'ire']);
-    expect(switcherOrgs('lumen')).toEqual(['lumen', 'qa', 'ire']);
+  it('puts the organisation you are in first, then every other once each', () => {
+    expect(switcherOrgs('several')).toEqual(['several', 'qa', 'lumen', 'ire', 'oneWord']);
+    expect(switcherOrgs('lumen')).toEqual(['lumen', 'qa', 'ire', 'several', 'oneWord']);
+  });
+
+  it('keeps every organisation reachable from any of them', () => {
+    for (const { key } of TODAY_ORGS)
+      expect([...switcherOrgs(key)].sort()).toEqual(TODAY_ORGS.map((one) => one.key).sort());
   });
 
   it('keeps the role line’s dot on the word before it', () => {

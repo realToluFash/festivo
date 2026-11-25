@@ -1,4 +1,4 @@
-import { createContext, type RefObject, useContext, useEffect, useState } from 'react';
+import { createContext, type RefObject, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
@@ -15,6 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
 import { SETTLED_MS, useWindowOrigin } from '../../components/Screen.tsx';
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
+import { useFocusBack } from '../../components/Sheet.tsx';
+import { type TextHandle } from '../../components/Text.tsx';
 import { inModal } from '../../kit/anchoredMenu.ts';
 import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -74,6 +77,8 @@ export function useSizeSwitcher(
     );
   const close = () => setFrame(null);
 
+  useFocusBack(frame != null, opener);
+
   useEffect(() => {
     if (!openAtStart || !ours) return undefined;
     const wait = setTimeout(show, 2 * SETTLED_MS);
@@ -108,6 +113,13 @@ function SizeSwitcher({
   const { org, onSwitch } = useContext(SizeOrg);
   const startWalk = useStartWalk(opener);
   const shown = useModalOpen(true);
+  const heading = useRef<TextHandle>(null);
+
+  useEffect(() => {
+    const focus = setTimeout(() => moveScreenReaderFocus(heading.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, []);
 
   return (
     <Modal
@@ -136,7 +148,7 @@ function SizeSwitcher({
         testID="demo.todaySize.switcher"
       >
         <View style={styles.clip}>
-          <Asks scale={scale} />
+          <Asks scale={scale} heading={heading} />
           <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
             <View style={styles.list}>
               {switcherOrgs(org).map((key) => (
@@ -168,7 +180,7 @@ function SizeSwitcher({
   );
 }
 
-function Asks({ scale }: { scale: number }) {
+function Asks({ scale, heading }: { scale: number; heading: RefObject<TextHandle | null> }) {
   const { t } = useTranslation();
   const [room, setRoom] = useState(0);
 
@@ -186,6 +198,7 @@ function Asks({ scale }: { scale: number }) {
         weight="bold"
         line={1.2}
         role="header"
+        ref={heading}
         style={styles.question}
         testID="demo.todaySize.switcher.heading"
       />

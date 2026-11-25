@@ -365,9 +365,9 @@ export const SWITCHER_NAME = 15;
 export const SWITCHER_LINE = 13;
 export const SWITCHER_TILE = 56;
 
-/** The switcher's rows in the demo: the organisation you are in first, then the others the demo knows, so the long names are read against short ones. */
+/** The switcher's rows in the demo: the organisation you are in first, then every other the demo knows, so each stays reachable from any of them. */
 export function switcherOrgs(current: TodayOrg): TodayOrg[] {
-  return [current, ...(['qa', 'lumen', 'ire'] as const).filter((key) => key !== current)];
+  return [current, ...TODAY_ORGS.map((one) => one.key).filter((key) => key !== current)];
 }
 
 const NO_BREAK = String.fromCharCode(0xa0);
