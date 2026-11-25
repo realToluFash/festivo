@@ -13,6 +13,7 @@ import { EventMesh, eventColour } from '../../components/EventMesh.tsx';
 import { EventThumb } from '../../components/TodayParts.tsx';
 import { daysWords } from '../../kit/eventsList.ts';
 import type { ShownEvent } from '../../kit/today.ts';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENT_OF_KEY } from '../events/EventsSample.ts';
 import { openEvent } from '../events/openEvent.ts';
@@ -229,7 +230,9 @@ function Words({
   const [room, setRoom] = useState(0);
   const [name, setName] = useState<number | null>(null);
   const below = underName(cap, name);
-  const chipRoom = Math.max(room - 2 * tokens.spaceMd, 0);
+  // From AX1 the labels under the name wait for it, so none shows at a size the name then steps under.
+  const under = atAccessibilitySizes(scale) && name == null ? 0 : room;
+  const chipRoom = Math.max(under - 2 * tokens.spaceMd, 0);
 
   return (
     <View
@@ -254,7 +257,7 @@ function Words({
         size={EVENT_DATES}
         scale={scale}
         cap={below}
-        room={room}
+        room={under}
         weight="medium"
         line={1.22}
         style={[styles.secondary, styles.dates]}
@@ -290,7 +293,7 @@ function Words({
               size={EVENT_READY}
               scale={scale}
               cap={below}
-              room={room}
+              room={under}
               weight="medium"
               line={1.22}
               style={styles.secondary}
