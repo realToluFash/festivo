@@ -5,6 +5,7 @@ import {
   type ArrivedFocus,
   arrivedFocusStep,
   type MountedKeys,
+  mountedKeys,
   mountedKeysStep,
   openedFocus,
   settledFocus,
@@ -116,6 +117,15 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
   it('raises them only once, so the back key keeps them down though Android reads them as down over a Modal', () => {
     expect(mountedKeysStep({ ...mounted, raised: true })).toBe('done');
     expect(mountedKeysStep({ ...mounted, raised: true, ticks: 2 })).toBe('done');
+  });
+
+  it('raises nothing more after a blur and a focus, as the back key and a tap make', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: false, readerOn: false, ticks: 1 };
+    expect(step(now)).toBe('wait');
+    expect(step({ ...now, focused: true })).toBe('raise');
+    expect(step(now)).toBe('done');
+    expect(step({ ...now, focused: true, ticks: 2 })).toBe('done');
   });
 
   it('stops waiting after a few seconds', () => {

@@ -49,7 +49,7 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped, focusedField } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { arrivedFocusStep, mountedKeysStep, openedFocus, WindowArriving } from './openedFocus.ts';
+import { arrivedFocusStep, mountedKeys, openedFocus, WindowArriving } from './openedFocus.ts';
 import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus, useScreenReader } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
@@ -429,32 +429,19 @@ export function useOpenedFocus(
     return () => clearTimeout(next);
   }, [opened, arrival, focused, readerOn, ticks]);
 
-  const [atMount] = useState(autoFocus);
-  const raised = useRef(false);
+  const [keysStep] = useState(() => mountedKeys(Platform.OS, opened, autoFocus));
   const [keyTicks, setKeyTicks] = useState(0);
 
   useEffect(() => {
     const field = input.current;
-    const step = mountedKeysStep({
-      os: Platform.OS,
-      opened,
-      autoFocus: atMount,
-      focused,
-      raised: raised.current,
-      readerOn,
-      ticks: keyTicks,
-    });
-    if (step === 'done' || field == null) return undefined;
-    if (step === 'raise') {
-      raiseKeysOn(field);
-      raised.current = true;
-
-      return undefined;
-    }
+    if (field == null) return undefined;
+    const step = keysStep({ focused, readerOn, ticks: keyTicks });
+    if (step === 'raise') raiseKeysOn(field);
+    if (step !== 'wait') return undefined;
     const next = setTimeout(() => setKeyTicks((count) => count + 1), NEW_FIELD_BOUND_MS);
 
     return () => clearTimeout(next);
-  }, [opened, atMount, focused, readerOn, keyTicks]);
+  }, [keysStep, focused, readerOn, keyTicks]);
 
   return { input, autoFocus: opened === 'arrived' ? false : autoFocus };
 }

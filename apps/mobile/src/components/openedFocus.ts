@@ -74,3 +74,19 @@ export function mountedKeysStep(at: MountedKeys): 'wait' | 'raise' | 'done' {
 
   return 'raise';
 }
+
+/** `mountedKeysStep` for one field, keeping whether the keys have been raised on it: a blur and a focus after the raise, as the back key and a tap make, raise nothing more (lead, PR #3899). */
+export function mountedKeys(
+  os: string,
+  opened: OpenedFocus,
+  autoFocus: boolean | undefined,
+): (at: Pick<MountedKeys, 'focused' | 'readerOn' | 'ticks'>) => 'wait' | 'raise' | 'done' {
+  let raised = false;
+
+  return (at) => {
+    const step = mountedKeysStep({ ...at, os, opened, autoFocus, raised });
+    if (step === 'raise') raised = true;
+
+    return step;
+  };
+}
