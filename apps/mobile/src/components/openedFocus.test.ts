@@ -13,6 +13,7 @@ const waiting: ArrivedFocus = {
   arrival: 'arrived',
   focused: false,
   heldElsewhere: false,
+  readerOn: false,
   ticks: 0,
 };
 
@@ -57,6 +58,13 @@ describe('a field a sliding Android window opens with takes typing at once (sc-9
     expect(arrivedFocusStep({ ...waiting, arrival: 'arriving', focused: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, heldElsewhere: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, ticks: 3, heldElsewhere: true })).toBe('done');
+  });
+
+  it('sends focus once with a screen reader on, so the reader stays on the title (qa #91929)', () => {
+    const reading = { ...waiting, readerOn: true };
+    expect(arrivedFocusStep({ ...reading, arrival: 'arriving' })).toBe('wait');
+    expect(arrivedFocusStep(reading)).toBe('focus');
+    expect(arrivedFocusStep({ ...reading, ticks: 1 })).toBe('done');
   });
 
   it('moves nothing for a field that took its focus at mount', () => {
