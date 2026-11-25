@@ -295,6 +295,7 @@ export function MenuWords({
   style,
   accessible = false,
   accessibilityRole,
+  grows = true,
   children,
 }: {
   size: number;
@@ -302,22 +303,24 @@ export function MenuWords({
   style?: StyleProp<TextStyle>;
   accessible?: boolean;
   accessibilityRole?: 'header';
+  grows?: boolean;
   children: string;
 }) {
   const { fontScale } = useWindowDimensions();
   const [room, setRoom] = useState(0);
   const look = { size, weight, accessible, accessibilityRole, style };
+  const fill = grows && styles.words;
 
   if (!atAccessibilitySizes(fontScale)) {
     return (
-      <Text {...look} style={[styles.words, style]}>
+      <Text {...look} style={[fill, style]}>
         {children}
       </Text>
     );
   }
 
   return (
-    <View style={styles.words} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+    <View style={fill} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
       <CappedWholeWords {...look} room={room} breakAfterHyphens>
         {children}
       </CappedWholeWords>

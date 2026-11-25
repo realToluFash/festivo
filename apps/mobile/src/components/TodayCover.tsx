@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -13,9 +13,9 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
 import { Text, type TextProps } from './Text.tsx';
-import { useMeasuredAt, useWholeWords } from './Title.tsx';
+import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { wordsIn } from '../layout/textSize.ts';
+import { capUnderTitle, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -303,32 +303,73 @@ export function Greeting({
   size,
   sub,
   gap,
+  onDrawn,
 }: {
   moment: Moment;
   size: number;
   sub: number;
   gap: number;
+  onDrawn?: ((size: number | null) => void) | undefined;
 }) {
+  const whole = useAccessibilitySizes();
+  const [room, setRoom] = useState(0);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const subCap = whole && drawn != null ? capUnderTitle(drawn, sub) : undefined;
+  const look = {
+    weight: 'bold',
+    accessibilityRole: 'header',
+    style: [styles.white, { letterSpacing: size * -0.02 }],
+  } as const;
+
+  useEffect(() => {
+    onDrawn?.(whole ? drawn : null);
+  }, [onDrawn, whole, drawn]);
+  useEffect(() => () => onDrawn?.(null), [onDrawn]);
+
+  // From AX1 the greeting steps down rather than break a word, and its comma stays on the word before it (sc-91291).
   return (
     <View style={{ gap }}>
       <Text size={12} weight="semibold" style={[styles.white, styles.eyebrow]}>
         {moment.eyebrow.toUpperCase()}
       </Text>
-      <Text
-        size={size}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.white, { lineHeight: Math.round(size * 1.08), letterSpacing: size * -0.02 }]}
-      >
-        {moment.hello}
-      </Text>
+      {whole ? (
+        <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+          <CappedWholeWords
+            {...look}
+            size={size}
+            room={room}
+            breakAfterHyphens
+            onDrawn={setDrawn}
+            style={[
+              look.style,
+              drawn != null && { lineHeight: wholeLineHeight(size, drawn, 1.08) },
+            ]}
+          >
+            {moment.hello}
+          </CappedWholeWords>
+        </View>
+      ) : (
+        <Text {...look} size={size} style={[look.style, { lineHeight: Math.round(size * 1.08) }]}>
+          {moment.hello}
+        </Text>
+      )}
       <View style={styles.subLine}>
         {moment.lead != null && (
-          <Text size={sub} weight="bold" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+          <Text
+            size={sub}
+            weight="bold"
+            maxFontSizeMultiplier={subCap}
+            style={[styles.white, { lineHeight: sub * 1.45 }]}
+          >
             {`${moment.lead} `}
           </Text>
         )}
-        <Text size={sub} weight="medium" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+        <Text
+          size={sub}
+          weight="medium"
+          maxFontSizeMultiplier={subCap}
+          style={[styles.white, { lineHeight: sub * 1.45 }]}
+        >
           {moment.sub}
         </Text>
       </View>
@@ -636,11 +677,14 @@ export function TodayCover({
   top,
   onTab,
   words = 1,
+  onGreeting,
 }: {
   moment: Moment;
   layout: CoverLayout;
   top: number;
   onTab: (tab: Tab) => void;
+  /** The size the greeting drew at from AX1, null below it or while no greeting shows. */
+  onGreeting?: ((size: number | null) => void) | undefined;
   /** How much of the top row and the words still show: they go as the cover scrolls up, before the band comes. */
   words?: Animated.AnimatedInterpolation<number> | number;
 }) {
@@ -670,7 +714,13 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide />
           ) : (
-            <Greeting moment={moment} size={38} sub={17} gap={tokens.spaceSm} />
+            <Greeting
+              moment={moment}
+              size={38}
+              sub={17}
+              gap={tokens.spaceSm}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </View>
@@ -713,9 +763,21 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
-            <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} />
+            <Greeting
+              moment={moment}
+              size={32}
+              sub={16}
+              gap={tokens.spaceSm}
+              onDrawn={onGreeting}
+            />
           ) : (
-            <Greeting moment={moment} size={46} sub={19} gap={tokens.spaceMd} />
+            <Greeting
+              moment={moment}
+              size={46}
+              sub={19}
+              gap={tokens.spaceMd}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </Animated.View>
@@ -1230,7 +1292,13 @@ const styles = StyleSheet.create({
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
   bannerBell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
-  bannerGreeting: { position: 'absolute', left: 30, bottom: tokens.space4xl, maxWidth: 520 },
+  bannerGreeting: {
+    position: 'absolute',
+    left: 30,
+    right: 30,
+    bottom: tokens.space4xl,
+    maxWidth: 520,
+  },
   bannerGrows: { justifyContent: 'flex-end' },
   bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },

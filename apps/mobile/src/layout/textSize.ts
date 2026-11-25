@@ -225,8 +225,8 @@ export function besideGlyphInPill({
 }
 
 /** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). `drawn` must be the size iOS draws at: under a `TitleCap` that lowers it, pass the capped size, or the line is a fraction again. */
-export function wholeLineHeight(size: number, drawn: number): number {
-  return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
+export function wholeLineHeight(size: number, drawn: number, line = LABEL_LINE): number {
+  return (Math.ceil(drawn * line) * size) / drawn;
 }
 
 /** The size iOS and Android draw a text of `size` at: grown by the text size, no further than its multiplier (none under 1). */
