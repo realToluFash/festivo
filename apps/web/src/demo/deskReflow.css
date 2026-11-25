@@ -36,6 +36,42 @@
     padding-inline: 0;
   }
 
+  /* sc-91763: in a 288 px room Seating's switches wrap onto a second row, every word whole and every option still 44 px tall. */
+  .today.desk:not(.dp-fit) .st-seg {
+    flex-wrap: wrap;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .today.desk:not(.dp-fit) .st-views {
+    max-width: calc(100% - 2 * var(--spaceLg));
+  }
+
+  /* List takes the second row in every locale, so what floats under the views steps down by that one 46 px row. */
+  .today.desk:not(.dp-fit) .st-views > .st-seg-one:last-child {
+    flex-basis: 100%;
+  }
+
+  .today.desk:not(.dp-fit) :is(.st-float.st-bar, .st-under-views, .st-view-wrap) {
+    top: 118px;
+  }
+
+  .today.desk:not(.dp-fit) .st-print {
+    top: 116px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down .st-top-right {
+    top: 118px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down .st-print {
+    top: 176px;
+  }
+
+  .today.desk:not(.dp-fit) .is-row-down :is(.st-under-views, .st-view-wrap) {
+    top: 178px;
+  }
+
   .today.desk:not(.dp-fit) :is(.ev-crumb ol, .desk-row) {
     flex-wrap: wrap;
   }
