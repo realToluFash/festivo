@@ -52,8 +52,8 @@ final readonly class EmailSender implements ChannelSenderInterface
         try {
             $this->mailer->send($email);
         } catch (TransportExceptionInterface $refused) {
-            // Postmark answers 406 for an address on its inactive list, over its API and in its SMTP reply.
-            if (406 === $refused->getCode() || Str\contains_ci($refused->getMessage(), 'inactive')) {
+            // Postmark's error 406, an inactive recipient: "… marked as inactive. Found inactive addresses: …". The worker takes it as Not sent only for a guest's message.
+            if (Str\contains_ci($refused->getMessage(), 'marked as inactive')) {
                 throw Unreachable::providerBlocked($refused);
             }
 

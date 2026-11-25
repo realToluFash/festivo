@@ -23,6 +23,14 @@ final readonly class GuestMessagesChanged
         $this->realtimePublisher->publish(RealtimeTopic::EventMessages, $eventId, []);
     }
 
+    /** The worker's finish, which already holds the delivery's type: a delivery of any other notification changes nothing here. */
+    public function afterFinished(string $type, ?string $eventId): void
+    {
+        if (GuestMessageNotice::NAME === $type && null !== $eventId) {
+            $this->onEvent($eventId);
+        }
+    }
+
     /** A delivery of any other notification changes nothing here. */
     public function afterDelivery(string $deliveryId): void
     {

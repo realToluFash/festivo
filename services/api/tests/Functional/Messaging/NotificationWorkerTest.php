@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Guest\Link\InvitationLinks;
+use App\Domain\Messaging\Channel\EmailSender;
 use App\Domain\Messaging\Exception\UnregisteredNotificationType;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\Trigger;
@@ -19,6 +20,10 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Type;
 use Psl\Type\Exception\CoercionException;
 use Psl\Vec;
+use Symfony\Component\Mailer\Envelope;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Component\Uid\Uuid;
 
 final class NotificationWorkerTest extends MessagingTestCase
@@ -152,6 +157,23 @@ final class NotificationWorkerTest extends MessagingTestCase
         self::assertSame(5, self::sender()->calls);
         self::assertSame('failed', self::scalar('SELECT status FROM notification_deliveries'));
         self::assertStringContainsString('550 the provider said no', Type\string()->coerce(self::scalar('SELECT last_error FROM notification_deliveries')));
+    }
+
+    #[Test]
+    public function anInactiveRecipientIsRetriedForAnythingButAGuestsMessage(): void
+    {
+        self::sender()->through = new EmailSender(new class implements MailerInterface {
+            public function send(RawMessage $message, ?Envelope $envelope = null): void
+            {
+                throw new TransportException('406 You tried to send to a recipient that has been marked as inactive.', 406);
+            }
+        }, 'notices@soirely.test');
+        self::scheduler()->schedule('test.notice', 'inactive', 'inactive', Trigger::at(new DateTimeImmutable('-1 minute')), $this->budgetHolders());
+
+        self::runUntilIdle();
+
+        self::assertSame('pending', self::scalar('SELECT status FROM notification_deliveries'));
+        self::assertNull(self::scalar('SELECT not_sent_reason FROM notification_deliveries'));
     }
 
     #[Test]

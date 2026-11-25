@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\Unreachable;
+use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
@@ -384,6 +385,13 @@ final class NotificationWorker
         try {
             $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $collapseKey);
         } catch (Unreachable $unreachable) {
+            if ($unreachable->providerBlocked && GuestMessageNotice::NAME !== $type->name()) {
+                $this->failed($id, Type\int()->coerce($row['attempts']) + 1, $unreachable->getPrevious() ?? $unreachable);
+                $this->release($collapsed);
+
+                return;
+            }
+
             if (!$this->forgetIfCancelled($id)) {
                 $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true, notSent: $unreachable->providerBlocked ? DeliveryNotSentReason::ProviderBlocked : null);
             }
@@ -711,7 +719,7 @@ final class NotificationWorker
 
     private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null, ?DeliveryNotSentReason $notSent = null): void
     {
-        $this->connection->executeStatement(
+        $finished = $this->connection->fetchAssociative(
             <<<'SQL'
                 UPDATE notification_deliveries
                 SET status = :status,
@@ -723,6 +731,7 @@ final class NotificationWorker
                     finished_at = :now,
                     claimed_until = NULL
                 WHERE id = :id
+                RETURNING type, event_id
                 SQL,
             [
                 'status' => $status->value,
@@ -735,7 +744,10 @@ final class NotificationWorker
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
-        $this->guestMessagesChanged->afterDelivery($id);
+
+        if (false !== $finished) {
+            $this->guestMessagesChanged->afterFinished(Type\string()->coerce($finished['type']), Type\nullable(Type\string())->coerce($finished['event_id']));
+        }
 
         // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
         $this->connection->executeStatement(
