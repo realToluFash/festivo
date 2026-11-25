@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 import { SW, say } from './seating.ts';
 
 let measure: CanvasRenderingContext2D | null | undefined;
@@ -8,9 +10,29 @@ export function textWidth(text: string, font: string, perChar: number): number {
     measure = navigator.userAgent.includes('jsdom')
       ? null
       : document.createElement('canvas').getContext('2d');
-  if (measure == null) return text.length * perChar;
+  if (measure == null) return Array.from(text).length * perChar;
   measure.font = font;
   return measure.measureText(text).width;
+}
+
+const CAPTION_FONT = '600 12.5px "Instrument Sans", sans-serif';
+
+/** Draws once more when the caption's font arrives, so what was measured in the fallback is measured again. */
+export function useFontsArrived(): void {
+  const [, setArrived] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    const arrived = () => {
+      if (live) setArrived((n) => n + 1);
+    };
+    void document.fonts.ready.then(arrived);
+    void document.fonts.load?.(CAPTION_FONT).then(arrived);
+
+    return () => {
+      live = false;
+    };
+  }, []);
 }
 
 const CAPTION_INSET = 12;
@@ -22,8 +44,7 @@ export function roomCaption(
   length: string,
   ox: number,
   frame: number,
-  widthOf: (text: string) => number = (text) =>
-    textWidth(text, '600 12.5px "Instrument Sans", sans-serif', 6.6),
+  widthOf: (text: string) => number = (text) => textWidth(text, CAPTION_FONT, 6.6),
 ): { x: number; text: string } {
   const x = Math.max(ox, CAPTION_INSET);
   const room = frame - CAPTION_INSET - x;

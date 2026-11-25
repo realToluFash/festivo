@@ -29,7 +29,7 @@ import {
   turn,
   usable,
 } from './seating.ts';
-import { roomCaption, textWidth } from './seatingText.ts';
+import { roomCaption, textWidth, useFontsArrived } from './seatingText.ts';
 import type { Outline, Rect } from './selection.ts';
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
@@ -917,6 +917,7 @@ export function RoomDrawing({
   onFloor?: (event: PointerEvent<SVGSVGElement>) => void;
   onFloorMouse?: (event: MouseEvent<SVGSVGElement>) => void;
 }) {
+  useFontsArrived();
   const room = plan.room;
 
   if (room == null) return null;
