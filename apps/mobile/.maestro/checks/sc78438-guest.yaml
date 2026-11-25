@@ -1,4 +1,4 @@
-# Add guest at the current text size: the mobile field with Royaume-Uni, the keypad up, and the guest saved with that number. sc-78438.
+# Add guest at the current text size: the mobile field with Royaume-Uni, the keypad up, and the guest saved with that number. sc-78438. Phone only: on a tablet the form is a sheet, and keys-away's blank-page tap lands on its scrim.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -91,6 +91,8 @@ appId: host.exp.Exponent
 - inputText: '7400123458'
 - waitForAnimationToEnd
 - takeScreenshot: guest-keypad
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: 'guest.form.fullName'
@@ -108,6 +110,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'guest.form.fullName'
 - inputText: '${GUEST_NAME}'
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
 - tapOn:
     id: 'guest.form.save'
     optional: true
