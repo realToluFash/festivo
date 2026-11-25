@@ -11,6 +11,7 @@ import {
   pillGivesWay,
   withMeasure,
 } from './capsuleFit.ts';
+import { tokens } from '../theme/tokens.ts';
 
 const ROW_800 = 800 - 2 * 24;
 
@@ -29,10 +30,11 @@ describe('the upright tablet’s capsule', () => {
   });
 
   it('grows its band only by what a taller label adds to its 46', () => {
-    const capsule = (line: number) => Math.max(CAPSULE_HEIGHT, 2 * 4 + line);
-    const band = (line: number) => Math.max(44, line + 2 * LABEL_IN_BAND);
+    const capsule = (line: number) => Math.max(CAPSULE_HEIGHT, 2 * tokens.spaceXxs + line);
+    const band = (line: number) => Math.max(tokens.sizeHit, line + 2 * LABEL_IN_BAND);
 
-    for (const line of [18, 38, 53, 80]) expect(band(line) - 44).toBe(capsule(line) - 46);
+    for (const line of [18, 38, 53, 80])
+      expect(band(line) - tokens.sizeHit).toBe(capsule(line) - CAPSULE_HEIGHT);
   });
 
   it('counts the chrome of four tabs as the capsule draws it', () => {

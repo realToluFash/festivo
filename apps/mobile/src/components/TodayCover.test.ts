@@ -38,6 +38,15 @@ describe('the event’s bar on a phone (sc-71148)', () => {
   });
 });
 
+describe('the capsule the upright band is laid out beside (sc-91290)', () => {
+  it('is as tall as the geometry LABEL_IN_BAND is built from', () => {
+    const capsule = / {2}whiteCapsule: \{[\s\S]*?\n {2}\},/u.exec(cover)?.[0] ?? '';
+    expect(capsule).toMatch(/minHeight: CAPSULE_HEIGHT,/u);
+    expect(capsule).toMatch(/padding: tokens\.spaceXxs,/u);
+    expect(capsule).not.toMatch(/padding(Vertical|Top|Bottom):/u);
+  });
+});
+
 describe('the band’s tile while an invitation waits (sc-40298)', () => {
   it('draws the cover tile’s ring, so the band returns the same tile', () => {
     expect(cover).toMatch(/\{org\.waiting != null && <View style=\{styles\.tileRing\} \/>\}/u);
