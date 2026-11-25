@@ -4,8 +4,33 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's organisation pill on the phone (sc-92247), greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312), its organisation pill on the phone (sc-92247), greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'En cours · AX5, on its side',
+    what: 'Dîner en direct whole, or Dîner en / direct; En cours and Jour 1 sur 1 each whole in its chip, the second under the first where both do not fit; Ouvrir l’événement under the end line',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner',
+  },
+  {
+    title: 'En cours · AX5, several long words',
+    what: 'Atelier Céleste Réceptions et Mariages on as many lines as its words need, the banner grown to hold it, Vos événements clear below',
+    href: '/demo/today-size?size=ax5&lang=fr&live=several',
+  },
+  {
+    title: 'Live now · AX5, one long word',
+    what: 'Internationalisationsorganisationsgesellschaft at 48, its default size, breaking inside itself only',
+    href: '/demo/today-size?size=ax5&lang=en&live=oneWord',
+  },
+  {
+    title: 'Live now · AX1, English',
+    what: 'Live now, Day 1 of 1, Ends today at 23:30 and Open the event, every word whole, the button under the end line',
+    href: '/demo/today-size?size=ax1&lang=en&live=dinner',
+  },
+  {
+    title: 'Live now · seventh step',
+    what: 'As on main: the chips on one line, Open the event at the banner’s right',
+    href: '/demo/today-size?size=seventh&lang=en&live=dinner',
+  },
   {
     title: 'La pastille · AX5, iPhone',
     what: 'QA / Organisation whole, stepped down until Organisation fits, never Organi / sation',

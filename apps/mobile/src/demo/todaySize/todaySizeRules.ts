@@ -215,3 +215,53 @@ export function pillTileAlone(
     atAccessibilitySizes(scale) && widestAtDefault != null && room > 0 && widestAtDefault > room
   );
 }
+
+export type TodayLive = 'none' | 'dinner' | 'several' | 'oneWord';
+
+export const TODAY_LIVES: readonly { key: TodayLive; label: string }[] = [
+  { key: 'none', label: 'Nothing live' },
+  { key: 'dinner', label: 'Dîner en direct' },
+  { key: 'several', label: 'Atelier Céleste Réceptions et Mariages' },
+  { key: 'oneWord', label: 'One long word' },
+];
+
+export function liveName(live: TodayLive): string | null {
+  if (live === 'none') return null;
+
+  return live === 'oneWord'
+    ? ONE_WORD
+    : (TODAY_LIVES.find((one) => one.key === live)?.label ?? null);
+}
+
+/** Main's live cover on its side (NowBlock, wide): the name at 48, the end line and Open the event at 16, the chips at 13. */
+export const LIVE_NAME = 48;
+export const LIVE_ENDS = 16;
+export const LIVE_CHIP = 13;
+export const LIVE_OPEN = 16;
+/** The one-day event is live until 23:30 today, with no venue, so its chip reads Day 1 of 1 alone. */
+export const LIVE_ENDS_AT = '23:30';
+
+const CHIP_SIDES = 2 * 12;
+const LIVE_RING = 14;
+const OPEN_SIDES = 2 * 22;
+const OPEN_ARROW = 18;
+
+/** From AX1 Open the event takes the line under the end line, so the name keeps the cover's width (sc-92312). */
+export function openUnder(scale: number): boolean {
+  return atAccessibilitySizes(scale);
+}
+
+/** The words' room in Live now's chip: the column less its sides, the dot's ring and the gap after it. */
+export function liveChipRoom(column: number): number {
+  return Math.max(column - CHIP_SIDES - LIVE_RING - tokens.spaceXs, 0);
+}
+
+/** The words' room in the day's chip: the column less its sides. */
+export function dayChipRoom(column: number): number {
+  return Math.max(column - CHIP_SIDES, 0);
+}
+
+/** The label's room in Open the event: the column less its sides, the gap and the arrow. */
+export function openRoom(column: number): number {
+  return Math.max(column - OPEN_SIDES - tokens.spaceSm - OPEN_ARROW, 0);
+}
