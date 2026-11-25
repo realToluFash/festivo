@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addressRuns, breakableEmail } from './addressBreaks.ts';
+import { addressRuns, atWithItsLastCharacter, breakableEmail, isLoneAt } from './addressBreaks.ts';
 
 const BREAK = '\u200B';
 const JOIN = '\u2060';
@@ -45,5 +45,21 @@ describe('breakableEmail', () => {
     expect(breakableEmail('Remove amaka.outside@soirely.test from this event?')).toBe(
       `Remove amaka.outside@${BREAK}soirely.test from this event?`,
     );
+  });
+});
+
+describe('a lone @', () => {
+  it('takes the character ahead of it down with it, adding nothing a reader sees', () => {
+    const local = 'fundacaocomunitariadeoyoeartescontemporaneas@';
+    expect(atWithItsLastCharacter(local)).toBe(
+      `fundacaocomunitariadeoyoeartescontemporanea${BREAK}s@`,
+    );
+    expect(atWithItsLastCharacter(local).replaceAll(BREAK, '')).toBe(local);
+  });
+
+  it('is a line holding only the @, whatever space Android pads it with', () => {
+    expect(isLoneAt('@ ')).toBe(true);
+    expect(isLoneAt(`${BREAK}@`)).toBe(true);
+    expect(isLoneAt('s@')).toBe(false);
   });
 });

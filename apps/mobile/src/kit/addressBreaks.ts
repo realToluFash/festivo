@@ -18,3 +18,13 @@ export function addressRuns(name: string): readonly [string, string] | null {
 export function breakableEmail(text: string): string {
   return text.replace('@', `@${BREAK}`);
 }
+
+/** A `local@` run whose @ wrapped alone onto a line of its own, given a break before the character ahead of the @, so that character goes down with it (sc-70353). */
+export function atWithItsLastCharacter(run: string): string {
+  return run.length < 2 ? run : `${run.slice(0, -2)}${BREAK}${run.slice(-2)}`;
+}
+
+/** Whether a laid-out line holds only the @. */
+export function isLoneAt(line: string): boolean {
+  return line.replaceAll(BREAK, '').trim() === '@';
+}
