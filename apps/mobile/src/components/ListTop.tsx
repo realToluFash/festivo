@@ -147,7 +147,9 @@ export function PortraitRow({
       <View style={styles.fill} />
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
+        {/* A cold launch fits the labels twice, before Search shows and after; drawn afresh at each size, the band takes the capsule's height from the last fit, as a warm open does (sc-91290). */}
         <View
+          key={labelSize}
           onLayout={(event) => {
             setTabsWidth(event.nativeEvent.layout.width);
             setTabsHeight(event.nativeEvent.layout.height);
