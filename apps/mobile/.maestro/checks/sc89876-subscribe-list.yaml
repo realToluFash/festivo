@@ -1,0 +1,27 @@
+# sc-89876: Calendar's subscribe control opens the sheet; its What’s in it list, in the account's language.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../return-home.yaml
+- tapOn:
+    id: 'tab-calendar'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- takeScreenshot: calendar
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.copy'
+    timeout: 20000
+- scrollUntilVisible:
+    element: '{{t:calendarFeed.inTitle}}'
+    direction: DOWN
+    timeout: 15000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: sheet
+- assertVisible: '{{t:calendarFeed.inTitle}}'
+- assertVisible: '{{t:calendarFeed.inName}}'
