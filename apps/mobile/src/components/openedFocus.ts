@@ -1,40 +1,20 @@
 import { createContext } from 'react';
 
-/** True while a phone window on Android slides in, the beat in which a field it opens with loses its focus (sc-91027). */
+/** True while a phone window on Android slides in: a field focused in that beat never takes focus, and the keys come up over it with nowhere to type (sc-91027). */
 export const WindowArriving = createContext(false);
 
-/** Raises the keys on the field it opened with as they rise and once more at `settledMs`, while nobody or that field holds focus, and never once the keys go down. Returns what stops it. */
-export function holdOpenedFocus<Field>({
-  field,
-  holder,
-  raise,
-  onKeys,
-  settledMs,
-}: {
-  field: () => Field | null;
-  holder: () => Field | null | undefined;
-  raise: (field: Field) => void;
-  onKeys: (up: () => void, down: () => void) => () => void;
-  settledMs: number;
-}): () => void {
-  const retake = () => {
-    const opened = field();
-    if (opened == null) return;
-    const holding = holder();
-    if (holding == null || holding === opened) raise(opened);
-  };
-  let stopped = false;
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    clearTimeout(settled);
-    off();
-  };
-  const off = onKeys(retake, stop);
-  const settled = setTimeout(() => {
-    stop();
-    retake();
-  }, settledMs);
+/** When a field takes the focus it opens with: at mount, or once the window it opens in has arrived, as Add a phone number's field does. */
+export type OpenedFocus = 'mount' | 'arrived';
 
-  return stop;
+export function openedFocus(autoFocus: boolean | undefined, arriving: boolean): OpenedFocus {
+  return arriving && autoFocus === true ? 'arrived' : 'mount';
+}
+
+/** Whether a field that waited for its window takes focus now: the window has arrived and nothing else took focus meanwhile. */
+export function takesArrivedFocus(
+  opened: OpenedFocus,
+  arriving: boolean,
+  holder: unknown,
+): boolean {
+  return opened === 'arrived' && !arriving && holder == null;
 }

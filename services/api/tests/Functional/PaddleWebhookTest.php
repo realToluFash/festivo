@@ -109,20 +109,21 @@ final class PaddleWebhookTest extends ApiTestCase
         );
         self::assertSame([
             ['evt_created', 'plan', 'free', 'enterprise', '2027-01-31 09:00:00'],
-            ['evt_created', 'period', null, '2027-02-28T09:00:00+00:00', '2027-01-31 09:00:00'],
-            ['evt_renewed', 'period', '2027-02-28T09:00:00+00:00', '2027-03-31T09:00:00+00:00', '2027-02-28 09:00:00'],
+            ['evt_created', 'period_end', null, '2027-02-28T09:00:00+00:00', '2027-01-31 09:00:00'],
+            ['evt_renewed', 'period_end', '2027-02-28T09:00:00+00:00', '2027-03-31T09:00:00+00:00', '2027-02-28 09:00:00'],
         ], $this->history());
     }
 
     #[Test]
-    public function aCreatedSubscriptionBilledFromANewDateMovesThePeriodStartUnderOnePeriodLine(): void
+    public function aCreatedSubscriptionBilledFromANewDateWritesTheMovedEndAndTheMovedStartEachUnderItsOwnLine(): void
     {
         $this->deliver($this->subscriptionEvent('evt_created', 'subscription.created', '2027-01-31T09:00:00Z', 'active', '2027-02-03T09:00:00Z', '2027-03-03T09:00:00Z'));
 
         self::assertSame(['2027-02-03T09:00:00+00:00', '2027-03-03T09:00:00+00:00'], [$this->subscription()->getPeriodStart()->format(\DATE_ATOM), $this->subscription()->getPeriodEnd()?->format(\DATE_ATOM)]);
         self::assertSame([
             ['evt_created', 'plan', 'free', 'enterprise', '2027-01-31 09:00:00'],
-            ['evt_created', 'period', null, '2027-03-03T09:00:00+00:00', '2027-01-31 09:00:00'],
+            ['evt_created', 'period_end', null, '2027-03-03T09:00:00+00:00', '2027-01-31 09:00:00'],
+            ['evt_created', 'period_start', '2027-01-31T09:00:00+00:00', '2027-02-03T09:00:00+00:00', '2027-01-31 09:00:00'],
         ], $this->history());
     }
 
@@ -137,9 +138,9 @@ final class PaddleWebhookTest extends ApiTestCase
         self::assertSame(SubscriptionStatus::Cancelled, $this->subscription()->getStatus());
         self::assertSame([
             ['evt_created', 'plan', 'free', 'enterprise', '2027-01-31 09:00:00'],
-            ['evt_created', 'period', null, '2027-02-28T09:00:00+00:00', '2027-01-31 09:00:00'],
+            ['evt_created', 'period_end', null, '2027-02-28T09:00:00+00:00', '2027-01-31 09:00:00'],
             ['evt_past_due', 'status', 'active', 'past_due', '2027-02-28 09:00:00'],
-            ['evt_paid', 'period', '2027-02-28T09:00:00+00:00', '2027-03-31T09:00:00+00:00', '2027-03-01 09:00:00'],
+            ['evt_paid', 'period_end', '2027-02-28T09:00:00+00:00', '2027-03-31T09:00:00+00:00', '2027-03-01 09:00:00'],
             ['evt_paid', 'status', 'past_due', 'active', '2027-03-01 09:00:00'],
             ['evt_cancelled', 'status', 'active', 'cancelled', '2027-03-05 09:00:00'],
         ], $this->history());
@@ -155,7 +156,7 @@ final class PaddleWebhookTest extends ApiTestCase
         $this->deliver($this->subscriptionEvent('evt_late', 'subscription.updated', '2027-02-01T09:00:00Z', 'active', '2027-01-31T09:00:00Z', '2027-02-28T09:00:00Z'));
 
         self::assertSame(SubscriptionStatus::Cancelled, $this->subscription()->getStatus());
-        self::assertSame(['plan', 'period', 'status'], Vec\map($this->history(), static fn (array $line): ?string => $line[1]));
+        self::assertSame(['plan', 'period_end', 'status'], Vec\map($this->history(), static fn (array $line): ?string => $line[1]));
         self::assertSame(3, self::connection()->fetchOne('SELECT count(*) FROM provider_events'));
     }
 
@@ -184,7 +185,7 @@ final class PaddleWebhookTest extends ApiTestCase
         $this->deliver(['event_id' => 'evt_refunded', 'event_type' => 'adjustment.updated', 'occurred_at' => '2027-02-02T09:05:00Z', 'data' => ['id' => 'adj_1', 'action' => 'refund', 'status' => 'approved', 'transaction_id' => 'txn_evt_3ds', 'subscription_id' => 'sub_1']]);
 
         self::assertSame(SubscriptionStatus::Active, $this->subscription()->getStatus());
-        self::assertSame(['plan', 'period'], Vec\map($this->history(), static fn (array $line): ?string => $line[1]));
+        self::assertSame(['plan', 'period_end'], Vec\map($this->history(), static fn (array $line): ?string => $line[1]));
     }
 
     #[Test]
@@ -484,7 +485,7 @@ final class PaddleWebhookTest extends ApiTestCase
     private function history(): array
     {
         return Type\vec(Type\shape([0 => Type\string(), 1 => Type\string(), 2 => Type\nullable(Type\string()), 3 => Type\nullable(Type\string()), 4 => Type\string()]))->coerce(self::connection()->fetchAllNumeric(
-            'SELECT actor_label, kind, from_value, to_value, occurred_at FROM subscription_changes WHERE subscription_id = :id ORDER BY occurred_at, CASE kind WHEN \'plan\' THEN 0 WHEN \'period\' THEN 1 ELSE 2 END',
+            'SELECT actor_label, kind, from_value, to_value, occurred_at FROM subscription_changes WHERE subscription_id = :id ORDER BY occurred_at, CASE kind WHEN \'plan\' THEN 0 WHEN \'period_end\' THEN 1 WHEN \'period_start\' THEN 2 ELSE 3 END',
             ['id' => $this->subscription()->getId()->toRfc4122()],
         ));
     }

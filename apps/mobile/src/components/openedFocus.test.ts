@@ -1,93 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { holdOpenedFocus } from './openedFocus.ts';
-
-const SETTLED = 500;
+import { openedFocus, takesArrivedFocus } from './openedFocus.ts';
 
 describe('a field a sliding Android window opens with takes typing at once (sc-91027)', () => {
-  const field = { name: 'opened' };
-  const other = { name: 'other' };
-  let holding: object | null;
-  let present: object | null;
-  let up: () => void;
-  let down: () => void;
-  const raise = vi.fn();
-  const off = vi.fn();
-
-  const hold = () =>
-    holdOpenedFocus({
-      field: () => present,
-      holder: () => holding,
-      raise,
-      onKeys: (onUp, onDown) => {
-        up = onUp;
-        down = onDown;
-        return off;
-      },
-      settledMs: SETTLED,
-    });
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    holding = null;
-    present = field;
-    raise.mockClear();
-    off.mockClear();
+  it('waits for the window to arrive when it opens focused while the window slides in', () => {
+    expect(openedFocus(true, true)).toBe('arrived');
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
+  it('takes focus at mount anywhere else: an iPhone, a tablet, a field drawn once the window is up', () => {
+    expect(openedFocus(true, false)).toBe('mount');
+    expect(openedFocus(false, true)).toBe('mount');
+    expect(openedFocus(undefined, true)).toBe('mount');
   });
 
-  it('raises the keys on it as they rise, and once more when the window has settled', () => {
-    hold();
-    up();
-    expect(raise).toHaveBeenCalledExactlyOnceWith(field);
-
-    vi.advanceTimersByTime(SETTLED - 1);
-    expect(raise).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(1);
-    expect(raise).toHaveBeenCalledTimes(2);
-    expect(off).toHaveBeenCalledOnce();
-
-    vi.runAllTimers();
-    expect(raise).toHaveBeenCalledTimes(2);
+  it('takes its focus once the window has arrived', () => {
+    expect(takesArrivedFocus('arrived', true, null)).toBe(false);
+    expect(takesArrivedFocus('arrived', false, null)).toBe(true);
+    expect(takesArrivedFocus('arrived', false, undefined)).toBe(true);
   });
 
-  it('raises them while it holds focus itself', () => {
-    holding = field;
-    hold();
-    vi.advanceTimersByTime(SETTLED);
-    expect(raise).toHaveBeenCalledExactlyOnceWith(field);
+  it('leaves focus where a tap put it before the window arrived', () => {
+    expect(takesArrivedFocus('arrived', false, { name: 'tapped' })).toBe(false);
   });
 
-  it('never takes focus from another field', () => {
-    holding = other;
-    hold();
-    up();
-    vi.advanceTimersByTime(SETTLED);
-    expect(raise).not.toHaveBeenCalled();
-  });
-
-  it('stops once the keys are put down, so Back keeps them down', () => {
-    holding = field;
-    hold();
-    down();
-    expect(off).toHaveBeenCalledOnce();
-    vi.advanceTimersByTime(SETTLED);
-    expect(raise).not.toHaveBeenCalled();
-  });
-
-  it('does nothing for a field already gone, or once stopped', () => {
-    present = null;
-    hold();
-    vi.advanceTimersByTime(SETTLED);
-    expect(raise).not.toHaveBeenCalled();
-
-    present = field;
-    const stop = hold();
-    stop();
-    vi.advanceTimersByTime(SETTLED);
-    expect(raise).not.toHaveBeenCalled();
+  it('moves nothing for a field that took its focus at mount', () => {
+    expect(takesArrivedFocus('mount', false, null)).toBe(false);
   });
 });

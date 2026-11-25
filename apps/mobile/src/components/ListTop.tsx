@@ -117,7 +117,7 @@ type PortraitRowProps = {
   tabsCentred?: boolean;
 };
 
-/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the bell, and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. */
+/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the end, Search and the bell as wide as they are drawn (sc-91290), and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. */
 export function PortraitRow({
   renderPill,
   bell,
@@ -128,7 +128,8 @@ export function PortraitRow({
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
   const [tabsHeight, setTabsHeight] = useState(0);
-  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth);
+  const [endWidth, setEndWidth] = useState<number>();
+  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
@@ -144,7 +145,7 @@ export function PortraitRow({
         </View>
       )}
       <View style={styles.fill} />
-      {bell}
+      <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
         <View
           onLayout={(event) => {
@@ -152,7 +153,7 @@ export function PortraitRow({
             setTabsHeight(event.nativeEvent.layout.height);
           }}
         >
-          {renderTabs(labelSize)}
+          {labelSize != null && renderTabs(labelSize)}
         </View>
       </View>
     </View>
