@@ -49,7 +49,7 @@ import {
   withRole,
 } from './people.ts';
 import { AddDialog, RoleDialog } from './PeopleDialogs.tsx';
-import { WholeAddress } from './WholeAddress.tsx';
+import { WholeAddress } from '../components/WholeAddress.tsx';
 import { Avatar, Head, RowWords, Tag, TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import './today.css';

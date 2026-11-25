@@ -38,6 +38,7 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { AddressIn, WholeAddress } from '../../../components/WholeAddress.tsx';
 import { useServerNow } from '../../../serverNow.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
@@ -355,7 +356,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                     </span>
                   )}
                   <RowWords
-                    title={nameOf(person, t)}
+                    title={<WholeAddress text={nameOf(person, t)} />}
                     tag={
                       person.outside && (
                         <Tag
@@ -653,7 +654,7 @@ function RoleDialog({
         <div className="people-who">
           <Avatar initials={initials(name)} tone={tone} size="face" />
           <RowWords
-            title={name}
+            title={<WholeAddress text={name} />}
             lines={[
               [
                 t(person.outside ? 'eventPeople.fromOutside' : 'eventPeople.memberOf', {
@@ -740,7 +741,12 @@ function RoleDialog({
       </Dialog>
       {removing && (
         <Ask
-          title={t('eventPeople.removeTitle', { name })}
+          title={
+            <AddressIn
+              text={name}
+              words={(address) => t('eventPeople.removeTitle', { name: address })}
+            />
+          }
           line={
             person.outside
               ? t('eventPeople.removeOutsideLine')

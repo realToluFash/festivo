@@ -1,6 +1,7 @@
 import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 
 import { addressSides } from './wholeAddress.ts';
+import './wholeAddress.css';
 
 /** An address whole, breaking after its @ first and then before a dot, with nothing put into its text: `<wbr>` copies and reads as nothing (sc-91529). */
 export function WholeAddress({ text }: { text: string }) {
@@ -10,7 +11,7 @@ export function WholeAddress({ text }: { text: string }) {
   const [wide, setWide] = useState(false);
 
   useLayoutEffect(() => {
-    const box = domain.current?.closest('.desk-row-words');
+    const box = domain.current?.closest('.desk-row-words, .desk-ask > h2');
     if (domain.current == null || box == null) return;
     if (!domain.current.classList.contains('is-wide')) {
       natural.current = domain.current.getBoundingClientRect().width;
@@ -44,4 +45,19 @@ function pieces(parts: readonly string[]) {
       {part}
     </Fragment>
   ));
+}
+
+const HOLE = '\u0000';
+
+/** A sentence around an address, its words from the locale, the address in it whole (sc-91529). */
+export function AddressIn({ text, words }: { text: string; words: (address: string) => string }) {
+  const [before, after = ''] = words(HOLE).split(HOLE);
+
+  return (
+    <>
+      {before}
+      <WholeAddress text={text} />
+      {after}
+    </>
+  );
 }

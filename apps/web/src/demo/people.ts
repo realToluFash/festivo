@@ -291,8 +291,8 @@ export function rolesOff(person: Pick<OnEvent, 'outside'>): EventRole[] {
   return person.outside ? ['Lead'] : [];
 }
 
-export function removeTitle(person: OnEvent): string {
-  return `Remove ${person.name} from this event?`;
+export function removeTitle(name: string): string {
+  return `Remove ${name} from this event?`;
 }
 
 export function removeLine(person: Pick<OnEvent, 'outside'>, org: string = ORGANISATION): string {

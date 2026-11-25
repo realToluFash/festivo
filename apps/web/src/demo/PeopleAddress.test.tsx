@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { LONG_ADDRESSES } from './people.ts';
-import { addressSides } from './wholeAddress.ts';
-import { readAddressesInline } from './wholeAddressTesting.ts';
+import { addressSides } from '../components/wholeAddress.ts';
+import { readAddressesInline } from '../components/wholeAddressTesting.ts';
 
 const tested = config();
 
