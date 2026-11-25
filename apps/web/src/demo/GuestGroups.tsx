@@ -11,14 +11,14 @@ import {
   type GroupPick,
   type GroupsStart,
   type GuestGroup,
-  NO_GROUP,
+  groupChips,
   groupCounts,
   groupLine,
   groupNameLength,
   groupOptions,
   groupProblem,
   sameGroup,
-  sortedGroups,
+  toggledGroup,
 } from './guestGroups.ts';
 import type { Guest } from './guests.ts';
 import { GW } from './guestsWords.ts';
@@ -26,7 +26,7 @@ import './guestGroups.css';
 
 const BLUR_MS = 120;
 
-/** sc-3775's chips under the search: one per group, A to Z, then No group while anyone has none; one pressed at a time. */
+/** sc-3775's chips under the search: one per group, A to Z, then No group while anyone has none; each pressed or let go on its own (sc-90684). */
 export function GroupChips({
   groups,
   list,
@@ -35,19 +35,16 @@ export function GroupChips({
 }: {
   groups: readonly GuestGroup[];
   list: readonly Guest[];
-  filter: GroupFilter | null;
-  onFilter: (next: GroupFilter | null) => void;
+  filter: readonly GroupFilter[];
+  onFilter: (next: readonly GroupFilter[]) => void;
 }) {
   if (groups.length === 0) return null;
-  const chips = [
-    ...sortedGroups(groups).map((one) => ({ key: one.id, word: one.name })),
-    ...(list.some((one) => one.group == null) ? [{ key: NO_GROUP, word: GGW.noGroup }] : []),
-  ];
+  const chips = groupChips(groups, list);
 
   return (
     <div className="gs-chips gs-filters gg-chips" role="group" aria-label={GGW.chips}>
       {chips.map((chip) => {
-        const on = chip.key === filter;
+        const on = filter.includes(chip.key);
 
         return (
           <button
@@ -56,7 +53,7 @@ export function GroupChips({
             className={on ? 'gs-chip is-on' : 'gs-chip'}
             aria-pressed={on}
             data-focus={`group-chip:${chip.key}`}
-            onClick={() => onFilter(on ? null : chip.key)}
+            onClick={() => onFilter(toggledGroup(filter, chip.key))}
           >
             {on && <Glyph name="tick" size={16} weight={2.6} />}
             <span className="gs-chip-word">{chip.word}</span>

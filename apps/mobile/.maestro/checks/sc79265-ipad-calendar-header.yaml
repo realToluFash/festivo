@@ -1,0 +1,52 @@
+# sc-79265: an iPad's Calendar header at the device's text size (set outside the flow), held ${ORIENT}: the header, a tap at the Subscribe pill's edge opens the dialog, closed by its ×, then Refreshing… held after the app comes back to the front with the API stopped, then Try again held on the paused API.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil: { visible: { id: 'calendarFeed.open' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: header
+- tapOn: { id: 'calendarFeed.open', point: '8%,85%' }
+- extendedWaitUntil: { visible: { id: 'calendarFeed.close' }, timeout: 25000 }
+- waitForAnimationToEnd
+- takeScreenshot: dialog
+- tapOn: { id: 'calendarFeed.close' }
+- waitForAnimationToEnd
+- assertNotVisible: { id: 'calendarFeed.close' }
+- takeScreenshot: closed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- pressKey: home
+- launchApp: { appId: host.exp.Exponent, stopApp: false }
+- extendedWaitUntil: { visible: { id: 'offline.band' }, timeout: 40000 }
+- takeScreenshot: band
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn: { id: 'offline.retry' }
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=refreshing-1
+- takeScreenshot: refreshing
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /shot?name=refreshing-2
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil: { notVisible: { id: 'calendar.refreshing' }, timeout: 30000 }
+- takeScreenshot: after
+- setOrientation: PORTRAIT

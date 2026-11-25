@@ -7,7 +7,8 @@ namespace App\Enum;
 enum SubscriptionChangeKind: string
 {
     case Plan = 'plan';
-    case Period = 'period';
+    case PeriodEnd = 'period_end';
+    case PeriodStart = 'period_start';
     case Status = 'status';
     case CatalogueVersion = 'catalogue_version';
 }

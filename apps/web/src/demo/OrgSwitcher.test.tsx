@@ -561,7 +561,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
     ).toBeDefined();
     expect(screen.getByText(says)).toBeDefined();
     expect(screen.getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href')).toBe(
-      '/demo/settings/security',
+      '/demo/settings/security?state=choice',
     );
   });
 });

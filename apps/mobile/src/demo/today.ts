@@ -63,7 +63,7 @@ export const EVENTS: Record<EventKey, SampleEvent> = {
     last: '2026-11-28',
     place: 'Clerkenwell, London',
     draft: false,
-    mesh: 'accent',
+    mesh: 'party',
   },
   draft: {
     name: 'Bisi & Kola’s engagement',

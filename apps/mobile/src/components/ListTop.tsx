@@ -1,13 +1,14 @@
-import { type ReactNode, type RefObject, useState } from 'react';
+import { createContext, type ReactNode, type RefObject, useContext, useState } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
-import { capsuleGrowth } from '../layout/capsuleFit.ts';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
+import { CAPSULE_LABEL, LABEL_IN_BAND } from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
-import { type TextHandle } from './Text.tsx';
-import { useCapsuleLabels } from './CapsuleLabels.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { Title } from './Title.tsx';
 import { TOP_TITLE, topTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
@@ -21,6 +22,7 @@ export function ListTop({
   pill,
   bell,
   beside,
+  bellUnder = false,
   primary,
   under,
   untitled = false,
@@ -35,6 +37,8 @@ export function ListTop({
   pill: ReactNode;
   bell: ReactNode;
   beside?: ReactNode;
+  /** On its side, the bell under the title and `under` rather than at the end of the title's row (sc-79265). */
+  bellUnder?: boolean;
   primary?: TopPrimaryProps | undefined;
   under?: ReactNode;
   /** The page in front names itself, so the top draws no title (sc-37693). */
@@ -67,7 +71,7 @@ export function ListTop({
       </View>
       {beside}
       {primary != null && <TopPrimary {...primary} wide={label.wide} />}
-      {kind === 'tabletLandscape' && bell}
+      {kind === 'tabletLandscape' && !bellUnder && bell}
     </View>
   );
 
@@ -76,17 +80,35 @@ export function ListTop({
       {kind === 'phone' && <PillRow pill={pill} bell={bell} />}
       {!untitled && titleRow}
       {under}
+      {kind === 'tabletLandscape' && bellUnder && <View style={styles.bellUnder}>{bell}</View>}
     </View>
   );
 }
 
+const PillRowWidths = createContext<{ row: number; ends: number } | null>(null);
+
+/** Inside a phone's row above the title, its width and what sits at its end, each 0 until measured; null anywhere else. */
+export function usePillRowWidths() {
+  return useContext(PillRowWidths);
+}
+
 /** A phone's row above the title: the pill, and the bell at its end. */
 export function PillRow({ pill, bell }: { pill: ReactNode; bell: ReactNode }) {
+  const [row, setRow] = useState(0);
+  const [ends, setEnds] = useState(0);
+
   return (
-    <View style={[styles.row, styles.pillRow]}>
-      {pill != null && pill !== false && <View style={styles.shrink}>{pill}</View>}
+    <View
+      style={[styles.row, styles.pillRow]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      {pill != null && pill !== false && (
+        <View style={styles.shrink}>
+          <PillRowWidths.Provider value={{ row, ends }}>{pill}</PillRowWidths.Provider>
+        </View>
+      )}
       <View style={styles.fill} />
-      {bell}
+      <View onLayout={(event) => setEnds(event.nativeEvent.layout.width)}>{bell}</View>
     </View>
   );
 }
@@ -113,7 +135,7 @@ type PortraitRowProps = {
   tabsCentred?: boolean;
 };
 
-/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the bell, and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. */
+/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the end, Search and the bell as wide as they are drawn (sc-91290), and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. From AX1 the tabs, Search and the bell keep to the row's top, the pill 8 clear of the tabs growing down (sc-92728). */
 export function PortraitRow({
   renderPill,
   bell,
@@ -122,15 +144,15 @@ export function PortraitRow({
   tabsCentred = false,
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const [tabsHeight, setTabsHeight] = useState(0);
-  const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth);
-  const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
+  const [endWidth, setEndWidth] = useState<number>();
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
+  const large = useAccessibilitySizes();
+  const besideTabs = pillBesideTabs(rowWidth, width, large ? tokens.spaceSm : undefined);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
     <View
-      style={[styles.row, { minHeight: tokens.sizeHit + capsuleGrowth(tabsHeight) }]}
+      style={[styles.row, styles.portraitRow, large && styles.portraitRowTall]}
       onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
     >
       {measure}
@@ -139,17 +161,28 @@ export function PortraitRow({
           {drawn}
         </View>
       )}
-      <View style={styles.fill} />
-      {bell}
-      <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        <View
-          onLayout={(event) => {
-            setTabsWidth(event.nativeEvent.layout.width);
-            setTabsHeight(event.nativeEvent.layout.height);
-          }}
-        >
-          {renderTabs(labelSize)}
-        </View>
+      <View style={styles.fill}>
+        {labelSize != null && (
+          <Text
+            size={CAPSULE_LABEL}
+            weight="semibold"
+            maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+            numberOfLines={1}
+            style={styles.bandHeight}
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {tabLabels.join(' ')}
+          </Text>
+        )}
+      </View>
+      <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
+      <View
+        style={tabsCentred ? (large ? styles.tabsAtTop : styles.tabsCentred) : styles.tabsAt}
+        pointerEvents="box-none"
+      >
+        <View key={labelSize}>{labelSize != null && renderTabs(labelSize)}</View>
       </View>
     </View>
   );
@@ -159,7 +192,11 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexShrink: 1, minWidth: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  portraitRow: { minHeight: tokens.sizeHit },
+  portraitRowTall: { alignItems: 'flex-start' },
+  bandHeight: { marginVertical: LABEL_IN_BAND, opacity: 0 },
   pillRow: { marginBottom: tokens.spaceSm },
+  bellUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceXs },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },
   portraitTop: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.spaceXxs },
   tabsAt: {
@@ -169,6 +206,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  tabsAtTop: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
   tabsCentred: {
     position: 'absolute',
     top: 0,

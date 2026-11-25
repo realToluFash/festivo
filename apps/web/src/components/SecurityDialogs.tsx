@@ -528,6 +528,14 @@ export function ChoosePasswordDialog({
   );
 }
 
+const LEADS = {
+  add: 'passkey.leadAdd',
+  addApp: 'passkey.leadAddApp',
+  remove: 'passkey.leadRemove',
+  turnOff: 'passkey.leadTurnOff',
+  newCodes: 'passkey.leadNewCodes',
+} as const;
+
 /** Confirm it's you with the current factor: the passkey's sheet first where it can open, else a code. */
 export function FactorDialog({
   purpose,
@@ -544,7 +552,7 @@ export function FactorDialog({
   email: string;
   start?: Opening;
   held?: HeldFactors;
-  passkeyOptions?: () => Promise<PasskeyOptions>;
+  passkeyOptions?: (() => Promise<PasskeyOptions>) | undefined;
   submit: (current: CurrentFactor) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
@@ -561,6 +569,10 @@ export function FactorDialog({
   const [busy, setBusy] = useState(false);
   const recovery = !held.app;
   const opened = useRef(false);
+  const lead =
+    held.passkeys || purpose === 'add' || purpose === 'remove'
+      ? t(LEADS[purpose], { email })
+      : null;
 
   async function send(current: CurrentFactor): Promise<boolean> {
     try {
@@ -632,6 +644,7 @@ export function FactorDialog({
         onDismiss={onClose}
         onConfirm={() => void openSheet()}
       >
+        {lead != null && <Note>{lead}</Note>}
         <Note strong>{t('passkey.waitTitle')}</Note>
         <p className="desk-note">{t('passkey.waitLine')}</p>
         {busy && <Waiting />}
@@ -660,13 +673,14 @@ export function FactorDialog({
       onConfirm={() => void go()}
     >
       {held.passkeys && !browserCan && <NoBrowser />}
+      {lead != null && <Note>{lead}</Note>}
       <Note strong>{recovery ? t('passkey.recoveryLead') : t('passkey.codeLead')}</Note>
       <div className="desk-fields security-fields">
         <Field
           label={recovery ? t('passkey.recoveryLabel') : t('waysCard.code')}
           value={typed}
           help={
-            purpose === 'turnOff'
+            purpose === 'turnOff' && lead == null
               ? t('twoFactorCard.offEmail', { email })
               : recovery
                 ? t('passkey.recoveryHelp')
@@ -683,7 +697,14 @@ export function FactorDialog({
       </div>
       {offersPasskey && (
         <div className="account-acts">
-          <button type="button" className="desk-text" onClick={() => switchTo('passkey')}>
+          <button
+            type="button"
+            className="desk-text"
+            onClick={() => {
+              switchTo('passkey');
+              void openSheet();
+            }}
+          >
             {t('passkey.useInstead')}
           </button>
         </div>

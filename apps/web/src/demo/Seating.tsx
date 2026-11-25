@@ -2020,7 +2020,7 @@ function Seating({
           <ViewSwitch />
           {showSave && (
             <div className="st-float st-top-right">
-              <SaveLine />
+              {!ui.readOnly && <SaveLine />}
               {room != null && (
                 <button
                   type="button"
@@ -2047,7 +2047,10 @@ function Seating({
           )}
           {ui.view === 'plan' && room != null && (
             <div className="st-float st-under-views" ref={setFloat}>
-              {!ui.readOnly && ui.placing == null && ui.picked == null && <ChooseBar />}
+              {!ui.readOnly &&
+                ui.plan.items.length > 0 &&
+                ui.placing == null &&
+                ui.picked == null && <ChooseBar />}
               {ui.bar != null && ui.bar.at !== 'floor' && (
                 <MessageBar inline onPlace={placeAtCentre} onStop={stopPlacing} />
               )}

@@ -46,11 +46,11 @@ import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
 import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { FocusedScreen } from './SummaryOverlays.tsx';
+import { ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
-import { type Values, addOf, editOf, typedOf, valuesOf } from './guestValues.ts';
+import { type Values, addOf, discardNameOf, editOf, typedOf, valuesOf } from './guestValues.ts';
 
 export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGuest };
 
@@ -313,6 +313,7 @@ export function GuestForm({
     groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
   const cancel = () => leaves.leave();
   const adding = editing == null;
+  const discardName = discardNameOf(first, values);
 
   return (
     <FocusedScreen
@@ -332,7 +333,10 @@ export function GuestForm({
         ask === 'discard'
           ? {
               title: t('guestList.discardTitle'),
-              line: t('guestList.discardLine', { name: first.fullName || values.fullName }),
+              line:
+                discardName == null
+                  ? t('eventEdit.discardLine')
+                  : t('guestList.discardLine', { name: discardName }),
               keep: { label: t('guestList.keepEditing'), testID: 'guest.form.keepEditing' },
               confirm: {
                 label: t('guestList.discard'),
@@ -347,6 +351,7 @@ export function GuestForm({
                 setAsk(null);
                 leaves.discard();
               },
+              width: ASK_WIDTH,
             }
           : ask === 'duplicate'
             ? {

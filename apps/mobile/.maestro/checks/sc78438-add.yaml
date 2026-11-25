@@ -1,0 +1,110 @@
+# Settings > Account > Add a phone number at the current text size: the boxes with Royaume-Uni, the keypad up, then British Indian Ocean Territory. sc-78438.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.country'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-open
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country'
+- waitForAnimationToEnd
+- takeScreenshot: add-list-open
+- tapOn:
+    id: 'account.phone.add.country.search'
+- inputText: '+44'
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country.GB'
+    timeout: 15000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country.GB'
+- waitForAnimationToEnd
+- takeScreenshot: add-gb
+- swipe:
+    start: 50%, 45%
+    end: 50%, 85%
+- waitForAnimationToEnd
+- takeScreenshot: add-gb-top
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.number'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.number'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.number'
+- eraseText: 60
+- inputText: '7400123456'
+- waitForAnimationToEnd
+- takeScreenshot: add-keypad
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country'
+- tapOn:
+    id: 'account.phone.add.country.search'
+- inputText: '+246'
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country.IO'
+    timeout: 15000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country.IO'
+- waitForAnimationToEnd
+- takeScreenshot: add-io
+- swipe:
+    start: 50%, 45%
+    end: 50%, 85%
+- waitForAnimationToEnd
+- takeScreenshot: add-io-top
+- swipe:
+    start: 50%, 45%
+    end: 50%, 85%
+- waitForAnimationToEnd
+- takeScreenshot: add-io-top2

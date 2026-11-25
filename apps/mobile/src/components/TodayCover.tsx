@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -12,11 +12,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
-import { Text, type TextProps } from './Text.tsx';
-import { useMeasuredAt, useWholeWords } from './Title.tsx';
+import { BandLiveLine } from './BandLiveLine.tsx';
+import { Text, TitleCap, type TextProps } from './Text.tsx';
+import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { wordsIn } from '../layout/textSize.ts';
-import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import {
+  atAccessibilitySizes,
+  capUnderTitle,
+  wholeLineHeight,
+  wordsIn,
+} from '../layout/textSize.ts';
+import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
+import { CAPSULE_TOP } from '../layout/bandLive.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -26,10 +33,18 @@ import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
-import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
-import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
+import {
+  Chips,
+  CoverLine,
+  RunNowBlock,
+  WhiteButton,
+  WholeChips,
+  WholeWhiteButton,
+} from './TodayRun.tsx';
+import { OPENER, OpenerWords, WholeOpenerWords, quietTap, useWholeTile } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
+import { phoneNameRoom, rowMeasured, uprightNameRoom } from '../layout/pillFit.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -120,12 +135,15 @@ export function OrgButton({
   compact = false,
   maxWidth,
   givesWay = false,
+  nameRoom,
 }: {
   compact?: boolean;
   /** The most it may take, so it stops short of what sits beside it. */
   maxWidth?: number | undefined;
   /** The tabs beside it took their room first, so it is its tile (sc-40401). */
   givesWay?: boolean;
+  /** On the cover from AX1, the name's line, 0 until the row is measured (sc-92247, sc-92314). */
+  nameRoom?: number | undefined;
 }) {
   const ref = useRef<ViewInstance>(null);
   const org = useTodayShell().useOrgOpener(ref, !compact);
@@ -133,6 +151,8 @@ export function OrgButton({
   const large = useAccessibilitySizes();
   const lines = useNameLines();
   const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
+  const whole = large && !compact && nameRoom != null;
+  const fit = useWholeTile(org.name, org.waiting, whole ? nameRoom : undefined);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -160,10 +180,11 @@ export function OrgButton({
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
   const wrap = phone || large;
 
-  if (tileAlone || givesWay)
+  if (tileAlone || givesWay || fit.tileAlone)
     return (
       <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
         {measure}
+        {fit.measure}
         {tile}
       </View>
     );
@@ -171,19 +192,57 @@ export function OrgButton({
   return (
     <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
       {measure}
+      {fit.measure}
       <Pressable {...shared} style={styles.orgWide}>
         <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
           <OrgMark id={org.id} name={org.name} side={28} glass />
-          <OpenerWords
-            name={org.name}
-            waiting={org.waiting}
-            onDark
-            wrap={wrap}
-            lines={wrap ? undefined : lines}
-          />
+          {whole ? (
+            <WholeOpenerWords
+              name={org.name}
+              waiting={org.waiting}
+              room={nameRoom ?? 0}
+              hidden={!fit.known || !nameRoom}
+              onDark
+            />
+          ) : (
+            <OpenerWords
+              name={org.name}
+              waiting={org.waiting}
+              onDark
+              wrap={wrap}
+              lines={wrap ? undefined : lines}
+            />
+          )}
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
       </Pressable>
+    </View>
+  );
+}
+
+/** The phone cover's top row: the pill, then Search and the bell, the pill's line measured from the row from AX1 and its name capped under the greeting (sc-92247). */
+function PhoneTop({ top, greeting }: { top: number; greeting: number | null }) {
+  const insets = useSafeAreaInsets();
+  const sides = coverRowSides(insets);
+  const large = useAccessibilitySizes();
+  const [row, setRow] = useState(0);
+  const [ends, setEnds] = useState(0);
+  const inside = row - sides.paddingLeft - sides.paddingRight;
+
+  return (
+    <View
+      style={[styles.topPhone, sides, { marginTop: top }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      <TitleCap.Provider value={greeting}>
+        <OrgButton
+          nameRoom={large ? (rowMeasured(row, ends) ? phoneNameRoom(inside, ends) : 0) : undefined}
+        />
+      </TitleCap.Provider>
+      <View style={styles.grow} />
+      <View onLayout={(event) => setEnds(event.nativeEvent.layout.width)}>
+        <SearchAndBell />
+      </View>
     </View>
   );
 }
@@ -251,11 +310,6 @@ function SearchAndBell() {
   );
 }
 
-/** How far Search beside the bell takes the upright row's end past the 46 tile the capsule's room allows for at each side. */
-function useEndsPastTile(): number {
-  return useTodayShell().search ? 40 + tokens.spaceSm + 40 - 46 : 0;
-}
-
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
 export function TabCapsule({
   onTab,
@@ -270,7 +324,7 @@ export function TabCapsule({
   const { t } = useTranslation();
 
   return (
-    <Glass height={46} style={styles.capsule}>
+    <Glass height={CAPSULE_HEIGHT} grows style={styles.capsule}>
       {TABS.map(([label, glyph]) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkOnDark;
@@ -291,6 +345,7 @@ export function TabCapsule({
               weight="semibold"
               maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
               numberOfLines={labelSize == null ? undefined : 1}
+              wholeLines
               accessible={false}
               style={{ color: ink }}
             >
@@ -308,32 +363,73 @@ export function Greeting({
   size,
   sub,
   gap,
+  onDrawn,
 }: {
   moment: Moment;
   size: number;
   sub: number;
   gap: number;
+  onDrawn?: ((size: number | null) => void) | undefined;
 }) {
+  const whole = useAccessibilitySizes();
+  const [room, setRoom] = useState(0);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const subCap = whole && drawn != null ? capUnderTitle(drawn, sub) : undefined;
+  const look = {
+    weight: 'bold',
+    accessibilityRole: 'header',
+    style: [styles.white, { letterSpacing: size * -0.02 }],
+  } as const;
+
+  useEffect(() => {
+    onDrawn?.(whole ? drawn : null);
+  }, [onDrawn, whole, drawn]);
+  useEffect(() => () => onDrawn?.(null), [onDrawn]);
+
+  // From AX1 the greeting steps down rather than break a word, and its comma stays on the word before it (sc-91291).
   return (
     <View style={{ gap }}>
       <Text size={12} weight="semibold" style={[styles.white, styles.eyebrow]}>
         {moment.eyebrow.toUpperCase()}
       </Text>
-      <Text
-        size={size}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.white, { lineHeight: Math.round(size * 1.08), letterSpacing: size * -0.02 }]}
-      >
-        {moment.hello}
-      </Text>
+      {whole ? (
+        <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+          <CappedWholeWords
+            {...look}
+            size={size}
+            room={room}
+            breakAfterHyphens
+            onDrawn={setDrawn}
+            style={[
+              look.style,
+              drawn != null && { lineHeight: wholeLineHeight(size, drawn, 1.08) },
+            ]}
+          >
+            {moment.hello}
+          </CappedWholeWords>
+        </View>
+      ) : (
+        <Text {...look} size={size} style={[look.style, { lineHeight: Math.round(size * 1.08) }]}>
+          {moment.hello}
+        </Text>
+      )}
       <View style={styles.subLine}>
         {moment.lead != null && (
-          <Text size={sub} weight="bold" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+          <Text
+            size={sub}
+            weight="bold"
+            maxFontSizeMultiplier={subCap}
+            style={[styles.white, { lineHeight: sub * 1.45 }]}
+          >
             {`${moment.lead} `}
           </Text>
         )}
-        <Text size={sub} weight="medium" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+        <Text
+          size={sub}
+          weight="medium"
+          maxFontSizeMultiplier={subCap}
+          style={[styles.white, { lineHeight: sub * 1.45 }]}
+        >
           {moment.sub}
         </Text>
       </View>
@@ -482,12 +578,83 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-export function NowBlock({ moment, wide }: { moment: Moment; wide: boolean }) {
+/** The live cover on its side from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312). */
+function WholeNowBlock({ now }: { now: Now }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
+  const [column, setColumn] = useState(0);
+  const [name, setName] = useState<number | null>(null);
+  const under = name ?? Infinity;
+  const open = (
+    <WholeWhiteButton
+      label={t('todayScreen.openEvent')}
+      onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
+      column={column}
+      under={under}
+    />
+  );
+  const words = (
+    <View
+      style={[styles.grow, styles.gapMd]}
+      onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
+    >
+      <WholeChips now={now} column={column} under={under} />
+      <CoverLine
+        size={48}
+        line={1.06}
+        weight="bold"
+        accessibilityRole="header"
+        room={column}
+        onDrawn={setName}
+        style={[styles.white, { letterSpacing: 48 * -0.02 }]}
+      >
+        {now.name}
+      </CoverLine>
+      <CoverLine
+        size={16}
+        line={1.3}
+        weight="semibold"
+        room={column}
+        under={under}
+        style={styles.white}
+      >
+        {now.ends}
+      </CoverLine>
+      {now.arrived == null && <View style={styles.openUnder}>{open}</View>}
+    </View>
+  );
+
+  return now.arrived == null ? (
+    words
+  ) : (
+    <View style={styles.wideRow}>
+      {words}
+      <View style={styles.right}>
+        <ArrivedFigure figure={now.arrived} />
+        {open}
+      </View>
+    </View>
+  );
+}
+
+export function NowBlock({
+  moment,
+  wide,
+  side = false,
+}: {
+  moment: Moment;
+  wide: boolean;
+  /** On the iPad's side banner, where from AX1 the live cover keeps every word whole (sc-92312). */
+  side?: boolean;
+}) {
+  const { t } = useTranslation();
+  const { open: go } = useTodayShell();
+  const whole = useAccessibilitySizes();
   const { now, run } = moment;
 
   if (now == null) return null;
+
+  if (side && whole && run == null && !moment.full) return <WholeNowBlock now={now} />;
 
   if (run != null)
     return (
@@ -641,26 +808,31 @@ export function TodayCover({
   top,
   onTab,
   words = 1,
+  onGreeting,
 }: {
   moment: Moment;
   layout: CoverLayout;
   top: number;
   onTab: (tab: Tab) => void;
+  /** The size the greeting drew at from AX1, null below it or while no greeting shows. */
+  onGreeting?: ((size: number | null) => void) | undefined;
   /** How much of the top row and the words still show: they go as the cover scrolls up, before the band comes. */
   words?: Animated.AnimatedInterpolation<number> | number;
 }) {
   const day = moment.kind === 'day';
   const insets = useSafeAreaInsets();
+  const [greeting, setGreeting] = useState<number | null>(null);
+  const greeted = useCallback(
+    (size: number | null) => {
+      setGreeting(size);
+      onGreeting?.(size);
+    },
+    [onGreeting],
+  );
 
   if (layout === 'landscape')
     return (
-      <View
-        style={
-          day
-            ? [styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]
-            : [styles.banner, { height: coverBody(moment, layout) }]
-        }
-      >
+      <View style={[styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]}>
         <Mesh
           moment={moment}
           pieces={BANNER_PIECES}
@@ -673,9 +845,15 @@ export function TodayCover({
         </View>
         <View style={day ? styles.bannerNow : styles.bannerGreeting}>
           {day ? (
-            <NowBlock moment={moment} wide />
+            <NowBlock moment={moment} wide side />
           ) : (
-            <Greeting moment={moment} size={38} sub={17} gap={tokens.spaceSm} />
+            <Greeting
+              moment={moment}
+              size={38}
+              sub={17}
+              gap={tokens.spaceSm}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </View>
@@ -696,15 +874,7 @@ export function TodayCover({
         shade="foot"
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
-        {phone ? (
-          <View style={[styles.topPhone, coverRowSides(insets), { marginTop: top }]}>
-            <OrgButton />
-            <View style={styles.grow} />
-            <SearchAndBell />
-          </View>
-        ) : (
-          <TabletTop top={top} onTab={onTab} />
-        )}
+        {phone ? <PhoneTop top={top} greeting={greeting} /> : <TabletTop top={top} onTab={onTab} />}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View
           style={
@@ -718,9 +888,15 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
-            <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} />
+            <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} onDrawn={greeted} />
           ) : (
-            <Greeting moment={moment} size={46} sub={19} gap={tokens.spaceMd} />
+            <Greeting
+              moment={moment}
+              size={46}
+              sub={19}
+              gap={tokens.spaceMd}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </Animated.View>
@@ -728,31 +904,42 @@ export function TodayCover({
   );
 }
 
-/** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
+/** The upright iPad's top row: the opener keeps to the left of the centred capsule; from AX1 its words stay whole and it grows down while the tabs, Search and the bell keep to the top (sc-92314). */
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
-  const [capsule, setCapsule] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(
+  const [end, setEnd] = useState<number>();
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(
     useTabLabels(),
-    tabletRow(row, useEndsPastTile()),
+    tabletRow(row),
+    end,
   );
-  const room =
-    row == null || capsule == null
-      ? undefined
-      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+  const room = openerRoom(row, width);
+  const large = useAccessibilitySizes();
+  const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
 
   return (
     <View
-      style={[styles.topTablet, { marginTop: top }]}
+      style={[
+        styles.topTablet,
+        large && styles.topTabletTall,
+        { marginTop: top },
+        capsule > CAPSULE_HEIGHT && { minHeight: CAPSULE_TOP + capsule },
+      ]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {measure}
-      <OrgButton maxWidth={room} givesWay={givesWay} />
+      <OrgButton
+        maxWidth={room}
+        givesWay={givesWay}
+        nameRoom={large ? uprightNameRoom(room) : undefined}
+      />
       <View style={styles.grow} />
-      <SearchAndBell />
+      <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+        <SearchAndBell />
+      </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
-        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} labelSize={labelSize} />
+        <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
+          {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
     </View>
@@ -765,9 +952,9 @@ function useTabLabels(): string[] {
   return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
 }
 
-/** The upright tablet's row from the tile's edge to the bell's, inside its side margins, less what the end takes past the tile at each side, as the capsule is centred. */
-function tabletRow(width: number | undefined, endsPastTile = 0): number {
-  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl - 2 * endsPastTile);
+/** The upright tablet's row inside its side margins. */
+function tabletRow(width: number | undefined): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
 }
 
 export function Band({
@@ -785,15 +972,26 @@ export function Band({
   const { now } = moment;
   const phone = layout === 'phone';
   const [row, setRow] = useState<number>();
-  const endsPastTile = useEndsPastTile();
+  const [end, setEnd] = useState<number>();
   const insets = useSafeAreaInsets();
-  const { labelSize, measure } = useCapsuleLabels(
-    useTabLabels(),
-    phone ? 0 : tabletRow(row, endsPastTile),
-  );
+  const { fontScale } = useWindowDimensions();
+  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row), end);
+  const named =
+    now == null || moment.run != null || moment.full
+      ? null
+      : t('todayScreen.liveName', { name: now.name });
+  const grown = !phone && named != null && atAccessibilitySizes(fontScale);
+  const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
+  const tall = capsule > CAPSULE_HEIGHT;
 
   return (
-    <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
+    <View
+      style={[
+        styles.band,
+        { [grown || tall ? 'minHeight' : 'height']: top + bandBody(moment, layout) },
+      ]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
       {now == null ? (
         <>
           <Cover pieces={[]} shade="foot" />
@@ -806,36 +1004,43 @@ export function Band({
       )}
       <View
         style={[
-          phone ? [styles.topPhone, coverRowSides(insets)] : styles.topTablet,
+          phone ? [styles.topPhone, coverRowSides(insets)] : [styles.topTablet, styles.capsuleRoom],
           { marginTop: top },
+          tall && { minHeight: CAPSULE_TOP + capsule },
         ]}
-        onLayout={(event) => setRow(event.nativeEvent.layout.width)}
       >
         {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
-        <SearchAndBell />
+        <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+          <SearchAndBell />
+        </View>
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
           {phone ? (
             <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
               {t('todayScreen.today')}
             </Text>
           ) : (
-            <TabCapsule onTab={onTab} labelSize={labelSize} />
+            <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
+              {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
+            </View>
           )}
         </View>
       </View>
-      {now != null && (
-        <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
-          <View style={styles.liveDot} />
-          <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
-            {moment.run != null
-              ? moment.run.band
-              : moment.full
-                ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
-                : t('todayScreen.liveName', { name: now.name })}
-          </Text>
-        </View>
+      {grown ? (
+        <BandLiveLine scale={fontScale} said={named} width={row} />
+      ) : (
+        now != null && (
+          <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
+            <View style={styles.liveDot} />
+            <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
+              {moment.run != null
+                ? moment.run.band
+                : (named ??
+                  t('todayScreen.nowLine', { happening: now.happening, until: now.until }))}
+            </Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -1131,9 +1336,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: tokens.colorInkOnDark,
   },
-  capsule: { paddingHorizontal: tokens.spaceXxs, gap: tokens.spaceHair },
+  capsule: { padding: tokens.spaceXxs, gap: tokens.spaceHair },
   capsuleTab: {
-    height: 38,
+    minHeight: CAPSULE_HEIGHT - 2 * tokens.spaceXxs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
@@ -1142,7 +1347,8 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
   capsuleOn: { backgroundColor: tokens.colorCard },
-  capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
+  capsuleAt: { position: 'absolute', left: 0, right: 0, top: CAPSULE_TOP, alignItems: 'center' },
+  capsuleRoom: { minHeight: CAPSULE_TOP + CAPSULE_HEIGHT },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
   subLine: { flexDirection: 'row', flexWrap: 'wrap' },
   liveDot: {
@@ -1206,6 +1412,7 @@ const styles = StyleSheet.create({
   figureLine: { flexDirection: 'row', alignItems: 'baseline' },
   shrink: { flexShrink: 1 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
+  openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   right: { width: 340, gap: 18 },
   pieces: { position: 'absolute', left: 0, right: 0 },
   cover: { overflow: 'visible', backgroundColor: tokens.colorAccent },
@@ -1231,12 +1438,18 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceMd,
     paddingHorizontal: tokens.space3xl,
   },
+  topTabletTall: { alignItems: 'flex-start' },
   footPhone: { marginBottom: SHEET_RISE + 22 },
   footTablet: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + 30, maxWidth: 620 },
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
   bannerBell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
-  bannerGreeting: { position: 'absolute', left: 30, bottom: tokens.space4xl, maxWidth: 520 },
+  bannerGreeting: {
+    marginHorizontal: 30,
+    marginBottom: tokens.space4xl,
+    marginTop: 18,
+    maxWidth: 520,
+  },
   bannerGrows: { justifyContent: 'flex-end' },
   bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },

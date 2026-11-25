@@ -139,16 +139,9 @@ export interface Country {
   name: string;
 }
 
-const named = new Map<string, readonly Country[]>();
-
-/** Every country in the reader's language, made once: naming all 249 is slow on a phone. */
+/** Every country in the reader's language, one list per language: the country step's scroll to the pick depends on it. */
 export function countries(locale: string): readonly Country[] {
-  const known = named.get(locale);
-  if (known != null) return known;
-  const made = countryChoices(locale);
-  named.set(locale, made);
-
-  return made;
+  return countryChoices(locale);
 }
 
 export function countryName(code: string | null, locale: string): string | null {

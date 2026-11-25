@@ -157,5 +157,8 @@
     "menu_change_asks": "Este cambio pide a los invitados que vuelvan a elegir. Confírmelo para continuar.",
     "menu_event_over": "La fecha de este evento ya ha pasado, así que su menú no puede cambiar. No se ha cambiado nada.",
     "phone_alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
-    "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation."
+    "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation.",
+    "plan_sold_by_contract": "Este plan se vende por contrato, no mediante el pago en línea. Consulte a Soirely para contratarlo.",
+    "plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
+    "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan."
 }

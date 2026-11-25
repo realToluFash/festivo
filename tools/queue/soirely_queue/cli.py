@@ -12,13 +12,13 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, dashboard, digests, github, launchd, logins, machine,
-               payloads, permissions, remote, roles, runlog, runner, sessions, shared, store, sync,
-               systemd, update, work)
+from . import (actions, agents, controls, dashboard, digests, github, launchd, logins, machine,
+               payloads, permissions, remote, roles, runlog, runner, sessions, settings, shared,
+               store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
-from .shortcut import Shortcut
+from .shortcut import Shortcut, history_moves, history_vcs
 
 HERE = pathlib.Path(__file__).resolve().parent
 CHECKS_POLL = 30
@@ -433,18 +433,14 @@ def cmd_history(s, a):
     story_id = actions.story_number(a.story)
     states = store.get_meta(s.db, "states") or {}
     for entry in Shortcut().history(story_id)[-a.limit:]:
-        moves = []
-        for action in entry.get("actions", []):
-            change = (action.get("changes") or {}).get("workflow_state_id")
-            if change:
-                moves.append(f"{states.get(str(change.get('old')), '?')} → "
-                             f"{states.get(str(change.get('new')), '?')}")
+        moves = [f"{states.get(str(change.get('old')), '?')} → "
+                 f"{states.get(str(change.get('new')), '?')}" for change in history_moves(entry)]
         if moves:
             print(f"{entry['changed_at'][:16].replace('T', ' ')} {'; '.join(moves)}"
                   f"{''.join(f' · {part}' for part in history_source(entry))}")
 
 
-VCS_KINDS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
+VCS_LABELS = {"pull-request": "PR", "branch": "branch", "commit": "commit"}
 
 
 def history_source(entry):
@@ -456,10 +452,8 @@ def history_source(entry):
         parts.append(f"by {actor}")
     elif entry.get("automation_id"):
         parts.append("by an automation")
-    for thing in [*entry.get("references", []), *entry.get("actions", [])]:
-        kind = VCS_KINDS.get(thing.get("entity_type"))
-        if not kind:
-            continue
+    for thing in history_vcs(entry):
+        kind = VCS_LABELS[thing["entity_type"]]
         label = (f"PR #{thing['number']}" if kind == "PR" and thing.get("number")
                  else f"{kind} {thing.get('name') or thing.get('hash') or thing.get('id')}")
         if label not in parts:
@@ -696,6 +690,28 @@ def clip(line, width):
     return line if len(line) <= width else line[:width - 1] + "…"
 
 
+def settings_view():
+    try:
+        return 200, settings.read()
+    except (OSError, ValueError) as error:
+        return 409, {"error": f"error: {machine.path()} cannot be read: {error}"}
+
+
+def control(platform, path, asked, by):
+    """One of `sq web`'s controls, on a connection of its own: a start can wait on Docker
+    while the page goes on reading through the other."""
+    if path == "/settings":
+        return controls.change(home(), asked, by)
+    if path == "/settings/undo":
+        return controls.undo(home(), asked, by)
+    db = open_db()
+    try:
+        return controls.act(db, home(), platform, str(asked.get("action") or ""),
+                            asked.get("role") and str(asked["role"]), by)
+    finally:
+        db.close()
+
+
 def tell_peers(db, platform):
     peers = remote.peers(remote.config())
     if peers and remote.usable(remote.token()):
@@ -929,7 +945,9 @@ def admin(argv):
                         session=lambda found: sessions.view(db, home(), platform, found),
                         host=a.listen or host, secret=remote.token(),
                         peers=lambda: remote.peers(remote.config()), config=remote.config,
-                        usage=logins.Usage(remote.config))
+                        usage=logins.Usage(remote.config),
+                        control=lambda path, asked, by: control(platform, path, asked, by),
+                        settings=settings_view)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -956,21 +974,14 @@ def admin(argv):
             return sys.exit(agents.start(db, home(), platform, names))
         return sys.exit(agents.stop(db, names))
     elif a.command == "pause" and a.everywhere:
-        name = machine.load().get("machine") or "machine"
-        done = shared.pause_everywhere(shared.GitHubRefs(), name)
-        print("paused every machine: no role ticks anywhere, running workers finish their "
-              "item" if done else "every machine was already paused")
+        controls.pause_everywhere(db, shared.GitHubRefs(),
+                                  machine.load().get("machine") or "machine", print)
     elif a.command == "resume" and a.everywhere:
-        shared.resume_everywhere(shared.GitHubRefs())
-        print("resumed every machine; a machine paused on its own stays paused")
+        controls.resume_everywhere(db, shared.GitHubRefs(), print)
     elif a.command == "pause":
-        store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
-        print("paused: no role ticks, running workers finish their item")
+        controls.pause(db, print)
     elif a.command == "resume":
-        store.set_meta(db, "paused", None)
-        pause = (store.get_meta(db, "shared_view") or {}).get("paused")
-        print("resumed" + (f"; every machine is still paused by {pause.get('machine')}: "
-                           "sq resume --everywhere" if pause else ""))
+        controls.resume(db, print)
     elif a.command == "cost":
         cost(a.days)
     elif a.command == "agents":

@@ -173,7 +173,7 @@ describe('Security at a desk (sc-30223)', () => {
     expect(buttonsOf(unlink)).toEqual(['Keep it linked', 'Unlink Google']);
     fireEvent.click(within(unlink).getByRole('button', { name: 'Unlink Google' }));
 
-    expect(within(dialog()).getByRole('heading', { name: "Confirm it's you" })).toBeDefined();
+    expect(within(dialog()).getByRole('heading', { name: 'Confirm it’s you' })).toBeDefined();
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Continue' }));
     expect(within(dialog()).getByText('Enter your password.')).toBeDefined();
     type('Your password', SAMPLE.password);

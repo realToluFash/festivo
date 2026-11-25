@@ -448,6 +448,31 @@ describe('two-factor at a desk', () => {
     expect(await screen.findByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
+  it('opens on the choice when a held step sent the person here and passkeys are offered (sc-86885)', async () => {
+    vi.stubGlobal('PublicKeyCredential', class {});
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: false,
+          recoveryCodesLeft: 0,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [],
+        }),
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [{ pathname: '/app/account/security', state: { opens: 'turnOn' } }],
+        })}
+      />,
+    );
+
+    const choice = await screen.findByRole('dialog', { name: 'Turn on two-factor' });
+    expect(within(choice).getByRole('button', { name: /Use a passkey/ })).toBeDefined();
+    expect(within(choice).queryByLabelText('Enter the 6-digit code the app shows')).toBeNull();
+  });
+
   it('opens at rest when a held step sent the person here with two-factor already on', async () => {
     answering({}, true);
     render(
@@ -488,7 +513,7 @@ describe('two-factor at a desk', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor…' }));
     fireEvent.click(asked('Turn off two-factor?').getByRole('button', { name: 'Turn it off' }));
     fireEvent.change(await screen.findByLabelText('Code'), { target: { value: code } });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
   }
 
   it('turns it off with a code, and says so', async () => {
@@ -546,7 +571,12 @@ describe('two-factor at a desk', () => {
       }),
     );
     fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '123456' } });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    expect(
+      dialog('Confirm it’s you').getByText(
+        'To remove it, confirm it’s you. We will email folake@ire.events to say it was removed.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     expect(
       await screen.findByText(
@@ -556,6 +586,175 @@ describe('two-factor at a desk', () => {
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/two-factor/remove', body: { factor: 'pk-1', code: '123456' } },
     ]);
+  });
+
+  const PASSKEY_ONLY = {
+    'GET /api/auth/two-factor': () =>
+      json({
+        on: true,
+        recoveryCodesLeft: 10,
+        passkeysOffered: true,
+        mostPasskeys: 10,
+        factors: [
+          {
+            kind: 'passkey',
+            id: 'pk-1',
+            provider: 'Apple Passwords',
+            synced: true,
+            addedAt: '2026-11-20T10:00:00+00:00',
+          },
+        ],
+      }),
+  };
+
+  it('says why it asks before turning off a passkey-only two-factor (sc-86885)', async () => {
+    answering(PASSKEY_ONLY, true);
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Apple Passwords/ }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor…' }));
+    fireEvent.click(asked('Turn off two-factor?').getByRole('button', { name: 'Turn it off' }));
+
+    expect(
+      await dialog('Confirm it’s you').findByText(
+        'To turn off two-factor, confirm it’s you. We will email folake@ire.events to say it was turned off.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says why it asks before making new codes for a passkey-only member (sc-86885)', async () => {
+    answering(PASSKEY_ONLY, true);
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    expect(
+      await dialog('Confirm it’s you').findByText('To make new recovery codes, confirm it’s you.'),
+    ).toBeDefined();
+  });
+
+  it('opens a new sheet at once on Use a passkey instead, before making new codes (sc-89577)', async () => {
+    let sheets = 0;
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: {
+        get: async () => {
+          sheets += 1;
+          if (sheets === 1) throw new DOMException('closed', 'NotAllowedError');
+          return new Promise(() => {});
+        },
+      },
+      configurable: true,
+    });
+    const sent = answering(
+      {
+        ...PASSKEY_ONLY,
+        'POST /api/auth/two-factor/passkeys/options': () => json({ challenge: 'AAEC' }),
+      },
+      true,
+    );
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    fireEvent.click(
+      await dialog(/Confirm it.s you/).findByRole('button', { name: 'Use a code instead' }),
+    );
+    fireEvent.click(dialog(/Confirm it.s you/).getByRole('button', { name: 'Continue' }));
+    expect(
+      await dialog(/Confirm it.s you/).findByText('Enter one of your recovery codes.'),
+    ).toBeDefined();
+
+    fireEvent.click(
+      dialog(/Confirm it.s you/).getByRole('button', { name: 'Use a passkey instead' }),
+    );
+
+    expect(await dialog(/Confirm it.s you/).findByText('Waiting for your passkey…')).toBeDefined();
+    expect(dialog(/Confirm it.s you/).queryByText('Enter one of your recovery codes.')).toBeNull();
+    expect(sheets).toBe(2);
+    expect(
+      sent.filter((one) => one.call === 'POST /api/auth/two-factor/passkeys/options'),
+    ).toHaveLength(2);
+  });
+
+  it('asks a passkey member for a recovery code where this environment offers no passkeys (sc-89577)', async () => {
+    let sheets = 0;
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: {
+        get: async () => {
+          sheets += 1;
+          return new Promise(() => {});
+        },
+      },
+      configurable: true,
+    });
+    const sent = answering(
+      {
+        'GET /api/auth/two-factor': () =>
+          json({
+            on: true,
+            recoveryCodesLeft: 10,
+            passkeysOffered: false,
+            mostPasskeys: 10,
+            factors: [
+              {
+                kind: 'passkey',
+                id: 'pk-1',
+                provider: 'Apple Passwords',
+                synced: true,
+                addedAt: '2026-11-20T10:00:00+00:00',
+              },
+            ],
+          }),
+      },
+      true,
+    );
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    expect(
+      await dialog(/Confirm it.s you/).findByText(/^Enter one of your recovery codes\. Each/),
+    ).toBeDefined();
+    expect(dialog(/Confirm it.s you/).queryByText('Waiting for your passkey…')).toBeNull();
+    expect(
+      dialog(/Confirm it.s you/).queryByRole('button', { name: 'Use a passkey instead' }),
+    ).toBeNull();
+    expect(sheets).toBe(0);
+    expect(sent.filter((one) => one.call.includes('passkeys/options'))).toHaveLength(0);
   });
 
   it('says a wrong code is wrong, and keeps it on', async () => {
@@ -587,7 +786,7 @@ describe('two-factor at a desk', () => {
     await turnOff('123456');
 
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull(),
+      expect(screen.queryByRole('dialog', { name: 'Confirm it’s you' })).toBeNull(),
     );
     expect(
       within(screen.getByRole('group', { name: 'Authenticator app' })).getByText(
@@ -615,7 +814,7 @@ describe('two-factor at a desk', () => {
       asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
     );
     fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '123456' } });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByRole('list', { name: 'Recovery codes' })).toBeDefined();
     fireEvent.click(screen.getByLabelText('I have saved these codes somewhere safe'));
@@ -643,10 +842,10 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
     fireEvent.click(section('Ways to sign in').getByRole('button', { name: /Google/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     await waitFor(() => expect(leave).toHaveBeenCalledOnce());
     expect(posts(sent)).toEqual([
@@ -663,7 +862,7 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Unlink…' }));
     fireEvent.click(asked('Unlink Google?').getByRole('button', { name: 'Unlink Google' }));
 
-    expect(await screen.findByRole('dialog', { name: "Confirm it's you" })).toBeDefined();
+    expect(await screen.findByRole('dialog', { name: 'Confirm it’s you' })).toBeDefined();
   });
 
   it('asks for the code as well when the server says two-factor is on', async () => {
@@ -677,12 +876,12 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
     fireEvent.click(section('Ways to sign in').getByRole('button', { name: /Google/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
-    expect(await dialog("Confirm it's you").findByLabelText('Code')).toBeDefined();
+    expect(await dialog('Confirm it’s you').findByLabelText('Code')).toBeDefined();
     expect(posts(sent)).toHaveLength(1);
   });
 
@@ -711,15 +910,15 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
 
     fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
-    expect(await dialog("Confirm it's you").findByLabelText('Recovery code')).toBeDefined();
-    expect(dialog("Confirm it's you").getByText('This browser can’t use passkeys.')).toBeDefined();
+    expect(await dialog('Confirm it’s you').findByLabelText('Recovery code')).toBeDefined();
+    expect(dialog('Confirm it’s you').getByText('This browser can’t use passkeys.')).toBeDefined();
     expect(
-      dialog("Confirm it's you").getByText(
+      dialog('Confirm it’s you').getByText(
         'One of the codes you saved when you turned on two-factor.',
       ),
     ).toBeDefined();
@@ -756,23 +955,23 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
 
     fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
-    expect(await dialog("Confirm it's you").findByText('Waiting for your passkey…')).toBeDefined();
-    expect(dialog("Confirm it's you").queryByLabelText('Your password')).toBeNull();
+    expect(await dialog('Confirm it’s you').findByText('Waiting for your passkey…')).toBeDefined();
+    expect(dialog('Confirm it’s you').queryByLabelText('Your password')).toBeNull();
 
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Use a code instead' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Use a code instead' }));
 
-    expect(dialog("Confirm it's you").getByLabelText('Recovery code')).toBeDefined();
+    expect(dialog('Confirm it’s you').getByLabelText('Recovery code')).toBeDefined();
     expect(
-      dialog("Confirm it's you").getByText('Enter one of your recovery codes. Each works once.'),
+      dialog('Confirm it’s you').getByText('Enter one of your recovery codes. Each works once.'),
     ).toBeDefined();
-    expect(dialog("Confirm it's you").queryByLabelText('Your password')).toBeNull();
+    expect(dialog('Confirm it’s you').queryByLabelText('Your password')).toBeNull();
     expect(
-      dialog("Confirm it's you").getByRole('button', { name: 'Use a passkey instead' }),
+      dialog('Confirm it’s you').getByRole('button', { name: 'Use a passkey instead' }),
     ).toBeDefined();
   });
 
@@ -803,19 +1002,19 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
 
     fireEvent.click(await section('Ways to sign in').findByRole('button', { name: /Google/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
-      expect(dialog("Confirm it's you").queryByText('Waiting for your passkey…')).toBeNull(),
+      expect(dialog('Confirm it’s you').queryByText('Waiting for your passkey…')).toBeNull(),
     );
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Use a code instead' }));
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Recovery code'), {
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Use a code instead' }));
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Recovery code'), {
       target: { value: 'abcd-efgh' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     await waitFor(() =>
       expect(sent.filter((s) => s.call === 'POST /api/auth/proof')).toHaveLength(2),
@@ -834,12 +1033,12 @@ describe("Confirm it's you at a desk, whatever two-factor's state", () => {
     openSecurity();
 
     fireEvent.click(
-      (await screen.findByRole('dialog', { name: "Confirm it's you" })).querySelector(
+      (await screen.findByRole('dialog', { name: 'Confirm it’s you' })).querySelector(
         '.desk-nav-verb',
       ) as HTMLElement,
     );
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull(),
+      expect(screen.queryByRole('dialog', { name: 'Confirm it’s you' })).toBeNull(),
     );
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/proof', body: { provider: 'google', providerSignIn: SIGN_IN } },
@@ -934,10 +1133,10 @@ describe('linking and unlinking at a desk', () => {
     answering({ 'GET /api/auth/two-factor': () => json({ title: 'Down' }, 500) });
     openSecurity();
 
-    await screen.findByRole('dialog', { name: "Confirm it's you" });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Cancel' }));
+    await screen.findByRole('dialog', { name: 'Confirm it’s you' });
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull(),
+      expect(screen.queryByRole('dialog', { name: 'Confirm it’s you' })).toBeNull(),
     );
 
     expect(await screen.findByText('Two-factor did not load')).toBeDefined();
@@ -992,20 +1191,20 @@ describe('linking and unlinking at a desk', () => {
     ).toBeDefined();
   });
 
-  it("says Google didn't finish under its row when the trip failed, and nothing when it was cancelled", async () => {
+  it('says Google didn’t finish under its row when the trip failed, and nothing when it was cancelled', async () => {
     returnedFrom({ kind: 'link' }, { failed: 'failed' });
     answering({});
     const { unmount } = openSecurity();
 
     expect(
-      await screen.findByText("Google didn't finish, so nothing changed. Try again."),
+      await screen.findByText('Google didn’t finish, so nothing changed. Try again.'),
     ).toBeDefined();
     unmount();
 
     returnedFrom({ kind: 'link' }, { failed: 'cancelled' });
     openSecurity();
     await screen.findByText('Two-factor is off');
-    expect(screen.queryByText(/didn't finish/)).toBeNull();
+    expect(screen.queryByText(/didn’t finish/)).toBeNull();
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
@@ -1116,16 +1315,53 @@ describe('the devices at a desk', () => {
     openSecurity();
 
     await everywhere();
-    fireEvent.change(dialog("Confirm it's you").getByLabelText('Your password'), {
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
       target: { value: 'a decent passphrase' },
     });
-    fireEvent.click(dialog("Confirm it's you").getByRole('button', { name: 'Continue' }));
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Your other device is signed out.')).toBeDefined();
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
+  });
+
+  it('asks a member with a passkey and the app for a code without the sign-in line (sc-86885)', async () => {
+    answering({
+      'GET /api/auth/two-factor': () =>
+        json({
+          on: true,
+          recoveryCodesLeft: 10,
+          passkeysOffered: true,
+          mostPasskeys: 10,
+          factors: [
+            {
+              kind: 'passkey',
+              id: 'pk-1',
+              provider: 'Apple Passwords',
+              synced: true,
+              addedAt: '2026-11-20T10:00:00+00:00',
+            },
+            { kind: 'app', addedAt: '2026-10-03T10:12:00+00:00' },
+          ],
+        }),
+      'POST /api/auth/proof': () => problem('two_factor_required', 403),
+    });
+    openSecurity();
+
+    await everywhere();
+    fireEvent.change(dialog('Confirm it’s you').getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(dialog('Confirm it’s you').getByRole('button', { name: 'Continue' }));
+
+    expect(await dialog('Confirm it’s you').findByLabelText('Code')).toBeDefined();
+    expect(
+      dialog('Confirm it’s you').getByText(
+        'From your authenticator app, or one of your recovery codes.',
+      ),
+    ).toBeDefined();
   });
 
   it('signs the others out with a held proof, without asking for it again', async () => {
@@ -1138,7 +1374,7 @@ describe('the devices at a desk', () => {
     await everywhere();
 
     expect(await screen.findByText('Your other device is signed out.')).toBeDefined();
-    expect(screen.queryByRole('dialog', { name: "Confirm it's you" })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Confirm it’s you' })).toBeNull();
     expect(posts(sent)).toEqual([
       { call: 'POST /api/auth/sessions/others', body: { proof: 'held-proof', sessionId: HERE } },
     ]);

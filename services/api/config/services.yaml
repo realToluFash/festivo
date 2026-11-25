@@ -133,6 +133,15 @@ services:
         arguments:
             $secret: '%env(MAIL_WEBHOOK_SECRET)%'
             $allowedRanges: '%env(MAIL_WEBHOOK_ALLOWED_RANGES)%'
+    # Paddle's sandbox until epic 552 sets production keys; an empty secret refuses every webhook (sc-3933).
+    App\Integrations\Paddle\PaddleApi:
+        arguments:
+            $apiBase: '%env(PADDLE_API_BASE)%'
+            $apiKey: '%env(PADDLE_API_KEY)%'
+    App\Domain\Billing\Interfaces\PaymentProviderInterface: '@App\Integrations\Paddle\PaddleApi'
+    App\Integrations\Paddle\PaddleWebhookController:
+        arguments:
+            $secret: '%env(PADDLE_WEBHOOK_SECRET)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -195,6 +204,9 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Guest\Link\InvitationLinks:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Guest\Link\LinkCard:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Staff\Link\StaffLinks:

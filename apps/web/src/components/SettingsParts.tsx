@@ -696,7 +696,8 @@ function DialogBox({
 }
 
 interface AskProps {
-  title: string;
+  /** Its accessible name is its text, so a node in it must read as nothing more, as `WholeAddress` does. */
+  title: ReactNode;
   /** None when the title says it all, as "Delete {name}?" does for a section with no tables (pm, 9 Nov 2026). */
   line?: string | undefined;
   keep: string;

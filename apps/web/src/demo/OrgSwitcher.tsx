@@ -32,6 +32,8 @@ import { Switched as ProductSwitched } from '../components/Switched.tsx';
 import { ManagedBanner } from './managed.tsx';
 import { OutsideSwitcher } from './OutsideSwitcher.tsx';
 import { SAMPLE } from './rules.ts';
+import { HELD_STEPS, heldStepPath } from './security.ts';
+import { viewerOf } from './settings.ts';
 import {
   BLUEBIRD,
   OFFER,
@@ -458,6 +460,8 @@ function TwoFactorOverdue() {
   const { t } = useTranslation();
   const where = useWhere();
   const alone = where.places.every((place) => place.id === where.current);
+  const [params] = useSearchParams();
+  const turnOn = heldStepPath(HELD_STEPS.turnOn, viewerOf(params.get('as')));
 
   return (
     <section className="card two-factor-overdue" aria-labelledby="overdue-title">
@@ -469,7 +473,7 @@ function TwoFactorOverdue() {
         {t(alone ? 'signInRules.overdueSingleEvents' : 'signInRules.overdueElsewhere')}
       </p>
       <div className="two-factor-overdue-actions">
-        <Link className="button button-primary" to="/demo/settings/security">
+        <Link className="button button-primary" to={turnOn}>
           {t('signInRules.overdueTurnOn')}
         </Link>
         <Link className="button" to="/demo/sign-in">

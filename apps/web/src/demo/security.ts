@@ -212,7 +212,7 @@ export const ASK_WORDS = {
 export const CONFIRM_WORDS = {
   codeHelp: PROVE_WORDS.codeHelp,
   line: (verb: 'link' | 'unlink', provider: Provider) =>
-    `To ${verb} ${provider}, confirm it's you. You won't be asked again for ${PROOF_MINUTES} minutes.`,
+    `To ${verb} ${provider}, confirm it’s you. You won’t be asked again for ${PROOF_MINUTES} minutes.`,
   everywhereWhy: 'So that nobody who picks up this device can do this without you.',
   codeOnly: 'Enter a code from your authenticator app, or one of your recovery codes.',
   everywhereHelp:

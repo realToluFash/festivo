@@ -79,7 +79,7 @@ export function DetailsDialog({
   const alertRef = useRef<HTMLParagraphElement>(null);
   const changes = Object.keys(organisationChanges(saved, values)).length;
 
-  const choices = useMemo<Record<Picked, PickerChoice[]>>(
+  const choices = useMemo<Record<Picked, readonly PickerChoice[]>>(
     () => ({
       countryCode: countryChoices(locale),
       currency: currencyChoices(saved.currency, values.currency, locale, t)

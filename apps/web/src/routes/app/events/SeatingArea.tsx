@@ -190,6 +190,7 @@ import {
   turned,
 } from './seatingDraw.ts';
 import { freeTags, freeTagWords } from './seatingFreeTags.ts';
+import { roomCaption, useCaptionFont } from './seatingCaption.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -203,6 +204,7 @@ const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
 const STEP_RETRY_MS = 1_000;
 const SIZE_STEP_CM = 10;
+const FLOAT_MARGINS = 3 * 12;
 const ITEM_ATTRIBUTES = ['data-table', 'data-row', 'data-seat'];
 const ITEM = ITEM_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(', ');
 
@@ -676,6 +678,7 @@ function Plan({
   onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();
+  useCaptionFont();
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
   const opener = useRef<string | null>(null);
@@ -740,6 +743,20 @@ function Plan({
   const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
+  const [rowDown, setRowDown] = useState(false);
+
+  useLayoutEffect(() => {
+    const views = canvasNode.current?.querySelector<HTMLElement>('.st-views');
+    const right = canvasNode.current?.querySelector<HTMLElement>('.st-top-right');
+
+    setRowDown(
+      views != null &&
+        right != null &&
+        views.getBoundingClientRect().width + right.getBoundingClientRect().width + FLOAT_MARGINS >
+          size.w,
+    );
+  }, [size.w, save, seatingView, readOnly, plan, t]);
+
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
@@ -2239,6 +2256,18 @@ function Plan({
         );
     }
     const words = { width: lengths(plan.widthCm), roomLength: lengths(plan.lengthCm) };
+    const caption = roomCaption(
+      plan.roomName,
+      {
+        line: (name) =>
+          name == null
+            ? t('seating.roomLineUnnamed', words)
+            : t('seating.roomLine', { name, ...words }),
+        cut: (name) => t('seating.roomNameCut', { name }),
+      },
+      ox,
+      size.w,
+    );
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
     const drawn = shown ?? plan;
     const handled =
@@ -2585,14 +2614,12 @@ function Plan({
           )}
           <text
             className="st-room-line"
-            x={ox}
+            x={caption.x}
             y={oy - 14}
             dominantBaseline="central"
             aria-hidden="true"
           >
-            {plan.roomName == null
-              ? t('seating.roomLineUnnamed', words)
-              : t('seating.roomLine', { name: plan.roomName, ...words })}
+            {caption.text}
           </text>
         </svg>
         {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
@@ -2818,9 +2845,9 @@ function Plan({
       <RingsContext value={rings}>
         <div className="st-main" inert={covered}>
           <div
-            className={
+            className={`${
               seatingView === 'tables' && plan != null ? 'st-canvas is-tables' : 'st-canvas is-plan'
-            }
+            }${rowDown ? ' is-row-down' : ''}`}
             ref={(node) => {
               canvasNode.current = node;
               placeCanvas(node);

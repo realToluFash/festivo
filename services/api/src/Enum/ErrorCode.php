@@ -46,6 +46,9 @@ enum ErrorCode: string
     case PaymentCancelled = 'payment_cancelled';
     case PlanLimit = 'plan_limit';
     case PlanRequired = 'plan_required';
+    case PlanSoldByContract = 'plan_sold_by_contract';
+    case PlanNotPriced = 'plan_not_priced';
+    case NothingPaidThroughProvider = 'nothing_paid_through_provider';
     case SeatingPlanExists = 'seating_plan_exists';
     case SeatingSectionLimit = 'seating_section_limit';
     case SeatingItemsOutside = 'seating_items_outside';
@@ -203,6 +206,7 @@ enum ErrorCode: string
             self::EventCurrencyInUse, self::EventStateInvalid, self::EventConcluded, self::EventPaused, self::EventHostRequired, self::EventCallOffFirst => 409,
             self::VendorAlreadyQuoted, self::QuoteUnchanged, self::PaymentsAlreadyScheduled, self::VendorOwed, self::PaymentAlreadyPaid, self::PaymentCancelled, self::PayerLimit, self::PayerCoversCosts => 409,
             self::PlanLimit, self::PlanRequired => 403,
+            self::PlanSoldByContract, self::PlanNotPriced, self::NothingPaidThroughProvider => 409,
             self::SeatingPlanExists, self::SeatingSectionLimit, self::SeatingItemsOutside, self::SeatingTableFull, self::SeatingTableShort, self::SeatingSeatTaken, self::SeatingUndoStale, self::SeatingGuestsSeated, self::SeatingGuestNotWaiting, self::ScheduleItemLimit, self::ItemStarted, self::ItemNotStarted, self::ItemFinished, self::TrackBusy, self::GuestAlreadyListed, self::GuestArrived, self::CheckInClosed, self::StaffNumberShared, self::StaffJobStaffed, self::StaffShiftFull, self::StaffWorksAs, self::StaffShiftOverlap, self::StaffOnShifts, self::RepliesClosed, self::RepliesOpen, self::GuestReplied, self::ReplyIsTheirs, self::GuestNotMarkedByHand, self::DishNameShared, self::DishInUse, self::MenuCourseLimit, self::MenuCoursePicked, self::MenuDishOnCourse, self::MenuSameOneDish, self::VariantLimit, self::VariantLastEveryone, self::ChoiceLimit, self::MealPicksClosed, self::MealPickRuledOut, self::MenuIsDefault, self::MenuDefaultMove, self::MenuChangeAsks, self::MenuEventOver => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::OwnEventRole, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,

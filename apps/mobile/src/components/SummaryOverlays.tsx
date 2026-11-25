@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -27,7 +28,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
-import { SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
+import { remeasureAfter } from './anchorRemeasure.ts';
+import { windowArrival, WindowArriving } from './openedFocus.ts';
+import { BodyTop, SETTLED_MS, bothRefs, useFocusOnAnswer, useWindowOrigin } from './Screen.tsx';
 import { useFocusedFieldInSight } from './focusedFieldInSight.ts';
 import { reachableOffset } from './reachableOffset.ts';
 import { moveScreenReaderFocus, type ScreenReaderTarget } from './screenReaderFocus.ts';
@@ -81,6 +84,21 @@ function useClearOfGoing(): boolean {
   return clear;
 }
 
+/** True from when `up` turns true until SETTLED_MS later, and false while it is false. */
+function useArriving(up: boolean): boolean {
+  const [arrived, setArrived] = useState(false);
+  if (!up && arrived) setArrived(false);
+
+  useEffect(() => {
+    if (!up) return;
+    const settled = setTimeout(() => setArrived(true), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [up]);
+
+  return up && !arrived;
+}
+
 /** Up only while its page is the one showing; an Ask or a menu closes when another page comes over it, a task's screen waits. */
 function Window({
   open,
@@ -104,6 +122,8 @@ function Window({
   const here = useIsFocused();
   const clear = useClearOfGoing();
   const { shown, gone } = useWindowTurn(useModalOpen(open && here && clear));
+  const slidesIn = slides && Platform.OS === 'android';
+  const arriving = useArriving(shown && slidesIn);
   const showing = useRef(false);
 
   useLayoutEffect(() => {
@@ -132,7 +152,9 @@ function Window({
       onDismiss={gone}
     >
       {Platform.OS === 'android' && <SilentWindowName />}
-      {children}
+      <WindowArriving.Provider value={windowArrival(slidesIn, arriving)}>
+        {children}
+      </WindowArriving.Provider>
     </Modal>
   );
 }
@@ -402,26 +424,28 @@ export function anchorUnder(trigger: RefObject<ViewInstance | null>, then: (at: 
   );
 }
 
-/** An open menu's anchor, measured again once a turned window settles; a button the turn took away closes it. */
+/** An open menu's anchor, measured again once a turned window settles or the offline band moves the frame's body; a button the turn took away closes it. */
 export function useAnchorFollowsTurn(
   trigger: RefObject<ViewInstance | null>,
   open: boolean,
   then: (at: Anchor | null) => void,
 ) {
   const { width, height } = useWindowDimensions();
-  const size = useRef({ width, height });
+  const bodyTop = useContext(BodyTop);
+  const was = useRef({ width, height, bodyTop });
 
   useEffect(() => {
-    const turned = size.current.width !== width || size.current.height !== height;
-    size.current = { width, height };
-    if (!open || !turned) return;
+    const now = { width, height, bodyTop };
+    const after = remeasureAfter(was.current, now, open, SETTLED_MS);
+    was.current = now;
+    if (after == null) return;
     const wait = setTimeout(() => {
       if (trigger.current == null) then(null);
       else anchorUnder(trigger, then);
-    }, SETTLED_MS);
+    }, after);
 
     return () => clearTimeout(wait);
-  }, [width, height, open, trigger, then]);
+  }, [width, height, bodyTop, open, trigger, then]);
 }
 
 interface MenuProps {

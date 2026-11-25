@@ -47,8 +47,26 @@ describe('The sign-in rules’ notices above the title row (sc-39471, #87355)', 
     expect(follows(gate, changed)).toBe(true);
     expect(follows(changed, title)).toBe(true);
     expect(screen.getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href')).toBe(
+      '/demo/settings/security?as=julien&state=choice',
+    );
+  });
+
+  it('opens Security on the Turn on two-factor choice from the gate and the deadline notice (sc-89710)', async () => {
+    const { router } = await open(
+      '/demo/settings/payment-reminders?as=julien&notice=due,unlinked,gate',
+      'Payment reminders',
+    );
+
+    expect(screen.getByRole('link', { name: 'Turn it on now' }).getAttribute('href')).toBe(
+      '/demo/settings/security?as=julien&state=choice',
+    );
+    expect(screen.getByRole('link', { name: 'Link Google or Apple' }).getAttribute('href')).toBe(
       '/demo/settings/security?as=julien',
     );
+    fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Security' })).toBeDefined();
+    expect(router.state.location.search).toBe('?as=julien&state=choice');
+    expect(screen.getByRole('dialog', { name: 'Turn on two-factor' })).toBeDefined();
   });
 
   it('shows the two-factor gate on General held until two-factor', async () => {

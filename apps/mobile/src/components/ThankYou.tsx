@@ -20,7 +20,7 @@ import { AlertLine } from './AlertLine.tsx';
 import { FieldError, TextField } from './Field.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { type AskProps, FocusedScreen, Section, TextAction } from './Summary.tsx';
+import { ASK_WIDTH, type AskProps, FocusedScreen, Section, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
 
@@ -220,6 +220,7 @@ export function ThankYouScreen({
           setDiscarding(false);
           leaves.discard();
         },
+        width: ASK_WIDTH,
       }
     : null;
 

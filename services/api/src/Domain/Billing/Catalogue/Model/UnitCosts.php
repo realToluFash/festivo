@@ -44,7 +44,9 @@ final readonly class UnitCosts
     /** @return ?int<0, max> null when this version leaves the country to the formula */
     public function whatsApp(WhatsAppCategory $category, string $country): ?int
     {
-        return $this->whatsApp[$category->value][$country] ?? null;
+        $priced = WhatsAppCategory::Service === $category ? WhatsAppCategory::Utility : $category;
+
+        return $this->whatsApp[$priced->value][$country] ?? null;
     }
 
     /** @return int<0, max> */

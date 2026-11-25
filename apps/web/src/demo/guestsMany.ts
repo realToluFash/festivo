@@ -223,7 +223,7 @@ export interface ManyStart {
   manages: boolean;
   choice: Choice;
   q: string;
-  groupFilter: GroupFilter | null;
+  groupFilters: readonly GroupFilter[];
   selected: string[];
   pretend: number | null;
   cleared: boolean;
@@ -297,7 +297,7 @@ export function manyStart(state: ManyState): ManyStart {
     manages: true,
     choice: 'all',
     q: '',
-    groupFilter: null,
+    groupFilters: [],
     selected: [],
     pretend: null,
     cleared: false,
@@ -324,7 +324,7 @@ export function manyStart(state: ManyState): ManyStart {
     case 'filtered':
       return {
         ...start,
-        groupFilter: 'g-work',
+        groupFilters: ['g-work'],
         selected: list.filter((one) => one.group === 'g-work').map((one) => one.id),
       };
     case 'cleared':
@@ -375,7 +375,7 @@ export function manyStart(state: ManyState): ManyStart {
       return {
         ...start,
         list: done.list,
-        groupFilter: 'g-work',
+        groupFilters: ['g-work'],
         line: done.line,
         undo: done.removed,
       };

@@ -102,6 +102,7 @@
     "validation.seating_copy_outside_room": "La copia de {name} quedaría fuera de la sala, así que no se ha añadido nada.",
     "validation.seating_row_outside_room": "La fila {label} quedaría fuera de la sala.",
     "seating.no_such_item": "Esta mesa, fila o asiento no está en el plano.",
+    "guest_link_card.line": "Su invitación de {hosts}",
     "guest_export.file": "{event} – invitados – {day}",
     "guest_export.sheet": "Invitados",
     "guest_export.column.full_name": "Nombre completo",

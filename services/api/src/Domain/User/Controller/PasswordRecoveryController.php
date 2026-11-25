@@ -8,7 +8,6 @@ use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Http\SecondFactorInput;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Recovery\PasswordRecovery;
-use App\Domain\User\TwoFactor\Passkey\Passkeys;
 use App\Domain\User\TwoFactor\SecondFactors;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
@@ -34,7 +33,6 @@ final readonly class PasswordRecoveryController
         private RateLimiterFactoryInterface $passwordResetIpLimiter,
         private SecondFactorInput $secondFactorInput,
         private SecondFactors $secondFactors,
-        private Passkeys $passkeys,
     ) {
     }
 
@@ -72,8 +70,7 @@ final readonly class PasswordRecoveryController
         return new JsonResponse([
             'email' => $user->getPrimaryEmailAddress()?->getAddress(),
             'twoFactor' => $this->passwordRecovery->asksForSecondFactor($user),
-            'factors' => $this->secondFactors->kinds($user),
-            'passkeysOffered' => $this->passkeys->offered(),
+            'factors' => $this->secondFactors->askable($user),
         ]);
     }
 

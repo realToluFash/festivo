@@ -192,6 +192,8 @@ export const REDEEM_STATES = [
   'event-short',
   'sending',
   'join-as',
+  'join-as-long',
+  'join-as-longest',
   'member',
   'code',
   'code-texted',
@@ -215,6 +217,11 @@ export type RedeemState = (typeof REDEEM_STATES)[number];
 export const JOAO = { name: 'João Pereira', number: '912 345 412' };
 export const HUGO = { name: 'Hugo Faria', number: '913 222 908' };
 export const KEMI = 'Kemi Okafor';
+/** Sixty characters, kept whole: the pill grows a line at a time (sc-72, #89576). */
+export const LONG_NAME = 'Maria Fernanda Albuquerque de Vasconcelos Pereira dos Santos';
+/** The account's 180-character limit: three lines, then an ellipsis. */
+export const LONGEST_NAME =
+  'Maria Fernanda Albuquerque de Vasconcelos Pereira dos Santos Carvalho Bettencourt Magalhães e Sá Rodrigues Figueiredo de Mascarenhas Sampaio Teixeira Lopes Brandão Cunha Ribeiro Sá';
 /** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
 export const RITA = { name: 'Rita Sousa', number: '916 480 233' };
 
@@ -309,6 +316,10 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: event({ busy: 'held' }), ...joao };
     case 'join-as':
       return { step: { kind: 'joinAs', busy: 'no' }, name: KEMI, number: '' };
+    case 'join-as-long':
+      return { step: { kind: 'joinAs', busy: 'no' }, name: LONG_NAME, number: '' };
+    case 'join-as-longest':
+      return { step: { kind: 'joinAs', busy: 'no' }, name: LONGEST_NAME, number: '' };
     case 'member':
       return { step: { kind: 'member' }, ...joao };
     case 'code':
@@ -380,6 +391,8 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('joining', 'Joining'),
       redeem('name-used-up', 'Used up'),
       redeem('join-as', 'Already signed in'),
+      redeem('join-as-long', 'Signed in, a sixty-character name'),
+      redeem('join-as-longest', 'Signed in, a 180-character name'),
       redeem('member', 'Already a member'),
     ],
   },

@@ -13,7 +13,7 @@ import urllib.request
 
 from . import machine
 
-TOKEN = "SQ_WEB_TOKEN"
+TOKEN = machine.WEB_TOKEN
 TOKEN_MIN = 32
 COOKIE = "sq_token"
 PEER_SECONDS = 5
@@ -73,13 +73,12 @@ def problems(config, secret=None):
     return found
 
 
-def allowed(client, headers, query, secret):
-    """`(allowed, token to set as a cookie)`: loopback needs nothing, anyone else the token,
-    as a bearer header, the cookie, or once in the address."""
-    if loopback(client):
-        return True, None
-    if not usable(secret):
-        return False, None
+def matches(given, secret):
+    return usable(secret) and hmac.compare_digest(given.encode(), secret.encode())
+
+
+def presented(headers, secret):
+    """Whether the request carries the token, as a bearer header or the cookie."""
     given = []
     bearer = headers.get("Authorization") or ""
     if bearer.startswith("Bearer "):
@@ -87,12 +86,21 @@ def allowed(client, headers, query, secret):
     jar = http.cookies.SimpleCookie(headers.get("Cookie") or "")
     if COOKIE in jar:
         given.append(jar[COOKIE].value)
+    return any(matches(g, secret) for g in given)
+
+
+def allowed(client, headers, query, secret):
+    """`(allowed, token to set as a cookie)`: loopback needs nothing to read, anyone else the
+    token, as a bearer header, the cookie, or once in the address. The address sets the
+    cookie on loopback too, since the controls ask for it everywhere."""
     # Read as typed: parse_qs would turn a base64 token's `+` into a space.
     asked = next((urllib.parse.unquote(value) for key, _, value in
                   (part.partition("=") for part in query.split("&")) if key == "token"), None)
-    if asked and hmac.compare_digest(asked.encode(), secret.encode()):
+    if asked and matches(asked, secret):
         return True, asked
-    return any(hmac.compare_digest(g.encode(), secret.encode()) for g in given), None
+    if loopback(client):
+        return True, None
+    return presented(headers, secret), None
 
 
 def address(base, path):

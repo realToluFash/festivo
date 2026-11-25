@@ -8,6 +8,8 @@ import { dateLocale } from '../i18n/index.ts';
 import { afterNotice, useFocusOnceShown } from '../stepFocus.ts';
 import { ORGANISATION } from './events.ts';
 import { CHANGED_AT, DEADLINE, type RuleNotice, noticesAsked } from './ruleNotices.ts';
+import { HELD_STEPS, heldStepPath } from './security.ts';
+import { viewerOf } from './settings.ts';
 
 /** The sign-in rules' notices (SignInRulesNotices), in the amber box's place above the title row, under it when offline. */
 export function DemoRuleNotices() {
@@ -18,6 +20,7 @@ export function DemoRuleNotices() {
   const as = params.get('as');
   const viewer = as == null ? '' : `?as=${as}`;
   const security = `/demo/settings/security${viewer}`;
+  const turnOn = heldStepPath(HELD_STEPS.turnOn, viewerOf(as));
   const organisation = ORGANISATION;
 
   const drawn: Record<RuleNotice, RuleNoticeWords> = {
@@ -25,7 +28,7 @@ export function DemoRuleNotices() {
       kind: 'attention',
       title: t('signInRules.dueBody', { organisation, deadline: DEADLINE }),
       body: null,
-      step: { label: t('signInRules.dueSetUp'), to: security },
+      step: { label: t('signInRules.dueSetUp'), to: turnOn },
       close: null,
     },
     unlinked: {
@@ -39,7 +42,7 @@ export function DemoRuleNotices() {
       kind: 'quiet',
       title: t('signInRules.gateTitle', { organisation }),
       body: t('signInRules.gateBody', { organisation }),
-      step: { label: t('signInRules.gateTurnOn'), to: security },
+      step: { label: t('signInRules.gateTurnOn'), to: turnOn },
       close: t('signInRules.gateLater'),
     },
     changed: {

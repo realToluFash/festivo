@@ -9,6 +9,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { __forgetTab } from '../../../tabKept.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { readAddressesInline } from '../../../components/wholeAddressTesting.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -51,6 +52,7 @@ interface Row {
   address: string | null;
   addressKind: 'email' | 'mobile' | null;
   endsAt: string | null;
+  doorCode?: string | null;
 }
 
 function person(id: string, name: string, role: string, jobLabel: string | null = null): Row {
@@ -796,7 +798,35 @@ describe('coming back to People while offline (sc-65646)', () => {
   });
 });
 
+describe('People keeping up while it is open (sc-72)', () => {
+  it('lists someone who joins by a door code within 10 seconds, reading the codes first, with a dialog left open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      signedIn();
+      const rows = [PRIYA, TOM];
+      const sent = await onPeople(rows);
+      fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+      const before = sent.length;
+
+      rows.push({ ...outsider('kemi', { name: 'Kemi Ade' }, 'can_view'), doorCode: 'K7P2QX9M' });
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+
+      expect(within(people()).getByRole('button', { name: /Kemi Ade.*Door code/ })).toBeDefined();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+      const reads = sent.slice(before).map((one) => one.line);
+      expect(reads.slice(0, 2)).toEqual([
+        'GET /api/events/ev_1/door-codes',
+        'GET /api/events/ev_1/people',
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe('People from outside the organisation (sc-71)', () => {
+  readAddressesInline();
+
   it('tags them, and lists someone not joined yet by the address an owner added', async () => {
     signedIn();
     await onPeople([
@@ -807,7 +837,9 @@ describe('People from outside the organisation (sc-71)', () => {
 
     expect(within(people()).getAllByText('Outside Ìrè Events')).toHaveLength(2);
     expect(within(people()).getByText('Kemi Okafor')).toBeDefined();
-    expect(within(people()).getByText('sade@thelandmark.example')).toBeDefined();
+    expect(
+      within(people()).getByRole('button', { name: /^sade@thelandmark\.example/u }),
+    ).toBeDefined();
   });
 
   it('says Not joined yet to whoever is not given the address', async () => {
@@ -870,7 +902,9 @@ describe('People from outside the organisation (sc-71)', () => {
     });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }));
 
-    expect(await within(people()).findByText('kemi@example.com')).toBeDefined();
+    expect(
+      await within(people()).findByRole('button', { name: /^kemi@example\.com/u }),
+    ).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/people')?.body).toEqual({
       address: 'kemi@example.com',
       role: 'can_check_in',
@@ -1120,5 +1154,70 @@ describe('Staff links on People (sc-3912)', () => {
     );
     expect(within(rows[1] as HTMLElement).queryByRole('button')).toBeNull();
     expect(within(people()).getByText('3')).toBeDefined();
+  });
+});
+
+describe('an outsider’s address breaks after its @, never inside its domain (sc-91529)', () => {
+  readAddressesInline();
+
+  const UNBROKEN = 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test';
+
+  function wholeIn(place: HTMLElement): HTMLElement {
+    const shown = place.querySelector<HTMLElement>('.whole-address');
+    if (shown == null) throw new Error('No whole address here');
+
+    return shown;
+  }
+
+  it('reads the address as typed in the row, the dialog and the Remove ask, with breaks put in and nothing else', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('fun', { address: UNBROKEN }, 'can_view')]);
+
+    const row = within(people()).getByRole('button', { name: new RegExp(`^${UNBROKEN}`, 'u') });
+    expect(wholeIn(row).textContent).toBe(UNBROKEN);
+    expect(wholeIn(row).querySelector('.whole-address-domain')?.textContent).toBe('soirely.test');
+
+    fireEvent.click(row);
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+    expect(wholeIn(dialog).textContent).toBe(UNBROKEN);
+    expect(wholeIn(dialog).querySelector('.whole-address-at')?.textContent).toBe('s@');
+    expect(wholeIn(dialog).querySelectorAll('wbr').length).toBeGreaterThan(0);
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: `Remove ${UNBROKEN} from this event?` });
+    expect(ask.querySelector('h2')?.textContent).toBe(`Remove ${UNBROKEN} from this event?`);
+    expect(wholeIn(ask).querySelector('.whole-address-domain')?.textContent).toBe('soirely.test');
+  });
+
+  it('asks in French around the whole address', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('amaka', { address: 'amaka.outside@soirely.test' }, 'can_view')]);
+    await act(() => i18next.changeLanguage('fr'));
+
+    try {
+      fireEvent.click(
+        within(people()).getByRole('button', { name: /^amaka\.outside@soirely\.test/u }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: /^Retirer de cet événement/u }));
+      const ask = screen.getByRole('alertdialog', {
+        name: 'Retirer amaka.outside@soirely.test de cet événement\u00a0?',
+      });
+      expect(wholeIn(ask).textContent).toBe('amaka.outside@soirely.test');
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
+  it('leaves a mobile number and a joined name as they read', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('ngozi', { address: '+2348031234567' }, 'can_view')]);
+
+    expect(within(people()).getByRole('button', { name: /^\+234 803 123 4567/u })).toBeDefined();
+    expect(people().querySelector('.whole-address')).toBeNull();
+
+    fireEvent.click(within(people()).getByRole('button', { name: /^Tom Becker/u }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
+    expect(ask.querySelector('.whole-address')).toBeNull();
   });
 });

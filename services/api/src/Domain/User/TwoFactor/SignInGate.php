@@ -58,7 +58,7 @@ final readonly class SignInGate
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
-        return new IssuedChallenge($plain, $challenge->getExpiresAt(), $this->secondFactors->kinds($user));
+        return new IssuedChallenge($plain, $challenge->getExpiresAt(), $this->secondFactors->askable($user));
     }
 
     /**

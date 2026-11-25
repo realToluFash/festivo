@@ -1,5 +1,12 @@
 framework:
     rate_limiter:
+        usage_update:
+            # Per organisation, spent by each usage update on its live channel (sc-3929): a send
+            # of 400 publishes about one a second, and the trailing one after the last change.
+            policy: token_bucket
+            limit: 1
+            rate: { interval: '1 second', amount: 1 }
+
         address_lookup:
             # Per IP. An autocomplete field fires on keystrokes, so the budget is
             # generous — but a budget that cannot be exhausted is a provider bill

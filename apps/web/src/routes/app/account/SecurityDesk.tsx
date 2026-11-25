@@ -150,7 +150,7 @@ export function SecurityDesk() {
   const others = sessions == null ? { count: 0, sessionId: null } : othersOf(sessions);
   const status = twoFactor != null && twoFactor !== 'failed' ? twoFactor : null;
   const held = heldOf(status);
-  const passkeysHere = status?.passkeysOffered === true && canUsePasskeys();
+  const passkeysHere = offersPasskeys(status);
   const { watch, refreshing } = useOffline({
     loaded: status != null && sessions != null,
     reload: () => setRefresh((n) => n + 1),
@@ -169,11 +169,11 @@ export function SecurityDesk() {
         if (!live) return;
         lineHeld.current = saidLine.current != null && document.activeElement === saidLine.current;
         setTwoFactor(now);
-        // A held step elsewhere in Settings opens two-factor's set-up, once the page knows it is off.
+        // A held step elsewhere in Settings opens Turn on two-factor's first step, once the page knows it is off.
         if (!opensSetup.current) return;
         opensSetup.current = false;
         void navigate(location.pathname, { replace: true, state: null });
-        if (!now.on) setDialog({ kind: 'setup' });
+        if (!now.on) setDialog(firstStepOf(now));
       },
       (error: unknown) =>
         live && setTwoFactor((was) => (was != null && keepsWhatLoaded(error) ? was : 'failed')),
@@ -479,10 +479,6 @@ export function SecurityDesk() {
     </>
   );
 
-  function turnOn(): Opened {
-    return passkeysHere ? { kind: 'choice' } : { kind: 'setup' };
-  }
-
   async function passFactor(
     purpose: FactorPurpose,
     current: CurrentFactor,
@@ -538,7 +534,10 @@ export function SecurityDesk() {
             step={
               status.on
                 ? null
-                : { label: t('twoFactorCard.turnOn'), onClick: () => setDialog(turnOn()) }
+                : {
+                    label: t('twoFactorCard.turnOn'),
+                    onClick: () => setDialog(firstStepOf(status)),
+                  }
             }
           />
         )}
@@ -661,7 +660,7 @@ export function SecurityDesk() {
                   <button
                     type="button"
                     className="desk-row account-row"
-                    onClick={() => setDialog(turnOn())}
+                    onClick={() => setDialog(firstStepOf(status))}
                   >
                     <Lead name="shield" />
                     <RowWords
@@ -922,7 +921,11 @@ export function SecurityDesk() {
           purpose={dialog.purpose}
           email={session.email}
           held={held}
-          passkeyOptions={() => api.passkeyOptions(PASSKEY_STEPS[dialog.purpose])}
+          passkeyOptions={
+            status?.passkeysOffered === true
+              ? () => api.passkeyOptions(PASSKEY_STEPS[dialog.purpose])
+              : undefined
+          }
           submit={(current) => passFactor(dialog.purpose, current, dialog.factor)}
           onClose={() => setDialog(null)}
           onDone={() => {
@@ -944,9 +947,7 @@ export function SecurityDesk() {
               : proveWith(ways.password, session.providers, provingAct.provider)
           }
           twoFactorOn={status?.on ?? false}
-          passkey={
-            held.passkeys && canUsePasskeys() ? () => api.passkeyOptions('proof') : undefined
-          }
+          passkey={held.passkeys && passkeysHere ? () => api.passkeyOptions('proof') : undefined}
           held={held}
           returned={proving.returned}
           purpose={
@@ -1033,6 +1034,14 @@ const PASSKEY_STEPS = {
 /** The app's row keeps the key it always had, so a refusal still lands under it. */
 function factorKey(factor: TwoFactorFactor): string {
   return factor.kind === 'app' ? 'auth' : factor.id;
+}
+
+function offersPasskeys(status: TwoFactorStatus | null): boolean {
+  return status?.passkeysOffered === true && canUsePasskeys();
+}
+
+function firstStepOf(status: TwoFactorStatus | null): Opened {
+  return offersPasskeys(status) ? { kind: 'choice' } : { kind: 'setup' };
 }
 
 function passkeyCount(status: TwoFactorStatus): number {

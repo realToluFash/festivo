@@ -1,14 +1,12 @@
 import type { DoorCodeCard, OrganisationEvent } from '@soirely/api-client';
-import { type Ref, type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { type Ref, type RefObject, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { type LayoutRectangle, StyleSheet, View, type ViewInstance } from 'react-native';
 
-import { api } from '../api.ts';
 import {
   BLANK_FORM,
   type CodeClock,
   cardStep,
-  COUNT_EVERY_MS,
   countLine,
   formFrom,
   type MakeForm,
@@ -86,22 +84,6 @@ export function DoorCodes({
     replace(was, card);
     if (kind === 'new') tell(t('doorCodes.made'));
   });
-
-  const shownId = showing?.open === true ? showing.id : null;
-  useEffect(() => {
-    if (shownId == null) return;
-    const timer = setInterval(() => {
-      api.doorCodes(event.id).then(
-        (fresh) => {
-          const read = fresh.find((one) => one.id === shownId);
-          if (read != null) replace(shownId, read);
-        },
-        () => undefined,
-      );
-    }, COUNT_EVERY_MS);
-
-    return () => clearInterval(timer);
-  }, [event.id, shownId, replace]);
 
   function openerFor(id: string | null): void {
     opener.current = id == null ? firstStep.current : (steps.current.get(id) ?? null);
@@ -250,12 +232,14 @@ function CodeCard({
   const tag = code.status === 'working' ? null : TAGS[code.status];
   const shows = cardStep(code.status) === 'show';
   const under = underCard(code.status);
+  const [words, setWords] = useState<LayoutRectangle | null>(null);
 
   return (
     <>
       <SummaryCard
         height={200}
         gap={10}
+        words={words == null ? null : [words]}
         step={{
           label: shows ? t('doorCodes.show') : t('doorCodes.makeNew'),
           onPress: shows ? onShow : onMakeNew,
@@ -264,19 +248,21 @@ function CodeCard({
         }}
         testID={`door.card.${code.id}`}
       >
-        <OnCard text={roleLine(code, t)} />
-        <View style={styles.codeRow}>
-          <Text
-            size={30}
-            weight="bold"
-            accessibilityLabel={t('doorCodes.said', { code: saidCode(code.code) })}
-            style={styles.code}
-          >
-            {shownCode(code.code)}
-          </Text>
-          {tag != null && <GlassTag word={t(tag.word)} mark={tag.mark} />}
+        <View style={styles.words} onLayout={(event) => setWords(event.nativeEvent.layout)}>
+          <OnCard text={roleLine(code, t)} />
+          <View style={styles.codeRow}>
+            <Text
+              size={30}
+              weight="bold"
+              accessibilityLabel={t('doorCodes.said', { code: saidCode(code.code) })}
+              style={styles.code}
+            >
+              {shownCode(code.code)}
+            </Text>
+            {tag != null && <GlassTag word={t(tag.word)} mark={tag.mark} />}
+          </View>
+          <OnCard text={countLine(code, clock, t)} />
         </View>
-        <OnCard text={countLine(code, clock, t)} />
       </SummaryCard>
       {under.length > 0 && (
         <View style={styles.under}>
@@ -302,6 +288,7 @@ function CodeCard({
 }
 
 const styles = StyleSheet.create({
+  words: { alignSelf: 'flex-start', gap: 10 },
   codeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

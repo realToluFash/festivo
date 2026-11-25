@@ -320,10 +320,10 @@ describe('the grid', () => {
         'org-atelier-celeste-receptions',
         'org-harbourlight',
       ].map(orgMesh),
-    ).toEqual(['accent', 'rose', 'teal', 'amber']);
+    ).toEqual(['party', 'rose', 'teal', 'amber']);
     expect(
       ['org-celebraciones-alameda', 'org-bluebird-gatherings', 'org-ire-weddings'].map(orgMesh),
-    ).toEqual(['amber', 'accent', 'rose']);
+    ).toEqual(['amber', 'party', 'rose']);
   });
 });
 

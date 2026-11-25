@@ -60,12 +60,10 @@ import {
 import { clockWords, dayWords } from './staffTimes.ts';
 import './doorCodes.css';
 
-/** Shown up, the count is read again this often, so a join shows within 10 seconds (spec §2.3). */
-const COUNT_EVERY_MS = 5000;
 const STEP = (index: number) => `.dc-card[data-index="${index}"] .desk-step`;
 
-type Make = { form: MakeForm; into: number | null };
-type CodeAskOpen = { kind: 'new' | 'stop'; index: number };
+type Make = { form: MakeForm; into: string | null };
+type CodeAskOpen = { kind: 'new' | 'stop'; id: string };
 
 /** The door codes on People, as the web demo's People draws them at a desk (sc-72): a card each, what is under it, and what they open. */
 export function DoorCodes({
@@ -90,55 +88,43 @@ export function DoorCodes({
     now,
   };
   const [make, setMake] = useState<Make | null>(null);
-  const [held, setHeld] = useState<number | null>(null);
+  const [held, setHeld] = useState<string | null>(null);
   const [ask, setAsk] = useState<CodeAskOpen | null>(null);
-  const [printing, setPrinting] = useState<number | null>(null);
+  const [printing, setPrinting] = useState<string | null>(null);
   const replace = useCallback(
     (id: string, card: DoorCodeCard) =>
       onCodes((was) => was.map((one) => (one.id === id ? card : one))),
     [onCodes],
   );
 
-  const shownId = held == null ? null : (codes[held]?.id ?? null);
-  useEffect(() => {
-    if (shownId == null) return;
-    const timer = window.setInterval(() => {
-      api.doorCodes(event.id).then(
-        (fresh) => {
-          const read = fresh.find((one) => one.id === shownId);
-          if (read != null) replace(shownId, read);
-        },
-        () => undefined,
-      );
-    }, COUNT_EVERY_MS);
+  const at = (id: string): number => codes.findIndex((one) => one.id === id);
 
-    return () => window.clearInterval(timer);
-  }, [event.id, shownId, replace]);
-
-  function made(card: DoorCodeCard, into: number | null): void {
-    const at = into ?? codes.length;
+  function made(card: DoorCodeCard, into: string | null): void {
+    const placed = into == null ? codes.length : at(into);
     onCodes((was) =>
-      into == null ? [...was, card] : was.map((one, index) => (index === into ? card : one)),
+      into == null ? [...was, card] : was.map((one) => (one.id === into ? card : one)),
     );
     setMake(null);
     tell(t('doorCodes.made'));
-    focusWhenFree(() => document.querySelector<HTMLElement>(STEP(at)));
+    focusWhenFree(() => document.querySelector<HTMLElement>(STEP(placed)));
   }
 
-  function step(code: DoorCodeCard, index: number): void {
-    if (code.status === 'working') setHeld(index);
-    else if (code.status === 'full') setAsk({ kind: 'new', index });
-    else setMake({ form: formFrom(code, clock), into: index });
+  function step(code: DoorCodeCard): void {
+    if (code.status === 'working') setHeld(code.id);
+    else if (code.status === 'full') setAsk({ kind: 'new', id: code.id });
+    else setMake({ form: formFrom(code, clock), into: code.id });
   }
 
-  function print(index: number): void {
-    flushSync(() => setPrinting(index));
+  function print(id: string): void {
+    flushSync(() => setPrinting(id));
     window.print();
   }
 
-  const heldCode = held == null ? null : codes[held];
-  const asked = ask == null ? null : codes[ask.index];
-  const printed = printing == null ? null : codes[printing];
+  const find = (id: string | null) =>
+    id == null ? null : (codes.find((one) => one.id === id) ?? null);
+  const heldCode = find(held);
+  const asked = find(ask?.id ?? null);
+  const printed = find(printing);
 
   return (
     <>
@@ -163,12 +149,12 @@ export function DoorCodes({
         <div className="dc-codes">
           {codes.map((code, index) => (
             <div key={code.id} className="dc-code-item">
-              <CodeCard code={code} index={index} clock={clock} onStep={() => step(code, index)} />
+              <CodeCard code={code} index={index} clock={clock} onStep={() => step(code)} />
               <CodeActions
                 code={code}
-                onPrint={() => print(index)}
-                onNew={() => setAsk({ kind: 'new', index })}
-                onStop={() => setAsk({ kind: 'stop', index })}
+                onPrint={() => print(code.id)}
+                onNew={() => setAsk({ kind: 'new', id: code.id })}
+                onStop={() => setAsk({ kind: 'stop', id: code.id })}
               />
             </div>
           ))}
@@ -183,7 +169,7 @@ export function DoorCodes({
         <MakeDialog
           eventId={event.id}
           form={make.form}
-          replaces={make.into == null ? undefined : codes[make.into]?.id}
+          replaces={make.into ?? undefined}
           clock={clock}
           onClose={() => setMake(null)}
           onMade={(card) => made(card, make.into)}
@@ -195,13 +181,13 @@ export function DoorCodes({
           clock={clock}
           onClose={() => setHeld(null)}
           onPrint={() => print(held)}
-          onNew={() => setAsk({ kind: 'new', index: held })}
-          onStop={() => setAsk({ kind: 'stop', index: held })}
+          onNew={() => setAsk({ kind: 'new', id: held })}
+          onStop={() => setAsk({ kind: 'stop', id: held })}
         />
       )}
       {ask != null && asked != null && (
         <CodeAsk
-          key={`${ask.kind}-${ask.index}-${asked.id}`}
+          key={`${ask.kind}-${asked.id}`}
           eventId={event.id}
           ask={ask}
           code={asked}
@@ -210,13 +196,16 @@ export function DoorCodes({
           onRenewed={(fresh) => {
             replace(asked.id, fresh);
             setAsk(null);
+            if (held === asked.id) setHeld(fresh.id);
+            if (printing === asked.id) setPrinting(fresh.id);
             if (held == null) tell(t('doorCodes.made'));
           }}
           onStopped={(stopped) => {
+            const index = at(asked.id);
             replace(asked.id, stopped);
             setAsk(null);
             setHeld(null);
-            focusWhenFree(() => document.querySelector<HTMLElement>(STEP(ask.index)));
+            focusWhenFree(() => document.querySelector<HTMLElement>(STEP(index)));
           }}
         />
       )}

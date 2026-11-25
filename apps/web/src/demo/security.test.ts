@@ -167,7 +167,7 @@ describe('Security’s sample (sc-30223)', () => {
 
     expect(unlink).toMatchObject({ password: true, code: true, provider: null });
     expect(unlink.lead).toBe(
-      "To unlink Google, confirm it's you. You won't be asked again for 5 minutes.",
+      'To unlink Google, confirm it’s you. You won’t be asked again for 5 minutes.',
     );
     expect(off).toMatchObject({ password: false, code: true });
     expect(noPassword).toMatchObject({ password: false, provider: 'Google', code: false });

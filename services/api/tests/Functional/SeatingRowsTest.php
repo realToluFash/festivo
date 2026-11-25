@@ -141,7 +141,7 @@ final class SeatingRowsTest extends ApiTestCase
         yield 'off the 15° steps' => [['rotation' => 10], 'rotation', 'Choose a rotation in 15° steps, from 0° to 345°.'];
         yield 'a full turn' => [['rotation' => 360], 'rotation', 'Choose a rotation in 15° steps, from 0° to 345°.'];
         yield 'no such seat' => [['unusableSeats' => [11]], 'unusableSeats', 'Choose seats from 1 to 10, each once.'];
-        yield 'a section of another plan' => [['sectionId' => '0195c0de-0000-7000-8000-000000000000'], 'sectionId', 'Choose one of this plan\'s sections, or no section.'];
+        yield 'a section of another plan' => [['sectionId' => '0195c0de-0000-7000-8000-000000000000'], 'sectionId', 'Choose one of this plan’s sections, or no section.'];
     }
 
     /** @param array<string, mixed> $fields */

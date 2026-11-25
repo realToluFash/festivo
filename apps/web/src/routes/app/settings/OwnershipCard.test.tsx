@@ -1077,7 +1077,7 @@ describe('Transfer ownership for an owner with no password (sc-18959)', () => {
 
     expect(
       await screen.findByText(
-        "That Google account isn't the one linked here, or it was signed in too long ago. Try again.",
+        'That Google account isn’t the one linked here, or it was signed in too long ago. Try again.',
       ),
     ).toBeDefined();
     expect(
@@ -1094,7 +1094,7 @@ describe('Transfer ownership for an owner with no password (sc-18959)', () => {
     settings();
 
     expect(
-      await screen.findByText("Google didn't finish, so nothing changed. Try again."),
+      await screen.findByText('Google didn’t finish, so nothing changed. Try again.'),
     ).toBeDefined();
     expect(
       ((await screen.findByRole('radio', { name: /Bisi Adeyemi/ })) as HTMLInputElement).checked,

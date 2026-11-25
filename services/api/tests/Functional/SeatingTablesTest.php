@@ -153,7 +153,7 @@ final class SeatingTablesTest extends ApiTestCase
         yield 'one letter of many marks' => ['round', ['name' => 'a' . Str\repeat("\u{0301}", 120)], 'name', 'Use 30 characters or fewer.'];
         yield 'a name whose key outgrows the column' => ['round', ['name' => Str\repeat("\u{FDFA}", 7)], 'name', 'Use 30 characters or fewer.'];
         yield 'a seat it does not have' => ['round', ['unusableSeats' => [11]], 'unusableSeats', 'Choose seats from 1 to 10, each once.'];
-        yield 'a section of another plan' => ['round', ['sectionId' => '0190a3c4-0000-7000-8000-000000000000'], 'sectionId', "Choose one of this plan's sections, or no section."];
+        yield 'a section of another plan' => ['round', ['sectionId' => '0190a3c4-0000-7000-8000-000000000000'], 'sectionId', 'Choose one of this plan’s sections, or no section.'];
     }
 
     /** @param array<string, mixed> $fields */

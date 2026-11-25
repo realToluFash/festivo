@@ -124,6 +124,7 @@ import {
   GGW,
   type GuestGroup,
   deleteGroup,
+  groupChipsOn,
   groupNameOf,
   makeGroup,
   renameGroup,
@@ -300,7 +301,7 @@ function GuestsPage({
   const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [dietaryOnly, setDietary] = useState(start.dietary);
   const [groups, setGroups] = useState<GuestGroup[]>(start.groups);
-  const [groupFilter, setGroupFilter] = useState(start.groupFilter);
+  const [groupFilters, setGroupFilters] = useState(start.groupFilters);
   const [menu, setMenu] = useState(start.menu);
   const [expanded, setExpanded] = useState<ReadonlySet<Reply>>(new Set());
   const [pane, setPane] = useState<Pane>(start.pane);
@@ -335,9 +336,9 @@ function GuestsPage({
   const { view, shown } =
     choice === 'changed'
       ? changedView(list, listed, q, start.clock, manages)
-      : viewOf(list, choice, q, expanded, replyByOf(event.id), manages, dietaryOnly, groupFilter);
+      : viewOf(list, choice, q, expanded, replyByOf(event.id), manages, dietaryOnly, groupFilters);
   const looking =
-    choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly) || groupFilter != null;
+    choice !== 'all' || q.trim() !== '' || (manages && dietaryOnly) || groupFilters.length > 0;
   const nothingChanged = choice === 'changed' && listed.length === 0;
 
   /** sc-4331: the menu's row does what the bell's item does: the rows since the last look, and the item marked read. A failed fetch leaves the filter, the rows and the read mark as they were. */
@@ -809,8 +810,8 @@ function GuestsPage({
                       <GroupChips
                         groups={groups}
                         list={list}
-                        filter={groupFilter}
-                        onFilter={setGroupFilter}
+                        filter={groupFilters}
+                        onFilter={setGroupFilters}
                       />
                       {changeFailed && (
                         <div className="gs-shown gs-changed-failed" role="alert">
@@ -829,7 +830,7 @@ function GuestsPage({
                             onClick={() => {
                               clear();
                               setDietary(false);
-                              setGroupFilter(null);
+                              setGroupFilters([]);
                             }}
                           />
                         </div>
@@ -844,7 +845,7 @@ function GuestsPage({
                             onClick={() => {
                               clear();
                               setDietary(false);
-                              setGroupFilter(null);
+                              setGroupFilters([]);
                               focus('find');
                             }}
                           />
@@ -860,7 +861,7 @@ function GuestsPage({
                             onClick={() => {
                               clear();
                               setDietary(false);
-                              setGroupFilter(null);
+                              setGroupFilters([]);
                               focus('find');
                             }}
                           />
@@ -1032,7 +1033,7 @@ function GuestsPage({
 
                         setGroups(after.groups);
                         setList(after.list);
-                        if (groupFilter === id) setGroupFilter(null);
+                        setGroupFilters((was) => was.filter((one) => one !== id));
                       }}
                       onDone={close}
                     />
@@ -1106,7 +1107,10 @@ function GuestsPage({
           day={localDay(start.clock, event.timeZone)}
           inView={shown}
           everyone={counts.all}
-          narrowing={narrowing(choice, q)}
+          narrowing={narrowing(choice, q, [
+            ...(manages && dietaryOnly ? [GW.dietaryNotes] : []),
+            ...groupChipsOn(groups, list, groupFilters),
+          ])}
           needs={manages}
           onClose={() => {
             setExporting(null);

@@ -30,6 +30,7 @@ use Psl\Encoding\Base64;
 use Psl\Encoding\Hex;
 use Psl\Hash;
 use Psl\Json;
+use Psl\Math;
 use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Str\Byte;
@@ -366,6 +367,27 @@ final class EventCoverTest extends ApiTestCase
         self::assertSame([90, 'The arch'], [$moved['position'] ?? null, $moved['description'] ?? null]);
     }
 
+    /** A guest's link shows it in a chat (sc-89272): the frame the host set, as a JPEG of at most 300 KB, made again when the frame moves and deleted with the photo. */
+    #[Test]
+    public function aSavedPhotoPublishesItsLinkCardAtItsFrame(): void
+    {
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['uploadKey' => $this->upload(self::halves(1600, 1800), 'image/jpeg'), 'position' => 0]);
+        self::assertSame(200, $this->statusCode());
+        $card = self::service(ObjectStore::class)->publicUrl(EventCoverEditor::cardKey($this->photoKey()));
+
+        $top = self::read($this->fetch($card));
+        self::assertSame(['JPEG', 1200, 675], [$top->getImageFormat(), $top->getImageWidth(), $top->getImageHeight()]);
+        self::assertLessThanOrEqual(300_000, Str\Byte\length($this->fetch($card)));
+        self::assertGreaterThan(0.9, $top->getImagePixelColor(600, 337)->getColorValue(Imagick::COLOR_RED), 'the top of the photo is red');
+
+        $this->as($this->owner, 'PUT', $this->coverPath(), ['position' => 100]);
+        self::assertSame(200, $this->statusCode());
+        self::assertGreaterThan(0.9, self::read($this->fetch($card))->getImagePixelColor(600, 337)->getColorValue(Imagick::COLOR_BLUE), 'the bottom of the photo is blue');
+
+        $this->as($this->owner, 'DELETE', $this->coverPath());
+        self::assertSame(404, $this->statusOf($card));
+    }
+
     #[Test]
     public function aPositionWithNoPhotoSavedOrOutsideZeroToAHundredIsRefused(): void
     {
@@ -527,6 +549,23 @@ final class EventCoverTest extends ApiTestCase
         $parts = Type\shape(['path' => Type\string(), 'query' => Type\optional(Type\string())], true)->coerce(\parse_url($url));
 
         return 'http://storage:4566' . $parts['path'] . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    }
+
+    private static function halves(int $width, int $height): string
+    {
+        $image = new Imagick();
+        $image->newImage($width, $height, 'blue');
+        $red = new Imagick();
+        $red->newImage($width, Math\div($height, 2), 'red');
+        $image->compositeImage($red, Imagick::COMPOSITE_OVER, 0, 0);
+        $image->setImageFormat('jpeg');
+
+        return $image->getImageBlob();
+    }
+
+    private function photoKey(): string
+    {
+        return Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT photo_key FROM event_covers WHERE event_id = :id', ['id' => $this->eventId]));
     }
 
     private static function photo(int $width, int $height, bool $withGps = false, string $format = 'jpeg'): string

@@ -13,6 +13,10 @@ import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
+import { Billing } from './Billing.tsx';
+import { BILLING_PAGES } from './billing.ts';
+import { UsageWarning } from './UsageWarning.tsx';
+import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { Calendar } from './Calendar.tsx';
 import { Consultations } from './Consultations.tsx';
 import { CONSULTATION_PAGES } from './consultations.ts';
@@ -53,6 +57,7 @@ import { DESK_FIT_PAGES } from './deskFit.ts';
 import { NOW_STATE_NAMES, NOW_STATES } from './todayRun.ts';
 import { READS_STATE_NAMES, READS_STATES } from './NowReads.tsx';
 import { GUEST_PAGES } from './guest.ts';
+import { LINK_CARD_PAGES } from './linkCard.ts';
 import { GUEST_KITCHEN_PAGES } from './guestKitchen.ts';
 import { GUEST_PARTY_PAGES } from './guestCompanions.ts';
 import { GUEST_ASK_PAGES } from './guestAskStates.ts';
@@ -151,6 +156,7 @@ import { TEMPLATES_PAGES } from './templates.ts';
 import { Today } from './Today.tsx';
 import { SEARCH_PAGES, searchStart, searchStateOf } from './search.ts';
 import { TwoFactorBoard } from './TwoFactor.tsx';
+import { LinkCard } from './LinkCard.tsx';
 import { Unsubscribe } from './Unsubscribe.tsx';
 import { UNSUBSCRIBE_PAGES } from './unsubscribe.ts';
 import { VendorsMoved } from './Vendors.tsx';
@@ -349,6 +355,8 @@ export default function Demo() {
         element={<Settings open="data" page="guestRequest" />}
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
+      <Route path="settings/plan-and-billing" element={<Billing />} />
+      <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
       <Route path="redeem" element={<Redeem />} />
@@ -360,6 +368,7 @@ export default function Demo() {
       <Route path="vendors" element={<VendorsMoved />} />
       <Route path="share/:scope" element={<ShareRecipient />} />
       <Route path="unsubscribe" element={<Unsubscribe />} />
+      <Route path="link-card" element={<LinkCard />} />
       <Route path="guest" element={<GuestPage />} />
       <Route path="wallet-pass" element={<WalletPassPage />} />
       <Route path="guest/meal" element={<MealStepPage />} />
@@ -475,6 +484,8 @@ function DemoHome({ from }: { from: string }) {
           tablet landscape and desk
         </h3>
         <BoardPages pages={WALLET_PAGES} />
+        <h3>A guest’s link in a chat: its card (sc-89272) · WhatsApp at a phone’s width</h3>
+        <BoardPages pages={LINK_CARD_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-30">
@@ -665,6 +676,14 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={CHECK_IN_PAGES} />
         <h3>A staff link in the browser, signed out (sc-4235) · 390 first, one column wider</h3>
         <BoardPages pages={STAFF_SIGN_IN_PAGES} />
+      </section>
+
+      <section className="demo-home-page" aria-labelledby="demo-page-37">
+        <h2 id="demo-page-37">37 · Billing</h2>
+        <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
+        <BoardPages pages={BILLING_PAGES} />
+        <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
+        <BoardPages pages={USAGE_WARNING_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-27">

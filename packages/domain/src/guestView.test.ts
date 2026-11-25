@@ -223,6 +223,23 @@ describe('peopleInView (sc-3784)', () => {
     expect(ids(LIST, 'invited', 'ben')).toEqual(['g_3']);
   });
 
+  it('keeps anyone in one of the group chips on, with their companions, and the search narrows that (sc-90684)', () => {
+    const family = { id: 'gr_1', name: "Bride's family" };
+    const work = { id: 'gr_2', name: 'Work' };
+    const list = [
+      { ...ADAEZE, group: family },
+      { ...JOSE, group: work },
+      { ...BEN, group: { id: 'gr_3', name: 'Church' } },
+      CLEO,
+    ];
+
+    expect(ids(list, 'all', '', false, [])).toHaveLength(6);
+    expect(ids(list, 'all', '', false, ['gr_1', 'gr_2'])).toEqual(['g_1', 'c_1', 'g_2', 'c_2']);
+    expect(ids(list, 'all', '', false, ['none', 'gr_2'])).toEqual(['g_4', 'g_2', 'c_2']);
+    expect(ids(list, 'all', 'obi', false, ['gr_1', 'gr_2'])).toEqual(['c_1']);
+    expect(viewOf(list, COUNTS, 'all', '', new Set(), false, ['gr_1', 'gr_2']).shown).toBe(4);
+  });
+
   it('is never more people than the list shows for the same choice and search', () => {
     expect(peopleInView(LIST, 'all', 'o')).toHaveLength(
       viewOf(LIST, COUNTS, 'all', 'o', new Set()).shown,

@@ -10,7 +10,7 @@ import { firstName, initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, StyleSheet, View, type ViewInstance } from 'react-native';
+import { AppState, Animated, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
@@ -69,6 +69,8 @@ type Load =
     };
 
 const LIT_MS = 2000;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
 const ROW_INSET = 40 + tokens.spaceLg;
 const FIRST_ROLE: EventRole = 'can_view';
 
@@ -222,6 +224,45 @@ export function EventPeople({
       live = false;
     };
   }, [event.id, attempt, manages]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const next = () => {
+      timer = setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (AppState.currentState !== 'active') return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? inMadeOrder(await api.doorCodes(event.id)) : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!live) return;
+          // A change made on the screen while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => live && next(),
+      );
+    };
+    next();
+
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
 
   useEffect(() => {
     if (lit == null || lit.held) return;
@@ -385,6 +426,7 @@ export function EventPeople({
                         else rows.current.set(one.id, node);
                       }}
                       title={name}
+                      titleMayBeAddress
                       line={line}
                       lead={<PersonMark person={one} side={40} />}
                       tag={tag == null ? null : { kind: 'now', word: tag, wraps: true }}

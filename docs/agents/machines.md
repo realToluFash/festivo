@@ -416,6 +416,71 @@ through its own server, so the browser holds one token and talks to one address.
   and the box for the code. Each login step is taken only as JSON from the page's own
   address, so another site open in the browser cannot start one.
 
+### Controls on the page
+
+**The page pauses and resumes a machine, pauses and resumes every machine, and starts and
+stops each role**, on the machine it shows: a peer's are asked of that peer's own page,
+which does them. Each says what the `sq` command says, its `error:` included, and is kept
+in `<sq home>/runs/controls.jsonl` with the address it came from.
+
+- **Every control asks for the token, this machine's own page included.** A worker shares
+  the loopback with the owner, not the owner's cookie. Open the page once as
+  `http://127.0.0.1:8765/?token=<SQ_WEB_TOKEN>` (a hand-run `sq web` opens it that way
+  itself), and the cookie lasts a year. Until then the buttons are off and the page says how.
+- **Workers are never given `SQ_WEB_TOKEN`**, and reading the env file is among their
+  denied tools. Like the `OWNER_ONLY` refusals, that is a guard against a worker that
+  misreads a thread, not a boundary: a worker runs as the owner.
+- **Start starts the role and its stack, and leaves the manager as it is.** Unlike
+  `sq start`, it neither installs the manager nor lifts a pause, since the page is served
+  by one of the manager's own units. A started role on a paused machine ticks once the
+  machine is resumed, and the page says so.
+- **Stop lets a running worker finish its item**, as `sq stop` does. Stopping one at once
+  is `just agents down --now`, at the machine.
+- **Pause every machine is shown here at once**, and on the other machines at their next
+  tick, within a minute.
+- A peer whose `sq` predates the controls is named on the page; it gets them once its `sq`
+  updates from `main`.
+
+**Settings, on each role and on each machine's header, changes `agents.json` there**: a
+role's `model`, `effort`, `inboxEffort`, `wakeEvery`, `workers` and `maxBudgetUsd`, the same
+six in `defaults`, and the machine's `dailyBudgetUsd`, and the **Claude account**
+(`claudeConfigDir`) of each role and of the machine. The rest of the file is changed by
+hand, since a mistake there stops the machine.
+
+- **A Claude account is one of the folders the machine's logins list**: the folders its
+  roles run under, `~/.claude`, and each `~/.claude-*` with an account file, settings or a
+  login, named with who it runs as and the roles on it. Any other folder is refused, since
+  a folder's settings and hooks run in every worker started under it. Make a new one and
+  log in to it at the keyboard ([Claude accounts](#claude-accounts)). A folder is matched
+  by the path it resolves to and written in the `~/` form the logins show.
+- **A folder with no login is refused** with `sq run`'s `no Claude login in …`, for a role
+  even when it is refused for something else already, and for the machine's own folder
+  even when no role runs under it. A role's account can be cleared, so it runs under the
+  machine's (**The machine's**); naming the machine's folder instead keeps the role on it
+  when the machine's changes. The machine's cannot be cleared. The next run starts under
+  the new folder, with its account, settings and memory; a worker already running finishes
+  under the old one.
+- **Each field shows the value in force and where it is set**: the role, `defaults`, or
+  sq's own floor (`wakeEvery` 3m, `workers` 1). A cleared role field falls back to
+  `defaults`.
+- **A save is checked as `sq run` checks the whole file after it.** A save that would put
+  the file in error, or refuse a role that was not refused, is refused with `sq run`'s own
+  line, and nothing is written. So `workers: 2` in `defaults` is refused, naming every role
+  it would stop.
+- **Only the changed fields' lines change**, on a file indented as `just agents setup`
+  writes it. One Save is one write, even when it changes `defaults` and the daily budget
+  together. The file a save replaced is kept as `agents.json.prev`, with the revision the
+  save wrote beside it in `agents.json.prev.sha256`, and **Undo last change** puts it back:
+  one step, not a history.
+- **A save or an undo is refused when the file changed since the page read it**, by hand
+  or from another page, and the page shows the file as it now is. An undo is also refused,
+  and Undo is not offered, once the file has been changed by hand since the last save, so a
+  hand edit is never put back.
+- `sq run` reads the file every minute, so a change is in force by the next tick. A worker
+  already running finishes its item on the values it started with.
+- Without the token, Settings shows the values and offers no Save or Undo. Each save and
+  undo is kept in `runs/controls.jsonl` with each field's old and new value.
+
 ## An emulator on another computer
 
 A tester's stack, bundler and worker stay on this machine; with `emulatorHost` set on its role,

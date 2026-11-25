@@ -7,6 +7,7 @@ import { focusChecked } from '../../components/Field.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
 import { Sheet } from '../../components/Sheet.tsx';
 import { Text } from '../../components/Text.tsx';
+import { MeasuredWords } from '../../components/Title.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { AlertLine } from '../events/EventEdits.tsx';
 import { EventFrame } from '../events/EventFrame.tsx';
@@ -33,6 +34,7 @@ import { ARRIVALS, COLLEAGUE, KOFI_WALKIN, READER, WEDDING } from './GuestsSampl
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
+import { navSide, titleBeside } from './DoorNav.ts';
 
 type Phase = 'open' | 'before' | 'ended';
 
@@ -412,14 +414,7 @@ export function CheckInScreen({
   if (layout === 'phone')
     return (
       <View style={[styles.page, { paddingTop: insets.top }]}>
-        <View style={styles.nav}>
-          <Back label={W.guests} onPress={leave} />
-          <View style={styles.navTitle} pointerEvents="none">
-            <Text size={17} weight="bold" accessibilityRole="header">
-              {W.checkIn}
-            </Text>
-          </View>
-        </View>
+        <DoorNav onBack={leave} />
         <ScrollView
           style={styles.grow}
           contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]}
@@ -518,6 +513,50 @@ export function CheckInScreen({
       {title}
       {body}
     </EventFrame>
+  );
+}
+
+/** The phone's top: the title centred between the back pill and its mirror while it fits there, and on its own row under the pill once a large text size leaves it no room. */
+function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
+  const [width, setWidth] = useState(0);
+  const [back, setBack] = useState(0);
+  const [title, setTitle] = useState(0);
+  const side = navSide(back);
+  const beside = titleBeside({ width, back, title });
+  const heading = (
+    <Text size={17} weight="bold" accessibilityRole="header">
+      {W.checkIn}
+    </Text>
+  );
+
+  return (
+    <View style={styles.navBar} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      <MeasuredWords
+        words={[W.checkIn]}
+        size={17}
+        weight="bold"
+        onWidth={(_, drawn) => setTitle(drawn)}
+      />
+      <View style={styles.nav}>
+        <View onLayout={(event) => setBack(event.nativeEvent.layout.width)}>
+          <Back label={W.guests} onPress={onBack} />
+        </View>
+        {beside && (
+          <View
+            style={[styles.navTitle, back > 0 && { left: side, right: side }]}
+            pointerEvents="none"
+            testID="door.nav.beside"
+          >
+            {heading}
+          </View>
+        )}
+      </View>
+      {!beside && (
+        <View style={styles.navUnder} testID="door.nav.under">
+          {heading}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -631,14 +670,14 @@ const styles = StyleSheet.create({
   lines: { lineHeight: 15 * 1.45 },
   tight: { gap: 6 },
   indent: { paddingLeft: 40 },
+  navBar: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   nav: {
-    height: 52,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: tokens.spaceSm,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colorBorder,
   },
+  navUnder: { paddingHorizontal: tokens.spaceXxl, paddingBottom: tokens.spaceSm },
   navTitle: {
     position: 'absolute',
     left: 120,

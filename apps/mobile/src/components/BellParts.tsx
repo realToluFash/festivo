@@ -1,9 +1,18 @@
-import type { ReactNode, RefObject } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type ReactNode, type RefObject, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { atAccessibilitySizes, piecesIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
+import {
+  BELL_BESIDE_GAP,
+  BELL_HEADING,
+  BELL_MARK_ALL,
+  BELL_UNDER_GAP,
+  markAllSize,
+  markAllUnder,
+} from './bellTop.ts';
 import { ConfettiSwitch } from './ConfettiSwitch.tsx';
 import { Glyph } from './Glyph.tsx';
 import { markOf } from './notificationMarks.ts';
@@ -14,6 +23,7 @@ import { Skeleton } from './Skeleton.tsx';
 import { type Anchor, AnchoredMenu } from './SummaryOverlays.tsx';
 import { RowList, TextAction } from './SummaryRows.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { MeasuredWords, WholeWords } from './Title.tsx';
 
 export interface BellRowData {
   id: string;
@@ -78,15 +88,7 @@ export function BellFrame({
         align="end"
         head={
           <View style={styles.popoverHead}>
-            <View style={styles.bellHead}>
-              <View style={styles.titleLine}>
-                <Text ref={heading} size={18} weight="bold" accessibilityRole="header">
-                  {t('notifications.heading')}
-                </Text>
-                {refreshing}
-              </View>
-              {markAll}
-            </View>
+            <PanelTop heading={heading} refreshing={refreshing} markAllRead={markAllRead} />
             {band}
           </View>
         }
@@ -127,6 +129,98 @@ export function BellFrame({
       </ScrollView>
       {where.over}
     </View>
+  );
+}
+
+/** The tablet panel's top: the heading whole on one line, stepped down only for its own word, and Mark all read whole beside it or, where the two cannot share the row, on its own line under it (sc-92580). */
+function PanelTop({
+  heading,
+  refreshing,
+  markAllRead,
+}: {
+  heading: RefObject<TextHandle | null>;
+  refreshing: ReactNode;
+  markAllRead: { off: boolean; onPress: () => void; testID: string };
+}) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const name = t('notifications.heading');
+  const label = t('notifications.markAllRead');
+  const [room, setRoom] = useState(0);
+  const [headingAt, setHeadingAt] = useState(BELL_HEADING * fontScale);
+  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
+  const markStart = BELL_MARK_ALL * fontScale;
+  const pieces = piecesIn([label]);
+  const measuredAt = (size: number, text: string) => widths[`${size}|${text}`];
+  const pieceWidths = pieces.map((piece) => measuredAt(markStart, piece));
+  const widest = pieceWidths.every((width) => width != null)
+    ? Math.max(...pieceWidths.map((width) => width ?? 0))
+    : null;
+  const markAt = widest == null || room === 0 ? markStart : markAllSize(fontScale, widest, room);
+  const headingWidth = measuredAt(headingAt, name);
+  const markAllWidth = measuredAt(markAt, label);
+  const under = markAllUnder({
+    room,
+    heading: headingWidth ?? 0,
+    markAll: markAllWidth ?? 0,
+  });
+  const pending = room === 0 || widest == null || headingWidth == null || markAllWidth == null;
+  const keep = (size: number) => (text: string, width: number) => {
+    const key = `${size}|${text}`;
+    setWidths((now) => (now[key] === width ? now : { ...now, [key]: width }));
+  };
+
+  return (
+    <>
+      <MeasuredWords
+        words={pieces}
+        size={markStart}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={keep(markStart)}
+      />
+      <MeasuredWords
+        words={[label]}
+        size={markAt}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={keep(markAt)}
+      />
+      <MeasuredWords
+        words={[name]}
+        size={headingAt}
+        weight="bold"
+        allowFontScaling={false}
+        onWidth={keep(headingAt)}
+      />
+      <View
+        style={[styles.bellHead, under && styles.bellHeadUnder, pending && styles.waiting]}
+        onLayout={(event) => setRoom(Math.floor(event.nativeEvent.layout.width))}
+      >
+        <View style={[styles.titleLine, under && styles.titleLineUnder]}>
+          <WholeWords
+            ref={heading}
+            size={BELL_HEADING}
+            start={BELL_HEADING * fontScale}
+            room={room}
+            weight="bold"
+            accessibilityRole="header"
+            onDrawn={setHeadingAt}
+          >
+            {name}
+          </WholeWords>
+          {refreshing}
+        </View>
+        <TextAction
+          label={label}
+          off={markAllRead.off}
+          wraps={under}
+          drawnAt={atAccessibilitySizes(fontScale) ? markAt : undefined}
+          onPress={markAllRead.onPress}
+          testID={markAllRead.testID}
+        />
+      </View>
+    </>
   );
 }
 
@@ -496,8 +590,11 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spaceSm,
+    gap: BELL_BESIDE_GAP,
   },
+  bellHeadUnder: { flexDirection: 'column', alignItems: 'flex-start', gap: BELL_UNDER_GAP },
+  waiting: { opacity: 0 },
+  titleLineUnder: { flex: 0 },
   titleLine: {
     flex: 1,
     flexDirection: 'row',

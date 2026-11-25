@@ -107,6 +107,73 @@ describe('Groups on the list and the guest (sc-3775)', () => {
     expect(row.querySelector('.gs-row-tags')?.textContent).toContain('Dietary notes');
   });
 
+  it(
+    'keeps a first chip on when a second is pressed, and lets go only the one pressed (sc-90684)',
+    SLOW,
+    async () => {
+      await guests('groups');
+      const press = (name: string) =>
+        fireEvent.click(within(chips()).getByRole('button', { name }));
+      const pressed = () =>
+        within(chips())
+          .getAllByRole('button')
+          .filter((one) => one.getAttribute('aria-pressed') === 'true')
+          .map((one) => one.textContent);
+
+      press('Bride’s side');
+      press('Work');
+      expect(pressed()).toEqual(['Bride’s side', 'Work']);
+      expect(screen.getAllByRole('link', { name: /Group: Work$/u }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('link', { name: /Group: Bride’s side$/u }).length).toBeGreaterThan(
+        0,
+      );
+      expect(screen.queryAllByRole('link', { name: /Group: Groom’s side$/u })).toHaveLength(0);
+
+      press('Bride’s side');
+      expect(pressed()).toEqual(['Work']);
+    },
+  );
+
+  it(
+    'opens on Bride’s side and Work with Dietary notes: either group, with a need (sc-90684)',
+    SLOW,
+    async () => {
+      await guests('groupsTwoChips');
+
+      expect(
+        screen.getByRole('button', { name: 'Dietary notes' }).getAttribute('aria-pressed'),
+      ).toBe('true');
+      const rows = screen.getAllByRole('link', { name: /Group: (Bride’s side|Work)$/u });
+
+      expect(
+        new Set(rows.map((one) => one.getAttribute('aria-label')?.split('Group: ')[1])),
+      ).toEqual(new Set(['Bride’s side', 'Work']));
+      expect(rows.length).toBeGreaterThan(0);
+      expect(
+        screen.queryAllByRole('link', { name: /Group: (Groom’s side|Old school friends)$/u }),
+      ).toHaveLength(0);
+      for (const row of rows)
+        expect(row.querySelector('.gs-row-tags')?.textContent ?? '').toMatch(
+          /Dietary notes|Allerg/u,
+        );
+    },
+  );
+
+  it(
+    'names every chip that is on in Export’s Filter line, both groups included (sc-90684)',
+    SLOW,
+    async () => {
+      await guests('groupsTwoChips');
+      fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+      const box = screen.getByRole('dialog', { name: 'Export guests' });
+
+      expect(
+        within(box).getByText('Filter: All · Dietary notes · Bride’s side · Work'),
+      ).toBeDefined();
+    },
+  );
+
   it('No group shows only guests without one', SLOW, async () => {
     await guests('groupsNoGroup');
 

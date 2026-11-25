@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import { NoTag, PageLoading, StatusLine } from '../../../components/DataControlParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import {
@@ -83,7 +84,8 @@ function DomainsDesk({
   const desk = useDeskTop();
   const { layers, covered, setHost } = useDeskLayers();
   const [search, setSearch] = useSearchParams();
-  const { load, show, reload } = useEmailDomains(organisation.id);
+  const title = useRef<HTMLHeadingElement>(null);
+  const { load, show, reload, refreshing } = useEmailDomains(organisation.id, title);
   const [record, setRecord] = useState<string | null>(() => search.get('record'));
   const [proving] = useState(() => search.has('prove'));
   const [told, setTold] = useState<string | null>(null);
@@ -95,12 +97,13 @@ function DomainsDesk({
   return (
     <DeskPage layers={layers}>
       <div className="desk-column" inert={covered}>
+        {refreshing && <Refreshing />}
         <BackRow
           to={t('dataControl.title')}
           onBack={() => void navigate(DATA_AND_CONTROL)}
           bell={desk.bell}
         />
-        <TitleRow title={t('emailDomains.title')} underBack />
+        <TitleRow title={t('emailDomains.title')} titleRef={title} underBack />
         {load.kind === 'loading' && <PageLoading words={t('emailDomains.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role="alert">

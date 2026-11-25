@@ -43,6 +43,82 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
     expect(cssRule(`${DESK} .desk-page`, AT_320)).toContain('overflow: visible;');
   });
 
+  it('runs the page flat to the window, its column at the product shell’s 16 px phone gutter (sc-91763)', () => {
+    expect(cssRule(`${DESK} > .desk-main`, AT_320)).toMatch(/margin: 0;[\s\S]+box-shadow: none;/u);
+    expect(cssRule(`${DESK} > .desk-main`, AT_320)).not.toContain('border-top');
+    expect(cssRule('.today.desk:not(.dp-fit, .dp-bar) > .desk-main', AT_320)).toContain(
+      'border-top: var(--borderCard);',
+    );
+    expect(cssRule(`${DESK} .desk-page`, AT_320)).toContain(
+      'padding: var(--spaceXl) var(--spaceXl) var(--space3xl);',
+    );
+    expect(cssRule(`${DESK} > .desk-main > .st`, AT_320)).toContain(
+      'margin-inline: var(--spaceXl);',
+    );
+    expect(cssRule(`${DESK} .st-top`, AT_320)).toContain('padding-inline: 0;');
+    expect(cssRule(`${DESK} .mg-list`, AT_320)).toContain('padding-inline: var(--spaceXl);');
+    expect(cssRule(`${DESK} .mg-in`, AT_320)).toContain('padding-inline: var(--spaceXl);');
+  });
+
+  it('wraps Seating’s switches inside the room, each word whole on its 44 px option, and steps what floats under the views down a row (sc-91763)', () => {
+    expect(cssRule(`${DESK} .st-seg`, AT_320)).toMatch(
+      /flex-wrap: wrap;\s+max-width: 100%;\s+height: auto;/u,
+    );
+    expect(cssRule(`${DESK} .st-views`, AT_320)).toContain(
+      'max-width: calc(100% - 2 * var(--spaceLg));',
+    );
+    expect(cssRule(`${DESK} .st-views > .st-seg-one:last-child`, AT_320)).toContain(
+      'flex-basis: 100%;',
+    );
+    expect(cssRule(`${DESK} .st-print`, AT_320)).toContain('top: 116px;');
+    expect(
+      cssRule(
+        `${DESK} :is(.st-float.st-bar:not(.is-floor), .st-under-views, .st-view-wrap)`,
+        AT_320,
+      ),
+    ).toContain('top: 118px;');
+    expect(cssRule('.st-bar.is-floor', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
+      /top: 50%;\s+left: 50%;\s+align-items: flex-start;\s+width: min\(470px, calc\(100% - 2 \* var\(--spaceLg\)\)\);/u,
+    );
+    expect(cssRule(`${DESK} .is-row-down .st-top-right`, AT_320)).toContain('top: 118px;');
+    expect(cssRule(`${DESK} .is-row-down .st-print`, AT_320)).toContain('top: 176px;');
+    expect(cssRule(`${DESK} .is-row-down :is(.st-under-views, .st-view-wrap)`, AT_320)).toContain(
+      'top: 178px;',
+    );
+    expect(cssRule('.st-seg-one', SHEET)).toBe('');
+    expect(cssRule('.st-seg-one', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
+  it('wraps the zoom bar by rule, Fit the room across its second row, and steps what stands above it up that 46 px row (sc-91971)', () => {
+    expect(cssRule(`${DESK} .st-zoom`, AT_320)).toMatch(
+      /display: grid;\s+grid-template-columns: repeat\(3, auto\);[\s\S]+max-width: calc\(100% - 2 \* var\(--spaceLg\)\);/u,
+    );
+    expect(cssRule(`${DESK} .st-zoom > .st-tool`, AT_320)).toMatch(
+      /grid-column: 1 \/ -1;\s+justify-self: stretch;/u,
+    );
+    expect(cssRule(`${DESK} :is(.st-minimap, .st-another)`, AT_320)).toContain('bottom: 126px;');
+    expect(cssRule(`${DESK} .st-keys`, AT_320)).toContain('bottom: 124px;');
+    expect(cssRule(`${DESK} .is-zoom-up :is(.st-minimap, .st-another)`, AT_320)).toContain(
+      'bottom: 190px;',
+    );
+    expect(cssRule(`${DESK} .is-zoom-up .st-keys`, AT_320)).toContain('bottom: 188px;');
+    expect(cssRule(`${DESK} .st-main:not(.is-none) .st-canvas.is-plan`, AT_320)).toContain(
+      'height: 704px;',
+    );
+    expect(cssRule('.st-tool', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
+  it('lets the open conversation’s header wrap, its name breaking inside its own line (sc-91763)', () => {
+    expect(cssRule(`${DESK} .mg-head`, AT_320)).toContain('flex-wrap: wrap;');
+    expect(cssRule(`${DESK} .mg-head-words`, AT_320)).toMatch(
+      /flex: 1 1 10rem;\s+overflow-wrap: anywhere;/u,
+    );
+  });
+
   it('is the only copy: no area stacks the desk itself', () => {
     const copies = readdirSync(import.meta.dirname)
       .filter((file) => file.endsWith('.css') && file !== 'deskReflow.css')

@@ -1313,7 +1313,11 @@ const STATES = {
       system: 'refreshing',
     }),
   stale: () =>
-    start({ name: 'Stale', note: 'The amber line; the last figures stay.', system: 'stale' }),
+    start({
+      name: 'Stale',
+      note: 'The app’s offline band above the title, and the amber line; the last figures stay.',
+      system: 'stale',
+    }),
   noMenu: () =>
     start({
       name: 'No menu',
@@ -1411,7 +1415,7 @@ const STATES = {
   sheetFailed: () =>
     start({
       name: 'Kitchen sheet failed',
-      note: 'Nothing was shared; Try again downloads again.',
+      note: 'Offline: the app’s band above the title. Nothing was shared; Try again downloads again.',
       download: 'failed',
     }),
   readOnly: () =>

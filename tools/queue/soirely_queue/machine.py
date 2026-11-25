@@ -57,6 +57,7 @@ def path():
     return config_dir() / "agents.json"
 
 TOKEN = "CLAUDE_CODE_OAUTH_TOKEN"
+WEB_TOKEN = "SQ_WEB_TOKEN"
 
 
 def env_file():
@@ -248,9 +249,11 @@ def token_source(folder):
 
 def account_env(folder, spare=False):
     """The environment a folder's Claude runs in: its workers' token (`token_source`) when
-    the env file holds one, and never another account's. A `spare` folder, one no role
-    uses, gets only its own token, never the plain one every role's folder shares."""
-    env = {key: value for key, value in os.environ.items() if not key.startswith(TOKEN)}
+    the env file holds one, never another account's, and never `sq web`'s, which works its
+    controls. A `spare` folder, one no role uses, gets only its own token, never the plain
+    one every role's folder shares."""
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(TOKEN) and key != WEB_TOKEN}
     source = token_name(folder) if spare else token_source(folder)
     if source and os.environ.get(source):
         env[TOKEN] = os.environ[source]
@@ -411,6 +414,13 @@ def emulator_host_problem(config, role):
     return None
 
 
+def no_login(folder):
+    """Why a role cannot run under a Claude config folder no account is logged in to."""
+    login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
+    return (f"no Claude login in {folder}: run {login}, then /login with the account this "
+            f"role should use, or set {token_name(folder)} in the env file")
+
+
 def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
@@ -474,10 +484,7 @@ def check(config, known=None, logged_in=account):
             continue
         folder = claude_dir(config, role)
         if folder and not logged_in(folder):
-            login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
-            refused[role] = (f"no Claude login in {folder}: run {login}, then /login with the "
-                             f"account this role should use, or set {token_name(folder)} in "
-                             "the env file")
+            refused[role] = no_login(folder)
             continue
         ready[role] = values
     return errors, refused, ready
