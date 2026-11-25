@@ -7,7 +7,7 @@ import { useCapsuleLabels } from '../../components/CapsuleLabels.tsx';
 import { Cover } from '../../components/Cover.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
+import { BandLiveLine } from '../../components/BandLiveLine.tsx';
 import {
   BellButton,
   OrgButton,
@@ -20,7 +20,15 @@ import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { CAPSULE_HEIGHT } from '../../layout/capsuleFit.ts';
-import { atAccessibilitySizes, wordsIn } from '../../layout/textSize.ts';
+import {
+  CAPSULE_TOP,
+  LIVE_DOT,
+  LIVE_DOT_GAP,
+  LIVE_FOOT,
+  LIVE_LINE,
+  LIVE_SIDES,
+} from '../../layout/bandLive.ts';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -37,21 +45,7 @@ import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { SearchGlass } from '../SearchGlass.tsx';
 import { momentOf, sayIn } from '../today.ts';
-import {
-  CAPSULE_TOP,
-  LIVE_DOT,
-  LIVE_DOT_GAP,
-  LIVE_EVENTS,
-  LIVE_FOOT,
-  LIVE_GAP,
-  LIVE_LINE,
-  LIVE_SIDES,
-  type LiveEvent,
-  liveEventName,
-  liveLine,
-  liveLineHeight,
-  liveRoom,
-} from './bandLiveRules.ts';
+import { LIVE_EVENTS, type LiveEvent, liveEventName } from './bandLiveRules.ts';
 
 const UPRIGHT_ONLY =
   'This page is the upright iPad’s band: hold an iPad upright to see it as the board draws it. The phone’s band is sc-92248’s, and on its side Today has a banner, not a band. ';
@@ -207,11 +201,6 @@ function LiveLine({
   width: number | undefined;
 }) {
   const start = LIVE_LINE * scale;
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const words = wordsIn([said]);
-  const key = (word: string) => `${start}|${word}`;
-  const measured = words.map((word) => widths[key(word)]);
-  const widest = measured.every((wide) => wide != null) ? Math.max(...measured.map(Number)) : null;
 
   if (!atAccessibilitySizes(scale))
     return (
@@ -230,39 +219,7 @@ function LiveLine({
       </View>
     );
 
-  const fitted = widest == null || width == null ? null : liveLine(scale, widest, liveRoom(width));
-  const size = fitted ?? start;
-  const line = liveLineHeight(size);
-
-  return (
-    <View style={styles.grownLine}>
-      <MeasuredWords
-        words={words}
-        size={start}
-        weight="semibold"
-        allowFontScaling={false}
-        onWidth={(word, wide) =>
-          setWidths((now) => (now[key(word)] === wide ? now : { ...now, [key(word)]: wide }))
-        }
-      />
-      <View style={[styles.liveDot, { marginTop: (line - LIVE_DOT) / 2 }]} />
-      <Text
-        key={size}
-        size={size}
-        weight="semibold"
-        allowFontScaling={false}
-        style={[
-          styles.white,
-          styles.shrink,
-          { lineHeight: line },
-          fitted == null && styles.waiting,
-        ]}
-        testID="demo.bandLive.line"
-      >
-        {said}
-      </Text>
-    </View>
-  );
+  return <BandLiveLine scale={scale} said={said} width={width} testID="demo.bandLive.line" />;
 }
 
 const styles = StyleSheet.create({
@@ -280,8 +237,6 @@ const styles = StyleSheet.create({
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   capsuleAt: { position: 'absolute', left: 0, right: 0, top: CAPSULE_TOP, alignItems: 'center' },
   white: { color: tokens.colorInkOnDark },
-  shrink: { flexShrink: 1 },
-  waiting: { opacity: 0 },
   mainLine: {
     position: 'absolute',
     left: LIVE_SIDES,
@@ -291,16 +246,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: LIVE_DOT_GAP,
-  },
-  grownLine: {
-    alignSelf: 'center',
-    maxWidth: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: LIVE_DOT_GAP,
-    marginTop: LIVE_GAP,
-    marginBottom: LIVE_FOOT,
-    paddingHorizontal: LIVE_SIDES,
   },
   liveDot: {
     width: LIVE_DOT,

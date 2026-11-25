@@ -64,6 +64,13 @@ describe('the greeting on the iPad’s side banner (sc-91291)', () => {
   });
 });
 
+describe('the upright iPad’s pill from AX1 (sc-92314)', () => {
+  it('takes the whole-words name beside the tabs, and the row keeps to the top while the pill grows down', () => {
+    expect(cover).toMatch(/nameRoom=\{large \? uprightNameRoom\(room\) : undefined\}/u);
+    expect(cover).toMatch(/large && styles\.topTabletTall/u);
+  });
+});
+
 describe('the phone cover’s pill from AX1 (sc-92247)', () => {
   it('fits its name and invitation line on the shared whole-words rule, the line under the name', () => {
     const words = /function WholeOpenerWords\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
@@ -74,7 +81,7 @@ describe('the phone cover’s pill from AX1 (sc-92247)', () => {
 
   it('caps the pill under the greeting, and keeps main’s pill below AX1', () => {
     expect(cover).toMatch(/<TitleCap\.Provider value=\{greeting\}>\s+<OrgButton/u);
-    expect(cover).toMatch(/const whole = phone && large && !compact && nameRoom != null;/u);
+    expect(cover).toMatch(/const whole = large && !compact && nameRoom != null;/u);
   });
 });
 

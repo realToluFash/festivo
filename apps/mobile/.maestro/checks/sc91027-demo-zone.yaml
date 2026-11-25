@@ -36,7 +36,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: open2-untyped
-- tapOn: 'Cancel'
+- tapOn:
+    id: '.*\.cancel'
 - waitForAnimationToEnd:
     timeout: 4000
 - assertNotVisible:

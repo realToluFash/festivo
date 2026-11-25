@@ -6,8 +6,9 @@ import {
   answerWidth,
   nameStart,
   phoneNameRoom,
-  phoneTileAlone,
-  phoneWaitingRoom,
+  uprightNameRoom,
+  wholeTileAlone,
+  waitingRoomUnder,
   PILL_CHROME,
   pillShowsWords,
   WAITING_RING,
@@ -57,17 +58,30 @@ describe('the invitation’s two answers (sc-38149)', () => {
 describe('the phone cover’s pill from AX1 (sc-92247)', () => {
   it('gives the name 186 on an iPhone 17 Pro, and the invitation line 169', () => {
     expect(phoneNameRoom(370, 88)).toBe(186);
-    expect(phoneWaitingRoom(186)).toBe(169);
+    expect(waitingRoomUnder(186)).toBe(169);
   });
 
   it('never gives a negative line', () => {
     expect(phoneNameRoom(100, 88)).toBe(0);
-    expect(phoneWaitingRoom(10)).toBe(0);
+    expect(waitingRoomUnder(10)).toBe(0);
   });
 
   it('is its tile alone only where the widest word at its default size is wider than the line', () => {
-    expect(phoneTileAlone(186, 186)).toBe(false);
-    expect(phoneTileAlone(186.5, 186)).toBe(true);
-    expect(phoneTileAlone(400, 0)).toBe(false);
+    expect(wholeTileAlone(186, 186)).toBe(false);
+    expect(wholeTileAlone(186.5, 186)).toBe(true);
+    expect(wholeTileAlone(400, 0)).toBe(false);
+  });
+});
+
+describe('the pill beside the upright iPad’s tabs from AX1 (sc-92314)', () => {
+  it('gives the name the pill’s room less its chrome, 0 until measured', () => {
+    expect(uprightNameRoom(179)).toBe(179 - PILL_CHROME);
+    expect(uprightNameRoom(undefined)).toBe(0);
+    expect(uprightNameRoom(20)).toBe(0);
+  });
+
+  it('keeps Organisation in words and turns a word wider than the line to its tile', () => {
+    expect(wholeTileAlone(92, uprightNameRoom(179))).toBe(false);
+    expect(wholeTileAlone(350, uprightNameRoom(179))).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312), its organisation pill on the phone (sc-92247) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   {
     title: 'En cours · AX5, on its side',
@@ -55,6 +55,36 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     title: 'The pill · AX1, iPhone',
     what: 'QA Organisation at AX1, every word whole',
     href: '/demo/today-size?size=ax1&lang=en&org=qa&invite=one',
+  },
+  {
+    title: 'Où travaillez-vous ? · AX5, QA Organisation',
+    what: 'QA / Organisation whole in its row, stepped down until Organisation fits; Votre rôle · / Owner and Actuelle never larger than the name, no line starting with ·',
+    href: '/demo/today-size?size=ax5&lang=fr&org=qa&switcher=open',
+  },
+  {
+    title: 'Où travaillez-vous ? · AX5, several long words',
+    what: 'Atelier Céleste Réceptions et Mariages whole, Réceptions alone on its line, the row grown down; scroll to Créer une organisation',
+    href: '/demo/today-size?size=ax5&lang=fr&org=several&switcher=open',
+  },
+  {
+    title: 'Where are you working? · AX5, one long word',
+    what: 'Internationalisationsorganisationsgesellschaft at 15, its default size, every letter shown, breaking only where a line is full; nothing ends in …',
+    href: '/demo/today-size?size=ax5&lang=en&org=oneWord&switcher=open',
+  },
+  {
+    title: 'Où travaillez-vous ? · AX5, one long word',
+    what: 'The same in French: every letter of the name, Actuelle whole under Votre rôle · Owner',
+    href: '/demo/today-size?size=ax5&lang=fr&org=oneWord&switcher=open',
+  },
+  {
+    title: 'Where are you working? · AX1, iPhone',
+    what: 'QA Organisation, Your role · Owner and Current, every word whole; one tap on Lumen Studio switches to it',
+    href: '/demo/today-size?size=ax1&lang=en&org=qa&switcher=open',
+  },
+  {
+    title: 'Where are you working? · default size',
+    what: 'As on main: one tap on the pill opens main’s switcher, a name held to two lines',
+    href: '/demo/today-size?size=default&lang=en&org=qa',
   },
   {
     title: 'The pill · AX1, iPad upright',
