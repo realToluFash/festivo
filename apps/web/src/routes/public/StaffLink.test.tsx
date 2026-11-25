@@ -260,7 +260,7 @@ describe('A link opened signed out (sc-4235)', () => {
         ),
       'POST /api/auth/two-factor/verify': () => {
         verified = true;
-        return answer(SIGNED_IN);
+        return answer({ ...SIGNED_IN, account: { ...SIGNED_IN.account, complete: true } });
       },
       'GET /api/orgs': () => answer({ organisations: [] }),
     });
