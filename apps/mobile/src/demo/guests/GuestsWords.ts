@@ -295,7 +295,10 @@ export const say = {
         ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
         : `${name} has a meal chosen. Removing this companion drops the meal.`,
   sameName: (name: string) => `${name} is already on the list`,
-  discardLine: (name: string) => `Your changes to ${name} have not been saved.`,
+  discardLine: (name: string) =>
+    name.trim() === ''
+      ? 'What you changed here is not saved.'
+      : `Your changes to ${name.trim()} have not been saved.`,
   forName: (name: string) => `For ${name}. It counts as their reply, marked as recorded by you.`,
   recordFoot: (name: string) =>
     `It counts in the numbers straight away and goes in the activity log. ${name} can still change it from their link.`,
