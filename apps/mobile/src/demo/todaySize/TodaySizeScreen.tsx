@@ -1,5 +1,5 @@
 import { type Href, router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
@@ -14,11 +14,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import type { Tab } from '../../components/TodayCover.tsx';
+import type { Tell } from '../../components/TodayParts.tsx';
+import { Toast } from '../../components/Toast.tsx';
+import { TodayShellProvider } from '../../components/todayShell.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { NavBar } from '../DemoScreen.tsx';
+import { demoShell } from '../demoShell.ts';
+import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
 import { DemoSidebar } from '../Sidebar.tsx';
 import { openEvent } from '../events/openEvent.ts';
 import { EVENT_OF_KEY } from '../events/EventsSample.ts';
@@ -95,6 +100,17 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   );
   const scale = filterScale(size, fontScale);
   const side = kind === 'tabletLandscape';
+  const [told, setTold] = useState<string | null>(null);
+  const tell = useCallback<Tell>((said) => setTold(said), []);
+  const shell = useMemo(
+    () =>
+      demoShell(tell, {
+        events: () => router.replace('/demo/events'),
+        calendar: () => router.replace('/demo/calendar'),
+        event: open,
+      }),
+    [tell],
+  );
 
   const page = (
     <I18nextProvider i18n={words}>
@@ -157,16 +173,30 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
 
   if (side) {
     return (
-      <View style={[styles.chrome, { paddingTop: insets.top }]}>
-        <DemoSidebar events={KEYS.map(sample)} onTab={toTab} />
-        <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
-          <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
-            <NavBar />
-            {page}
-            {choices}
-          </ScrollView>
-        </View>
-      </View>
+      <OrgSwitcherProvider state={null} tell={tell}>
+        <TodayShellProvider value={shell}>
+          <View style={[styles.chrome, { paddingTop: insets.top }]}>
+            <DemoSidebar events={KEYS.map(sample)} onTab={toTab} />
+            <View
+              style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}
+            >
+              <ScrollView
+                contentContainerStyle={styles.cardPage}
+                showsVerticalScrollIndicator={false}
+              >
+                <NavBar />
+                {page}
+                {choices}
+              </ScrollView>
+            </View>
+            {told != null && (
+              <View style={[styles.toast, { bottom: insets.bottom + tokens.spaceXl }]}>
+                <Toast key={told} words={told} onClose={() => setTold(null)} />
+              </View>
+            )}
+          </View>
+        </TodayShellProvider>
+      </OrgSwitcherProvider>
     );
   }
 
@@ -570,4 +600,5 @@ const styles = StyleSheet.create({
   onAccent: { color: tokens.colorInkOnDark },
   pressed: { opacity: 0.7 },
   choices: { paddingHorizontal: tokens.spaceXl, paddingTop: tokens.spaceLg },
+  toast: { position: 'absolute', left: tokens.spaceXl, right: tokens.spaceXl },
 });

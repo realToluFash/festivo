@@ -54,3 +54,11 @@ describe('the band’s tile while an invitation waits (sc-40298)', () => {
     expect(cover.match(/<View style=\{styles\.tileRing\} \/>/gu)).toHaveLength(1);
   });
 });
+
+describe('the greeting on the iPad’s side banner (sc-91291)', () => {
+  it('grows the banner rather than clipping the greeting above it', () => {
+    expect(cover).not.toMatch(/height: coverBody\(/u);
+    const greeting = / {2}bannerGreeting: \{[\s\S]*?\n {2}\},/u.exec(cover)?.[0] ?? '';
+    expect(greeting).not.toMatch(/position: 'absolute'/u);
+  });
+});
