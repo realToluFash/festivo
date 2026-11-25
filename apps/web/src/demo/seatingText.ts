@@ -15,7 +15,7 @@ export function textWidth(text: string, font: string, perChar: number): number {
   return measure.measureText(text).width;
 }
 
-const CAPTION_FONT = '600 12.5px "Instrument Sans", sans-serif';
+export const CAPTION_FONT = '600 12.5px "Instrument Sans", sans-serif';
 
 /** Draws once more when the caption's font arrives, so what was measured in the fallback is measured again. */
 export function useFontsArrived(): void {

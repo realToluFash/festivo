@@ -190,6 +190,7 @@ import {
   turned,
 } from './seatingDraw.ts';
 import { freeTags, freeTagWords } from './seatingFreeTags.ts';
+import { roomCaption, useCaptionFont } from './seatingCaption.ts';
 import { lengthField, lengthWords, tableSizeWords } from './seatingUnits.ts';
 import '../../../components/SettingsParts.css';
 import './seating.css';
@@ -677,6 +678,7 @@ function Plan({
   onChosen: (chosen: OwnChoice | null) => void;
 }) {
   const { t } = useTranslation();
+  useCaptionFont();
   const { layers, covered, setHost } = useDeskLayers();
   const [panel, setPanel] = useState<Panel | null>(null);
   const opener = useRef<string | null>(null);
@@ -2254,6 +2256,18 @@ function Plan({
         );
     }
     const words = { width: lengths(plan.widthCm), roomLength: lengths(plan.lengthCm) };
+    const caption = roomCaption(
+      plan.roomName,
+      {
+        line: (name) =>
+          name == null
+            ? t('seating.roomLineUnnamed', words)
+            : t('seating.roomLine', { name, ...words }),
+        cut: (name) => t('seating.roomNameCut', { name }),
+      },
+      ox,
+      size.w,
+    );
     const empty = plan.counts.tables + plan.counts.rows + plan.counts.singleSeats === 0;
     const drawn = shown ?? plan;
     const handled =
@@ -2600,14 +2614,12 @@ function Plan({
           )}
           <text
             className="st-room-line"
-            x={ox}
+            x={caption.x}
             y={oy - 14}
             dominantBaseline="central"
             aria-hidden="true"
           >
-            {plan.roomName == null
-              ? t('seating.roomLineUnnamed', words)
-              : t('seating.roomLine', { name: plan.roomName, ...words })}
+            {caption.text}
           </text>
         </svg>
         {!readOnly && <SaveLine state={save} onTryAgain={tryAgain} />}
