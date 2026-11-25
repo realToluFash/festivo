@@ -4,8 +4,10 @@ import {
   ANSWER,
   answersStack,
   answerWidth,
+  barePhoneNameRoom,
   nameStart,
   phoneNameRoom,
+  rowMeasured,
   uprightNameRoom,
   wholeTileAlone,
   waitingRoomUnder,
@@ -83,5 +85,26 @@ describe('the pill beside the upright iPad’s tabs from AX1 (sc-92314)', () => 
   it('keeps Organisation in words and turns a word wider than the line to its tile', () => {
     expect(wholeTileAlone(92, uprightNameRoom(179))).toBe(false);
     expect(wholeTileAlone(350, uprightNameRoom(179))).toBe(true);
+  });
+});
+
+describe('the white pill above a phone’s Events, Calendar and Settings from AX1 (sc-92464)', () => {
+  it('gives the bare name a 206 line on an iPhone 17 Pro, 258 with the bell alone', () => {
+    expect(barePhoneNameRoom(362, 96)).toBe(206);
+    expect(barePhoneNameRoom(362, 44)).toBe(258);
+    expect(waitingRoomUnder(barePhoneNameRoom(362, 96))).toBe(189);
+  });
+
+  it('keeps Organisation in words and turns a word wider than the line to its tile', () => {
+    expect(wholeTileAlone(165, barePhoneNameRoom(362, 96))).toBe(false);
+    expect(wholeTileAlone(400, barePhoneNameRoom(362, 96))).toBe(true);
+  });
+});
+
+describe('when a phone’s top row counts as measured (sc-92464)', () => {
+  it('waits for both the row and what sits at its end', () => {
+    expect(rowMeasured(0, 96)).toBe(false);
+    expect(rowMeasured(362, 0)).toBe(false);
+    expect(rowMeasured(362, 96)).toBe(true);
   });
 });

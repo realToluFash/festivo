@@ -140,7 +140,8 @@ import { type TextHandle, Text, TitleCap } from './Text.tsx';
 import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
-import { ListTop, PortraitRow, PortraitTop } from './ListTop.tsx';
+import { ListTop, PortraitRow, PortraitTop, usePillRowWidths } from './ListTop.tsx';
+import { barePhoneNameRoom, rowMeasured } from '../layout/pillFit.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -2140,6 +2141,7 @@ function OrgPill({
   const { t } = useTranslation();
   const large = useAccessibilitySizes();
   const lines = useNameLines();
+  const phoneRow = usePillRowWidths();
   const label = useOpenerLabel(organisation, waiting, onSwitch != null);
   const expanded = useContext(SwitcherOpenedBy) === ref;
   const waitingWords = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
@@ -2158,6 +2160,7 @@ function OrgPill({
       lines={lines}
       sidebar={sidebar}
       tileAlone={givesWay || tileAlone}
+      nameRoom={large && phoneRow != null ? measuredLine(phoneRow) : undefined}
       testID="frame.organisation"
     />
   );
@@ -2170,6 +2173,11 @@ function OrgPill({
       {pill}
     </View>
   );
+}
+
+/** The bare pill's name line on a phone's row, 0 until the row and its end are both measured (sc-92464). */
+function measuredLine({ row, ends }: { row: number; ends: number }): number {
+  return rowMeasured(row, ends) ? barePhoneNameRoom(row, ends) : 0;
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;

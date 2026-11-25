@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useState } from 'react';
+import { createContext, type ReactNode, type RefObject, useContext, useState } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -84,13 +84,30 @@ export function ListTop({
   );
 }
 
+const PillRowWidths = createContext<{ row: number; ends: number } | null>(null);
+
+/** Inside a phone's row above the title, its width and what sits at its end, each 0 until measured; null anywhere else. */
+export function usePillRowWidths() {
+  return useContext(PillRowWidths);
+}
+
 /** A phone's row above the title: the pill, and the bell at its end. */
 export function PillRow({ pill, bell }: { pill: ReactNode; bell: ReactNode }) {
+  const [row, setRow] = useState(0);
+  const [ends, setEnds] = useState(0);
+
   return (
-    <View style={[styles.row, styles.pillRow]}>
-      {pill != null && pill !== false && <View style={styles.shrink}>{pill}</View>}
+    <View
+      style={[styles.row, styles.pillRow]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      {pill != null && pill !== false && (
+        <View style={styles.shrink}>
+          <PillRowWidths.Provider value={{ row, ends }}>{pill}</PillRowWidths.Provider>
+        </View>
+      )}
       <View style={styles.fill} />
-      {bell}
+      <View onLayout={(event) => setEnds(event.nativeEvent.layout.width)}>{bell}</View>
     </View>
   );
 }
