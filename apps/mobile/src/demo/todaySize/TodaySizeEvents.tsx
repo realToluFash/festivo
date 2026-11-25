@@ -14,6 +14,7 @@ import { EventThumb } from '../../components/TodayParts.tsx';
 import { daysWords } from '../../kit/eventsList.ts';
 import type { ShownEvent } from '../../kit/today.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
+import { tileWidth } from '../../layout/todayTile.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENT_OF_KEY } from '../events/EventsSample.ts';
 import { openEvent } from '../events/openEvent.ts';
@@ -32,7 +33,6 @@ import {
   chipsUnderDates,
   daysUntil,
   thumbAbove,
-  tileWidth,
   underName,
 } from './todaySizeRules.ts';
 

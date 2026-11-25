@@ -6,14 +6,12 @@ import {
   HEAD,
   ONE_WORD,
   SIZE_TODAY,
-  TILE,
   chipsUnderDates,
   daysUntil,
   linkUnder,
   piecesOfLine,
   sizeEvents,
   thumbAbove,
-  tileWidth,
   underName,
   wordsSize,
   wordsStart,
@@ -86,12 +84,7 @@ describe('a row under Your events', () => {
 });
 
 describe('a tile on the phone', () => {
-  it('is main’s 232 at the standard sizes', () => {
-    expect(tileWidth(SEVENTH, 402)).toBe(TILE);
-  });
-
-  it('is the phone’s width less its gutters and a glimpse of the next from AX1', () => {
-    expect(tileWidth(AX5, 402)).toBe(402 - 40 - 40);
+  it('puts its chips under the dates from AX1', () => {
     expect(chipsUnderDates(AX1)).toBe(true);
     expect(chipsUnderDates(SEVENTH)).toBe(false);
   });
