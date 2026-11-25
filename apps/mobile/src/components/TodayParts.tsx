@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 
 import { Text } from './Text.tsx';
-import { atAccessibilitySizes } from '../layout/textSize.ts';
+import { CappedWholeWords } from './Title.tsx';
+import { atAccessibilitySizes, capUnderTitle, wholeLineHeight } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -44,6 +45,9 @@ export function Panel({ children, style }: { children: ReactNode; style?: StyleP
   return <View style={[styles.panel, style]}>{children}</View>;
 }
 
+/** The size Today's greeting drew at, which no heading under it starts larger than from AX1 (sc-67338, sc-91291). */
+export const GreetingDrawn = createContext<number | null>(null);
+
 export function SectionHead({
   title,
   count,
@@ -59,38 +63,90 @@ export function SectionHead({
   top: number;
   size?: number;
 }) {
-  return (
-    <View style={[styles.head, { marginTop: top }]}>
+  const { fontScale } = useWindowDimensions();
+  const greeting = useContext(GreetingDrawn);
+  const [row, setRow] = useState(0);
+  const [badge, setBadge] = useState(0);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const whole = atAccessibilitySizes(fontScale);
+  const room = count == null ? row : badge === 0 ? 0 : row - badge - tokens.spaceMd;
+  const cap = whole ? (drawn ?? size * fontScale) : undefined;
+
+  const chip = count != null && (
+    <View style={styles.count} onLayout={(event) => setBadge(event.nativeEvent.layout.width)}>
       <Text
-        size={size}
+        size={TYPE.meta}
         weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, { letterSpacing: size * -0.02 }]}
+        maxFontSizeMultiplier={cap == null ? undefined : capUnderTitle(cap, TYPE.meta)}
+        style={styles.onAccent}
       >
-        {title}
+        {String(count)}
       </Text>
-      {count != null && (
-        <View style={styles.count}>
-          <Text size={TYPE.meta} weight="bold" style={styles.onAccent}>
-            {String(count)}
-          </Text>
-        </View>
-      )}
-      <View style={styles.fill} />
-      {link != null && (
-        <Pressable
-          onPress={onLink}
-          style={styles.link}
-          hitSlop={tokens.spaceSm}
-          accessibilityRole="button"
-          accessibilityLabel={link}
+    </View>
+  );
+  const more = link != null && (
+    <Pressable
+      onPress={onLink}
+      style={[styles.link, whole && styles.stacked]}
+      hitSlop={tokens.spaceSm}
+      accessibilityRole="button"
+      accessibilityLabel={link}
+    >
+      <Text
+        size={14.5}
+        weight="semibold"
+        maxFontSizeMultiplier={cap == null ? undefined : capUnderTitle(cap, 14.5)}
+        style={[styles.accent, whole && styles.shrink]}
+        accessible={false}
+      >
+        {link}
+      </Text>
+      <Glyph name="chevron" size={15} ink={tokens.colorAccent} />
+    </Pressable>
+  );
+
+  if (!whole)
+    return (
+      <View style={[styles.head, { marginTop: top }]}>
+        <Text
+          size={size}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, { letterSpacing: size * -0.02 }]}
         >
-          <Text size={14.5} weight="semibold" style={styles.accent} accessible={false}>
-            {link}
-          </Text>
-          <Glyph name="chevron" size={15} ink={tokens.colorAccent} />
-        </Pressable>
-      )}
+          {title}
+        </Text>
+        {chip}
+        <View style={styles.fill} />
+        {more}
+      </View>
+    );
+
+  // From AX1 the link takes the line under, so the heading has the row's width; beside the count it wraps in what the count leaves.
+  return (
+    <View style={[styles.headStacked, { marginTop: top }]}>
+      <View style={styles.headLine} onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
+        <View style={styles.besideCount}>
+          <CappedWholeWords
+            size={size}
+            weight="bold"
+            under={greeting ?? Infinity}
+            room={Math.max(room, 0)}
+            breakAfterHyphens
+            onDrawn={setDrawn}
+            accessibilityRole="header"
+            style={[
+              styles.title,
+              { letterSpacing: size * -0.02 },
+              drawn != null && { lineHeight: wholeLineHeight(size, drawn, 1.15) },
+            ]}
+          >
+            {title}
+          </CappedWholeWords>
+        </View>
+        {chip}
+      </View>
+      {more}
     </View>
   );
 }
@@ -495,14 +551,7 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
           >
             {!agendaAlone && <EventThumb event={nextUp.event} side={48} />}
             <View style={styles.words}>
-              <Text
-                size={12}
-                weight="semibold"
-                accessible={false}
-                style={[styles.secondary, styles.caps]}
-              >
-                {t('todayScreen.nextUp').toLocaleUpperCase()}
-              </Text>
+              <NextUpLabel words={t('todayScreen.nextUp').toLocaleUpperCase()} />
               <Text size={15} weight="semibold" accessible={false}>
                 {nextUp.name}
               </Text>
@@ -515,6 +564,29 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
         </Panel>
       )}
     </>
+  );
+}
+
+/** Next up's label: main's below AX1; from AX1 whole words in its room, no larger than the greeting (sc-91291). */
+function NextUpLabel({ words }: { words: string }) {
+  const { fontScale } = useWindowDimensions();
+  const greeting = useContext(GreetingDrawn);
+  const [room, setRoom] = useState(0);
+  const look = {
+    size: 12,
+    weight: 'semibold',
+    accessible: false,
+    style: [styles.secondary, styles.caps],
+  } as const;
+
+  if (!atAccessibilitySizes(fontScale)) return <Text {...look}>{words}</Text>;
+
+  return (
+    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <CappedWholeWords {...look} under={greeting ?? Infinity} room={room} breakAfterHyphens>
+        {words}
+      </CappedWholeWords>
+    </View>
   );
 }
 
@@ -807,6 +879,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceHair,
     marginBottom: tokens.spaceLg,
   },
+  headStacked: { paddingHorizontal: tokens.spaceHair, marginBottom: tokens.spaceLg },
+  headLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  besideCount: { flexShrink: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
+  stacked: { alignSelf: 'flex-start' },
   title: { lineHeight: TYPE.head * 1.15 },
   count: {
     minWidth: tokens.space3xl,
