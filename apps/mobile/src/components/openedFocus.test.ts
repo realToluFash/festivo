@@ -61,10 +61,10 @@ describe('a field a sliding Android window opens with takes typing at once (sc-9
     expect(arrivedFocusStep({ ...waiting, ticks: 3, heldElsewhere: true })).toBe('done');
   });
 
-  it('sends focus once with a screen reader on, so the reader stays on the title (qa #91929)', () => {
+  it('sends no focus with a screen reader on, so the reader stays on the title (qa #91929, #92173)', () => {
     const reading = { ...waiting, readerOn: true };
-    expect(arrivedFocusStep({ ...reading, arrival: 'arriving' })).toBe('wait');
-    expect(arrivedFocusStep(reading)).toBe('focus');
+    expect(arrivedFocusStep({ ...reading, arrival: 'arriving' })).toBe('done');
+    expect(arrivedFocusStep(reading)).toBe('done');
     expect(arrivedFocusStep({ ...reading, ticks: 1 })).toBe('done');
   });
 
@@ -86,9 +86,9 @@ describe('Add a phone number takes digits with no tap once it has settled (sc-91
 });
 
 describe('a field sends no focus before the device says whether a screen reader is on (sc-91027)', () => {
-  it('waits for the answer in an arrived window, then sends focus once', () => {
+  it('waits for the answer in an arrived window, then sends focus only with no reader on', () => {
     expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
-    expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('focus');
-    expect(arrivedFocusStep({ ...waiting, readerOn: true, ticks: 1 })).toBe('done');
+    expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('done');
+    expect(arrivedFocusStep({ ...waiting, readerOn: false })).toBe('focus');
   });
 });
