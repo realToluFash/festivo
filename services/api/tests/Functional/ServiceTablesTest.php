@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Staff\Model\StaffDetails;
+use App\Domain\Staff\StaffRoster;
 use App\Domain\Staff\Station\ServiceTables;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
+use App\Entity\PhoneNumber;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
@@ -22,6 +25,8 @@ use App\Enum\TableShape;
 use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Repository\EmailAddressRepository;
+use App\Repository\PhoneNumberRepository;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffStationRepository;
 use App\Tests\ApiTestCase;
@@ -54,6 +59,10 @@ final class ServiceTablesTest extends ApiTestCase
 
     private SeatingTable $nobodys;
 
+    private SeatingTable $unverified;
+
+    private StaffMember $bisiOnA;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -64,6 +73,9 @@ final class ServiceTablesTest extends ApiTestCase
         self::em()->flush();
         $this->waiter = $this->account('bisi@lagoslights.example', 'Bisi');
         $this->other = $this->account('kemi@lagoslights.example', 'Kemi');
+        $this->verifiedPhone($this->waiter, '+2348035550142', verified: true);
+        $this->verifiedPhone($this->waiter, '+2348035550143', verified: false);
+        $this->verifiedEmail($this->other);
 
         $body = $this->as($this->owner, 'POST', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/events', ['name' => 'Owambe', 'type' => 'wedding', 'startsAt' => '2027-03-06T16:00', 'endsAt' => '2027-03-07T02:00']);
         self::assertSame(201, $this->statusCode(), Json\encode($body));
@@ -71,10 +83,12 @@ final class ServiceTablesTest extends ApiTestCase
         $plan = new SeatingPlan($event, null, 2000, 2000, null);
         self::em()->persist($plan);
 
-        $this->yours = $this->table($event, $plan, 'Section A', $this->waiter);
-        $this->theirs = $this->table($event, $plan, 'Section B', $this->other);
+        $this->yours = $this->table($event, $plan, 'Section A', new StaffDetails('Bisi', '+2348035550142', null));
+        $this->theirs = $this->table($event, $plan, 'Section B', new StaffDetails('Kemi', null, 'kemi@lagoslights.example'));
         $this->nobodys = $this->table($event, $plan, 'Section C', null);
+        $this->unverified = $this->table($event, $plan, 'Section D', new StaffDetails('Bisi', '+2348035550143', null));
         self::em()->flush();
+        $this->bisiOnA = $this->onSection('Section A');
     }
 
     #[Test]
@@ -82,9 +96,17 @@ final class ServiceTablesTest extends ApiTestCase
     {
         $grants = Grants::fromOutside(EventRole::CanWorkFloor);
 
+        self::assertNull($this->bisiOnA->getMember(), 'Bisi holds no membership, so the roster links no member, as in production');
         $this->assertReaches($grants, $this->waiter, $this->yours, null);
         $this->assertReaches($grants, $this->waiter, $this->nobodys, null);
         $this->assertReaches($grants, $this->waiter, $this->theirs, ErrorCode::TableNotYours);
+        $this->assertReaches($grants, $this->other, $this->theirs, null);
+    }
+
+    #[Test]
+    public function aNumberTheyHaveNotVerifiedDoesNotMakeTheSectionTheirs(): void
+    {
+        $this->assertReaches(Grants::fromOutside(EventRole::CanWorkFloor), $this->waiter, $this->unverified, ErrorCode::TableNotYours);
     }
 
     #[Test]
@@ -106,7 +128,7 @@ final class ServiceTablesTest extends ApiTestCase
     private function assertReaches(Grants $grants, User $user, SeatingTable $table, ?ErrorCode $refusal): void
     {
         try {
-            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class))->requireYours($grants, $user, $table);
+            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class), self::service(PhoneNumberRepository::class), self::service(EmailAddressRepository::class))->requireYours($grants, $user, $table);
             self::assertNull($refusal, $table->getName() . ' should be refused');
         } catch (ApiException $refused) {
             self::assertSame($refusal, $refused->errorCode, $table->getName());
@@ -114,7 +136,7 @@ final class ServiceTablesTest extends ApiTestCase
         }
     }
 
-    private function table(Event $event, SeatingPlan $plan, string $name, ?User $on): SeatingTable
+    private function table(Event $event, SeatingPlan $plan, string $name, ?StaffDetails $on): SeatingTable
     {
         $section = new SeatingSection($plan, $name, NameNormaliser::key($name), SectionColour::Blue, null);
         self::em()->persist($section);
@@ -122,9 +144,7 @@ final class ServiceTablesTest extends ApiTestCase
         self::em()->persist($station);
 
         if (null !== $on) {
-            $member = new StaffMember($event, $on->getName(), null, null, $on);
-            $member->setStation($station);
-            self::em()->persist($member);
+            self::service(StaffRoster::class)->add($event, $on, null, null, $this->owner, allowShared: true)->setStation($station);
         }
 
         $table = new SeatingTable($plan, $name . ' T1', NameNormaliser::key($name . ' T1'), TableShape::Round, 100, 100, null);
@@ -132,6 +152,30 @@ final class ServiceTablesTest extends ApiTestCase
         self::em()->persist($table);
 
         return $table;
+    }
+
+    private function onSection(string $name): StaffMember
+    {
+        $station = self::service(StaffStationRepository::class)->findOneBy(['name' => $name]) ?? self::fail('no station ' . $name);
+
+        return self::service(StaffMemberRepository::class)->findOnStation($station)[0] ?? self::fail('nobody on ' . $name);
+    }
+
+    /** @param non-empty-string $number */
+    private function verifiedPhone(User $user, string $number, bool $verified): void
+    {
+        $phone = new PhoneNumber($user, $number, isPrimary: false, countryCode: 'NG');
+        $phone->setVerifiedAt($verified ? new DateTimeImmutable() : null);
+        self::em()->persist($phone);
+        self::em()->flush();
+    }
+
+    private function verifiedEmail(User $user): void
+    {
+        foreach (self::service(EmailAddressRepository::class)->findBy(['user' => $user]) as $address) {
+            $address->setVerifiedAt($address->getVerifiedAt() ?? new DateTimeImmutable());
+        }
+        self::em()->flush();
     }
 
     private function account(string $address, string $name): User
