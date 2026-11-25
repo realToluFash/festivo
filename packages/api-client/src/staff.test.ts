@@ -105,6 +105,37 @@ describe('asStaffPlan', () => {
 });
 
 describe('asStaffLinkWindow', () => {
+  it('an open link shows the event, the job and the masked number, and a name only to another account', () => {
+    expect(
+      asStaffLinkWindow({
+        state: 'open',
+        event: { name: 'Owambe' },
+        job: 'Bar',
+        mobile: { countryCode: 'NG', lastDigits: '4512' },
+        reader: 'other',
+        name: 'Ada Obi',
+      }),
+    ).toEqual({
+      state: 'open',
+      event: 'Owambe',
+      job: 'Bar',
+      mobile: { countryCode: 'NG', lastDigits: '4512' },
+      reader: 'other',
+      name: 'Ada Obi',
+    });
+    expect(
+      asStaffLinkWindow({
+        state: 'open',
+        event: { name: 'Owambe' },
+        job: null,
+        mobile: null,
+        reader: null,
+        name: 'Ada',
+      }),
+    ).toMatchObject({ reader: null, name: null, mobile: null });
+    expect(asStaffLinkWindow({ state: 'open' })).toBeNull();
+  });
+
   it('reads a link not open yet with no time as one for someone with no shift', () => {
     expect(asStaffLinkWindow({ state: 'not_yet' })).toEqual({ state: 'not_yet', from: null });
     expect(asStaffLinkWindow({ state: 'not_yet', from: '2026-10-24T05:00:00+01:00' })).toEqual({

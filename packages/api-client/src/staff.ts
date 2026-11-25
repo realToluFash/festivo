@@ -1,3 +1,5 @@
+import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
+
 /** An event's roster (sc-3906), with its jobs and shifts (sc-3908), as the API answers and the hub publishes it. Every time is an instant with the event's offset. */
 
 /** How far a person's own link got (sc-3912), or why none can be given. */
@@ -357,17 +359,46 @@ export function asStaffRoster(raw: unknown): StaffEntry[] | null {
   return rows.every((row) => row != null) ? (rows as StaffEntry[]) : null;
 }
 
-/** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond when the link opens, in the event's offset; `from` is null while they have no shift. */
+/** Who a link's open page is read by (sc-4235): the entry's own account, another one, or nobody signed in. */
+export type StaffLinkReader = 'yours' | 'other' | null;
+
+/** An open link before its code (sc-4235): the event and the job, the number masked, and the roster entry's name only for another signed-in account. */
+export interface OpenStaffLink {
+  state: 'open';
+  event: string;
+  job: string | null;
+  mobile: PhoneHint | null;
+  reader: StaffLinkReader;
+  name: string | null;
+}
+
+/** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond what an open link shows, and when one opens, in the event's offset; `from` is null while they have no shift. */
 export type StaffLinkWindow =
-  { state: 'open' } | { state: 'ended' } | { state: 'not_yet'; from: string | null };
+  OpenStaffLink | { state: 'ended' } | { state: 'not_yet'; from: string | null };
 
 export function asStaffLinkWindow(raw: unknown): StaffLinkWindow | null {
   if (typeof raw !== 'object' || raw == null || !('state' in raw)) return null;
-  if (raw.state === 'open' || raw.state === 'ended') return { state: raw.state };
+  if (raw.state === 'open') return asOpenStaffLink(raw as Record<string, unknown>);
+  if (raw.state === 'ended') return { state: raw.state };
   if (raw.state === 'not_yet') {
     if (!('from' in raw)) return { state: 'not_yet', from: null };
     if (typeof raw.from === 'string') return { state: 'not_yet', from: raw.from };
   }
 
   return null;
+}
+
+function asOpenStaffLink(raw: Record<string, unknown>): OpenStaffLink | null {
+  const event = raw.event as Record<string, unknown> | null | undefined;
+  if (typeof event?.name !== 'string') return null;
+  const reader = raw.reader === 'yours' || raw.reader === 'other' ? raw.reader : null;
+
+  return {
+    state: 'open',
+    event: event.name,
+    job: typeof raw.job === 'string' ? raw.job : null,
+    mobile: asPhoneHint(raw.mobile),
+    reader,
+    name: reader === 'other' && typeof raw.name === 'string' ? raw.name : null,
+  };
 }
