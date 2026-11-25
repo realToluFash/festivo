@@ -91,10 +91,7 @@ appId: host.exp.Exponent
 - inputText: '7400123458'
 - waitForAnimationToEnd
 - takeScreenshot: guest-keypad
-- tapOn:
-    text: '(Done|OK|Terminé)'
-    optional: true
-- hideKeyboard
+- runFlow: ../keys-away.yaml
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
@@ -113,10 +110,7 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'guest.form.fullName'
 - inputText: '${GUEST_NAME}'
-- tapOn:
-    text: '(Done|OK|Terminé)'
-    optional: true
-- hideKeyboard
+- runFlow: ../keys-away.yaml
 - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
