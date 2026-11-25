@@ -272,7 +272,9 @@ report never replaces a worse one. A hard bounce or a complaint adds the address
 `address suppressed` and never handed to the provider, while security mail (codes,
 recovery, new device, two-factor) still goes. The list keeps no address, only its keyed
 hash (`EmailAddressHash`: HMAC-SHA256 of the address lowercased and trimmed, under
-`APP_SECRET`, sc-93044), so a new `APP_SECRET` un-stops every address on it. Locally, POST
+`GUEST_COMPLAINT_KEY`, sc-93044, sc-93364). That key is never rotated, because a new value
+un-stops every address on the list and nothing holds the addresses to hash again; a new
+`APP_SECRET` leaves the list as it was. Locally, POST
 Postmark's JSON with the stack's credentials to stand in for the provider.
 
 ## Deleted events

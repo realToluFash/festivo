@@ -13,14 +13,14 @@ final class Version20261125200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'The account-wide email stop list (sc-93044) keeps the keyed hash of each address, never the address: every address already on it is hashed under APP_SECRET as EmailAddressHash does, its reason and date kept.';
+        return 'The account-wide email stop list (sc-93044) keeps the keyed hash of each address, never the address: every address already on it is hashed under GUEST_COMPLAINT_KEY as EmailAddressHash does, its reason and date kept.';
     }
 
     public function up(Schema $schema): void
     {
         $addresses = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn('SELECT address FROM email_suppressions'));
-        $secret = Type\string()->coerce($_SERVER['APP_SECRET'] ?? $_ENV['APP_SECRET'] ?? '');
-        $this->abortIf([] !== $addresses && '' === $secret, 'APP_SECRET is not set, and the stop list holds addresses to hash under it.');
+        $key = Type\string()->coerce($_SERVER['GUEST_COMPLAINT_KEY'] ?? $_ENV['GUEST_COMPLAINT_KEY'] ?? '');
+        $this->abortIf([] !== $addresses && '' === $key, 'GUEST_COMPLAINT_KEY is not set, and the stop list holds addresses to hash under it.');
 
         $this->addSql('ALTER TABLE email_suppressions ADD address_hash VARCHAR(64) DEFAULT NULL');
 
@@ -30,7 +30,7 @@ final class Version20261125200000 extends AbstractMigration
                 SET    address_hash = :hash
                 WHERE  address = :address
                 SQL, [
-                'hash' => \hash_hmac('sha256', 'email-address:' . Str\lowercase(Str\trim($address)), $secret),
+                'hash' => \hash_hmac('sha256', 'email-address:' . Str\lowercase(Str\trim($address)), $key),
                 'address' => $address,
             ]);
         }
