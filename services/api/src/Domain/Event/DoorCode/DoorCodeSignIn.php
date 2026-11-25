@@ -18,7 +18,6 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PhoneSignInRepository;
-use DateTimeImmutable;
 use Psl\Str;
 use SensitiveParameter;
 use Symfony\Component\Clock\ClockInterface;
@@ -61,7 +60,7 @@ final readonly class DoorCodeSignIn
             throw $this->doorCodeRedeemer->tooMany($bySource->getRetryAfter());
         }
 
-        $lastHour = new DateTimeImmutable('-1 hour');
+        $lastHour = $this->clock->now()->modify('-1 hour');
 
         if ($this->phoneSignInRepository->countForDoorCodeSince($doorCode, $lastHour) >= self::SENDS_PER_USE_AN_HOUR * $doorCode->getUseCap()) {
             throw $this->doorCodeRedeemer->tooMany($lastHour->modify('+1 hour'));
@@ -96,13 +95,12 @@ final readonly class DoorCodeSignIn
                 $this->doorCodeRedeemer->refuseUnlessLive($doorCode, $request);
             }
         })['user'];
-        $this->phoneSignIns->signedIn($user, 'door_code');
         $held = $this->doorCodeRedeemer->heldBy($doorCode, $user);
         $person = $held ?? ($this->secondFactors->isOn($user) ? null : $this->doorCodeRedeemer->admit($doorCode, $user, $request, false));
 
         return [
             'user' => $user,
-            'admission' => $this->signInGate->admit($user, $request, null, true, $inBrowser),
+            'admission' => $this->signInGate->admit($user, $request, null, $signIn, $inBrowser),
             'person' => $person,
             'again' => null !== $held,
         ];

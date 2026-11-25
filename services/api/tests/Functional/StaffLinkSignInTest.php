@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
 use App\Entity\Organisation;
@@ -21,6 +22,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -28,6 +30,7 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 
 /** Signing in at the end of a staff link with one code to the roster entry's number (sc-4235). */
@@ -132,6 +135,33 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertNull($answer['phone']);
         self::assertArrayNotHasKey('accessToken', $answer);
         self::assertFalse(Str\contains(Json\encode($answer), 'Kemi'));
+    }
+
+    #[Test]
+    public function withTwoFactorOnTheEntryIsLinkedAndTheSignInAuditedOnlyOnceItPasses(): void
+    {
+        $kemi = $this->account('kemi@ade.ng', 'Kemi Ade');
+        $this->phone($kemi, self::NUMBER, primary: true, verified: true);
+        $secret = $this->twoFactorOn($kemi);
+        $token = $this->link($this->ada);
+
+        $asked = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+
+        self::assertSame(202, $this->statusCode(), Json\encode($asked));
+        self::assertNull($this->entry($this->ada)->getAccount(), 'the phone alone links nothing');
+        self::assertFalse($this->audited('staff.account_linked'));
+        self::assertFalse($this->audited('phone.signed_in'));
+
+        $this->client->request('POST', '/api/auth/two-factor/verify', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode([
+            'challenge' => $asked['twoFactorChallenge'],
+            'code' => TOTP::createFromSecret($secret)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp())),
+            'refreshTokenIn' => 'cookie',
+        ]));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($kemi->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122());
+        self::assertTrue($this->audited('staff.account_linked'));
+        self::assertTrue($this->audited('phone.signed_in'));
     }
 
     #[Test]
@@ -460,13 +490,17 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::em()->flush();
     }
 
-    private function twoFactorOn(User $user): void
+    /** @return non-empty-string the authenticator's secret */
+    private function twoFactorOn(User $user): string
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
-        $factor = new TwoFactorFactor($who, 'sealed');
+        $secret = Type\non_empty_string()->coerce(TOTP::generate()->getSecret());
+        $factor = new TwoFactorFactor($who, self::service(SecretBox::class)->seal($secret));
         $factor->activate(new DateTimeImmutable());
         self::em()->persist($factor);
         self::em()->flush();
+
+        return $secret;
     }
 
     private function jobAccess(string $access): void

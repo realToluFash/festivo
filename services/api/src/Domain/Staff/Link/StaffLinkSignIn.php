@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\Link;
 
-use App\Audit\Auditor;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
@@ -13,7 +12,6 @@ use App\Domain\User\TwoFactor\SignInGate;
 use App\Entity\PhoneSignIn;
 use App\Entity\StaffMember;
 use App\Entity\User;
-use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use SensitiveParameter;
@@ -24,13 +22,10 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** Signing in at the end of a person's own link (sc-4235): one code to the number on their roster entry, which the person never types. */
 final readonly class StaffLinkSignIn
 {
-    public const string ACCOUNT_LINKED = 'staff.account_linked';
-
     public function __construct(
         private StaffLinks $staffLinks,
         private PhoneSignIns $phoneSignIns,
         private SignInGate $signInGate,
-        private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
@@ -59,14 +54,7 @@ final readonly class StaffLinkSignIn
         $this->refuseOutsideWindow($entry);
         $user = $this->phoneSignIns->prove($signIn, $code, $entry->getFullName(), $request)['user'];
 
-        if (true !== $entry->getAccount()?->getId()->equals($user->getId())) {
-            $entry->linkAccount($user);
-            $this->auditor->record(self::ACCOUNT_LINKED, 'StaffMember', $entry->getId(), Actor::User, $user->getId(), $user->getName(), ['account' => [null, $user->getId()->toRfc4122()]]);
-        }
-
-        $this->phoneSignIns->signedIn($user, 'staff_link');
-
-        return ['user' => $user, 'admission' => $this->signInGate->admit($user, $request, null, true, $inBrowser)];
+        return ['user' => $user, 'admission' => $this->signInGate->admit($user, $request, null, $signIn, $inBrowser)];
     }
 
     private function refuseOutsideWindow(StaffMember $entry): void

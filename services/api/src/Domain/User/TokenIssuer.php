@@ -184,10 +184,12 @@ final readonly class TokenIssuer
         $this->entityManager->persist($token);
         $claims = [self::SESSION_CLAIM => $token->getChainId()->toRfc4122()];
 
-        // Never outliving the last grant's window, even by an access token's 15 minutes.
-        if ($endsWithGrants) {
-            $end = $this->grantsEndFor($user)->getTimestamp();
-            $claims['exp'] = Math\minva($end, \time() + $this->accessTokenTtl);
+        // Never outliving the last grant's window, even by an access token's 15 minutes. With none live yet, a door code behind
+        // two-factor takes its grant on the signed-in redeem just after, so the token keeps its usual life and a refresh ends it.
+        $end = $endsWithGrants ? $this->staffLinkGrants->lastEndFor($user) : null;
+
+        if (null !== $end) {
+            $claims['exp'] = Math\minva($end->getTimestamp(), \time() + $this->accessTokenTtl);
         }
 
         return new IssuedTokens(

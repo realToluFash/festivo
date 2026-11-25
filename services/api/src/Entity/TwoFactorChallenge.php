@@ -47,9 +47,10 @@ class TwoFactorChallenge
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $linkSubject = null;
 
-    /** The first factor was a phone code (sc-4235), so a browser session it opens ends with the account's grants. */
-    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
-    private bool $afterPhoneCode = false;
+    /** The phone code that was the first factor (sc-4235): its link and its audit wait on the second, and a browser session it opens ends with the account's grants. */
+    #[ORM\ManyToOne(targetEntity: PhoneSignIn::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?PhoneSignIn $phoneSignIn = null;
 
     public function __construct(
         User $user,
@@ -57,7 +58,7 @@ class TwoFactorChallenge
         DateTimeImmutable $now,
         ?IdentityProvider $linkProvider = null,
         ?string $linkSubject = null,
-        bool $afterPhoneCode = false,
+        ?PhoneSignIn $phoneSignIn = null,
     ) {
         $this->id = Uuid::v7();
         $this->user = $user;
@@ -65,12 +66,12 @@ class TwoFactorChallenge
         $this->expiresAt = $now->modify('+' . self::LIFETIME_MINUTES . ' minutes');
         $this->linkProvider = $linkProvider;
         $this->linkSubject = $linkSubject;
-        $this->afterPhoneCode = $afterPhoneCode;
+        $this->phoneSignIn = $phoneSignIn;
     }
 
-    public function isAfterPhoneCode(): bool
+    public function getPhoneSignIn(): ?PhoneSignIn
     {
-        return $this->afterPhoneCode;
+        return $this->phoneSignIn;
     }
 
     public function getLinkProvider(): ?IdentityProvider

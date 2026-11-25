@@ -53,12 +53,16 @@ final class Version20261124100000 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_1916C5499B6B5FBA ON staff_members (account_id)');
 
         $this->addSql('ALTER TABLE refresh_tokens ADD ends_with_grants BOOLEAN DEFAULT false NOT NULL');
-        $this->addSql('ALTER TABLE two_factor_challenges ADD after_phone_code BOOLEAN DEFAULT false NOT NULL');
+        $this->addSql('ALTER TABLE two_factor_challenges ADD phone_sign_in_id UUID DEFAULT NULL');
+        $this->addSql('ALTER TABLE two_factor_challenges ADD CONSTRAINT FK_1207DB1CC9B0A91 FOREIGN KEY (phone_sign_in_id) REFERENCES phone_sign_ins (id) ON DELETE CASCADE NOT DEFERRABLE');
+        $this->addSql('CREATE INDEX IDX_1207DB1CC9B0A91 ON two_factor_challenges (phone_sign_in_id)');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE two_factor_challenges DROP after_phone_code');
+        $this->addSql('ALTER TABLE two_factor_challenges DROP CONSTRAINT FK_1207DB1CC9B0A91');
+        $this->addSql('DROP INDEX IDX_1207DB1CC9B0A91');
+        $this->addSql('ALTER TABLE two_factor_challenges DROP phone_sign_in_id');
         $this->addSql('ALTER TABLE refresh_tokens DROP ends_with_grants');
         $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C5499B6B5FBA');
         $this->addSql('DROP INDEX IDX_1916C5499B6B5FBA');

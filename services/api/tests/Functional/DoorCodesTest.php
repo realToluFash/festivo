@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Event\DoorCode\DoorCodeRedeemer;
 use App\Domain\Event\DoorCode\DoorCodeSignIn;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\DoorCode;
@@ -30,6 +31,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -39,6 +41,7 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -297,23 +300,35 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
-    public function withTwoFactorOnTheGrantWaitsForItAndTheSignedInRedeemTakesIt(): void
+    public function withTwoFactorOnInABrowserTheGrantWaitsForItAndTheSignedInRedeemTakesItWithTheSessionItIssued(): void
     {
         $code = $this->code('can_view');
         $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
-        $this->phoneOn($joanna, '+2348031110004');
-        $factor = new TwoFactorFactor(self::em()->find(User::class, $joanna->getId()) ?? self::fail('no user'), 'sealed');
-        $factor->activate(new DateTimeImmutable());
-        self::em()->persist($factor);
-        self::em()->flush();
+        $number = '+2348031110004';
+        $this->phoneOn($joanna, $number);
+        $secret = $this->twoFactorOn($joanna);
+        $sent = $this->sendFor($code, 'Jo', $number);
 
-        $asked = $this->redeem($code, 'Jo', '+2348031110004');
+        $asked = $this->signInFor($code, Type\string()->coerce($sent['handle']), $this->codeTo($number), 'cookie');
 
         self::assertSame(202, $this->statusCode(), Json\encode($asked));
         self::assertArrayNotHasKey('eventId', $asked);
         self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]), 'nothing granted before two-factor');
-        $this->redeemAs($this->tokenFor($joanna), $code);
-        self::assertSame(201, $this->statusCode(), 'the signed-in redeem takes the use');
+        self::assertSame(0, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']), 'no sign-in before two-factor');
+
+        $this->client->request('POST', '/api/auth/two-factor/verify', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode([
+            'challenge' => $asked['twoFactorChallenge'],
+            'code' => TOTP::createFromSecret($secret)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp())),
+            'refreshTokenIn' => 'cookie',
+        ]));
+        $passed = $this->last();
+        self::assertSame(200, $this->statusCode(), Json\encode($passed));
+        self::assertSame(1, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']));
+
+        $this->redeemAs(Type\string()->coerce($passed['accessToken']), $code);
+        self::assertSame(201, $this->statusCode(), 'the signed-in redeem takes the use with the token two-factor issued: ' . Json\encode($this->last()));
+        $this->client->request('POST', '/api/auth/refresh', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['refreshTokenIn' => 'cookie']));
+        self::assertSame(200, $this->statusCode(), 'and the session lasts with the grant: ' . Json\encode($this->last()));
     }
 
     #[Test]
@@ -631,11 +646,23 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     /** @return array<string, mixed> */
-    private function signInFor(string $code, #[SensitiveParameter] string $handle, #[SensitiveParameter] string $phoneCode): array
+    private function signInFor(string $code, #[SensitiveParameter] string $handle, #[SensitiveParameter] string $phoneCode, string $delivery = 'body'): array
     {
-        $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/sign-in', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['handle' => $handle, 'code' => $phoneCode]));
+        $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/sign-in', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['handle' => $handle, 'code' => $phoneCode, 'refreshTokenIn' => $delivery]));
 
         return $this->last();
+    }
+
+    /** @return non-empty-string the authenticator's secret */
+    private function twoFactorOn(User $user): string
+    {
+        $secret = Type\non_empty_string()->coerce(TOTP::generate()->getSecret());
+        $factor = new TwoFactorFactor(self::em()->find(User::class, $user->getId()) ?? self::fail('no user'), self::service(SecretBox::class)->seal($secret));
+        $factor->activate(new DateTimeImmutable());
+        self::em()->persist($factor);
+        self::em()->flush();
+
+        return $secret;
     }
 
     private function phoneOn(User $user, string $number, bool $primary = true): void

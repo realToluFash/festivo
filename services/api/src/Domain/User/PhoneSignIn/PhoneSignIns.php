@@ -42,6 +42,8 @@ final readonly class PhoneSignIns
 
     public const string ACCOUNT_MADE = 'phone.account_made';
 
+    public const string ACCOUNT_LINKED = 'staff.account_linked';
+
     private const int HANDLE_BYTES = 24;
 
     public function __construct(
@@ -187,10 +189,17 @@ final readonly class PhoneSignIns
         });
     }
 
-    public function signedIn(User $user, string $through): void
+    /** Once the session is issued, after two-factor when it is on: a link's roster entry is linked to the account then, and not before. */
+    public function signedIn(User $user, PhoneSignIn $signIn): void
     {
-        $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, $through]]);
-        $this->entityManager->flush();
+        $entry = $signIn->getStaffMember();
+
+        if (null !== $entry && true !== $entry->getAccount()?->getId()->equals($user->getId())) {
+            $entry->linkAccount($user);
+            $this->auditor->record(self::ACCOUNT_LINKED, 'StaffMember', $entry->getId(), Actor::User, $user->getId(), $user->getName(), ['account' => [null, $user->getId()->toRfc4122()]]);
+        }
+
+        $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
     }
 
     private function secondsLeftForNumber(string $number): int
@@ -203,7 +212,7 @@ final readonly class PhoneSignIns
 
         $ends = $newest->getCreatedAt()->getTimestamp() + VerificationChallenge::RESEND_COOLDOWN_SECONDS;
 
-        return Math\maxva(0, $ends - new DateTimeImmutable()->getTimestamp());
+        return Math\maxva(0, $ends - $this->clock->now()->getTimestamp());
     }
 
     private static function wait(int $seconds): ApiException
