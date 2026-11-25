@@ -6337,6 +6337,8 @@
     "writeToGuests": "Write to your guests",
     "followUp": "Follow-up",
     "writeFollowUp": "Write a follow-up",
+    "followLine_one": "A follow-up goes to the same {{count, number}} guest, under the first message on their page.",
+    "followLine_other": "A follow-up goes to the same {{count, number}} guests, under the first message on their page.",
     "loading": "Loading messages…",
     "loadFailed": "The messages did not load.",
     "tryAgain": "Try again",

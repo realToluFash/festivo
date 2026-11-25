@@ -194,12 +194,18 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(screen.getAllByText('Dinner starts at seven').length).toBeGreaterThan(0);
 
     const field = screen.getByRole('textbox', { name: 'Write a follow-up' });
+    const followLine = /^A follow-up goes to the same \d+ guests?, under the first message/;
+    expect(screen.getAllByText(followLine)).toHaveLength(2);
+    expect(screen.queryByText('To')).toBeNull();
     fireEvent.focus(field);
     expect(screen.queryByRole('textbox', { name: 'Message' })).toBeNull();
 
     fireEvent.change(field, { target: { value: 'G' } });
     const body = await screen.findByRole('textbox', { name: 'Message' });
     expect((body as HTMLTextAreaElement).value).toBe('G');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /All guests/ })).toBeNull();
+    expect(screen.getByText(followLine)).toBeTruthy();
 
     fireEvent.change(body, { target: { value: 'Gates open at six' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));

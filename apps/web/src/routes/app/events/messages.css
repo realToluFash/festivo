@@ -1312,3 +1312,19 @@
     transform: rotate(1turn);
   }
 }
+
+.mg-system,
+.mg-follow-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-system svg,
+.mg-follow-line svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}

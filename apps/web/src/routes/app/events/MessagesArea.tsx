@@ -54,7 +54,12 @@ import './messages.css';
 const CHIPS_SHOWN = 6;
 const CANT_SHOWN = 2;
 
-type Draft = { who: Who; openTo: boolean; body: string; follows: string | null };
+type Draft = {
+  who: Who;
+  openTo: boolean;
+  body: string;
+  follows: { id: string; count: number } | null;
+};
 
 type Pane =
   | { kind: 'idle' }
@@ -210,7 +215,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               first={pane}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
-                setPane({ kind: 'message', id: pane.follows ?? id });
+                setPane({ kind: 'message', id: pane.follows?.id ?? id });
                 again();
                 focus('heading');
               }}
@@ -229,8 +234,14 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
                 setPane({ kind: 'reached', id, of: pane.id });
                 focus('heading');
               }}
-              onFollow={(who, body) => {
-                setPane({ kind: 'compose', who, openTo: false, body, follows: pane.id });
+              onFollow={(who, body, count) => {
+                setPane({
+                  kind: 'compose',
+                  who,
+                  openTo: false,
+                  body,
+                  follows: { id: pane.id, count },
+                });
                 focus('body');
               }}
             />
@@ -408,16 +419,18 @@ function Idle({
   );
 }
 
-/** The composer waiting at the foot: its To, and a field that opens the full composer on the first key and keeps it. */
+/** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
 function MiniComposer({
   desk,
   chip,
   placeholder,
+  follows,
   onWrite,
 }: {
   desk: Desk;
   chip: string;
   placeholder: string;
+  follows?: number;
   onWrite: (openTo: boolean, body: string) => void;
 }) {
   const { t } = useTranslation();
@@ -425,21 +438,23 @@ function MiniComposer({
 
   return (
     <div className="mg-mini">
-      <div className="mg-mini-to">
-        <span>{t('eventMessages.to')}</span>
-        <button
-          type="button"
-          className="mg-to-chip"
-          aria-haspopup="dialog"
-          aria-expanded="false"
-          aria-describedby={desk.whyOff}
-          onClick={() => onWrite(true, '')}
-          {...offButton(off)}
-        >
-          {chip}
-          <Glyph name="chevdown" size={14} weight={2.6} />
-        </button>
-      </div>
+      {follows == null && (
+        <div className="mg-mini-to">
+          <span>{t('eventMessages.to')}</span>
+          <button
+            type="button"
+            className="mg-to-chip"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-describedby={desk.whyOff}
+            onClick={() => onWrite(true, '')}
+            {...offButton(off)}
+          >
+            {chip}
+            <Glyph name="chevdown" size={14} weight={2.6} />
+          </button>
+        </div>
+      )}
       <div className="mg-mini-row">
         <input
           className="mg-mini-field"
@@ -461,7 +476,19 @@ function MiniComposer({
           <Glyph name="send" size={20} weight={2.4} />
         </button>
       </div>
+      {follows != null && <FollowLine count={follows} />}
     </div>
+  );
+}
+
+function FollowLine({ count }: { count: number }) {
+  const { t } = useTranslation();
+
+  return (
+    <p className="mg-follow-line">
+      <Glyph name="group" size={15} weight={2.1} />
+      {t('eventMessages.followLine', { count })}
+    </p>
   );
 }
 
@@ -584,7 +611,7 @@ function ComposePane({
         ...audienceOf(who),
         subject: subject.trim() === '' ? null : subject,
         message,
-        follows: first.follows,
+        follows: first.follows?.id ?? null,
       })
       .then((sent) => onSent(sent.id, check.people))
       .catch(fromApi);
@@ -614,67 +641,69 @@ function ComposePane({
   return (
     <div className="mg-in is-compose">
       <h2 className="desk-unseen">{t('eventMessages.newMessage')}</h2>
-      <header className="mg-to-head">
-        <div className="mg-to-row">
-          <span className="mg-to-label">{t('eventMessages.to')}</span>
-          <div className="mg-to-at">
-            <button
-              ref={chip}
-              type="button"
-              className={wrong.who == null ? 'mg-to-chip' : 'mg-to-chip is-wrong'}
-              aria-haspopup="dialog"
-              aria-expanded={toOpen}
-              aria-describedby={wrong.who == null ? desk.whyOff : `${ids}-who`}
-              data-focus="to-chip"
-              onClick={() => {
-                setChoosing(false);
-                setToOpen((open) => !open);
-              }}
-              {...offButton(off)}
-            >
-              {chipWords}
-              <Glyph name="chevdown" size={14} weight={2.6} />
-            </button>
-            {toOpen && (
-              <ToPopover
-                who={who}
-                guests={guests}
-                addresses={desk.addresses}
-                chip={chip}
-                choosingFirst={choosing}
-                onPick={(next) => {
-                  setWho(next);
-                  fixed('who', { who: next });
+      {first.follows == null && (
+        <header className="mg-to-head">
+          <div className="mg-to-row">
+            <span className="mg-to-label">{t('eventMessages.to')}</span>
+            <div className="mg-to-at">
+              <button
+                ref={chip}
+                type="button"
+                className={wrong.who == null ? 'mg-to-chip' : 'mg-to-chip is-wrong'}
+                aria-haspopup="dialog"
+                aria-expanded={toOpen}
+                aria-describedby={wrong.who == null ? desk.whyOff : `${ids}-who`}
+                data-focus="to-chip"
+                onClick={() => {
+                  setChoosing(false);
+                  setToOpen((open) => !open);
                 }}
-                onClose={(toChip) => {
-                  setToOpen(false);
-                  if (toChip) desk.focus('to-chip');
-                }}
-                onNobody={() => {
-                  setToOpen(false);
-                  setWrong((was) => ({ ...was, who: t('eventMessages.chooseOne') }));
-                  desk.focus('to-chip');
-                }}
-              />
-            )}
+                {...offButton(off)}
+              >
+                {chipWords}
+                <Glyph name="chevdown" size={14} weight={2.6} />
+              </button>
+              {toOpen && (
+                <ToPopover
+                  who={who}
+                  guests={guests}
+                  addresses={desk.addresses}
+                  chip={chip}
+                  choosingFirst={choosing}
+                  onPick={(next) => {
+                    setWho(next);
+                    fixed('who', { who: next });
+                  }}
+                  onClose={(toChip) => {
+                    setToOpen(false);
+                    if (toChip) desk.focus('to-chip');
+                  }}
+                  onNobody={() => {
+                    setToOpen(false);
+                    setWrong((was) => ({ ...was, who: t('eventMessages.chooseOne') }));
+                    desk.focus('to-chip');
+                  }}
+                />
+              )}
+            </div>
           </div>
-        </div>
-        <ChosenChips
-          ids={chosen}
-          guests={guests}
-          onPick={(next) => setWho({ kind: 'chosen', ids: next })}
-          onMore={() => {
-            setChoosing(true);
-            setToOpen(true);
-          }}
-        />
-        {wrong.who != null && (
-          <p id={`${ids}-who`} className="desk-error mg-field-error">
-            <Glyph name="alert" size={15} weight={2.2} />
-            {wrong.who}
-          </p>
-        )}
-      </header>
+          <ChosenChips
+            ids={chosen}
+            guests={guests}
+            onPick={(next) => setWho({ kind: 'chosen', ids: next })}
+            onMore={() => {
+              setChoosing(true);
+              setToOpen(true);
+            }}
+          />
+          {wrong.who != null && (
+            <p id={`${ids}-who`} className="desk-error mg-field-error">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {wrong.who}
+            </p>
+          )}
+        </header>
+      )}
       <div className="mg-compose-body">
         {step.kind !== 'write' && (
           <CheckCard
@@ -701,30 +730,32 @@ function ComposePane({
           send();
         }}
       >
-        <div className="mg-subject-row">
-          <input
-            className="mg-subject"
-            value={subject}
-            aria-label={t('eventMessages.subject')}
-            aria-invalid={wrong.subject == null ? undefined : true}
-            aria-describedby={
-              wrong.subject == null ? `${ids}-optional` : `${ids}-subject ${ids}-optional`
-            }
-            readOnly={step.kind !== 'write' || off}
-            data-focus="subject"
-            onChange={(typed) => {
-              setSubject(typed.target.value);
-              fixed('subject', { subject: typed.target.value });
-            }}
-            onKeyDown={(key) => commandEnter(key, send)}
-          />
-          <span className={subject === '' ? 'mg-subject-hint' : 'desk-unseen'} aria-hidden>
-            {subject === '' && t('eventMessages.subject')}
-            <span id={`${ids}-optional`} className="mg-optional">
-              {t('eventMessages.optional')}
+        {first.follows == null && (
+          <div className="mg-subject-row">
+            <input
+              className="mg-subject"
+              value={subject}
+              aria-label={t('eventMessages.subject')}
+              aria-invalid={wrong.subject == null ? undefined : true}
+              aria-describedby={
+                wrong.subject == null ? `${ids}-optional` : `${ids}-subject ${ids}-optional`
+              }
+              readOnly={step.kind !== 'write' || off}
+              data-focus="subject"
+              onChange={(typed) => {
+                setSubject(typed.target.value);
+                fixed('subject', { subject: typed.target.value });
+              }}
+              onKeyDown={(key) => commandEnter(key, send)}
+            />
+            <span className={subject === '' ? 'mg-subject-hint' : 'desk-unseen'} aria-hidden>
+              {subject === '' && t('eventMessages.subject')}
+              <span id={`${ids}-optional`} className="mg-optional">
+                {t('eventMessages.optional')}
+              </span>
             </span>
-          </span>
-        </div>
+          </div>
+        )}
         {wrong.subject != null && (
           <p id={`${ids}-subject`} className="desk-error mg-field-error">
             <Glyph name="alert" size={15} weight={2.2} />
@@ -781,6 +812,7 @@ function ComposePane({
             </button>
           </div>
         )}
+        {first.follows != null && <FollowLine count={first.follows.count} />}
       </form>
     </div>
   );
@@ -1380,7 +1412,7 @@ function MessagePane({
   ids: readonly string[];
   ask: number;
   onWho: (id: string) => void;
-  onFollow: (who: Who, body: string) => void;
+  onFollow: (who: Who, body: string, count: number) => void;
 }) {
   const { t } = useTranslation();
   const [firstId = '', ...rest] = ids;
@@ -1412,7 +1444,14 @@ function MessagePane({
       <ol className="mg-stream" role="log" aria-label={title}>
         <Said message={message} onWho={() => onWho(message.id)} />
         {rest.map((id) => (
-          <FollowUp key={id} eventId={desk.event.id} id={id} ask={ask} onWho={() => onWho(id)} />
+          <FollowUp
+            key={id}
+            eventId={desk.event.id}
+            id={id}
+            ask={ask}
+            count={message.deliveries.length}
+            onWho={() => onWho(id)}
+          />
         ))}
       </ol>
       {desk.manage && (
@@ -1420,12 +1459,14 @@ function MessagePane({
           desk={desk}
           chip={audienceWords(message, t)}
           placeholder={t('eventMessages.writeFollowUp')}
+          follows={message.deliveries.length}
           onWrite={(_openTo, body) =>
             onFollow(
               message.audience === 'all'
                 ? { kind: 'all' }
                 : { kind: 'chosen', ids: message.deliveries.map((delivery) => delivery.guestId) },
               body,
+              message.deliveries.length,
             )
           }
         />
@@ -1434,20 +1475,34 @@ function MessagePane({
   );
 }
 
+/** A follow-up in its conversation, under the line saying who it went to (Messaging-B-Web, MessagesStream). */
 function FollowUp({
   eventId,
   id,
   ask,
+  count,
   onWho,
 }: {
   eventId: string;
   id: string;
   ask: number;
+  count: number;
   onWho: () => void;
 }) {
+  const { t } = useTranslation();
   const message = useMessage(eventId, id, ask);
 
-  return message == null || message === 'failed' ? null : <Said message={message} onWho={onWho} />;
+  if (message == null || message === 'failed') return null;
+
+  return (
+    <>
+      <li className="mg-system">
+        <Glyph name="group" size={15} weight={2.1} />
+        <p>{t('eventMessages.followLine', { count })}</p>
+      </li>
+      <Said message={message} onWho={onWho} />
+    </>
+  );
 }
 
 /** One message in its conversation: the words on the guests' page, and who it reached. */
