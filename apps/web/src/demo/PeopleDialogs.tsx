@@ -17,7 +17,8 @@ import {
   everyoneOn,
   type EventRole,
   FIRST_ROLE,
-  firstName,
+  calledIn,
+  keepWords,
   inOrganisation,
   leadOff,
   type Level,
@@ -225,7 +226,7 @@ export function RoleDialog({
           </p>
         )}
         <fieldset className="desk-choices">
-          <legend className="desk-unseen">{`${firstName(person)}’s role on this event`}</legend>
+          <legend className="desk-unseen">{`${calledIn(person)}’s role on this event`}</legend>
           <ul className="desk-rows">{EVENT_ROLES.map(row)}</ul>
           {person.outside && (
             <>
@@ -246,7 +247,7 @@ export function RoleDialog({
         <Ask
           title={<AddressIn text={person.name} words={removeTitle} />}
           line={removeLine(person, organisation)}
-          keep={`Keep ${firstName(person)}`}
+          keep={keepWords(person)}
           go="Remove"
           busy={gone == null ? undefined : removing?.words}
           onKeep={() => setAsking(false)}

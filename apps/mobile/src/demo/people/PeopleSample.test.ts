@@ -17,8 +17,11 @@ import {
   outsideRefusal,
   outsideView,
   readTyped,
+  calledIn,
   firstName,
+  keepWords,
   listed,
+  longOutsiders,
   manages,
   NOT_JOINED,
   seenBy,
@@ -219,6 +222,39 @@ describe('a person’s sheet', () => {
 
   it('calls someone by their first name', () => {
     expect(firstName(tom)).toBe('Tom');
+  });
+});
+
+describe('someone with no account name on the Remove ask (sc-91678)', () => {
+  const [amaka, , , mobile] = longOutsiders();
+  const joined: OnEvent = {
+    id: 'ada@ire.events',
+    name: 'Ada Obiageli Chukwuemeka Oluwaseun Obi',
+    initials: 'AO',
+    tone: 2,
+    role: 'Can edit',
+    outside: false,
+    label: null,
+  };
+
+  it('keeps them as Keep them, never part of an address or a number', () => {
+    expect(amaka && keepWords(amaka)).toBe('Keep them');
+    expect(mobile && keepWords(mobile)).toBe('Keep them');
+    expect(sheetWords(joined).keep).toBe('Keep Ada');
+    expect(mobile && sheetWords(mobile).keep).toBe('Keep them');
+  });
+
+  it('names them whole when their role change does not save', () => {
+    expect(mobile && notChangedLine(mobile)).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
+    expect(amaka && calledIn(amaka)).toBe(AMAKA);
+    expect(calledIn(joined)).toBe('Ada');
+  });
+
+  it('counts a withheld outsider as unnamed too', () => {
+    const [hidden] = seenBy(longOutsiders(), false);
+    expect(hidden && keepWords(hidden)).toBe('Keep them');
   });
 });
 

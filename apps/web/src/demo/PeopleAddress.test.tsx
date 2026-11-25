@@ -73,6 +73,8 @@ describe('an outsider’s address breaks after its @, never inside its domain (s
         name: `Remove ${LONG_ADDRESSES.addressUnbroken} from this event?`,
       }),
     ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep them' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Keep fundacao/u })).toBeNull();
   });
 
   it('leaves a mobile number and a joined name as they are', async () => {
