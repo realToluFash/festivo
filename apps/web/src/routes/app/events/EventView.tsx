@@ -40,6 +40,8 @@ import { JobsShiftsArea } from './JobsShiftsArea.tsx';
 import { RosterArea } from './RosterArea.tsx';
 import { StationsArea } from './StationsArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
+import { MessagesArea } from './MessagesArea.tsx';
+import { Forbidden } from '../Forbidden.tsx';
 import { typeLabel } from './eventTypes.ts';
 import { AllDates } from './Timeline.tsx';
 import { EventCrumb, Overview, PhaseChange } from './EventOverview.tsx';
@@ -108,6 +110,10 @@ export function EventMenuPicks() {
 }
 
 /** The kitchen sheet (sc-3911), behind Kitchen sheet on the Menu. */
+export function EventMessages() {
+  return <ForEvent page="messages" />;
+}
+
 export function EventKitchenSheet() {
   return <ForEvent page="kitchenSheet" />;
 }
@@ -338,6 +344,13 @@ function EventOf({
       <GuestsGone heading={heading}>
         <EventCrumb name={null} />
       </GuestsGone>
+    );
+
+  if (page === 'messages' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.messages) ? (
+      <MessagesArea event={load.event} />
+    ) : (
+      <Forbidden />
     );
 
   if (page === 'seating' && load.kind === 'loaded')

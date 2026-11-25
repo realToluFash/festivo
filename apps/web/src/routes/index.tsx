@@ -23,6 +23,7 @@ import {
   EventStaff,
   EventStations,
   EventKitchenSheet,
+  EventMessages,
   EventMenuPicks,
   EventView,
 } from './app/events/EventView.tsx';
@@ -121,6 +122,7 @@ export const routes = [
           { path: 'events/:eventId/run', element: <EventRun /> },
           { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
           { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
+          { path: 'events/:eventId/messages', element: <EventMessages /> },
           { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },

@@ -15,6 +15,7 @@ export * from './topics.ts';
 export * from './seating.ts';
 export * from './seatingPresence.ts';
 export * from './guests.ts';
+export * from './guestMessages.ts';
 export * from './vendors.ts';
 export * from './budget.ts';
 export * from './staffRates.ts';

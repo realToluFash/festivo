@@ -20,6 +20,7 @@ export const PAGE_NEEDS = {
   guests: 'guests.read',
   menu: 'menu.read',
   seating: 'seating.read',
+  messages: 'messages.read',
   schedule: 'run_of_show.read',
   run: 'run_of_show.read',
   staff: 'staff.read',

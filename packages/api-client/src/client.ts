@@ -78,6 +78,14 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
+import type {
+  GuestMessageCheck,
+  GuestMessageDetails,
+  GuestMessageInput,
+  GuestMessageRow,
+  GuestMessageSent,
+  PickableGuest,
+} from './guestMessages.ts';
 import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
@@ -3711,6 +3719,59 @@ export class ApiClient {
   /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
   async menuPicks(eventId: string): Promise<EventPicks> {
     return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** An event's messages to its guests, newest first (sc-3942): refused 403 without messages.read. */
+  async guestMessages(eventId: string): Promise<GuestMessageRow[]> {
+    const body = await this.get<{ messages?: GuestMessageRow[] }>(this.messagesPath(eventId));
+
+    return body.messages ?? [];
+  }
+
+  /** One message and each delivery's state; the addresses only with guests.manage. */
+  async guestMessage(eventId: string, messageId: string): Promise<GuestMessageDetails> {
+    const body = await this.get<{ message: GuestMessageDetails }>(
+      `${this.messagesPath(eventId)}/${encodeURIComponent(messageId)}`,
+    );
+
+    return body.message;
+  }
+
+  /** Choose guests (sc-3942): every guest a message can go to, A to Z, each flagged with why email can't tell them. */
+  async guestMessageGuests(eventId: string): Promise<PickableGuest[]> {
+    const body = await this.get<{ guests?: PickableGuest[] }>(
+      `${this.messagesPath(eventId)}/guests`,
+    );
+
+    return body.guests ?? [];
+  }
+
+  /** The check before Send, worked out by the same rule as Send: refused 422 on `guestIds` for nobody chosen, 409 on an event that can't send. */
+  guestMessageCheck(
+    eventId: string,
+    input: Pick<GuestMessageInput, 'audience' | 'guestIds'>,
+  ): Promise<GuestMessageCheck> {
+    return this.post<GuestMessageCheck>(`${this.messagesPath(eventId)}/check`, input);
+  }
+
+  /** 202 even when no email can announce it: the message is on their pages all the same. */
+  sendGuestMessage(eventId: string, input: GuestMessageInput): Promise<GuestMessageSent> {
+    return this.post<GuestMessageSent>(this.messagesPath(eventId), input);
+  }
+
+  async guestMessagesSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.messagesPath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private messagesPath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/messages`;
   }
 
   /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
