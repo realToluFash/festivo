@@ -600,10 +600,10 @@ function VendorForm({
           {vendor != null && dialog.kind === 'edit' && dialog.refused === true && (
             <div className="bud vd-owing">
               <AlertInset>{QW.archiveRefused(vendor.name)}</AlertInset>
-              {owedBy(vendor.id).map((event) => (
+              {(dialog.owing ?? owedBy(vendor.id)).map((event) => (
                 <Link
                   key={event.id}
-                  className="desk-text"
+                  className="desk-text is-wraps"
                   to={`/demo/events/${event.id}?area=budget&vendor=${vendor.id}`}
                 >
                   {QW.owingLink(vendor.name, event.name)}
