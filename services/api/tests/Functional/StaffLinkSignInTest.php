@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
@@ -21,6 +22,7 @@ use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
+use DateTimeZone;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
@@ -352,7 +354,7 @@ final class StaffLinkSignInTest extends ApiTestCase
         $token = $this->link($this->ada);
 
         $this->as($user, 'POST', '/api/staff-links/look', ['token' => $token]);
-        self::assertSame(['yours', null], [$this->last()['reader'] ?? null, $this->last()['name'] ?? null]);
+        self::assertSame(['yours', null, null], [$this->last()['reader'] ?? null, $this->last()['name'] ?? null, $this->last()['signedOutAt'] ?? null], 'a session that does not end with the grants names no sign-out time');
 
         $this->as($this->account('sam@okafor.ng', 'Samuel Okafor'), 'POST', '/api/staff-links/look', ['token' => $token]);
         self::assertSame(['other', 'Ada Obi'], [$this->last()['reader'] ?? null, $this->last()['name'] ?? null]);
@@ -374,6 +376,26 @@ final class StaffLinkSignInTest extends ApiTestCase
         $this->refresh();
 
         self::assertSame(401, $this->statusCode());
+    }
+
+    #[Test]
+    public function signedInInABrowserTheLinkIsTheEntrysOwnAndSaysWhenItSignsOut(): void
+    {
+        $token = $this->link($this->ada);
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+
+        $this->client->request('POST', '/api/staff-links/look', server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($answer['accessToken']),
+        ], content: Json\encode(['token' => $token]));
+
+        $ends = self::service(StaffLinkGrants::class)->lastEndFor($this->accountOn(self::NUMBER) ?? self::fail('no account')) ?? self::fail('no grant');
+        self::assertSame(
+            ['yours', $ends->setTimezone(new DateTimeZone('Africa/Lagos'))->format(\DATE_ATOM), 'Africa/Lagos'],
+            [$this->last()['reader'] ?? null, $this->last()['signedOutAt'] ?? null, $this->last()['timeZone'] ?? null],
+            Json\encode($this->last()),
+        );
     }
 
     #[Test]

@@ -122,7 +122,21 @@ describe('asStaffLinkWindow', () => {
       mobile: { countryCode: 'NG', lastDigits: '4512' },
       reader: 'other',
       name: 'Ada Obi',
+      signedOutAt: null,
+      timeZone: null,
     });
+    expect(
+      asStaffLinkWindow({
+        state: 'open',
+        event: { name: 'Owambe' },
+        job: 'Bar',
+        mobile: null,
+        reader: 'yours',
+        name: null,
+        signedOutAt: '2027-03-07T02:00:00+01:00',
+        timeZone: 'Africa/Lagos',
+      }),
+    ).toMatchObject({ signedOutAt: '2027-03-07T02:00:00+01:00', timeZone: 'Africa/Lagos' });
     expect(
       asStaffLinkWindow({
         state: 'open',

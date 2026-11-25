@@ -1,4 +1,4 @@
-import { ApiError, type OpenStaffLink } from '@soirely/api-client';
+import { ApiError, type OpenStaffLink, type SignInOutcome } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt, maskedPhone } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,11 +7,12 @@ import { useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { holdReturn } from '../../heldReturn.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
-import { useSessionState } from '../../session.ts';
-import { landAfterSignIn } from '../../signedIn.ts';
+import { adoptAccount, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
+import { atWords } from '../app/events/doorCodes.ts';
 import { PhoneCodeStep, Primary, SignOutLine, Title } from './RedeemPhone.tsx';
 import '../../components/desk.css';
 import './redeem.css';
@@ -33,21 +34,24 @@ const CONFIRM: Confirm = {
   failed: false,
 };
 
-/** An open link, signed out (sc-4235): Confirm it's you, a code to the roster's number, and the shift; as the web demo's staff sign-in draws it. */
+/** An open link (sc-4235): Confirm it's you and a code to the roster's number, then the link signed in; as the web demo's staff sign-in draws it. */
 export function StaffLinkSignIn({
   token,
   link,
   onGone,
+  onSignedIn,
 }: {
   token: string;
   link: OpenStaffLink;
   onGone: () => void;
+  onSignedIn: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const session = useSessionState();
   const [step, setStep] = useState<Step>(CONFIRM);
-  const [reader, setReader] = useState(link.reader);
+  const [signedOut, setSignedOut] = useState(false);
+  const reader = signedOut ? null : link.reader;
   const [focus, setFocus] = useState<{ to: 'title' | 'field'; n: number }>({ to: 'title', n: 0 });
   const title = useRef<HTMLHeadingElement>(null);
   const field = useRef<HTMLInputElement>(null);
@@ -56,20 +60,28 @@ export function StaffLinkSignIn({
     (focus.to === 'title' ? title : field).current?.focus();
   }, [focus]);
 
-  // Signed in as the roster entry's own account: straight on, as any sign-in lands.
-  useEffect(() => {
-    if (reader === 'yours') void navigate('/app', { replace: true });
-  }, [reader, navigate]);
-
   const go = (next: Step, to: 'title' | 'field' = 'title') => {
     setStep(next);
     setFocus((was) => ({ to, n: was.n + 1 }));
   };
 
   const { signOut } = useSignOut(() => {
-    setReader(null);
+    setSignedOut(true);
     go({ ...CONFIRM, signedOut: true });
   });
+
+  async function signedIn(outcome: SignInOutcome): Promise<void> {
+    if ('challenge' in outcome) {
+      // Two-factor next: its code screen, then back to this link signed in.
+      holdReturn(`/w/${token}`);
+      void navigate('/sign-in/code', { replace: true, state: outcome });
+      return;
+    }
+    await adoptAccount(outcome.account);
+    await onSignedIn();
+    setSignedOut(false);
+    setFocus((was) => ({ to: 'title', n: was.n + 1 }));
+  }
 
   async function send(): Promise<void> {
     setStep({ ...CONFIRM, busy: true });
@@ -91,7 +103,36 @@ export function StaffLinkSignIn({
   const name = session.status === 'signedIn' ? session.session.name : '';
 
   function body(): ReactNode {
-    if (reader === 'yours') return null;
+    if (reader === 'yours')
+      return (
+        <>
+          <Title titleRef={title}>{link.event}</Title>
+          <LinkCard link={link} named={false} />
+          <div className="rd-you">
+            <p className="rd-you-name">{t('redeem.signedInAs', { name })}</p>
+            {link.signedOutAt != null && link.timeZone != null && (
+              <p className="rd-you-line">
+                {t('redeem.signedOutAt', {
+                  time: atWords(
+                    link.signedOutAt,
+                    {
+                      endsAt: link.signedOutAt,
+                      timeZone: link.timeZone,
+                      locale: dateLocale(),
+                      now: new Date(),
+                    },
+                    t,
+                  ),
+                })}
+              </p>
+            )}
+            <button type="button" className="rd-out" onClick={() => void signOut()}>
+              <SignOutLine />
+              {t('redeem.signOut')}
+            </button>
+          </div>
+        </>
+      );
     if (reader === 'other')
       return (
         <>
@@ -158,7 +199,7 @@ export function StaffLinkSignIn({
             onLeave={(leave) => {
               if (leave.kind === 'alternative') go({ kind: 'alternative' });
               else if (leave.kind === 'refused') refused(leave.error);
-              else void landAfterSignIn(leave.signedIn, navigate);
+              else void signedIn(leave.signedIn);
             }}
           />
         );

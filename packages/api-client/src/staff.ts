@@ -370,6 +370,10 @@ export interface OpenStaffLink {
   mobile: PhoneHint | null;
   reader: StaffLinkReader;
   name: string | null;
+  /** Read by the entry's own account in a browser: when its session ends, in the event's offset (sc-4235). */
+  signedOutAt: string | null;
+  /** The event's zone, for the entry's own account alone. */
+  timeZone: string | null;
 }
 
 /** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond what an open link shows, and when one opens, in the event's offset; `from` is null while they have no shift. */
@@ -400,5 +404,7 @@ function asOpenStaffLink(raw: Record<string, unknown>): OpenStaffLink | null {
     mobile: asPhoneHint(raw.mobile),
     reader,
     name: reader === 'other' && typeof raw.name === 'string' ? raw.name : null,
+    signedOutAt: reader === 'yours' && typeof raw.signedOutAt === 'string' ? raw.signedOutAt : null,
+    timeZone: reader === 'yours' && typeof raw.timeZone === 'string' ? raw.timeZone : null,
   };
 }

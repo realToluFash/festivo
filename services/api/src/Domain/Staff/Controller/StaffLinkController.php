@@ -8,8 +8,10 @@ use App\Domain\Staff\Http\StaffSerialiser;
 use App\Domain\Staff\Link\StaffLinks;
 use App\Domain\Staff\Link\StaffLinkSignIn;
 use App\Domain\Staff\Link\StaffLinkWindow;
+use App\Domain\User\CallerSession;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\PhoneSignIn\PhoneHint;
+use App\Domain\User\TokenIssuer;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
@@ -22,6 +24,7 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Repository\RefreshTokenRepository;
 use DateTimeZone;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -41,6 +44,9 @@ final readonly class StaffLinkController
         private StaffLinkSignIn $staffLinkSignIn,
         private SignInResponse $signInResponse,
         private CodeField $codeField,
+        private CallerSession $callerSession,
+        private RefreshTokenRepository $refreshTokenRepository,
+        private TokenIssuer $tokenIssuer,
     ) {
     }
 
@@ -121,7 +127,7 @@ final readonly class StaffLinkController
         return new JsonResponse($this->shown($entry));
     }
 
-    /** @return array<string, mixed> open, nothing past the event, the job and the masked number before the code (sc-4235); only another signed-in account is told whose link it is */
+    /** @return array<string, mixed> open, nothing past the event, the job and the masked number before the code (sc-4235); only another signed-in account is told whose link it is, and only the entry's own when its browser session ends */
     private function shown(StaffMember $entry): array
     {
         $state = self::state($this->staffLinks->window($entry), $entry);
@@ -144,7 +150,22 @@ final readonly class StaffLinkController
                 default => 'other',
             },
             'name' => $reader instanceof User && !$mine ? $entry->getFullName() : null,
+            'signedOutAt' => $reader instanceof User && $mine ? $this->signedOutAt($reader, $entry) : null,
+            'timeZone' => $mine ? $entry->getEvent()->getTimeZone() : null,
         ];
+    }
+
+    /** The moment a session that ends with its account's grants ends, in the event's zone; null for one that does not, as the app's. */
+    private function signedOutAt(User $reader, StaffMember $entry): ?string
+    {
+        $chain = $this->callerSession->chain();
+        $session = null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]);
+
+        if (true !== $session?->endsWithGrants()) {
+            return null;
+        }
+
+        return $this->tokenIssuer->grantsEndFor($reader)->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM);
     }
 
     /** @return array<string, string> */

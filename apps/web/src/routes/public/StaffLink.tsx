@@ -66,9 +66,21 @@ function StaffLink({ token }: { token: string }) {
     };
   }, [token]);
 
+  // Signed in by the code: read again, so the link answers as the account's own.
+  const reread = () =>
+    api.staffLinkWindow(token, false).then(
+      (window) => setLoad({ kind: 'shown', window }),
+      () => setLoad({ kind: 'failed', words: null }),
+    );
+
   if (load.kind === 'shown' && load.window.state === 'open')
     return (
-      <StaffLinkSignIn token={token} link={load.window} onGone={() => setLoad({ kind: 'gone' })} />
+      <StaffLinkSignIn
+        token={token}
+        link={load.window}
+        onGone={() => setLoad({ kind: 'gone' })}
+        onSignedIn={reread}
+      />
     );
 
   return (
