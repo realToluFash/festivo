@@ -1,8 +1,9 @@
-import { PILL_BESIDE_TABS, pillBesideTabs } from '../../kit/frameBand.ts';
+import { PILL_BESIDE_TABS } from '../../kit/frameBand.ts';
 import {
   capsuleLabelSize,
   capsuleRoom,
   capsuleWidth,
+  openerRoom,
   pillGivesWay,
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
@@ -272,7 +273,7 @@ export interface UprightTop {
   /** The one size the tabs' labels draw at. */
   labelSize: number;
   capsule: number;
-  /** The widest the pill may be, 12 short of the centred capsule (sc-30410, sc-92188). */
+  /** The widest the pill may be, 8 short of the centred capsule, as the app's `openerRoom` leaves it (sc-30410, sc-92188). */
   pill: number;
   /** The tabs are under their own size, so the pill gives way to its tile (sc-40401). */
   givesWay: boolean;
@@ -285,7 +286,7 @@ export function uprightTop(scale: number, labels: readonly number[], row: number
   const total = labels.reduce((sum, width) => sum + width, 0);
   const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, UPRIGHT_END));
   const capsule = capsuleWidth(scale, labels, labelSize);
-  const pill = pillBesideTabs(row, capsule)?.maxWidth ?? 0;
+  const pill = openerRoom(row + 2 * tokens.space3xl, capsule) ?? 0;
   const nameRoom = Math.max(pill - PILL_CHROME, 0);
 
   return {
@@ -334,29 +335,9 @@ export const LIVE_OPEN = 16;
 /** The one-day event is live until 23:30 today, with no venue, so its chip reads Day 1 of 1 alone. */
 export const LIVE_ENDS_AT = '23:30';
 
-const CHIP_SIDES = 2 * 12;
-const LIVE_RING = 14;
-const OPEN_SIDES = 2 * 22;
-const OPEN_ARROW = 18;
-
 /** From AX1 Open the event takes the line under the end line, so the name keeps the cover's width (sc-92312). */
 export function openUnder(scale: number): boolean {
   return atAccessibilitySizes(scale);
-}
-
-/** The words' room in Live now's chip: the column less its sides, the dot's ring and the gap after it. */
-export function liveChipRoom(column: number): number {
-  return Math.max(column - CHIP_SIDES - LIVE_RING - tokens.spaceXs, 0);
-}
-
-/** The words' room in the day's chip: the column less its sides. */
-export function dayChipRoom(column: number): number {
-  return Math.max(column - CHIP_SIDES, 0);
-}
-
-/** The label's room in Open the event: the column less its sides, the gap and the arrow. */
-export function openRoom(column: number): number {
-  return Math.max(column - OPEN_SIDES - tokens.spaceSm - OPEN_ARROW, 0);
 }
 
 /** Main's switcher rows from AX1 (`ROWS`): the question at 18, the name at 15, the role line and Current at 13, the tile 56. */
