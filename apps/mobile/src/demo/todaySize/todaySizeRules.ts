@@ -261,15 +261,9 @@ export function pillWaitingRoom(row: number): number {
   return Math.max(pillNameRoom(row) - PILL_RING - tokens.spaceXs, 0);
 }
 
-/** From AX1 the pill is its tile alone only where its widest word, at the name's default size, is wider than its line (sc-38149's tile). */
-export function pillTileAlone(
-  scale: number,
-  widestAtDefault: number | null,
-  room: number,
-): boolean {
-  return (
-    atAccessibilitySizes(scale) && widestAtDefault != null && room > 0 && widestAtDefault > room
-  );
+/** The name's line the app's tile rule (`useWholeTile`) is given: from AX1 the pill's `room`, below it none, where the pill keeps its tile by main's rules (sc-38149, sc-92314). */
+export function tileRoom(scale: number, room: number): number | undefined {
+  return atAccessibilitySizes(scale) ? room : undefined;
 }
 
 /** Search and the bell at the upright iPad's right, 40 each with 8 between (`SearchAndBell`). */
@@ -345,6 +339,23 @@ export const LIVE_CHIP = 13;
 export const LIVE_OPEN = 16;
 /** The one-day event is live until 23:30 today, with no venue, so its chip reads Day 1 of 1 alone. */
 export const LIVE_ENDS_AT = '23:30';
+
+export type TodayVenue = 'none' | 'chantilly';
+
+/** The live event's venue: none, so the day's chip reads Day 1 of 1 alone, or a long one that takes the chip several lines from AX1 (sc-93211). */
+export const TODAY_VENUES: readonly { key: TodayVenue; label: string }[] = [
+  { key: 'none', label: 'No venue' },
+  { key: 'chantilly', label: 'Salle des fêtes du Château de Chantilly' },
+];
+
+export function venueName(venue: TodayVenue): string | null {
+  return venue === 'none' ? null : (TODAY_VENUES.find((one) => one.key === venue)?.label ?? null);
+}
+
+/** sc-93211: upright from AX1 a chip's words draw at main's size at the stand-in size and never step down; the chip grows to hold them. */
+export function uprightChipSize(scale: number): number {
+  return LIVE_CHIP * scale;
+}
 
 /** From AX1 Open the event takes the line under the end line, so the name keeps the cover's width (sc-92312). */
 export function openUnder(scale: number): boolean {

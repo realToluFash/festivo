@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PILL_CHROME, phoneNameRoom } from '../../layout/pillFit.ts';
-import { pillTileAlone } from '../todaySize/todaySizeRules.ts';
+import { PILL_CHROME, phoneNameRoom, wholeTileAlone } from '../../layout/pillFit.ts';
 import {
   TOP_SCREENS,
   topPillChrome,
@@ -41,8 +40,8 @@ describe('the white pill over Settings, Events and the Calendar (sc-92464)', () 
   });
 
   it('is its tile alone only for a word too wide for the bare pill’s line at 15', () => {
-    expect(pillTileAlone(AX5, 380, topPillNameRoom(362, BOTH, AX5))).toBe(true);
-    expect(pillTileAlone(AX5, 99, topPillNameRoom(362, BOTH, AX5))).toBe(false);
+    expect(wholeTileAlone(380, topPillNameRoom(362, BOTH, AX5))).toBe(true);
+    expect(wholeTileAlone(99, topPillNameRoom(362, BOTH, AX5))).toBe(false);
   });
 
   it('draws the three screens that share one top', () => {

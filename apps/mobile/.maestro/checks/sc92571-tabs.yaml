@@ -1,0 +1,28 @@
+# sc-92571: Today upright (a cold start reopens the last tab, so Today is tapped first) at the device's text size: each tab opens its page with one tap and Today comes back with one tap. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { text: 'Today|Aujourd.hui' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0 }
+- extendedWaitUntil: { visible: { id: 'tab-events' }, timeout: 10000 }
+- takeScreenshot: today
+- tapOn: { id: 'tab-events' }
+- waitForAnimationToEnd
+- takeScreenshot: opened-tab-events
+- tapOn: { text: 'Today|Aujourd.hui', index: 0 }
+- extendedWaitUntil: { visible: { id: 'tab-events' }, timeout: 10000 }
+- takeScreenshot: back-from-tab-events
+- tapOn: { id: 'tab-calendar' }
+- waitForAnimationToEnd
+- takeScreenshot: opened-tab-calendar
+- tapOn: { text: 'Today|Aujourd.hui', index: 0 }
+- extendedWaitUntil: { visible: { id: 'tab-events' }, timeout: 10000 }
+- takeScreenshot: back-from-tab-calendar
+- tapOn: { id: 'home.openSettings' }
+- waitForAnimationToEnd
+- takeScreenshot: opened-home.openSettings
+- tapOn: { text: 'Today|Aujourd.hui', index: 0 }
+- extendedWaitUntil: { visible: { id: 'tab-events' }, timeout: 10000 }
+- takeScreenshot: back-from-home.openSettings
