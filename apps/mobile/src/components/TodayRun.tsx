@@ -9,7 +9,7 @@ import { Glass } from './Glass.tsx';
 import { Glyph } from './Glyph.tsx';
 import { readOut } from './ReadOut.tsx';
 import { tokens } from '../theme/tokens.ts';
-import { LABEL_LINE, wholeLineHeight } from '../layout/textSize.ts';
+import { LABEL_LINE, dotKept, wholeLineHeight } from '../layout/textSize.ts';
 import { dayChipRoom, liveChipRoom, openRoom } from '../layout/liveCoverFit.ts';
 import type { Now } from '../kit/today.ts';
 import { railLabels, type RunNow } from '../kit/todayRun.ts';
@@ -45,23 +45,31 @@ export function WhiteButton({
   );
 }
 
-export function Chips({ now }: { now: Now }) {
+/** With `grows`, upright from AX1: each chip grows to hold its words at main's size, the day's wrapping only between words with its dot kept on the word before, and taking the line under Live now where both do not fit side by side (sc-93211). */
+export function Chips({ now, grows = false }: { now: Now; grows?: boolean }) {
   const { t } = useTranslation();
+  const height = grows ? styles.chipGrows : styles.chipFixed;
 
   return (
     <View style={styles.chips}>
-      <View style={[styles.chip, styles.chipFixed, styles.chipLight]}>
+      <View style={[styles.chip, styles.chipLight, height]}>
         <View style={styles.liveRing}>
           <View style={styles.liveDot} />
         </View>
-        <Text size={13} weight="semibold">
+        <Text size={13} weight="semibold" wholeLines={grows} style={grows && styles.shrink}>
           {t('todayScreen.liveNow')}
         </Text>
       </View>
-      <View style={[styles.chip, styles.chipFixed, styles.chipDark]}>
-        <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
-          {now.live}
-        </Text>
+      <View style={[styles.chip, styles.chipDark, height]}>
+        {grows ? (
+          <Text size={13} weight="semibold" wholeLines style={[styles.white, styles.shrink]}>
+            {dotKept(now.live)}
+          </Text>
+        ) : (
+          <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
+            {now.live}
+          </Text>
+        )}
       </View>
     </View>
   );

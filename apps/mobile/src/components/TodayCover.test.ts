@@ -177,3 +177,19 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
     expect(button.match(/under=\{under\}/gu)).toHaveLength(1);
   });
 });
+
+describe('the live cover upright from AX1 (sc-93211)', () => {
+  it('grows its chips upright only, and keeps main’s chips on the phone and below AX1', () => {
+    expect(cover).toMatch(/<Chips now=\{now\} grows=\{wide && whole\} \/>/u);
+    expect(cover).toMatch(/<NowBlock moment=\{moment\} wide=\{!phone\} \/>/u);
+  });
+
+  it('draws the chips’ words at main’s 13, never stepped down and never cut to one line', () => {
+    const chips = /export function Chips\([\s\S]*?\n\}\n/u.exec(run)?.[0] ?? '';
+    const grown = /\{grows \? \(([\s\S]*?)\) : \(/u.exec(chips)?.[1] ?? '';
+    expect(grown).toMatch(/size=\{13\} weight="semibold" wholeLines/u);
+    expect(grown).toMatch(/\{dotKept\(now\.live\)\}/u);
+    expect(grown).not.toMatch(/numberOfLines|maxFontSizeMultiplier/u);
+    expect(chips).toMatch(/grows \? styles\.chipGrows : styles\.chipFixed/u);
+  });
+});
