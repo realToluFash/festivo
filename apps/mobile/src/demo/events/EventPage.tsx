@@ -1,6 +1,7 @@
-import { formattingLocale } from '@soirely/domain';
+import { formattingLocale, takesCardStep } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { type Href, router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import {
   type ReactNode,
   type RefObject,
@@ -14,6 +15,7 @@ import {
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -29,7 +31,15 @@ import {
   PartsSection,
   type RefFor,
 } from '../../components/EventOverview.tsx';
-import { AreaPage, BellRow, EventFrame, type EventToast } from './EventFrame.tsx';
+import {
+  AreaPage,
+  BellRow,
+  EventBellAt,
+  EventFrame,
+  type EventToast,
+  backToEvents,
+} from './EventFrame.tsx';
+import { useEventBell } from './EventBell.tsx';
 import { INVITATION_HREF, liveToastOf, makeLiveStateOf, reachOf, seededEvent } from './MakeLive.ts';
 import { MakeLiveAsk, useMakeLive } from './MakeLiveAsk.tsx';
 import { EventNeedsYou } from './EventNeedsYou.tsx';
@@ -123,11 +133,25 @@ import {
   clockOf as guestsClock,
   invitedOn,
   isIn,
+  overviewCountsOf,
   peopleOn,
 } from '../guests/GuestsModel.ts';
-import { resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
+import { lastLooked, markLooked, resetLooked, seedLook, takeLook } from '../guests/ChangedSince.ts';
 import { GuestsScreen } from '../guests/GuestsScreen.tsx';
 import { DemoOnly } from '../../steps/Lines.tsx';
+import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
+import { RefreshingWords } from '../guests/RefreshingWords.tsx';
+import {
+  BACK_HREF,
+  BACK_KEY,
+  type Opened,
+  type Opener,
+  backScreenOf,
+  bellOpens,
+  openersFor,
+  openerWords,
+  wayBack,
+} from './opener.ts';
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
@@ -135,6 +159,9 @@ import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
+import { EventsFailed } from '../../components/Events.tsx';
+import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { isBellState } from '../messages/BellStates.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
 
@@ -147,6 +174,9 @@ const ASKS: Partial<Record<EventDemoState, LifeAsk>> = {
   endNow: 'endNow',
   deleteDraft: 'deleteDraft',
 };
+
+const HOST = ['events.read', 'events.create', 'events.manage'];
+const VIEWER = ['events.read'];
 
 /** Where sc-4330's states open: Messages for its list and rows, Overview under every sheet and its banner. */
 const TELL_IN_MESSAGES: readonly string[] = [
@@ -211,6 +241,10 @@ export function EventScreen({
   guestsFrom: figureOpens = null,
   without,
   origin = null,
+  linked = false,
+  failed = null,
+  opened: openedOver,
+  clock,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -226,16 +260,25 @@ export function EventScreen({
   people?: CardState | null;
   /** People's own query, when People opens in this frame from its own page (sc-67665). */
   peopleParams?: PeopleParams | undefined;
-  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786). */
-  guestsFrom?: FilterKey | null;
+  /** A figure on Events opens the event's Guests with its choice in the filter menu (sc-3786); the bell's Guest replies item over another event opens Changed since you looked (sc-84453). */
+  guestsFrom?: ListFilter | null;
   without?: AreaKey | undefined;
   origin?: OriginState | null;
+  /** Opened from its link (sc-80863): a move into the event's organisation is said at the head of Overview, until the person leaves it. */
+  linked?: boolean;
+  /** The event did not load, and Try again reads it again (sc-80863). */
+  failed?: (() => void) | null;
+  /** What the event was opened over, and the board's Spanish and Refreshing… (sc-83008). */
+  opened?: Opened | undefined;
+  /** The moment the frame reads as now, when what it holds runs on its own sample's clock (sc-72). */
+  clock?: Date | undefined;
 }) {
   const shell = useShell();
+  const top = useBehind(openedOver);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const now = useMemo(
-    () => (guests == null ? clockOf(state) : guestsClock(guests)),
-    [state, guests],
+    () => clock ?? (guests == null ? clockOf(state) : guestsClock(guests)),
+    [clock, state, guests],
   );
   const [event, setEvent] = useState(() =>
     origin == null
@@ -248,7 +291,7 @@ export function EventScreen({
   );
   const [at, setAt] = useState<AreaKey>(() => {
     if (guests != null && !isIn(OVERVIEW_STATES, guests)) seedLook(areaStart(guests).looked, now);
-    else if (messages === 'bell') resetLooked();
+    else if (isBellState(messages)) resetLooked();
 
     return figureOpens != null
       ? 'guests'
@@ -265,7 +308,12 @@ export function EventScreen({
   });
   const [peopleAt, setPeopleAt] = useState<PeopleParams>(peopleParams ?? {});
   const [guestsFrom, setGuestsFrom] = useState<ListFilter | null>(figureOpens);
-  const [sinceFrom, setSinceFrom] = useState<string | null>(null);
+  const [sinceFrom, setSinceFrom] = useState<string | null>(() =>
+    figureOpens === 'changed' ? lastLooked() : null,
+  );
+  useEffect(() => {
+    if (figureOpens === 'changed') markLooked(now);
+  }, [figureOpens, now]);
   const [m, dispatch] = useReducer(reduceReach, null, () => {
     const begun = startOf(messages, shell.layout !== 'phone');
     if (isTellKind(messages)) {
@@ -289,6 +337,7 @@ export function EventScreen({
     return (isTellKind(messages) ? fieldEvents(messages, sample)?.told : null) ?? sample;
   });
   const [more, setMore] = useState(state === 'more');
+  const [leftOverview, setLeftOverview] = useState(false);
   const [edit, setEdit] = useState<EditPart | null>(editOf(state));
   const [round, setRound] = useState(0);
   const [part, setPart] = useState<EditPart>(editOf(state) ?? 'dates');
@@ -461,13 +510,16 @@ export function EventScreen({
     setMuted(!muted);
   };
 
+  const member = { permissions: thanks.canEnd ? HOST : VIEWER };
+  const creates = takesCardStep(member, 'duplicate');
+  const manages = takesCardStep(member, 'resume');
   const card = (
     <EventCard
       event={shown}
       now={now}
-      locale={locale}
+      locale={dateLocale()}
       wide={shell.layout !== 'phone'}
-      takes={() => true}
+      takes={(action) => takesCardStep(member, action)}
       onStep={onStep}
       stepRef={cardStep}
       testID="event.card"
@@ -518,9 +570,18 @@ export function EventScreen({
     setGuestsFrom('changed');
     setAt('guests');
   };
+  const bell = useEventBell({
+    eventId: event.id,
+    startOpen: openedOver?.bell === true,
+    onHere: (key) => {
+      if (bellOpens(key) === 'guests') openChanged();
+      else setAt('overview');
+    },
+  });
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
+      counts={overviewCountsOf(event.id, shown.phase)}
       onOpen={openGuests}
     />
   );
@@ -557,18 +618,18 @@ export function EventScreen({
       testIDs={{ row: 'event.mute', retry: 'event.mute.retry', settings: 'event.notifications' }}
     />
   );
-  const manage = (
-    <Manage
-      title={W.manage}
-      items={usableManage(manageOf(shown, now), canChange).map((key) => ({
-        key,
-        ...MANAGE[key],
-        testID: `event.manage.${key}`,
-      }))}
-      refFor={refFor}
-      onManage={onManage}
-    />
+  const offered = usableManage(manageOf(shown, now), canChange).filter((key) =>
+    key === 'duplicate' ? creates : manages,
   );
+  const manage =
+    offered.length === 0 ? null : (
+      <Manage
+        title={W.manage}
+        items={offered.map((key) => ({ key, ...MANAGE[key], testID: `event.manage.${key}` }))}
+        refFor={refFor}
+        onManage={onManage}
+      />
+    );
   const tellHere = (words: string) => {
     if (at === 'messages') dispatch({ type: 'told', words });
     else setTold(words);
@@ -664,8 +725,14 @@ export function EventScreen({
               : null,
         };
 
-  if (state === 'loading')
-    return (
+  if (linked && at !== 'overview' && !leftOverview) setLeftOverview(true);
+  // Every area's frame opens the page's bell, the areas drawn by their own screen included (sc-84453).
+  const lend = (node: ReactNode) => (
+    <EventBellAt.Provider value={bell}>{node}</EventBellAt.Provider>
+  );
+
+  if (state === 'loading' || failed != null)
+    return lend(
       <EventFrame
         event={shown}
         now={now}
@@ -674,15 +741,20 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         without={without}
+        behind={top.behind}
         loading
       >
         <BellRow>{null}</BellRow>
-        <LoadingBlock words={W.loadingEvent} />
-      </EventFrame>
+        {failed == null ? (
+          <LoadingBlock words={W.loadingEvent} />
+        ) : (
+          <EventsFailed words={W.failedLoadEvent} onRetry={failed} testID="event.link.retry" />
+        )}
+      </EventFrame>,
     );
 
   if (at === 'people')
-    return (
+    return lend(
       <PeopleInEvent.Provider
         value={{
           event: shown,
@@ -695,11 +767,11 @@ export function EventScreen({
         }}
       >
         <PeopleSection params={peopleAt} />
-      </PeopleInEvent.Provider>
+      </PeopleInEvent.Provider>,
     );
 
   if (at === 'seating' && messagesHere)
-    return (
+    return lend(
       <SeatingScreen
         state={seating}
         event={shown}
@@ -707,7 +779,7 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   const writeToThem = () => {
@@ -725,7 +797,7 @@ export function EventScreen({
   };
 
   if (at === 'guests' && (guests != null || GUESTS_ON.includes(event.id)))
-    return (
+    return lend(
       <GuestsScreen
         key={guestsFrom ?? ''}
         state={guests != null && !isIn(OVERVIEW_STATES, guests) ? guests : null}
@@ -737,14 +809,15 @@ export function EventScreen({
         badge={messagesHere && messagesSeen ? badgeFor(m) : null}
         filterFrom={guestsFrom}
         sinceFrom={sinceFrom}
+        behind={top.behind}
         onWrite={writeToThem}
         onConversation={theirConversation}
         onMakeLive={() => shell.tell(say.ownDesign(W.makeLive))}
-      />
+      />,
     );
 
   if (at === 'budget' && messagesHere)
-    return (
+    return lend(
       <BudgetScreen
         state={budget}
         event={shown}
@@ -753,11 +826,11 @@ export function EventScreen({
         more={more}
         onMore={setMore}
         onArea={setAt}
-      />
+      />,
     );
 
   if (at === 'messages' && messagesHere)
-    return (
+    return lend(
       <MessagesScreen
         m={m}
         dispatch={dispatch}
@@ -770,6 +843,7 @@ export function EventScreen({
         start={{
           fix: messages === 'fix',
           push: messages === 'bell',
+          bell: isBellState(messages) ? messages : 'bell',
           keys:
             messages === 'write' ||
             messages === 'cancelled' ||
@@ -777,22 +851,34 @@ export function EventScreen({
             messages === 'typedBraces',
         }}
         extra={tell}
-      />
+      />,
     );
 
   let page: ReactNode;
   if (at === 'staff' && messagesHere)
     page = (
-      <AreaPage area={at} event={shown} locale={locale}>
+      <AreaPage area={at} event={shown} locale={dateLocale()}>
         <StaffRoster state={staff ?? 'populated'} />
       </AreaPage>
     );
-  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
+  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;
   else
     page = (
       <OverviewColumns
         landscape={shell.layout === 'landscape'}
-        card={<BellRow>{card}</BellRow>}
+        card={
+          <BellRow>
+            {top.ownLine}
+            {linked && !leftOverview ? (
+              <View style={styles.headed}>
+                <SwitchedNotice />
+                {card}
+              </View>
+            ) : (
+              card
+            )}
+          </BellRow>
+        }
         left={
           <>
             {photoNotice}
@@ -827,12 +913,13 @@ export function EventScreen({
             {guestsPage}
             {forYou}
             {manage}
+            {top.picker}
           </>
         }
       />
     );
 
-  return (
+  return lend(
     <EventFrame
       event={shown}
       now={now}
@@ -842,6 +929,8 @@ export function EventScreen({
       onMore={setMore}
       badge={messagesHere && messagesSeen ? badgeFor(m) : null}
       without={without}
+      behind={top.behind}
+      besideBack={at === 'overview' ? top.besideBack : undefined}
       toast={liveToast ?? (told == null ? null : { words: told, onClose: () => setTold(null) })}
       overlay={
         <>
@@ -932,9 +1021,78 @@ export function EventScreen({
       }
     >
       {page}
-    </EventFrame>
+    </EventFrame>,
   );
 }
+
+/** ‹ names the screen the event was opened over and goes back to it; nothing in the app behind it reads Events and opens Events, as today. Refreshing… sits beside ‹ where ‹ stays whole with it, else on its own line above the event's card, ‹ whole (sc-83008, as sc-71821 on Guests). */
+function useBehind(opened: Opened | undefined) {
+  const shell = useShell();
+  const { i18n } = useTranslation();
+  const [spanish, setSpanish] = useState(opened?.spanish ?? false);
+  const words = useMemo(() => i18n.getFixedT(spanish ? 'es' : 'en'), [i18n, spanish]);
+  const [over, setOver] = useState<Opener>(opened?.opener ?? 'events');
+  const [refreshing, setRefreshing] = useState(opened?.refreshing ?? false);
+  const [beside, setBeside] = useState(false);
+  const upright = shell.layout !== 'landscape';
+  const screen = backScreenOf(over, shell.layout);
+  const leave = () => {
+    const way = wayBack(screen, over, opened);
+    if (way === 'events') backToEvents();
+    else if (way === 'back' && router.canGoBack()) router.back();
+    else router.dismissTo((way === 'back' ? BACK_HREF[screen] : way) as Href);
+  };
+  const node = refreshing ? (
+    <RefreshingWords words={words('eventsScreen.refreshing')} testID="event.refreshing" />
+  ) : null;
+
+  return {
+    behind: upright ? { label: words(BACK_KEY[screen]), onPress: leave } : undefined,
+    besideBack: upright && node != null ? { node, onPlaced: setBeside } : undefined,
+    ownLine: upright && node != null && !beside ? <View style={styles.ownLine}>{node}</View> : null,
+    picker: upright ? (
+      <DemoOnly title="Demo only: what the event was opened over. ‹ reads that screen's name and goes back to it; a link from outside, a notification that started the app and the event after signing in have nothing behind them and read Events. Refreshing… sits beside ‹ while ‹ stays whole with it, else on its own line above the event's card. Spanish draws the top row in Spanish. On an iPad, another event's page from the bell reads Event and goes back to that event at its Guests, filtered to Coming; deleted meanwhile, that page reads This event is not available. The bell on this page opens over it: a notification for another event opens that event over this page (its Guest replies at Guests, Changed since you looked, where ‹ also reads Event and goes back to this page), one for this event opens here. Nothing is sent.">
+        <Choices
+          heading="Opened over"
+          options={openersFor(shell.layout).map((key) => ({
+            key,
+            label: openerWords(key, shell.layout),
+          }))}
+          chosen={over}
+          onChoose={setOver}
+          id="opener"
+          prefix="event.behind"
+        />
+        <Choices
+          heading="Refreshing…"
+          options={ON_OFF}
+          chosen={refreshing ? 'on' : 'off'}
+          onChoose={(key) => setRefreshing(key === 'on')}
+          id="refreshing"
+          prefix="event.behind"
+        />
+        <Choices
+          heading="Language"
+          options={LANGUAGES}
+          chosen={spanish ? 'es' : 'en'}
+          onChoose={(key) => setSpanish(key === 'es')}
+          id="language"
+          prefix="event.behind"
+        />
+      </DemoOnly>
+    ) : null,
+  };
+}
+
+const LANGUAGES = [
+  { key: 'en', label: 'English' },
+  { key: 'es', label: 'Spanish' },
+] as const;
+
+const ON_OFF = [
+  { key: 'off', label: 'Off' },
+  { key: 'on', label: 'On' },
+] as const;
 
 function Details({
   shown,
@@ -955,8 +1113,8 @@ function Details({
   onMaps: () => void;
   last?: ReactNode;
 }) {
-  const dates = datesRow(shown, locale);
-  const hosts = hostsRow(shown, locale);
+  const dates = datesRow(shown, dateLocale());
+  const hosts = hostsRow(shown, dateLocale());
   const locked = scheduleLocked(shown);
   const reply = replyByRow(replyBy, shown.timeZone, locale, now);
 
@@ -1118,6 +1276,8 @@ const MANAGE: Record<ManageKey, { label: string; line: string; removes: boolean 
 };
 
 const styles = StyleSheet.create({
+  headed: { gap: 18 },
+  ownLine: { marginBottom: tokens.spaceMd },
   dashed: {
     gap: tokens.spaceXs,
     paddingVertical: tokens.spaceLg,

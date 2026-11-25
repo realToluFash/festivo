@@ -38,7 +38,7 @@ docker compose up -d   # the stack
 | `redis`    | 6379      | cache and queues                                 |
 | `mercure`  | 3000      | the hub that carries live updates to clients     |
 | `mailpit`  | 8025      | mail sink — every email the API sends lands here |
-| `smocker`  | 8088      | SMS mock — UI; mock endpoint on 8086             |
+| `smocker`  | 8088      | Provider mocks — UI; mock endpoint on 8086       |
 | `oidc`     | 8089      | stands in for Google and Apple sign-in           |
 | `storage`  | 4566      | S3, locally (LocalStack)                         |
 | `api`      | 8080      | the Symfony API                                  |
@@ -106,9 +106,10 @@ docker compose up storage-init
 provider key never reaches a browser or a phone — and so rate limiting and caching live on
 one side of that boundary rather than in two client implementations.
 
-OpenStreetMap's Nominatim is the first adapter because it needs no key, so the whole path
-develops and tests without an account. A commercial provider is another class behind the
-same interface and one line of configuration.
+OpenStreetMap's Nominatim is the first adapter because it needs no key. The local and QA
+stacks never call the public server: `ADDRESS_ENDPOINT` points at a stand-in in smocker that
+answers the addresses the checks type and an empty list for anything else. A commercial
+provider is another class behind the same interface and one line of configuration.
 
 Queries shorter than three characters are answered without asking anybody; identical
 queries are cached. Autocomplete fires on keystrokes, and every call is billable somewhere.
@@ -118,11 +119,11 @@ being down is never a reason to stop somebody saving a venue they typed out them
 
 ### Nothing reaches a real provider
 
-Mail, SMS and sign-in all go to local containers. No provider credentials are needed to
+Mail, SMS, WhatsApp, push, address suggestions and sign-in all go to local containers. No provider credentials are needed to
 develop or test any of it, and switching to a real provider is a change to `.env` only.
 
 - **Mail** — <http://localhost:8025>
-- **SMS** — <http://localhost:8088>, with captured requests under History
+- **SMS, WhatsApp, push, addresses** — <http://localhost:8088>, with captured requests under History
 - **Sign-in** — discovery at `localhost:8089/{google,apple}/.well-known/openid-configuration`
 
 Mint a token to test sign-in against:

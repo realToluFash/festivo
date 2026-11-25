@@ -1,9 +1,11 @@
 import { formatWallDay, phoneLengthProblem } from '@soirely/domain';
 
+import type { Place } from '../../kit/orgSwitcher.ts';
 import { writtenTime } from '../clock.ts';
 import {
   atWords,
   type EventRole,
+  type Level,
   type Moment,
   type OnEvent,
   type OrgMember,
@@ -17,6 +19,8 @@ export { atWords, type Moment };
 
 /** The sample, access-a-spec.md §6: Lumen Feiras in Porto and Joana & Rui's wedding. It is not spec. */
 export const ORGANISATION = 'Lumen Feiras';
+/** Inês's one organisation, which the switcher names above the event as the boards do (sc-31774). */
+export const DOOR_PLACE: Place = { id: 'org-lumen-feiras', name: ORGANISATION, role: 'Owner' };
 export const EVENT = {
   id: 'evt-joana-rui',
   name: 'Joana & Rui’s wedding',
@@ -32,7 +36,14 @@ export const ON_THE_DAY: Moment = { date: EVENT.day, time: '13:45' };
 export const AFTER_EXPIRY: Moment = { date: EVENT.day, time: '16:00' };
 export const TRY_AT = '13:32';
 
-export const CODE_ROLES = ['Can view', 'Can check guests in', 'Can edit'] as const;
+/** sc-4002: a code offers the two service levels that work a place; Can run the floor is refused (422 level_not_allowed_for_code). */
+export const CODE_ROLES = [
+  'Can view',
+  'Can check guests in',
+  'Can work the floor',
+  'Can work the pass',
+  'Can edit',
+] as const;
 export type CodeChoice = (typeof CODE_ROLES)[number];
 export type CodeRole = Exclude<CodeChoice, 'Can edit'>;
 export const FIRST_CODE_ROLE: CodeRole = 'Can view';
@@ -278,7 +289,7 @@ function outside(
   name: string,
   initials: string,
   tone: number,
-  role: EventRole,
+  role: Level,
   label: string,
 ): OnEvent {
   return { id, name, initials, tone, role, outside: true, label };
@@ -377,6 +388,7 @@ export const MAKE_STATES = [
   'past',
   'making',
   'failed',
+  'refused',
 ] as const;
 export const HOLD_STATES = [
   'open',
@@ -420,6 +432,8 @@ export interface MakeStart {
   endsDraft: Ends | null;
   sending: 'idle' | 'held';
   failed: boolean;
+  /** The API's 422 level_not_allowed_for_code, from a stale form or a direct call: the client never offers the level. */
+  refused?: boolean;
 }
 
 export interface HoldStart {
@@ -549,6 +563,8 @@ function makeStart(state: MakeState): MakeStart {
       return { ...plain, form: TYPED, sending: 'held' };
     case 'failed':
       return { ...plain, form: TYPED, failed: true };
+    case 'refused':
+      return { ...plain, form: { ...TYPED, role: 'Can work the floor' }, refused: true };
   }
 }
 

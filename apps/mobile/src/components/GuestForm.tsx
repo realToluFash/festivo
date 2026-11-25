@@ -46,10 +46,11 @@ import { NeedsSection, useNeedsRefs } from './GuestNeeds.tsx';
 import { readOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { useShellLayout } from './settingsShell.ts';
-import { FocusedScreen } from './SummaryOverlays.tsx';
+import { ASK_WIDTH, FocusedScreen } from './SummaryOverlays.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
-import { type Values, addOf, editOf, typedOf, valuesOf } from './guestValues.ts';
+import { useLeaveAsk } from './useLeaveAsk.ts';
+import { type Values, addOf, discardNameOf, editOf, typedOf, valuesOf } from './guestValues.ts';
 
 export type GuestFormMode = { kind: 'add' } | { kind: 'edit'; tagged: TaggedGuest };
 
@@ -111,6 +112,7 @@ export function GuestForm({
   const picker = useRef<ViewInstance>(null);
   const companionFields = useRef(new Map<number, TextInputInstance>());
   const changed = JSON.stringify(values) !== JSON.stringify(first);
+  const leaves = useLeaveAsk(open && changed && !sending, () => setAsk('discard'), onClose);
   const chose = editing?.guest.chosenLanguage ?? null;
   const count = values.companions.length;
 
@@ -309,8 +311,9 @@ export function GuestForm({
   const clash = groupRefusal?.made == null ? null : sameGroup(groups, groupRefusal.made);
   const madeProblem =
     groupRefusal?.made == null || clash != null ? null : typedProblem(groups, groupRefusal.made);
-  const cancel = () => (changed ? setAsk('discard') : onClose());
+  const cancel = () => leaves.leave();
   const adding = editing == null;
+  const discardName = discardNameOf(first, values);
 
   return (
     <FocusedScreen
@@ -330,15 +333,25 @@ export function GuestForm({
         ask === 'discard'
           ? {
               title: t('guestList.discardTitle'),
-              line: t('guestList.discardLine', { name: first.fullName || values.fullName }),
+              line:
+                discardName == null
+                  ? t('eventEdit.discardLine')
+                  : t('guestList.discardLine', { name: discardName }),
               keep: { label: t('guestList.keepEditing'), testID: 'guest.form.keepEditing' },
               confirm: {
                 label: t('guestList.discard'),
                 removes: true,
                 testID: 'guest.form.discard',
               },
-              onKeep: () => setAsk(null),
-              onConfirm: onClose,
+              onKeep: () => {
+                setAsk(null);
+                leaves.keep();
+              },
+              onConfirm: () => {
+                setAsk(null);
+                leaves.discard();
+              },
+              width: ASK_WIDTH,
             }
           : ask === 'duplicate'
             ? {

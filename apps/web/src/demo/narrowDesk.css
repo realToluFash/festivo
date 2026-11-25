@@ -45,22 +45,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
-    position: static;
-    order: -1;
-    width: auto;
-    max-height: none;
-  }
-
-  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
-    overflow: visible;
-  }
-
   .today.desk .mn-choice-item {
     flex-wrap: wrap;
     padding-block: var(--spaceXs);
@@ -139,6 +123,25 @@
   .today.desk .desk-main > .desk-list ~ .desk-page {
     flex: none;
     min-width: 0;
+    overflow: visible;
+  }
+}
+
+/* A docked panel comes before its list from 960 px down, 400% zoom (deskReflow.css) included; the run of show keeps its own. */
+@media (width <= 60rem) {
+  .today.desk .mn-split:not(.ro .mn-split):has(> .mn-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .today.desk .mn-split:not(.ro .mn-split) > .mn-panel .mn-panel-body {
     overflow: visible;
   }
 }

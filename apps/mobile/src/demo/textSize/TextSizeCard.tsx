@@ -5,7 +5,7 @@ import { CARD_PIECES, Confetti, Cover } from '../../components/Cover.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Glass } from '../../components/TodayCover.tsx';
-import { breakableEmail } from '../../layout/textSize.ts';
+import { breakableEmail } from '../../kit/addressBreaks.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { cardTileShown } from './textSizeRules.ts';
 

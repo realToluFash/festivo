@@ -4,6 +4,9 @@ import { tokens } from '../theme/tokens.ts';
 const ACCESSIBILITY_SCALE = 1.7;
 const NINTH_STEP_SCALE = 2;
 
+/** 16 is the smallest size iOS Safari will not zoom into on focus. */
+export const CONTROL_TEXT_SIZE = 16;
+
 export function atAccessibilitySizes(fontScale: number): boolean {
   return fontScale >= ACCESSIBILITY_SCALE;
 }
@@ -136,9 +139,94 @@ export function besideGlyph(
 
 export const LABEL_LINE = 1.22;
 
+export interface Wrap {
+  pieces: readonly (readonly number[])[];
+  space: number;
+}
+
+/** A text's words in order as their measured pieces, and the space between two words: what the whole measures beyond its words, spread over the gaps. */
+export function wrapOf(
+  text: string,
+  widths: Readonly<Record<string, number>>,
+  whole: number,
+): Wrap {
+  const words = text.split(/\s+/u).filter((word) => word !== '');
+  const width = (piece: string) => widths[piece] ?? 0;
+  const gaps = Math.max(1, words.length - 1);
+
+  return {
+    pieces: words.map((word) => piecesOf(word).map(width)),
+    space: Math.max(0, whole - words.reduce((sum, word) => sum + width(word), 0)) / gaps,
+  };
+}
+
+/** Each line's width when words `wrap`, drawn `shrink` times their start size, break after a space or a hyphen in `inside`. */
+export function wrappedLines(inside: number, { pieces, space }: Wrap, shrink: number): number[] {
+  const lines: number[] = [];
+  let line = Infinity;
+  pieces.forEach((word) =>
+    word.forEach((piece, at) => {
+      const gap = at === 0 ? space : 0;
+      if (line + (gap + piece) * shrink < inside - 0.5) line += (gap + piece) * shrink;
+      else {
+        if (line !== Infinity) lines.push(line);
+        line = piece * shrink;
+      }
+    }),
+  );
+
+  return line === Infinity ? lines : [...lines, line];
+}
+
+/** How far a round-ended pill's outline cuts into its side at the top and foot of words `block` deep, `pad` inside its outline edge above and below them. */
+function pillCut(block: number, pad: number, ring: number): number {
+  const radius = block / 2 + pad;
+
+  return radius - Math.sqrt(Math.max(0, (radius - ring) ** 2 - (block / 2) ** 2));
+}
+
+/** As `besideGlyph`, in a pill whose round ends narrow the room at its words' top and foot lines: reckoned at the pill's own height, the lowest it can be, so a word fits inside its outline wherever it wraps to (sc-84920). */
+export function besideGlyphInPill({
+  size,
+  start,
+  wrap,
+  glyph,
+  beside,
+  width,
+  sides,
+  pad,
+  ring,
+}: {
+  size: number;
+  start: number;
+  wrap: Wrap;
+  glyph: number;
+  beside: number;
+  /** The pill's width, outline to outline. */
+  width: number;
+  /** The pill's side padding and ring. */
+  sides: number;
+  /** Its padding and ring above and below the words. */
+  pad: number;
+  ring: number;
+}): number {
+  const fits = (at: number): boolean => {
+    const straight = width - beside - glyph * at;
+    const lines = wrappedLines(straight - 2 * sides, wrap, at / start);
+    const cut = pillCut(lines.length * Math.ceil(at * LABEL_LINE), pad, ring);
+
+    return Math.max(...lines) <= straight - 2 * Math.max(sides, cut);
+  };
+
+  if (fits(start)) return start;
+  for (let at = Math.floor(start); at > size; at -= 1) if (fits(at)) return at;
+
+  return size;
+}
+
 /** The line height to give a text of `size` drawn at `drawn`, so that once scaled each line is whole points and a box of n lines rounds to n lines (sc-69816). `drawn` must be the size iOS draws at: under a `TitleCap` that lowers it, pass the capped size, or the line is a fraction again. */
-export function wholeLineHeight(size: number, drawn: number): number {
-  return (Math.ceil(drawn * LABEL_LINE) * size) / drawn;
+export function wholeLineHeight(size: number, drawn: number, line = LABEL_LINE): number {
+  return (Math.ceil(drawn * line) * size) / drawn;
 }
 
 /** The size iOS and Android draw a text of `size` at: grown by the text size, no further than its multiplier (none under 1). */
@@ -166,28 +254,33 @@ export function grownPad(height: number, size: number, ring: number): number {
 export interface WordsRoom {
   /** The width a text drawn at the start wrapped at, when it wrapped. */
   wrapped: number | null;
-  /** That width, kept under its `wordsRoomKey`: the start, window width and reported room it was read at. */
+  /** That width, kept under its `wordsRoomKey`: the start, window and reported room it was read at. */
   kept: { key: string; width: number } | null;
-  /** A container's width, as its caller reports it, under the window width it was read at. */
-  reported: { windowWidth: number; width: number } | null;
+  /** A container's width, as its caller reports it, under the window it was read at. */
+  reported: { window: string; width: number } | null;
 }
 
-/** What a wrapped text's width holds for: its start, the window's width, and the room its container reported, so a new room is never fitted to a width read in an old one (sc-69816). */
-export function wordsRoomKey(start: number, windowWidth: number, given?: number): string {
-  return given == null ? `${start}|${windowWidth}` : `${start}|${windowWidth}|${given}`;
+/** The window a width is read in: its width, and the frame's width the layout's kind is read from, which a turn changes at another moment, so a wrap read in the layout of one side is never kept for the other (sc-90463). */
+export function windowAt(windowWidth: number, frameWidth: number): string {
+  return `${windowWidth}|${frameWidth}`;
+}
+
+/** What a wrapped text's width holds for: its start, the window, and the room its container reported, so a new room is never fitted to a width read in an old one (sc-69816). */
+export function wordsRoomKey(start: number, window: string, given?: number): string {
+  return given == null ? `${start}|${window}` : `${start}|${window}|${given}`;
 }
 
 /** The width the texts have to fit, 0 while it is not known. */
 export function wordsSlot(
   { wrapped, kept, reported }: WordsRoom,
   start: number,
-  windowWidth: number,
+  window: string,
   given?: number,
 ): number {
   if (wrapped != null) return wrapped;
-  if (kept?.key === wordsRoomKey(start, windowWidth, given)) return kept.width;
+  if (kept?.key === wordsRoomKey(start, window, given)) return kept.width;
   // A container's onLayout does not fire again when only the text size changes (sc-37298).
-  return reported?.windowWidth === windowWidth ? reported.width : 0;
+  return reported?.window === window ? reported.width : 0;
 }
 
 /** A name in the frame takes one line, and two at the accessibility sizes, before it is cut. */
@@ -201,11 +294,6 @@ export const SIDEBAR_WIDTH = 252;
 /** A list beside a page on a tablet: its own width, or 40 percent of the content at the accessibility sizes. */
 export function sideListWidth(width: number, contentWidth: number, fontScale: number): number {
   return atAccessibilitySizes(fontScale) ? Math.max(width, Math.round(contentWidth * 0.4)) : width;
-}
-
-/** An email as drawn, free to break after its @ when it is wider than its line. Its accessibility label stays the address. */
-export function breakableEmail(email: string): string {
-  return email.replace('@', '@​');
 }
 
 export const SMALL_LINE = tokens.typeSmall.size * tokens.typeSmall.lineHeight;

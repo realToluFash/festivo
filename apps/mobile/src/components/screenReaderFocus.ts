@@ -29,7 +29,8 @@ export function pressOnDoubleTap(onPress: (() => void) | undefined) {
 
 /** TalkBack ignores the focus event VoiceOver follows, and takes a hover instead (sc-9950). */
 export function moveScreenReaderFocus(view: ScreenReaderTarget | null): void {
-  if (view == null) return;
+  // A view unmounted before a deferred move fires has no node left, and Android's event logs a warning over the screen (sc-87242).
+  if (view == null || !view.isConnected) return;
 
   if (Platform.OS === 'android') {
     AccessibilityInfo.sendAccessibilityEvent(view, 'viewHoverEnter');
@@ -42,7 +43,12 @@ export function moveScreenReaderFocus(view: ScreenReaderTarget | null): void {
 
 /** Whether a screen reader is on, false until the answer comes. */
 export function useScreenReaderOn(): boolean {
-  const [on, setOn] = useState(false);
+  return useScreenReader() === true;
+}
+
+/** Whether a screen reader is on, or null until the device has said. */
+export function useScreenReader(): boolean | null {
+  const [on, setOn] = useState<boolean | null>(null);
 
   useEffect(() => {
     let gone = false;

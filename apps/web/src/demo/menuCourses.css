@@ -428,34 +428,12 @@
 
 /* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, the event's navigation behind its button, and an open form in the menu's place. */
 @media (width <= 40rem) {
-  .today.desk:has(.mc) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
   .today.desk:has(.mc) .mc-nav:not(.is-open) {
     display: none;
   }
 
   .today.desk:has(.mc) .mc-nav.is-open {
     display: block;
-  }
-
-  .today.desk:has(.mc) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.mc) .desk-main {
-    margin: 0 var(--spaceSm) var(--spaceSm);
-    overflow: visible;
-  }
-
-  .mc.desk-page {
-    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
   }
 
   .mc-nav-button {
@@ -475,10 +453,6 @@
 
   .mc .lib-acts {
     flex-direction: row;
-  }
-
-  .mc .ev-crumb ol {
-    flex-wrap: wrap;
   }
 
   .mc-top {
@@ -621,4 +595,8 @@
 .mc-closed-line svg {
   flex: none;
   margin-top: 2px;
+}
+
+.mc-preview {
+  flex: none;
 }

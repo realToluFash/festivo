@@ -97,6 +97,7 @@ final class OrganisationExportTest extends ApiTestCase
         'menu_dish_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'cost_minor', 'cost_currency'],
         'menu_dish_choices' => ['id', 'dish_id', 'position', 'question', 'pick', 'required'],
         'menu_choice_options' => ['id', 'choice_id', 'position', 'name', 'allergens'],
+        'meal_answers' => ['id', 'guest_id', 'course_id', 'kind', 'dish_id', 'variant_id', 'options', 'created_at', 'updated_at'],
         'dish_library' => ['id', 'name', 'description', 'allergens', 'diets', 'last_price_minor', 'last_price_currency', 'archived_at', 'created_at'],
         'dish_library_variants' => ['id', 'dish_id', 'position', 'name', 'for_children', 'allergens', 'diets', 'last_price_minor', 'last_price_currency'],
         'vendors' => ['id', 'name', 'category', 'contact_name', 'email_address', 'phone_country_code', 'phone_number', 'website', 'address', 'note', 'archived_at', 'created_at'],
@@ -132,6 +133,8 @@ final class OrganisationExportTest extends ApiTestCase
         'door_code_redemptions' => 'a link that opens without signing in',
         'door_codes' => 'a link that opens without signing in',
         'event_mutes' => "notifications: one person's, or deliveries",
+        'guest_reply_changes' => 'change history',
+        'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
         'known_devices' => "sign-in credentials (sc-611's rule)",
         'membership_transitions' => 'change history',
@@ -145,6 +148,7 @@ final class OrganisationExportTest extends ApiTestCase
         'pending_registrations' => "a person's own account (sc-611's rule)",
         'phone_code_deliveries' => "sign-in credentials (sc-611's rule)",
         'phone_numbers' => "a person's own account (sc-611's rule)",
+        'provider_events' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'provider_identities' => "sign-in credentials (sc-611's rule)",
         'push_targets' => "notifications: one person's, or deliveries",
         'recovery_codes' => "sign-in credentials (sc-611's rule)",
@@ -155,6 +159,8 @@ final class OrganisationExportTest extends ApiTestCase
         'screen_links' => 'a link that opens without signing in',
         'staff_link_tokens' => 'a link that opens without signing in',
         'sign_in_proofs' => "sign-in credentials (sc-611's rule)",
+        'passkey_challenges' => "sign-in credentials (sc-611's rule)",
+        'passkeys' => "sign-in credentials (sc-611's rule)",
         'subscription_changes' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'subscriptions' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
         'two_factor_challenges' => "sign-in credentials (sc-611's rule)",
@@ -162,6 +168,10 @@ final class OrganisationExportTest extends ApiTestCase
         'two_factor_recoveries' => "sign-in credentials (sc-611's rule)",
         'two_factor_recovery_handles' => "sign-in credentials (sc-611's rule)",
         'verification_challenges' => "sign-in credentials (sc-611's rule)",
+        'usage_hold_releases' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_records' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_reservations' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
+        'usage_totals' => "billing: Soirely's own records, the terms it sells on (pm, 19 Nov)",
     ];
 
     private User $owner;
@@ -658,7 +668,7 @@ final class OrganisationExportTest extends ApiTestCase
         $this->as($someone, 'POST', $this->path(''));
 
         self::assertSame([403, ErrorCode::OwnerRequired->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
-        self::assertSame("Only an owner can export the organisation's data.", $this->last()['detail'] ?? null);
+        self::assertSame('Only an owner can export the organisation’s data.', $this->last()['detail'] ?? null);
         self::assertCount(0, self::em()->getRepository(OrganisationExport::class)->findAll());
     }
 

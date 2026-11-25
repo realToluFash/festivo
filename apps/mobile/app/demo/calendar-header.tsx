@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 
+import { CalendarShell } from '../../src/demo/calendar/Route.tsx';
 import { CalendarHeaderScreen } from '../../src/demo/calendarHeader/CalendarHeaderScreen.tsx';
 import {
   HEADER_LANGUAGES,
@@ -19,5 +20,9 @@ export default function DemoCalendarHeader() {
     refreshing: keyOf(HEADER_REFRESHING, refreshing, 'off'),
   };
 
-  return <CalendarHeaderScreen key={JSON.stringify(start)} start={start} />;
+  return (
+    <CalendarShell>
+      <CalendarHeaderScreen key={JSON.stringify(start)} start={start} />
+    </CalendarShell>
+  );
 }

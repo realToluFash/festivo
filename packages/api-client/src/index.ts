@@ -27,6 +27,8 @@ export * from './organisationExport.ts';
 export * from './auditLog.ts';
 export * from './dishes.ts';
 export * from './menu.ts';
+export * from './picks.ts';
+export * from './kitchenSheet.ts';
 export * from './schedule.ts';
 export * from './screens.ts';
 export * from './pressQueue.ts';

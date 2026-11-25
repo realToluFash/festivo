@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Link;
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Invitation\GuestInvitations;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -36,6 +37,7 @@ final readonly class InvitationLinks
         private Auditor $auditor,
         private GuestInvitations $guestInvitations,
         private GuestListPublisher $guestListPublisher,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -62,7 +64,7 @@ final readonly class InvitationLinks
     /** Never limited by the phase: ending a link that has leaked is always possible. The audit holds who and when, never the token. */
     public function replace(Guest $guest, User $by): void
     {
-        $guest->replaceLink(self::token());
+        $guest->replaceLink(self::token(), self::token());
         $this->auditor->record(self::REPLACED, 'Guest', $guest->getId(), Actor::User, $by->getId(), $by->getName());
         $this->entityManager->flush();
         $this->guestListPublisher->publish($guest->getEvent());
@@ -81,9 +83,12 @@ final readonly class InvitationLinks
             return;
         }
 
-        $guest->flagLink();
-        $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($guest): void {
+            $guest->flagLink();
+            $this->auditor->record(self::FLAGGED, 'Guest', $guest->getId());
+            $this->entityManager->flush();
+            $this->guestReplyRecorder->flagged($guest);
+        });
         $this->guestListPublisher->publish($guest->getEvent());
     }
 

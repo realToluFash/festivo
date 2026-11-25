@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Guest\Http;
 
+use App\Domain\Guest\Arrival\CheckInCodes;
 use App\Domain\Guest\Arrival\CheckInWindow;
 use App\Domain\Guest\Headcount\HeadcountCalculator;
 use App\Entity\Event;
@@ -16,7 +17,7 @@ use DateTimeZone;
 use Psl\Dict;
 use Psl\Vec;
 
-/** The door's list (sc-1454): names, replies and arrivals, and nothing else: no contact, need, note or group. The count is sc-99's attended of expected. */
+/** The door's list (sc-1454): names, replies and arrivals, and nothing else: no contact, need, note or group. The count is sc-99's attended of expected. Each guest's `code` is the SHA-256 of their check-in code, so a scan finds them on a device that is offline (sc-1301). */
 final readonly class CheckInSerialiser
 {
     public function __construct(
@@ -49,6 +50,8 @@ final readonly class CheckInSerialiser
                     'id' => $host->getId()->toRfc4122(),
                     'fullName' => $host->getFullName(),
                     'reply' => ($host->getReply() ?? GuestReply::NoReply)->value,
+                    'repliedAt' => $host->getRepliedAt()?->setTimezone($zone)->format(\DATE_ATOM),
+                    'code' => CheckInCodes::digestOf($host->getCheckInCode()),
                     'walkIn' => $host->isWalkIn(),
                     'arrival' => self::arrival($host, $zone),
                     'companions' => Vec\map($companions[$host->getId()->toRfc4122()] ?? [], static fn (Guest $companion): array => [

@@ -91,7 +91,7 @@ export function TitleRow({
 
   return (
     <>
-      {!topped && desk.offline}
+      {!topped && desk.above}
       <header className={compact ? 'desk-top is-compact' : 'desk-top'}>
         <h1 ref={titleRef} className="desk-title" tabIndex={-1}>
           {title}
@@ -118,7 +118,7 @@ export function BackRow({
 
   return (
     <>
-      {desk.offline}
+      {desk.above}
       <div className="desk-top">
         <button type="button" className="desk-back" onClick={onBack}>
           <Glyph name="back" size={17} weight={2.4} />
@@ -696,7 +696,8 @@ function DialogBox({
 }
 
 interface AskProps {
-  title: string;
+  /** Its accessible name is its text, so a node in it must read as nothing more, as `WholeAddress` does. */
+  title: ReactNode;
   /** None when the title says it all, as "Delete {name}?" does for a section with no tables (pm, 9 Nov 2026). */
   line?: string | undefined;
   keep: string;

@@ -125,7 +125,6 @@ function useExport(props: ExportProps) {
   const [format, setFormat] = useState<Format>(props.format);
   const [making, setMaking] = useState<Making>(props.making);
   const [refused, setRefused] = useState(props.refused);
-  const [pressed, setPressed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const file = props.file(format);
   const busy = making === 'preparing';
@@ -133,6 +132,11 @@ function useExport(props: ExportProps) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const words = props.words;
+  const close = () => {
+    clearTimeout(timer.current);
+    if (busy) setMaking('ready');
+    props.onClose();
+  };
   const share = () => {
     if (busy) return;
     if (props.offline) {
@@ -140,7 +144,6 @@ function useExport(props: ExportProps) {
       return;
     }
     setRefused(false);
-    setPressed(true);
     setMaking('preparing');
     timer.current = setTimeout(() => props.onShare(file), MAKING_MS);
   };
@@ -210,7 +213,7 @@ function useExport(props: ExportProps) {
     </View>
   );
 
-  return { body, foot, held: busy && pressed };
+  return { body, foot, close };
 }
 
 /** On a phone a bottom sheet, on a tablet in portrait a centred dialog: the note and Share stay at its foot while its body scrolls. */
@@ -219,22 +222,21 @@ export function ExportSheet({
   opener,
   ...props
 }: ExportProps & { open: boolean; opener: RefObject<ScreenReaderTarget | null> }) {
-  const { body, foot, held } = useExport(props);
+  const { body, foot, close } = useExport(props);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Sheet
       open={open}
-      onClose={props.onClose}
+      onClose={close}
       opener={opener}
       scrimLabel={props.words.close}
-      held={held}
       testID="guests.export.sheet"
     >
       <TitleCap.Provider value={drawn}>
         <View style={styles.sheetHead}>
-          <Head words={props.words} onClose={props.onClose} off={held} onDrawn={setDrawn} />
+          <Head words={props.words} onClose={close} onDrawn={setDrawn} />
         </View>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.body} bounces={false}>
           {body}
@@ -248,7 +250,7 @@ export function ExportSheet({
 
 /** On a tablet in landscape the dialog docks beside the list, not modal: the list stays usable and This view follows it. */
 export function ExportPanel(props: ExportProps) {
-  const { body, foot, held } = useExport(props);
+  const { body, foot, close } = useExport(props);
   const title = useRef<TextHandle>(null);
   const [drawn, setDrawn] = useState<number | null>(null);
   const scrolls = atAccessibilitySizes(useWindowDimensions().fontScale);
@@ -262,13 +264,7 @@ export function ExportPanel(props: ExportProps) {
     <View style={styles.panel} testID="guests.export.panel">
       <TitleCap.Provider value={drawn}>
         <View style={styles.panelHead}>
-          <Head
-            words={props.words}
-            onClose={props.onClose}
-            off={held}
-            titleRef={title}
-            onDrawn={setDrawn}
-          />
+          <Head words={props.words} onClose={close} titleRef={title} onDrawn={setDrawn} />
         </View>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.panelBody}>
           {body}
@@ -286,13 +282,11 @@ const TITLE = tokens.typeTitleDialog.size;
 function Head({
   words,
   onClose,
-  off,
   titleRef,
   onDrawn,
 }: {
   words: SheetWords;
   onClose: () => void;
-  off: boolean;
   titleRef?: Ref<TextHandle>;
   onDrawn: (size: number) => void;
 }) {
@@ -332,12 +326,7 @@ function Head({
           style={under ? styles.cancelUnder : styles.cancelBeside}
           onLayout={(event) => setCancel(event.nativeEvent.layout.width)}
         >
-          <TextAction
-            label={words.close}
-            off={off}
-            onPress={onClose}
-            testID="guests.export.close"
-          />
+          <TextAction label={words.close} onPress={onClose} testID="guests.export.close" />
         </View>
       </View>
     </View>

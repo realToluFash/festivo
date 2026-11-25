@@ -107,6 +107,22 @@ final class CalendarFeedFormatTest extends TestCase
     }
 
     #[Test]
+    public function theGuestRepliesUnsubscribeTokenIsTakenOutToo(): void
+    {
+        $token = self::TOKEN . 'x';
+        $path = '/api/unsubscribe/guest-replies/' . $token;
+        $record = new LogRecord(new DateTimeImmutable(), 'request', Level::Info, 'Matched route "guest_replies_unsubscribe_post". POST http://api' . $path, [
+            'route_parameters' => ['_route' => 'guest_replies_unsubscribe_post', 'token' => $token],
+            'request_uri' => 'http://api' . $path,
+        ]);
+
+        $redacted = new FeedTokenRedactor()($record);
+
+        self::assertStringNotContainsString(self::TOKEN, $redacted->message . Json\encode($redacted->context));
+        self::assertSame('http://api/api/unsubscribe/guest-replies/[redacted]', $redacted->context['request_uri']);
+    }
+
+    #[Test]
     public function anotherRoutesTokenIsLeftAlone(): void
     {
         // @mago-expect lint:no-literal-password a route parameter named token, not a token

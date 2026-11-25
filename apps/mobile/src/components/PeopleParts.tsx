@@ -10,6 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { Field, TextField } from './Field.tsx';
 import { Glyph } from './Glyph.tsx';
 import { ReadOut, readOut, useReadOut } from './ReadOut.tsx';
+import { addressRuns, breakableEmail } from '../kit/addressBreaks.ts';
 import { RoleChoices } from './RoleChoices.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
@@ -28,7 +29,9 @@ import {
   SectionHead,
   TextAction,
 } from './Summary.tsx';
+import { NameText } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
+import { useLeaveAsk } from './useLeaveAsk.ts';
 
 type Opener = RefObject<ScreenReaderTarget | null>;
 type Sending = 'idle' | 'saving' | 'saved';
@@ -85,7 +88,7 @@ export function AddBox({
       testID="people.add.open"
     >
       <Glyph name="plus" size={19} ink={tokens.colorAccent} weight={2.4} />
-      <Text size={16} weight="medium" accessible={false} style={styles.secondary}>
+      <Text size={16} weight="medium" accessible={false} style={[styles.grow, styles.secondary]}>
         {label}
       </Text>
     </Pressable>
@@ -268,7 +271,7 @@ export function RoleSheet<R extends string>({
   }
 
   const ask: AskProps = {
-    title: words.removeTitle,
+    title: addressRuns(person.name) == null ? words.removeTitle : breakableEmail(words.removeTitle),
     line: words.removeLine,
     keep: { label: words.keep, off: removing === 'sending', testID: 'people.remove.keep' },
     confirm: {
@@ -287,14 +290,16 @@ export function RoleSheet<R extends string>({
       <View style={styles.person}>
         {person.face}
         <View style={styles.grow}>
-          <Text size={18} weight="bold" accessibilityRole="header">
-            {person.name}
-          </Text>
+          <NameText name={person.name} size={18} weight="bold" accessibilityRole="header" />
           <Text size={14} weight="medium" style={styles.secondary}>
             {person.line}
           </Text>
         </View>
-        {phone && <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />}
+        {phone && (
+          <View style={styles.doneBesideName}>
+            <DoneAction label={words.done} onPress={onClose} testID="people.role.done" />
+          </View>
+        )}
       </View>
       {notes}
       {failed != null && <Refused failed={failed} />}
@@ -537,6 +542,11 @@ export function AddScreen<R extends string, T>({
         : outside.words.find;
   const roleName = words.name(role);
   const roleMeans = words.means(role);
+  const leaves = useLeaveAsk(
+    (typed.trim() !== '' || ticked.length > 0) && !busy,
+    () => setDiscarding(true),
+    onClose,
+  );
 
   async function send(): Promise<void> {
     if (!canAdd) return;
@@ -571,8 +581,7 @@ export function AddScreen<R extends string, T>({
   }
 
   function cancel(): void {
-    if (typed.trim() !== '' || ticked.length > 0) setDiscarding(true);
-    else onClose();
+    leaves.leave();
   }
 
   function type(text: string): void {
@@ -590,8 +599,14 @@ export function AddScreen<R extends string, T>({
         line: words.discardLine,
         keep: { label: words.discardKeep, testID: 'people.add.keep' },
         confirm: { label: words.discard, removes: true, testID: 'people.add.discard' },
-        onKeep: () => setDiscarding(false),
-        onConfirm: onClose,
+        onKeep: () => {
+          setDiscarding(false);
+          leaves.keep();
+        },
+        onConfirm: () => {
+          setDiscarding(false);
+          leaves.discard();
+        },
       }
     : null;
   const over: Layer | null = picking
@@ -791,7 +806,8 @@ const styles = StyleSheet.create({
   notice: { color: tokens.colorAttentionText },
   pressed: { opacity: tokens.opacityPressed },
   addBox: {
-    height: 52,
+    minHeight: 52,
+    paddingVertical: tokens.spaceSm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceMd,
@@ -802,11 +818,13 @@ const styles = StyleSheet.create({
   },
   person: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: tokens.spaceLg,
     paddingTop: tokens.spaceHair,
     paddingBottom: tokens.spaceXxs,
   },
+  // Done's word level with the name's first line, however many lines the name takes.
+  doneBesideName: { marginTop: -10 },
   done: {
     minWidth: tokens.sizeHit,
     minHeight: tokens.sizeHit,

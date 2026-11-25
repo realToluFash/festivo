@@ -56,6 +56,14 @@ export function dataAndControlListed(
   return organisation != null && roleHolds(organisation, 'organisation.manage');
 }
 
+/** What the Settings list is drawn for: the organisation in use, or while the pill names a paused one, that one by no permission, since a paused membership holds no role (sc-86077). */
+export function listedFor(
+  organisation: { name: string; permissions: readonly string[] } | null,
+  paused: { name: string } | null | undefined,
+): { name: string; permissions: readonly string[] } | null {
+  return paused == null ? organisation : { name: paused.name, permissions: [] };
+}
+
 /** The interim screens' old paths, kept so a link to one still lands on its Settings page. */
 export const INTERIM_HREF = {
   '/security': SECTION_HREF.security,

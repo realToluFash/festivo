@@ -13,7 +13,6 @@ import {
   Animated,
   Easing,
   Keyboard,
-  KeyboardAvoidingView,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -41,9 +40,12 @@ import type { AreaKey } from '../events/EventsSample.ts';
 import { PHONE_TAB_BAR } from '../../components/TodayCover.tsx';
 import { useShell } from '../../components/settingsShell.ts';
 import { Bell } from '../settings/Frame.tsx';
+import { BellPlace } from './BellPlace.tsx';
+import type { BellState } from './BellStates.ts';
 import { Back } from '../../components/SettingsParts.tsx';
-import { type Anchor, anchorUnder } from '../../components/Summary.tsx';
+import { type Anchor, useAnchorFollowsTurn } from '../../components/Summary.tsx';
 import { MiniComposer } from './Composers.tsx';
+import { KeysClear } from './KeysClear.tsx';
 import { type Talk, partsOf } from './Conversation.tsx';
 import { MessagesList, rowName } from './MessagesList.tsx';
 import {
@@ -69,14 +71,7 @@ import {
   spokenAt,
   toChip,
 } from './MessagesModel.ts';
-import {
-  BellPlace,
-  FilterPicker,
-  MatchPicker,
-  ToPicker,
-  TopToast,
-  WhenItGoes,
-} from './MessagesOverlays.tsx';
+import { FilterPicker, MatchPicker, ToPicker, TopToast, WhenItGoes } from './MessagesOverlays.tsx';
 import {
   FIXED_ADDRESS,
   GUESTS,
@@ -111,12 +106,17 @@ import {
 import { SHARED_NUMBER, readsOnly } from './NoticeStates.ts';
 import { NoManageCard } from './NoticeParts.tsx';
 import { StopActions, StopAsk } from './StopWritingParts.tsx';
+import { HoldTop } from './HoldTop.tsx';
 import { markLooked } from '../guests/ChangedSince.ts';
+import { measuredUnder } from '../measuredUnder.ts';
+import { openOnceSettled } from '../menuSettles.ts';
 
 const SAMPLE_CHANNELS: readonly ChannelKey[] = ['email', 'sms'];
 
 /** The confirm opens once the actions' window has gone, since iOS shows one window at a time. */
 const ASK_AFTER_MS = 800;
+
+const MENU_AFTER_MS = 300;
 
 function reachedLine(m: Messages, of: ReachedOf, locale: string): string {
   const told = channelsWords(m.sample === 'reasons' ? ['email'] : SAMPLE_CHANNELS, locale);
@@ -183,7 +183,7 @@ export function MessagesScreen({
   onArea: (area: AreaKey) => void;
   /** sc-4331: the bell's Guest replies item opens the guest list on Changed since you looked. */
   onChanged?: () => void;
-  start: { fix: boolean; push: boolean; keys: boolean };
+  start: { fix: boolean; push: boolean; keys: boolean; bell: BellState };
   extra?: ReactNode;
 }) {
   const shell = useShell();
@@ -192,6 +192,11 @@ export function MessagesScreen({
   const wide = !phone;
   const insets = useSafeAreaInsets();
   const refs = useRef<Partial<Record<string, ViewInstance | null>>>({});
+  const liveRef = (key: string): RefObject<ViewInstance | null> => ({
+    get current() {
+      return refs.current[key] ?? null;
+    },
+  });
   const headRef = useRef<TextHandle>(null);
   const checkRef = useRef<TextHandle>(null);
   const reachedHeadRef = useRef<TextHandle>(null);
@@ -328,40 +333,23 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.picking || phone) return undefined;
-    const later = setTimeout(() => {
-      const chip = refs.current.to;
-      if (chip != null) anchorUnder({ current: chip }, setToAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('to')), setToAt, MENU_AFTER_MS);
   }, [m.picking, phone]);
 
   useEffect(() => {
     if (!m.filtering || phone) return undefined;
-    const later = setTimeout(() => {
-      const button = refs.current.filter;
-      if (button != null) anchorUnder({ current: button }, setFilterAt);
-    }, 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('filter')), setFilterAt, MENU_AFTER_MS);
   }, [m.filtering, phone]);
 
   useEffect(() => {
     if (!m.inserting || phone) return undefined;
-    const later = setTimeout(
-      () => anchorUnder({ current: refs.current.insert ?? null }, setInsertAt),
-      300,
-    );
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(liveRef('insert')), setInsertAt, MENU_AFTER_MS);
   }, [m.inserting, phone]);
 
   const stop = stoppingOf(m);
   useEffect(() => {
     if (!stop.menu || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(moreRef, setActionsAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(moreRef), setActionsAt, MENU_AFTER_MS);
   }, [stop.menu, phone]);
   useEffect(
     () => () => {
@@ -373,10 +361,9 @@ export function MessagesScreen({
 
   useEffect(() => {
     if (!m.bell || phone) return undefined;
-    const later = setTimeout(() => anchorUnder(bellRef, setBellAt), 300);
-
-    return () => clearTimeout(later);
+    return openOnceSettled(measuredUnder(bellRef), setBellAt, MENU_AFTER_MS);
   }, [m.bell, phone]);
+  useAnchorFollowsTurn(bellRef, m.bell && !phone && bellAt != null, setBellAt);
 
   const open = (id: RowId) => {
     from(`row.${rowName(id)}`);
@@ -732,6 +719,7 @@ export function MessagesScreen({
         at={m.bell ? bellAt : null}
         opener={bellRef}
         push={start.push}
+        state={start.bell}
         allRead={m.allRead}
         onAllRead={() => {
           dispatch({ type: 'allRead' });
@@ -743,7 +731,8 @@ export function MessagesScreen({
           dispatch({ type: 'bell', open: false });
           if (key === 'missed')
             dispatch({ type: 'open', open: { kind: 'reached', of: 'parking' } });
-          else if (key === 'change') onArea('overview');
+          else if (key === 'security') shell.openSection('security');
+          else if (key !== 'replies') onArea('overview');
           else if (onChanged != null) onChanged();
           else if (phone) dispatch({ type: 'open', open: null });
         }}
@@ -1070,11 +1059,63 @@ function PhoneConversation({
   const insets = useSafeAreaInsets();
   const keysUp = useKeysUp();
   const stream = useRef<ScrollViewInstance>(null);
-  const [sides, setSides] = useState({ left: 0, right: 0 });
+  const [sides, setSides] = useState({ left: 0, right: 0, nav: 0, title: 0 });
+  const room = sides.nav - sides.left - Math.max(sides.left, sides.right) - 2 * tokens.spaceXl;
+  const moved = parts.right != null && sides.nav > 0 && sides.title > room;
+  const rightAt = (
+    <View
+      onLayout={(event) => setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))}
+      style={moved ? styles.movedRight : undefined}
+    >
+      {parts.right}
+    </View>
+  );
+  const view = useRef<{ content: number; height: number; held: number | null }>({
+    content: 0,
+    height: 0,
+    held: null,
+  });
+  const toEnd = parts.align === 'end';
+  // With the keys and iOS's suggestion bar up, the nav, the To and channel rows and the composer outgrow a phone,
+  // and the composer went under the keys; the rows scroll with the stream instead, just above it (sc-31370).
+  const headFixed = parts.head != null && !keysUp;
+  const settle = useCallback(() => {
+    const { content, height, held } = view.current;
+    if (held == null || height === 0) stream.current?.scrollToEnd({ animated: false });
+    else
+      stream.current?.scrollTo({
+        y: Math.min(held, Math.max(content - height, 0)),
+        animated: false,
+      });
+  }, []);
+  const hold = useCallback(
+    (y: number | null) => {
+      view.current.held = y;
+      if (y != null && toEnd) settle();
+    },
+    [settle, toEnd],
+  );
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={[styles.fill, { paddingTop: insets.top }]}>
-      <View style={styles.nav}>
+    <KeysClear style={[styles.fill, { paddingTop: insets.top }]}>
+      <View
+        style={styles.nav}
+        onLayout={(event) => setSides((now) => ({ ...now, nav: event.nativeEvent.layout.width }))}
+      >
+        <Text
+          size={17}
+          weight="bold"
+          numberOfLines={1}
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={styles.measure}
+          onLayout={(event) =>
+            setSides((now) => ({ ...now, title: event.nativeEvent.layout.width }))
+          }
+        >
+          {parts.title}
+        </Text>
         <View
           onLayout={(event) =>
             setSides((now) => ({ ...now, left: event.nativeEvent.layout.width }))
@@ -1087,7 +1128,7 @@ function PhoneConversation({
             styles.navTitle,
             {
               left: sides.left + tokens.spaceXl,
-              right: Math.max(sides.left, sides.right) + tokens.spaceXl,
+              right: (moved ? sides.left : Math.max(sides.left, sides.right)) + tokens.spaceXl,
             },
           ]}
           pointerEvents="none"
@@ -1097,21 +1138,19 @@ function PhoneConversation({
           </Text>
         </View>
         <View style={styles.grow} />
-        <View
-          onLayout={(event) =>
-            setSides((now) => ({ ...now, right: event.nativeEvent.layout.width }))
-          }
-        >
-          {parts.right}
-        </View>
+        {!moved && rightAt}
       </View>
-      {(parts.head != null || parts.line != null) && (
+      {(headFixed || (parts.head == null && parts.line != null) || moved) && (
         <View style={styles.phoneHead}>
-          {parts.head ?? (
-            <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
-              {parts.line}
-            </Text>
-          )}
+          {headFixed
+            ? parts.head
+            : parts.head == null &&
+              parts.line != null && (
+                <Text size={14} weight="semibold" style={[styles.secondary, styles.headLine]}>
+                  {parts.line}
+                </Text>
+              )}
+          {moved && rightAt}
         </View>
       )}
       {parts.under != null && <View style={styles.phoneUnder}>{parts.under}</View>}
@@ -1123,11 +1162,17 @@ function PhoneConversation({
           parts.align === 'end' ? styles.toFoot : styles.toTop,
         ]}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => {
-          if (parts.align === 'end') stream.current?.scrollToEnd({ animated: false });
+        onLayout={(event) => {
+          view.current.height = event.nativeEvent.layout.height;
+          if (toEnd) settle();
+        }}
+        onContentSizeChange={(_, height) => {
+          view.current.content = height;
+          if (toEnd) settle();
         }}
       >
-        {parts.stream}
+        <HoldTop.Provider value={hold}>{parts.stream}</HoldTop.Provider>
+        {parts.head != null && !headFixed && parts.head}
       </ScrollView>
       {parts.foot != null && (
         <View
@@ -1140,7 +1185,7 @@ function PhoneConversation({
           {parts.foot}
         </View>
       )}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 
@@ -1157,7 +1202,7 @@ function PaneConversation({
   const stream = useRef<ScrollViewInstance>(null);
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.fill}>
+    <KeysClear style={styles.fill}>
       {parts.bare !== true && (
         <View style={styles.paneHead}>
           {parts.head ?? (
@@ -1201,7 +1246,7 @@ function PaneConversation({
         {parts.stream}
       </ScrollView>
       {parts.foot != null && <View style={styles.paneFoot}>{parts.foot}</View>}
-    </KeyboardAvoidingView>
+    </KeysClear>
   );
 }
 
@@ -1269,6 +1314,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  measure: { position: 'absolute', top: 0, left: 0, opacity: 0 },
+  movedRight: { alignSelf: 'flex-end' },
   phoneHead: {
     paddingVertical: tokens.spaceLg,
     paddingHorizontal: tokens.spaceXxl,

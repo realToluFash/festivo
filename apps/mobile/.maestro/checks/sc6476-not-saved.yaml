@@ -1,0 +1,49 @@
+# sc-6476: Edit thank-you while the API hangs (Saving) and then is gone (Not saved). Needs ${METRO_URL}, ${EV_LINE}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_LINE}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'event.thankYou.edit'
+    timeout: 20000
+- tapOn:
+    id: 'event.thankYou.edit'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'event.thankYou.field'
+- inputText: ' See you soon.'
+- hideKeyboard
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'event.thankYou.save'
+- takeScreenshot: thankYouSaving
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- waitForAnimationToEnd:
+    timeout: 15000
+- takeScreenshot: thankYouNotSaved
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

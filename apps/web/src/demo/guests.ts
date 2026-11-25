@@ -987,19 +987,19 @@ export function viewOf(
   replyBy: string | null,
   contacts = true,
   dietaryOnly = false,
-  groupFilter: GroupFilter | null = null,
+  groupFilters: readonly GroupFilter[] = [],
 ): { view: ListView; shown: number } {
   const people = peopleOf(list);
   const searched = q.trim() !== '';
   const needed = dietaryOnly && contacts;
 
-  if (searched || needed || groupFilter != null || (choice !== 'all' && choice !== 'invited')) {
+  if (searched || needed || groupFilters.length > 0 || (choice !== 'all' && choice !== 'invited')) {
     const found = people.filter(
       (one) =>
         inChoice(one.reply, choice) &&
         matches(one, q, contacts) &&
         (!needed || dietary(needsOfPerson(one))) &&
-        inGroupFilter(one.guest, groupFilter),
+        inGroupFilter(one.guest, groupFilters),
     );
 
     return {
@@ -1645,6 +1645,8 @@ export interface GuestsStart {
   since: string | null;
   /** sc-4331: when the event's Guest replies item was last marked read, as the state opens: null is never, and by default it is the state's clock, so nothing has changed since. */
   looked?: string | null;
+  /** sc-4331: choosing Changed since you looked fails until Try again; `failed` opens with its line already showing. */
+  changeFails: 'onChoose' | 'failed' | null;
   /** sc-3777's Dietary notes chip. */
   dietary: boolean;
   menu: boolean;
@@ -1657,9 +1659,9 @@ export interface GuestsStart {
   askFailed: boolean;
   markEnds: 'saved' | 'fails' | 'refused';
   paused: boolean;
-  /** sc-3775: the event's groups, and the chip pressed. */
+  /** sc-3775: the event's groups; sc-90684: the chips pressed, any number. */
   groups: GuestGroup[];
-  groupFilter: GroupFilter | null;
+  groupFilters: readonly GroupFilter[];
   /** sc-3774: Remove's question open, and what the next Remove meets. */
   removing: Removing | null;
   /** sc-3774: a guest just removed, Undo open. */
@@ -1739,6 +1741,8 @@ export const GUESTS_STATES = [
   { key: 'changed', name: 'Changed since you looked, from the bell' },
   { key: 'changedMenu', name: 'Changed since you looked, the menu open on it' },
   { key: 'changedNone', name: 'Changed since you looked: nothing since' },
+  { key: 'changedFails', name: 'Changed since you looked: choosing it fails' },
+  { key: 'changedFailed', name: 'Changed since you looked didn’t load: Try again' },
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
@@ -1939,6 +1943,10 @@ export const GUESTS_STATES = [
   { key: 'groups', name: 'Each guest’s group on their row, a chip per group and No group' },
   { key: 'groupsChip', name: 'The Bride’s side chip pressed' },
   { key: 'groupsNoGroup', name: 'The No group chip pressed' },
+  {
+    key: 'groupsTwoChips',
+    name: 'Bride’s side and Work pressed, with Dietary notes: either group, with a need',
+  },
   { key: 'groupsGuest', name: 'Dr Emeka Nwosu: his group beside his name' },
   { key: 'groupsGuestNone', name: 'Bisi Adewale, in no group: nothing in its place' },
   { key: 'groupsViewerList', name: 'Can view: the groups seen on the rows and chips' },
@@ -2041,6 +2049,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     choice: 'all',
     q: '',
     since: null,
+    changeFails: null,
     dietary: false,
     menu: false,
     pane: { kind: 'none' },
@@ -2052,7 +2061,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     markEnds: 'saved',
     paused: false,
     groups: [],
-    groupFilter: null,
+    groupFilters: [],
     removing: null,
     undo: null,
   };
@@ -2168,6 +2177,10 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, choice: 'changed', menu: true, looked: start.clock.toISOString() };
     case 'changedRow':
       return { ...start, menu: true, looked: null };
+    case 'changedFails':
+      return { ...start, menu: true, looked: null, changeFails: 'onChoose' };
+    case 'changedFailed':
+      return { ...start, looked: null, changeFails: 'failed' };
     case 'changedNone':
       return {
         ...start,
@@ -2602,9 +2615,11 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groups':
       return grouped;
     case 'groupsChip':
-      return { ...grouped, groupFilter: 'g-bride' };
+      return { ...grouped, groupFilters: ['g-bride'] };
     case 'groupsNoGroup':
-      return { ...grouped, groupFilter: NO_GROUP };
+      return { ...grouped, groupFilters: [NO_GROUP] };
+    case 'groupsTwoChips':
+      return { ...grouped, dietary: true, groupFilters: ['g-bride', 'g-work'] };
     case 'groupsGuest':
       return { ...grouped, pane: guestPane('emeka') };
     case 'groupsGuestNone':
@@ -2614,7 +2629,7 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
     case 'groupsLong':
       return { ...grouped, groups: longNamedGroups() };
     case 'groupsLongChip':
-      return { ...grouped, groups: longNamedGroups(), groupFilter: 'g-school' };
+      return { ...grouped, groups: longNamedGroups(), groupFilters: ['g-school'] };
     case 'groupsLongGuest':
       return { ...grouped, list: withLongNamedGuest(grouped.list), groups: longNamedGroups() };
     case 'groupField':
@@ -2956,6 +2971,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'groups',
     'groupsChip',
     'groupsNoGroup',
+    'groupsTwoChips',
     'groupsGuest',
     'groupsGuestNone',
     'groupsViewerList',

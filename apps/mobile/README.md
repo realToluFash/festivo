@@ -30,6 +30,7 @@ The base URL comes from configuration, never a literal. It is read by
 | `EXPO_PUBLIC_API_URL`     | Where the API is **from the device**                        |
 | `EXPO_PUBLIC_MERCURE_URL` | Where the Mercure hub is **from the device**                |
 | `EXPO_PUBLIC_ENVIRONMENT` | A name, so a support conversation can establish which build |
+| `EXPO_PUBLIC_WEB_URL`     | The web's https origin, whose door code links the app opens |
 
 **A colour scheme.** `EXPO_PUBLIC_SCHEME` names one of B Confetti's eight
 schemes from `docs/design/tokens.mjs` (`violet`, `cobalt`, `garden`, `citrus`,

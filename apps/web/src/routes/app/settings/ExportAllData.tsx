@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { PageLoading, StatusLine } from '../../../components/DataControlParts.tsx';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   BackRow,
   Card,
@@ -47,7 +48,8 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
   const desk = useDeskTop();
   const { layers } = useDeskLayers();
   const [search, setSearch] = useSearchParams();
-  const { load, show, reload } = useOrganisationExport(organisation.id);
+  const title = useRef<HTMLHeadingElement>(null);
+  const { load, show, reload, refreshing } = useOrganisationExport(organisation.id, title);
   const [told, setTold] = useState<Told>(null);
   const [busy, setBusy] = useState(false);
   const said = useRef<HTMLDivElement>(null);
@@ -107,8 +109,9 @@ function ExportDesk({ organisation, email }: { organisation: Membership; email: 
   return (
     <DeskPage layers={layers}>
       <div className="desk-column">
+        {refreshing && <Refreshing />}
         <BackRow to={t('dataControl.title')} onBack={back} bell={desk.bell} />
-        <TitleRow title={t('exportAllData.title')} underBack />
+        <TitleRow title={t('exportAllData.title')} titleRef={title} underBack />
         {load.kind === 'loading' && <PageLoading words={t('exportAllData.loading')} />}
         {load.kind === 'failed' && (
           <div className="desk-failed" role="alert">

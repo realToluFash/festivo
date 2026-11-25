@@ -11,8 +11,8 @@ import {
   sideStart,
   sideTextSize,
   sidebarRow,
-  wrapOf,
 } from './sidebarSize.ts';
+import { wrapOf } from './textSize.ts';
 
 // React Native's fontScale on iOS at the fifth through the tenth and the twelfth steps of Larger Text.
 const FIFTH = 1.118;

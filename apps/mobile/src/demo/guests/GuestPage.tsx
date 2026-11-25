@@ -34,6 +34,7 @@ import {
   TODAY,
   languageName,
 } from './GuestsSample.ts';
+import { guestPageShows } from './GuestsModel.ts';
 import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { MessageGlyph } from '../messages/MessageMarks.tsx';
 import { type OptOutRow, optOutRowsOf } from './OptOuts.ts';
@@ -142,8 +143,9 @@ export function GuestPage({
   refFor: (key: string) => Ref<ViewInstance>;
   actions: GuestActions;
 }) {
-  if (phase === 'loading' || g == null)
-    return phase === 'notFound' ? <NotFound onBack={actions.onBack} /> : <GuestLoading />;
+  const shows = guestPageShows(phase, g != null);
+  if (shows === 'notFound') return <NotFound onBack={actions.onBack} />;
+  if (shows === 'loading' || g == null) return <GuestLoading />;
 
   const owner = role === 'owner';
   const invites = eventAllows(event.phase, 'invite');

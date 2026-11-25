@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\SignInRules;
 
 use App\Domain\Organisation\SignInRules\Model\InactivityLimit;
 use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\TwoFactor\SecondFactors;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\ProviderIdentity;
@@ -15,7 +16,6 @@ use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
-use App\Repository\TwoFactorFactorRepository;
 use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -35,7 +35,7 @@ final readonly class SignInRules
     public function __construct(
         private MembershipRepository $membershipRepository,
         private ProviderIdentityRepository $providerIdentityRepository,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactors $secondFactors,
         private UserMailer $userMailer,
         private ClockInterface $clock,
     ) {
@@ -191,7 +191,7 @@ final readonly class SignInRules
 
     public function hasTwoFactor(User $user): bool
     {
-        return null !== $this->twoFactorFactorRepository->findActiveFor($user);
+        return $this->secondFactors->isOn($user);
     }
 
     /** @return list<Organisation> */

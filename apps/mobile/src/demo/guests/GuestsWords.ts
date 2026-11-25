@@ -10,6 +10,7 @@ export const W = {
   changedSince: 'Changed since you looked',
   nothingChanged: 'Nothing has changed since you last looked.',
   showAllGuests: 'Show all guests',
+  changedFailed: 'We could not load what changed.',
   updatedNeeds: 'Updated dietary needs',
   linkWrongPerson: 'Link may have reached the wrong person',
   newQuestion: 'New question',
@@ -294,7 +295,10 @@ export const say = {
         ? `${name} has a seat at ${table}. Removing this companion frees the seat.`
         : `${name} has a meal chosen. Removing this companion drops the meal.`,
   sameName: (name: string) => `${name} is already on the list`,
-  discardLine: (name: string) => `Your changes to ${name} have not been saved.`,
+  discardLine: (name: string) =>
+    name.trim() === ''
+      ? 'What you changed here is not saved.'
+      : `Your changes to ${name.trim()} have not been saved.`,
   forName: (name: string) => `For ${name}. It counts as their reply, marked as recorded by you.`,
   recordFoot: (name: string) =>
     `It counts in the numbers straight away and goes in the activity log. ${name} can still change it from their link.`,

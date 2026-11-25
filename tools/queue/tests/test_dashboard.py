@@ -14,7 +14,7 @@ import urllib.request
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import dashboard, remote, runlog, runner, sessions, store
+from soirely_queue import dashboard, logins, remote, runlog, runner, sessions, settings, store
 
 from tests.test_runner import FakePlatform, config, work
 
@@ -32,9 +32,16 @@ class Snapshot(unittest.TestCase):
         self.platform = FakePlatform()
         self.platform.timer_active = lambda: True
         self.settings = config(self.root, roles={"ops": {}, "dev2": {"wakeEvery": "1m"}})
+        self.login = {"email": "ops@example.com", "logged_in": True,
+                      "expires_at": NOW + 20 * 86400, "plan": "max_5x"}
+        logins.forget()
+        self.addCleanup(logins.forget)
         for patch in (mock.patch("soirely_queue.machine.free_gb", return_value=40),
                       mock.patch("soirely_queue.permissions.pending", return_value=[]),
-                      mock.patch("soirely_queue.dashboard.peer_views", return_value={})):
+                      mock.patch("soirely_queue.dashboard.peer_views", return_value={}),
+                      mock.patch("soirely_queue.logins.status",
+                                 side_effect=lambda folder, run=None: dict(self.login)),
+                      mock.patch("soirely_queue.logins.found", return_value=[])):
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -44,6 +51,17 @@ class Snapshot(unittest.TestCase):
     def snap(self):
         return dashboard.snapshot(self.db, self.platform, NOW, self.home,
                                   load=lambda: self.settings)
+
+    def test_the_header_offers_an_undo_until_the_file_is_changed_by_hand(self):
+        kept = self.root / "agents.json"
+        kept.write_text("{}\n")
+        with mock.patch("soirely_queue.machine.path", return_value=kept):
+            self.assertIsNone(self.snap()["settings_undo"])
+            settings.write(kept, '{"defaults": {}}\n', keep="{}\n")
+            self.assertEqual(self.snap()["settings_undo"],
+                             settings.revision('{"defaults": {}}\n'))
+            kept.write_text('{"by": "hand"}\n')
+            self.assertIsNone(self.snap()["settings_undo"])
 
     def test_each_role_shows_its_state_last_run_and_next_items(self):
         store.record(self.db, [work("ops"), work("dev2")], NOW)
@@ -175,6 +193,7 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(view["machines"],
                          [{"name": "tolu-mac", "seen": 40, "started": ["dev2", "ops"]}])
         self.assertIn("paused everywhere by tolu-mac: sq resume --everywhere", view["warnings"])
+        self.assertEqual(view["paused_everywhere"], {"machine": "tolu-mac"})
         self.assertIn("dev2 is listed here and on tolu-mac, and neither marks it standby; only "
                       "one runs it", view["warnings"])
 
@@ -345,6 +364,53 @@ class Snapshot(unittest.TestCase):
         self.assertIn(f"peers are listed but {remote.TOKEN} is not set, so they cannot be read",
                       view["warnings"])
 
+    def test_each_claude_login_is_listed_and_one_running_out_is_a_warning(self):
+        view = self.snap()
+        self.assertEqual([(row["folder"], row["roles"], row["email"]) for row in view["logins"]],
+                         [(str(self.root / "claude"), ["ops", "dev2"], "ops@example.com")])
+        self.assertFalse([w for w in view["warnings"] if "Claude login" in w])
+        logins.forget()
+        self.login["expires_at"] = NOW + 3600
+        self.assertIn("the Claude login of ops@example.com (ops, dev2) runs out in 1 h: log in "
+                      "again from Claude logins on sq web", self.snap()["warnings"])
+
+    def test_the_peers_logins_are_listed_beside_this_machines(self):
+        view = dashboard.settle({"logins": [{"folder": "~/.a"}], "roles": []},
+                                {"tolu-linux": {"logins": [{"folder": "~/.b"}]}})
+        self.assertEqual(view["peer_logins"], {"tolu-linux": [{"folder": "~/.b"}]})
+        self.assertNotIn("peer_logins", dashboard.settle({"roles": []}, {}))
+
+    def test_status_lists_every_machines_logins_soonest_first(self):
+        from soirely_queue import cli
+        view = dict(self.snap(), peer_logins={"tolu-linux": [
+            {"folder": "~/.claude-b", "roles": ["dev"], "email": "dev@example.com",
+             "logged_in": True, "expires_at": NOW + 7200, "usage": {
+                 "read_at": NOW - 120, "limits": [
+                     {"name": "Week", "percent": 96, "resets_at": NOW + 3600},
+                     {"name": "Week · Fable", "percent": 3, "resets_at": None},
+                     {"name": "Session", "percent": 100, "resets_at": NOW - 1}]}},
+            {"folder": "~/.claude-c", "roles": ["lead"], "email": None, "logged_in": False},
+            {"folder": "~/.claude-d", "roles": ["l10n"], "token": "T",
+             "usage_error": "Not logged in"},
+            {"folder": "~/.claude", "roles": [], "email": "me@example.com", "logged_in": True,
+             "expires_at": NOW + 86400 * 9}]})
+        out = io.StringIO()
+        with mock.patch.object(cli.dashboard, "snapshot", return_value=view), \
+                mock.patch.object(cli.dashboard, "settle", side_effect=lambda v, o: v), \
+                mock.patch.object(cli, "home", return_value=self.home), \
+                mock.patch.object(cli.shutil, "get_terminal_size",
+                                  return_value=cli.os.terminal_size((1000, 50))), \
+                redirect_stdout(out):
+            cli.status(self.db, self.platform, NOW)
+        lines = out.getvalue().splitlines()
+        start = lines.index("claude logins")
+        self.assertEqual(lines[start + 1:start + 6], [
+            "  tolu-linux  logged out  ~/.claude-c  lead",
+            "  tolu-linux  2 h left  dev@example.com  dev  week 96%, week · fable 3%, read 2m ago",
+            "  here  20 days left  ops@example.com  ops, dev2",
+            "  tolu-linux  setup-token  ~/.claude-d  l10n  usage unread: Not logged in",
+            "  tolu-linux  9 days left  me@example.com  no role"])
+
     def test_a_failed_run_is_marked(self):
         runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": "1",
                                          "stopped": "exit-code", "report": "ended"})
@@ -377,7 +443,7 @@ class Serve(unittest.TestCase):
         url = said[0].split()[2]
         self.assertTrue(url.startswith("http://127.0.0.1:"))
         with urllib.request.urlopen(url + "status.json") as answer:
-            self.assertEqual(json.load(answer), {"machine": "here"})
+            self.assertEqual(json.load(answer), {"machine": "here", "controls": False})
         with urllib.request.urlopen(url) as answer:
             self.assertIn("<title>Soirely agents</title>", answer.read().decode())
         self.assertEqual(len(reads), 1)
@@ -396,7 +462,7 @@ class Serve(unittest.TestCase):
         url = said[0].split()[2]
         for path in ("status.json", "status.json?own=1", "status.json"):
             with urllib.request.urlopen(url + path) as answer:
-                self.assertEqual(json.load(answer), {"machine": "here"})
+                self.assertEqual(json.load(answer)["machine"], "here")
         self.assertEqual(len(reads), 1)
         with mock.patch.object(dashboard, "SHARED_SECONDS", 0):
             urllib.request.urlopen(url + "status.json").close()
@@ -493,14 +559,14 @@ class Serve(unittest.TestCase):
 class ServeElsewhere(unittest.TestCase):
     """As another machine on the network sees it: every client is treated as remote."""
 
-    def start(self, **kwargs):
+    def start(self, near=False, **kwargs):
         said, ready = [], threading.Event()
 
         def say(line):
             said.append(line)
             ready.set()
 
-        patch = mock.patch.object(remote, "loopback", return_value=False)
+        patch = mock.patch.object(remote, "loopback", return_value=near)
         patch.start()
         self.addCleanup(patch.stop)
         threading.Thread(target=dashboard.serve, daemon=True, args=(lambda now: {"m": 1}, 0),
@@ -516,6 +582,131 @@ class ServeElsewhere(unittest.TestCase):
         connection.request("GET", path, headers=headers or {})
         return connection.getresponse()
 
+    def post_login(self, said, path, body, headers):
+        port = int(said[0].split()[2].rsplit(":", 1)[1].strip("/"))
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        self.addCleanup(connection.close)
+        connection.request("POST", path, body=body, headers=headers)
+        answer = connection.getresponse()
+        return answer.status, answer.read()
+
+    def test_a_login_step_is_taken_only_as_json_from_this_pages_own_address(self):
+        desk = FakeDesk()
+        said = self.start(desk=desk, opener=lambda *a: False)
+        bearer = {"Authorization": f"Bearer {SECRET}"}
+        body = json.dumps({"folder": "~/.claude-qa"})
+        self.assertEqual(self.post_login(said, "/login/start", body,
+                                         {"Content-Type": "application/json"})[0], 401)
+        self.assertEqual(self.post_login(said, "/login/start", body,
+                                         dict(bearer, **{"Content-Type": "text/plain"}))[0], 415)
+        json_bearer = dict(bearer, **{"Content-Type": "application/json"})
+        self.assertEqual(self.post_login(said, "/login/start", body, dict(
+            json_bearer, Origin="https://elsewhere.example"))[0], 403)
+        self.assertEqual(self.post_login(said, "/login/start", "[1]", json_bearer)[0], 400)
+        status, answer = self.post_login(said, "/login/start", body, json_bearer)
+        self.assertEqual((status, json.loads(answer)["id"]), (200, "L1"))
+        self.assertEqual(desk.steps[0], ("start", pathlib.Path("/home/q/.claude-qa")))
+        answer = self.get(said, "/login/state?id=L1", bearer)
+        self.assertEqual((answer.status, json.loads(answer.read())["id"]), (200, "L1"))
+        self.assertEqual(self.get(said, "/login/state?id=gone", bearer).status, 404)
+
+    def test_a_login_step_from_this_machine_must_name_loopback_as_its_host(self):
+        desk = FakeDesk()
+        said = self.start(near=True, desk=desk, opener=lambda *a: False)
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        body = json.dumps({"folder": "~/.claude-qa"})
+        rebound = {"Content-Type": "application/json", "Host": f"evil.example:{port}",
+                   "Origin": f"http://evil.example:{port}"}
+        self.assertEqual(self.post_login(said, "/login/start", body, rebound)[0], 403)
+        self.assertEqual(desk.steps, [])
+        for name in ("localhost", "127.0.0.1", "[::1]"):
+            here = {"Content-Type": "application/json", "Host": f"{name}:{port}",
+                    "Origin": f"http://{name}:{port}"}
+            self.assertEqual(self.post_login(said, "/login/start", body, here)[0], 200)
+
+    def control(self, said, body, headers):
+        status, answer = self.post_login(said, "/control", json.dumps(body), headers)
+        return status, json.loads(answer) if answer.startswith(b"{") else None
+
+    def test_a_control_asks_for_the_token_on_this_machine_too(self):
+        done = []
+        said = self.start(near=True, control=lambda *asked: done.append(asked) or (
+            200, {"said": "paused"}))
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        here = {"Content-Type": "application/json", "Host": f"127.0.0.1:{port}",
+                "Origin": f"http://127.0.0.1:{port}"}
+        self.assertEqual(self.control(said, {"action": "pause"}, here)[0], 401)
+        self.assertEqual(self.control(said, {"action": "pause"}, dict(
+            here, Cookie="sq_token=wrong"))[0], 401)
+        self.assertEqual(done, [])
+        answer = self.get(said, f"/?token={SECRET}")
+        cookie = answer.getheader("Set-Cookie").split(";")[0]
+        self.assertEqual(self.control(said, {"action": "pause"}, dict(here, Cookie=cookie)),
+                         (200, {"said": "paused"}))
+        self.assertEqual(done, [("/control", {"action": "pause"}, "127.0.0.1")])
+        rebound = dict(here, Cookie=cookie, Host=f"evil.example:{port}",
+                       Origin=f"http://evil.example:{port}")
+        self.assertEqual(self.control(said, {"action": "pause"}, rebound)[0], 403)
+
+    def test_a_control_is_taken_only_as_json_from_this_pages_own_address(self):
+        done = []
+        said = self.start(control=lambda *asked: done.append(asked) or (200, {"said": "ok"}))
+        bearer = {"Authorization": f"Bearer {SECRET}", "Content-Type": "application/json"}
+        body = {"action": "stop", "role": "ops"}
+        self.assertEqual(self.control(said, body, dict(bearer, **{
+            "Content-Type": "text/plain"}))[0], 415)
+        self.assertEqual(self.control(said, body, dict(
+            bearer, Origin="https://elsewhere.example"))[0], 403)
+        self.assertEqual(self.post_login(said, "/control", "[1]", bearer)[0], 400)
+        self.assertEqual(done, [])
+        self.assertEqual(self.control(said, body, bearer)[0], 200)
+        self.assertEqual(done, [("/control", {"action": "stop", "role": "ops"}, "127.0.0.1")])
+
+    def test_the_settings_are_read_like_the_status_and_changed_only_with_the_token(self):
+        done, fetched = [], []
+
+        def fetch(base, path, secret):
+            fetched.append(path)
+            return 200, b'{"revision": "peer"}'
+
+        said = self.start(near=True, settings=lambda: (200, {"revision": "here"}), fetch=fetch,
+                          peers=lambda: {"tolu-mac": "http://10.0.0.6:8765"},
+                          control=lambda *asked: done.append(asked) or (200, {"said": "ok"}))
+        self.assertEqual(json.loads(self.get(said, "/settings.json").read()),
+                         {"revision": "here"})
+        self.assertEqual(self.get(said, "/m/tolu-mac/settings.json").status, 200)
+        self.assertIn("settings.json", fetched)
+        port = said[0].split()[2].rsplit(":", 1)[1].strip("/")
+        here = {"Content-Type": "application/json", "Host": f"127.0.0.1:{port}"}
+        save = {"changes": {"dev2": {"effort": "high"}}, "revision": "here"}
+        for path in ("/settings", "/settings/undo"):
+            self.assertEqual(self.post_login(said, path, json.dumps(save), here)[0], 401)
+        self.assertEqual(done, [])
+        cookie = {"Cookie": f"sq_token={SECRET}"}
+        self.assertEqual(self.post_login(said, "/settings", json.dumps(save),
+                                         dict(here, **cookie))[0], 200)
+        self.assertEqual(done, [("/settings", save, "127.0.0.1")])
+
+    def test_reading_an_old_peers_settings_names_the_peer_and_why(self):
+        said = self.start(near=True, peers=lambda: {"tolu-mac": "http://10.0.0.6:8765"},
+                          fetch=lambda base, path, secret: (404, b"<html>Not Found</html>"))
+        answer = self.get(said, "/m/tolu-mac/settings.json")
+        self.assertEqual(answer.status, 404)
+        self.assertEqual(json.loads(answer.read())["error"],
+                         "tolu-mac's sq web has no settings yet; it gets them when its sq "
+                         "updates from main")
+
+    def test_the_page_says_whether_it_holds_the_token_its_controls_ask_for(self):
+        said = self.start(near=True)
+        self.assertFalse(json.loads(self.get(said, "/status.json").read())["controls"])
+        answer = self.get(said, "/status.json", {"Cookie": f"sq_token={SECRET}"})
+        self.assertTrue(json.loads(answer.read())["controls"])
+
+    def test_the_page_keeps_the_accounts_usage_read_once_it_listens(self):
+        usage = mock.Mock()
+        self.start(usage=usage)
+        usage.start.assert_called_once_with()
+
     def test_without_a_token_it_will_not_listen_beyond_this_machine(self):
         said = []
         dashboard.serve(lambda now: {}, 0, open_page=False, say=said.append, host="0.0.0.0",
@@ -526,7 +717,7 @@ class ServeElsewhere(unittest.TestCase):
         said = self.start()
         self.assertEqual(self.get(said, "/status.json").status, 401)
         answer = self.get(said, "/status.json", {"Authorization": f"Bearer {SECRET}"})
-        self.assertEqual(json.loads(answer.read()), {"m": 1})
+        self.assertEqual(json.loads(answer.read()), {"m": 1, "controls": True})
 
     def test_the_token_in_the_address_becomes_a_cookie_and_leaves_the_address(self):
         said = self.start()
@@ -624,3 +815,204 @@ class ServeElsewhere(unittest.TestCase):
         answering.set()
         slow.join(5)
         self.assertEqual(self.get(said, "/m/tolu-linux/../status.json", bearer).status, 404)
+
+
+DIRECT = "https://claude.com/x?redirect_uri=http%3A%2F%2Flocalhost%3A5%2Fcallback"
+
+
+class Controls(unittest.TestCase):
+    def setUp(self):
+        self.here, self.posted, self.answer = [], [], (200, b'{"said": "stopped ops"}')
+
+        def post(base, path, secret, body, timeout):
+            self.posted.append((base, path, secret, json.loads(body), timeout))
+            return self.answer
+
+        self.door = dashboard.ControlDoor(
+            lambda *asked: self.here.append(asked) or (200, {"said": "here"}),
+            lambda: {"tolu-mac": "http://10.0.0.6:8765"}, SECRET, post)
+
+    def test_a_control_without_a_machine_is_done_here(self):
+        self.assertEqual(self.door.act("/control", {"action": "pause"}, "10.0.0.9"),
+                         (200, {"said": "here"}))
+        self.assertEqual(self.here, [("/control", {"action": "pause"}, "10.0.0.9")])
+        self.assertEqual(self.posted, [])
+
+    def test_a_save_or_an_undo_for_a_peer_passes_on_only_what_it_takes(self):
+        self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2", "revision": "r1",
+                                    "changes": {"dev2": {"effort": "high"}}, "extra": 1}, "x")
+        self.door.act("/settings/undo", {"machine": "tolu-mac", "revision": "r2"}, "x")
+        self.assertEqual([(path, body) for _, path, _, body, _ in self.posted], [
+            ("settings", {"changes": {"dev2": {"effort": "high"}}, "revision": "r1"}),
+            ("settings/undo", {"revision": "r2"})])
+        self.answer = (404, b"<html>Not Found</html>")
+        status, said = self.door.act("/settings", {"machine": "tolu-mac", "where": "dev2"}, "x")
+        self.assertEqual(status, 404)
+        self.assertIn("tolu-mac's sq web has no settings yet", said["error"])
+
+    def test_a_path_that_is_not_a_control_is_not_found(self):
+        self.assertEqual(self.door.act("/settings/redo", {}, "x")[0], 404)
+        self.assertEqual(self.posted + self.here, [])
+
+    def test_a_peers_control_is_asked_of_its_own_page_with_the_token(self):
+        answer = self.door.act("/control", {"machine": "tolu-mac", "action": "stop",
+                                            "role": "ops"}, "x")
+        self.assertEqual(answer, (200, {"said": "stopped ops"}))
+        self.assertEqual(self.posted, [("http://10.0.0.6:8765", "control", SECRET,
+                                        {"action": "stop", "role": "ops"},
+                                        dashboard.CONTROL_SECONDS)])
+        self.assertEqual(self.here, [])
+
+    def test_a_peers_refusal_is_passed_on_and_a_peer_without_controls_is_named(self):
+        self.answer = (409, b'{"error": "error: qa not in agents.json"}')
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "start",
+                                        "role": "qa"}, "x"),
+                         (409, {"error": "tolu-mac: error: qa not in agents.json"}))
+        self.answer = (404, b"<html>Not Found</html>")
+        status, said = self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x")
+        self.assertEqual(status, 404)
+        self.assertIn("tolu-mac's sq web has no controls yet", said["error"])
+        self.answer = (502, b'{"error": "it did not answer"}')
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x"),
+                         (502, {"error": "tolu-mac: it did not answer"}))
+        self.answer = (401, b"<html>Unauthorized</html>")
+        self.assertEqual(self.door.act("/control", {"machine": "tolu-mac", "action": "pause"}, "x"),
+                         (401, {"error": "tolu-mac: it answered 401"}))
+
+    def test_an_unknown_machine_is_not_found(self):
+        self.assertEqual(self.door.act("/control", {"machine": "nowhere", "action": "pause"},
+                                       "x")[0], 404)
+        self.assertEqual(self.posted + self.here, [])
+
+
+class FakeLogin:
+    def __init__(self, login_id="L1", direct=DIRECT):
+        self.id = login_id
+        self.said = {"id": login_id, "folder": "~/.claude-qa", "email": "qa@example.com",
+                     "link": "https://claude.ai/oauth/authorize?z-1", "direct": direct,
+                     "said": "", "ended": None}
+
+    def answer(self):
+        return dict(self.said)
+
+
+class FakeDesk:
+    def __init__(self):
+        self.logins, self.steps = {"L1": FakeLogin()}, []
+
+    def folder(self, asked):
+        return pathlib.Path("/home/q/.claude-qa") if asked == "~/.claude-qa" else None
+
+    def start(self, folder):
+        self.steps.append(("start", folder))
+        return self.logins["L1"]
+
+    def get(self, login_id):
+        return self.logins.get(login_id)
+
+    def check(self, login):
+        self.steps.append(("check", login.id))
+
+    def paste(self, login, code):
+        self.steps.append(("paste", code))
+
+    def cancel(self, login):
+        self.steps.append(("cancel", login.id))
+        login.said["ended"] = {"state": "cancelled"}
+
+    def callback(self, login, query):
+        self.steps.append(("callback", query))
+        return 302, "https://done", b"ok"
+
+
+class Door(unittest.TestCase):
+    """`LoginDoor`: a login here, or on a peer, and where its sign-in is opened."""
+
+    def setUp(self):
+        self.desk, self.opened, self.posted, self.bridges = FakeDesk(), [], [], []
+        self.opens, self.peer_answer = True, (200, json.dumps(FakeLogin("P1").said).encode())
+
+    def door(self):
+        def post(base, path, secret, body, timeout=5):
+            self.posted.append((base, path, json.loads(body), timeout))
+            return self.peer_answer
+
+        def bridge(link, forward):
+            made = mock.Mock(link=link, forward=forward)
+            self.bridges.append(made)
+            return made if self.bridge_works else None
+
+        self.bridge_works = getattr(self, "bridge_works", True)
+        return dashboard.LoginDoor(
+            self.desk, lambda: {"machine": "here"}, lambda: {"tolu-linux": "http://10.0.0.5:8765"},
+            SECRET, fetch=lambda base, path, secret: (200, b'{"id": "P1", "ended": null}'),
+            post=post, opener=lambda email, url, config: self.opened.append((email, url))
+            or self.opens, bridge=bridge)
+
+    def test_a_login_here_opens_claudes_own_link_for_a_page_on_this_machine(self):
+        status, said = self.door().act("/login/start", {"folder": "~/.claude-qa"}, True)
+        self.assertEqual((status, said["opened"]), (200, "direct"))
+        self.assertEqual(self.opened, [("qa@example.com", FakeLogin().said["direct"])])
+
+    def test_a_page_elsewhere_or_a_peer_asking_opens_nothing_here(self):
+        for asked, here in (({"folder": "~/.claude-qa"}, False),
+                            ({"folder": "~/.claude-qa", "for_peer": True}, True)):
+            status, said = self.door().act("/login/start", asked, here)
+            self.assertEqual((status, "opened" in said), (200, False))
+        self.assertEqual(self.opened, [])
+
+    def test_a_folder_no_role_here_runs_under_is_refused(self):
+        self.assertEqual(self.door().act("/login/start", {"folder": "/etc"}, True)[0], 404)
+
+    def test_a_peers_login_is_bridged_here_and_opened_in_this_machines_chrome(self):
+        door = self.door()
+        status, said = door.act("/login/start",
+                                {"machine": "tolu-linux", "folder": "~/.claude-qa"}, True)
+        self.assertEqual((status, said["opened"]), (200, "direct"))
+        self.assertEqual(self.posted, [("http://10.0.0.5:8765", "login/start",
+                                        {"folder": "~/.claude-qa", "for_peer": True},
+                                        logins.LINK_SECONDS + 10)])
+        self.assertEqual(self.bridges[0].link, FakeLogin().said["direct"])
+        self.peer_answer = (200, b'{"status": 302, "location": "https://done", "body": "ok"}')
+        self.assertEqual(self.bridges[0].forward("code=c&state=s"), (302, "https://done", b"ok"))
+        self.assertEqual(self.posted[-1][1:3], ("login/callback", {"id": "P1",
+                                                                   "query": "code=c&state=s"}))
+        self.peer_answer = (502, b'{"error": "it did not answer (timed out)"}')
+        self.assertEqual(self.bridges[0].forward("code=c")[0], 502)
+        door.act("/login/cancel", {"machine": "tolu-linux", "id": "P1"}, True)
+        self.bridges[0].close.assert_called_once()
+
+    def test_without_a_bridge_the_peers_login_opens_the_link_that_shows_a_code(self):
+        self.bridge_works = False
+        said = self.door().act("/login/start", {"machine": "tolu-linux",
+                                                "folder": "~/.claude-qa"}, True)[1]
+        self.assertEqual((said["opened"], self.opened[0][1]),
+                         ("link", "https://claude.ai/oauth/authorize?z-1"))
+
+    def test_a_bridge_is_closed_when_chrome_could_not_be_opened(self):
+        self.opens = False
+        said = self.door().act("/login/start", {"machine": "tolu-linux",
+                                                "folder": "~/.claude-qa"}, True)[1]
+        self.assertIsNone(said["opened"])
+        self.bridges[0].close.assert_called_once()
+
+    def test_a_code_a_cancel_and_a_callback_reach_the_login_they_name(self):
+        door = self.door()
+        self.assertEqual(door.act("/login/code", {"id": "L1", "code": "a#b"}, True)[0], 200)
+        door.act("/login/cancel", {"id": "L1"}, True)
+        status, said = door.act("/login/callback", {"id": "L1", "query": "code=c"}, False)
+        self.assertEqual(said, {"status": 302, "location": "https://done", "body": "ok"})
+        self.assertEqual([step for step in self.desk.steps if step[0] != "check"],
+                         [("paste", "a#b"), ("cancel", "L1"), ("callback", "code=c")])
+        self.assertEqual(door.act("/login/code", {"id": "other"}, True)[0], 404)
+        self.assertEqual(door.act("/login/other", {"id": "L1"}, True)[0], 404)
+
+    def test_a_peers_code_and_state_are_asked_of_it(self):
+        door = self.door()
+        door.act("/login/code", {"machine": "tolu-linux", "id": "P1", "code": "a#b"}, True)
+        self.assertEqual(self.posted[-1][1:3], ("login/code", {"id": "P1", "code": "a#b"}))
+        self.assertEqual(door.state("tolu-linux", "P1"), (200, {"id": "P1", "ended": None}))
+        self.assertEqual(door.state("nowhere", "P1")[0], 404)
+        self.assertEqual(door.state("", "L1")[1]["id"], "L1")
+        self.assertEqual(door.state("", "gone")[0], 404)
+

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,6 +12,7 @@ const run = (env) => {
       PATH: process.env.PATH,
       SOIRELY_WEB_ROOT: root,
       SOIRELY_HEADERS_FILE: join(root, 'headers.conf'),
+      SOIRELY_API_CONF_FILE: join(root, 'api.conf'),
       SOIRELY_API_URL: 'https://api.example.test',
       ...env,
     },
@@ -23,6 +24,26 @@ const run = (env) => {
 const json = (root, file) => JSON.parse(readFileSync(join(root, file), 'utf8'));
 
 describe('the web entrypoint', () => {
+  it('names the API inside the network for a guest link card, resolved when asked', () => {
+    expect(readFileSync(join(run({}), 'api.conf'), 'utf8')).toBe(
+      'resolver 127.0.0.11 valid=30s ipv6=off;\nset $soirely_api http://api;\n',
+    );
+    expect(
+      readFileSync(join(run({ SOIRELY_API_INTERNAL_URL: 'http://api:8080' }), 'api.conf'), 'utf8'),
+    ).toContain('set $soirely_api http://api:8080;');
+    expect(() => run({ SOIRELY_API_INTERNAL_URL: 'http://api; return 200' })).toThrow();
+  });
+
+  it("serves today's title, not the API's error body, when a guest link card fails", () => {
+    const conf = readFileSync('apps/web/nginx.conf', 'utf8');
+    const card = conf.slice(conf.indexOf('location = /_link-card'));
+
+    expect(card).toMatch(
+      /proxy_intercept_errors on;\s+error_page 400 403 404 429 500 502 503 504 = @no_link_card;/,
+    );
+    expect(conf).toMatch(/location @no_link_card \{\s+return 204;\s+\}/);
+  });
+
   it('writes a quote or backslash in a value into config.json as it was given', () => {
     const root = run({ SOIRELY_SCHEME: 'a"b\\c', SOIRELY_GOOGLE_CLIENT_ID: 'x"y' });
 
@@ -47,6 +68,44 @@ describe('the web entrypoint', () => {
       'CC"\\',
       'DD',
     ]);
+  });
+
+  it('lets the app use the passkeys and the links of this host on Android (sc-87083)', () => {
+    const [statement] = json(
+      run({ SOIRELY_ANDROID_CERT_SHA256: 'AA:BB' }),
+      '.well-known/assetlinks.json',
+    );
+
+    expect(statement.relation).toEqual([
+      'delegate_permission/common.handle_all_urls',
+      'delegate_permission/common.get_login_creds',
+    ]);
+    expect(statement.target.package_name).toBe('com.soirely.app');
+  });
+
+  it('names the iOS app for passkeys and door code links in apple-app-site-association (sc-87083, sc-72)', () => {
+    const root = run({ SOIRELY_APPLE_APP_ID: 'TEAM123.com.soirely.app' });
+
+    expect(json(root, '.well-known/apple-app-site-association')).toEqual({
+      webcredentials: { apps: ['TEAM123.com.soirely.app'] },
+      applinks: {
+        details: [{ appIDs: ['TEAM123.com.soirely.app'], components: [{ '/': '/d/*' }] }],
+      },
+    });
+  });
+
+  it('writes neither passkey file when nothing names the app', () => {
+    const root = run({});
+
+    expect(existsSync(join(root, '.well-known/assetlinks.json'))).toBe(false);
+    expect(existsSync(join(root, '.well-known/apple-app-site-association'))).toBe(false);
+  });
+
+  it('lets styles and fonts come from its own origin alone (sc-80882)', () => {
+    const policy = readFileSync(join(run({}), 'headers.conf'), 'utf8');
+
+    expect(policy).toMatch(/style-src 'self';/);
+    expect(policy).toMatch(/font-src 'self';/);
   });
 
   it('refuses to start on a control character, naming the variable', () => {

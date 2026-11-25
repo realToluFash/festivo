@@ -7,6 +7,7 @@ type Family = { prefix: string; sheets: readonly string[] | 'all'; part: string 
 
 const NARROW = 'narrowDesk.css';
 const WIDE = 'wideDesk.css';
+const REFLOW = 'deskReflow.css';
 
 const SHARED: readonly Family[] = [
   { prefix: 'is', sheets: 'all', part: 'a state on any part (is-open, is-side)' },
@@ -28,6 +29,11 @@ const SHARED: readonly Family[] = [
     part: 'the web Button as the demo sizes it',
   },
   {
+    prefix: 'dp',
+    sheets: [REFLOW, 'phone.css'],
+    part: 'the phone-fit desk (Events, Calendar, Vendors), which the one-column desk leaves to its own bar',
+  },
+  {
     prefix: 'dc-switch',
     sheets: ['dataControl.css', 'schedule.css'],
     part: 'the switch of Data control (DataControlParts), which the Schedule uses',
@@ -40,6 +46,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'desk',
     sheets: [
+      REFLOW,
       'arrivalNote.css',
       'budget.css',
       'budgetHome.css',
@@ -62,6 +69,7 @@ const SHARED: readonly Family[] = [
       'menuCourses.css',
       'menuLibrary.css',
       'messages.css',
+      'messagesChoose.css',
       'messagesStop.css',
       NARROW,
       'overviewReflow.css',
@@ -163,8 +171,10 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mg',
     sheets: [
+      REFLOW,
       'makeLive.css',
       'messages.css',
+      'messagesChoose.css',
       'messagesInvite.css',
       'messagesNotice.css',
       'messagesPreview.css',
@@ -184,6 +194,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'mn',
     sheets: [
+      REFLOW,
       'dishChoices.css',
       'dishVariants.css',
       'menu.css',
@@ -209,7 +220,7 @@ const SHARED: readonly Family[] = [
   },
   {
     prefix: 'ro',
-    sheets: [NARROW, 'schedule.css', WIDE],
+    sheets: [REFLOW, NARROW, 'schedule.css', WIDE],
     part: 'the Schedule (Schedule) at both desk widths',
   },
   {
@@ -223,6 +234,11 @@ const SHARED: readonly Family[] = [
     part: 'Stations (Stations), whose cards the Roster and Schedule reuse',
   },
   {
+    prefix: 'st',
+    sheets: [REFLOW, 'seating.css'],
+    part: 'Seating (SeatingPage) at 400% zoom, its room inset by the phone gutter',
+  },
+  {
     prefix: 'sw',
     sheets: ['phone.css', 'switcher.css'],
     part: 'the organisation switcher (OrgSwitcher) on a phone',
@@ -230,6 +246,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'today',
     sheets: [
+      REFLOW,
       'budgetHome.css',
       'events.css',
       'guestsMany.css',
@@ -237,7 +254,6 @@ const SHARED: readonly Family[] = [
       'menuLibrary.css',
       NARROW,
       'overviewReflow.css',
-      'people.css',
       'phone.css',
       'roster.css',
       'schedule.css',

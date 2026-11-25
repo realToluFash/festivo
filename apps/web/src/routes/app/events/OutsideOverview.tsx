@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Chevron, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { meshFor } from '../../../mesh.ts';
 import { eventAreaPath } from './EventNav.tsx';
 import '../../../components/SettingsParts.css';
 import '../../../components/EventsList.css';
@@ -48,7 +49,10 @@ export function OutsideOverview({
 
   return (
     <div className="desk-column">
-      <section className="ev-card today-cover is-wed" aria-labelledby="outside-event-name">
+      <section
+        className={`ev-card today-cover is-${meshFor(event.id)}`}
+        aria-labelledby="outside-event-name"
+      >
         {PIECES.map((piece) => (
           <span key={piece} className={`desk-piece p${piece}`} aria-hidden="true" />
         ))}

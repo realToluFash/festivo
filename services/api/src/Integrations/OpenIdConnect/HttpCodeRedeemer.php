@@ -25,7 +25,7 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
         private string $appleRedemptionEndpoint,
         private string $appleWebClientId,
         #[SensitiveParameter]
-        private string $appleWebClientSecret,
+        private AppleClientSecret $appleClientSecret,
     ) {
     }
 
@@ -39,8 +39,12 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
     ): string {
         [$tokenUri, $clientId, $secret] = match ($provider) {
             IdentityProvider::Google => [$this->googleRedemptionEndpoint, $this->googleWebClientId, $this->googleWebClientSecret],
-            IdentityProvider::Apple => [$this->appleRedemptionEndpoint, $this->appleWebClientId, $this->appleWebClientSecret],
+            IdentityProvider::Apple => [$this->appleRedemptionEndpoint, $this->appleWebClientId, $this->appleClientSecret->issue()],
         };
+
+        if (null === $secret) {
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.code_not_redeemed');
+        }
 
         try {
             $response = $this->httpClient->request('POST', $tokenUri, [

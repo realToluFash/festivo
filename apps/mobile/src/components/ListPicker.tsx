@@ -19,6 +19,7 @@ import { currentLocale } from '../i18n/index.ts';
 import { fieldDefaults, fieldName, refusedHint, withInvalid } from '../kit/fields.ts';
 import { searchBesideTitle } from '../kit/keyboard.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useBoldText } from '../theme/boldText.ts';
 import { inputFaced } from '../theme/fonts.ts';
@@ -34,8 +35,6 @@ import { SilentWindowName, WINDOW_ARRIVES_MS, useUnnamedWindow } from './Sheet.t
 import { Text, type TextHandle } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
 import { useSystemBack } from './useSystemBack.ts';
-
-const CONTROL_TEXT_SIZE = 16;
 
 export interface Choice {
   code: string;

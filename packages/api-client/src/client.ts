@@ -45,7 +45,13 @@ import {
   type GuestGroup,
   type GuestList,
   type GuestPage,
+  type GuestMeals,
   type Headcount,
+  type MealAnswer,
+  type MealAnswerKind,
+  type MealChanged,
+  type MealCourse,
+  type MealPick,
   type MarkedTogether,
   type MovedTogether,
   type RemovedTogether,
@@ -72,6 +78,7 @@ import { ApiError, ApiUnreachableError, type Problem, toProblem } from './proble
 import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
+import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -125,13 +132,15 @@ import {
   type ChoiceDetails,
   type EventMenu,
   type MenuAnswer,
+  type MenuAskedAgain,
   type MenuChange,
   type MenuCourseDetails,
   type MenuItem,
+  type SentCourseDefault,
   asEventMenu,
-  asUnwarnedOptions,
-  asUnwarnedPickers,
+  asMenuAskedAgain,
 } from './menu.ts';
+import { type EventPicks, type HostPick, asEventPicks } from './picks.ts';
 import {
   type Schedule,
   type ScheduleItemDetails,
@@ -210,6 +219,13 @@ export interface TwoFactorChallenge {
   expiresAt: string;
   /** The address the code is for, shown as "the 6-digit code for <address>". */
   email: string;
+  /** What the account holds, so the step opens on a passkey or a code (sc-86885). */
+  factors: HeldFactors;
+}
+
+export interface HeldFactors {
+  app: boolean;
+  passkeys: boolean;
 }
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
@@ -268,10 +284,10 @@ export type PushTarget =
   | { kind: 'web'; address: string; keys: { p256dh: string; auth: string } }
   | { kind: 'expo'; address: string };
 
-/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. */
+/** One bell item (sc-3980): `lines` are drawn one per row, as sent; `muted` and `eventAvailable` are the server's. `category` is kept as sent, so an item of a category this build does not know still shows (sc-84143). */
 export interface NotificationItem {
   id: string;
-  category: NotificationCategory;
+  category: string;
   title: string;
   lines: string[];
   eventId: string | null;
@@ -304,6 +320,42 @@ export interface NotificationArrival {
 }
 
 /** Mute this event's saved state. Items already delivered keep the Muted mark they were delivered with. */
+/** What a guest did since a look (sc-4331): a reply outranks the rest on the guest's one row. */
+export type GuestChangeKind = 'replied' | 'changed' | 'needs' | 'flagged';
+const GUEST_CHANGE_KINDS: readonly GuestChangeKind[] = ['replied', 'changed', 'needs', 'flagged'];
+
+export interface GuestChange {
+  guestId: string;
+  kind: GuestChangeKind;
+  at: string;
+}
+
+/** `since` is the time the rows count from, or `all` for a member who had never looked. */
+export interface GuestChanges {
+  since: string;
+  rows: GuestChange[];
+}
+
+const asking = (path: string, askAgain: boolean): string =>
+  askAgain ? `${path}?askAgain=1` : path;
+
+function guestChangesOf(body: Record<string, unknown>): GuestChanges {
+  const rows = Array.isArray(body.rows) ? body.rows : [];
+
+  return {
+    since: typeof body.since === 'string' ? body.since : 'all',
+    rows: rows.flatMap((row: unknown): GuestChange[] => {
+      if (typeof row !== 'object' || row == null) return [];
+      const { guestId, kind, at } = row as Record<string, unknown>;
+      const known = GUEST_CHANGE_KINDS.find((each) => each === kind);
+
+      return typeof guestId === 'string' && typeof at === 'string' && known != null
+        ? [{ guestId, kind: known, at }]
+        : [];
+    }),
+  };
+}
+
 export interface EventMute {
   muted: boolean;
 }
@@ -346,7 +398,24 @@ export interface PendingRegistration {
 export interface TwoFactorStatus {
   on: boolean;
   recoveryCodesLeft: number;
+  /** False where this deployment has no relying party, or the browser could not make one anyway. */
+  passkeysOffered: boolean;
+  mostPasskeys: number;
+  factors: TwoFactorFactor[];
 }
+
+export type TwoFactorFactor =
+  | { kind: 'app'; addedAt: string }
+  | { kind: 'passkey'; id: string; provider: string | null; synced: boolean; addedAt: string };
+
+export type PasskeyAnswer = Record<string, unknown>;
+
+export type PasskeyOptions = Record<string, unknown>;
+
+export type PasskeyStep = 'proof' | 'add' | 'add_app' | 'remove' | 'new_codes' | 'turn_off';
+
+/** An app code, a recovery code, or a passkey: what a signed-in change asks for once two-factor is on. */
+export type CurrentFactor = { code: string } | { passkey: PasskeyAnswer };
 
 export interface TwoFactorEnrolment {
   secret: string;
@@ -354,7 +423,7 @@ export interface TwoFactorEnrolment {
   qrSvg: string;
 }
 
-export type SecondFactor = { code: string } | { recoveryCode: string };
+export type SecondFactor = { code: string } | { recoveryCode: string } | { passkey: PasskeyAnswer };
 
 export type Provider = 'google' | 'apple';
 
@@ -574,6 +643,62 @@ export interface EventPerson {
   addressKind: 'email' | 'mobile' | null;
   /** When the event concludes, for someone from outside; null for a member. */
   endsAt: string | null;
+  doorCode: string | null;
+  joinedAt: string | null;
+}
+
+export const DOOR_CODE_ROLES = ['can_view', 'can_check_in'] as const;
+export type DoorCodeRole = (typeof DOOR_CODE_ROLES)[number];
+export const DOOR_CODE_STATUSES = ['working', 'full', 'stopped', 'expired'] as const;
+export type DoorCodeStatus = (typeof DOOR_CODE_STATUSES)[number];
+
+/** A door code's card on People (sc-72), as DoorCodesController answers it. */
+export interface DoorCodeCard {
+  id: string;
+  code: string;
+  link: string;
+  qrSvg: string;
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  useCap: number;
+  used: number;
+  status: DoorCodeStatus;
+  expiresAt: string;
+  stoppedAt: string | null;
+  createdAt: string;
+}
+
+export interface NewDoorCode {
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  useCap: number;
+  expiresAt: string;
+  /** Make a new code: this code stops in the same write and leaves the list. */
+  replaces?: string;
+}
+
+/** What a door code opens, shown before a name is asked for; `standing` is null signed out. */
+export interface OpenedDoorCode {
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  event: {
+    id: string;
+    name: string;
+    startsAt: string;
+    endsAt: string;
+    timeZone: string;
+    organisation: string;
+  };
+  standing: 'member' | 'in' | null;
+}
+
+export interface RedeemedDoorCode {
+  eventId: string;
+  name: string;
+  role: DoorCodeRole;
+  jobLabel: string | null;
+  endsAt: string | null;
+  again: boolean;
 }
 
 /** An event someone in no organisation of its own reaches from outside (sc-71). */
@@ -1258,13 +1383,55 @@ export class ApiClient {
     );
   }
 
-  async twoFactorStatus(): Promise<TwoFactorStatus> {
-    return this.get<TwoFactorStatus>('/api/auth/two-factor');
+  async signInPasskeyOptions(challenge: string): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>(
+      '/api/auth/two-factor/passkey-options',
+      { challenge },
+      {
+        anonymous: true,
+      },
+    );
   }
 
-  /** A new secret, off until `activateTwoFactor` is sent a code it made. */
-  async enrolTwoFactor(): Promise<TwoFactorEnrolment> {
-    return this.post<TwoFactorEnrolment>('/api/auth/two-factor/enrol');
+  async twoFactorStatus(): Promise<TwoFactorStatus> {
+    const body = await this.get<Partial<TwoFactorStatus>>('/api/auth/two-factor');
+
+    return {
+      on: body.on === true,
+      recoveryCodesLeft: typeof body.recoveryCodesLeft === 'number' ? body.recoveryCodesLeft : 0,
+      passkeysOffered: body.passkeysOffered === true,
+      mostPasskeys: typeof body.mostPasskeys === 'number' ? body.mostPasskeys : 10,
+      factors: Array.isArray(body.factors) ? body.factors : [],
+    };
+  }
+
+  /** A new secret, off until `activateTwoFactor` is sent a code it made; beside passkeys it takes one. */
+  async enrolTwoFactor(current?: CurrentFactor): Promise<TwoFactorEnrolment> {
+    return this.post<TwoFactorEnrolment>('/api/auth/two-factor/enrol', current);
+  }
+
+  /** To make a passkey: none asked while two-factor is off, the current factor once it is on. */
+  async passkeyCreationOptions(current?: CurrentFactor): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/two-factor/passkeys/options', {
+      make: true,
+      ...current,
+    });
+  }
+
+  async passkeyOptions(step: PasskeyStep): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/two-factor/passkeys/options', { step });
+  }
+
+  /** @returns the recovery codes when this passkey turned two-factor on, none when it joined */
+  async addPasskey(passkey: PasskeyAnswer): Promise<string[]> {
+    return (
+      await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/passkeys', { passkey })
+    ).recoveryCodes;
+  }
+
+  /** `factor` is `app` or a passkey's id; the last one is refused as `two_factor_last_factor`. */
+  async removeTwoFactorFactor(factor: string, current: CurrentFactor): Promise<void> {
+    await this.post('/api/auth/two-factor/remove', { factor, ...current });
   }
 
   /** @returns the recovery codes, which the API shows this once */
@@ -1274,14 +1441,20 @@ export class ApiClient {
   }
 
   /** Takes an app code or an unused recovery code; every earlier recovery code stops working. */
-  async newRecoveryCodes(code: string): Promise<string[]> {
+  async newRecoveryCodes(current: string | CurrentFactor): Promise<string[]> {
     return (
-      await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/recovery-codes', { code })
+      await this.post<{ recoveryCodes: string[] }>(
+        '/api/auth/two-factor/recovery-codes',
+        typeof current === 'string' ? { code: current } : current,
+      )
     ).recoveryCodes;
   }
 
-  async disableTwoFactor(code: string): Promise<void> {
-    await this.post('/api/auth/two-factor/disable', { code });
+  async disableTwoFactor(current: string | CurrentFactor): Promise<void> {
+    await this.post(
+      '/api/auth/two-factor/disable',
+      typeof current === 'string' ? { code: current } : current,
+    );
   }
 
   /** The ID token a provider issued, and the nonce whose hash went to the provider with the request. */
@@ -1340,7 +1513,7 @@ export class ApiClient {
       | { password: string }
       | { provider: Provider; signIn: ProviderSignInAttempt }
       | { pendingProof: string },
-    code?: string,
+    code?: string | { passkey: PasskeyAnswer },
   ): Promise<RecentProof> {
     const body = await this.post<{ proof?: unknown; expiresAt?: unknown }>('/api/auth/proof', {
       ...('password' in first
@@ -1348,7 +1521,7 @@ export class ApiClient {
         : 'pendingProof' in first
           ? { pendingProof: first.pendingProof }
           : { provider: first.provider, providerSignIn: first.signIn }),
-      ...(code == null ? {} : { code }),
+      ...(code == null ? {} : typeof code === 'string' ? { code } : code),
     });
 
     return {
@@ -1393,16 +1566,26 @@ export class ApiClient {
   }
 
   /** Whose reset link this is; refused as `reset_link_invalid`, `reset_link_used` or `reset_link_expired`. */
-  async checkResetLink(token: string): Promise<{ email: string; twoFactor: boolean }> {
-    const body = await this.post<{ email?: unknown; twoFactor?: unknown }>(
-      '/api/auth/password/reset/check',
-      { token },
-    );
+  async checkResetLink(token: string): Promise<{
+    email: string;
+    twoFactor: boolean;
+    factors: HeldFactors;
+  }> {
+    const body = await this.post<{
+      email?: unknown;
+      twoFactor?: unknown;
+      factors?: unknown;
+    }>('/api/auth/password/reset/check', { token });
 
     return {
       email: typeof body?.email === 'string' ? body.email : '',
       twoFactor: body?.twoFactor === true,
+      factors: asHeldFactors(body?.factors),
     };
+  }
+
+  async resetPasskeyOptions(token: string): Promise<PasskeyOptions> {
+    return this.post<PasskeyOptions>('/api/auth/password/reset/passkey-options', { token });
   }
 
   /** With two-factor on, the code comes before the new password; nothing changes until it passes. */
@@ -1632,6 +1815,48 @@ export class ApiClient {
     );
 
     return { muted: body.muted === true };
+  }
+
+  /** Changed since you looked (sc-4331): from `since` in the address (`all` for every change), or from the caller's last look when none is given. Marks nothing read. */
+  async guestChanges(eventId: string, since?: string): Promise<GuestChanges> {
+    const query = since == null ? '' : `?since=${encodeURIComponent(since)}`;
+
+    return guestChangesOf(
+      await this.get<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes${query}`,
+      ),
+    );
+  }
+
+  /** Choosing Changed since you looked from the menu: a look, which marks the event's Guest replies item read. */
+  async lookAtGuestChanges(eventId: string): Promise<GuestChanges> {
+    return guestChangesOf(
+      await this.post<Record<string, unknown>>(
+        `/api/events/${encodeURIComponent(eventId)}/guests/changes/look`,
+        {},
+      ),
+    );
+  }
+
+  /** Where Guest replies email stands for the member the summary's link names (sc-4331); a link that does not work is a 404. */
+  async guestReplyEmails(token: string): Promise<boolean> {
+    const body = await this.post<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
+  }
+
+  async setGuestReplyEmails(token: string, emailOn: boolean): Promise<boolean> {
+    const body = await this.put<{ emailOn?: unknown }>(
+      '/api/unsubscribe/guest-replies',
+      { token, emailOn },
+      { anonymous: true },
+    );
+
+    return body.emailOn === true;
   }
 
   /** The VAPID public key this browser subscribes with (sc-3980). */
@@ -2519,6 +2744,89 @@ export class ApiClient {
     return { people, owners, admins, staffLinks: staffLinks as StaffLinkHolder[] };
   }
 
+  /** The event's door codes, newest first, for whoever may change its People (sc-72). */
+  async doorCodes(eventId: string): Promise<DoorCodeCard[]> {
+    const raw = await this.get<{ doorCodes?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/door-codes`,
+    );
+    const cards = Array.isArray(raw.doorCodes) ? raw.doorCodes.map(asDoorCodeCard) : null;
+
+    if (cards == null || !cards.every((card) => card != null)) {
+      throw new Error(DOOR_CODE_SHAPE);
+    }
+
+    return cards as DoorCodeCard[];
+  }
+
+  async makeDoorCode(eventId: string, code: NewDoorCode): Promise<DoorCodeCard> {
+    return this.doorCodeCard(
+      await this.post<{ doorCode?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/door-codes`,
+        code,
+      ),
+    );
+  }
+
+  async stopDoorCode(eventId: string, codeId: string): Promise<DoorCodeCard> {
+    return this.doorCodeCard(
+      await this.post<{ doorCode?: unknown }>(
+        `/api/events/${encodeURIComponent(eventId)}/door-codes/${encodeURIComponent(codeId)}/stop`,
+      ),
+    );
+  }
+
+  /** Refused `door_code_invalid` alike for an unknown, full, expired or stopped code, and `too_many_attempts` after refused tries. */
+  async openDoorCode(code: string): Promise<OpenedDoorCode> {
+    const opened = asOpenedDoorCode(
+      await this.get<unknown>(`/api/door-codes/${encodeURIComponent(code)}`),
+    );
+
+    if (opened == null) {
+      throw new Error(
+        'The API answered GET /api/door-codes/{code} in a shape this client does not know. Check RedeemController in services/api.',
+      );
+    }
+
+    return opened;
+  }
+
+  /** Signed out, `name` is required and the answer is a new session, saved as a sign-in's is. */
+  async redeemDoorCode(code: string, name: string | null): Promise<RedeemedDoorCode> {
+    const path = `/api/door-codes/${encodeURIComponent(code)}/redeem`;
+    const access = await this.options.tokens?.access();
+    let raw: unknown;
+
+    if (access != null && access !== '') {
+      raw = await this.post<unknown>(path, {});
+    } else {
+      this.session += 1;
+      const { tokens, body } = await this.issued(
+        await this.sendTokenRequest(path, { name: name ?? '' }),
+      );
+      this.session += 1;
+      await this.options.tokens?.save(tokens);
+      await this.options.onSignedIn?.();
+      raw = body;
+    }
+
+    const redeemed = asRedeemedDoorCode(raw);
+
+    if (redeemed == null) {
+      throw new Error(
+        'The API answered a door code redemption in a shape this client does not know. Check RedeemController in services/api.',
+      );
+    }
+
+    return redeemed;
+  }
+
+  private doorCodeCard(raw: { doorCode?: unknown }): DoorCodeCard {
+    const card = asDoorCodeCard(raw.doorCode);
+    if (card == null) throw new Error(DOOR_CODE_SHAPE);
+
+    return card;
+  }
+
   /** The organisation's active members not yet on the event, by name alone, for whoever may change its People (sc-29915). */
   async addableEventMembers(eventId: string): Promise<AddableMember[]> {
     const raw = await this.get<{ members?: unknown }>(
@@ -3256,11 +3564,17 @@ export class ApiClient {
     return this.menuOf(await this.post<unknown>(`${this.menuPath(eventId)}/courses`, details));
   }
 
-  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. */
+  /** The whole course; `same` is refused 409 `menu_same_one_dish` unless it has exactly one dish. `default` left out keeps the default and its date (sc-1362); a new one after the date is refused 409 `menu_default_move` with `move` and `back` while it moves anyone, until sent with `confirmMove`. */
   async changeMenuCourse(
     eventId: string,
     courseId: string,
-    details: MenuCourseDetails & { answer: MenuAnswer; skippable: boolean; ownItems?: string[] },
+    details: MenuCourseDetails & {
+      answer: MenuAnswer;
+      skippable: boolean;
+      ownItems?: string[];
+      default?: SentCourseDefault;
+      confirmMove?: boolean;
+    },
   ): Promise<MenuChange> {
     return this.menuOf(await this.put<unknown>(this.menuCoursePath(eventId, courseId), details));
   }
@@ -3281,82 +3595,190 @@ export class ApiClient {
     eventId: string,
     courseId: string,
     dish: { libraryDishId: string } | (DishDetails & { onlyForEvent: boolean }),
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuCoursePath(eventId, courseId)}/dishes`, dish),
+      await this.post<unknown>(
+        asking(`${this.menuCoursePath(eventId, courseId)}/dishes`, askAgain),
+        dish,
+      ),
     );
   }
 
-  /** The event's copy only, never refused for picks; `unwarned` counts who picked it and has an allergen just added recorded. */
+  /** The event's copy only. Without `askAgain`, a change that asks guests to pick again (sc-3913) is refused 409 `menu_change_asks`, as every change below is. */
   async changeMenuDish(
     eventId: string,
     dishId: string,
     details: Omit<DishDetails, 'lastPrice' | 'allowShared'> & { items?: MenuItem[] },
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuDishPath(eventId, dishId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `menu_dish_picked` once a guest has picked it. */
-  async removeMenuDish(eventId: string, dishId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuDishPath(eventId, dishId)));
+  async removeMenuDish(eventId: string, dishId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuDishPath(eventId, dishId), askAgain)),
+    );
   }
 
-  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants`, and 409 `menu_dish_picked` on a picked dish without variants (sc-3903). */
+  /** Two at once on a dish without variants, then one at a time; refused as `addDishVariants` (sc-3903). */
   async addMenuVariants(
     eventId: string,
     dishId: string,
     variants: VariantDetails[],
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/variants`, { variants }),
+      await this.post<unknown>(asking(`${this.menuDishPath(eventId, dishId)}/variants`, askAgain), {
+        variants,
+      }),
     );
   }
 
-  /** Never refused for picks; `unwarned` as for a dish. Without `cost` the cost stays as it was. */
+  /** Without `cost` the cost stays as it was. */
   async changeMenuVariant(
     eventId: string,
     variantId: string,
     details: VariantDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuVariantPath(eventId, variantId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain), details),
+    );
   }
 
-  /** From two, the one left folds into the dish; refused 409 `variant_picked`, and 409 `variant_last_everyone`. */
-  async removeMenuVariant(eventId: string, variantId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuVariantPath(eventId, variantId)));
+  /** From two, the one left folds into the dish; refused 409 `variant_last_everyone`. */
+  async removeMenuVariant(
+    eventId: string,
+    variantId: string,
+    askAgain = false,
+  ): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuVariantPath(eventId, variantId), askAgain)),
+    );
   }
 
   private menuVariantPath(eventId: string, variantId: string): string {
     return `${this.menuPath(eventId)}/variants/${encodeURIComponent(variantId)}`;
   }
 
-  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3, and `menu_dish_picked` on a picked dish until sc-3913. */
+  /** A question inside the dish (sc-3904), saved as a draft while unfinished; refused 409 `choice_limit` at 3. */
   async addMenuChoice(
     eventId: string,
     dishId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
     return this.menuOf(
-      await this.post<unknown>(`${this.menuDishPath(eventId, dishId)}/choices`, details),
+      await this.post<unknown>(
+        asking(`${this.menuDishPath(eventId, dishId)}/choices`, askAgain),
+        details,
+      ),
     );
   }
 
-  /** On an answered choice, refused under `pick`, `required` and `draft`, and 409 `choice_option_picked` for a picked option left out; `unwarnedOptions` has a line per picked option given an allergen. */
+  /** An answered choice is refused under `draft`. */
   async changeMenuChoice(
     eventId: string,
     choiceId: string,
     details: ChoiceDetails,
+    askAgain = false,
   ): Promise<MenuChange> {
-    return this.menuOf(await this.put<unknown>(this.menuChoicePath(eventId, choiceId), details));
+    return this.menuOf(
+      await this.put<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain), details),
+    );
   }
 
-  /** Refused 409 `choice_answered` once guests have answered it. */
-  async removeMenuChoice(eventId: string, choiceId: string): Promise<MenuChange> {
-    return this.menuOf(await this.delete<unknown>(this.menuChoicePath(eventId, choiceId)));
+  async removeMenuChoice(eventId: string, choiceId: string, askAgain = false): Promise<MenuChange> {
+    return this.menuOf(
+      await this.delete<unknown>(asking(this.menuChoicePath(eventId, choiceId), askAgain)),
+    );
+  }
+
+  /** The people a menu change asked again who have not answered yet, for Messaging to tell (sc-3913); refused 403 without guests.read. */
+  async menuAskedAgain(eventId: string): Promise<MenuAskedAgain[]> {
+    const body = await this.get<{ people?: unknown }>(`${this.menuPath(eventId)}/asked-again`);
+
+    return asMenuAskedAgain(body?.people);
   }
 
   private menuChoicePath(eventId: string, choiceId: string): string {
     return `${this.menuPath(eventId)}/choices/${encodeURIComponent(choiceId)}`;
+  }
+
+  /** See picks (sc-3909): refused 403 without menu.read; without guests.read the names, `waiting` and `people` are null. */
+  async menuPicks(eventId: string): Promise<EventPicks> {
+    return this.picksOf(await this.get<unknown>(`${this.menuPath(eventId)}/picks`));
+  }
+
+  /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
+  async kitchenSheet(eventId: string): Promise<KitchenSheet> {
+    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
+    const sheet = asKitchenSheet(body?.sheet);
+
+    if (sheet == null)
+      throw new Error(
+        'The API answered the kitchen sheet in a shape this client does not know. Check KitchenSheet in services/api.',
+      );
+
+    return sheet;
+  }
+
+  /** The sheet as a tagged PDF, made when asked, in the request's language; 503 when it cannot be made. */
+  async kitchenSheetPdf(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
+      method: 'POST',
+    });
+
+    return {
+      name: downloadName(response.headers.get('Content-Disposition')),
+      bytes: new Uint8Array(await response.arrayBuffer()),
+    };
+  }
+
+  /** Refused 403 without guests.manage, and 409 `meal_pick_ruled_out` with `people` until sent with `anyway`. */
+  async chooseForGuest(
+    eventId: string,
+    guestId: string,
+    courseId: string,
+    pick: HostPick,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/people/${encodeURIComponent(guestId)}/courses/${encodeURIComponent(courseId)}`,
+        pick,
+      ),
+    );
+  }
+
+  /** Gives a Children only variant to exactly `people` on its course; refused as `chooseForGuest`. */
+  async giveVariant(
+    eventId: string,
+    variantId: string,
+    people: readonly string[],
+    anyway = false,
+  ): Promise<EventPicks> {
+    return this.picksOf(
+      await this.put<unknown>(
+        `${this.menuPath(eventId)}/picks/variants/${encodeURIComponent(variantId)}`,
+        { people, anyway },
+      ),
+    );
+  }
+
+  private picksOf(body: unknown): EventPicks {
+    const picks = asEventPicks((body as Record<string, unknown> | null)?.picks);
+
+    if (picks == null)
+      throw new Error(
+        'The API answered the picks in a shape this client does not know. Check PicksFigures in services/api.',
+      );
+
+    return picks;
   }
 
   /** A hub token for this event's menu topic alone. */
@@ -3386,8 +3808,6 @@ export class ApiClient {
       courseId: typeof record.courseId === 'string' ? record.courseId : null,
       dishId: typeof record.dishId === 'string' ? record.dishId : null,
       choiceId: typeof record.choiceId === 'string' ? record.choiceId : null,
-      unwarned: asUnwarnedPickers(record.unwarned),
-      unwarnedOptions: asUnwarnedOptions(record.unwarnedOptions),
     };
   }
 
@@ -4138,10 +4558,13 @@ export class ApiClient {
     return this.checkInOf(await this.get<unknown>(this.checkInPath(eventId)));
   }
 
-  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. Refused 409 `check_in_closed` outside the window. */
-  async arrive(eventId: string, guestId: string): Promise<CheckIn> {
+  /** Arrived, for a guest or a companion by id: one already arrived keeps their first arrival and nobody else is arrived. `arrivedAt` is when a device that was offline recorded it (sc-1301), and the earlier arrival stands. Refused 409 `check_in_closed` outside the window. */
+  async arrive(eventId: string, guestId: string, arrivedAt?: string): Promise<CheckIn> {
     return this.checkInOf(
-      await this.post<unknown>(`${this.checkInPath(eventId)}/arrivals`, { guestId }),
+      await this.post<unknown>(
+        `${this.checkInPath(eventId)}/arrivals`,
+        arrivedAt == null ? { guestId } : { guestId, arrivedAt },
+      ),
     );
   }
 
@@ -4251,6 +4674,13 @@ export class ApiClient {
     );
   }
 
+  /** Preview as guest (sc-3907): the guest page's meal step for the signed-in member alone, with no allergies or companions; menu.read, and it reads no guest. */
+  async menuPreview(eventId: string): Promise<GuestPage> {
+    const route = `${this.menuPath(eventId)}/preview`;
+
+    return this.guestPageOf(await this.get<unknown>(route), `GET ${route}`);
+  }
+
   /** The token is a credential, so it travels in the body. Refused `not_found` alike for an unknown or replaced token, a deleted event's and a Draft's. Records nothing. */
   async guestPage(token: string): Promise<GuestPage> {
     return this.guestPageOf(
@@ -4302,6 +4732,14 @@ export class ApiClient {
         { anonymous: true },
       ),
       'POST /api/guest-links/needs',
+    );
+  }
+
+  /** Each person's meal answers (sc-3907), sent after the kitchen note so its allergens count, and answers the page as it now stands. Refused 422 for a pick the person is not offered, a wrong count or a plate holding their allergen, nothing saved, and 409 `meal_picks_closed` with the closed `courses` once the open ones are saved. */
+  async sendMealPicks(token: string, picks: readonly MealPick[]): Promise<GuestPage> {
+    return this.guestPageOf(
+      await this.post<unknown>('/api/guest-links/meals', { token, picks }, { anonymous: true }),
+      'POST /api/guest-links/meals',
     );
   }
 
@@ -5501,7 +5939,7 @@ export class ApiClient {
   }
 
   /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
-  private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
+  private sendTokenRequest(path: string, body: Record<string, unknown>): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
 
     return doFetch(this.url(path), {
@@ -5536,7 +5974,7 @@ export class ApiClient {
   /** Tokens and the account, or, with two-factor on, the challenge the code answers. */
   private async signedIn(
     path: string,
-    credentials: Record<string, string>,
+    credentials: Record<string, unknown>,
     controller: string,
   ): Promise<SignInOutcome> {
     this.session += 1;
@@ -5560,7 +5998,7 @@ export class ApiClient {
   /** A way in that never asks for a second factor: registering, or the code that just passed. */
   private async signedInOnly(
     path: string,
-    credentials: Record<string, string>,
+    credentials: Record<string, unknown>,
     controller: string,
   ): Promise<SignedIn> {
     this.session += 1;
@@ -5634,6 +6072,23 @@ export function awaiting(
   return account.waitingFor == null ? null : 'approval';
 }
 
+/** No address at all, as only a door code's account is until sc-4235 asks it for a number (the API's OnboardingGate::heldByDevice). */
+export function heldByDevice(
+  account: Pick<Account, 'verified' | 'emailAddresses' | 'phoneNumbers'>,
+): boolean {
+  return (
+    !account.verified && account.emailAddresses.length === 0 && account.phoneNumbers.length === 0
+  );
+}
+
+/** The gate an account is behind; a door code's account has none to pass and lands inside its event. */
+export function gateOf(
+  account: Pick<Account, 'verified' | 'complete' | 'emailAddresses' | 'phoneNumbers'> &
+    Partial<Pick<Account, 'waitingFor'>>,
+): Awaiting | null {
+  return heldByDevice(account) ? null : awaiting(account);
+}
+
 /** The events list's largest page (EventsController::MOST_PER_PAGE). */
 const MOST_EVENTS_PER_PAGE = 200;
 
@@ -5664,8 +6119,19 @@ function asAddableMember(raw: unknown): AddableMember | null {
 function asEventPerson(raw: unknown): EventPerson | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { id, membershipId, user, role, jobLabel, outside, address, addressKind, endsAt } =
-    raw as Record<string, unknown>;
+  const {
+    id,
+    membershipId,
+    user,
+    role,
+    jobLabel,
+    outside,
+    address,
+    addressKind,
+    endsAt,
+    doorCode,
+    joinedAt,
+  } = raw as Record<string, unknown>;
   const named = typeof user === 'object' && user != null ? (user as Record<string, unknown>) : null;
 
   if (
@@ -5686,6 +6152,117 @@ function asEventPerson(raw: unknown): EventPerson | null {
     address: typeof address === 'string' ? address : null,
     addressKind: addressKind === 'email' || addressKind === 'mobile' ? addressKind : null,
     endsAt: typeof endsAt === 'string' ? endsAt : null,
+    doorCode: typeof doorCode === 'string' ? doorCode : null,
+    joinedAt: typeof joinedAt === 'string' ? joinedAt : null,
+  };
+}
+
+const DOOR_CODE_SHAPE =
+  'The API answered a door code in a shape this client does not know. Check DoorCodesController in services/api.';
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+function asDoorCodeCard(raw: unknown): DoorCodeCard | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const {
+    id,
+    code,
+    link,
+    qrSvg,
+    role,
+    jobLabel,
+    useCap,
+    used,
+    status,
+    expiresAt,
+    stoppedAt,
+    createdAt,
+  } = raw as Record<string, unknown>;
+
+  if (
+    !isString(id) ||
+    !isString(code) ||
+    !isString(link) ||
+    !isString(qrSvg) ||
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role) ||
+    typeof useCap !== 'number' ||
+    typeof used !== 'number' ||
+    !(DOOR_CODE_STATUSES as readonly unknown[]).includes(status) ||
+    !isString(expiresAt) ||
+    !isString(createdAt)
+  )
+    return null;
+
+  return {
+    id,
+    code,
+    link,
+    qrSvg,
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    useCap,
+    used,
+    status: status as DoorCodeStatus,
+    expiresAt,
+    stoppedAt: isString(stoppedAt) ? stoppedAt : null,
+    createdAt,
+  };
+}
+
+function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { role, jobLabel, event, standing } = raw as Record<string, unknown>;
+  const opened =
+    typeof event === 'object' && event != null ? (event as Record<string, unknown>) : null;
+
+  if (
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role) ||
+    opened == null ||
+    !isString(opened.id) ||
+    !isString(opened.name) ||
+    !isString(opened.startsAt) ||
+    !isString(opened.endsAt) ||
+    !isString(opened.timeZone) ||
+    !isString(opened.organisation)
+  )
+    return null;
+
+  return {
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    event: {
+      id: opened.id,
+      name: opened.name,
+      startsAt: opened.startsAt,
+      endsAt: opened.endsAt,
+      timeZone: opened.timeZone,
+      organisation: opened.organisation,
+    },
+    standing: standing === 'member' || standing === 'in' ? standing : null,
+  };
+}
+
+function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { eventId, name, role, jobLabel, endsAt, again } = raw as Record<string, unknown>;
+
+  if (
+    !isString(eventId) ||
+    !isString(name) ||
+    !(DOOR_CODE_ROLES as readonly unknown[]).includes(role)
+  )
+    return null;
+
+  return {
+    eventId,
+    name,
+    role: role as DoorCodeRole,
+    jobLabel: isString(jobLabel) ? jobLabel : null,
+    endsAt: isString(endsAt) ? endsAt : null,
+    again: again === true,
   };
 }
 
@@ -6089,13 +6666,17 @@ function asGuestPage(raw: unknown): GuestPage | null {
     event,
     phase,
     started,
+    onTheDay,
     answersOpen,
     answersClosedOn,
     language,
     programme,
     seating,
+    checkInCode,
+    meals,
   } = raw as Record<string, unknown>;
   const shown = GUEST_PAGE_PHASES.find((known) => known === phase);
+  const door = checkInCode as Record<string, unknown> | null | undefined;
   if (typeof guest !== 'object' || guest == null || typeof event !== 'object' || event == null)
     return null;
   const who = guest as Record<string, unknown>;
@@ -6128,7 +6709,8 @@ function asGuestPage(raw: unknown): GuestPage | null {
     typeof what.timeZone !== 'string' ||
     shown == null ||
     typeof started !== 'boolean' ||
-    typeof answersOpen !== 'boolean'
+    typeof answersOpen !== 'boolean' ||
+    (door != null && (typeof door.code !== 'string' || typeof door.qrSvg !== 'string'))
   )
     return null;
 
@@ -6177,10 +6759,77 @@ function asGuestPage(raw: unknown): GuestPage | null {
     answersClosedOn: typeof answersClosedOn === 'string' ? answersClosedOn : null,
     phase: shown,
     started,
+    onTheDay: onTheDay === true,
     answersOpen,
     calendar: null,
     programme: items.filter((one) => one != null),
     seating: asGuestSeating(seating),
+    checkInCode: door == null ? null : { code: door.code as string, qrSvg: door.qrSvg as string },
+    meals: asGuestMeals(meals),
+  };
+}
+
+/** The server checks every pick, so a course or an answer this client cannot read is left out rather than failing the page. */
+function asMealChanged(raw: unknown): MealChanged | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+  const { picked, why, ways, allergens } = raw as Record<string, unknown>;
+
+  return {
+    picked: typeof picked === 'string' ? picked : '',
+    why: why === 'ways' || why === 'choices' || why === 'allergen' ? why : 'removed',
+    ways: typeof ways === 'number' ? ways : null,
+    allergens: Array.isArray(allergens)
+      ? allergens.filter((one): one is string => typeof one === 'string')
+      : [],
+  };
+}
+
+function asGuestMeals(raw: unknown): GuestMeals {
+  const { you, courses, answers, excluded } = (raw ?? {}) as Record<string, unknown>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : [];
+  const known = Array.isArray(courses)
+    ? courses.filter(
+        (course): course is MealCourse =>
+          typeof course === 'object' &&
+          course != null &&
+          typeof (course as MealCourse).id === 'string' &&
+          Array.isArray((course as MealCourse).dishes) &&
+          typeof (course as MealCourse).picksClose?.at === 'string',
+      )
+    : [];
+  const byPerson: Record<string, MealAnswer[]> = {};
+
+  for (const [person, list] of Object.entries((answers ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    byPerson[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.answer === 'string')
+      .map((one) => ({
+        course: one.course as string,
+        answer: one.answer as MealAnswerKind,
+        dish: typeof one.dish === 'string' ? one.dish : null,
+        variant: typeof one.variant === 'string' ? one.variant : null,
+        options: strings(one.options),
+        changed: asMealChanged(one.changed),
+      }));
+  }
+
+  const never: Record<string, { course: string; reason: string }[]> = {};
+
+  for (const [person, list] of Object.entries((excluded ?? {}) as Record<string, unknown>)) {
+    if (!Array.isArray(list)) continue;
+    never[person] = list
+      .filter((one): one is Record<string, unknown> => typeof one === 'object' && one != null)
+      .filter((one) => typeof one.course === 'string' && typeof one.reason === 'string')
+      .map((one) => ({ course: one.course as string, reason: one.reason as string }));
+  }
+
+  return {
+    you: typeof you === 'string' ? you : '',
+    courses: known.map((course) => ({ ...course, default: course.default ?? null })),
+    answers: byPerson,
+    excluded: never,
   };
 }
 
@@ -6976,7 +7625,14 @@ function asChallenge(raw: unknown): TwoFactorChallenge | null {
     challenge: twoFactorChallenge,
     expiresAt: challengeExpiresAt,
     email: typeof email === 'string' ? email : '',
+    factors: asHeldFactors(body.factors),
   };
+}
+
+function asHeldFactors(raw: unknown): HeldFactors {
+  const held = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+
+  return { app: held.app !== false, passkeys: held.passkeys === true };
 }
 
 function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {
@@ -7111,20 +7767,19 @@ export function asNotificationItem(raw: unknown): NotificationItem | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const category = notificationCategory(candidate.category);
 
   if (
     typeof candidate.id !== 'string' ||
     typeof candidate.title !== 'string' ||
     typeof candidate.createdAt !== 'string' ||
-    category == null
+    typeof candidate.category !== 'string'
   ) {
     return null;
   }
 
   return {
     id: candidate.id,
-    category,
+    category: candidate.category,
     title: candidate.title,
     lines: strings(candidate.lines),
     eventId: optionalString(candidate.eventId),

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { Refreshing } from '../../../components/OfflineBand.tsx';
 import {
   DatesDialog,
   EntryDialog,
@@ -83,7 +84,12 @@ function AuditDesk({ organisation }: { organisation: Membership }) {
   const { layers, covered, setHost } = useDeskLayers();
   const [search, setSearch] = useSearchParams();
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const { load, more, showMore, reload, preparing } = useAuditLog(organisation.id, filters);
+  const title = useRef<HTMLHeadingElement>(null);
+  const { load, more, showMore, reload, preparing, refreshing } = useAuditLog(
+    organisation.id,
+    filters,
+    title,
+  );
   const [told, setTold] = useState<string | null>(null);
   const [linkEnded, setLinkEnded] = useState<string | null>(null);
   const viewed = useRef(false);
@@ -124,12 +130,13 @@ function AuditDesk({ organisation }: { organisation: Membership }) {
   return (
     <DeskPage layers={layers}>
       <div className="desk-column" inert={covered}>
+        {refreshing && <Refreshing />}
         <BackRow
           to={t('dataControl.title')}
           onBack={() => void navigate(DATA_AND_CONTROL)}
           bell={desk.bell}
         />
-        <TitleRow title={t('auditLog.title')} underBack />
+        <TitleRow title={t('auditLog.title')} titleRef={title} underBack />
         {linkEnded != null && <StatusLine kind="ended">{linkEnded}</StatusLine>}
         {load.kind === 'loading' && <PageLoading words={t('auditLog.loading')} />}
         {load.kind === 'failed' && (

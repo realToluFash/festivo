@@ -1,6 +1,7 @@
 import {
   type AddableMember,
   ApiError,
+  type DoorCodeCard,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
@@ -37,11 +38,15 @@ import {
 } from '../../../components/SettingsParts.tsx';
 import { Skeleton } from '../../../components/Skeleton.tsx';
 import { Toast } from '../../../components/Toast.tsx';
+import { AddressIn, WholeAddress } from '../../../components/WholeAddress.tsx';
+import { useServerNow } from '../../../serverNow.ts';
 import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { focusWhenFree, LayersContext, useDeskLayers } from '../../../layers.ts';
 import { canOn, outsideOn, useSession } from '../../../session.ts';
 import { keptKeys, keptLoad, useAnsweredAgain, useKeptAsShown } from '../../../tabKept.ts';
 import '../../../components/SettingsParts.css';
+import { DoorCodes } from './DoorCodes.tsx';
+import { atWords, shownCode } from './doorCodes.ts';
 import { faceOf, outsideView, shownAddress } from './outside.ts';
 import { clockWords, wallOf } from './staffTimes.ts';
 import './people.css';
@@ -58,6 +63,8 @@ type Load =
       /** Absent from a list kept before staff links (sc-3912). */
       staffLinks?: StaffLinkHolder[];
       addable: AddableMember[] | null;
+      /** Null for whoever may not change People, and absent from a list kept before door codes (sc-72); oldest first. */
+      doorCodes?: DoorCodeCard[] | null;
     };
 
 type Open = { kind: 'person'; id: string; visit: number } | { kind: 'add' } | null;
@@ -68,6 +75,8 @@ const SETTLE_MS = 600;
 const LIT_MS = 2000;
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const LABEL_MOST = 60;
+/** While People is open its list and the codes' counts are read again this often, so a join shows within 10 seconds (spec §2.3). */
+const READ_AGAIN_MS = 5000;
 
 /** People on an event (sc-29915), as the People demo draws it at a desk, on its own title under the crumb (sc-69635): who has which of its four roles, changed by Owners, Admins and its Lead. */
 export function EventPeople({ event }: { event: OrganisationEvent }) {
@@ -97,8 +106,9 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       (async () => {
         const read = await api.eventPeople(event.id);
         const addable = manages ? await api.addableEventMembers(event.id) : null;
+        const doorCodes = manages ? (await api.doorCodes(event.id)).reverse() : null;
 
-        return { ...read, addable };
+        return { ...read, addable, doorCodes };
       })(),
     ).then(
       (loaded) => current && setLoad({ kind: 'loaded', ...loaded }),
@@ -109,6 +119,45 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, attempt, manages, answeredAgain]);
+
+  const isLoaded = load.kind === 'loaded';
+  const loadNow = useRef(load);
+  useEffect(() => {
+    loadNow.current = load;
+  });
+  useEffect(() => {
+    if (!isLoaded) return;
+    let current = true;
+    let timer = 0;
+    const next = () => {
+      timer = window.setTimeout(readAgain, READ_AGAIN_MS);
+    };
+    const readAgain = () => {
+      if (document.hidden) return next();
+      const before = loadNow.current;
+      // Codes before people, so the list is never behind a code's count.
+      (async () => {
+        const doorCodes = manages ? (await api.doorCodes(event.id)).reverse() : null;
+        const read = await api.eventPeople(event.id);
+
+        return { ...read, doorCodes };
+      })().then(
+        (fresh) => {
+          if (!current) return;
+          // A change made on the page while this read was out wins; the next read brings the rest.
+          setLoad((was) => (was === before && was.kind === 'loaded' ? { ...was, ...fresh } : was));
+          next();
+        },
+        () => current && next(),
+      );
+    };
+    next();
+
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [event.id, manages, isLoaded]);
 
   const shown = useMemo(() => {
     if (load.kind !== 'loaded') return null;
@@ -200,7 +249,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
           {opened != null && open?.kind === 'person' && (
             <RoleDialog
               key={open.visit}
-              eventId={event.id}
+              event={event}
               person={opened}
               tone={people.indexOf(opened)}
               organisationName={organisationName}
@@ -269,6 +318,20 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
         </button>
       )}
 
+      {manages && loaded.doorCodes != null && (
+        <DoorCodes
+          event={event}
+          organisationName={organisationName}
+          codes={loaded.doorCodes}
+          onCodes={(change) =>
+            setLoad((was) =>
+              was.kind === 'loaded' ? { ...was, doorCodes: change(was.doorCodes ?? []) } : was,
+            )
+          }
+          tell={(words) => setToast(words)}
+        />
+      )}
+
       {people.length + staffLinks.length === 0 ? (
         <div className="people-nobody">
           <p className="desk-empty-title">{t('eventPeople.nobody')}</p>
@@ -293,7 +356,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                     </span>
                   )}
                   <RowWords
-                    title={nameOf(person, t)}
+                    title={<WholeAddress text={nameOf(person, t)} />}
                     tag={
                       person.outside && (
                         <Tag
@@ -306,6 +369,7 @@ export function EventPeople({ event }: { event: OrganisationEvent }) {
                       [
                         t(`eventPeople.role.${person.role}`),
                         ...(person.jobLabel == null ? [] : [person.jobLabel]),
+                        ...(person.doorCode == null ? [] : [t('doorCodes.tag')]),
                         ...(yours ? [t('eventPeople.you')] : []),
                       ].join(' · '),
                     ]}
@@ -455,7 +519,7 @@ function SavingTag({ saving }: { saving: Saving }) {
 
 /** A role saves as it is picked and the dialog stays open, so a pick never changes the context by itself (WCAG 3.2.2). */
 function RoleDialog({
-  eventId,
+  event,
   person,
   tone,
   organisationName,
@@ -463,7 +527,7 @@ function RoleDialog({
   onRemoved,
   onClose,
 }: {
-  eventId: string;
+  event: OrganisationEvent;
   person: EventPerson;
   tone: number;
   organisationName: string;
@@ -472,6 +536,8 @@ function RoleDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const now = useServerNow();
+  const eventId = event.id;
   const radios = useId();
   const pickedRadio = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<EventRole>(person.role);
@@ -588,7 +654,7 @@ function RoleDialog({
         <div className="people-who">
           <Avatar initials={initials(name)} tone={tone} size="face" />
           <RowWords
-            title={name}
+            title={<WholeAddress text={name} />}
             lines={[
               [
                 t(person.outside ? 'eventPeople.fromOutside' : 'eventPeople.memberOf', {
@@ -599,7 +665,28 @@ function RoleDialog({
             ]}
           />
         </div>
-        {person.outside && <p className="desk-line people-ends">{t('eventPeople.outsideEnds')}</p>}
+        {person.doorCode != null && person.joinedAt != null ? (
+          <div className="people-ends dc-door-lines">
+            <p className="desk-line">
+              {t('doorCodes.joinedWith', {
+                code: shownCode(person.doorCode),
+                time: atWords(
+                  person.joinedAt,
+                  {
+                    endsAt: event.endsAt,
+                    timeZone: event.timeZone,
+                    locale: dateLocale(),
+                    now,
+                  },
+                  t,
+                ),
+              })}
+            </p>
+            <p className="desk-line">{t('eventPeople.outsideEnds')}</p>
+          </div>
+        ) : (
+          person.outside && <p className="desk-line people-ends">{t('eventPeople.outsideEnds')}</p>
+        )}
         {failed != null && <Lost words={failed} />}
         <fieldset className="desk-choices">
           <legend className="desk-unseen">{t('eventPeople.roleFor', { name })}</legend>
@@ -654,7 +741,12 @@ function RoleDialog({
       </Dialog>
       {removing && (
         <Ask
-          title={t('eventPeople.removeTitle', { name })}
+          title={
+            <AddressIn
+              text={name}
+              words={(address) => t('eventPeople.removeTitle', { name: address })}
+            />
+          }
           line={
             person.outside
               ? t('eventPeople.removeOutsideLine')

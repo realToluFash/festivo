@@ -31,7 +31,6 @@ import { tokens } from '../../theme/tokens.ts';
 import { CardBackdrop, PhaseShape } from '../../components/EventCard.tsx';
 import type { Shown } from '../events/EventsModel.ts';
 import { useShell } from '../../components/settingsShell.ts';
-import { Pill } from '../../components/SettingsParts.tsx';
 import { Glass } from '../../components/TodayCover.tsx';
 import {
   CardSays,
@@ -197,79 +196,6 @@ export function GuestCover({
         </View>
       )}
     </SummaryCard>
-  );
-}
-
-/** The amber panel: duplicates, the 412, the plan limit, replacing a guest's own reply. */
-export function Amber({
-  title,
-  children,
-  testID,
-}: {
-  title: string | null;
-  children?: ReactNode;
-  testID?: string;
-}) {
-  useReadOut(title);
-
-  return (
-    <View style={styles.amber} accessibilityRole="alert" testID={testID}>
-      {title != null && (
-        <View style={styles.amberHead}>
-          <View style={styles.amberMark}>
-            <Glyph name="alert" size={17} ink={tokens.colorAttentionText} weight={2.2} />
-          </View>
-          <Text
-            size={15.5}
-            weight="bold"
-            accessibilityRole="header"
-            style={[styles.grow, styles.amberTitle]}
-          >
-            {title}
-          </Text>
-        </View>
-      )}
-      {children}
-    </View>
-  );
-}
-
-export function AmberLine({ text, ink = false }: { text: string; ink?: boolean }) {
-  return (
-    <Text size={14} weight="medium" style={[ink ? null : styles.secondary, styles.lines]}>
-      {text}
-    </Text>
-  );
-}
-
-export function Choices({
-  first,
-  second,
-  primary = false,
-}: {
-  first: { label: string; onPress: () => void; testID: string };
-  second: { label: string; onPress: () => void; testID: string };
-  primary?: boolean;
-}) {
-  return (
-    <View style={styles.choices}>
-      <Pill
-        label={first.label}
-        kind={primary ? 'primary' : 'secondary'}
-        height={tokens.sizeHit}
-        full={false}
-        onPress={first.onPress}
-        testID={first.testID}
-      />
-      <Pill
-        label={second.label}
-        kind="secondary"
-        height={tokens.sizeHit}
-        full={false}
-        onPress={second.onPress}
-        testID={second.testID}
-      />
-    </View>
   );
 }
 
@@ -646,22 +572,8 @@ const styles = StyleSheet.create({
   foot: { marginTop: 'auto', paddingTop: tokens.spaceXs },
   steps: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
-  count: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  count: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10 },
   big: { lineHeight: 42, letterSpacing: 40 * -0.02, fontVariant: ['tabular-nums'] },
-  amber: {
-    gap: tokens.spaceSm,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: tokens.colorAttentionBorder,
-    backgroundColor: tokens.colorAttentionTint,
-  },
-  amberHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  amberMark: { paddingTop: 2 },
-  amberTitle: { lineHeight: 15.5 * 1.35 },
-  lines: { lineHeight: 14 * 1.45 },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   toast: {
     position: 'absolute',
     left: 16,

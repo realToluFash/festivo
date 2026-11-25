@@ -15,7 +15,7 @@ import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { LinkedNoticeFor, useLinkedProvider } from '../../components/LinkedNotice.tsx';
 import { NotificationsBell } from '../../components/NotificationsBell.tsx';
 import { OfflineBand, OfflineBox, OfflineProvider } from '../../components/OfflineBand.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
@@ -70,8 +70,11 @@ import './wideDesk.css';
  * The error boundary wraps the OUTLET, not the shell: a screen that throws
  * should leave the navigation and the organisation switcher usable, because
  * the way out of a broken screen is the navigation.
+ *
+ * Bare, it is the same gate around a page that is not the desk: Preview as
+ * guest shows the guest's page as a guest sees it.
  */
-export function AppLayout() {
+export function AppLayout({ bare = false }: { bare?: boolean }) {
   const state = useSessionState();
   const { pathname, search } = useLocation();
 
@@ -106,6 +109,8 @@ export function AppLayout() {
   // The product is behind the onboarding gate: verified, then complete.
   const landing = landingFor(state.session.awaiting);
   if (landing !== '/app') return <Navigate to={landing} replace />;
+
+  if (bare) return <Outlet />;
 
   const { organisation, pausedIn } = state.session;
 
@@ -146,10 +151,14 @@ function Shell() {
   const menuId = useId();
   const organisation = session.organisation;
   const routedEvent = useRoutedEventId();
-  const answers = useInvitationAnswers();
+  const reads = session.heldByDevice !== true;
+  const answers = useInvitationAnswers(reads);
   const waiting = useWaitingInvitations(answers);
   const closeCreate = useCallback(() => setCreating(false), []);
-  const offer = useDomainOffer();
+  const [provider, dropProvider] = useLinkedProvider();
+  const [gateLaterFor, setGateLaterFor] = useState<string | null>(null);
+  const linked = <LinkedNoticeFor provider={provider} onDismiss={dropProvider} />;
+  const offer = useDomainOffer(reads);
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
   const atPhone = usePhoneWidth();
@@ -238,7 +247,10 @@ function Shell() {
         onChoose={() => setChoosing((times) => times + 1)}
       />
     ) : organisation != null && overdue && !atAccount ? (
-      <TwoFactorOverdue organisation={organisation} />
+      <TwoFactorOverdue
+        organisation={organisation}
+        others={session.organisations.filter((other) => other.id !== organisation.id)}
+      />
     ) : null;
 
   const { handoff, showAnyway } = useHandoff(pathname, organisation?.id ?? null, standIn == null);
@@ -247,6 +259,16 @@ function Shell() {
   // Said on the page it happened on, and gone once the person moves on.
   const said = switched != null && switched.at === pathname && switched.id === organisation?.id && (
     <Switched name={switched.name} takesFocus={switched.takesFocus === true} />
+  );
+  // Held by the shell, as the provider is, so "Not now" lasts while the person moves between pages; another organisation asks again.
+  if (gateLaterFor != null && gateLaterFor !== organisation?.id) setGateLaterFor(null);
+  const rules = organisation != null && session.pausedIn == null && (
+    <SignInRulesNotices
+      key={organisation.id}
+      organisation={organisation}
+      later={gateLaterFor === organisation.id}
+      onLater={() => setGateLaterFor(organisation.id)}
+    />
   );
 
   const [landing, ...others] = session.outsideEvents ?? [];
@@ -294,7 +316,7 @@ function Shell() {
         </AloneHeader>
         {atAccount ? (
           <main id="content" className="shell-content no-organisation-account">
-            <LinkedNotice />
+            {linked}
             <Link className="link-button back-link" to="/app">
               <span aria-hidden="true">←</span>
               <span>{t('noOrganisation.wayBack')}</span>
@@ -305,7 +327,7 @@ function Shell() {
           </main>
         ) : (
           <main id="content" className="no-organisation-main">
-            <LinkedNotice />
+            {linked}
             <ErrorBoundary>
               <NoOrganisation
                 waiting={answers}
@@ -346,14 +368,14 @@ function Shell() {
           <DeskSidebar
             label={t('app.name')}
             pill={
-              organisation != null && (
+              (organisation != null || session.pausedIn != null) && (
                 <OrganisationSwitcher
                   current={organisation}
                   organisations={session.organisations}
                   waiting={waiting}
                   offer={offer}
                   email={session.email}
-                  paused={session.pausedIn != null}
+                  paused={session.pausedIn ?? null}
                   opened={choosing}
                   outside={session.outsideEvents ?? []}
                   onSwitch={switchInto}
@@ -404,10 +426,8 @@ function Shell() {
           inert={menuOpen}
         >
           {boxed ? <OfflineBox /> : !(bandless && ownNotices) && <OfflineBand />}
-          <LinkedNotice />
-          {organisation != null && session.pausedIn == null && (
-            <SignInRulesNotices key={organisation.id} organisation={organisation} />
-          )}
+          {!(bandless && ownNotices) && linked}
+          {!(bandless && ownNotices) && rules}
           {!(bandless && ownNotices) && said}
 
           <DeskTopContext
@@ -416,7 +436,13 @@ function Shell() {
                 ? {
                     bell: <NotificationsBell userId={session.userId} look="desk" />,
                     said: ownNotices ? said : null,
-                    offline: ownNotices ? <OfflineBox /> : null,
+                    above: ownNotices ? (
+                      <>
+                        <OfflineBox />
+                        {linked}
+                        {rules}
+                      </>
+                    ) : null,
                   }
                 : NO_DESK_TOP
             }
@@ -431,6 +457,8 @@ function Shell() {
                   {bandless && ownNotices && (
                     <>
                       <OfflineBox />
+                      {linked}
+                      {rules}
                       {said}
                     </>
                   )}
@@ -468,7 +496,7 @@ function Shell() {
   );
 }
 
-const NO_DESK_TOP = { bell: null, said: null, offline: null };
+const NO_DESK_TOP = { bell: null, said: null, above: null };
 
 /** The run page marks no area, and its handoff's Menu still lists the event's areas, none lit (`EventHandoff.dc.html`). */
 function handoffInside(handoff: Handoff): ShownInside | undefined {
@@ -557,11 +585,11 @@ function ShellEvents({ organisationId }: { organisationId: string | null }) {
   );
 }
 
-/** Settings, and the person at the sidebar's foot, who opens their account. */
+/** Settings, and the person at the sidebar's foot, who opens their account. A paused membership holds no role, so the person is named alone while the pill names it (sc-86077). */
 function ShellFoot({ onFollow }: { onFollow?: () => void }) {
   const { t } = useTranslation();
   const session = useSession();
-  const organisation = session.organisation;
+  const organisation = session.pausedIn == null ? session.organisation : null;
   const role = organisation == null ? null : roleName(t, organisation.role);
   const person = { name: session.name, initials: initials(session.name), role };
   const atAccount = useLocation().pathname.startsWith('/app/account');

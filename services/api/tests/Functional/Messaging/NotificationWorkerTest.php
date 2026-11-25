@@ -334,7 +334,7 @@ final class NotificationWorkerTest extends MessagingTestCase
     public function aGuestAudienceResolvesToTheGuestsOnTheListAndNeverACompanion(): void
     {
         $event = $this->event();
-        $guest = Guest::listed($event, 'Emeka Nwosu', 'emeka nwosu', 'emeka@example.test', null, null, InvitationLinks::token());
+        $guest = Guest::listed($event, 'Emeka Nwosu', 'emeka nwosu', 'emeka@example.test', null, null, InvitationLinks::token(), Uuid::v4()->toRfc4122());
         self::em()->persist($guest);
         self::em()->persist(Guest::companionOf($guest, 'Ada Nwosu', 'ada nwosu', 1, null));
         self::em()->flush();

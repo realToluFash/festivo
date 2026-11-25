@@ -568,10 +568,10 @@ describe('dates on paper (sc-4024)', () => {
 });
 
 describe('the states (§6)', () => {
-  it('links every state from the demo’s home, in ten groups', () => {
+  it('links every state from the demo’s home, in eleven groups', () => {
     const links = SEATING_PAGES.flatMap((page) => page.states);
 
-    expect(SEATING_PAGES).toHaveLength(10);
+    expect(SEATING_PAGES).toHaveLength(11);
     expect(links).toHaveLength(SEATING_STATES.length);
     expect(links[0]?.to).toBe('/demo/events/evt-wed-4/seating');
   });

@@ -470,7 +470,7 @@ final class MemberActionsTest extends ApiTestCase
         $refused = $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
         self::assertSame(409, $this->statusCode(), Json\encode($refused));
         self::assertSame(ErrorCode::TeamSeatsInUse->type(), $refused['type'] ?? null);
-        self::assertSame("All 2 team seats on this organisation's plan are in use, so nothing has changed.", $refused['detail'] ?? null);
+        self::assertSame('All 2 team seats on this organisation’s plan are in use, so nothing has changed.', $refused['detail'] ?? null);
         self::assertSame(2, $refused['limit'] ?? null);
         self::assertSame(MembershipStatus::Suspended, $this->membership($chidi)->getStatus());
 
@@ -551,7 +551,7 @@ final class MemberActionsTest extends ApiTestCase
 
         $refused = $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
 
-        self::assertSame("The only team seat on this organisation's plan is in use, so nothing has changed.", $refused['detail'] ?? null);
+        self::assertSame('The only team seat on this organisation’s plan is in use, so nothing has changed.', $refused['detail'] ?? null);
     }
 
     #[Test]

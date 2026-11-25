@@ -1360,7 +1360,7 @@ describe('New event', () => {
       await waitFor(() => expect(document.activeElement).toBe(name));
       expect(errorUnder('event-host-0')).toContain('Enter a name or remove this host.');
       expect(errorUnder('event-host-1')).toContain(
-        "A host's name can be at most 60 characters. This one has 61.",
+        'A host’s name can be at most 60 characters. This one has 61.',
       );
       expect(sent.map(({ line }) => line)).not.toContain('POST /api/orgs/org_1/events');
 
@@ -1970,7 +1970,7 @@ describe("An event's Overview (sc-22103)", () => {
     expect(within(details).queryByRole('button', { name: /^.*Dates/u })).toBeNull();
     expect(
       within(details).getByText(
-        "Dates · This event is over, so its start, end and time zone can't be changed.",
+        'Dates · This event is over, so its start, end and time zone can’t be changed.',
       ),
     ).toBeDefined();
   });
@@ -1993,7 +1993,7 @@ describe("An event's Overview (sc-22103)", () => {
     const details = await screen.findByRole('region', { name: 'Details' });
     expect(
       within(details).getByText(
-        "Dates · This event was called off, so its start, end and time zone can't be changed.",
+        'Dates · This event was called off, so its start, end and time zone can’t be changed.',
       ),
     ).toBeDefined();
   });
@@ -2515,6 +2515,103 @@ describe("An event's venue in New event (sc-3589)", () => {
     });
   });
 
+  it('credits Stadia Maps and OpenStreetMap under the suggestions, outside the listbox (sc-80918)', async () => {
+    signedIn();
+    serving({
+      'GET /api/addresses/suggest': () =>
+        json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+    });
+    await creating();
+
+    expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull();
+    fireEvent.change(address(), { target: { value: 'Civic' } });
+    const list = await screen.findByRole('listbox');
+    const links = [
+      screen.getByRole('link', { name: 'Stadia Maps' }),
+      screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
+    ];
+
+    expect(links[0]?.closest('p')?.textContent).toBe('© Stadia Maps © OpenStreetMap contributors');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      'https://stadiamaps.com/attribution/',
+      'https://www.openstreetmap.org/copyright',
+    ]);
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(list.contains(link)).toBe(false);
+    }
+    expect(within(list).getAllByRole('option')).toHaveLength(1);
+
+    fireEvent.change(address(), { target: { value: 'Ci' } });
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Stadia Maps' })).toBeNull());
+  });
+
+  describe('the credit keeps the suggestions open while focus is on it (sc-80918)', () => {
+    async function listed(): Promise<{ stadia: HTMLElement; osm: HTMLElement }> {
+      signedIn();
+      serving({
+        'GET /api/addresses/suggest': () =>
+          json({ success: true, data: [{ ...CIVIC, secondary_text: CIVIC.secondaryText }] }),
+      });
+      await creating();
+      address().focus();
+      fireEvent.change(address(), { target: { value: 'Civic' } });
+      await screen.findByRole('listbox');
+
+      return {
+        stadia: screen.getByRole('link', { name: 'Stadia Maps' }),
+        osm: screen.getByRole('link', { name: 'OpenStreetMap contributors' }),
+      };
+    }
+
+    async function settled(): Promise<void> {
+      await act(() => new Promise((done) => window.setTimeout(done)));
+    }
+
+    it('keeps the list when Tab moves from Address to the links', async () => {
+      const { stadia, osm } = await listed();
+
+      stadia.focus();
+      await settled();
+      osm.focus();
+      await settled();
+
+      expect(screen.getByRole('listbox')).toBeDefined();
+    });
+
+    it('closes the list when focus leaves past OpenStreetMap contributors', async () => {
+      const { osm } = await listed();
+
+      osm.focus();
+      await settled();
+      screen.getByRole('button', { name: 'Create event' }).focus();
+
+      await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+    });
+
+    it('closes the list on Escape on a link, with focus back in Address', async () => {
+      const { stadia } = await listed();
+
+      stadia.focus();
+      fireEvent.keyDown(stadia, { key: 'Escape' });
+
+      await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
+      expect(document.activeElement).toBe(address());
+    });
+
+    it('keeps the list when the window loses focus to a link opened in a new tab', async () => {
+      await listed();
+      const away = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+
+      fireEvent.blur(address());
+      await settled();
+      away.mockRestore();
+
+      expect(screen.getByRole('listbox')).toBeDefined();
+      expect(address().value).toBe('Civic');
+    });
+  });
+
   it('saves a typed address as typed, with a name', async () => {
     signedIn();
     const sent = serving({ 'GET /api/addresses/suggest': () => json({ success: true, data: [] }) });
@@ -2541,12 +2638,12 @@ describe("An event's venue in New event (sc-3589)", () => {
 
     expect(
       await screen.findByText(
-        "Suggestions aren't available right now. Type the address in full and it will be saved as you typed it.",
+        'Suggestions aren’t available right now. Type the address in full and it will be saved as you typed it.',
       ),
     ).toBeDefined();
     const help = address().getAttribute('aria-describedby')!;
     expect(document.getElementById(help)?.textContent).toContain(
-      "Suggestions aren't available right now.",
+      'Suggestions aren’t available right now.',
     );
 
     expect((await create(sent)).venue).toEqual({ name: null, address: '12 Bode Thomas Street' });
@@ -2677,7 +2774,7 @@ describe('Change dates opens Dates in place, and Edit details is gone (sc-48602)
 
       expect(
         await within(details).findByText(
-          "Dates · This event was called off, so its start, end and time zone can't be changed.",
+          'Dates · This event was called off, so its start, end and time zone can’t be changed.',
         ),
       ).toBeDefined();
       expect(within(details).queryByRole('group', { name: 'Starts' })).toBeNull();
@@ -2931,7 +3028,7 @@ describe('Make live (sc-3584)', () => {
 
     expect(
       within(dialog).getByText(
-        "Guests can be invited, and they can see it. It can't go back to being a draft.",
+        'Guests can be invited, and they can see it. It can’t go back to being a draft.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Not yet' }));
@@ -2973,7 +3070,7 @@ describe('Make live (sc-3584)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(changed).getByText("It's live now. The page shows what it is now."),
+      within(changed).getByText('It’s live now. The page shows what it is now.'),
     ).toBeDefined();
     fireEvent.click(within(changed).getByRole('button', { name: 'Close' }));
     expect(screen.getByText('Live')).toBeDefined();
@@ -3174,7 +3271,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     expect(within(dialog).getByRole('button', { name: 'Call off' }).className).toContain('is-red');
     expect(
       within(dialog).getByText(
-        "It won't go ahead. Guests following their link will be told. You can't undo this.",
+        'It won’t go ahead. Guests following their link will be told. You can’t undo this.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it on' }));
@@ -3248,7 +3345,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'End now…' }));
     const dialog = await screen.findByRole('alertdialog', { name: 'End Adaeze and Tunde now?' });
     expect(
-      within(dialog).getByText("It will be over for everybody. You can't undo this."),
+      within(dialog).getByText('It will be over for everybody. You can’t undo this.'),
     ).toBeDefined();
     expect(within(dialog).getByRole('button', { name: 'End now' }).className).not.toContain(
       'is-red',
@@ -3334,7 +3431,7 @@ describe('The phase, End now and Call off (sc-3585)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's been called off. The page shows what it is now."),
+      within(refused).getByText('It’s been called off. The page shows what it is now.'),
     ).toBeDefined();
     expect(within(refused).queryByText('This event is already over.')).toBeNull();
   });
@@ -3585,7 +3682,7 @@ describe('Pause and Resume (sc-3586)', () => {
     const dialog = await screen.findByRole('alertdialog', { name: 'Pause Adaeze and Tunde?' });
     expect(
       within(dialog).getByText(
-        "Guests can't reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.",
+        'Guests can’t reply or change anything until you resume it. Nothing is lost. Check-in and service keep working.',
       ),
     ).toBeDefined();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it live' }));
@@ -3653,13 +3750,13 @@ describe('Pause and Resume (sc-3586)', () => {
       'somebody else changed it when the resume is refused and it is live now',
       () => live(),
       'Somebody else changed this event while you had it open.',
-      "It's live now. The page shows what it is now.",
+      'It’s live now. The page shows what it is now.',
     ],
     [
       'it is already over when the resume is refused because its end has passed',
       () => paused({ phase: 'finished', pausedAt: null }),
       'This event is already over.',
-      "It's finished now. The page shows what it is now.",
+      'It’s finished now. The page shows what it is now.',
     ],
     [
       'somebody else changed it when the resume is refused and it was called off (sc-17382)',
@@ -3671,7 +3768,7 @@ describe('Pause and Resume (sc-3586)', () => {
           concludedAt: '2026-10-28T09:00:00+00:00',
         }),
       'Somebody else changed this event while you had it open.',
-      "It's been called off. The page shows what it is now.",
+      'It’s been called off. The page shows what it is now.',
     ],
   ])('says %s, and focus is on the title', async (_, reloaded, said, now) => {
     signedIn();
@@ -3709,7 +3806,7 @@ describe('Pause and Resume (sc-3586)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's paused now. The page shows what it is now."),
+      within(refused).getByText('It’s paused now. The page shows what it is now.'),
     ).toBeDefined();
   });
 
@@ -3735,10 +3832,10 @@ describe('Pause and Resume (sc-3586)', () => {
       name: 'Somebody else changed this event while you had it open.',
     });
     expect(
-      within(refused).getByText("It's been called off. The page shows what it is now."),
+      within(refused).getByText('It’s been called off. The page shows what it is now.'),
     ).toBeDefined();
     expect(
-      within(refused).queryByText("It's finished now. The page shows what it is now."),
+      within(refused).queryByText('It’s finished now. The page shows what it is now.'),
     ).toBeNull();
   });
 
@@ -4889,6 +4986,12 @@ describe('A HEIC the browser cannot show, and a cover that will not load (sc-138
       await screen.findByRole('heading', { level: 1, name: 'New event' });
       chooseHeic();
       await screen.findByText('Uploading…');
+      // The guard takes hold in an effect after this render; under load, going back can beat it.
+      await waitFor(() => {
+        const leaving = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(leaving);
+        expect(leaving.defaultPrevented).toBe(true);
+      });
 
       await act(() => router.navigate(-1));
 
@@ -5054,7 +5157,7 @@ describe('Make live asks for a missing host (sc-22143)', () => {
 
     expect(
       await within(dialog).findByText(
-        "A host's name can be at most 60 characters. This one has 66.",
+        'A host’s name can be at most 60 characters. This one has 66.',
       ),
     ).toBeDefined();
     expect(host.value).toBe('é'.repeat(66));
@@ -5416,7 +5519,7 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
 
     expect(
       await within(page).findByText(
-        "Every date on this event, earliest first. Times are in Europe/Madrid, the event's time zone.",
+        'Every date on this event, earliest first. Times are in Europe/Madrid, the event’s time zone.',
       ),
     ).toBeDefined();
     expect(rows(page)).toEqual([

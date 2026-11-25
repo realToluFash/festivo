@@ -20,6 +20,7 @@ const NONE = {
 };
 const GUESTS_CSS = stylesheet(import.meta.dirname, 'guests.css');
 const SELECT_CSS = stylesheet(import.meta.dirname, 'guestSelect.css');
+const GROUPS_CSS = stylesheet(import.meta.dirname, 'guestGroups.css');
 const SETTINGS_CSS = stylesheet(import.meta.dirname, '../../../components/SettingsParts.css');
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -80,7 +81,7 @@ const NGOZI = guest('g_1', 'Ngozi Eze', {
 const AMAKA = guest('g_2', 'Chief Amaka Obi', { reply: 'maybe' });
 const INVITED = { at: '2026-11-01T10:00:00+01:00', how: 'whatsapp', by: 'Folake Adeyemi' };
 
-function signedIn(): void {
+function signedIn(timezone: string | null = null): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -94,7 +95,7 @@ function signedIn(): void {
     organisation: IRE,
     organisations: [IRE],
     organisationCountry: 'GB',
-    timezone: null,
+    timezone,
     waitingFor: null,
   };
 
@@ -1977,6 +1978,83 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(screen.getByText('0 of 0 named')).toBeDefined();
   });
 
+  it('asks before removing a companion with a meal chosen, and names a seat beside it (sc-3907)', async () => {
+    const withMeal = (seat: unknown) => ({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat,
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+    await editNgozi(withMeal(null));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' });
+
+    expect(
+      within(ask).getByText('Obi Eze has a meal chosen. Removing this companion drops the meal.'),
+    ).toBeDefined();
+    expect(
+      within(ask)
+        .getAllByRole('button')
+        .map((one) => one.textContent),
+    ).toEqual(['Cancel', 'Remove']);
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('0 of 0 named')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Remove Obi Eze?' })).getByRole(
+        'button',
+        { name: 'Remove' },
+      ),
+    );
+    expect(await screen.findByText('Obi Eze removed. Save to keep the change.')).toBeDefined();
+  });
+
+  it('words a seat and a meal together in the ask (sc-3907)', async () => {
+    await editNgozi({
+      'GET /api/events/ev_1/guests/g_1': () =>
+        tagged(
+          {
+            ...DETAILS,
+            companions: [
+              {
+                id: 'c_1',
+                fullName: 'Obi Eze',
+                state: 'coming',
+                coming: true,
+                namedByGuest: false,
+                seat: { kind: 'table', name: 'Table 4' },
+                meal: true,
+              },
+            ],
+          },
+          '"1"',
+        ),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Obi Eze' }));
+    expect(
+      await screen.findByText(
+        'Obi Eze has a seat at Table 4 and a meal chosen. Removing this companion frees the seat and drops the meal.',
+      ),
+    ).toBeDefined();
+  });
+
   it('names a row by its label when a seated companion is in one (sc-4013)', async () => {
     await editNgozi({
       'GET /api/events/ev_1/guests/g_1': () =>
@@ -2280,6 +2358,38 @@ describe('The wrong-person flag (sc-1526)', () => {
         within(invitation).getByRole('button', { name: /^Replace link…/u }),
       ),
     );
+  });
+
+  it('keeps focus on Replace link… when the heading was asked for while the dialog was up', async () => {
+    await openFlagged({
+      'POST /api/events/ev_1/guests/g_1/link/replace': () => new Response(null, { status: 204 }),
+    });
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((frame) => {
+      frames.push(frame);
+      return frames.length;
+    });
+    const notice = await within(guestColumn()).findByRole('region', { name: TITLE });
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Replace link…' }));
+    fireEvent.click(screen.getByRole('link', { name: /^Ngozi Eze/u }));
+    await waitFor(() => expect(frames).not.toHaveLength(0));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    await within(guestColumn()).findByText(
+      'Link replaced. Ngozi Eze’s old link no longer works. Copy the new one and send it.',
+    );
+    const invitation = within(guestColumn()).getByRole('region', { name: 'Invitation' });
+    const replace = within(invitation).getByRole('button', { name: /^Replace link…/u });
+    await waitFor(() => expect(document.activeElement).toBe(replace));
+    for (let round = 0; round < 6; round++) {
+      await act(async () => {
+        frames.splice(0).forEach((frame) => frame(0));
+        await new Promise((done) => setTimeout(done, 0));
+      });
+    }
+
+    expect(document.activeElement).toBe(replace);
   });
 
   it('keeps the notice when the replace fails, and says the old link still works', async () => {
@@ -3499,9 +3609,229 @@ describe('Groups (sc-3775)', () => {
 
     fireEvent.click(within(chips).getByRole('button', { name: 'No group' }));
 
-    expect(rows()).toEqual(['Chief Amaka ObiNot sure yet']);
+    expect(rows()).toEqual([
+      'Chief Amaka ObiNot sure yet',
+      'Sade OjoComing · 1 companion · 1 of 1 namedGroup: Bride’s side',
+      'Femi OjoComing',
+    ]);
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
     expect(rows()).toHaveLength(4);
+    expect(shownRouter!.state.location.search).toBe('');
+  });
+
+  it('keeps several group chips on, each a step in the address Back undoes (sc-90684)', async () => {
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])),
+    });
+    await screen.findByText('Tobi Bello');
+    const chips = screen.getByRole('group', { name: 'Groups' });
+    const pressed = () =>
+      within(chips)
+        .getAllByRole('button')
+        .filter((one) => one.getAttribute('aria-pressed') === 'true')
+        .map((one) => one.textContent);
+
+    fireEvent.click(within(chips).getByRole('button', { name: 'Work' }));
+    fireEvent.click(within(chips).getByRole('button', { name: 'Bride’s side' }));
+
+    expect(pressed()).toEqual(['Bride’s side', 'Work']);
+    expect(rows()).toHaveLength(3);
+    expect(shownRouter!.state.location.search).toBe('?group=gr_work&group=gr_bride');
+
+    await act(() => shownRouter!.navigate(-1));
+    expect(pressed()).toEqual(['Work']);
+    await act(() => shownRouter!.navigate(1));
+    expect(pressed()).toEqual(['Bride’s side', 'Work']);
+
+    fireEvent.click(within(chips).getByRole('button', { name: /Work/u }));
+    expect(pressed()).toEqual(['Bride’s side']);
+  });
+
+  it('opens on the chips the address names, ignoring a group the event no longer has (sc-90684)', async () => {
+    signedIn();
+    await onGuests(
+      { 'GET /api/events/ev_1/guests': () => json(grouped([TOBI, SADE, AMAKA])) },
+      OWNER_PERMISSIONS,
+      '?group=gr_gone&group=gr_work&group=none',
+    );
+    await screen.findByText('Tobi Bello');
+
+    expect(rows()).toEqual(['Chief Amaka ObiNot sure yet', 'Tobi BelloComingGroup: Work']);
+    expect(
+      within(screen.getByRole('group', { name: 'Groups' }))
+        .getAllByRole('button')
+        .filter((one) => one.getAttribute('aria-pressed') === 'true')
+        .map((one) => one.textContent),
+    ).toEqual(['Work', 'No group']);
+  });
+
+  describe('with Dietary notes, Export, a deleted group and a selection (sc-90684)', () => {
+    const DIET = { ...NONE, diet: ['halal'] };
+    const TOBI_DIET = { ...TOBI, needs: DIET };
+    const DAPO_SEEN = guest('g_5', 'Dapo Ade', { reply: 'coming', group: WORK });
+    const BOLA_SEEN = guest('g_6', 'Bola Ade', { reply: 'coming', group: BRIDE });
+    const DAPO = { ...DAPO_SEEN, needs: NONE };
+    const BOLA = { ...BOLA_SEEN, needs: DIET };
+    const LIST = [TOBI_DIET, DAPO, BOLA, AMAKA];
+
+    function pressed(): string[] {
+      return screen.getAllByRole('button', { pressed: true }).map((one) => one.textContent ?? '');
+    }
+
+    it('opens an owner on Dietary notes and Work from the address, both narrowing the list', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped(LIST)) },
+        OWNER_PERMISSIONS,
+        '?dietary=1&group=gr_work',
+      );
+      await screen.findByText('Tobi Bello');
+
+      expect(pressed()).toEqual(['Dietary notes', 'Work']);
+      expect(rows()).toEqual([expect.stringMatching(/^Tobi Bello/u)]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dietary notes' }));
+      expect(shownRouter!.state.location.search).toBe('?group=gr_work');
+      expect(rows()).toEqual([
+        expect.stringMatching(/^Dapo Ade/u),
+        expect.stringMatching(/^Tobi Bello/u),
+      ]);
+    });
+
+    it('ignores Dietary notes in the address for somebody without guests.manage', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped([TOBI, DAPO_SEEN, BOLA_SEEN, AMAKA])) },
+        OWNER_PERMISSIONS.filter((one) => one !== 'guests.manage'),
+        '?dietary=1',
+      );
+      await screen.findByRole('link', { name: /^Dapo Ade/u });
+
+      expect(screen.queryByRole('button', { name: 'Dietary notes' })).toBeNull();
+      expect(screen.getByRole('link', { name: /^Chief Amaka Obi/u })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Show all 3' })).toBeDefined();
+    });
+
+    it('exports only the guests two group chips and Dietary notes leave, naming every chip', async () => {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export');
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      signedIn();
+      const sent = await onGuests(
+        {
+          'GET /api/events/ev_1/guests': () => json(grouped(LIST)),
+          'POST /api/events/ev_1/guests/export': () =>
+            new Response(new Uint8Array([80, 75]), {
+              headers: { 'Content-Type': 'text/csv; charset=UTF-8' },
+            }),
+        },
+        OWNER_PERMISSIONS,
+        '?dietary=1&group=gr_work&group=gr_bride',
+      );
+      await screen.findByText('Tobi Bello');
+      expect(rows()).toEqual([
+        expect.stringMatching(/^Bola Ade/u),
+        expect.stringMatching(/^Tobi Bello/u),
+      ]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Export guests' });
+      expect(within(dialog).getByRole('radio', { name: /^This view \(2 people\)/u })).toBeDefined();
+      expect(within(dialog).getByText(/^Filter: .+ · Dietary notes · .+$/u).textContent).toMatch(
+        /· (Bride’s side · Work|Work · Bride’s side)$/u,
+      );
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Download' }));
+      await waitFor(() =>
+        expect(
+          sent.find((one) => one.line === 'POST /api/events/ev_1/guests/export')?.body,
+        ).toMatchObject({ scope: 'view', people: ['g_6', 'g_3'] }),
+      );
+    });
+
+    it('lets a deleted group’s chip go and keeps the others on', async () => {
+      signedIn();
+      await onGuests(
+        {
+          'GET /api/events/ev_1/guests': () => json(grouped(LIST)),
+          'DELETE /api/events/ev_1/guest-groups/gr_work': () => new Response(null, { status: 204 }),
+        },
+        OWNER_PERMISSIONS,
+        '?group=gr_work&group=gr_bride',
+      );
+      await screen.findByText('Tobi Bello');
+      fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+      const column = await screen.findByRole('region', { name: 'Groups' });
+      fireEvent.click(within(column).getByRole('button', { name: 'Delete Work' }));
+      const ask = await screen.findByRole('alertdialog', { name: 'Delete Work?' });
+      fireEvent.click(within(ask).getByRole('button', { name: 'Delete group' }));
+      expect(await within(column).findByText('Work deleted.')).toBeDefined();
+
+      await waitFor(() => expect(shownRouter!.state.location.search).toBe('?group=gr_bride'));
+      expect(pressed()).toContain('Bride’s side');
+    });
+
+    it('clears the selection when a second chip is pressed, as any filter change does', async () => {
+      signedIn();
+      await onGuests(
+        { 'GET /api/events/ev_1/guests': () => json(grouped(LIST)) },
+        OWNER_PERMISSIONS,
+        '?group=gr_work',
+      );
+      await screen.findByText('Tobi Bello');
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select Tobi Bello' }));
+      expect(screen.getByRole('region', { name: 'Selected guests' })).toBeDefined();
+
+      fireEvent.click(
+        within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+          name: 'Bride’s side',
+        }),
+      );
+
+      expect(await screen.findByText('Selection cleared.')).toBeDefined();
+      expect(screen.queryByRole('region', { name: 'Selected guests' })).toBeNull();
+    });
+  });
+
+  it('names a 60-character group whole in its chip and its guest’s tag, wrapping, never cut short (sc-51198)', async () => {
+    const LONG = {
+      id: 'gr_long',
+      name: 'Thecousinsfromthebridesmotherssidewhoalltravelledinfromlagos',
+    };
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () =>
+        json(grouped([{ ...TOBI, group: LONG }, SADE], [LONG, BRIDE])),
+    });
+
+    expect(await screen.findByText('Tobi Bello')).toBeDefined();
+    const chip = within(screen.getByRole('group', { name: 'Groups' })).getByRole('button', {
+      name: LONG.name,
+    });
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(chip.querySelector('svg')).not.toBeNull();
+    expect(chip.querySelector('.gs-chip-word')?.textContent).toBe(LONG.name);
+    const row = screen.getByRole('link', {
+      name: new RegExp(`^Tobi Bello.*Group: ${LONG.name}$`, 'u'),
+    });
+    expect(row.querySelector('.gs-row-mid .gs-row-tags .gg-tag')).not.toBeNull();
+
+    const chipRule = cssRule('.gs-filters .gs-chip', GUESTS_CSS);
+    expect(chipRule).toContain('min-height: var(--sizeHit);');
+    expect(chipRule).toContain('height: auto;');
+    expect(chipRule).toContain('white-space: normal;');
+    expect(cssRule('.gs-row', GUESTS_CSS)).toContain('gap: var(--spaceLg);');
+    expect(cssRule('.gs-row-mid', GUESTS_CSS)).toContain('gap: var(--spaceXs) var(--spaceLg);');
+    expect(cssRule('.gs-chip-word', GUESTS_CSS)).toContain('overflow-wrap: anywhere;');
+    expect(cssRule('.gs-row-mid > .desk-row-words', GUESTS_CSS)).toContain(
+      'min-width: min(100%, 12rem);',
+    );
+    const tag = cssRule('.gs-row-mid .gg-tag', GROUPS_CSS);
+    expect(tag).toContain('white-space: normal;');
+    expect(GROUPS_CSS).not.toContain('text-overflow: ellipsis');
   });
 
   it('opens Groups beside the list: each group’s count, No group last, adding up, and Done goes back', async () => {
@@ -4409,6 +4739,24 @@ describe('Select many guests, then Add to group or Remove from the list (sc-3776
     fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
 
     expect(await screen.findByRole('alertdialog', { name: 'Remove 1 guest?' })).toBeDefined();
+  });
+
+  it('asks nothing and sends nothing when every guest selected has arrived, and says who stays (sc-1454, #81075)', async () => {
+    const arrived = { ...KEMI, arrival: { at: '2030-11-14T15:10:00Z', by: 'Door' } };
+    const sent = await selecting({
+      'GET /api/events/ev_1/guests': () =>
+        json({ ...listOf([NGOZI, AMAKA, arrived]), groups: [BRIDE] }),
+    });
+    fireEvent.click(box('Select Kemi Bello'));
+
+    fireEvent.click(within(bar()).getByRole('button', { name: 'Remove from the list' }));
+
+    await waitFor(() => expect(said()[0]).toBe('Nothing removed.'));
+    expect(screen.getByText('Kemi Bello has arrived, so they stay on the list.')).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(sent.some((one) => one.line.startsWith('POST /api/events/ev_1/guests/removals'))).toBe(
+      false,
+    );
   });
 
   it('erases the removal once its Undo runs out', async () => {
@@ -5831,5 +6179,140 @@ describe('What adding them would cost (sc-86)', () => {
 
     expect(screen.queryByText('What adding them would cost')).toBeNull();
     expect(sent.some((one) => one.line === ASK)).toBe(false);
+  });
+});
+
+describe('Changed since you looked (sc-4331)', () => {
+  const CHANGES = {
+    since: '2026-11-02T09:00:00+00:00',
+    rows: [
+      { guestId: 'g_2', kind: 'needs', at: '2026-11-01T10:00:00Z' },
+      { guestId: 'g_1', kind: 'replied', at: '2026-10-30T10:00:00Z' },
+    ],
+  };
+
+  async function onChanged(
+    changes: unknown,
+    at = '',
+    look: () => Response | Promise<Response> = () => json(CHANGES),
+    timezone: string | null = null,
+  ) {
+    signedIn(timezone);
+    const sent = await onGuests(
+      {
+        'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, AMAKA])),
+        'GET /api/events/ev_1/guests/changes': () => json(changes),
+        'POST /api/events/ev_1/guests/changes/look': look,
+      },
+      undefined,
+      at,
+    );
+    await screen.findByRole('searchbox', { name: 'Find a guest' });
+
+    return sent;
+  }
+
+  function changesAsked(): string[] {
+    return vi
+      .mocked(fetch)
+      .mock.calls.map(([input]) => new URL(String(input)))
+      .filter((url) => url.pathname.endsWith('/guests/changes'))
+      .map((url) => url.search);
+  }
+
+  function rows(): string[] {
+    return within(screen.getByRole('region', { name: 'Guests' }))
+      .getAllByRole('listitem')
+      .map((row) => row.textContent ?? '');
+  }
+
+  it('leads the menu with its row while something changed, and choosing it is a look kept in the address', async () => {
+    const sent = await onChanged(CHANGES);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+    const menu = screen.getByRole('menu');
+    await waitFor(() =>
+      expect(within(menu).getAllByRole('menuitemradio')[0]?.textContent).toBe(
+        'Changed since you looked2',
+      ),
+    );
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /^Changed since/u }));
+
+    await waitFor(() =>
+      expect(shownRouter?.state.location.search).toBe(
+        `?filter=changed&since=${encodeURIComponent(CHANGES.since)}`,
+      ),
+    );
+    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/guests/changes/look');
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 2' }),
+    ).toBeDefined();
+  });
+
+  it('says so when choosing it fails, keeps the list on All, and Try again chooses it', async () => {
+    let fails = true;
+    await onChanged(CHANGES, '', () => (fails ? problem('internal_error', 500) : json(CHANGES)));
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+    const menu = screen.getByRole('menu');
+    fireEvent.click(await within(menu).findByRole('menuitemradio', { name: /^Changed since/u }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'We could not load what changed.',
+    );
+    expect(screen.getByRole('button', { name: /^All · /u })).toBeDefined();
+    expect(shownRouter?.state.location.search).toBe('');
+
+    fails = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Changed since you looked · 2' }),
+    ).toBeDefined();
+    expect(screen.queryByText('We could not load what changed.')).toBeNull();
+  });
+
+  it('leaves the row out while nothing has changed', async () => {
+    await onChanged({ since: 'all', rows: [] });
+
+    fireEvent.click(await screen.findByRole('button', { name: /^All · /u }));
+
+    expect(
+      within(screen.getByRole('menu'))
+        .getAllByRole('menuitemradio')
+        .map((item) => item.textContent),
+    ).not.toContain('Changed since you looked0');
+  });
+
+  it('opened from the address counts from its time, marks nothing read, and shows a needs-only guest by its label', async () => {
+    const sent = await onChanged(CHANGES, '?filter=changed&since=2026-10-29T00%3A00%3A00Z');
+
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(rows()[0]).toContain('Updated dietary needs · Changed');
+    expect(rows()[1]).toContain('Replied');
+    expect(changesAsked()).toContain('?since=2026-10-29T00%3A00%3A00Z');
+    expect(sent.map((one) => one.line)).not.toContain('POST /api/events/ev_1/guests/changes/look');
+  });
+
+  it('writes when they changed in the member’s zone, not the event’s', async () => {
+    const late = {
+      since: 'all',
+      rows: [{ guestId: 'g_1', kind: 'replied', at: '2026-10-30T20:00:00Z' }],
+    };
+    await onChanged(late, '?filter=changed&since=all', undefined, 'Asia/Tokyo');
+
+    await waitFor(() => expect(rows()).toHaveLength(1));
+    expect(rows()[0]).toContain('Coming · Replied Oct 31');
+  });
+
+  it('says nothing has changed with Show all guests, which goes back to All', async () => {
+    await onChanged({ since: 'all', rows: [] }, '?filter=changed&since=all');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Nothing has changed since you last looked.' }),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all guests' }));
+
+    await waitFor(() => expect(shownRouter?.state.location.search).toBe(''));
   });
 });

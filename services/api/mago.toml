@@ -189,9 +189,11 @@ health = ["App\\Health\\**"]
 app_version = ["App\\AppVersion\\**"]
 locale = ["App\\Locale\\**"]
 storage = ["App\\Storage\\**"]
+pdf = ["App\\Pdf\\**"]
 realtime = ["App\\Realtime\\**"]
 translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
+webauthn = ["App\\WebAuthn\\**"]
 
 integrations = ["App\\Integrations\\**"]
 oidc = ["App\\Integrations\\OpenIdConnect\\**"]
@@ -221,6 +223,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:deletion"
 namespace = "App\\Doctrine\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:doctrine"]
 
+# The PDF maker (sc-3911): HTML in, a tagged PDF out, by WeasyPrint on the image (sc-5821).
+[[guard.perimeter.rules]]
+namespace = "App\\Pdf\\"
+permit = ["@layer:native", "@layer:external", "@layer:pdf"]
+
 [[guard.perimeter.rules]]
 namespace = "App\\AppVersion\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:app_version"]
@@ -240,6 +247,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:realtime"
 [[guard.perimeter.rules]]
 namespace = "App\\Storage\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:storage"]
+
+# Passkey ceremonies (sc-86885): bytes in, a checked credential or assertion out.
+[[guard.perimeter.rules]]
+namespace = "App\\WebAuthn\\"
+permit = ["@layer:native", "@layer:external", "@layer:webauthn"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Translation\\"
@@ -272,6 +284,7 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:locale",
+    "@layer:webauthn",
 ]
 
 # Organisations read the user scope's vocabulary (EmailAddressNormaliser for a
@@ -306,10 +319,12 @@ permit = [
 # the answer; billing never reaches back. Staff actions on the plan catalogue
 # are audited (sc-3928), and its unit-cost countries are checked against the one
 # country list (Regions), not the scope around it. A purge takes a billing account
-# nothing is paid for by any more.
+# nothing is paid for by any more. The meter's usage reaches an open billing page
+# through the one realtime publisher (sc-3929). Storage is measured from the
+# sizes the object store reports for an organisation's kept files (sc-90252).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "App\\Domain\\Organisation\\Regions"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -362,7 +377,9 @@ permit = [
 # account's parser, a name folded by the shared rule; each add is audited and published.
 # A guest's own page shows the event's cover as the event's page serialises it (sc-1526),
 # and the items the hosts show to guests as the running order works them out (sc-3899),
-# and their table once the hosts share the tables (sc-4022).
+# and their table once the hosts share the tables (sc-4022), and the meal picks for
+# each person coming (sc-3907). A reply, a guest's own needs and a flagged link tell the
+# event's members through messaging's Guest replies (sc-4331).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Guest\\"
 permit = [
@@ -371,6 +388,8 @@ permit = [
     "@layer:shared",
     "@layer:domain_guest",
     "@layer:domain_event",
+    "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_run_of_show",
     "@layer:domain_seating",
     "@layer:domain_user",
@@ -404,7 +423,8 @@ permit = [
 # last price's currency is one of the organisation's offered currencies; each change is
 # audited. An event's menu is published whole on its topic, and an allergen added to a
 # picked dish is counted against the allergies its pickers have recorded (sc-3777).
-# A variant's or a folded dish's cost holds the event's currency (sc-3903).
+# A variant's or a folded dish's cost holds the event's currency (sc-3903). Who has not
+# chosen a meal is told to the guest summary through Messaging's port (sc-80901).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Menu\\"
 permit = [
@@ -412,6 +432,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_menu",
+    "@layer:domain_messaging",
     "@layer:domain_event",
     "@layer:domain_organisation",
     "@layer:domain_guest",
@@ -419,6 +440,7 @@ permit = [
     "@layer:audit",
     "@layer:realtime",
     "@layer:locale",
+    "@layer:pdf",
 ]
 
 # Budget & costs: the organisation's vendors (sc-82). A vendor's number is checked by
@@ -564,10 +586,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
-# WhatsApp, for phone codes (sc-750). It sees the port it implements and nothing else of ours.
+# WhatsApp, for phone codes (sc-750). It sees the port it implements, and messaging's
+# payment refusal that every WhatsApp sender raises (sc-45470), and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Meta\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:domain_messaging"]
 
 # Push's two providers (sc-3980). Each sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]
@@ -582,6 +605,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_me
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\OpenIdConnect\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:oidc"]
+
+# The merchant of record (sc-3933). It sees billing's port and the changer every rail writes through, and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Paddle\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "App\\Integrations\\Paddle\\**"]
 
 # DNS over HTTPS, for proving a domain (sc-6640). It sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]

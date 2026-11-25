@@ -82,7 +82,7 @@ services:
       EVENT_STATES_FILE: /event-states.json
       QUIET_HOURS_FILE: /quiet-hours.json
       GUEST_LANGUAGE_FILE: /guest-language.json
-      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
+      ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT:-http://smocker:8080/nominatim}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
       STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT}
@@ -126,16 +126,20 @@ services:
       OAUTH_APPLE_CLIENT_IDS: ${OAUTH_APPLE_CLIENT_IDS:-soirely-web,soirely-app,com.soirely.app,host.exp.Exponent}
       OAUTH_APPLE_TOKEN_URI: ${OAUTH_APPLE_TOKEN_URI:-http://oidc:8080/apple/token}
       OAUTH_APPLE_WEB_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:-soirely-web}
-      OAUTH_APPLE_WEB_CLIENT_SECRET: ${OAUTH_APPLE_WEB_CLIENT_SECRET:-development-secret}
+      OAUTH_APPLE_TEAM_ID: ${OAUTH_APPLE_TEAM_ID:-DEVTEAM000}
+      OAUTH_APPLE_WEB_KEY_ID: ${OAUTH_APPLE_WEB_KEY_ID:-DEVKEY0000}
+      OAUTH_APPLE_WEB_PRIVATE_KEY: '${OAUTH_APPLE_WEB_PRIVATE_KEY:------BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgV//Z8kpJkoVvFli+\nTxeBiDJ8otbUmWCpfftEotFilymhRANCAATCeZG05l+Nq/MIdW/eBJdevaMIffGE\n7n/d8D9fZTctSiEdGxmXmjC8ZYJumSnUj8Nh31ML6Zn0k+yjQbaM7uSk\n-----END PRIVATE KEY-----\n}'
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
       MINIMUM_APP_VERSION_IOS: ${MINIMUM_APP_VERSION_IOS:-}
       MINIMUM_APP_VERSION_ANDROID: ${MINIMUM_APP_VERSION_ANDROID:-}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
       REDIS_PORT_INTERNAL: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL}
       MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY}
@@ -379,7 +383,7 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Loads the SMS mock definitions, then exits. `docker compose up smocker-init`
+  # Loads the provider mock definitions, then exits. `docker compose up smocker-init`
   # re-loads them after editing infra/smocker/mocks.yml.
   smocker-init:
     image: curlimages/curl:8.11.0
@@ -393,7 +397,7 @@ services:
       - -c
       - 'curl -fsS -XPOST --header "Content-Type: application/x-yaml"
         --data-binary "@/mocks/mocks.yml"
-        "http://smocker:8081/mocks?reset=true" && echo "SMS mocks loaded"'
+        "http://smocker:8081/mocks?reset=true" && echo "Mocks loaded"'
     restart: 'no'
 
   oidc:

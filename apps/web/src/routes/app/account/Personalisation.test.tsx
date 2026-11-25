@@ -30,10 +30,16 @@ function json(body: unknown, status = 200): Response {
 }
 
 let saves: unknown[] = [];
+let account: string | null = null;
+
+function chosen(scheme: Parameters<typeof followAccountScheme>[0]): void {
+  account = scheme;
+  followAccountScheme(scheme);
+}
 
 function page(put: (body: unknown) => Response | Promise<Response> = (body) => json(body)) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
-    if (init?.method !== 'PUT') return json({ id: 'u', colourScheme: null });
+    if (init?.method !== 'PUT') return json({ id: 'u', colourScheme: account });
     const body: unknown = JSON.parse(String(init.body));
     saves.push(body);
     return put(body);
@@ -54,6 +60,7 @@ const root = document.documentElement;
 
 beforeEach(() => {
   saves = [];
+  account = null;
   FakeChannel.posted = [];
   vi.stubGlobal('BroadcastChannel', FakeChannel);
   localStorage.removeItem(SCHEME_KEY);
@@ -70,7 +77,7 @@ afterEach(() => {
 
 describe('Personalisation (sc-30441)', () => {
   it('shows Violet to somebody who never chose, and says where the colours go', () => {
-    followAccountScheme(null);
+    chosen(null);
     page();
 
     expect(screen.getByRole('group', { name: 'Your colours: Violet' })).toBeTruthy();
@@ -92,7 +99,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('opens Colours on the scheme in use, and the arrows move the pick and wrap', async () => {
-    followAccountScheme('terracotta');
+    chosen('terracotta');
     page();
 
     fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));
@@ -122,7 +129,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('closes on Esc without asking, and gives focus back to Choose colours', async () => {
-    followAccountScheme(null);
+    chosen(null);
     page();
     const step = screen.getByRole('button', { name: /Choose colours/ });
 
@@ -137,7 +144,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('saves the pick, recolours every page at once, keeps it here and tells the other tabs', async () => {
-    followAccountScheme(null);
+    chosen(null);
     page();
 
     fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));
@@ -156,7 +163,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('saves Violet as violet', async () => {
-    followAccountScheme('berry');
+    chosen('berry');
     page();
 
     fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));
@@ -168,7 +175,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('holds Cancel, the swatches and Esc while it saves', async () => {
-    followAccountScheme(null);
+    chosen(null);
     let answer: (response: Response) => void = () => {};
     page(() => new Promise((resolve) => (answer = resolve)));
 
@@ -190,7 +197,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('keeps the colours as they were when a save fails, and offers Try again', async () => {
-    followAccountScheme('cobalt');
+    chosen('cobalt');
     let fail = true;
     page((body) => (fail ? json({ title: 'Nope' }, 500) : json(body)));
 
@@ -214,7 +221,7 @@ describe('Personalisation (sc-30441)', () => {
   });
 
   it('says so when the save failed because the browser is offline', async () => {
-    followAccountScheme(null);
+    chosen(null);
     page(() => Promise.reject(new TypeError('Failed to fetch')));
 
     fireEvent.click(screen.getByRole('button', { name: /Choose colours/ }));

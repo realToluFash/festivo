@@ -93,10 +93,14 @@ English, never the account's saved one. The two-factor recovery's
 (`POST /api/auth/two-factor/recovery`) names it in the account's zone ("Try again Sunday,
 Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `retryAt`
 member, because **Get back in without your authenticator** quotes them. A client quotes
-`retryAt` as it is, and falls back to `Retry-After` only when it is absent. Only the
-recovery carries `retryAt`. Any other such limit names it in UTC ("Try again Monday 26 Oct
-at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoever reads a
-raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. A door code's
+open and redeem (`/api/door-codes/{code}`, sc-72) carry `retryAt` too, in UTC ("Tuesday
+24 Nov at 13:32 UTC"), for API callers; the redeem page's **Too many tries** does not
+quote it, but writes the minute `Retry-After` gives on the reader's clock ("Try again at
+13:32."), with the day before it only when that is not today. Any
+other such limit names it in UTC ("Try again Monday 26 Oct at 16:32 UTC."), in its `detail`
+only (sc-12379): no screen quotes it, and whoever reads a raw `detail` reads it from
+anywhere. `Retry-After` stays in seconds either way (RFC 9110
 §10.2.3).
 
 | Endpoint                                            | Budget                                                                        | Spent by                 |
@@ -460,6 +464,12 @@ build a topic only with `realtimeTopic()` from `@soirely/api-client`, whose
   test fails when anything else in `src/` reaches the Mercure component. A plain
   controller's command publishes this way too, since `mercure: true` only covers a
   resource's own writes.
+- **A refused publish never fails the write** (sc-81423). The database is the record and
+  an update is only a nudge to look again, so `publish()` logs a warning naming the topic,
+  with none of the update's data, and the request answers as it would with the hub up.
+  Clients catch up on their next fetch or reconnect. Only a caller that retries on a
+  refusal uses `publishOrFail()`: the bell's delivery, so the worker tries it again on the
+  notification backoff (sc-3980).
 - **Subscribing:** `POST /api/realtime/subscriptions` gives the signed-in member a
   15-minute token, signed with the hub's subscriber key, naming only their own topics. A
   private update reaches no other token. A screen that adds a topic adds it to the enum

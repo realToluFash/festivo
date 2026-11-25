@@ -85,7 +85,7 @@ final class PaymentRemindersTest extends ApiTestCase
     {
         $payment = $this->payment('Balance', '2027-02-27');
 
-        self::assertSame([PaymentReminders::OVERDUE => '2027-02-28 09:00:00'], $this->pending($payment));
+        self::assertSame([PaymentReminders::OVERDUE => '2027-03-01 10:15:00'], $this->pending($payment));
     }
 
     #[Test]
@@ -227,6 +227,23 @@ final class PaymentRemindersTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPushNamesTheEventOnEveryRowWhereTheBellLeavesItToTheTitle(): void
+    {
+        $deposit = $this->payment('Deposit', '2027-03-10');
+        self::mockTime(new DateTimeImmutable('2027-03-07T10:00:00Z'));
+        $owner = new Recipient(NotificationAudienceKind::Member, $this->owner->getId(), 'Harriet Cole', 'en', null);
+        $payload = [['paymentId' => $deposit, 'kind' => PaymentReminders::COMING_DUE]];
+
+        $push = self::service(PaymentReminder::class)->render(NotificationChannel::Push, $owner, $payload);
+        $bell = self::service(PaymentReminder::class)->render(NotificationChannel::InApp, $owner, $payload);
+
+        self::assertSame('1 payment due in the next 3 days on Summer wedding', $push->subject);
+        self::assertSame(['Bloom & Co · Summer wedding · £1,000.00 · due Wed 10 Mar'], $push->lines);
+        self::assertSame(['Bloom & Co · £1,000.00 · due Wed 10 Mar'], $bell->lines);
+        self::assertSame($bell->place, $push->place);
+    }
+
+    #[Test]
     public function theEmailLinksToThePaymentAndSaysHowToStopIt(): void
     {
         $deposit = $this->payment('Deposit', '2027-03-10');
@@ -335,6 +352,134 @@ final class PaymentRemindersTest extends ApiTestCase
         self::assertSame(['1 payment due in the next 3 days on Summer wedding'], $this->inApp()[$this->owner->getId()->toRfc4122()] ?? []);
     }
 
+    #[Test]
+    public function lateRemindersAddedSecondsApartGoInOneMessageFifteenMinutesAfterTheFirst(): void
+    {
+        $first = $this->payment('Deposit', '2027-03-02');
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:00:05Z'));
+        $second = $this->payment('Balance', '2027-03-02');
+
+        self::assertSame('2027-03-01 10:15:00', $this->pending($first)[PaymentReminders::COMING_DUE] ?? null);
+        self::assertSame('2027-03-01 10:15:00', $this->pending($second)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:14:59Z'));
+        self::runUntilIdle();
+        self::assertSame([], $this->inApp());
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:15:00Z'));
+        self::runUntilIdle();
+        self::assertSame(['2 payments due in the next 3 days on Summer wedding'], $this->inApp()[$this->owner->getId()->toRfc4122()] ?? []);
+    }
+
+    #[Test]
+    public function aLateReminderAfterTheHeldMessageWentStartsItsOwnFifteenMinutes(): void
+    {
+        self::mockTime(new DateTimeImmutable('2027-03-01T14:03:00Z'));
+        $this->payment('Deposit', '2027-03-02');
+        self::mockTime(new DateTimeImmutable('2027-03-01T14:10:00Z'));
+        $joined = $this->payment('Second deposit', '2027-03-02');
+        self::assertSame('2027-03-01 14:18:00', $this->pending($joined)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T14:18:00Z'));
+        self::runUntilIdle();
+        self::mockTime(new DateTimeImmutable('2027-03-01T14:20:00Z'));
+        $later = $this->payment('Balance', '2027-03-02');
+        self::assertSame('2027-03-01 14:35:00', $this->pending($later)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T14:35:00Z'));
+        self::runUntilIdle();
+        self::assertSame(
+            ['2 payments due in the next 3 days on Summer wedding', '1 payment due in the next 3 days on Summer wedding'],
+            $this->inApp()[$this->owner->getId()->toRfc4122()] ?? [],
+        );
+    }
+
+    #[Test]
+    public function aLateReminderOnAnotherEventJoinsTheHeldOneAndEachLeadHearsOfTheirOwn(): void
+    {
+        $otherEvent = $this->newEvent('Autumn party');
+        $otherQuote = $this->quote($otherEvent);
+        $lead = $this->member('lead@bloom.events', 'Lola Lead', SeededRole::Member, EventRole::Lead);
+        $otherLead = $this->member('other@bloom.events', 'Obi Other', SeededRole::Member, null);
+        self::onEvent($otherLead, $otherEvent, EventRole::Lead);
+
+        $this->payment('Deposit', '2027-03-02');
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:05:00Z'));
+        $there = $this->payment('Balance', '2027-03-02', $otherEvent, $otherQuote);
+        self::assertSame('2027-03-01 10:15:00', $this->pending($there)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:15:00Z'));
+        self::runUntilIdle();
+
+        $messages = $this->inApp();
+        self::assertSame(['2 payments due in the next 3 days across 2 events'], $messages[$this->owner->getId()->toRfc4122()] ?? []);
+        self::assertSame(['1 payment due in the next 3 days on Summer wedding'], $messages[$lead->getId()->toRfc4122()] ?? []);
+        self::assertSame(['1 payment due in the next 3 days on Autumn party'], $messages[$otherLead->getId()->toRfc4122()] ?? []);
+    }
+
+    #[Test]
+    public function aHeldPaymentPaidCancelledOrRemovedDropsOutAndNothingGoesWhenNoneIsLeft(): void
+    {
+        $paid = $this->payment('Deposit', '2027-03-02');
+        $cancelled = $this->payment('Second deposit', '2027-03-02');
+        $removed = $this->payment('Balance', '2027-03-02');
+
+        $this->as($this->owner, 'POST', $this->payments($paid) . '/paid', ['amount' => '1000', 'currency' => 'GBP', 'paidOn' => '2027-03-01']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'POST', $this->payments($cancelled) . '/cancellation', ['reason' => 'Moved to another florist']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'DELETE', $this->payments($removed));
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:15:00Z'));
+        self::runUntilIdle();
+        self::assertSame([], $this->inApp());
+    }
+
+    #[Test]
+    public function aHeldPaymentKeepsItsTimeWhenEditedAndLeavesTheHoldWhenItsDayComesBack(): void
+    {
+        $payment = $this->payment('Deposit', '2027-03-02');
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:10:00Z'));
+        $this->as($this->owner, 'PUT', $this->payments($payment), ['description' => 'Deposit', 'amount' => '900', 'currency' => 'GBP', 'dueOn' => '2027-03-03']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-01 10:15:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+
+        $this->as($this->owner, 'PUT', $this->payments($payment), ['description' => 'Deposit', 'amount' => '900', 'currency' => 'GBP', 'dueOn' => '2027-03-10']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-07 09:00:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+    }
+
+    #[Test]
+    public function aHeldPaymentLeavesTheHoldWhenFewerDaysBringItsDayBack(): void
+    {
+        $payment = $this->payment('Deposit', '2027-03-06');
+
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 10]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-01 10:15:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:05:00Z'));
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 3]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('2027-03-03 09:00:00', $this->pending($payment)[PaymentReminders::COMING_DUE] ?? null);
+    }
+
+    #[Test]
+    public function lengtheningTheDaysPastSeveralPaymentsSendsOneMessageFifteenMinutesLater(): void
+    {
+        $this->payment('Deposit', '2027-03-06');
+        $this->payment('Balance', '2027-03-08');
+
+        $this->as($this->owner, 'PUT', $this->setting(), ['days' => 10]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:15:00Z'));
+        self::runUntilIdle();
+        self::assertSame(['2 payments due in the next 10 days on Summer wedding'], $this->inApp()[$this->owner->getId()->toRfc4122()] ?? []);
+    }
+
     private function live(string $eventId): void
     {
         $this->as($this->owner, 'POST', '/api/events/' . $eventId . '/make-live');
@@ -408,10 +553,10 @@ final class PaymentRemindersTest extends ApiTestCase
         return Vec\filter($payments, static fn (array $one): bool => $description === $one['description'])[0]['id'] ?? self::fail('no payment');
     }
 
-    private function newEvent(): string
+    private function newEvent(string $name = 'Summer wedding'): string
     {
         $body = $this->as($this->owner, 'POST', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/events', [
-            'name' => 'Summer wedding',
+            'name' => $name,
             'type' => 'wedding',
             'startsAt' => '2027-06-12T14:00',
             'endsAt' => '2027-06-13T01:00',

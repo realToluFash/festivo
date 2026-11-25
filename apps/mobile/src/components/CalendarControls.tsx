@@ -357,13 +357,15 @@ export function SubscribeRound({ onPress, ref }: { onPress: () => void; ref: Ref
   );
 }
 
-/** Subscribe at the end of the Calendar's title row: round on the phone, the pill with its words wider. */
+/** Subscribe at the end of the Calendar's title row: round on the phone, the pill with its words wider, growing to hold them where it `grows` under the title (sc-79265). */
 export function Subscribe({
   phone,
+  grows = false,
   onPress,
   ref,
 }: {
   phone: boolean;
+  grows?: boolean;
   onPress: () => void;
   ref: Ref<ViewInstance>;
 }) {
@@ -378,6 +380,7 @@ export function Subscribe({
       glyph="calendar"
       height={tokens.sizeHit}
       full={false}
+      grows={grows}
       onPress={onPress}
       ref={ref}
       testID="calendarFeed.open"

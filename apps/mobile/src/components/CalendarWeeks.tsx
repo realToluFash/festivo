@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import {
   type Item,
   type Piece,
+  type ScrollReport,
   type Week,
   type WeekLook,
   barLook,
@@ -29,12 +30,12 @@ import {
   piecesOf,
   rowsTop,
   shownIn,
-  topIndex,
   weekHeight,
 } from '../kit/calendar.ts';
 import { tokens } from '../theme/tokens.ts';
 import { eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
+import { useScreenReaderOn } from './screenReaderFocus.ts';
 import { type MarkKind, ShapeMark } from './StatusMark.tsx';
 import { Text } from './Text.tsx';
 
@@ -543,6 +544,30 @@ export function LoadingWeeks({
   );
 }
 
+/** The handlers that tell a list's scroll moved by the reader's finger, through a drag and the glide after it, from one that moved by itself. */
+function useHand() {
+  const byHand = useRef(false);
+  const handlers = useMemo(
+    () => ({
+      onScrollBeginDrag: () => {
+        byHand.current = true;
+      },
+      onScrollEndDrag: () => {
+        byHand.current = false;
+      },
+      onMomentumScrollBegin: () => {
+        byHand.current = true;
+      },
+      onMomentumScrollEnd: () => {
+        byHand.current = false;
+      },
+    }),
+    [],
+  );
+
+  return { byHand, handlers };
+}
+
 /** The endless scroll of weeks, each as tall as its busiest day, with the top week's month pinned above. */
 export function WeekList({
   weeks,
@@ -570,16 +595,18 @@ export function WeekList({
   start: number;
   bottom: number;
   onDay: (day: string, opener: ViewInstance | null) => void;
-  onTop: (index: number, y: number) => void;
+  onTop: (report: ScrollReport) => void;
   listRef: Ref<FlatList<Week>>;
 }) {
   const offsets = useMemo(() => offsetsOf(weeks, look.week), [weeks, look.week]);
   const key = monthKey(pinned);
-  const landed = useRef({ start, offset: offsets[start] ?? 0, onTop });
+  const landed = useRef({ offset: offsets[start] ?? 0, onTop });
+  const { byHand, handlers } = useHand();
+  const readerOn = useScreenReaderOn();
 
   useEffect(() => {
-    const { start: index, offset, onTop: told } = landed.current;
-    told(index, offset);
+    const { offset, onTop: told } = landed.current;
+    told({ y: offset, byHand: true });
   }, []);
 
   return (
@@ -609,10 +636,11 @@ export function WeekList({
           onDay={onDay}
         />
       )}
-      onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const y = event.nativeEvent.contentOffset.y;
-        onTop(topIndex(offsets, y), y);
-      }}
+      onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) =>
+        onTop({ y: event.nativeEvent.contentOffset.y, byHand: byHand.current || readerOn })
+      }
+      {...handlers}
+      scrollsToTop={false}
       scrollEventThrottle={16}
       contentContainerStyle={{ paddingBottom: bottom }}
       showsVerticalScrollIndicator={false}

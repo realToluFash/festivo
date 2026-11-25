@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
@@ -13,9 +13,9 @@ import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
 import { Text, type TextProps } from './Text.tsx';
-import { useMeasuredAt, useWholeWords } from './Title.tsx';
+import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { wordsIn } from '../layout/textSize.ts';
+import { capUnderTitle, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -28,7 +28,7 @@ import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLay
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
 import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
-import { useTodayShell } from './todayShell.ts';
+import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
@@ -190,24 +190,30 @@ export function OrgButton({
 
 export function BellButton() {
   const { t } = useTranslation();
-  const { unread, open } = useTodayShell();
+  const { unread, open, useBell = usePlainBell } = useTodayShell();
+  const bell = useBell(() => open({ to: 'notifications' }));
+  const { ref: bellRef, open: openBell, popover } = bell;
 
   return (
-    <Pressable
-      onPress={() => open({ to: 'notifications' })}
-      accessibilityRole="button"
-      accessibilityLabel={
-        unread > 0
-          ? t('todayScreen.notificationsUnread', { count: unread })
-          : t('todayScreen.notifications')
-      }
-      hitSlop={tokens.spaceXxs}
-    >
-      <Glass style={styles.bell}>
-        <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
-        {unread > 0 && <View style={styles.unread} />}
-      </Glass>
-    </Pressable>
+    <>
+      <Pressable
+        ref={bellRef}
+        onPress={openBell}
+        accessibilityRole="button"
+        accessibilityLabel={
+          unread > 0
+            ? t('todayScreen.notificationsUnread', { count: unread })
+            : t('todayScreen.notifications')
+        }
+        hitSlop={tokens.spaceXxs}
+      >
+        <Glass style={styles.bell}>
+          <Glyph name="bell" size={19} ink={tokens.colorInkOnDark} />
+          {unread > 0 && <View style={styles.unread} />}
+        </Glass>
+      </Pressable>
+      {popover}
+    </>
   );
 }
 
@@ -243,11 +249,6 @@ function SearchAndBell() {
       <BellButton />
     </View>
   );
-}
-
-/** How far Search beside the bell takes the upright row's end past the 46 tile the capsule's room allows for at each side. */
-function useEndsPastTile(): number {
-  return useTodayShell().search ? 40 + tokens.spaceSm + 40 - 46 : 0;
 }
 
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
@@ -302,32 +303,73 @@ export function Greeting({
   size,
   sub,
   gap,
+  onDrawn,
 }: {
   moment: Moment;
   size: number;
   sub: number;
   gap: number;
+  onDrawn?: ((size: number | null) => void) | undefined;
 }) {
+  const whole = useAccessibilitySizes();
+  const [room, setRoom] = useState(0);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const subCap = whole && drawn != null ? capUnderTitle(drawn, sub) : undefined;
+  const look = {
+    weight: 'bold',
+    accessibilityRole: 'header',
+    style: [styles.white, { letterSpacing: size * -0.02 }],
+  } as const;
+
+  useEffect(() => {
+    onDrawn?.(whole ? drawn : null);
+  }, [onDrawn, whole, drawn]);
+  useEffect(() => () => onDrawn?.(null), [onDrawn]);
+
+  // From AX1 the greeting steps down rather than break a word, and its comma stays on the word before it (sc-91291).
   return (
     <View style={{ gap }}>
       <Text size={12} weight="semibold" style={[styles.white, styles.eyebrow]}>
         {moment.eyebrow.toUpperCase()}
       </Text>
-      <Text
-        size={size}
-        weight="bold"
-        accessibilityRole="header"
-        style={[styles.white, { lineHeight: Math.round(size * 1.08), letterSpacing: size * -0.02 }]}
-      >
-        {moment.hello}
-      </Text>
+      {whole ? (
+        <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+          <CappedWholeWords
+            {...look}
+            size={size}
+            room={room}
+            breakAfterHyphens
+            onDrawn={setDrawn}
+            style={[
+              look.style,
+              drawn != null && { lineHeight: wholeLineHeight(size, drawn, 1.08) },
+            ]}
+          >
+            {moment.hello}
+          </CappedWholeWords>
+        </View>
+      ) : (
+        <Text {...look} size={size} style={[look.style, { lineHeight: Math.round(size * 1.08) }]}>
+          {moment.hello}
+        </Text>
+      )}
       <View style={styles.subLine}>
         {moment.lead != null && (
-          <Text size={sub} weight="bold" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+          <Text
+            size={sub}
+            weight="bold"
+            maxFontSizeMultiplier={subCap}
+            style={[styles.white, { lineHeight: sub * 1.45 }]}
+          >
             {`${moment.lead} `}
           </Text>
         )}
-        <Text size={sub} weight="medium" style={[styles.white, { lineHeight: sub * 1.45 }]}>
+        <Text
+          size={sub}
+          weight="medium"
+          maxFontSizeMultiplier={subCap}
+          style={[styles.white, { lineHeight: sub * 1.45 }]}
+        >
           {moment.sub}
         </Text>
       </View>
@@ -635,11 +677,14 @@ export function TodayCover({
   top,
   onTab,
   words = 1,
+  onGreeting,
 }: {
   moment: Moment;
   layout: CoverLayout;
   top: number;
   onTab: (tab: Tab) => void;
+  /** The size the greeting drew at from AX1, null below it or while no greeting shows. */
+  onGreeting?: ((size: number | null) => void) | undefined;
   /** How much of the top row and the words still show: they go as the cover scrolls up, before the band comes. */
   words?: Animated.AnimatedInterpolation<number> | number;
 }) {
@@ -648,13 +693,7 @@ export function TodayCover({
 
   if (layout === 'landscape')
     return (
-      <View
-        style={
-          day
-            ? [styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]
-            : [styles.banner, { height: coverBody(moment, layout) }]
-        }
-      >
+      <View style={[styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]}>
         <Mesh
           moment={moment}
           pieces={BANNER_PIECES}
@@ -669,7 +708,13 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide />
           ) : (
-            <Greeting moment={moment} size={38} sub={17} gap={tokens.spaceSm} />
+            <Greeting
+              moment={moment}
+              size={38}
+              sub={17}
+              gap={tokens.spaceSm}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </View>
@@ -712,9 +757,21 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
-            <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} />
+            <Greeting
+              moment={moment}
+              size={32}
+              sub={16}
+              gap={tokens.spaceSm}
+              onDrawn={onGreeting}
+            />
           ) : (
-            <Greeting moment={moment} size={46} sub={19} gap={tokens.spaceMd} />
+            <Greeting
+              moment={moment}
+              size={46}
+              sub={19}
+              gap={tokens.spaceMd}
+              onDrawn={onGreeting}
+            />
           )}
         </View>
       </Animated.View>
@@ -726,10 +783,8 @@ export function TodayCover({
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
   const [capsule, setCapsule] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(
-    useTabLabels(),
-    tabletRow(row, useEndsPastTile()),
-  );
+  const [end, setEnd] = useState<number>();
+  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row), end);
   const room =
     row == null || capsule == null
       ? undefined
@@ -743,10 +798,12 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
       {measure}
       <OrgButton maxWidth={room} givesWay={givesWay} />
       <View style={styles.grow} />
-      <SearchAndBell />
+      <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+        <SearchAndBell />
+      </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
         <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} labelSize={labelSize} />
+          {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
     </View>
@@ -759,9 +816,9 @@ function useTabLabels(): string[] {
   return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
 }
 
-/** The upright tablet's row from the tile's edge to the bell's, inside its side margins, less what the end takes past the tile at each side, as the capsule is centred. */
-function tabletRow(width: number | undefined, endsPastTile = 0): number {
-  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl - 2 * endsPastTile);
+/** The upright tablet's row inside its side margins. */
+function tabletRow(width: number | undefined): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
 }
 
 export function Band({
@@ -779,12 +836,9 @@ export function Band({
   const { now } = moment;
   const phone = layout === 'phone';
   const [row, setRow] = useState<number>();
-  const endsPastTile = useEndsPastTile();
+  const [end, setEnd] = useState<number>();
   const insets = useSafeAreaInsets();
-  const { labelSize, measure } = useCapsuleLabels(
-    useTabLabels(),
-    phone ? 0 : tabletRow(row, endsPastTile),
-  );
+  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row), end);
 
   return (
     <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
@@ -808,14 +862,16 @@ export function Band({
         {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
-        <SearchAndBell />
+        <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+          <SearchAndBell />
+        </View>
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
           {phone ? (
             <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
               {t('todayScreen.today')}
             </Text>
           ) : (
-            <TabCapsule onTab={onTab} labelSize={labelSize} />
+            labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />
           )}
         </View>
       </View>
@@ -1230,7 +1286,12 @@ const styles = StyleSheet.create({
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
   bannerBell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
-  bannerGreeting: { position: 'absolute', left: 30, bottom: tokens.space4xl, maxWidth: 520 },
+  bannerGreeting: {
+    marginHorizontal: 30,
+    marginBottom: tokens.space4xl,
+    marginTop: 18,
+    maxWidth: 520,
+  },
   bannerGrows: { justifyContent: 'flex-end' },
   bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },

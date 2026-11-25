@@ -178,6 +178,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* sc-4331: choosing Changed since you looked failed; the list below stays as it was. */
+.gs-changed-failed p {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  font: var(--deskLine);
+  color: var(--colorInk);
+}
+
+.gs-changed-failed svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+  color: var(--colorBroken);
+}
+
 .gs-none,
 .gs-gone {
   display: flex;

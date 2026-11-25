@@ -136,6 +136,10 @@ class Run(unittest.TestCase):
                 self.assertEqual(runner.account_env("/home/x/.claude-5")[plain], "p")
                 self.assertEqual(runner.account_env("/home/x/.claude-3")[plain], "m")
 
+    def test_a_worker_is_never_given_sq_webs_token_which_works_its_controls(self):
+        with mock.patch.dict("os.environ", {"SQ_WEB_TOKEN": "t" * 40}):
+            self.assertNotIn("SQ_WEB_TOKEN", runner.account_env("/home/x/.claude-3"))
+
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)
         self.run_once()

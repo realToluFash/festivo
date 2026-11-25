@@ -386,7 +386,7 @@ function Details({
         phoneNumber: values.phoneNumber.trim(),
       });
 
-      if (firstJoined != null) rememberOrganisation(firstJoined);
+      if (firstJoined != null) rememberOrganisation(saved.account.id, firstJoined);
       // Before the session says it is waiting, so the waiting screen knows a click brought it as it mounts.
       if (askToJoin != null) onAsked();
       await adoptAccount(saved.account);

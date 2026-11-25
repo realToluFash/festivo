@@ -1521,6 +1521,7 @@ describe('recovering a password', () => {
     expect(await client.checkResetLink('t1')).toEqual({
       email: 'folake@ire.events',
       twoFactor: false,
+      factors: { app: true, passkeys: false },
     });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
@@ -1796,13 +1797,33 @@ describe('the bell (sc-3980)', () => {
 
   test('reads the feed and leaves out an item it cannot read', async () => {
     const { client, sent } = answering({
-      items: [item, { id: 'n2', category: 'unknown', title: 'x', createdAt: 'y' }],
+      items: [item, { id: 'n2', category: 'event_changes', createdAt: 'y' }],
       unreadCount: 1,
       next: 'n1',
     });
 
     expect(await client.notifications('n0')).toEqual({ items: [item], unreadCount: 1, next: 'n1' });
     expect(sent[0]?.url).toBe('http://api.test/api/notifications?after=n0');
+  });
+
+  test('keeps an item of a category it does not know, with the category as sent', async () => {
+    const news = { ...item, id: 'n2', category: 'venue_news' };
+    const { client } = answering({ items: [news, item], unreadCount: 2, next: null });
+
+    expect(await client.notifications()).toEqual({
+      items: [news, item],
+      unreadCount: 2,
+      next: null,
+    });
+    expect(asNotificationArrival({ ...news, unreadCount: 3 })).toEqual({
+      item: news,
+      unreadCount: 3,
+    });
+    expect(asNotificationRead({ updated: news, unreadCount: 1 })).toEqual({
+      id: 'n2',
+      unreadCount: 1,
+      updated: news,
+    });
   });
 
   test('one switch is sent as category, channel and on', async () => {
@@ -2422,6 +2443,7 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
+      factors: { app: true, passkeys: false },
     });
     expect(tokens.saved).toBeNull();
   });
@@ -4022,6 +4044,7 @@ describe("the guest's calendar on their page (sc-3627)", () => {
     },
     phase: 'live',
     started: false,
+    onTheDay: false,
     answersOpen: true,
   };
 
@@ -4048,6 +4071,13 @@ describe("the guest's calendar on their page (sc-3627)", () => {
 
   test('has none when the API gives none', async () => {
     expect((await answering({ ...PAGE, calendarFeed: null }).guestPage('tok')).calendar).toBeNull();
+  });
+
+  test("reads the event's day as the API sends it, and an older API's silence as not the day", async () => {
+    const { onTheDay: _omitted, ...older } = PAGE;
+
+    expect((await answering({ ...PAGE, onTheDay: true }).guestPage('tok')).onTheDay).toBe(true);
+    expect((await answering(older).guestPage('tok')).onTheDay).toBe(false);
   });
 
   test('refuses a feed that is not a path', async () => {
@@ -4126,5 +4156,170 @@ describe('guest groups (sc-3775)', () => {
       ungrouped: counts,
     });
     expect(asGuestList({ guests: [], counts, groups: [{ id: 'gr_1' }] })).toBeNull();
+  });
+});
+
+describe('door codes (sc-72)', () => {
+  const CARD = {
+    id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+    code: 'K7P2QX9M',
+    link: 'https://soirely.test/d/K7P2QX9M',
+    qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    role: 'can_check_in',
+    jobLabel: 'Bar',
+    useCap: 30,
+    used: 14,
+    status: 'working',
+    expiresAt: '2026-11-14T23:30:00+00:00',
+    stoppedAt: null,
+    createdAt: '2026-11-07T16:00:00+00:00',
+  };
+  const OPENED = {
+    role: 'can_view',
+    jobLabel: null,
+    event: {
+      id: 'e1',
+      name: 'Joana & Rui’s wedding',
+      startsAt: '2026-11-14T15:00:00+00:00',
+      endsAt: '2026-11-14T23:30:00+00:00',
+      timeZone: 'Europe/Lisbon',
+      organisation: 'Lumen Feiras',
+    },
+    standing: null,
+  };
+  const REDEEMED = {
+    eventId: 'e1',
+    name: 'João Pereira',
+    role: 'can_view',
+    jobLabel: null,
+    endsAt: '2026-11-14T23:30:00+00:00',
+    again: false,
+  };
+
+  function client(
+    response: Response,
+    tokens: TokenStore,
+    sent: { path: string; body: unknown; auth: string | null }[] = [],
+  ) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (url, init) => {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        sent.push({
+          path: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          auth: headers.Authorization ?? null,
+        });
+
+        return response;
+      },
+    });
+  }
+
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+  test('lists, makes and stops the cards People shows', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+
+    expect(
+      await client(json({ doorCodes: [CARD] }), store('live', null), sent).doorCodes('e1'),
+    ).toEqual([CARD]);
+    expect(
+      await client(json({ doorCode: CARD }, 201), store('live', null), sent).makeDoorCode('e1', {
+        role: 'can_check_in',
+        jobLabel: 'Bar',
+        useCap: 30,
+        expiresAt: CARD.expiresAt,
+      }),
+    ).toEqual(CARD);
+    await client(
+      json({ doorCode: { ...CARD, status: 'stopped', stoppedAt: CARD.createdAt } }),
+      store('live', null),
+      sent,
+    ).stopDoorCode('e1', CARD.id);
+
+    expect(sent.map((one) => one.path)).toEqual([
+      'GET /api/events/e1/door-codes',
+      'POST /api/events/e1/door-codes',
+      `POST /api/events/e1/door-codes/${CARD.id}/stop`,
+    ]);
+    expect(sent[1]?.body).toEqual({
+      role: 'can_check_in',
+      jobLabel: 'Bar',
+      useCap: 30,
+      expiresAt: CARD.expiresAt,
+    });
+  });
+
+  test('refuses a card in a shape it does not know', async () => {
+    await expect(
+      client(json({ doorCodes: [{ ...CARD, status: 'paused' }] }), store('live', null)).doorCodes(
+        'e1',
+      ),
+    ).rejects.toThrow(/DoorCodesController/);
+  });
+
+  test('opens a code before a name is asked for', async () => {
+    expect(await client(json(OPENED), store(null, null)).openDoorCode('K7P2QX9M')).toEqual(OPENED);
+  });
+
+  test('signed out, redeeming sends the name and keeps the session it answers with', async () => {
+    const tokens = store(null, null);
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const redeemed = await client(
+      json({ accessToken: 'door', sessionId: 's1', ...REDEEMED }, 201),
+      tokens,
+      sent,
+    ).redeemDoorCode('K7P2QX9M', 'João Pereira');
+
+    expect(redeemed).toEqual(REDEEMED);
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/redeem',
+      body: { name: 'João Pereira', refreshTokenIn: 'cookie' },
+      auth: null,
+    });
+    expect((tokens.saved as IssuedTokens | null)?.accessToken).toBe('door');
+  });
+
+  test('signed in, redeeming is the account’s and lands on You’re in again', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const redeemed = await client(
+      json({ ...REDEEMED, again: true }),
+      store('live', null),
+      sent,
+    ).redeemDoorCode('K7P2QX9M', null);
+
+    expect(redeemed.again).toBe(true);
+    expect(sent[0]?.auth).toBe('Bearer live');
+  });
+
+  test('reads the door code someone came in by on People', async () => {
+    const people = await client(
+      json({
+        people: [
+          {
+            id: 'p1',
+            membershipId: null,
+            user: { id: 'u1', name: 'João Pereira' },
+            role: 'can_view',
+            jobLabel: null,
+            outside: true,
+            address: null,
+            addressKind: null,
+            endsAt: '2026-11-14T23:30:00+00:00',
+            doorCode: 'K7P2QX9M',
+            joinedAt: '2026-11-14T13:31:00+00:00',
+          },
+        ],
+        owners: [],
+        admins: [],
+      }),
+      store('live', null),
+    ).eventPeople('e1');
+
+    expect(people.people[0]?.doorCode).toBe('K7P2QX9M');
+    expect(people.people[0]?.joinedAt).toBe('2026-11-14T13:31:00+00:00');
   });
 });

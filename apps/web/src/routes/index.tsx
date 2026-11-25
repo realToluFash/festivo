@@ -22,6 +22,8 @@ import {
   EventRun,
   EventStaff,
   EventStations,
+  EventKitchenSheet,
+  EventMenuPicks,
   EventView,
 } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
@@ -39,7 +41,9 @@ import { SettingsDesk } from './app/SettingsDesk.tsx';
 import { SignedInHome } from './app/Today.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { RedeemPage } from './public/Redeem.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
@@ -57,6 +61,7 @@ import { TwoFactorAgain } from './public/TwoFactorAgain.tsx';
 import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
+import { GuestReplyEmails } from './public/GuestReplyEmails.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -96,6 +101,7 @@ export const routes = [
       { path: '/complete-profile', element: <CompleteProfile /> },
       { path: '/status', element: <Status /> },
       { path: '/join/:token', element: <Join /> },
+      { path: '/unsubscribe/guest-replies', element: <GuestReplyEmails /> },
       {
         path: '/app',
         element: <AppLayout />,
@@ -113,6 +119,8 @@ export const routes = [
           { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
           { path: 'events/:eventId/staff/stations', element: <EventStations /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
+          { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
+          { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
           { path: 'events/:eventId/budget/*', element: <EventBudget /> },
           { path: 'events/:eventId/:area', element: <EventAreaPage /> },
           { path: 'calendar', element: <Calendar /> },
@@ -139,12 +147,19 @@ export const routes = [
         ],
       },
       {
+        path: '/preview',
+        element: <AppLayout bare />,
+        children: [{ path: 'events/:eventId/meals', element: <MealPreview /> }],
+      },
+      {
         path: '/i/:token',
         element: <GuestLayout />,
         children: [{ index: true, element: <Invitation /> }],
       },
       { path: '/s/:token', element: <RoomScreenPage /> },
       { path: '/w/:token', element: <StaffLinkPage /> },
+      { path: '/d', element: <RedeemPage /> },
+      { path: '/d/:code', element: <RedeemPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

@@ -203,6 +203,7 @@ const PAN_FROM_PX = 4;
 const STEP_TRIES = 3;
 const STEP_RETRY_MS = 1_000;
 const SIZE_STEP_CM = 10;
+const FLOAT_MARGINS = 3 * 12;
 const ITEM_ATTRIBUTES = ['data-table', 'data-row', 'data-seat'];
 const ITEM = ITEM_ATTRIBUTES.map((attribute) => `[${attribute}]`).join(', ');
 
@@ -740,6 +741,20 @@ function Plan({
   const [chairTip, setChairTip] = useState<{ pick: string; tip: ChairTip } | null>(null);
   const [moveFrom, setMoveFrom] = useState<string | null>(null);
   const [seatingView, setSeatingView] = useState<SeatingView>('plan');
+  const [rowDown, setRowDown] = useState(false);
+
+  useLayoutEffect(() => {
+    const views = canvasNode.current?.querySelector<HTMLElement>('.st-views');
+    const right = canvasNode.current?.querySelector<HTMLElement>('.st-top-right');
+
+    setRowDown(
+      views != null &&
+        right != null &&
+        views.getBoundingClientRect().width + right.getBoundingClientRect().width + FLOAT_MARGINS >
+          size.w,
+    );
+  }, [size.w, save, seatingView, readOnly, plan, t]);
+
   const [cardSection, setCardSection] = useState<string | null>(null);
   const [tray, setTray] = useState<TrayFilter>({ unsure: false, search: '', groups: [] });
   const party = plan == null || readOnly ? null : pickedParty(plan, pickedGuest);
@@ -2818,9 +2833,9 @@ function Plan({
       <RingsContext value={rings}>
         <div className="st-main" inert={covered}>
           <div
-            className={
+            className={`${
               seatingView === 'tables' && plan != null ? 'st-canvas is-tables' : 'st-canvas is-plan'
-            }
+            }${rowDown ? ' is-row-down' : ''}`}
             ref={(node) => {
               canvasNode.current = node;
               placeCanvas(node);

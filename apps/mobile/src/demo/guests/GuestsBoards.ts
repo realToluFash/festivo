@@ -39,6 +39,14 @@ const GUESTS: Record<GuestsState, Board> = {
   changed: ['changed since you looked', 'From the bell: 5 guests, newest first, with when'],
   changedMenu: ['changed since you looked, menu open', 'The menu shows that row as chosen'],
   changedNone: ['nothing changed since', 'Nothing has changed since you last looked.'],
+  changedFails: [
+    'changed since you looked, it fails',
+    'Choose its row: the list stays, with Try again',
+  ],
+  changedFailed: [
+    'changed since you looked, failed',
+    'We could not load what changed, and Try again',
+  ],
   loading: ['loading', 'The card, the field and five rows in Sunk'],
   failed: ['failed', 'We could not load the guests, with Try again'],
   offline: ['offline', 'Offline · as of 09:32; the list as last loaded'],
@@ -199,6 +207,7 @@ const GUESTS: Record<GuestsState, Board> = {
   added: ['added', 'Bimpe Adeyemi added; the form cleared'],
   addNotAdded: ['Add guest failed', 'Everything typed is kept'],
   addOffline: ['Add guest offline', 'Nothing saved, the form kept'],
+  addDiscard: ['Add guest, Cancel with a name typed', 'Discard your changes?'],
   picker: ['From contacts, iOS', 'The system picker, many at once'],
   androidPick: ['From contacts, Android', 'Choose people, after the permission'],
   androidNone: ['Choose people, nobody ticked', 'Tick at least one person'],

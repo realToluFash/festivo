@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { codegenNativeCommands, type HostInstance, Keyboard, Platform } from 'react-native';
+import {
+  codegenNativeCommands,
+  type HostInstance,
+  Keyboard,
+  type KeyboardEvent,
+  Platform,
+} from 'react-native';
 
 import { keyboardInWindow, keyboardLift, keysDownThen } from '../kit/keyboard.ts';
 
@@ -16,18 +22,32 @@ export function keyboardTopNow(origin: number): number | null {
   return screenY == null ? null : keyboardInWindow(screenY, origin);
 }
 
-/** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
+/** Calls `changed` with the keyboard's new top edge each time the keys go up, move or go down. Returns the unsubscribe. */
 export function watchKeyboardTop(
   origin: () => number,
   changed: (top: number | null) => void,
 ): () => void {
-  const shown = Keyboard.addListener('keyboardDidShow', (event) =>
-    changed(keyboardInWindow(event.endCoordinates.screenY, origin())),
-  );
-  const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
+  let up = Keyboard.isVisible();
+  const keysAt = (event: KeyboardEvent) => {
+    up = true;
+    changed(keyboardInWindow(event.endCoordinates.screenY, origin()));
+  };
+  const shown = Keyboard.addListener('keyboardDidShow', keysAt);
+  // The iPad's hide key shrinks the keys to their bar and says so only as a frame change (sc-67886).
+  const moved =
+    Platform.OS === 'ios'
+      ? Keyboard.addListener('keyboardDidChangeFrame', (event) => {
+          if (up) keysAt(event);
+        })
+      : null;
+  const hidden = Keyboard.addListener('keyboardDidHide', () => {
+    up = false;
+    changed(null);
+  });
 
   return () => {
     shown.remove();
+    moved?.remove();
     hidden.remove();
   };
 }

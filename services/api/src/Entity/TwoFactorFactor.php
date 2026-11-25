@@ -60,6 +60,11 @@ class TwoFactorFactor
         return null !== $this->activatedAt;
     }
 
+    public function getActivatedAt(): ?DateTimeImmutable
+    {
+        return $this->activatedAt;
+    }
+
     public function activate(DateTimeImmutable $now): void
     {
         $this->activatedAt = $now;

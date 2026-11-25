@@ -5,13 +5,15 @@ import {
   ScrollView,
   type StyleProp,
   StyleSheet,
+  type TextStyle,
   useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
 
 import { Text } from './Text.tsx';
-import { atAccessibilitySizes } from '../layout/textSize.ts';
+import { CappedWholeWords, MenuWords } from './Title.tsx';
+import { atAccessibilitySizes, capUnderTitle, wholeLineHeight } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -25,6 +27,7 @@ import {
   type StripBar,
 } from '../kit/today.ts';
 import { useTodayShell } from './todayShell.ts';
+import { tileWidth } from '../layout/todayTile.ts';
 
 /** The board's type, in Instrument Sans: titles at 700 and set close, rows from 13 to 16. */
 export const TYPE = {
@@ -59,38 +62,88 @@ export function SectionHead({
   top: number;
   size?: number;
 }) {
-  return (
-    <View style={[styles.head, { marginTop: top }]}>
+  const { fontScale } = useWindowDimensions();
+  const [row, setRow] = useState(0);
+  const [badge, setBadge] = useState(0);
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const whole = atAccessibilitySizes(fontScale);
+  const room = count == null ? row : badge === 0 ? 0 : row - badge - tokens.spaceMd;
+  const cap = whole ? (drawn ?? size * fontScale) : undefined;
+
+  const chip = count != null && (
+    <View style={styles.count} onLayout={(event) => setBadge(event.nativeEvent.layout.width)}>
       <Text
-        size={size}
+        size={TYPE.meta}
         weight="bold"
-        accessibilityRole="header"
-        style={[styles.title, { letterSpacing: size * -0.02 }]}
+        maxFontSizeMultiplier={cap == null ? undefined : capUnderTitle(cap, TYPE.meta)}
+        style={styles.onAccent}
       >
-        {title}
+        {String(count)}
       </Text>
-      {count != null && (
-        <View style={styles.count}>
-          <Text size={TYPE.meta} weight="bold" style={styles.onAccent}>
-            {String(count)}
-          </Text>
-        </View>
-      )}
-      <View style={styles.fill} />
-      {link != null && (
-        <Pressable
-          onPress={onLink}
-          style={styles.link}
-          hitSlop={tokens.spaceSm}
-          accessibilityRole="button"
-          accessibilityLabel={link}
+    </View>
+  );
+  const more = link != null && (
+    <Pressable
+      onPress={onLink}
+      style={[styles.link, whole && styles.stacked]}
+      hitSlop={tokens.spaceSm}
+      accessibilityRole="button"
+      accessibilityLabel={link}
+    >
+      <Text
+        size={14.5}
+        weight="semibold"
+        maxFontSizeMultiplier={cap == null ? undefined : capUnderTitle(cap, 14.5)}
+        style={[styles.accent, whole && styles.shrink]}
+        accessible={false}
+      >
+        {link}
+      </Text>
+      <Glyph name="chevron" size={15} ink={tokens.colorAccent} />
+    </Pressable>
+  );
+
+  if (!whole)
+    return (
+      <View style={[styles.head, { marginTop: top }]}>
+        <Text
+          size={size}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.title, { letterSpacing: size * -0.02 }]}
         >
-          <Text size={14.5} weight="semibold" style={styles.accent} accessible={false}>
-            {link}
-          </Text>
-          <Glyph name="chevron" size={15} ink={tokens.colorAccent} />
-        </Pressable>
-      )}
+          {title}
+        </Text>
+        {chip}
+        <View style={styles.fill} />
+        {more}
+      </View>
+    );
+
+  // From AX1 the link takes the line under, so the heading has the row's width; beside the count it wraps in what the count leaves.
+  return (
+    <View style={[styles.headStacked, { marginTop: top }]}>
+      <View style={styles.headLine} onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
+        <View style={styles.besideCount}>
+          <CappedWholeWords
+            size={size}
+            weight="bold"
+            room={Math.max(room, 0)}
+            breakAfterHyphens
+            onDrawn={setDrawn}
+            accessibilityRole="header"
+            style={[
+              styles.title,
+              { letterSpacing: size * -0.02 },
+              drawn != null && { lineHeight: wholeLineHeight(size, drawn, 1.15) },
+            ]}
+          >
+            {title}
+          </CappedWholeWords>
+        </View>
+        {chip}
+      </View>
+      {more}
     </View>
   );
 }
@@ -495,14 +548,14 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
           >
             {!agendaAlone && <EventThumb event={nextUp.event} side={48} />}
             <View style={styles.words}>
-              <Text
+              <MenuWords
                 size={12}
                 weight="semibold"
-                accessible={false}
+                grows={false}
                 style={[styles.secondary, styles.caps]}
               >
                 {t('todayScreen.nextUp').toLocaleUpperCase()}
-              </Text>
+              </MenuWords>
               <Text size={15} weight="semibold" accessible={false}>
                 {nextUp.name}
               </Text>
@@ -518,14 +571,51 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
   );
 }
 
+const LIVE_DOT = tokens.spaceSm + tokens.spaceXs;
+
+/** A chip's words: main's text below AX1; from AX1 stepping down alone until its widest piece fits the chip, no larger than the name (sc-92090). */
+function ChipWords({
+  size,
+  grown,
+  style,
+  children,
+}: {
+  size: number;
+  grown: { room: number; under: number } | null;
+  style: StyleProp<TextStyle>;
+  children: string;
+}) {
+  if (grown == null)
+    return (
+      <Text size={size} weight="semibold" style={style}>
+        {children}
+      </Text>
+    );
+
+  return (
+    <CappedWholeWords
+      size={size}
+      weight="semibold"
+      room={grown.room}
+      under={grown.under}
+      breakAfterHyphens
+      style={style}
+    >
+      {children}
+    </CappedWholeWords>
+  );
+}
+
 function CountChip({
   card,
   onCover,
   small,
+  grown = null,
 }: {
   card: EventCard;
   onCover: boolean;
   small: boolean;
+  grown?: { room: number; under: number } | null;
 }) {
   const { t } = useTranslation();
   const size = small ? 12 : TYPE.meta;
@@ -543,37 +633,57 @@ function CountChip({
       ]}
     >
       {card.live && <View style={styles.liveDot} />}
-      <Text
+      <ChipWords
         size={size}
-        weight="semibold"
+        grown={
+          grown == null || !card.live
+            ? grown
+            : { ...grown, room: Math.max(grown.room - LIVE_DOT, 0) }
+        }
         style={[
           styles.chipWords,
           dark ? styles.onAccent : card.draft ? styles.secondary : undefined,
         ]}
       >
         {words}
-      </Text>
+      </ChipWords>
     </View>
   );
 }
 
-function StageChip({ stage, onCover, small }: { stage: string; onCover: boolean; small: boolean }) {
+function StageChip({
+  stage,
+  onCover,
+  small,
+  grown = null,
+}: {
+  stage: string;
+  onCover: boolean;
+  small: boolean;
+  grown?: { room: number; under: number } | null;
+}) {
   return (
     <View
       style={[styles.chip, small && styles.chipSmall, onCover ? styles.stageOnCover : styles.stage]}
     >
-      <Text
+      <ChipWords
         size={small ? 12 : TYPE.meta}
-        weight="semibold"
+        grown={grown}
         style={[styles.chipWords, onCover ? styles.onAccent : styles.accentText]}
       >
         {stage}
-      </Text>
+      </ChipWords>
     </View>
   );
 }
 
-function Readiness({ card }: { card: EventCard }) {
+function Readiness({
+  card,
+  grown = null,
+}: {
+  card: EventCard;
+  grown?: { room: number; under: number } | null;
+}) {
   if (card.ready == null) return null;
 
   return (
@@ -588,48 +698,103 @@ function Readiness({ card }: { card: EventCard }) {
           />
         </View>
       )}
-      <Text
-        size={TYPE.meta}
+      {grown == null ? (
+        <Text
+          size={TYPE.meta}
+          weight="medium"
+          style={styles.secondary}
+          accessibilityLabel={card.ready.spoken}
+        >
+          {card.ready.words}
+        </Text>
+      ) : (
+        <CappedWholeWords
+          size={TYPE.meta}
+          weight="medium"
+          room={grown.room}
+          under={grown.under}
+          breakAfterHyphens
+          style={styles.secondary}
+          accessibilityLabel={card.ready.spoken}
+        >
+          {card.ready.words}
+        </CappedWholeWords>
+      )}
+    </View>
+  );
+}
+
+/** From AX1 a card's words take the whole width, and each label steps down alone until its widest piece fits, none larger than the name (sc-92090). */
+function GrownWords({ card }: { card: EventCard }) {
+  const [room, setRoom] = useState(0);
+  const [name, setName] = useState<number | null>(null);
+  // The labels under the name wait for its size, so none starts larger than the name draws.
+  const under = name ?? Infinity;
+  const labels = { room: name == null ? 0 : room, under };
+  const chips = { room: Math.max(labels.room - 2 * tokens.spaceMd, 0), under };
+
+  return (
+    <View style={styles.grownWords} onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
+      <CappedWholeWords size={15} weight="semibold" room={room} breakAfterHyphens onDrawn={setName}>
+        {card.name}
+      </CappedWholeWords>
+      <CappedWholeWords
+        size={13}
         weight="medium"
-        style={styles.secondary}
-        accessibilityLabel={card.ready.spoken}
+        room={labels.room}
+        under={under}
+        breakAfterHyphens
+        style={[styles.secondary, styles.dates]}
       >
-        {card.ready.words}
-      </Text>
+        {card.dates}
+      </CappedWholeWords>
+      <View style={styles.rowChips}>
+        <CountChip card={card} onCover={false} small grown={chips} />
+        {card.stage != null && <StageChip stage={card.stage} onCover={false} small grown={chips} />}
+      </View>
+      <Readiness card={card} grown={labels} />
     </View>
   );
 }
 
 function Tile({ card }: { card: EventCard }) {
   const { open } = useTodayShell();
-  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
+  const { fontScale, width } = useWindowDimensions();
+  const grown = atAccessibilitySizes(fontScale);
 
   return (
     <Pressable
       onPress={() => open({ to: 'event', id: card.event.id, name: card.name })}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.tile,
+        { width: tileWidth(fontScale, width) },
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
     >
       <View style={styles.tileCover}>
         <EventMesh event={card.event} />
-        <View style={styles.tileChips}>
-          <CountChip card={card} onCover small={false} />
-          {card.stage != null && <StageChip stage={card.stage} onCover small={false} />}
-        </View>
+        {!grown && (
+          <View style={styles.tileChips}>
+            <CountChip card={card} onCover small={false} />
+            {card.stage != null && <StageChip stage={card.stage} onCover small={false} />}
+          </View>
+        )}
       </View>
       <View style={styles.tileBody}>
-        <Text
-          size={15}
-          weight="semibold"
-          numberOfLines={grown ? undefined : 2}
-          style={styles.tileName}
-        >
-          {card.name}
-        </Text>
-        <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
-          {card.dates}
-        </Text>
-        <Readiness card={card} />
+        {grown ? (
+          <GrownWords card={card} />
+        ) : (
+          <>
+            <Text size={15} weight="semibold" numberOfLines={2} style={styles.tileName}>
+              {card.name}
+            </Text>
+            <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
+              {card.dates}
+            </Text>
+            <Readiness card={card} />
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -637,27 +802,37 @@ function Tile({ card }: { card: EventCard }) {
 
 function Row({ card, last }: { card: EventCard; last: boolean }) {
   const { open } = useTodayShell();
+  const grown = atAccessibilitySizes(useWindowDimensions().fontScale);
 
   return (
     <Pressable
       onPress={() => open({ to: 'event', id: card.event.id, name: card.name })}
-      style={({ pressed }) => [styles.eventRow, !last && styles.ruled, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.eventRow,
+        grown && styles.eventRowStacked,
+        !last && styles.ruled,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
     >
       <EventThumb event={card.event} side={56} radius={16} />
-      <View style={styles.words}>
-        <Text size={15} weight="semibold">
-          {card.name}
-        </Text>
-        <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
-          {card.dates}
-        </Text>
-        <View style={styles.rowChips}>
-          <CountChip card={card} onCover={false} small />
-          {card.stage != null && <StageChip stage={card.stage} onCover={false} small />}
+      {grown ? (
+        <GrownWords card={card} />
+      ) : (
+        <View style={styles.words}>
+          <Text size={15} weight="semibold">
+            {card.name}
+          </Text>
+          <Text size={13} weight="medium" style={[styles.secondary, styles.dates]}>
+            {card.dates}
+          </Text>
+          <View style={styles.rowChips}>
+            <CountChip card={card} onCover={false} small />
+            {card.stage != null && <StageChip stage={card.stage} onCover={false} small />}
+          </View>
+          <Readiness card={card} />
         </View>
-        <Readiness card={card} />
-      </View>
+      )}
     </Pressable>
   );
 }
@@ -782,6 +957,8 @@ export function FirstRun({ wide }: { wide: boolean }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
+  // Under the thumbnail or a tile's cover, in a column, where flex 1 would leave the words no height.
+  grownWords: { alignSelf: 'stretch', gap: tokens.spaceHair },
   inline: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccent },
@@ -807,6 +984,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.spaceHair,
     marginBottom: tokens.spaceLg,
   },
+  headStacked: { paddingHorizontal: tokens.spaceHair, marginBottom: tokens.spaceLg },
+  headLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
+  besideCount: { flexShrink: 1, minWidth: 0 },
+  shrink: { flexShrink: 1 },
+  stacked: { alignSelf: 'flex-start' },
   title: { lineHeight: TYPE.head * 1.15 },
   count: {
     minWidth: tokens.space3xl,
@@ -947,7 +1129,6 @@ const styles = StyleSheet.create({
   carousel: { marginHorizontal: -SIDE },
   carouselRow: { paddingHorizontal: SIDE, gap: tokens.spaceLg, alignItems: 'flex-start' },
   tile: {
-    width: 232,
     backgroundColor: tokens.colorInset,
     borderRadius: tokens.space3xl,
     overflow: 'hidden',
@@ -972,6 +1153,7 @@ const styles = StyleSheet.create({
   dates: { marginTop: tokens.spaceHair },
   list: { paddingVertical: tokens.spaceHair },
   eventRow: { flexDirection: 'row', gap: tokens.spacePillEnd, paddingVertical: 13 },
+  eventRowStacked: { flexDirection: 'column', alignItems: 'stretch', gap: tokens.spaceMd },
   rowChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',

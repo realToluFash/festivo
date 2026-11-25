@@ -32,6 +32,9 @@ export interface Chair {
   who?: string | undefined;
   party?: string | undefined;
   reply?: Reply | undefined;
+  /** Auto-seat's proposal on an Empty chair (sc-4019): the seat stays free until it is accepted. */
+  proposed?: string | undefined;
+  proposedParty?: string | undefined;
 }
 
 export interface Item {
@@ -1000,6 +1003,7 @@ const REPLY_WORD: Record<Reply, string> = {
 
 export function chairWord(chair: Chair): string {
   if (chair.state === 'taken') return chair.who ?? SW.taken;
+  if (chair.proposed != null) return say(SW.proposedChair, { name: chair.proposed });
   return { held: SW.held, empty: SW.empty, unusable: SW.unusable }[chair.state];
 }
 
@@ -1038,7 +1042,7 @@ export function leastUsed(sections: readonly Section[]): Colour {
   return COLOURS.reduce((best, colour) => (used(colour) < used(best) ? colour : best), COLOURS[0]!);
 }
 
-export function natural(a: string, b: string): number {
+function natural(a: string, b: string): number {
   return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
 }
 
@@ -1475,6 +1479,7 @@ export function seatAt(item: Item, party: Party, chairs: readonly number[]): Ite
 }
 
 const SHARE_GROUP = 'Share tables with guests (sc-4022)';
+const AUTO_GROUP = 'Auto-seat by group (sc-4019)';
 
 export const SEATING_STATES = [
   { key: 'plan', name: 'The plan in use, nothing chosen', group: 'The plan' },
@@ -1750,6 +1755,30 @@ export const SEATING_STATES = [
   { key: 'paperNobody', name: 'Paper: table lists, nobody seated', group: 'Print and paper' },
   { key: 'paperCard', name: 'Paper: a table card', group: 'Print and paper' },
   { key: 'paperCardTop', name: 'Paper: the head table’s card', group: 'Print and paper' },
+  { key: 'autoBefore', name: 'Auto-seat by group, before a run', group: AUTO_GROUP },
+  { key: 'autoAsk', name: 'The confirmation: who it seats', group: AUTO_GROUP },
+  { key: 'autoNobody', name: 'Nobody to seat: the button disabled', group: AUTO_GROUP },
+  {
+    key: 'autoProposed',
+    name: 'Proposed: the room, the tray and the announcement',
+    group: AUTO_GROUP,
+  },
+  {
+    key: 'autoLeftOver',
+    name: 'Proposed, a smaller room: every reason left over',
+    group: AUTO_GROUP,
+  },
+  { key: 'autoAccepted', name: 'One table accepted, with Undo', group: AUTO_GROUP },
+  { key: 'autoChanged', name: 'A table changed since: Accept refused', group: AUTO_GROUP },
+  { key: 'autoAllChanged', name: 'Accept all with a changed table', group: AUTO_GROUP },
+  {
+    key: 'autoReplace',
+    name: 'Run again: the confirmation replaces Priya Shah’s',
+    group: AUTO_GROUP,
+  },
+  { key: 'autoTables', name: 'Proposed, in the Tables view', group: AUTO_GROUP },
+  { key: 'autoList', name: 'Proposed, in the List view', group: AUTO_GROUP },
+  { key: 'autoReadOnly', name: 'Without seating.manage: no button', group: AUTO_GROUP },
   { key: 'shareNotShared', name: SHARE_STATES.shareNotShared.name, group: SHARE_GROUP },
   { key: 'shareAllSeated', name: SHARE_STATES.shareAllSeated.name, group: SHARE_GROUP },
   { key: 'shareBySet', name: SHARE_STATES.shareBySet.name, group: SHARE_GROUP },

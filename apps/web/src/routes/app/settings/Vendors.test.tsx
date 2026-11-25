@@ -185,7 +185,7 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     fireEvent.click(form.getByRole('button', { name: 'Add' }));
 
     expect(form.getByText('2 fields need fixing, so nothing was sent.')).toBeDefined();
-    expect(form.getByText("Enter the vendor's name.")).toBeDefined();
+    expect(form.getByText('Enter the vendor’s name.')).toBeDefined();
     expect(form.getByText('Choose the category.')).toBeDefined();
     expect(sent.filter(({ method }) => method !== 'GET')).toEqual([]);
   });
@@ -399,7 +399,13 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     fireEvent.change(await screen.findByRole('searchbox', { name: 'Search vendors' }), {
       target: { value: 'tulip' },
     });
-    const again = await screen.findByRole('button', { name: 'Try again' });
+    const again = await waitFor(() => {
+      const rows = screen
+        .getAllByRole('button', { name: 'Try again' })
+        .find((one) => one.closest('.offline-box') == null);
+      expect(rows).toBeDefined();
+      return rows!;
+    });
     reachable = true;
     fireEvent.click(again);
 

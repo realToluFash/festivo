@@ -1,6 +1,26 @@
 import { visibleLength } from './visibleText.ts';
 import { emailProblem } from './forms.ts';
 
+/** What a device keeps: the organisation and the account that worked in it, so the next account to sign in there does not inherit it (sc-86373). */
+export function rememberedEntry(account: string, organisation: string): string {
+  return JSON.stringify({ account, organisation });
+}
+
+/** The organisation a device remembers for this account; null when another account, or nobody, left it there. */
+export function rememberedFor(stored: string | null, account: string): string | null {
+  if (stored == null) return null;
+
+  try {
+    const entry: unknown = JSON.parse(stored);
+    if (typeof entry !== 'object' || entry == null) return null;
+    const { account: owner, organisation } = entry as Record<string, unknown>;
+
+    return owner === account && typeof organisation === 'string' ? organisation : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The one remembered on this device while the account still belongs to it, else the first. */
 export function chooseOrganisation<T extends { id: string }>(
   organisations: readonly T[],
@@ -18,6 +38,17 @@ export function choosePaused<T extends { id: string }>(
   return (
     paused.find(({ id }) => id === remembered) ?? (activeCount === 0 ? (paused[0] ?? null) : null)
   );
+}
+
+/** An event opened by its link while working in another organisation: the event's own, when the account is a member of it (sc-80863). The API answers only what the account may open, so membership is all that is left to ask. */
+export function eventMovesInto(
+  event: { organisationId: string },
+  workingIn: string | null,
+  memberships: readonly { id: string }[],
+): string | null {
+  if (workingIn == null || event.organisationId === workingIn) return null;
+
+  return memberships.some(({ id }) => id === event.organisationId) ? event.organisationId : null;
 }
 
 /** Switch organisation on the paused screen: straight into the only other active one, the switcher for more, absent for none. */

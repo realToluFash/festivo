@@ -1,0 +1,8 @@
+# sc-46032: on a tablet on its side, a pick from Events shows Now working in Beta. where the events demo draws it; shoots the pair.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../checks/sc46032/pick-landscape.yaml
+    env:
+      TAB: 'Events'
+      ROUTE: 'events'

@@ -5,6 +5,7 @@ import {
   type Guest,
   type GuestInvitationHow,
   type GuestDetails,
+  type GuestChange,
   type GuestGroup,
   type GuestList,
   type OrganisationEvent,
@@ -53,10 +54,13 @@ import {
   needsInputOf,
   needsViolations,
   problemsByWho,
-  NO_GROUP,
   exportNarrowing,
   exportsGuests,
   peopleInView,
+  type ChangedRow,
+  changeAnswer,
+  changeWhen,
+  changedRows,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -95,7 +99,7 @@ import { type Mesh, meshFor } from '../../../mesh.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
-import { canOn } from '../../../session.ts';
+import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
 import { ExportDialog } from './GuestExport.tsx';
@@ -119,7 +123,7 @@ import {
   removeQuestion,
   shownGuests,
 } from './guestSelect.ts';
-import { choiceLine, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
+import { choiceLine, groupChipsOf, groupRefusal, listOpen, refusedLine } from './guestGroups.ts';
 import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
 import {
@@ -248,6 +252,7 @@ export function GuestsArea({
 }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
+  const readerZone = useSession().timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { layers, covered, setHost } = useDeskLayers();
   const now = useServerNow();
   const phase = shownPhase(event, useLoadedAt(event), now);
@@ -265,9 +270,24 @@ export function GuestsArea({
   const open = adding ? null : params.get('guest');
   const [counted, setCounted] = useState<Counts | 'failed' | null>(null);
   const [recount, setRecount] = useState(0);
-  const { choice, q, setChoice, setQ, clear } = useGuestsAddress();
-  const [dietaryOnly, setDietary] = useState(false);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const {
+    choice,
+    changed: changedOn,
+    since,
+    q,
+    setChoice,
+    setChanged,
+    setQ,
+    groups,
+    dietary: dietaryOnly,
+    toggleGroup,
+    setDietary,
+    dropGroup,
+    clear,
+  } = useGuestsAddress();
+  const [unseen, setUnseen] = useState(0);
+  const [changes, setChanges] = useState<readonly GuestChange[] | null>(null);
+  const [changedFailed, setChangedFailed] = useState(false);
   const [grouping, setGrouping] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
@@ -411,6 +431,33 @@ export function GuestsArea({
       current = false;
     };
   }, [event.id, manages, attempt, heard]);
+
+  useEffect(() => {
+    let current = true;
+
+    api.guestChanges(event.id).then(
+      (from) => current && setUnseen(from.rows.length),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, attempt, heard]);
+
+  useEffect(() => {
+    if (since == null) return;
+    let current = true;
+
+    api.guestChanges(event.id, since).then(
+      (from) => current && setChanges(from.rows),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [event.id, since, attempt, heard]);
 
   useLiveGuests(
     event.id,
@@ -658,15 +705,30 @@ export function GuestsArea({
         : 'loaded';
   const counts = typeof counted === 'object' ? counted : null;
   const dietaryOn = manages && dietaryOnly;
-  const { view, shown } = useMemo(
-    () =>
-      counts == null
-        ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
-        : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter),
-    [guests, counts, choice, q, expanded, dietaryOn, groupFilter],
+  // A group the address names that the event no longer has narrows nothing (sc-90684).
+  const groupChips = useMemo(
+    () => (load.kind === 'loaded' ? groupChipsOf(load.list, t('guestGroups.noGroup')) : []),
+    [load, t],
   );
-  const looking = choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter != null;
-  const listLook = `${choice}\n${q}\n${dietaryOn}\n${groupFilter ?? ''}`;
+  const groupsOn = useMemo(
+    () => groupChips.filter((chip) => groups.includes(chip.key)),
+    [groupChips, groups],
+  );
+  const groupFilter = useMemo(() => groupsOn.map((chip) => chip.key), [groupsOn]);
+  const { view, shown } = useMemo(() => {
+    if (changedOn) {
+      const rows = changedRows(guests, changes ?? [], q);
+
+      return { view: { kind: 'rows' as const, rows }, shown: rows.length };
+    }
+
+    return counts == null
+      ? { view: { kind: 'rows' as const, rows: [] }, shown: 0 }
+      : viewOf(guests, counts, choice, q, expanded, dietaryOn, groupFilter);
+  }, [guests, counts, changedOn, changes, choice, q, expanded, dietaryOn, groupFilter]);
+  const looking =
+    changedOn || choice !== 'all' || q.trim() !== '' || dietaryOn || groupFilter.length > 0;
+  const listLook = `${changedOn ? `changed ${since ?? ''}` : choice}\n${q}\n${dietaryOn}\n${groupFilter.join(' ')}`;
   const [lookedAt, setLookedAt] = useState(listLook);
 
   // A tab, a search or a filter changes what is shown, so nothing hidden stays selected (PM #5003).
@@ -836,6 +898,10 @@ export function GuestsArea({
 
   function pressRemove(): void {
     if (picked.size > GUESTS_TOGETHER_MOST) return;
+    if (removeQuestion(guests, picked).stays.length === picked.size) {
+      removeMany();
+      return;
+    }
     setRemoving({ busy: false });
   }
 
@@ -921,8 +987,23 @@ export function GuestsArea({
 
   function clearLook(): void {
     clear();
-    setDietary(false);
-    setGroupFilter(null);
+  }
+
+  function chooseChanged(): void {
+    setChangedFailed(false);
+    api.lookAtGuestChanges(event.id).then(
+      (from) => {
+        setChanges(from.rows);
+        setUnseen(0);
+        setChanged(from.since);
+      },
+      () => setChangedFailed(true),
+    );
+  }
+
+  function chooseReply(next: Choice): void {
+    setChangedFailed(false);
+    setChoice(next);
   }
 
   function clearView(): void {
@@ -1056,10 +1137,13 @@ export function GuestsArea({
                         <SearchRow
                           q={q}
                           choice={choice}
+                          changed={changedOn}
+                          changedCount={changedOn ? (changes?.length ?? 0) : unseen}
                           counts={counts}
                           menu={menu}
                           onQ={setQ}
-                          onChoice={setChoice}
+                          onChoice={chooseReply}
+                          onChanged={chooseChanged}
                           onMenu={setMenu}
                         />
                         {manages && (
@@ -1069,19 +1153,22 @@ export function GuestsArea({
                               className={dietaryOnly ? 'gs-chip is-on' : 'gs-chip'}
                               aria-pressed={dietaryOnly}
                               data-focus="dietary"
-                              onClick={() => setDietary((was) => !was)}
+                              onClick={() => setDietary(!dietaryOnly)}
                             >
                               {dietaryOnly && <Glyph name="tick" size={16} weight={2.6} />}
                               {t('guestNeeds.dietaryNotes')}
                             </button>
                           </div>
                         )}
-                        {load.kind === 'loaded' && (
-                          <GroupChips
-                            list={load.list}
-                            filter={groupFilter}
-                            onFilter={setGroupFilter}
-                          />
+                        <GroupChips chips={groupChips} on={groupFilter} onToggle={toggleGroup} />
+                        {changedFailed && (
+                          <div className="gs-shown gs-changed-failed" role="alert">
+                            <p>
+                              <Glyph name="alert" size={18} weight={2.2} />
+                              {t('guestList.changed.failed')}
+                            </p>
+                            <TextAction label={t('events.retry')} onClick={chooseChanged} />
+                          </div>
                         )}
                         <div className={looking ? 'gs-shown' : 'visually-hidden'}>
                           <p role="status">
@@ -1147,7 +1234,19 @@ export function GuestsArea({
                             )}
                           </div>
                         )}
-                        {guests.length === 0 ? null : shown === 0 ? (
+                        {guests.length === 0 || (changedOn && changes == null) ? null : changedOn &&
+                          shown === 0 &&
+                          q.trim() === '' ? (
+                          <div className="gs-none">
+                            <h2 tabIndex={-1} data-focus="none-heading">
+                              {t('guestList.changed.nothing')}
+                            </h2>
+                            <TextAction
+                              label={t('guestList.changed.showAll')}
+                              onClick={clearView}
+                            />
+                          </div>
+                        ) : shown === 0 ? (
                           <div className="gs-none">
                             <h2 tabIndex={-1} data-focus="none-heading">
                               {t('guestList.noMatch')}
@@ -1162,6 +1261,7 @@ export function GuestsArea({
                             choice={choice}
                             eventId={event.id}
                             timeZone={event.timeZone}
+                            readerZone={readerZone}
                             replyBy={replies.replyBy}
                             open={open}
                             onOpen={openGuest}
@@ -1186,6 +1286,7 @@ export function GuestsArea({
                                 choice={choice}
                                 eventId={event.id}
                                 timeZone={event.timeZone}
+                                readerZone={readerZone}
                                 replyBy={replies.replyBy}
                                 open={open}
                                 onOpen={openGuest}
@@ -1210,7 +1311,7 @@ export function GuestsArea({
                         manages={manages}
                         focus={focus}
                         onChanged={(deleted) => {
-                          if (deleted != null && groupFilter === deleted) setGroupFilter(null);
+                          if (deleted != null) dropGroup(deleted);
                           setAttempt((n) => n + 1);
                         }}
                         onDone={closeGroups}
@@ -1383,15 +1484,7 @@ export function GuestsArea({
             everyone={peopleInView(guests, 'all', '').map((one) => one.id)}
             narrowing={exportNarrowing(t, t(CHOICE_KEY[choice]), q, [
               ...(dietaryOn ? [t('guestNeeds.dietaryNotes')] : []),
-              ...(groupFilter == null
-                ? []
-                : [
-                    groupFilter === NO_GROUP
-                      ? t('guestGroups.noGroup')
-                      : ((load.kind === 'loaded'
-                          ? load.list.groups.find((one) => one.id === groupFilter)?.name
-                          : null) ?? ''),
-                  ]),
+              ...groupsOn.map((chip) => chip.word),
             ])}
             needs={manages}
             onClose={() => {
@@ -1516,26 +1609,36 @@ const CHOICE_KEY: Record<Choice, string> = {
   walkIn: REPLY_KEY.walkIn,
 };
 
+const CHANGED = 'changed';
+
 /** Find a guest, and the house filter menu beside it reading "{choice} · {n}". */
 function SearchRow({
   q,
   choice,
+  changed,
+  changedCount,
   counts,
   menu,
   onQ,
   onChoice,
+  onChanged,
   onMenu,
 }: {
   q: string;
   choice: Choice;
+  /** sc-4331: Changed since you looked, in use; its row leads the menu while it is or while something changed. */
+  changed: boolean;
+  changedCount: number;
   counts: Counts;
   menu: boolean;
   onQ: (q: string) => void;
   onChoice: (choice: Choice) => void;
+  onChanged: () => void;
   onMenu: (open: boolean) => void;
 }) {
   const { t } = useTranslation();
   const onClose = useCallback(() => onMenu(false), [onMenu]);
+  const apart = changed || changedCount > 0;
 
   return (
     <div className="ev-search-row gs-search-row">
@@ -1549,20 +1652,25 @@ function SearchRow({
           onClear={() => onQ('')}
         />
       </div>
-      <div className="gs-menu">
+      <div className={apart ? 'gs-menu has-apart' : 'gs-menu'}>
         <Menu
-          items={CHOICES.filter(
-            (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
-          ).map((key) => ({
-            key,
-            word: t(CHOICE_KEY[key]),
-            count: counts[key],
-          }))}
-          picked={choice}
+          items={[
+            ...(apart
+              ? [{ key: CHANGED, word: t('guestList.changed.filter'), count: changedCount }]
+              : []),
+            ...CHOICES.filter(
+              (key) => (key !== 'notYetInvited' && key !== 'walkIn') || counts[key] > 0,
+            ).map((key) => ({
+              key,
+              word: t(CHOICE_KEY[key]),
+              count: counts[key],
+            })),
+          ]}
+          picked={changed ? CHANGED : choice}
           open={menu}
           onOpen={() => onMenu(true)}
           onClose={onClose}
-          onPick={(key) => onChoice(key as Choice)}
+          onPick={(key) => (key === CHANGED ? onChanged() : onChoice(key as Choice))}
         />
       </div>
     </div>
@@ -1618,6 +1726,7 @@ function Rows({
   choice: Choice;
   eventId: string;
   timeZone: string;
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1657,6 +1766,7 @@ function RowsFrom({
   choice,
   eventId,
   timeZone,
+  readerZone,
   replyBy,
   open,
   onOpen,
@@ -1670,6 +1780,8 @@ function RowsFrom({
   eventId: string;
   /** The event's: a reply's date is the day it was in the event's zone. */
   timeZone: string;
+  /** The member's (sc-868, else the device's): when a guest changed since the last look. */
+  readerZone: string;
   replyBy: string | null;
   open: string | null;
   onOpen: (id: string) => void;
@@ -1680,10 +1792,12 @@ function RowsFrom({
 
   return (
     <>
-      {rows.slice(from, to).map(({ person, indent }) => {
+      {rows.slice(from, to).map((row) => {
+        const { person, indent } = row;
         const { guest, companion } = person;
         const noReply = choice === 'noReply';
-        const { name, line } = rowWords(t, person, indent, timeZone, dateLocale(), {
+        const change = 'change' in row ? (row as ChangedRow).change : null;
+        const words = rowWords(t, person, indent, timeZone, dateLocale(), {
           places: noReply ? null : 'named',
           contact: true,
           invitation:
@@ -1693,6 +1807,14 @@ function RowsFrom({
                 ? invitationLine(t, guest, timeZone, dateLocale())
                 : decideRow(t, guest, replyBy, dateLocale()),
         });
+        const name = words.name;
+        const line =
+          change == null
+            ? words.line
+            : t('guestList.changed.line', {
+                answer: changeAnswer(t, change, person),
+                when: changeWhen(t, change, readerZone, dateLocale(), new Date()),
+              });
 
         if (companion == null)
           return (
@@ -1718,8 +1840,12 @@ function RowsFrom({
                 <span className="gs-lead">
                   <ReplyMark reply={shownReply(guest)} />
                 </span>
-                <RowWords title={name} lines={[line]} />
-                <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                <span className="gs-row-mid">
+                  <RowWords title={name} lines={[line]} />
+                  {change == null && (
+                    <NeedsTags needs={guest.needs} group={guest.group?.name ?? null} />
+                  )}
+                </span>
               </RowLink>
             </li>
           );
@@ -1736,11 +1862,13 @@ function RowsFrom({
               <span className="gs-lead">
                 <ReplyMark reply={companion.state} />
               </span>
-              <RowWords title={name} lines={[line]} />
-              <NeedsTags
-                needs={companion.needs}
-                group={indent ? null : (guest.group?.name ?? null)}
-              />
+              <span className="gs-row-mid">
+                <RowWords title={name} lines={[line]} />
+                <NeedsTags
+                  needs={companion.needs}
+                  group={indent ? null : (guest.group?.name ?? null)}
+                />
+              </span>
             </RowLink>
           </li>
         );

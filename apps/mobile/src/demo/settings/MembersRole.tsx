@@ -122,7 +122,7 @@ export function RoleScreen({
       {proving ? (
         <>
           <Line
-            text={`To make somebody an owner of ${ORGANISATION}, confirm it's you. You won't be asked again for ${PROOF_MINUTES} minutes.`}
+            text={`To make somebody an owner of ${ORGANISATION}, confirm it’s you. You won’t be asked again for ${PROOF_MINUTES} minutes.`}
           />
           <View style={styles.fields}>
             <Field

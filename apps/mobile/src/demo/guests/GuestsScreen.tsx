@@ -19,6 +19,7 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import { Text, type TextHandle } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { type AreaBadge, EventFrame } from '../events/EventFrame.tsx';
 import { OfflineBand } from '../events/EventsList.tsx';
@@ -60,6 +61,7 @@ import {
   inViewOf,
   refreshingAt,
   titleRowOf,
+  chooseChanged,
 } from './GuestsModel.ts';
 import { RefreshingWords } from './RefreshingWords.tsx';
 import { changesSince, lastLooked, takeLook } from './ChangedSince.ts';
@@ -126,6 +128,7 @@ export function GuestsScreen({
   badge,
   filterFrom,
   sinceFrom = null,
+  behind,
   onWrite,
   onConversation,
   onMakeLive,
@@ -141,6 +144,8 @@ export function GuestsScreen({
   filterFrom: ListFilter | null;
   /** sc-4331: the last look the bell's item counts from, taken before it marked the item read. */
   sinceFrom?: string | null;
+  /** Upright, ‹ above the list names the screen the event was opened over, as at its other areas: Event over another event's page from the bell (sc-84453). */
+  behind?: { label: string; onPress: () => void } | undefined;
   onWrite: () => void;
   onConversation: (guest: string) => void;
   onMakeLive: () => void;
@@ -171,6 +176,8 @@ export function GuestsScreen({
   const [filter, setFilter] = useState<ListFilter>(filterFrom ?? start.filter);
   const [since, setSince] = useState(filterFrom === 'changed' ? sinceFrom : start.since);
   const [looked, setLooked] = useState(lastLooked);
+  const changeFails = useRef(start.changeFails !== null);
+  const [changeFailed, setChangeFailed] = useState(start.changeFails === 'failed');
   const [typed, setTyped] = useState(start.typed);
   const [searched, setSearched] = useState(start.typed);
   const [phase, setPhase] = useState(start.phase);
@@ -307,6 +314,9 @@ export function GuestsScreen({
   };
   const chooseFilter = (key: ListFilter) => {
     if (key === filter) return;
+    const choice = chooseChanged(key, changeFails.current);
+    setChangeFailed(choice.failed);
+    if (!choice.applies) return;
     if (key === 'changed') {
       setSince(takeLook(now));
       setLooked(lastLooked());
@@ -423,7 +433,7 @@ export function GuestsScreen({
         onShowAll={() => setPaste({ ...paste, all: true })}
         typed={paste.typed}
         onTyped={(typed) => setPaste({ ...paste, typed })}
-        rows={whoseRows(guests, paste.typed, locale, t)}
+        rows={whoseRows(guests, paste.typed, dateLocale(), t)}
         waiting={waitingCount(guests)}
         onPick={pickWhose}
         onBack={closeWhose}
@@ -493,6 +503,11 @@ export function GuestsScreen({
               filter={filter}
               changed={filter === 'changed' ? listed.length : unseen}
               onFilter={chooseFilter}
+              changeFailed={changeFailed}
+              onRetryChanged={() => {
+                changeFails.current = false;
+                chooseFilter('changed');
+              }}
               typed={typed}
               onTyped={(text) => {
                 setTyped(text);
@@ -808,6 +823,7 @@ export function GuestsScreen({
             ? { label: W.guests, onPress: closeGuest }
             : null
       }
+      behind={behind}
       phoneBack={
         refreshing != null && inPortuguese
           ? { label: portuguese('eventNav.overview'), onPress: () => onArea('overview') }

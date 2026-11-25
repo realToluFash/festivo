@@ -38,7 +38,7 @@ describe('choices on the event Menu (sc-3904)', () => {
 
       expect(screen.getByText(CHW.plusOptions)).toBeTruthy();
       expect(screen.getByText('Guests pick exactly 1 of 3 options · Required')).toBeTruthy();
-      expect(screen.getByText(CHW.prep('41 plantain, 33 garden salad, 12 moi moi'))).toBeTruthy();
+      expect(screen.getByText(CHW.prep('21 plantain, 16 garden salad, 8 moi moi'))).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Add a choice to Coconut rice' })).toBeTruthy();
     },
   );

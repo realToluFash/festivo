@@ -134,7 +134,7 @@ describe('the invitation by WhatsApp (sc-45251)', () => {
     expect(noor.button).toBe('Responder en su página');
     expect(dami.lang).toBe('fr');
     expect(dami.lines[0]).toBe('Bonjour Dami Oladipo,');
-    expect(dami.lines[1]).toContain('de la part de Adaeze Obi et Tunde Bakare');
+    expect(dami.lines[1]).toContain('envoyée par Adaeze Obi et Tunde Bakare');
     expect(dami.button).toBe('Répondre sur votre page');
   });
 

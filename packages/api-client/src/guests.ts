@@ -127,6 +127,8 @@ export interface Companion {
   needs?: GuestNeeds | null;
   /** Where they sit (sc-4013): a table or a single seat by its name, a row by its label. */
   seat?: CompanionSeat | null;
+  /** Has a meal answer stored other than skipped (sc-3907), so removing them in Edit asks first. */
+  meal?: boolean;
   /** Recorded at the door (sc-1454); null until then, and absent reads as null. */
   arrival?: Arrival | null;
 }
@@ -355,6 +357,8 @@ export interface GuestPage {
   phase: GuestPagePhase;
   /** From the start, in the event's zone. */
   started: boolean;
+  /** From 00:00 on the start date until the end, both in the event's zone, by the server's clock (sc-24381). */
+  onTheDay: boolean;
   /** False from the start, in the event's zone, and whenever the event is not Live. */
   answersOpen: boolean;
   /** The guest's own calendar feed for Add to calendar (sc-3627): only for Coming while the event is Live. */
@@ -363,6 +367,96 @@ export interface GuestPage {
   programme: GuestProgrammeItem[];
   /** Only while the hosts share the tables and this guest is Coming with a seat (sc-4022). */
   seating: GuestSeating | null;
+  /** What the guest shows at the door (sc-1301), only while they are Coming: the code, and its QR as an SVG. */
+  checkInCode: { code: string; qrSvg: string } | null;
+  /** The courses that ask guests anything, and each person's answers (sc-3907); no courses is no meal step. */
+  meals: GuestMeals;
+}
+
+/** As a guest is offered it (sc-3907): only Everyone variants, finished choices, and no costs. */
+export interface MealOption {
+  id: string;
+  name: string;
+  allergens: string[];
+}
+
+export interface MealChoice {
+  id: string;
+  question: string;
+  pick: number;
+  required: boolean;
+  options: MealOption[];
+}
+
+export interface MealVariant {
+  id: string;
+  name: string;
+  allergens: string[];
+  diets: string[];
+}
+
+export interface MealDish {
+  id: string;
+  name: string;
+  description: string | null;
+  /** Null is Allergens not stated, empty is none of the 14. A dish with variants takes each variant's. */
+  allergens: string[] | null;
+  diets: string[];
+  variants: MealVariant[];
+  choices: MealChoice[];
+}
+
+export interface MealCourse {
+  id: string;
+  name: string;
+  /** `same` is Everyone gets the same: its one dish asks its way or a choice. */
+  answer: 'choose' | 'same';
+  skippable: boolean;
+  picksClose: { at: string; source: string; closed: boolean };
+  /** Given at `chooseBy` to each person coming with no answer whom it can't harm (sc-1362). */
+  default: { dish: string; variant: string | null; options: string[]; chooseBy: string } | null;
+  dishes: MealDish[];
+}
+
+/** Not answered is no answer; `defaulted` is the course's default, given at its choose-by date (sc-1362). */
+export type MealAnswerKind =
+  'chosen' | 'chefsChoice' | 'skipped' | 'needsHost' | 'defaulted' | 'menuChanged';
+
+/** Why a menu change asked a person again (sc-3913), and the dish they had picked. */
+export interface MealChanged {
+  picked: string;
+  why: 'removed' | 'ways' | 'choices' | 'allergen';
+  ways: number | null;
+  /** On `allergen`: the added allergens this person has recorded, in Annex II order. */
+  allergens: string[];
+}
+
+export interface MealAnswer {
+  course: string;
+  /** As served: a chosen pick holding an allergen recorded since is `needsHost`, and still names the pick. */
+  answer: MealAnswerKind;
+  dish: string | null;
+  variant: string | null;
+  options: string[];
+  changed: MealChanged | null;
+}
+
+export interface GuestMeals {
+  /** The guest's own id, the person their picks and answers go by; companions go by theirs. */
+  you: string;
+  courses: MealCourse[];
+  answers: Record<string, MealAnswer[]>;
+  /** By person: the courses whose default they are never given (sc-1362), each with `allergy` or the unmet diet's code. */
+  excluded: Record<string, { course: string; reason: string }[]>;
+}
+
+export interface MealPick {
+  person: string;
+  course: string;
+  answer: Exclude<MealAnswerKind, 'defaulted' | 'menuChanged'>;
+  dish?: string | null;
+  variant?: string | null;
+  options?: string[];
 }
 
 /** A table by its name, a row by its label and the seat in it, a single seat by its name; each with its section's name. */
@@ -588,6 +682,7 @@ function asCompanion(value: unknown): Companion | null {
     namedByGuest: row.namedByGuest === true,
     needs: asNeeds(row.needs),
     seat: asCompanionSeat(row.seat),
+    meal: row.meal === true,
     arrival: asArrival(row.arrival),
   };
 }
@@ -870,6 +965,10 @@ export interface CheckInGuest {
   id: string;
   fullName: string;
   reply: GuestReply;
+  /** When the reply was recorded, in the event's zone. */
+  repliedAt: string | null;
+  /** The SHA-256, in hex, of the guest's check-in code (sc-1301); null for a walk-in. */
+  code: string | null;
   walkIn: boolean;
   arrival: Arrival | null;
   companions: CheckInCompanion[];
@@ -911,6 +1010,8 @@ function asCheckInGuest(value: unknown): CheckInGuest | null {
     id,
     fullName,
     reply,
+    repliedAt: text(row.repliedAt),
+    code: text(row.code),
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
     companions: companions as CheckInCompanion[],

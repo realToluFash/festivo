@@ -36,7 +36,13 @@ import {
 } from '../../kit/eventOverview.ts';
 import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { DUPLICATE_STATES } from './Duplicate.ts';
-import { CLOCKS, READER_ZONE, type SampleEvent } from './EventsSample.ts';
+import {
+  CLOCKS,
+  READER_ZONE,
+  SUGGESTIONS,
+  type SampleEvent,
+  type Suggestion,
+} from './EventsSample.ts';
 import { W, say } from './EventsWords.ts';
 import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from './FinalNumbers.ts';
 import { NEW_STATES } from './NewEventModel.ts';
@@ -218,6 +224,11 @@ const SAMPLE_FIRST_DAY = 1;
 
 export function folded(text: string): string {
   return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('en').replace(/[‘’]/g, "'");
+}
+
+export function suggestionsFor(address: string): readonly Suggestion[] {
+  if (folded(address).length < 3) return [];
+  return SUGGESTIONS.filter((one) => folded(one.name).includes(folded(address)));
 }
 
 /** The sample's stand-in for the API's search: any part of the event's or the venue's name, accents ignored. */
@@ -446,6 +457,10 @@ export const EVENT_STATES = [
   'venueSuggestions',
   'venueZone',
   'venueDown',
+  'venueOne',
+  'venueShort',
+  'venueNoMatch',
+  'venueFrench',
   'venueNote',
   'venueNoteTooLong',
   'venueNoteRefused',
@@ -501,6 +516,14 @@ export function eventStateOf(value: string | undefined): EventDemoState | null {
   return EVENT_STATES.find((state) => state === value) ?? null;
 }
 
+/** The event page's ?state=, unless the open area took it as its own: Messages' loading is not the event's. */
+export function eventStateBeside(
+  value: string | undefined,
+  areaState: string | null,
+): EventDemoState | null {
+  return areaState == null ? eventStateOf(value) : null;
+}
+
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
   if (
@@ -540,6 +563,10 @@ export function editOf(state: EventDemoState | null): EditPart | null {
     case 'venueSuggestions':
     case 'venueZone':
     case 'venueDown':
+    case 'venueOne':
+    case 'venueShort':
+    case 'venueNoMatch':
+    case 'venueFrench':
     case 'venueNote':
     case 'venueNoteTooLong':
     case 'venueNoteRefused':

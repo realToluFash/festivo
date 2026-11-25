@@ -499,32 +499,6 @@
 
 /* At 40rem and under (WCAG 2.2 1.4.10): one column, one place at a time, the form as its own page. */
 @media (width <= 40rem) {
-  .today.desk:has(.ro) {
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
-
-  .today.desk:has(.ro) .today-side {
-    width: auto;
-    height: auto;
-    overflow: visible;
-  }
-
-  .today.desk:has(.ro) .desk-main {
-    margin: 0 var(--spaceSm) var(--spaceSm);
-    overflow: visible;
-  }
-
-  .ro.desk-page {
-    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
-    overflow: visible;
-  }
-
-  .ro .ev-crumb ol {
-    flex-wrap: wrap;
-  }
-
   .ro-top {
     display: contents;
   }

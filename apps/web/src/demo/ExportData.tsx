@@ -49,7 +49,7 @@ export function ExportData({ viewer, state, tell }: { viewer: Viewer; state: str
 
   if (load !== 'loaded')
     return (
-      <SubPage page="export" title={W.title} viewer={viewer} tell={tell}>
+      <SubPage page="export" title={W.title} viewer={viewer} tell={tell} above="notices">
         {load === 'failed' ? (
           <PageFailed words={W.failed} onRetry={retry} />
         ) : (
@@ -66,7 +66,7 @@ export function ExportData({ viewer, state, tell }: { viewer: Viewer; state: str
   };
 
   return (
-    <SubPage page="export" title={W.title} viewer={viewer} tell={tell}>
+    <SubPage page="export" title={W.title} viewer={viewer} tell={tell} above="offline">
       {now === 'ex_used_link' && <StatusLine kind="ended">{W.usedLink}</StatusLine>}
       {now === 'ex_limited' && (
         <StatusLine kind="refused" alert>

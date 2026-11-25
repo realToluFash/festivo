@@ -57,7 +57,7 @@ import {
   ShapeTile,
   SUNK,
 } from './SeatingParts.tsx';
-import { MiniMap, RoomSurface } from './SeatingRoom.tsx';
+import { type BarBox, MiniMap, RoomSurface } from './SeatingRoom.tsx';
 import { COLOURS, type Kind, OFFLINE_AT } from './SeatingSample.ts';
 import { FailedView, ListView, OfflinePill, PrintSheet, TablesView } from './SeatingViews.tsx';
 import { W, say } from './SeatingWords.ts';
@@ -455,11 +455,13 @@ function RoomOverlays({
   go,
   onViews,
   onPrint,
+  onBar,
 }: {
   m: Seating;
   go: Go;
   onViews: (end: number) => void;
   onPrint: (start: number) => void;
+  onBar: (bar: BarBox) => void;
 }) {
   const plan = m.view === 'Floor plan';
   const p = m.shown == null ? null : pct(m.shown.s);
@@ -475,7 +477,16 @@ function RoomOverlays({
         <PrintButton go={go} />
       </View>
       {m.bar != null && (
-        <View style={styles.bars}>
+        <View
+          style={styles.bars}
+          onLayout={({ nativeEvent: { layout } }) =>
+            onBar({
+              top: layout.y,
+              right: layout.x + layout.width,
+              bottom: layout.y + layout.height,
+            })
+          }
+        >
           <Bars m={m} go={go} />
         </View>
       )}
@@ -586,6 +597,7 @@ function RoomArea({
   const out = atAccessibilitySizes(useWindowDimensions().fontScale);
   const [viewsEnd, setViewsEnd] = useState(0);
   const [printStart, setPrintStart] = useState(0);
+  const [barBox, setBarBox] = useState<BarBox | null>(null);
   const viewsTop = out ? tokens.spaceXl : m.bar == null ? 76 : 140;
   let inside: ReactNode;
   if (m.load === 'loading') inside = <Skeleton m={m} />;
@@ -629,6 +641,7 @@ function RoomArea({
           height={size.h}
           viewsEnd={viewsEnd}
           printStart={printStart}
+          bar={m.bar == null ? null : barBox}
           caption={!out}
         />
       );
@@ -652,7 +665,13 @@ function RoomArea({
     >
       {inside}
       {m.load === 'ready' && (
-        <RoomOverlays m={m} go={go} onViews={setViewsEnd} onPrint={setPrintStart} />
+        <RoomOverlays
+          m={m}
+          go={go}
+          onViews={setViewsEnd}
+          onPrint={setPrintStart}
+          onBar={setBarBox}
+        />
       )}
       {m.load === 'loading' && (
         <View style={styles.topLeft}>

@@ -83,6 +83,7 @@ import { NW } from './NoticeWords.ts';
 import { tapParts } from './TapParts.tsx';
 import { tapFor, tapItemsOf } from './TapStates.ts';
 import { MoreActions, StoppedInset } from './StopWritingParts.tsx';
+import { Held } from './HoldTop.tsx';
 import {
   type Bit,
   CountdownLine,
@@ -716,31 +717,33 @@ function ownParts(talk: Talk, followUp: string): Own {
       stream: (
         <>
           {earlier}
-          <CheckCard
-            draft={draft}
-            locale={talk.locale}
-            headRef={talk.checkRef}
-            goRef={talk.refFor('go')}
-            onGo={talk.onConfirm}
-            onLater={talk.onLater}
-            onChange={talk.onChangeIt}
-            onKeep={() => dispatch({ type: 'keepScheduled' })}
-            onChannel={talk.onChannel}
-            onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
-            balance={m.balance}
-            waits={m.waits}
-            clock={m.clock}
-            onWithout={(drops) => {
-              for (const action of sendWithout(drops)) dispatch(action);
-            }}
-          />
-          {note != null && (
-            <DemoOnly title={SMSW.demoTitle}>
-              <Text size={13.5} weight="medium" style={styles.note}>
-                {note}
-              </Text>
-            </DemoOnly>
-          )}
+          <Held>
+            <CheckCard
+              draft={draft}
+              locale={talk.locale}
+              headRef={talk.checkRef}
+              goRef={talk.refFor('go')}
+              onGo={talk.onConfirm}
+              onLater={talk.onLater}
+              onChange={talk.onChangeIt}
+              onKeep={() => dispatch({ type: 'keepScheduled' })}
+              onChannel={talk.onChannel}
+              onSeeAll={(count) => talk.ownDesign(say.seeAll(count))}
+              balance={m.balance}
+              waits={m.waits}
+              clock={m.clock}
+              onWithout={(drops) => {
+                for (const action of sendWithout(drops)) dispatch(action);
+              }}
+            />
+            {note != null && (
+              <DemoOnly title={SMSW.demoTitle}>
+                <Text size={13.5} weight="medium" style={styles.note}>
+                  {note}
+                </Text>
+              </DemoOnly>
+            )}
+          </Held>
         </>
       ),
       align: 'end',
@@ -811,6 +814,22 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   let rest: ReactNode = null;
   let foot: ReactNode;
 
+  if (draft.was != null && draft.step === 'preview')
+    return {
+      title: messageName(draft),
+      bare: true,
+      stream: (
+        <Preview
+          draft={draft}
+          columns={talk.columns}
+          phone={!talk.wide}
+          as={previewOf(talk.m)}
+          dispatch={dispatch}
+        />
+      ),
+      align: 'start',
+      foot: <PreviewBar onEdit={() => dispatch({ type: 'edit' })} onSave={talk.onSaveScheduled} />,
+    };
   if (cancelled)
     rest = (
       <SystemLine
@@ -822,13 +841,16 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
   else if (draft.outcome === 'sent') rest = null;
   else if (draft.was != null) {
+    const editingLine = (
+      <Text size={13.5} weight="medium" style={[styles.goes, !talk.wide && styles.goesOverFoot]}>
+        {paused ? SW.editingPaused : say.editing(day, at.time)}
+      </Text>
+    );
     rest =
       refused == null ? (
         <>
           {paused && talk.wide && <PausedLine text={pausedWaits()} />}
-          <Text size={13.5} weight="medium" style={styles.goes}>
-            {paused ? SW.editingPaused : say.editing(day, at.time)}
-          </Text>
+          {talk.wide && editingLine}
         </>
       ) : (
         <RefusedSave
@@ -840,32 +862,39 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
           }}
         />
       );
+    // Above the phone's keys the stream can be too short to show the line, so it sits on the composer.
     foot = (
-      <NewComposer
-        draft={draft}
-        bodyRef={talk.bodyRef}
-        insertRef={talk.refFor('insert')}
-        onSubject={(text) => dispatch({ type: 'subject', text })}
-        onBody={(text) => dispatch({ type: 'body', text })}
-        onCaret={talk.onCaret}
-        onInsert={talk.onInsert}
-        editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
-      />
+      <>
+        {refused == null && !talk.wide && editingLine}
+        <NewComposer
+          draft={draft}
+          bodyRef={talk.bodyRef}
+          insertRef={talk.refFor('insert')}
+          onSubject={(text) => dispatch({ type: 'subject', text })}
+          onBody={(text) => dispatch({ type: 'body', text })}
+          onCaret={talk.onCaret}
+          onInsert={talk.onInsert}
+          onPreview={() => dispatch({ type: 'preview' })}
+          editing={{ onChangeWhen: talk.onLater, onSave: talk.onSaveScheduled }}
+        />
+      </>
     );
   } else if (draft.step === 'check')
     rest = (
-      <CheckCard
-        draft={draft}
-        locale={talk.locale}
-        headRef={talk.checkRef}
-        goRef={talk.refFor('go')}
-        onGo={talk.onConfirm}
-        onLater={talk.onLater}
-        onChange={talk.onChangeIt}
-        onKeep={() => dispatch({ type: 'keepScheduled' })}
-        onChannel={talk.onChannel}
-        onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
-      />
+      <Held>
+        <CheckCard
+          draft={draft}
+          locale={talk.locale}
+          headRef={talk.checkRef}
+          goRef={talk.refFor('go')}
+          onGo={talk.onConfirm}
+          onLater={talk.onLater}
+          onChange={talk.onChangeIt}
+          onKeep={() => dispatch({ type: 'keepScheduled' })}
+          onChannel={talk.onChannel}
+          onSeeAll={() => talk.ownDesign(say.seeAll(checkOf(draft).cantTell))}
+        />
+      </Held>
     );
   else if (draft.asking)
     rest = (
@@ -1122,6 +1151,7 @@ export function partsOf(talk: Talk, open: Exclude<Open, null | { kind: 'reached'
 }
 
 const styles = StyleSheet.create({
+  goesOverFoot: { marginBottom: tokens.spaceSm },
   goes: {
     alignSelf: 'flex-end',
     maxWidth: '86%',

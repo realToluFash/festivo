@@ -19,10 +19,12 @@ import {
   sendPicks,
   summaryClose,
 } from './mealClose.ts';
-import { DishScreen } from './MealParts.tsx';
+import { DishScreen, PickMark } from './MealParts.tsx';
 import { MW, PERSON, containsLine } from './mealStep.ts';
 import type { Lang } from './menuLibrary.ts';
 import { dayWords } from './picksClose.ts';
+
+import './mealParty.css';
 
 const CHIDI: Person = { name: PERSON, companion: false, allergies: [], diets: [] };
 
@@ -44,6 +46,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
   const dates = { ...GUEST_PICKS, today };
   const closes = SUMMARY_COURSES.map((one) => summaryClose(one.id, dates));
   const allClosed = closes.every((one) => one.closed);
+  const paused = first.paused === true;
 
   useEffect(() => {
     if (focus.current == null) return;
@@ -138,13 +141,17 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
             <li key={one.id} className={close.closed ? 'mx-row is-closed' : 'mx-row'}>
               <div className="mx-words">
                 <p className="mx-course">{one.course.name}</p>
-                {line !== 'hostInTouch' && <p className="mx-pick">{shown ?? MSW.notChosen}</p>}
+                {line === 'hostInTouch' ? (
+                  <PickMark shape="host" words={after} />
+                ) : (
+                  <p className="mx-pick">{shown ?? MSW.notChosen}</p>
+                )}
                 {pending && <p className="mx-pending">{MSW.notSent}</p>}
                 <p className="mx-close">
                   <Glyph name={close.closed ? 'lock' : 'clock'} size={15} weight={2.4} />
                   {closeWords(line, one.course.name, day, defaultName(one.id), person)}
                 </p>
-                {after != null && <p className="mx-close mx-default">{after}</p>}
+                {line === 'defaulted' && <p className="mx-close mx-default">{after}</p>}
                 {refused.includes(one.id) && (
                   <p
                     id={`mx-refused-${one.id}`}
@@ -157,7 +164,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
                   </p>
                 )}
               </div>
-              {!close.closed && (
+              {!close.closed && !paused && (
                 <button
                   id={`mx-change-${one.id}`}
                   type="button"
@@ -177,7 +184,7 @@ export function Summary({ first, lang }: { first: SummaryStart; lang: Lang }) {
         {told?.kind === 'other' && <p>{MSW.otherSaved}</p>}
         {told?.kind === 'nothing' && <p>{MSW.nothingToSend}</p>}
       </div>
-      {allClosed ? (
+      {paused ? null : allClosed ? (
         <p className="gk-text mx-ask">{MSW.askHosts}</p>
       ) : (
         <div className="gk-actions">
@@ -233,7 +240,11 @@ function CourseScreen({
           <h2 id="ms-h" className="gp-h2 gk-h2" tabIndex={-1}>
             {MSW.yourCourse(course.name)}
           </h2>
-          {after != null && <p className="gk-text">{after}</p>}
+          {line === 'hostInTouch' ? (
+            <PickMark shape="host" words={after} />
+          ) : (
+            after != null && <p className="gk-text">{after}</p>
+          )}
           {dish == null ? (
             line !== 'hostInTouch' && <p className="gk-text">{MSW.notChosen}</p>
           ) : (

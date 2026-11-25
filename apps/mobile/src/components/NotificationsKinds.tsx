@@ -20,18 +20,10 @@ import {
 import { tokens } from '../theme/tokens.ts';
 import { LEAD_INSET, LineIcon } from './AccountCard.tsx';
 import { SwitchTrack } from './ConfettiSwitch.tsx';
-import { Glyph, type GlyphName } from './Glyph.tsx';
+import { Glyph } from './Glyph.tsx';
+import { CATEGORY_MARK } from './notificationMarks.ts';
 import { OpenRow, RowList, type RowTag, Section } from './Summary.tsx';
 import { Text } from './Text.tsx';
-
-const LEADS: Record<NotificationCategory, GlyphName> = {
-  guest_replies: 'users',
-  messages: 'chat',
-  event_day: 'today',
-  event_changes: 'calendar',
-  money: 'wallet',
-  account_security: 'shield',
-};
 
 function tagOf(says: 'saving' | 'saved', t: TFunction): RowTag {
   return says === 'saving'
@@ -80,7 +72,7 @@ export function KindsSection({
                 <OpenRow
                   title={name}
                   line={value}
-                  lead={<LineIcon name={LEADS[category]} />}
+                  lead={<LineIcon name={CATEGORY_MARK[category]} />}
                   tag={tag}
                   weight="semibold"
                   lit

@@ -24,8 +24,19 @@ import {
   backWordSize,
   pillBack,
 } from '../layout/focusedHeader.ts';
+import type { Family, WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { besideGlyph, capInDisc, capUnderTitle, grownPad, wordsIn } from '../layout/textSize.ts';
+import {
+  besideGlyphInPill,
+  capInDisc,
+  capUnderTitle,
+  grownPad,
+  piecesIn,
+  windowAt,
+  wordsIn,
+  wrapOf,
+} from '../layout/textSize.ts';
+import { useWindowFrame } from '../layout/useLayout.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
@@ -146,6 +157,8 @@ export function Pill({
     glyph: busy || glyph == null ? 0 : PILL_GLYPH_SIZE / textSize,
     beside: busy ? TURNING_SIDE + tokens.spaceSm : glyph == null ? 0 : tokens.spaceSm,
     chrome: 2 * (tokens.spaceXxl + ring),
+    pad: grownPad(height, textSize, ring) + ring,
+    ring,
   });
 
   return (
@@ -195,64 +208,89 @@ const PILL_GLYPH_SIZE = 18;
 const TURNING_SIDE = 16;
 
 /** A growing pill's label: its full size while its widest word fits beside the glyph, which grows with it; else the largest that fits, never under `size` (sc-13496). */
-function useGrownLabel({
+export function useGrownLabel({
   on,
   label,
   size,
+  weight = 'semibold',
+  family = 'sans',
   glyph,
   beside,
   chrome,
+  pad,
+  ring,
 }: {
   on: boolean;
   label: string;
   size: number;
+  weight?: WeightName;
+  family?: Family;
   /** The glyph's side per unit of the label's size, 0 when it does not grow. */
   glyph: number;
   /** What sits beside the words at every size: the gap, and a mark that does not grow. */
   beside: number;
   /** The pill's sides and ring. */
   chrome: number;
+  /** Its padding and ring above and below the words. */
+  pad: number;
+  ring: number;
 }) {
   const { fontScale } = useWindowDimensions();
   const cap = useContext(TitleCap);
   const start = size * capUnderTitle(cap ?? Infinity, size, fontScale);
   const key = `${start}|${label}`;
-  const words = wordsIn([label]);
+  const words = [...new Set([...wordsIn([label]), ...piecesIn([label])])];
   const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
     key: '',
     widths: {},
   });
   const [width, setWidth] = useState<number | null>(null);
   const widths = measured.key === key ? measured.widths : {};
-  const known = words.every((word) => widths[word] != null);
+  const whole = widths[`\n${label}`];
+  const known = whole != null && words.every((word) => widths[word] != null);
+  const keep = (name: string, measuredWidth: number) =>
+    setMeasured((now) => {
+      const kept = now.key === key ? now.widths : {};
+
+      return kept[name] === measuredWidth
+        ? now
+        : { key, widths: { ...kept, [name]: measuredWidth } };
+    });
   const drawn =
     !on || width == null || !known
       ? start
-      : besideGlyph(
+      : besideGlyphInPill({
           size,
           start,
-          Math.max(...words.map((word) => widths[word] ?? 0)),
+          wrap: wrapOf(label, widths, whole),
           glyph,
-          width - chrome - beside,
-        );
+          beside,
+          width,
+          sides: chrome / 2,
+          pad,
+          ring,
+        });
 
   return {
     measure: on ? (
-      <MeasuredWords
-        words={words.filter((word) => widths[word] == null)}
-        size={size}
-        weight="semibold"
-        maxFontSizeMultiplier={start / size}
-        onWidth={(word, measuredWidth) =>
-          setMeasured((now) => {
-            const kept = now.key === key ? now.widths : {};
-
-            return kept[word] === measuredWidth
-              ? now
-              : { key, widths: { ...kept, [word]: measuredWidth } };
-          })
-        }
-      />
+      <>
+        <MeasuredWords
+          words={words.filter((word) => widths[word] == null)}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={keep}
+        />
+        <MeasuredWords
+          words={whole == null ? [label] : []}
+          size={size}
+          weight={weight}
+          family={family}
+          maxFontSizeMultiplier={start / size}
+          onWidth={(_, measuredWidth) => keep(`\n${label}`, measuredWidth)}
+        />
+      </>
     ) : null,
     multiplier: drawn / size,
     glyphScale: on ? Math.max(1, Math.min(drawn / size, fontScale)) : 1,
@@ -286,12 +324,12 @@ export function Pair({
   );
 }
 
-/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778) or a turn changes the window or its frame (sc-90463), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
 export function useBackWord(word: string, back: BackSizing, besideShown = false) {
   const { width: windowWidth } = useWindowDimensions();
   const key = `${back.full}|${word}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
-  const roomKey = `${key}|${windowWidth}|${besideShown}`;
+  const roomKey = `${key}|${windowAt(windowWidth, useWindowFrame().width)}|${besideShown}`;
   const [room, setRoom] = useState<{
     key: string;
     width: number;

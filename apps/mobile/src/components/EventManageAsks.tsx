@@ -11,6 +11,7 @@ import {
   endRefusalOf,
   pauseRefusalOf,
 } from '../kit/makeLive.ts';
+import { useKeysUp } from './keyboardWatch.ts';
 import { useLifecycleAction } from './LifecycleSheet.tsx';
 import { ThankYouField } from './ThankYou.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -156,6 +157,7 @@ function EndAsk({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [typing, setTyping] = useState(false);
+  const keysUp = useKeysUp();
   const changed = useChangedLine(event);
   const { asking, go, close } = action;
   const callOff = asking?.kind === 'confirm' && asking.label === 'callOff';
@@ -221,7 +223,7 @@ function EndAsk({
                 testID="events.endThankYou"
               />
             ) : undefined,
-            top: thanks && typing ? insets.top + tokens.spaceLg : null,
+            top: thanks && typing && keysUp ? insets.top + tokens.spaceLg : null,
           }
         : {
             title: t('eventEnd.notEnded'),

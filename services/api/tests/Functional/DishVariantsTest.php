@@ -12,21 +12,24 @@ use App\Entity\Dish;
 use App\Entity\DishVariant;
 use App\Entity\Event;
 use App\Entity\Guest;
+use App\Entity\MealAnswer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\MealAnswerKind;
 use App\Enum\MembershipStatus;
+use App\Enum\MenuChangeWhy;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\ScriptedMenuPicks;
 use App\Tests\Double\WithholdingMembershipDirectory;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\PutsPeopleOnEvents;
+use App\Tests\Traits\StoresMealAnswers;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -41,6 +44,7 @@ final class DishVariantsTest extends ApiTestCase
 {
     use OnboardsAccounts;
     use PutsPeopleOnEvents;
+    use StoresMealAnswers;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -239,72 +243,91 @@ final class DishVariantsTest extends ApiTestCase
     }
 
     #[Test]
-    public function addVariantIsRefusedOnAPickedDishButNotOnAPickedDishWithVariants(): void
+    public function aPickedDishsFirstVariantsAskThoseWhoPickedItAgainButAFurtherVariantAsksNobody(): void
     {
         $jollof = $this->jollof();
-        $this->picks($jollof, $this->guest('Tolu Adeyemi', []));
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks($jollof, $tolu);
 
         $this->as($this->owner, 'POST', $this->variantsOf($jollof), ['variants' => [self::sent('Chicken'), self::sent('Fish')]]);
         self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/menu_dish_picked', $this->last()['type'] ?? null);
+        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['count'] ?? null]);
+        self::assertSame([], $this->variants());
 
-        $asun = $this->newDish('Asun', ['name' => 'Asun', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        $this->as($this->owner, 'POST', $this->variantsOf($jollof) . '?askAgain=1', ['variants' => [self::sent('Chicken'), self::sent('Fish')]]);
+        self::assertSame(201, $this->statusCode());
+        $answer = $this->answerOfTheirs($tolu);
+        self::assertSame([MealAnswerKind::MenuChanged, MenuChangeWhy::Ways, 2, 'Jollof rice'], [$answer->getKind(), $answer->getChangedWhy(), $answer->getChangedWays(), $answer->getChangedFrom()]);
+
+        $asun = $this->newDish('Main', ['name' => 'Asun', 'allergens' => ['celery'], 'onlyForEvent' => true]);
         $this->addVariants($asun, [self::sent('Goat'), self::sent('Beef')]);
-        $this->picks($asun, $this->guest('Femi Ade', []));
+        $this->picks(Type\string()->coerce($this->variants()[0]['id']), $this->guest('Femi Ade', []));
         $this->addVariants($asun, [self::sent('Chicken')]);
         self::assertSame(201, $this->statusCode());
     }
 
     #[Test]
-    public function aPickedVariantCannotBeRemoved(): void
+    public function removingAPickedVariantAsksThoseWhoPickedItAgain(): void
     {
         $jollof = $this->jollof();
         $this->addVariants($jollof, [self::sent('Chicken'), self::sent('Fish')]);
         $this->addVariants($jollof, [self::sent('Beef')]);
         $chicken = Type\string()->coerce($this->variants()[0]['id']);
-        $this->picks($chicken, $this->guest('Tolu Adeyemi', []));
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $femi = $this->guest('Femi Ade', []);
+        $this->picks($chicken, $tolu);
+        $this->picks(Type\string()->coerce($this->variants()[1]['id']), $femi);
 
         $this->as($this->owner, 'DELETE', $this->path('/variants/' . $chicken));
-
         self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/variant_picked', $this->last()['type'] ?? null);
+        self::assertSame([ErrorCode::MenuChangeAsks->type(), 1], [$this->last()['type'] ?? null, $this->last()['count'] ?? null]);
         self::assertTrue($this->variants()[0]['picked']);
+
+        $this->as($this->owner, 'DELETE', $this->path('/variants/' . $chicken . '?askAgain=1'));
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['Fish', 'Beef'], Vec\map($this->variants(), static fn (array $one): mixed => $one['name']));
+        self::assertSame([MealAnswerKind::MenuChanged, 'Jollof rice, Chicken'], [$this->answerOfTheirs($tolu)->getKind(), $this->answerOfTheirs($tolu)->getChangedFrom()]);
+        self::assertSame(MealAnswerKind::Chosen, $this->answerOfTheirs($femi)->getKind());
     }
 
     #[Test]
-    public function aFoldIsRefusedWhenTheVariantThatStaysIsPicked(): void
+    public function aFoldKeepsWhoeverPickedTheVariantThatStaysOnTheDish(): void
     {
         $jollof = $this->jollof();
         $this->addVariants($jollof, [self::sent('Chicken'), self::sent('Fish', 'fish')]);
-        $this->picks(Type\string()->coerce($this->variants()[0]['id']), $this->guest('Tolu Adeyemi', []));
+        $tolu = $this->guest('Tolu Adeyemi', []);
+        $this->picks(Type\string()->coerce($this->variants()[0]['id']), $tolu);
 
         $this->as($this->owner, 'DELETE', $this->path('/variants/' . Type\string()->coerce($this->variants()[1]['id'])));
 
+        self::assertSame(200, $this->statusCode(), 'nobody picked Fish, so nobody is asked');
+        self::assertSame([], $this->variants());
+        $answer = $this->answerOfTheirs($tolu);
+        self::assertSame([MealAnswerKind::Chosen, 'Jollof rice', null], [$answer->getKind(), $answer->getDish()?->getName(), $answer->getVariant()]);
+    }
+
+    #[Test]
+    public function anAllergenAddedToAPickedVariantAsksAgainThoseWhoPickedItWithItRecorded(): void
+    {
+        $chicken = $this->pickedChicken();
+
+        $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken), self::sent('Chicken', 'celery', 'peanuts', 'sesame', 'mustard'));
         self::assertSame(409, $this->statusCode());
-        self::assertSame('https://soirely.com/errors/variant_picked', $this->last()['type'] ?? null);
-        self::assertSame(['Chicken', 'Fish'], Vec\map($this->variants(), static fn (array $one): mixed => $one['name']));
+        self::assertSame([2, 'allergen', ['peanuts', 'sesame']], [$this->last()['count'] ?? null, $this->last()['whom'] ?? null, $this->last()['allergens'] ?? null]);
+
+        $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken . '?askAgain=1'), self::sent('Chicken', 'celery', 'peanuts', 'sesame', 'mustard'));
+        self::assertSame(200, $this->statusCode());
     }
 
     #[Test]
-    public function anAllergenAddedToAPickedVariantSavesAndCountsWhoHasItRecorded(): void
+    public function nobodyIsAskedWhenNobodyCountedHasItOrTheAllergyIsOtherOrOneIsRemoved(): void
     {
         $chicken = $this->pickedChicken();
 
-        $saved = $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken), self::sent('Chicken', 'celery', 'peanuts', 'sesame', 'mustard'));
-
-        self::assertSame(200, $this->statusCode(), Json\encode($saved));
-        self::assertSame(['count' => 2, 'allergens' => ['peanuts', 'sesame']], $saved['unwarned'] ?? null);
-    }
-
-    #[Test]
-    public function noLineWhenNobodyCountedHasItOrTheAllergyIsOtherOrOneIsRemoved(): void
-    {
-        $chicken = $this->pickedChicken();
-
-        self::assertNull($this->unwarned($chicken, self::sent('Chicken', 'celery', 'mustard')));
-        self::assertNull($this->unwarned($chicken, self::sent('Chicken', 'celery', 'mustard', 'lupin')));
-        self::assertNull($this->unwarned($chicken, self::sent('Chicken', 'celery')));
-        self::assertNull($this->unwarned($chicken, self::sent('Chicken')));
+        foreach ([self::sent('Chicken', 'celery', 'mustard'), self::sent('Chicken', 'celery', 'mustard', 'lupin'), self::sent('Chicken', 'celery'), self::sent('Chicken')] as $body) {
+            $this->as($this->owner, 'PUT', $this->path('/variants/' . $chicken), $body);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        }
     }
 
     #[Test]
@@ -515,16 +538,6 @@ final class DishVariantsTest extends ApiTestCase
         return $chicken;
     }
 
-    /** @param array<string, mixed> $body */
-    private function unwarned(string $variantId, array $body): mixed
-    {
-        $saved = $this->as($this->owner, 'PUT', $this->path('/variants/' . $variantId), $body);
-        self::assertSame(200, $this->statusCode(), Json\encode($saved));
-        self::assertArrayHasKey('unwarned', $saved);
-
-        return $saved['unwarned'];
-    }
-
     /** @return array<string, mixed> */
     private static function sent(string $name, string ...$allergens): array
     {
@@ -628,7 +641,7 @@ final class DishVariantsTest extends ApiTestCase
     private function guest(string $name, array $allergens, ?string $other = null): Guest
     {
         $event = self::em()->find(Event::class, Uuid::fromString($this->eventId)) ?? self::fail('no event');
-        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122());
+        $guest = Guest::listed($event, $name, Str\lowercase($name), null, null, null, Uuid::v4()->toRfc4122(), Uuid::v4()->toRfc4122());
         self::em()->persist($guest);
         $this->recordNeeds($guest, $allergens, $other);
 
@@ -647,9 +660,11 @@ final class DishVariantsTest extends ApiTestCase
         self::em()->flush();
     }
 
-    private function picks(string $id, Guest $person): void
+    private function answerOfTheirs(Guest $person): MealAnswer
     {
-        self::service(ScriptedMenuPicks::class)->pick($id, $person);
+        self::em()->clear();
+
+        return self::em()->getRepository(MealAnswer::class)->findOneBy(['person' => $person->getId()]) ?? self::fail('no answer');
     }
 
     private function newEvent(): string

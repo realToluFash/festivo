@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -52,6 +53,22 @@ class MenuCourse
     /** @var list<string> Served with this course: on every plate of it, after the dish's items (sc-34230) */
     #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
     private array $ownItems = [];
+
+    /** The plate given at the choose-by date to anyone coming with no answer (sc-1362): set together with the date, or neither is. */
+    #[ORM\ManyToOne(targetEntity: MenuDish::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MenuDish $defaultDish = null;
+
+    #[ORM\ManyToOne(targetEntity: MenuDishVariant::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MenuDishVariant $defaultVariant = null;
+
+    /** @var list<string> the default's options' ids, each required choice's in its order */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $defaultOptions = [];
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $chooseBy = null;
 
     public function __construct(Event $event, string $name, ?string $servedAt, int $position)
     {
@@ -128,5 +145,43 @@ class MenuCourse
     public function listOwnItems(array $items): void
     {
         $this->ownItems = $items;
+    }
+
+    public function getDefaultDish(): ?MenuDish
+    {
+        return $this->defaultDish;
+    }
+
+    public function getDefaultVariant(): ?MenuDishVariant
+    {
+        return $this->defaultVariant;
+    }
+
+    /** @return list<string> */
+    public function getDefaultOptions(): array
+    {
+        return $this->defaultOptions;
+    }
+
+    public function getChooseBy(): ?DateTimeImmutable
+    {
+        return $this->chooseBy;
+    }
+
+    /** @param list<string> $options */
+    public function giveByDefault(MenuDish $dish, ?MenuDishVariant $variant, array $options, DateTimeImmutable $chooseBy): void
+    {
+        $this->defaultDish = $dish;
+        $this->defaultVariant = $variant;
+        $this->defaultOptions = $options;
+        $this->chooseBy = $chooseBy;
+    }
+
+    public function clearDefault(): void
+    {
+        $this->defaultDish = null;
+        $this->defaultVariant = null;
+        $this->defaultOptions = [];
+        $this->chooseBy = null;
     }
 }

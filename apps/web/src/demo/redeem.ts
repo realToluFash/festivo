@@ -45,7 +45,7 @@ export const R = {
   joining: 'Joining…',
   joinAs: (name: string) => `Join as ${name}`,
   signOut: 'Sign out',
-  memberTitle: `You’re already a member of ${DOOR_ORG}`,
+  memberTitle: `You are already a member of ${DOOR_ORG}`,
   memberLine: 'Members open an event from its People page. Ask its lead or an admin to add you.',
   openEvents: 'Open Events',
   checkWhatsApp: 'Check WhatsApp',
@@ -73,7 +73,7 @@ export const R = {
   failedTitle: 'That did not work',
   failedBody: 'Something went wrong on the way. Try again in a moment.',
   inTitle: `You’re in for ${DOOR_EVENT} · ${BAR.label ?? ''}`,
-  endsLine: 'Access ends when the event concludes.',
+  endsLine: 'Your access ends when the event does.',
   openEvent: 'Open the event',
   checkIn: 'Check-in',
   signedInAs: (name: string) => `Signed in as ${name}`,
@@ -169,7 +169,7 @@ export type Step =
       busy: Busy;
       wrongs: number;
     }
-  | { kind: 'in'; name: string; checks: boolean };
+  | { kind: 'in'; name: string; checks: boolean; held: boolean };
 
 /** `held`: a deep-linked wait, long enough to look at. */
 export type Busy = 'no' | 'busy' | 'held';
@@ -192,6 +192,8 @@ export const REDEEM_STATES = [
   'event-short',
   'sending',
   'join-as',
+  'join-as-long',
+  'join-as-longest',
   'member',
   'code',
   'code-texted',
@@ -205,6 +207,7 @@ export const REDEEM_STATES = [
   'second-number',
   'browser-in',
   'browser-in-view',
+  'browser-in-account',
   'from-check-in',
   'signed-out',
 ] as const;
@@ -214,6 +217,11 @@ export type RedeemState = (typeof REDEEM_STATES)[number];
 export const JOAO = { name: 'João Pereira', number: '912 345 412' };
 export const HUGO = { name: 'Hugo Faria', number: '913 222 908' };
 export const KEMI = 'Kemi Okafor';
+/** Sixty characters, kept whole: the pill grows a line at a time (sc-72, #89576). */
+export const LONG_NAME = 'Maria Fernanda Albuquerque de Vasconcelos Pereira dos Santos';
+/** The account's 180-character limit: three lines, then an ellipsis. */
+export const LONGEST_NAME =
+  'Maria Fernanda Albuquerque de Vasconcelos Pereira dos Santos Carvalho Bettencourt Magalhães e Sá Rodrigues Figueiredo de Mascarenhas Sampaio Teixeira Lopes Brandão Cunha Ribeiro Sá';
 /** A verified alternative on another account: the right code signs it into nothing (sc-4235). */
 export const RITA = { name: 'Rita Sousa', number: '916 480 233' };
 
@@ -308,6 +316,10 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: event({ busy: 'held' }), ...joao };
     case 'join-as':
       return { step: { kind: 'joinAs', busy: 'no' }, name: KEMI, number: '' };
+    case 'join-as-long':
+      return { step: { kind: 'joinAs', busy: 'no' }, name: LONG_NAME, number: '' };
+    case 'join-as-longest':
+      return { step: { kind: 'joinAs', busy: 'no' }, name: LONGEST_NAME, number: '' };
     case 'member':
       return { step: { kind: 'member' }, ...joao };
     case 'code':
@@ -332,9 +344,15 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: event({ ...RITA, checked: true, secondNumber: true }), ...RITA };
     case 'browser-in':
     case 'from-check-in':
-      return { step: { kind: 'in', name: HUGO.name, checks: true }, ...hugo };
+      return { step: { kind: 'in', name: HUGO.name, checks: true, held: true }, ...hugo };
     case 'browser-in-view':
-      return { step: { kind: 'in', name: HUGO.name, checks: false }, ...hugo };
+      return { step: { kind: 'in', name: HUGO.name, checks: false, held: true }, ...hugo };
+    case 'browser-in-account':
+      return {
+        step: { kind: 'in', name: KEMI, checks: true, held: false },
+        name: KEMI,
+        number: '',
+      };
     case 'signed-out':
       return { step: enter({ signedOut: true }), ...joao };
     default:
@@ -373,6 +391,8 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('joining', 'Joining'),
       redeem('name-used-up', 'Used up'),
       redeem('join-as', 'Already signed in'),
+      redeem('join-as-long', 'Signed in, a sixty-character name'),
+      redeem('join-as-longest', 'Signed in, a 180-character name'),
       redeem('member', 'Already a member'),
     ],
   },
@@ -409,6 +429,7 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
     states: [
       redeem('browser-in', 'You’re in, Check-in first (sc-28230)'),
       redeem('browser-in-view', 'You’re in at Can view: no Check-in (sc-28230)'),
+      redeem('browser-in-account', 'You’re in with your own account: no sign-out time'),
       redeem('from-check-in', 'You’re in, back from check-in: nothing redeemed again (sc-28230)'),
       redeem('signed-out', 'Signed out'),
     ],

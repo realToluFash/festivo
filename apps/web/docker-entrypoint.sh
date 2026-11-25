@@ -56,12 +56,13 @@ JSON
 
 echo "soirely: wrote $TARGET for ${SOIRELY_ENVIRONMENT:-unknown} (api ${SOIRELY_API_URL})"
 
-# ── Android App Links ────────────────────────────────────────────────────────
+# ── Android App Links and passkeys ───────────────────────────────────────────
 #
 # Sign in with Apple on Android comes back to the app by an https link on this
 # host, and Android opens it in the app only if this file names the app and its
-# release signing certificate. Written only when a fingerprint is configured, so
-# a deployment without one serves a 404 here, never a file that verifies nothing.
+# release signing certificate. get_login_creds lets the app use this host's
+# passkeys (sc-86888). Written only when a fingerprint is configured, so a
+# deployment without one serves a 404 here, never a file that verifies nothing.
 WELL_KNOWN="$ROOT/.well-known"
 if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     mkdir -p "$WELL_KNOWN"
@@ -72,7 +73,10 @@ if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
     cat > "$WELL_KNOWN/assetlinks.json" <<JSON
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": ${PACKAGE},
@@ -83,6 +87,45 @@ if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
 JSON
     echo "soirely: wrote $WELL_KNOWN/assetlinks.json for ${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}"
 fi
+
+# ── Apple webcredentials ─────────────────────────────────────────────────────
+#
+# iOS lets the app use this host's passkeys only when this file names the app
+# as <team id>.<bundle id> (sc-86888), and opens a door code's /d/ link in the
+# app only when applinks names the path (sc-72). Written only when configured.
+if [ -n "${SOIRELY_APPLE_APP_ID:-}" ]; then
+    mkdir -p "$WELL_KNOWN"
+    APPLE_APP_ID="$(json_string SOIRELY_APPLE_APP_ID "$SOIRELY_APPLE_APP_ID")"
+    cat > "$WELL_KNOWN/apple-app-site-association" <<JSON
+{
+  "webcredentials": {
+    "apps": [${APPLE_APP_ID}]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [${APPLE_APP_ID}],
+        "components": [{ "/": "/d/*" }]
+      }
+    ]
+  }
+}
+JSON
+    echo "soirely: wrote $WELL_KNOWN/apple-app-site-association for ${SOIRELY_APPLE_APP_ID}"
+fi
+
+# ── The API inside the network ───────────────────────────────────────────────
+#
+# A guest's link asks the API for its chat card (sc-89272) as nginx serves it.
+# Resolved when asked rather than at start, so the web starts without the API.
+API_INTERNAL="${SOIRELY_API_INTERNAL_URL:-http://api}"
+case "$API_INTERNAL" in
+    *[!a-zA-Z0-9:/._-]*) echo "soirely: SOIRELY_API_INTERNAL_URL is not a plain URL" >&2; exit 1 ;;
+esac
+cat > "${SOIRELY_API_CONF_FILE:-/etc/nginx/soirely-api.conf}" <<CONF
+resolver ${SOIRELY_RESOLVER:-127.0.0.11} valid=30s ipv6=off;
+set \$soirely_api ${API_INTERNAL};
+CONF
 
 # ── Security headers ─────────────────────────────────────────────────────────
 #
@@ -116,9 +159,7 @@ fi
 
 HEADERS="${SOIRELY_HEADERS_FILE:-/etc/nginx/soirely-security-headers.conf}"
 
-# Google Fonts is the one third party the page loads: the stylesheet comes from
-# fonts.googleapis.com and the font files it names come from fonts.gstatic.com.
-# Self-hosting the two families would remove both and is the better end state.
+# The page loads nothing from a third party, its fonts included (sc-80882).
 #
 # style-src has no 'unsafe-inline'. That also governs inline style attributes,
 # so a `style={{…}}` prop anywhere in apps/web stops rendering — the eslint rule
@@ -128,7 +169,7 @@ HEADERS="${SOIRELY_HEADERS_FILE:-/etc/nginx/soirely-security-headers.conf}"
 # so it belongs on the terminator, where the max-age commitment is visible next
 # to the certificate it depends on.
 cat > "$HEADERS" <<CONF
-add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src ${IMG}; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
+add_header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src ${IMG}; connect-src ${CONNECT}; manifest-src 'self'; worker-src 'self'" always;
 add_header X-Content-Type-Options "nosniff" always;
 add_header Referrer-Policy \$soirely_referrer_policy always;
 add_header X-Robots-Tag \$soirely_robots always;

@@ -1,0 +1,12 @@
+# sc-3914 r4: after sc3914r4-who-open-tick, with the member dropped to Can view, taps Save
+# and fails unless the refused line shows.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'menu.who.save'
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: 'menu.who.refused'
+    timeout: 10000
+- takeScreenshot: refused

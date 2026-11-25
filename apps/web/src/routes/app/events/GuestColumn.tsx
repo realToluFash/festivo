@@ -27,7 +27,6 @@ import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, CardStep, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { focusWhenFree } from '../../../layers.ts';
 import { type Mesh } from '../../../mesh.ts';
 import { offButton } from '../../../offButton.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
@@ -586,15 +585,14 @@ function GuestView({
   const shown: Removing | null =
     gone && removing?.kind === 'asking' && !removing.busy ? { kind: 'gone' } : removing;
   const notFound = useEffectEvent(onNotFound);
-  const replaceButton = useRef<HTMLButtonElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkTurn, setLinkTurn] = useState(0);
   const sends = manages && invites && guest.mobile != null;
   const fetchLink = useEffectEvent(onLink);
 
   useEffect(() => {
-    if (replace.kind === 'replaced') focusWhenFree(() => replaceButton.current);
-  }, [replace.kind]);
+    if (replace.kind === 'replaced') focus('replace');
+  }, [replace.kind, focus]);
 
   useEffect(() => {
     if (gone && removing == null) notFound();
@@ -1019,7 +1017,6 @@ function GuestView({
           copyByHand={copy.kind === 'byHand' && <CopyByHand url={copy.url} />}
           marking={marking}
           markFailed={markFailed}
-          replaceButton={replaceButton}
           send={sends && link != null ? whatsAppHref(guest, event, link) : null}
           asked={asked}
           onCopy={copied}
@@ -1769,7 +1766,13 @@ function EditForm({
         <EditCompanions
           host={values.fullName.trim() === '' ? host.fullName : values.fullName.trim()}
           companions={values.companions}
-          seatOf={(id) => host.companions.find((one) => one.id === id)?.seat ?? null}
+          goesWith={(id) => {
+            const one = host.companions.find((each) => each.id === id);
+            const seat = one?.seat ?? null;
+            const meal = one?.meal === true;
+
+            return seat == null && !meal ? null : { seat, meal };
+          }}
           arrivedOf={(id) => host.companions.some((one) => one.id === id && one.arrival != null)}
           said={said}
           words={words}
@@ -1803,11 +1806,11 @@ export function Amber({
   );
 }
 
-/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat is asked about first, and the seat is freed only when the edit is saved (sc-4013). */
+/** sc-1468's places, filled in: three shown, then "{n} more companions"; a companion with a seat or a meal is asked about first, and the seat is freed and the meal dropped only when the edit is saved (sc-4013, sc-3907). */
 function EditCompanions({
   host,
   companions,
-  seatOf,
+  goesWith,
   arrivedOf,
   said,
   words,
@@ -1818,7 +1821,7 @@ function EditCompanions({
 }: {
   host: string;
   companions: Values['companions'];
-  seatOf: (id: string | null) => CompanionSeat | null;
+  goesWith: (id: string | null) => GoesWith | null;
   arrivedOf: (id: string | null) => boolean;
   said: string | null;
   words: (key: string) => string | undefined;
@@ -1830,7 +1833,7 @@ function EditCompanions({
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const [asking, setAsking] = useState<{
-    asks: { name: string; seat: CompanionSeat }[];
+    asks: ({ name: string } & GoesWith)[];
     after: Values['companions'];
     at: number | null;
   } | null>(null);
@@ -1859,9 +1862,9 @@ function EditCompanions({
             ...Array.from({ length: added }, () => ({ id: null, name: '', needs: NO_NEEDS })),
           ];
           const asks = companions.flatMap((one, at) => {
-            const seat = kept.includes(at) ? null : seatOf(one.id);
+            const goes = kept.includes(at) ? null : goesWith(one.id);
 
-            return seat == null ? [] : [{ name: shownAt(at), seat }];
+            return goes == null ? [] : [{ name: shownAt(at), ...goes }];
           });
 
           if (asks.length > 0) setAsking({ asks, after, at: null });
@@ -1888,10 +1891,10 @@ function EditCompanions({
               }
               onRemove={() => {
                 const after = companions.filter((_, index) => index !== at);
-                const seat = seatOf(companion.id);
+                const goes = goesWith(companion.id);
 
-                if (seat != null) {
-                  setAsking({ asks: [{ name: shown, seat }], after, at });
+                if (goes != null) {
+                  setAsking({ asks: [{ name: shown, ...goes }], after, at });
                   return;
                 }
                 onChange(after);
@@ -1930,13 +1933,7 @@ function EditCompanions({
         <Ask
           key={asking.asks.length}
           title={t('guestList.removeTitle', { name: asked.name })}
-          line={t('guestList.seatedLine', {
-            name: asked.name,
-            table:
-              asked.seat.kind === 'row'
-                ? t('seating.rowName', { label: asked.seat.name })
-                : asked.seat.name,
-          })}
+          line={goesLine(t, asked)}
           keep={t('guestList.cancel')}
           go={t('guestList.remove')}
           onKeep={() => setAsking(null)}
@@ -1969,6 +1966,16 @@ function EditCompanions({
       )}
     </fieldset>
   );
+}
+
+/** What leaves with a companion removed in Edit: a seat (sc-4013), a meal chosen (sc-3907), or both. */
+type GoesWith = { seat: CompanionSeat | null; meal: boolean };
+
+function goesLine(t: TFunction, { name, seat, meal }: { name: string } & GoesWith): string {
+  if (seat == null) return t('guestList.mealLine', { name });
+  const table = seat.kind === 'row' ? t('seating.rowName', { label: seat.name }) : seat.name;
+
+  return t(meal ? 'guestList.seatedMealLine' : 'guestList.seatedLine', { name, table });
 }
 
 /** Which arrival a 409 `guest_arrived` names; the guest's own wins over a companion's (sc-1454). */

@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, ERROR_TYPE_PREFIX } from '@soirely/api-client';
 import { init, t } from 'i18next';
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -123,9 +123,30 @@ describe('signing out everywhere else, when it is sent', () => {
   });
 
   it('marks a server refusal, so the rows are read again', async () => {
-    const outcome = await signOutOthers(() => Promise.reject(Object.create(ApiError.prototype)), t);
+    const outcome = await signOutOthers(
+      () =>
+        Promise.reject(
+          new ApiError({ type: `${ERROR_TYPE_PREFIX}session_gone`, title: 'No.', status: 404 }),
+        ),
+      t,
+    );
 
     expect(outcome).toMatchObject({ kind: 'failed', refused: true });
+  });
+
+  it('gives the time a limit on the sign-out itself ends, so the button can stay off until then', async () => {
+    const problem = { type: `${ERROR_TYPE_PREFIX}too_many_attempts`, title: 'No.', status: 429 };
+    const limited = new ApiError(
+      problem,
+      new Response(JSON.stringify(problem), { status: 429, headers: { 'Retry-After': '600' } }),
+    );
+    const before = Date.now();
+
+    const outcome = await signOutOthers(() => Promise.reject(limited), t);
+
+    expect(outcome.kind).toBe('limited');
+    const until = outcome.kind === 'limited' ? outcome.until : null;
+    expect(until?.getTime()).toBeGreaterThanOrEqual(before + 600_000);
   });
 });
 

@@ -1,0 +1,33 @@
+# sc-82858 regression: a member whose two-factor setup is overdue keeps Search on the overdue screen, and it opens Search. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-settings
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: overdue-today
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow:
+    when:
+      visible:
+        id: 'frame.search'
+    commands:
+      - tapOn:
+          id: 'frame.search'
+- runFlow:
+    when:
+      notVisible:
+        id: 'search.field'
+    commands:
+      - tapOn: 'Search|Buscar'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- takeScreenshot: overdue-search-open

@@ -78,6 +78,7 @@ export function rowLine(t: TFunction, person: EventPerson, userId: string | null
   return joinedLine([
     t(`eventPeople.role.${person.role}`),
     person.jobLabel,
+    person.doorCode == null ? null : t('doorCodes.tag'),
     person.user != null && person.user.id === userId ? t('eventPeople.you') : null,
   ]);
 }

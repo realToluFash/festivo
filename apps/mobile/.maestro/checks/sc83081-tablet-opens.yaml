@@ -1,0 +1,43 @@
+# sc-83081 on a tablet at its current orientation (O names it): the bell's popover from Today, Events and an event's page (EVENT), closed by Android Back and by a tap outside. Pass METRO_URL, O, EVENT, BELL=97%,4% and EVENT_BELL=93%,4% (upright Android tablet).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- tapOn: { text: '(Today|Hoy)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- tapOn: { point: '${BELL}' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-bell-from-today
+- runFlow:
+    when: { visible: { id: 'notifications.pushAsk.notNow' } }
+    commands:
+      - tapOn: { id: 'notifications.pushAsk.notNow' }
+      - waitForAnimationToEnd
+      - takeScreenshot: ${O}-bell-after-notnow
+- back
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-today-after-back
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- waitForAnimationToEnd
+- tapOn: { point: '${BELL}' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-bell-from-events
+- tapOn: { point: '15%,85%' }
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-events-after-outside
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil: { visible: { id: 'events.page' }, timeout: 20000 }
+- waitForAnimationToEnd
+- tapOn: { point: '${EVENT_BELL}' }
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 20000 }
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-bell-from-event
+- tapOn: { id: 'notifications\.item\..*\.more', index: 0 }
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-bellMute-product
+- back
+- waitForAnimationToEnd
+- takeScreenshot: ${O}-event-after-back

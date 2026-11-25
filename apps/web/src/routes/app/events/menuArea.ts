@@ -1,6 +1,5 @@
 import {
   type MenuCourse,
-  type PicksClose,
   MENU_COURSE_MAXIMUM,
   MENU_COURSE_NAME_MAXIMUM,
 } from '@soirely/api-client';
@@ -104,12 +103,11 @@ export function closeTime(at: string, timeZone: string, locale: string): string 
   }).format(new Date(at));
 }
 
-/** The Menu header's close: the earliest of the courses still open, or the last once all have closed; null while no course asks guests anything. */
-export function menuClose(courses: readonly MenuCourse[]): PicksClose | null {
-  const closes = courses
-    .flatMap((course) => (course.picksClose == null ? [] : [course.picksClose]))
-    .sort((one, other) => Date.parse(one.at) - Date.parse(other.at));
-  const open = closes.filter((close) => !close.closed);
-
-  return open[0] ?? closes.at(-1) ?? null;
-}
+/** The minute a choose-by date closes at, 23:59, as the locale writes a time (sc-1362). */
+export const dayEndTime = (locale: string): string =>
+  new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC',
+  }).format(Date.UTC(2026, 0, 1, 23, 59));

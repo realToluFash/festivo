@@ -7,6 +7,7 @@ namespace App\Domain\User\TwoFactor\Recovery;
 use App\Audit\Auditor;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\TwoFactorSettings;
 use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
 use App\Entity\User;
@@ -14,8 +15,6 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\TwoFactorRecoveryStatus;
 use App\Http\Exception\ApiException;
-use App\Repository\RecoveryCodeRepository;
-use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
@@ -31,8 +30,7 @@ final readonly class RecoveryDecisions
 
     public function __construct(
         private TwoFactorRecoveryRepository $twoFactorRecoveryRepository,
-        private TwoFactorFactorRepository $twoFactorFactorRepository,
-        private RecoveryCodeRepository $recoveryCodeRepository,
+        private TwoFactorSettings $twoFactorSettings,
         private RecoveryApprovers $recoveryApprovers,
         private TwoFactorRecoveryMailer $twoFactorRecoveryMailer,
         private TokenIssuer $tokenIssuer,
@@ -57,13 +55,7 @@ final readonly class RecoveryDecisions
     {
         $this->decide($approver, $id, TwoFactorRecoveryStatus::Approved, function (TwoFactorRecovery $recovery): void {
             $user = $recovery->getUser();
-            $factor = $this->twoFactorFactorRepository->findActiveFor($user);
-
-            if (null !== $factor) {
-                $this->entityManager->remove($factor);
-            }
-
-            $this->recoveryCodeRepository->deleteAllFor($user);
+            $this->twoFactorSettings->removeEveryFactor($user);
             $this->tokenIssuer->revokeAllFor($user);
             $user->setTwoFactorSetupPrompt(true);
         }, function (TwoFactorRecovery $recovery, DateTimeImmutable $at): void {

@@ -15,6 +15,7 @@ use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Guest\Model\PageReply;
 use App\Domain\Guest\Model\PlaceChoice;
 use App\Domain\Guest\Model\RecordedReply;
+use App\Domain\Messaging\GuestReplies\GuestReplyRecorder;
 use App\Entity\Guest;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -24,6 +25,7 @@ use App\Enum\GuestReplySource;
 use App\Enum\NeedKind;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
+use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
@@ -47,6 +49,7 @@ final readonly class GuestAnswers
         private GuestNeedsRecord $guestNeedsRecord,
         private ClockInterface $clock,
         private GuestInvitations $guestInvitations,
+        private GuestReplyRecorder $guestReplyRecorder,
     ) {
     }
 
@@ -64,6 +67,16 @@ final readonly class GuestAnswers
         return null === $guest->getRepliesReopenedAt() ? ReplyDeadline::closedOn($guest->getEvent(), $this->clock->now()) : null;
     }
 
+    /** Refused 409 `event_paused` or `event_concluded` while the event's phase takes no answers. */
+    public function refuseByPhase(Guest $guest): void
+    {
+        $refusal = $this->phase($guest)->refusal();
+
+        if (null !== $refusal) {
+            throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
+        }
+    }
+
     public function phase(Guest $guest): GuestPagePhase
     {
         $event = $guest->getEvent();
@@ -76,6 +89,16 @@ final readonly class GuestAnswers
         return $this->clock->now() >= $guest->getEvent()->getStartsAt();
     }
 
+    /** From 00:00 on the start date until the end, both in the event's zone (sc-24381): the day a Coming guest's page leads with the way in. */
+    public function onTheDay(Guest $guest): bool
+    {
+        $event = $guest->getEvent();
+        $zone = new DateTimeZone($event->getTimeZone());
+        $now = $this->clock->now();
+
+        return $now->setTimezone($zone)->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d') && $now < $event->getEndsAt();
+    }
+
     /** Refused 409 `event_paused` while paused, `event_concluded` once over, `replies_closed` from the start or after Reply by, and a recorded reply, which invites a guest not yet invited, `event_state_invalid` unless the phase allows `invite` (sc-52829); the same answer again keeps its date. Needs go only with Coming (sc-3778), keep the hosts' note, and may drop a host's access need but never add one (422, nothing saved). */
     public function answer(Guest $guest, GuestReply $reply, ?PageReply $page = null, ?RecordedReply $recorded = null): void
     {
@@ -83,11 +106,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $reply, $page, $recorded): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if (null !== $recorded && !$guest->isInvited()) {
                 $this->guestInvitations->assertInvitable($guest->getEvent());
@@ -148,6 +167,10 @@ final readonly class GuestAnswers
 
             $this->entityManager->flush();
 
+            if ($replied || $chose) {
+                $this->guestReplyRecorder->replied($guest, $previous);
+            }
+
             return true;
         });
 
@@ -168,11 +191,7 @@ final readonly class GuestAnswers
         $changed = $this->entityManager->wrapInTransaction(function () use ($guest, $own, $companions, $unnamed): bool {
             $this->entityManager->refresh($guest, LockMode::PESSIMISTIC_WRITE);
 
-            $refusal = $this->phase($guest)->refusal();
-
-            if (null !== $refusal) {
-                throw new ApiException($refusal, ErrorCode::EventPaused === $refusal ? 'guest.event_paused' : 'guest.event_concluded');
-            }
+            $this->refuseByPhase($guest);
 
             if ($this->started($guest)) {
                 throw new ApiException(ErrorCode::RepliesClosed, 'guest.replies_closed');

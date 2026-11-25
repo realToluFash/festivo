@@ -14,7 +14,6 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, RowWords } from '../../../components/SettingsParts.tsx';
 import { problemLine, refusedLine } from './guestGroups.ts';
 import {
-  NO_GROUP,
   groupChoiceOf,
   groupNameLength,
   groupOptions,
@@ -25,42 +24,36 @@ import './guestGroups.css';
 
 const BLUR_MS = 120;
 
-/** One chip per group, A to Z, then No group while anyone has none; one pressed at a time (sc-3775). */
+/** Each chip a toggle of its own; several on keep anyone in one of them (sc-90684). */
 export function GroupChips({
-  list,
-  filter,
-  onFilter,
+  chips,
+  on,
+  onToggle,
 }: {
-  list: GuestList;
-  filter: string | null;
-  onFilter: (next: string | null) => void;
+  chips: readonly { key: string; word: string }[];
+  on: readonly string[];
+  onToggle: (key: string) => void;
 }) {
   const { t } = useTranslation();
 
-  if (list.groups.length === 0) return null;
-  const chips = [
-    ...sortedGroups(list.groups).map((one) => ({ key: one.id, word: one.name })),
-    ...(list.guests.some((one) => one.group == null)
-      ? [{ key: NO_GROUP, word: t('guestGroups.noGroup') }]
-      : []),
-  ];
+  if (chips.length === 0) return null;
 
   return (
     <div className="gs-chips gs-filters gg-chips" role="group" aria-label={t('guestGroups.groups')}>
       {chips.map((chip) => {
-        const on = chip.key === filter;
+        const pressed = on.includes(chip.key);
 
         return (
           <button
             key={chip.key}
             type="button"
-            className={on ? 'gs-chip is-on' : 'gs-chip'}
-            aria-pressed={on}
+            className={pressed ? 'gs-chip is-on' : 'gs-chip'}
+            aria-pressed={pressed}
             data-focus={`group-chip:${chip.key}`}
-            onClick={() => onFilter(on ? null : chip.key)}
+            onClick={() => onToggle(chip.key)}
           >
-            {on && <Glyph name="tick" size={16} weight={2.6} />}
-            {chip.word}
+            {pressed && <Glyph name="tick" size={16} weight={2.6} />}
+            <span className="gs-chip-word">{chip.word}</span>
           </button>
         );
       })}
