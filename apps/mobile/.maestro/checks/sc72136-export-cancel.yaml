@@ -1,0 +1,13 @@
+# sc-72136: one tap on Cancel closes Guests' Export sheet on ${EVENT}.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.export' }, timeout: 30000 }
+- tapOn: { id: 'guests.export', retryTapIfNoChange: true }
+- extendedWaitUntil: { visible: { id: 'guests.export.close' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 5000 }
+- takeScreenshot: open
+- tapOn: { id: 'guests.export.close' }
+- extendedWaitUntil: { notVisible: { id: 'guests.export.head' }, timeout: 10000 }
+- takeScreenshot: closed

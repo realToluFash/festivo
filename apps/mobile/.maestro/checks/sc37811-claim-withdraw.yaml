@@ -1,0 +1,26 @@
+# sc-37811: withdrawing your own found claim: the Ask, then the card. Needs ${METRO_URL}; a found claim of the account's own.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'ownerClaim.withdraw'
+- tapOn:
+    id: 'ownerClaim.withdraw'
+- waitForAnimationToEnd
+- takeScreenshot: ask
+- tapOn:
+    id: 'ownerClaim.withdrawYes'
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.card'
+    direction: UP
+- takeScreenshot: withdrew

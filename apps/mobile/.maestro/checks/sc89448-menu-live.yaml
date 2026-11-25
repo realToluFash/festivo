@@ -1,0 +1,11 @@
+# sc-89448: opens ${EVENT_ID}'s Menu and screenshots its top with the live line and the close dates, then scrolls once.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.live'
+    timeout: 30000
+- takeScreenshot: menu-live-1
+- scroll
+- takeScreenshot: menu-live-2

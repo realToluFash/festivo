@@ -1,0 +1,8 @@
+# sc-65714: signs out, signs in as a two-factor account whose request to get back in is waiting, opens Lost your authenticator and your recovery codes? and shoots the waiting step. EMAIL, PASSWORD, SHOT.
+appId: host.exp.Exponent
+---
+- runFlow: sign-out.yaml
+- runFlow: sc30737-lost-open.yaml
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOT}-settled

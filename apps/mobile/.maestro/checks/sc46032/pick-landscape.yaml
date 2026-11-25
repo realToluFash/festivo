@@ -1,0 +1,71 @@
+# sc-46032 subflow: on a tablet on its side, from the sidebar row TAB, picks Beta (joined here), shoots the product, then the demo at ROUTE after its pick of Casa Lumen.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 4000
+- runScript:
+    file: ../../batch/helper.js
+    env:
+      ASK: /membership?change=join&org=Beta
+- evalScript: ${output.joined = output.helper.id}
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn: '${TAB}'
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- runFlow:
+    when:
+      notVisible:
+        id: switcher.tile.${output.joined}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.tile.${output.joined}
+          timeout: 15000
+- tapOn:
+    id: switcher.tile.${output.joined}
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: product
+- openLink: ${METRO_URL}/--/demo/${ROUTE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../../developer-menu-close.yaml
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'frame.organisation|home.switchOrganisation'
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 20000
+- runFlow:
+    when:
+      notVisible:
+        id: switcher.tile.org-casa-lumen
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: switcher.tile.org-casa-lumen
+          timeout: 15000
+- tapOn:
+    id: switcher.tile.org-casa-lumen
+- extendedWaitUntil:
+    notVisible:
+      id: 'switcher.heading'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: demo

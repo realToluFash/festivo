@@ -1,0 +1,74 @@
+# sc-52652: an event with a cover; a photo picked as Can edit, then Can view: Use this photo's refusal shows in the top notice once and the photo and description stay; a bad pick shows under the preview; another upload clears the top notice; a failed upload shows under the preview.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow: ../checks/sc52652/open.yaml
+- runFlow:
+    file: ../checks/sc52652/change.yaml
+    env:
+      TILE: '16%,74%'
+- tapOn:
+    id: 'event.edit.cover.describe'
+- inputText: 'Kept description'
+- hideKeyboard
+- takeScreenshot: picked
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 4000
+    optional: true
+- takeScreenshot: as-left
+- scrollUntilVisible:
+    element: 'Kept description'
+    direction: DOWN
+- takeScreenshot: forbidden-fields
+- scrollUntilVisible:
+    element: '{{t:eventEdit.forbidden}}'
+    direction: UP
+- takeScreenshot: forbidden
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element: '{{t:eventEdit.forbidden}}'
+    direction: UP
+- takeScreenshot: forbidden-again
+- runFlow:
+    file: ../checks/sc52652/change.yaml
+    env:
+      TILE: '83%,74%'
+- takeScreenshot: small-after-refused
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit
+- runFlow:
+    file: ../checks/sc52652/change.yaml
+    env:
+      TILE: '50%,74%'
+- assertNotVisible: '{{t:eventEdit.forbidden}}'
+- takeScreenshot: reupload-cleared
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_view
+- runFlow:
+    file: ../checks/sc52652/change.yaml
+    env:
+      TILE: '16%,74%'
+- takeScreenshot: upload-failed
+- runScript:
+    file: ../scripts/event-role-elsewhere.js
+    env:
+      ROLE: can_edit

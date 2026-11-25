@@ -1,0 +1,10 @@
+# sc-1404: a reader's run view picks up an item started elsewhere (the API, as a manager with TOKEN) within 10 s, without a reload. Pass METRO_URL, EVENT, API_URL, ITEM (the Cake cutting item's id) and TOKEN (a manager's bearer).
+# The wait is 10 s plus a 2 s margin for Maestro's screen polling, so an update later than 12 s fails.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/run
+- scrollUntilVisible: { element: { text: 'Cake cutting' }, timeout: 20000 }
+- takeScreenshot: before
+- runScript: ../scripts/sc1404-start-elsewhere.js
+- extendedWaitUntil: { visible: { text: 'Started .* · planned 13:00 · 10 min' }, timeout: 12000 }
+- takeScreenshot: after

@@ -1,0 +1,15 @@
+# sc-89877: Settings › Notifications, the Guest replies note takes ’.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- extendedWaitUntil:
+    visible:
+      text: 'Guest replies.*'
+    timeout: 30000
+- tapOn:
+    text: 'Guest replies.*'
+- extendedWaitUntil:
+    visible:
+      text: 'Guests’ replies and changes, the needs they add, and their questions\.'
+    timeout: 10000
+- takeScreenshot: notifications-guest-replies

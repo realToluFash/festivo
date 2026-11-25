@@ -1,0 +1,7 @@
+# sc-3787: the app demo's Record a reply recordReplace state, one screenshot, for side-by-side with the product; one check per state because openLink does not remount /demo/guests.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/guests?state=recordReplace
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: recordReplace

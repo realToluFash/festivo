@@ -1,0 +1,42 @@
+# sc-82858 regression: a member active in ${ORG} sees Search on Today, Events, Calendar and Settings, and it opens Search. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow:
+    file: ../switch-organisation.yaml
+    env:
+      ORG: ${ORG}
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: active-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: active-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: active-calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: active-settings
+- runFlow:
+    when:
+      visible:
+        id: 'frame.search'
+    commands:
+      - tapOn:
+          id: 'frame.search'
+- runFlow:
+    when:
+      notVisible:
+        id: 'search.field'
+    commands:
+      - tapOn: 'Search|Buscar'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- takeScreenshot: active-search-open

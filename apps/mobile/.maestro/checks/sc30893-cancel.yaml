@@ -1,0 +1,40 @@
+# sc-30893: Approve's confirm, Cancel closes it and changes nothing; Turn down's, Keep the request. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=recovery
+- extendedWaitUntil:
+    visible:
+      id: 'members.recovery.kofi@ire.events.approve'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- scrollUntilVisible:
+    element:
+      id: 'members.recovery.kofi@ire.events.approve'
+    centerElement: true
+- tapOn:
+    id: 'members.recovery.kofi@ire.events.approve'
+- extendedWaitUntil:
+    visible: 'Approve, and turn off Kofi Mensah.s two-factor\?'
+    timeout: 8000
+- waitForAnimationToEnd
+- takeScreenshot: cancel-ask
+- tapOn:
+    id: 'members.recovery.cancel'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'members.recovery.kofi@ire.events.approve'
+- takeScreenshot: cancel-after
+- tapOn:
+    id: 'members.recovery.kofi@ire.events.turnDown'
+- extendedWaitUntil:
+    visible: 'Turn down Kofi Mensah.s request\?'
+    timeout: 8000
+- waitForAnimationToEnd
+- takeScreenshot: keep-ask
+- tapOn:
+    id: 'members.recovery.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'members.recovery.kofi@ire.events.turnDown'
+- takeScreenshot: keep-after

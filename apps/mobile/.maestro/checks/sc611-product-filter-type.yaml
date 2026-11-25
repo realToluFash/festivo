@@ -1,0 +1,15 @@
+# sc-611: the type menu open.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible:
+      id: audit.card
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: audit.filter.type
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: audit-filter_type-product

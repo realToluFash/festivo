@@ -1,0 +1,16 @@
+# sc-54450: ${EVENT_ID}'s Guests shows no Paste a reply (replies closed, nobody invited, or nobody on the list).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'event.top.title'
+    timeout: 30000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      text: '.*(on the list|No guests yet|replied|reply).*'
+    timeout: 30000
+- assertNotVisible:
+    id: 'guests.paste'
+- takeScreenshot: hidden

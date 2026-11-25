@@ -1,0 +1,32 @@
+# sc-15497 on sc-48600's Hosted by screen: ${EV_LIVE1}, live with one saved host: no Remove and the last-host line; ${EV_SIX} with six: the most line and no Add a host.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_LIVE1}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'event.edit.hosts.remove.0'
+- takeScreenshot: live-one
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- openLink: ${METRO_URL}/--/events/${EV_SIX}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: six-top
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.hosts.field.5'
+    direction: DOWN
+- scroll
+- assertNotVisible:
+    id: 'event.edit.hosts.add'
+- takeScreenshot: six-foot
+- tapOn:
+    id: 'event.edit.hosts.cancel'

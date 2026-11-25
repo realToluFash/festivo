@@ -1,0 +1,25 @@
+# sc-89876: the Calendar reached by link (any layout, the sidebar included); its subscribe control opens the sheet, and the What’s in it list reads in the account's language.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- takeScreenshot: calendar
+- tapOn:
+    id: 'calendarFeed.open'
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.copy'
+    timeout: 20000
+- scrollUntilVisible:
+    element: '{{t:calendarFeed.inTitle}}'
+    direction: DOWN
+    timeout: 15000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: sheet
+- assertVisible: '{{t:calendarFeed.inTitle}}'
+- assertVisible: '{{t:calendarFeed.inName}}'
