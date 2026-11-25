@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\Controller;
 
+use App\Domain\Messaging\Audience\GuestAudienceResolver;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\GuestMessages\GuestMessageSender;
 use App\Domain\Messaging\GuestMessages\GuestMessageSerialiser;
+use App\Domain\Messaging\GuestMessages\GuestReach;
 use App\Domain\Messaging\Model\PlannedDelivery;
 use App\Entity\Event;
 use App\Entity\GuestMessage;
@@ -16,8 +19,10 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use App\Repository\GuestMessageRepository;
+use Collator;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
@@ -37,6 +42,9 @@ final readonly class GuestMessagesController
         private GuestMessageSender $guestMessageSender,
         private GuestMessageSerialiser $guestMessageSerialiser,
         private MembershipDirectoryInterface $membershipDirectory,
+        private GuestReach $guestReach,
+        private GuestMessagesChanged $guestMessagesChanged,
+        private SubscriberTokenIssuer $subscriberTokenIssuer,
     ) {
     }
 
@@ -55,6 +63,42 @@ final readonly class GuestMessagesController
         $message = $this->guestMessageRepository->findOneOn($event, $messageId) ?? throw ApiException::notFound('access.not_found');
 
         return new JsonResponse(['message' => $this->guestMessageSerialiser->details($message, $this->managesGuests($event))]);
+    }
+
+    /** Choose guests (sc-3942): every guest a message can go to, A to Z, each with why email can't tell them; the address only for those who manage guests, as sc-3773 rules. */
+    #[Route('/api/events/{eventId}/messages/guests', name: 'guest_messages_guests', methods: ['GET'])]
+    #[InEvent(Permission::MessagesManage)]
+    public function guests(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $addresses = $this->managesGuests($event);
+        $collator = new Collator('root');
+        $deliveries = Vec\sort(
+            $this->guestReach->plan($event, GuestAudienceResolver::audience($event->getId(), GuestMessage::ALL, [])),
+            static fn (PlannedDelivery $one, PlannedDelivery $other): int => (int) $collator->compare($one->name, $other->name),
+        );
+
+        return new JsonResponse(['guests' => Vec\map($deliveries, static function (PlannedDelivery $delivery) use ($addresses): array {
+            $guest = [
+                'id' => $delivery->recipientId->toRfc4122(),
+                'name' => $delivery->name,
+                'flag' => $delivery->notSent?->value,
+            ];
+
+            return $addresses ? [...$guest, 'email' => $delivery->address] : $guest;
+        })]);
+    }
+
+    #[Route('/api/events/{eventId}/messages/subscriptions', name: 'guest_messages_subscribe', methods: ['POST'])]
+    #[InEvent(Permission::MessagesRead)]
+    public function subscribe(string $eventId): JsonResponse
+    {
+        $issued = $this->subscriberTokenIssuer->issueForEventMessages($this->event($eventId)->getId());
+
+        return new JsonResponse([
+            'token' => $issued->token,
+            'expiresAt' => $issued->expiresAt->format(\DATE_ATOM),
+        ]);
     }
 
     /** The send check's figures, from the same rule as Send: everyone it goes to on their page, how many email tells, and who it can't, by name with why. */
@@ -92,6 +136,7 @@ final readonly class GuestMessagesController
         ]));
         $sent = $this->guestMessageSender->send($this->event($eventId), $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message']);
         $queued = $sent->plan->toldByEmail();
+        $this->guestMessagesChanged->onEvent($eventId);
 
         return new JsonResponse([
             'id' => $sent->id->toRfc4122(),

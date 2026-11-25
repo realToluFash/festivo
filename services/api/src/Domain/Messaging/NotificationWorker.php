@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\Unreachable;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
@@ -61,6 +62,7 @@ final class NotificationWorker
         private readonly EventMuteRepository $eventMuteRepository,
         private readonly NotificationPreferencesInterface $notificationPreferences,
         private readonly EmailSuppressions $emailSuppressions,
+        private readonly GuestMessagesChanged $guestMessagesChanged,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -730,6 +732,7 @@ final class NotificationWorker
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
+        $this->guestMessagesChanged->afterDelivery($id);
 
         // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
         $this->connection->executeStatement(

@@ -294,6 +294,37 @@ final class GuestMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function chooseGuestsListsTheGuestsAToZWithWhyEmailCannotTellSome(): void
+    {
+        $this->add('Femi Ade', 'femi@example.test', ['Tolu Ade']);
+        $this->add('Émile Okoro', null);
+        $bouncing = $this->add('Ada Bello', 'ada@example.test');
+        self::service(Connection::class)->executeStatement('UPDATE guests SET email_bouncing_at = NOW() WHERE id = :id', ['id' => $bouncing]);
+
+        $guests = Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->as($this->owner, 'GET', $this->messages() . '/guests')['guests']);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(
+            [['Ada Bello', 'bouncing', 'ada@example.test'], ['Émile Okoro', 'no_address', null], ['Femi Ade', null, 'femi@example.test']],
+            Vec\map($guests, static fn (array $guest): array => [$guest['name'], $guest['flag'], $guest['email']]),
+        );
+    }
+
+    #[Test]
+    public function chooseGuestsIsForThoseWhoCanSendAndTheLiveSignalForThoseWhoCanRead(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $viewer = $this->member('viewer@ire.events', EventRole::CanView);
+
+        $this->as($viewer, 'GET', $this->messages() . '/guests');
+        self::assertSame(403, $this->statusCode());
+
+        $token = $this->as($viewer, 'POST', $this->messages() . '/subscriptions');
+        self::assertSame(200, $this->statusCode());
+        self::assertIsString($token['token']);
+    }
+
+    #[Test]
     public function aViewerReadsMessagesWithoutAddressesAndCannotSend(): void
     {
         $this->add('Emeka Nwosu', 'emeka@example.test');

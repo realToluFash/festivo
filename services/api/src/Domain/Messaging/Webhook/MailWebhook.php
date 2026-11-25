@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Webhook;
 
 use App\Domain\Messaging\EmailSuppressions;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Enum\MailProviderReport;
 use App\Enum\NotificationChannel;
 use Doctrine\DBAL\Connection;
@@ -19,6 +20,7 @@ final readonly class MailWebhook
     public function __construct(
         private Connection $connection,
         private EmailSuppressions $emailSuppressions,
+        private GuestMessagesChanged $guestMessagesChanged,
         private ClockInterface $clock,
     ) {
     }
@@ -88,5 +90,6 @@ final readonly class MailWebhook
             ['report' => $said->value, 'now' => $this->clock->now(), 'id' => $deliveryId],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
+        $this->guestMessagesChanged->afterDelivery($deliveryId);
     }
 }
