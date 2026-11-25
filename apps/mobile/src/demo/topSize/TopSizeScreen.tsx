@@ -76,13 +76,15 @@ export function TopSizeScreen({ start }: { start: TopSizeStart }) {
               tell={tell}
               onTab={(tab) => {
                 if (tab === 'Today')
-                  router.replace(`/demo/today-size?size=${size}&lang=${language}` as Href);
+                  router.replace(
+                    `/demo/today-size?size=${size}&lang=${language}&org=${org}&invite=${invite}` as Href,
+                  );
                 else setScreen(SCREEN_OF_TAB[tab]);
               }}
             />
           </I18nextProvider>
           <View style={styles.choices}>
-            <DemoOnly title="Stand-ins for the device’s text size, its language, the screen, the organisation’s name and its waiting invitations. The pill and the title draw at the size chosen, and on the upright iPad the tabs too. From AX1 the pill is bare, as on main, and its name wraps only between words with no line limit: where its widest word is too wide for the pill’s line, the name steps down until that word fits, never under its default size, and every line is one size; it never steps further only to take fewer lines. The invitation line steps alone by the same rule and never draws larger than the name. Where the widest word is too wide even at its default size, the pill is its tile, with its ring while an invitation waits. Below AX1 the pill is main’s. On the upright iPad the tabs take their size first, centred, and the pill keeps 8 clear of them; its name has the room they leave, less its caret and ends, and it is its tile where the tabs are under their own size or leave it under 120. From AX1 the tabs, Search and the bell keep to the top while the pill grows down, and the title starts under the pill. Only the top is drawn: the page under the title is main’s. One tap opens Where are you working?. Nothing is sent and no string is added.">
+            <DemoOnly title="Stand-ins for the device’s text size, its language, the screen, the organisation’s name and its waiting invitations. The pill and the title draw at the size chosen, and on the upright iPad the tabs too. From AX1 the pill is bare, as on main, and its name wraps only between words with no line limit: where its widest word is too wide for the pill’s line, the name steps down until that word fits, never under its default size, and every line is one size; it never steps further only to take fewer lines. The invitation line steps alone by the same rule and never draws larger than the name. Where the widest word is too wide even at its default size, the pill is its tile, with its ring while an invitation waits. Below AX1 the pill is main’s. On the upright iPad the tabs take their size first, centred, and the pill keeps 8 clear of them; its name has the room they leave, less its caret and ends, and it is its tile where the tabs are under their own size or leave it under 120. From AX1 the tabs, Search and the bell keep to the top while the pill grows down, and the title starts under the pill. Only the top is drawn: the page under the title is main’s. On the upright iPad only Settings’ top is the board: Events and the Calendar draw there under Settings’ spacing, and their tops are not part of it. One tap opens Where are you working?. Nothing is sent and no string is added.">
               <Choices
                 heading="Text size"
                 options={FILTER_SIZES}
