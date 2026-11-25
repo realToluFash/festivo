@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { CAPSULE_LABEL, LABEL_IN_BAND } from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text, type TextHandle } from './Text.tsx';
@@ -134,7 +135,7 @@ type PortraitRowProps = {
   tabsCentred?: boolean;
 };
 
-/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the end, Search and the bell as wide as they are drawn (sc-91290), and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. */
+/** The pill, the bell, and the tabs centred 3 above the row's top whatever the pill's height; a capsule its labels make taller makes the row as much taller, so the pill and the bell stay on its middle and the page starts under it (sc-37693). The tabs' labels take the largest size at which they clear the tile and the end, Search and the bell as wide as they are drawn (sc-91290), and while that is under their own size the pill is its tile (sc-40401); otherwise the pill turns to its tile when its words would not fit beside the tabs. From AX1 the tabs, Search and the bell keep to the row's top, the pill 8 clear of the tabs growing down (sc-92728). */
 export function PortraitRow({
   renderPill,
   bell,
@@ -145,12 +146,13 @@ export function PortraitRow({
   const [rowWidth, setRowWidth] = useState(0);
   const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, width, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
-  const besideTabs = pillBesideTabs(rowWidth, width);
+  const large = useAccessibilitySizes();
+  const besideTabs = pillBesideTabs(rowWidth, width, large ? tokens.spaceSm : undefined);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
     <View
-      style={[styles.row, styles.portraitRow]}
+      style={[styles.row, styles.portraitRow, large && styles.portraitRowTall]}
       onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
     >
       {measure}
@@ -176,7 +178,10 @@ export function PortraitRow({
         )}
       </View>
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
-      <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
+      <View
+        style={tabsCentred ? (large ? styles.tabsAtTop : styles.tabsCentred) : styles.tabsAt}
+        pointerEvents="box-none"
+      >
         <View key={labelSize}>{labelSize != null && renderTabs(labelSize)}</View>
       </View>
     </View>
@@ -188,6 +193,7 @@ const styles = StyleSheet.create({
   shrink: { flexShrink: 1, minWidth: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   portraitRow: { minHeight: tokens.sizeHit },
+  portraitRowTall: { alignItems: 'flex-start' },
   bandHeight: { marginVertical: LABEL_IN_BAND, opacity: 0 },
   pillRow: { marginBottom: tokens.spaceSm },
   bellUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceXs },
@@ -200,6 +206,7 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  tabsAtTop: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center' },
   tabsCentred: {
     position: 'absolute',
     top: 0,

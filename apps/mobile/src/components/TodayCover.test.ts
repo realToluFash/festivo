@@ -104,7 +104,7 @@ describe('the white pill above a phone’s Events, Calendar and Settings from AX
     expect(cover).toMatch(/<WholeOpenerWords[\s\S]*?onDark\s+\/>/u);
     expect(frame).toMatch(/rowMeasured\(row, ends\) \? barePhoneNameRoom\(row, ends\) : 0/u);
     expect(frame).toMatch(
-      /nameRoom=\{large && phoneRow != null \? measuredLine\(phoneRow\) : undefined\}/u,
+      /nameRoom=\{large \? wholeLine\(phoneRow, upright \? room : null\) : undefined\}/u,
     );
     expect(pill).toMatch(/whole\.whole \? \(\s+<WholeOpenerWords/u);
   });
@@ -119,6 +119,27 @@ describe('the white pill above a phone’s Events, Calendar and Settings from AX
       /<View onLayout=\{\(event\) => setEnds\(event\.nativeEvent\.layout\.width\)\}>\{bell\}<\/View>/u,
     );
     expect(frame).toMatch(/const phoneRow = usePillRowWidths\(\);/u);
+  });
+});
+
+describe('the white pill over Settings beside the upright iPad’s tabs from AX1 (sc-92728)', () => {
+  const portrait = /export function PortraitRow\([\s\S]*?\n\}\n/u.exec(listTop)?.[0] ?? '';
+
+  it('gives the bare pill the room beside the tabs, 0 until they leave it some', () => {
+    expect(frame).toMatch(
+      /return upright === null \? undefined : bareUprightNameRoom\(upright\);/u,
+    );
+    expect(frame.match(/givesWay=\{givesWay\}\s+upright\s+ref=\{pill\}/gu)).toHaveLength(2);
+  });
+
+  it('keeps 8 clear of the tabs and keeps the tabs, Search and the bell to the row’s top', () => {
+    expect(portrait).toMatch(
+      /pillBesideTabs\(rowWidth, width, large \? tokens\.spaceSm : undefined\)/u,
+    );
+    expect(portrait).toMatch(/large && styles\.portraitRowTall/u);
+    expect(portrait).toMatch(
+      /tabsCentred \? \(large \? styles\.tabsAtTop : styles\.tabsCentred\)/u,
+    );
   });
 });
 

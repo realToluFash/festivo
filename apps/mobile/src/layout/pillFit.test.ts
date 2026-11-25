@@ -5,6 +5,7 @@ import {
   answersStack,
   answerWidth,
   barePhoneNameRoom,
+  bareUprightNameRoom,
   nameStart,
   phoneNameRoom,
   rowMeasured,
@@ -112,5 +113,13 @@ describe('when a phone’s top row counts as measured (sc-92464)', () => {
     expect(rowMeasured(0, 96)).toBe(false);
     expect(rowMeasured(362, 0)).toBe(false);
     expect(rowMeasured(362, 96)).toBe(true);
+  });
+});
+
+describe('the bare pill over Settings beside the upright iPad’s tabs from AX1 (sc-92728)', () => {
+  it('gives the name the tile’s room back, 0 until measured', () => {
+    expect(bareUprightNameRoom(137)).toBe(93);
+    expect(bareUprightNameRoom(undefined)).toBe(0);
+    expect(bareUprightNameRoom(20)).toBe(0);
   });
 });

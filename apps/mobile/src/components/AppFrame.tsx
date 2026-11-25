@@ -141,7 +141,7 @@ import { PageTitleDrawn, Title, useTitleCap } from './Title.tsx';
 import { PAGE_TITLE, pageTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
 import { ListTop, PortraitRow, PortraitTop, usePillRowWidths } from './ListTop.tsx';
-import { barePhoneNameRoom, rowMeasured } from '../layout/pillFit.ts';
+import { barePhoneNameRoom, bareUprightNameRoom, rowMeasured } from '../layout/pillFit.ts';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 import { type EdgeSwipeHandlers, EdgeSwipeStrip } from './useEdgeSwipeBack.ts';
@@ -1020,6 +1020,7 @@ function FixedTop({
             onSwitch={onSwitch}
             room={room}
             givesWay={givesWay}
+            upright
             ref={pill}
           />
         )
@@ -1271,6 +1272,7 @@ function FrameHeader({
                 onSwitch={onSwitch}
                 room={room}
                 givesWay={givesWay}
+                upright
                 ref={pill}
               />
             )
@@ -2126,6 +2128,7 @@ function OrgPill({
   sidebar = false,
   room,
   givesWay = false,
+  upright = false,
   ref,
 }: {
   organisation: Named;
@@ -2136,6 +2139,8 @@ function OrgPill({
   room?: number | undefined;
   /** The tabs beside it took their room first, so it is its tile (sc-40401). */
   givesWay?: boolean;
+  /** Beside an upright tablet's tabs, where from AX1 its words stay whole in `room` (sc-92728). */
+  upright?: boolean;
   ref: Ref<ViewInstance>;
 }) {
   const { t } = useTranslation();
@@ -2160,7 +2165,7 @@ function OrgPill({
       lines={lines}
       sidebar={sidebar}
       tileAlone={givesWay || tileAlone}
-      nameRoom={large && phoneRow != null ? measuredLine(phoneRow) : undefined}
+      nameRoom={large ? wholeLine(phoneRow, upright ? room : null) : undefined}
       testID="frame.organisation"
     />
   );
@@ -2175,9 +2180,18 @@ function OrgPill({
   );
 }
 
-/** The bare pill's name line on a phone's row, 0 until the row and its end are both measured (sc-92464). */
-function measuredLine({ row, ends }: { row: number; ends: number }): number {
-  return rowMeasured(row, ends) ? barePhoneNameRoom(row, ends) : 0;
+/** The bare pill's name line, 0 until measured: on a phone's row once it and its end have widths (sc-92464), beside the upright tablet's tabs once they leave it room (sc-92728); undefined anywhere else. */
+function wholeLine(
+  phoneRow: { row: number; ends: number } | null,
+  upright: number | undefined | null,
+): number | undefined {
+  if (phoneRow != null) {
+    const { row, ends } = phoneRow;
+
+    return rowMeasured(row, ends) ? barePhoneNameRoom(row, ends) : 0;
+  }
+
+  return upright === null ? undefined : bareUprightNameRoom(upright);
 }
 
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;

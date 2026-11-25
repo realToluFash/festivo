@@ -53,6 +53,11 @@ export function uprightNameRoom(pill: number | undefined): number {
   return Math.max((pill ?? 0) - PILL_CHROME, 0);
 }
 
+/** The name's line in the bare pill beside the upright iPad's tabs from AX1, the tile's room given back: 93 where the pill may take 137, at AX2 in English (sc-92728). */
+export function bareUprightNameRoom(pill: number | undefined): number {
+  return pill == null ? 0 : uprightNameRoom(pill + PILL_TILE);
+}
+
 /** The invitation line's room under the name: the name's, less its ring and the gap after it. */
 export function waitingRoomUnder(name: number): number {
   return Math.max(name - WAITING_RING, 0);
