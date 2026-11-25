@@ -101,24 +101,27 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
     opened: 'mount',
     autoFocus: true,
     focused: true,
-    keysShown: false,
+    raised: false,
     readerOn: false,
-    ticks: 0,
+    ticks: 1,
   };
 
-  it('raises the keys on the field once it has the focus, until they are up', () => {
+  it('raises the keys on the field once it has the focus, a tick after mount', () => {
+    expect(mountedKeysStep({ ...mounted, ticks: 0 })).toBe('wait');
     expect(mountedKeysStep({ ...mounted, focused: false })).toBe('wait');
     expect(mountedKeysStep(mounted)).toBe('raise');
     expect(mountedKeysStep({ ...mounted, ticks: 3 })).toBe('raise');
-    expect(mountedKeysStep({ ...mounted, keysShown: true })).toBe('done');
   });
 
-  it('leaves the keys down once they have been up, so the back key keeps them down', () => {
-    expect(mountedKeysStep({ ...mounted, keysShown: true, ticks: 1 })).toBe('done');
+  it('raises them only once, so the back key keeps them down though Android reads them as down over a Modal', () => {
+    expect(mountedKeysStep({ ...mounted, raised: true })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, raised: true, ticks: 2 })).toBe('done');
   });
 
-  it('stops after a few seconds', () => {
-    expect(mountedKeysStep({ ...mounted, ticks: ARRIVED_FOCUS_TICKS })).toBe('done');
+  it('stops waiting after a few seconds', () => {
+    expect(mountedKeysStep({ ...mounted, focused: false, ticks: ARRIVED_FOCUS_TICKS })).toBe(
+      'done',
+    );
   });
 
   it('waits for the screen reader to be known, and with one on leaves focus as it was', () => {
