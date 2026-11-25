@@ -243,6 +243,27 @@ final class GuestMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aComplaintOutlivesTheGuestsRemovalAsAKeyedHashOnly(): void
+    {
+        $guest = $this->add('Emeka Nwosu', 'Emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'One'])['id']);
+        $this->work();
+        self::service(Connection::class)->executeStatement("UPDATE notification_deliveries SET provider_report = 'complained' WHERE source_id = :id", ['id' => $first]);
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/guests/' . $guest . '/erasure');
+        self::assertSame(204, $this->statusCode());
+
+        $this->add('Emeka Nwosu', ' emeka@EXAMPLE.test ');
+        $this->add('Emeka Other', 'emeka.new@example.test');
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
+
+        self::assertSame([['Emeka Nwosu', 'not_sent', 'complained'], ['Emeka Other', 'queued', null]], $this->states($second));
+        $kept = Type\vec(Type\string())->coerce(self::service(Connection::class)->fetchFirstColumn('SELECT address_hash FROM guest_complaints'));
+        self::assertCount(1, $kept);
+        self::assertNotSame(\hash('sha256', 'emeka@example.test'), $kept[0]);
+    }
+
+    #[Test]
     public function aBouncingAddressIsSkippedUntilItIsChanged(): void
     {
         $guest = $this->add('Emeka Nwosu', 'emeka@example.test');

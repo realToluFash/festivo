@@ -10,10 +10,7 @@ use App\Domain\Messaging\Model\PlannedDelivery;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\DeliveryNotSentReason;
-use App\Enum\MailProviderReport;
 use App\Repository\GuestRepository;
-use Doctrine\DBAL\ArrayParameterType;
-use Doctrine\DBAL\Connection;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
@@ -29,7 +26,7 @@ final readonly class GuestReach
     public function __construct(
         private GuestAudienceResolver $guestAudienceResolver,
         private GuestRepository $guestRepository,
-        private Connection $connection,
+        private GuestComplaints $guestComplaints,
     ) {
     }
 
@@ -53,7 +50,7 @@ final readonly class GuestReach
             Type\vec(Type\instance_of(Guest::class))->coerce($this->guestRepository->findBy(['id' => $ids])),
             static fn (Guest $guest): array => [$guest->getId()->toRfc4122(), $guest],
         ));
-        $complained = $this->complainedAmong($event, Vec\filter_nulls(Vec\map($guests, static fn (Guest $guest): ?string => $guest->getEmail())));
+        $complained = $this->guestComplaints->among($event->getOrganisation()->getId(), Vec\filter_nulls(Vec\map($guests, static fn (Guest $guest): ?string => $guest->getEmail())));
 
         return Vec\filter_nulls(Vec\map($ids, static function (Uuid $id) use ($guests, $complained): ?PlannedDelivery {
             $guest = $guests[$id->toRfc4122()] ?? null;
@@ -72,37 +69,6 @@ final readonly class GuestReach
 
             return new PlannedDelivery($id, $guest->getFullName() ?? '', '' === $address ? null : $address, $reason);
         }));
-    }
-
-    /**
-     * A complaint stops this organisation's later email to the address, and only this organisation's (RFC 6449 §4.3.1).
-     *
-     * @param list<string> $addresses
-     *
-     * @return list<string> lowercased
-     */
-    private function complainedAmong(Event $event, array $addresses): array
-    {
-        if ([] === $addresses) {
-            return [];
-        }
-
-        return Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
-            <<<'SQL'
-                SELECT DISTINCT LOWER(d.address)
-                FROM notification_deliveries d
-                JOIN events e ON e.id = d.event_id
-                WHERE e.organisation_id = :organisation
-                  AND d.provider_report = :complained
-                  AND LOWER(d.address) IN (:addresses)
-                SQL,
-            [
-                'organisation' => $event->getOrganisation()->getId()->toRfc4122(),
-                'complained' => MailProviderReport::Complained->value,
-                'addresses' => Vec\map($addresses, self::key(...)),
-            ],
-            ['addresses' => ArrayParameterType::STRING],
-        ));
     }
 
     private static function key(string $address): string
