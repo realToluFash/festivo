@@ -44,11 +44,12 @@ final readonly class TwoFactorSignInController
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
             ...SecondFactorInput::fields(),
         ]));
-        $result = $this->signInGate->complete($body['challenge'], $this->secondFactorInput->separate($body), $request);
+        $delivery = $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body;
+        $result = $this->signInGate->complete($body['challenge'], $this->secondFactorInput->separate($body), $request, RefreshTokenDelivery::Cookie === $delivery);
 
         return new IssuedTokensResponse(
             $result->tokens,
-            $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
+            $delivery,
             $request,
             ['account' => $this->accountSerialiser->serialise($result->user), 'linked' => $result->linked],
         );

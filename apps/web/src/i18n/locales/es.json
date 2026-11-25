@@ -1226,6 +1226,7 @@
   "twoFactor": {
     "title": "Introduzca su código",
     "intro": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{email}}.",
+    "introNumber": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{number}}.",
     "code": "Código",
     "verify": "Verificar e iniciar sesión",
     "useRecovery": "Usar un código de recuperación",
@@ -2012,8 +2013,13 @@
       "organisation_deleted": {
         "title": "Esta organización ya no existe",
         "line": "Ya no se puede aceptar la invitación a {{organisation}}."
+      },
+      "invitation_needs_email": {
+        "title": "Add your email address first",
+        "line": "This invitation is for {{email}}. Add that address to your account and verify it, then accept the invitation."
       }
-    }
+    },
+    "addEmail": "Add an email address"
   },
   "invitations": {
     "heading": "Invitaciones",
@@ -2425,7 +2431,21 @@
     "endedBody": "Dejó de funcionar 2 horas después de su último turno.",
     "endedNext": "Si trabaja en otro evento, recibirá un enlace nuevo para ese evento.",
     "foot": "No se guarda nada en este dispositivo.",
-    "failed": "No ha funcionado. Vuelva a intentarlo en un momento."
+    "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
+    "signIn": {
+      "staffLink": "Staff link",
+      "confirm": "Confirm it’s you",
+      "sendTo": "We’ll send a code to {{number}}.",
+      "notYours": "Not your number?",
+      "askToChange": "Ask the event’s organiser to change it on the roster.",
+      "askToAdd": "Ask the event’s organiser to add your mobile number to the roster.",
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "tryAt": "Try again at {{time}}",
+      "linkFor": "This link is for {{name}}.",
+      "signOutContinue": "Sign out and continue",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster."
+    }
   },
   "ownerClaim": {
     "loading": "Cargando",
@@ -3501,7 +3521,34 @@
     "openEvent": "Abrir el evento",
     "signedInAs": "Sesión iniciada como {{name}}",
     "signedOutAt": "Su sesión se cerrará a esta hora: {{time}}.",
-    "signedOut": "Sesión cerrada."
+    "signedOut": "Sesión cerrada.",
+    "phone": {
+      "mobile": "Mobile number",
+      "countryCode": "Country code",
+      "sendCode": "Send code",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
+      "checkWhatsApp": "Check WhatsApp",
+      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
+      "checkMessages": "Check your messages",
+      "texted": "We texted a code to {{number}}.",
+      "codeFromWhatsApp": "Code from WhatsApp",
+      "codeFromText": "Code from the text",
+      "blankWhatsApp": "Enter the 6-digit code from WhatsApp.",
+      "blankText": "Enter the 6-digit code from the text.",
+      "shortWhatsApp": "The code is 6 digits.",
+      "shortText": "The code is 6 digits.",
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "textInstead": "Text it to me instead",
+      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
+      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
+      "expiredTitle": "That code has expired",
+      "expiredBody": "Codes only work for a while. Send a new one and use the code in the newest text.",
+      "expiredBodyWhatsApp": "Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.",
+      "exhaustedTitle": "Too many wrong tries",
+      "exhaustedBody": "That code no longer works. Send a new one to carry on.",
+      "failedTitle": "That did not work"
+    }
   },
   "guestList": {
     "addGuest": "Añadir invitado",
@@ -6616,6 +6663,7 @@
   "passkey": {
     "waitTitle": "Use su llave de acceso",
     "signInLead": "Su navegador le pide la llave de acceso de {{email}}. Desbloquéela con la cara, la huella, el PIN o el bloqueo de pantalla.",
+    "signInLeadNumber": "Su navegador le pide la llave de acceso de {{number}}. Desbloquéela con la cara, la huella, el PIN o el bloqueo de pantalla.",
     "resetLead": "Su cuenta usa la verificación en dos pasos, así que el restablecimiento le pide primero su llave de acceso. No cambia nada hasta que se valide.",
     "use": "Usar una llave de acceso",
     "useCode": "Usar un código",

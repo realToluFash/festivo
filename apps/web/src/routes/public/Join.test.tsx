@@ -526,6 +526,35 @@ describe('an invitation, signed in', () => {
     expect(screen.queryByText('Cannot reach Soirely')).toBeNull();
   });
 
+  it('asks an account with only a number to add the invited address first (sc-4235)', async () => {
+    signedIn('');
+    answering({
+      [LINK]: () =>
+        json({
+          ...PREVIEW,
+          forYou: false,
+          signedInAs: null,
+          signedInAsPhone: { countryCode: 'NG', lastDigits: '0009' },
+          needsEmail: true,
+        }),
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Add your email address first' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'This invitation is for kemi.l@gmail.com. Add that address to your account and verify it, then accept the invitation.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('+234 ••• ••• 0009')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Add an email address' }).getAttribute('href')).toBe(
+      '/app/settings/account',
+    );
+    expect(screen.queryByRole('button', { name: /Accept/u })).toBeNull();
+  });
+
   it('says whose it is when somebody else already accepted it, and offers no Open', async () => {
     signedIn('folake@ire.events');
     answering({

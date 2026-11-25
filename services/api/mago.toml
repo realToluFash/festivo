@@ -272,9 +272,12 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 # organisation scope's own step rather than by writing its tables. The account's
 # language is one of SupportedLocales (sc-852), as AI's and Address's are. Every account
 # and security email is queued on the notification path (sc-4332), through UserMailer.
+# A staff link's sign-in holds its job's level (sc-4235): the account lists it, and a
+# browser session ends with it, read from StaffLinkGrants alone.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
+    "App\\Domain\\Staff\\Link\\StaffLinkGrants",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -295,10 +298,12 @@ permit = [
 # whether an invitation's email could not be delivered from its delivery record and the
 # suppression list (sc-46109); messaging does not reach back. Export all data keeps
 # its archive in the private bucket, and writes its CSV files as the guest export
-# does (CsvFile, sc-612); neither reaches back.
+# does (CsvFile, sc-612); neither reaches back. An account a staff link signed in
+# holds its job's level on the event, from StaffLinkGrants (sc-4235).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
+    "App\\Domain\\Staff\\Link\\StaffLinkGrants",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

@@ -128,6 +128,7 @@ import {
   asStaffPlan,
   asStaffRoster,
 } from './staff.ts';
+import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import {
   type Dish,
   type DishDetails,
@@ -227,6 +228,8 @@ export interface TwoFactorChallenge {
   expiresAt: string;
   /** The address the code is for, shown as "the 6-digit code for <address>". */
   email: string;
+  /** On an account with no email, its primary number as the step names it, masked (sc-4235). */
+  phone: PhoneHint | null;
   /** What the account holds, so the step opens on a passkey or a code (sc-86885). */
   factors: HeldFactors;
 }
@@ -237,6 +240,17 @@ export interface HeldFactors {
 }
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
+
+export interface PhoneSignInSent {
+  handle: string;
+  cooldownSeconds: number;
+}
+
+/** Signed out at a door code (sc-4235): the sign-in, and You're in when it took the grant; none while two-factor waits. */
+export interface DoorCodeSignedIn {
+  outcome: SignInOutcome;
+  redeemed: RedeemedDoorCode | null;
+}
 
 /** What a try on the current code would meet, read without spending one. */
 export type CodeState = 'live' | 'expired' | 'exhausted';
@@ -1072,6 +1086,9 @@ export interface InvitationPreview {
   refusal: InvitationRefusal | null;
   forYou: boolean | null;
   signedInAs: string | null;
+  /** A phone-only account (sc-4235): the masked number in place of the address, and whether it must add the invited one first. */
+  signedInAsPhone: PhoneHint | null;
+  needsEmail: boolean;
   /** sc-73668: the account is managed by another organisation, so this one cannot be accepted; worked out on every load. */
   managed: ManagedAccount | null;
 }
@@ -2798,25 +2815,42 @@ export class ApiClient {
     return opened;
   }
 
-  /** Signed out, `name` is required and the answer is a new session, saved as a sign-in's is. */
-  async redeemDoorCode(code: string, name: string | null): Promise<RedeemedDoorCode> {
-    const path = `/api/door-codes/${encodeURIComponent(code)}/redeem`;
-    const access = await this.options.tokens?.access();
-    let raw: unknown;
+  /** Signed in only: signed out, a door code is redeemed by a code to a mobile (sc-4235), `sendDoorCodeSignIn` then `doorCodeSignIn`. */
+  async redeemDoorCode(code: string): Promise<RedeemedDoorCode> {
+    return this.redeemed(
+      await this.post<unknown>(`/api/door-codes/${encodeURIComponent(code)}/redeem`, {}),
+    );
+  }
 
-    if (access != null && access !== '') {
-      raw = await this.post<unknown>(path, {});
-    } else {
-      this.session += 1;
-      const { tokens, body } = await this.issued(
-        await this.sendTokenRequest(path, { name: name ?? '' }),
-      );
-      this.session += 1;
-      await this.options.tokens?.save(tokens);
-      await this.options.onSignedIn?.();
-      raw = body;
-    }
+  /** Sends the code to the number typed; answers the same whether or not the number has an account. */
+  async sendDoorCodeSignIn(
+    code: string,
+    name: string,
+    countryCode: string,
+    number: string,
+  ): Promise<PhoneSignInSent> {
+    return this.phoneSignInSent(
+      await this.post<unknown>(
+        `/api/door-codes/${encodeURIComponent(code)}/sign-in/send`,
+        { name, countryCode, number },
+        { anonymous: true },
+      ),
+    );
+  }
 
+  /** The right code signs in, saved as a sign-in's is, and takes the grant unless two-factor is asked first. */
+  async doorCodeSignIn(code: string, handle: string, phoneCode: string): Promise<DoorCodeSignedIn> {
+    const path = `/api/door-codes/${encodeURIComponent(code)}/sign-in`;
+    const { outcome, body } = await this.signedInWithBody(
+      path,
+      { handle, code: phoneCode },
+      'RedeemController',
+    );
+
+    return { outcome, redeemed: 'challenge' in outcome ? null : this.redeemed(body) };
+  }
+
+  private redeemed(raw: unknown): RedeemedDoorCode {
     const redeemed = asRedeemedDoorCode(raw);
 
     if (redeemed == null) {
@@ -2826,6 +2860,18 @@ export class ApiClient {
     }
 
     return redeemed;
+  }
+
+  private phoneSignInSent(raw: unknown): PhoneSignInSent {
+    const sent = raw as Partial<PhoneSignInSent> | null;
+
+    if (typeof sent?.handle !== 'string' || typeof sent.cooldownSeconds !== 'number') {
+      throw new Error(
+        'The API answered a sign-in code send in a shape this client does not know. Check PhoneSignIns in services/api.',
+      );
+    }
+
+    return { handle: sent.handle, cooldownSeconds: sent.cooldownSeconds };
   }
 
   private doorCodeCard(raw: { doorCode?: unknown }): DoorCodeCard {
@@ -3986,11 +4032,9 @@ export class ApiClient {
   /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
   async staffLinkWindow(token: string, seen: boolean): Promise<StaffLinkWindow> {
     const window = asStaffLinkWindow(
-      await this.post<unknown>(
-        seen ? '/api/staff-links/opened' : '/api/staff-links/look',
-        { token },
-        { anonymous: true },
-      ),
+      await this.post<unknown>(seen ? '/api/staff-links/opened' : '/api/staff-links/look', {
+        token,
+      }),
     );
 
     if (window == null) {
@@ -4000,6 +4044,50 @@ export class ApiClient {
     }
 
     return window;
+  }
+
+  async sendStaffLinkSignIn(token: string): Promise<PhoneSignInSent> {
+    return this.phoneSignInSent(
+      await this.post<unknown>('/api/staff-links/sign-in/send', { token }, { anonymous: true }),
+    );
+  }
+
+  /** The right code makes or signs into the number's account and opens the shift; with two-factor on, its challenge first. */
+  async staffLinkSignIn(token: string, handle: string, code: string): Promise<SignInOutcome> {
+    return this.signedIn(
+      '/api/staff-links/sign-in',
+      { token, handle, code },
+      'StaffLinkController',
+    );
+  }
+
+  /** The code step's countdown, whether the code is still worth typing, and its route; polled while it is on WhatsApp. */
+  async phoneSignInOpening(handle: string): Promise<PhoneCodeOpening> {
+    const answer = await this.post<{ route?: unknown }>(
+      '/api/auth/phone-sign-in/state',
+      { handle },
+      { anonymous: true },
+    );
+
+    return { ...openingFrom(answer), route: asRoute(answer?.route) };
+  }
+
+  async resendPhoneSignIn(handle: string): Promise<number> {
+    return (
+      await this.post<{ cooldownSeconds: number }>(
+        '/api/auth/phone-sign-in/resend',
+        { handle },
+        { anonymous: true },
+      )
+    ).cooldownSeconds;
+  }
+
+  async textPhoneSignInInstead(handle: string): Promise<void> {
+    await this.post<unknown>(
+      '/api/auth/phone-sign-in/text-instead',
+      { handle },
+      { anonymous: true },
+    );
   }
 
   /** A hub token for the event's bare signal to ask again; refused `not_found` once the link is replaced. */
@@ -6056,6 +6144,42 @@ export class ApiClient {
     return this.adopt(response, path, controller);
   }
 
+  private async signedInWithBody(
+    path: string,
+    credentials: Record<string, unknown>,
+    controller: string,
+  ): Promise<{ outcome: SignInOutcome; body: Record<string, unknown> }> {
+    this.session += 1;
+    const response = await this.sendTokenRequest(path, credentials);
+
+    if (response.status === 202) {
+      const challenge = asChallenge(await response.json().catch(() => null));
+
+      if (challenge == null) {
+        throw new Error(
+          `The API answered ${path} with a challenge this client cannot read. Check SignInResponse in services/api.`,
+        );
+      }
+
+      return { outcome: challenge, body: {} };
+    }
+
+    const { tokens, body } = await this.issued(response);
+    const account = asAccount(body.account);
+
+    if (account == null) {
+      throw new Error(
+        `The API answered ${path} without the account. Check ${controller} in services/api.`,
+      );
+    }
+
+    this.session += 1;
+    await this.options.tokens?.save(tokens);
+    await this.options.onSignedIn?.();
+
+    return { outcome: { tokens, account, linked: body.linked === true }, body };
+  }
+
   /** A way in that never asks for a second factor: registering, or the code that just passed. */
   private async signedInOnly(
     path: string,
@@ -7164,6 +7288,8 @@ function asInvitationPreview(raw: unknown): InvitationPreview | null {
     refusal: oneOf(preview.refusal, REFUSALS),
     forYou: typeof preview.forYou === 'boolean' ? preview.forYou : null,
     signedInAs: stringOrNull(preview.signedInAs),
+    signedInAsPhone: asPhoneHint(preview.signedInAsPhone),
+    needsEmail: preview.needsEmail === true,
     managed: asManagedAccount(preview.managed),
   };
 }
@@ -7686,6 +7812,7 @@ function asChallenge(raw: unknown): TwoFactorChallenge | null {
     challenge: twoFactorChallenge,
     expiresAt: challengeExpiresAt,
     email: typeof email === 'string' ? email : '',
+    phone: asPhoneHint(body.phone),
     factors: asHeldFactors(body.factors),
   };
 }

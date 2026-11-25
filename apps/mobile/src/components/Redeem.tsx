@@ -1,4 +1,5 @@
 import type { Account, OpenedDoorCode, RedeemedDoorCode } from '@soirely/api-client';
+import { phoneLengthProblem } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
@@ -21,6 +22,8 @@ import {
   tryAgainWords,
 } from '../kit/redeem.ts';
 import { meshFor } from '../kit/today.ts';
+import { nextAfterSignIn } from '../challenge.ts';
+import { phoneProblemMessage } from '../phoneProblem.ts';
 import { reloadSignedIn, signOutThen } from '../signedIn.ts';
 import { InsideField } from '../steps/InsideField.tsx';
 import { Heading, Says } from '../steps/Lines.tsx';
@@ -29,15 +32,24 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { focusChecked } from './Field.tsx';
+import { deviceNow } from './CreateWalkWindow.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { type CodeLeave, NumberFields, PhoneCodeScreen, shownNumber } from './RedeemPhone.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
   | { kind: 'enter'; typed: string; line: CodeLine | null; busy: boolean }
   | TooMany
-  | { kind: 'event'; code: string; opened: OpenedDoorCode }
+  | { kind: 'event'; code: string; opened: OpenedDoorCode; alternative?: boolean }
   | { kind: 'member'; organisation: string; eventId: string }
+  | {
+      kind: 'code';
+      code: string;
+      opened: OpenedDoorCode;
+      handle: string;
+      number: string;
+    }
   | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event'] };
 
 interface Opened {
@@ -108,6 +120,28 @@ export function Redeem({ code }: { code: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- opened once, for the code the link carried
   }, [code]);
 
+  async function left(at: Extract<Step, { kind: 'code' }>, leave: CodeLeave): Promise<void> {
+    const back = { kind: 'event' as const, code: at.code, opened: at.opened };
+    if (leave.kind === 'alternative') {
+      go({ ...back, alternative: true });
+      return;
+    }
+    if (leave.kind === 'refused') {
+      const refusal = joinRefusal(leave.error);
+      go(refusal.kind === 'tooMany' ? refusal : back);
+      return;
+    }
+    const { outcome, redeemed } = leave.signedIn;
+    if ('challenge' in outcome) {
+      // Two-factor is asked before the grant: its code screen, then the door code again as the account.
+      router.push(await nextAfterSignIn(outcome));
+      return;
+    }
+    await reloadSignedIn().catch(() => undefined);
+    setAccount(outcome.account);
+    if (redeemed != null) go({ kind: 'in', redeemed, event: at.opened.event });
+  }
+
   const key = `${step.kind}-${visit}`;
 
   switch (step.kind) {
@@ -131,6 +165,9 @@ export function Redeem({ code }: { code: string }) {
           step={step}
           account={account}
           onJoined={(redeemed) => go({ kind: 'in', redeemed, event: step.opened.event })}
+          onSent={(handle, number) =>
+            go({ kind: 'code', code: step.code, opened: step.opened, handle, number })
+          }
           onMember={() =>
             go({
               kind: 'member',
@@ -147,6 +184,24 @@ export function Redeem({ code }: { code: string }) {
       );
     case 'member':
       return <MemberStep step={step} />;
+    case 'code':
+      return (
+        <StepScreen
+          nav={
+            <NavBar
+              onLeft={() => go({ kind: 'event', code: step.code, opened: step.opened })}
+              testID="redeem.code.nav"
+            />
+          }
+        >
+          <PhoneCodeScreen
+            code={step.code}
+            handle={step.handle}
+            number={step.number}
+            onLeave={(leave) => void left(step, leave)}
+          />
+        </StepScreen>
+      );
     case 'in':
       return (
         <InStep
@@ -268,6 +323,7 @@ function EventStep({
   step,
   account,
   onJoined,
+  onSent,
   onMember,
   onTooMany,
   onSignedOut,
@@ -275,6 +331,7 @@ function EventStep({
   step: Extract<Step, { kind: 'event' }>;
   account: Account | null;
   onJoined: (redeemed: RedeemedDoorCode) => void;
+  onSent: (handle: string, number: string) => void;
   onMember: () => void;
   onTooMany: (tooMany: TooMany) => void;
   onSignedOut: () => void;
@@ -282,39 +339,75 @@ function EventStep({
   const { t } = useTranslation();
   const field = useRef<TextInputInstance>(null);
   const name = useRef('');
+  const number = useRef('');
+  const numberField = useRef<TextInputInstance>(null);
+  const [country, setCountry] = useState(() => deviceNow().country ?? '');
   const [nameSaid, setNameSaid] = useState<string | null>(null);
+  const [numberSaid, setNumberSaid] = useState<string | null>(
+    step.alternative === true ? t('redeem.phone.alternative') : null,
+  );
   const [checked, setChecked] = useState(false);
   const [joining, setJoining] = useState(false);
   const [trouble, setTrouble] = useState<{ words: string; n: number } | null>(null);
   const signedIn = account != null;
   const { event } = step.opened;
 
+  function refused(error: unknown): void {
+    const refusal = joinRefusal(error);
+    if (refusal.kind === 'member') onMember();
+    else if (refusal.kind === 'tooMany') onTooMany(refusal);
+    else {
+      setJoining(false);
+      setTrouble((was) => ({
+        words: t(refusal.trouble === 'refused' ? 'redeem.refused' : 'redeem.line.failed'),
+        n: (was?.n ?? 0) + 1,
+      }));
+    }
+  }
+
   async function join(): Promise<void> {
     if (joining) return;
-    if (!signedIn) {
-      setChecked(true);
-      if (nameProblem(name.current)) {
-        setNameSaid(t('redeem.nameBlank'));
-        focusChecked(field);
-        return;
-      }
-    }
     setJoining(true);
     try {
-      const redeemed = await api.redeemDoorCode(step.code, signedIn ? null : name.current.trim());
+      const redeemed = await api.redeemDoorCode(step.code);
       await reloadSignedIn().catch(() => undefined);
       onJoined(redeemed);
     } catch (error) {
-      const refusal = joinRefusal(error);
-      if (refusal.kind === 'member') onMember();
-      else if (refusal.kind === 'tooMany') onTooMany(refusal);
-      else {
-        setJoining(false);
-        setTrouble((was) => ({
-          words: t(refusal.trouble === 'refused' ? 'redeem.refused' : 'redeem.line.failed'),
-          n: (was?.n ?? 0) + 1,
-        }));
-      }
+      refused(error);
+    }
+  }
+
+  /** Signed out, Send code: the code goes to the number typed, whether or not it has an account (sc-4235). */
+  async function send(): Promise<void> {
+    if (joining) return;
+    setChecked(true);
+    const nameWrong = nameProblem(name.current) ? t('redeem.nameBlank') : null;
+    const numberWrong = phoneProblemMessage(
+      phoneLengthProblem(number.current, country),
+      country,
+      t,
+    );
+    setNameSaid(nameWrong);
+    setNumberSaid(numberWrong);
+    if (nameWrong != null) {
+      focusChecked(field);
+      return;
+    }
+    if (numberWrong != null) {
+      focusChecked(numberField);
+      return;
+    }
+    setJoining(true);
+    try {
+      const { handle } = await api.sendDoorCodeSignIn(
+        step.code,
+        name.current.trim(),
+        country,
+        number.current,
+      );
+      onSent(handle, shownNumber(country, number.current));
+    } catch (error) {
+      refused(error);
     }
   }
 
@@ -339,10 +432,10 @@ function EventStep({
           </>
         ) : (
           <PrimaryButton
-            label={joining ? t('redeem.joining') : t('redeem.join')}
+            label={t('redeem.phone.sendCode')}
             busy={joining}
-            onPress={() => void join()}
-            testID="redeem.name.join"
+            onPress={() => void send()}
+            testID="redeem.event.send"
           />
         )
       }
@@ -369,14 +462,31 @@ function EventStep({
               autoCapitalize="words"
               autoComplete="name"
               textContentType="name"
-              returnKeyType="go"
+              returnKeyType="next"
               submitBehavior="submit"
-              onSubmitEditing={() => void join()}
-              autoFocus
+              onSubmitEditing={() => numberField.current?.focus()}
+              autoFocus={step.alternative !== true}
               testID="redeem.name.field"
             />
             {nameSaid != null && <Says words={nameSaid} />}
           </View>
+        )}
+        {!signedIn && (
+          <NumberFields
+            country={country}
+            numberRef={numberField}
+            said={numberSaid}
+            sending={joining}
+            onCountry={(code) => {
+              setCountry(code);
+              if (numberSaid != null) setNumberSaid(null);
+            }}
+            onNumber={(typed) => {
+              number.current = typed;
+              if (numberSaid != null) setNumberSaid(null);
+            }}
+            onSubmit={() => void send()}
+          />
         )}
       </View>
     </StepScreen>

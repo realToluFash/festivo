@@ -254,6 +254,7 @@
   "twoFactor": {
     "title": "Enter your code",
     "intro": "Open your authenticator app and enter the 6-digit code for {{email}}.",
+    "introNumber": "Open your authenticator app and enter the 6-digit code for {{number}}.",
     "code": "Code",
     "useRecovery": "Use a recovery code instead",
     "recoveryTitle": "Enter a recovery code",
@@ -3391,7 +3392,20 @@
     "inTitleNoJob": "You’re in for {{event}}",
     "endsLine": "Your access ends when the event does.",
     "openEvent": "Open the event",
-    "signedInAs": "Signed in as {{name}}"
+    "signedInAs": "Signed in as {{name}}",
+    "phone": {
+      "mobile": "Mobile number",
+      "countryCode": "Country code",
+      "sendCode": "Send code",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
+      "checkWhatsApp": "Check WhatsApp",
+      "checkMessages": "Check your messages",
+      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
+      "texted": "We texted a code to {{number}}.",
+      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
+      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
+      "textInstead": "Text it to me instead"
+    }
   },
   "doorCodes": {
     "doorCode": "Door code",

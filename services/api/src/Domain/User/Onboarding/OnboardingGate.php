@@ -54,6 +54,10 @@ final readonly class OnboardingGate implements OnboardingGateInterface
             return ErrorCode::AccountUnverified;
         }
 
+        if ('orgs_create' === $route && self::phoneOnly($user)) {
+            return ErrorCode::AccountUnverified;
+        }
+
         if (Iter\contains(self::EXEMPT, $route)) {
             return null;
         }
@@ -63,6 +67,12 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         }
 
         return $this->accountCompleteness->isComplete($user) ? null : ErrorCode::ProfileIncomplete;
+    }
+
+    /** A staff account with no email (sc-4235) reaches only its grants' events: founding an organisation would make a member who signs in by phone code. */
+    private static function phoneOnly(User $user): bool
+    {
+        return AccountOrigin::Staff === $user->getOrigin() && null === $user->getPrimaryEmailAddress();
     }
 
     /** A door code's account (sc-72) has no address to prove until sc-4235 asks it for a number. */

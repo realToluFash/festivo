@@ -148,7 +148,7 @@ final readonly class EventPeopleController
     }
 
     /**
-     * Each person holding a staff link not yet ended (sc-3912), shown to whoever may read the roster; `signedIn` stays false until sc-4235 signs them in.
+     * Each person holding a staff link not yet ended (sc-3912), shown to whoever may read the roster; `signedIn` once a code signed its person in (sc-4235).
      *
      * @return list<array{id: string, name: string, job: ?string, access: ?string, endsAt: string, signedIn: bool}>
      */
@@ -168,7 +168,7 @@ final readonly class EventPeopleController
                 'job' => $live['entry']->getJob()?->getName(),
                 'access' => $live['entry']->getJob()?->getAccess()->value,
                 'endsAt' => $live['until']->setTimezone($zone)->format(\DATE_ATOM),
-                'signedIn' => false,
+                'signedIn' => null !== $live['entry']->getAccount(),
             ],
         );
     }

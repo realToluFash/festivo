@@ -40,6 +40,13 @@ function isPhoneCountry(country: string): country is CountryCode {
   return PHONE_COUNTRIES.has(country);
 }
 
+/** "+351 ••• ••• 4512": a number before sign-in completes, its country's code and the last digits (sc-4235). */
+export function maskedPhone(hint: { countryCode: string | null; lastDigits: string }): string {
+  const calling = hint.countryCode == null ? null : callingCode(hint.countryCode);
+
+  return `${calling ?? ''} ••• ••• ${hint.lastDigits}`.trim();
+}
+
 /** "+234 803 555 0142": an E.164 number as people read it. */
 export function formatPhone(e164: string): string {
   return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;

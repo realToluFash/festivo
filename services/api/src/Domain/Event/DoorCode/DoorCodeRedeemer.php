@@ -6,17 +6,11 @@ namespace App\Domain\Event\DoorCode;
 
 use App\Audit\Auditor;
 use App\Domain\Event\People\EventPeople;
-use App\Domain\User\AccountName;
-use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Mail\UserMailer;
-use App\Domain\User\Model\IssuedTokens;
-use App\Domain\User\TimeZone\AccountTimeZone;
-use App\Domain\User\TokenIssuer;
 use App\Entity\DoorCode;
 use App\Entity\DoorCodeRedemption;
 use App\Entity\EventPerson;
 use App\Entity\User;
-use App\Enum\AccountOrigin;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -28,7 +22,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Hash;
-use Psl\Str;
+use Psl\Iter;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\LimiterInterface;
@@ -44,8 +38,6 @@ final readonly class DoorCodeRedeemer
         private EventPersonRepository $eventPersonRepository,
         private MembershipRepository $membershipRepository,
         private DoorCodes $doorCodes,
-        private AccountName $accountName,
-        private TokenIssuer $tokenIssuer,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
@@ -56,7 +48,7 @@ final readonly class DoorCodeRedeemer
     ) {
     }
 
-    /** The code that would let this reader in: a live one, or one they came in by and are still on the event through. */
+    /** The code that would let this reader in: a live or full one (sc-4235: who is typing is known only once the phone code is right), or one they came in by and are still on the event through. */
     public function open(string $typed, ?User $reader, Request $request): DoorCode
     {
         $code = DoorCodeText::normalise($typed);
@@ -78,7 +70,7 @@ final readonly class DoorCodeRedeemer
             $doorCode = null;
         }
 
-        if (null === $doorCode || !$this->live($doorCode)) {
+        if (null === $doorCode || !$this->opens($doorCode)) {
             $this->spendARefusal($code, $request);
 
             throw new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
@@ -101,43 +93,61 @@ final readonly class DoorCodeRedeemer
         };
     }
 
-    /** @return array{user: User, person: EventPerson, tokens: ?IssuedTokens, again: bool} */
-    public function redeem(string $typed, ?string $name, ?User $reader, Request $request): array
+    /** @return array{person: EventPerson, again: bool} signed in only (sc-4235): signed out, a door code is redeemed through `DoorCodeSignIn` */
+    public function redeem(string $typed, ?User $reader, Request $request): array
     {
+        if (null === $reader) {
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
+        }
+
         $doorCode = $this->open($typed, $reader, $request);
+        $this->refuseAMember($doorCode, $reader);
+        $already = $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $reader, $this->clock->now());
+
+        if (null !== $already) {
+            return ['person' => $already, 'again' => true];
+        }
+
+        return ['person' => $this->admit($doorCode, $reader, $request), 'again' => false];
+    }
+
+    /** The account already in by this code, still on the event through it: it signs back in at a full code and takes no use. */
+    public function heldBy(DoorCode $doorCode, User $user): ?EventPerson
+    {
+        if (null === $this->doorCodeRedemptionRepository->findOneFor($doorCode, $user)) {
+            return null;
+        }
+
+        return $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $user, $this->clock->now());
+    }
+
+    public function refuseAMember(DoorCode $doorCode, User $user): void
+    {
         $organisation = $doorCode->getEvent()->getOrganisation();
 
-        if ('member' === $this->standingOf($doorCode, $reader)) {
+        if ('member' === $this->standingOf($doorCode, $user)) {
             throw new ApiException(ErrorCode::AlreadyAMember, $this->translator->trans('door_codes.member', ['{organisation}' => $organisation->getName()]), members: ['organisation' => $organisation->getName()]);
         }
+    }
 
-        $already = null === $reader ? null : $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $reader, $this->clock->now());
+    /** The one refusal, for a code that admits nobody new: what a number with no use of it meets at a full code. */
+    public function refuseUnlessLive(DoorCode $doorCode, Request $request): void
+    {
+        if (!$this->live($doorCode)) {
+            $this->spendARefusal($doorCode->getCode(), $request);
 
-        if (null !== $already && null !== $reader) {
-            return ['user' => $reader, 'person' => $already, 'tokens' => null, 'again' => true];
+            throw new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
         }
+    }
 
-        $given = Str\trim($name ?? '');
-
-        if (null === $reader) {
-            $violations = $this->accountName->violations($given);
-
-            if ([] !== $violations) {
-                throw ApiException::validation($violations);
-            }
-        }
-
-        return $this->entityManager->wrapInTransaction(function () use ($doorCode, $reader, $given, $request): array {
+    /** Takes one use, under the account's own name: a name typed at the door is never kept on an account (sc-4235). */
+    public function admit(DoorCode $doorCode, User $user, Request $request, bool $signedIn = true): EventPerson
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($doorCode, $user, $request, $signedIn): EventPerson {
             $this->entityManager->refresh($doorCode, LockMode::PESSIMISTIC_WRITE);
+            $this->refuseUnlessLive($doorCode, $request);
 
-            if (!$this->live($doorCode)) {
-                $this->spendARefusal($doorCode->getCode(), $request);
-
-                throw new ApiException(ErrorCode::DoorCodeInvalid, $this->translator->trans('door_codes.invalid'));
-            }
-
-            $user = $reader ?? $this->deviceAccount($given, $request);
-            $redemption = new DoorCodeRedemption($doorCode, $user, $reader?->getName() ?? $given);
+            $redemption = new DoorCodeRedemption($doorCode, $user, $user->getName());
             $person = EventPerson::outside($doorCode->getEvent(), $user, $doorCode->getRole(), $doorCode->getJobLabel(), $doorCode->getMadeBy());
             $person->setDoorCode($doorCode);
             $this->entityManager->persist($redemption);
@@ -146,12 +156,11 @@ final readonly class DoorCodeRedeemer
                 ...EventPeople::whose($person),
                 'code' => [null, $doorCode->getCode()],
                 'role' => [null, $doorCode->getRole()->value],
-                'signedIn' => [null, null !== $reader],
+                'signedIn' => [null, $signedIn],
             ]);
-            $tokens = null === $reader ? $this->tokenIssuer->issueFor($user, $request) : null;
             $this->entityManager->flush();
 
-            return ['user' => $user, 'person' => $person, 'tokens' => $tokens, 'again' => false];
+            return $person;
         });
     }
 
@@ -160,23 +169,20 @@ final readonly class DoorCodeRedeemer
         return $this->doorCodeRedemptionRepository->countFor($doorCode);
     }
 
+    private function opens(DoorCode $doorCode): bool
+    {
+        $closes = $doorCode->getEvent()->getClosesAt();
+
+        return Iter\contains([DoorCodeStatus::Working, DoorCodeStatus::Full], $this->doorCodes->statusOf($doorCode, $this->usedOf($doorCode)))
+            && (null === $closes || $closes > $this->clock->now());
+    }
+
     private function live(DoorCode $doorCode): bool
     {
         $closes = $doorCode->getEvent()->getClosesAt();
 
         return DoorCodeStatus::Working === $this->doorCodes->statusOf($doorCode, $this->usedOf($doorCode))
             && (null === $closes || $closes > $this->clock->now());
-    }
-
-    private function deviceAccount(string $name, Request $request): User
-    {
-        $user = new User($name, null, AccountOrigin::DoorCode);
-        $user->markDetailsSaved();
-        AccountLanguage::rememberIfNone($user, $request);
-        AccountTimeZone::rememberIfNone($user, $request);
-        $this->entityManager->persist($user);
-
-        return $user;
     }
 
     /** Only a refused try spends either limit, so a working code is never refused for being busy. */
@@ -198,7 +204,7 @@ final readonly class DoorCodeRedeemer
         }
     }
 
-    private function tooMany(DateTimeImmutable $until): ApiException
+    public function tooMany(DateTimeImmutable $until): ApiException
     {
         return ApiException::tooManyAttemptsUntil(
             'door_codes.too_many',
