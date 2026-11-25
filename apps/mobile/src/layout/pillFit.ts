@@ -35,13 +35,18 @@ export function phoneNameRoom(row: number, ends: number): number {
   return Math.max(row - ends - 2 * tokens.spaceSm - PILL_CHROME, 0);
 }
 
+/** The name's line in the pill beside the upright iPad's tabs, from the most the pill may take there, 0 until the row is measured (sc-92314). */
+export function uprightNameRoom(pill: number | undefined): number {
+  return Math.max((pill ?? 0) - PILL_CHROME, 0);
+}
+
 /** The invitation line's room under the name: the name's, less its ring and the gap after it. */
-export function phoneWaitingRoom(name: number): number {
+export function waitingRoomUnder(name: number): number {
   return Math.max(name - WAITING_RING, 0);
 }
 
-/** From AX1 the phone's pill is its tile alone only where the name's widest word, at its default size, is wider than its line (sc-38149, sc-92247). */
-export function phoneTileAlone(widestAtDefault: number, room: number): boolean {
+/** From AX1 the cover's pill, on the phone and beside the upright iPad's tabs, is its tile alone only where the name's widest word, at its default size, is wider than its line (sc-38149, sc-92247, sc-92314). */
+export function wholeTileAlone(widestAtDefault: number, room: number): boolean {
   return room > 0 && widestAtDefault > room;
 }
 
