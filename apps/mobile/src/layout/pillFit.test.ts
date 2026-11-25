@@ -86,6 +86,12 @@ describe('the pill beside the upright iPad’s tabs from AX1 (sc-92314)', () => 
     expect(wholeTileAlone(92, uprightNameRoom(179))).toBe(false);
     expect(wholeTileAlone(350, uprightNameRoom(179))).toBe(true);
   });
+
+  it('turns to its tile where the invitation line’s widest word is wider than the room under the name', () => {
+    expect(wholeTileAlone(40, 60, waitingRoomUnder(60))).toBe(false);
+    expect(wholeTileAlone(40, 60, waitingRoomUnder(60) + 0.5)).toBe(true);
+    expect(wholeTileAlone(40, 0, 400)).toBe(false);
+  });
 });
 
 describe('the white pill above a phone’s Events, Calendar and Settings from AX1 (sc-92464)', () => {
