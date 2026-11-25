@@ -52,3 +52,25 @@ export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 
 
   return at.focused ? 'hold' : 'focus';
 }
+
+export interface MountedKeys {
+  os: string;
+  opened: OpenedFocus;
+  autoFocus: boolean | undefined;
+  /** The field has input focus now, by its own focus and blur events. */
+  focused: boolean;
+  /** The keys have been up since the field opened: once they have, the back key putting them down is left alone (sc-91027). */
+  keysShown: boolean;
+  /** As `ArrivedFocus.readerOn`: with a reader on, the field takes its focus at mount and nothing more, as at main before sc-92467. */
+  readerOn: boolean | null;
+  ticks: number;
+}
+
+/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does on this tick: Android gives it the caret but leaves the keys down, so they are raised on it once it has the focus (sc-92467). */
+export function mountedKeysStep(at: MountedKeys): 'wait' | 'raise' | 'done' {
+  if (at.os !== 'android' || at.opened !== 'mount' || at.autoFocus !== true) return 'done';
+  if (at.readerOn === true || at.keysShown || at.ticks >= ARRIVED_FOCUS_TICKS) return 'done';
+  if (at.readerOn == null || !at.focused) return 'wait';
+
+  return 'raise';
+}

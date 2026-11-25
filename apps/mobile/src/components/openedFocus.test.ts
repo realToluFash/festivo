@@ -4,6 +4,8 @@ import {
   ARRIVED_FOCUS_TICKS,
   type ArrivedFocus,
   arrivedFocusStep,
+  type MountedKeys,
+  mountedKeysStep,
   openedFocus,
   settledFocus,
   windowArrival,
@@ -90,5 +92,43 @@ describe('a field sends no focus before the device says whether a screen reader 
     expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
     expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, readerOn: false })).toBe('focus');
+  });
+});
+
+describe('on an Android tablet, a field that opens focused puts its keys up with no tap (sc-92467)', () => {
+  const mounted: MountedKeys = {
+    os: 'android',
+    opened: 'mount',
+    autoFocus: true,
+    focused: true,
+    keysShown: false,
+    readerOn: false,
+    ticks: 0,
+  };
+
+  it('raises the keys on the field once it has the focus, until they are up', () => {
+    expect(mountedKeysStep({ ...mounted, focused: false })).toBe('wait');
+    expect(mountedKeysStep(mounted)).toBe('raise');
+    expect(mountedKeysStep({ ...mounted, ticks: 3 })).toBe('raise');
+    expect(mountedKeysStep({ ...mounted, keysShown: true })).toBe('done');
+  });
+
+  it('leaves the keys down once they have been up, so the back key keeps them down', () => {
+    expect(mountedKeysStep({ ...mounted, keysShown: true, ticks: 1 })).toBe('done');
+  });
+
+  it('stops after a few seconds', () => {
+    expect(mountedKeysStep({ ...mounted, ticks: ARRIVED_FOCUS_TICKS })).toBe('done');
+  });
+
+  it('waits for the screen reader to be known, and with one on leaves focus as it was', () => {
+    expect(mountedKeysStep({ ...mounted, readerOn: null })).toBe('wait');
+    expect(mountedKeysStep({ ...mounted, readerOn: true })).toBe('done');
+  });
+
+  it('moves nothing on an iPhone or iPad, for a field that waited for its window, or one that does not open focused', () => {
+    expect(mountedKeysStep({ ...mounted, os: 'ios' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, opened: 'arrived' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, autoFocus: undefined })).toBe('done');
   });
 });

@@ -49,7 +49,7 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped, focusedField } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { arrivedFocusStep, openedFocus, WindowArriving } from './openedFocus.ts';
+import { arrivedFocusStep, mountedKeysStep, openedFocus, WindowArriving } from './openedFocus.ts';
 import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus, useScreenReader } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
@@ -397,7 +397,7 @@ export function focusNewField(input: TextInputInstance | null): () => void {
   return () => clearTimeout(bound);
 }
 
-/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount, and held there for a few seconds, sent again whenever Android says the field does not have it (sc-91027). Spread `autoFocus` after the field's own props; `focused` is the field's own focus, from its focus and blur events. */
+/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount, and held there for a few seconds, sent again whenever Android says the field does not have it (sc-91027). One that takes its focus at mount in an Android window that does not slide in, as on a tablet, has its keys raised once it has it (sc-92467). Spread `autoFocus` after the field's own props; `focused` is the field's own focus, from its focus and blur events. */
 export function useOpenedFocus(
   autoFocus: boolean | undefined,
   focused: boolean,
@@ -428,6 +428,28 @@ export function useOpenedFocus(
 
     return () => clearTimeout(next);
   }, [opened, arrival, focused, readerOn, ticks]);
+
+  const [atMount] = useState(autoFocus);
+  const keysShown = useRef(false);
+  const [keyTicks, setKeyTicks] = useState(0);
+
+  useEffect(() => {
+    const field = input.current;
+    const step = mountedKeysStep({
+      os: Platform.OS,
+      opened,
+      autoFocus: atMount,
+      focused,
+      keysShown: (keysShown.current ||= Keyboard.isVisible()),
+      readerOn,
+      ticks: keyTicks,
+    });
+    if (step === 'done' || field == null) return undefined;
+    if (step === 'raise') raiseKeysOn(field);
+    const next = setTimeout(() => setKeyTicks((count) => count + 1), NEW_FIELD_BOUND_MS);
+
+    return () => clearTimeout(next);
+  }, [opened, atMount, focused, readerOn, keyTicks]);
 
   return { input, autoFocus: opened === 'arrived' ? false : autoFocus };
 }
