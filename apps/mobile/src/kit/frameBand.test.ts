@@ -23,6 +23,10 @@ describe('pillBesideTabs', () => {
     expect(pillBesideTabs(1000, 470)).toEqual({ maxWidth: 253 });
   });
 
+  it('stops whatever stands there the gap it is given short of them', () => {
+    expect(pillBesideTabs(1000, 470, 40)).toEqual({ maxWidth: 225 });
+  });
+
   it('leaves under 120 on an upright iPad mini, where the pill is its tile', () => {
     expect(pillBesideTabs(712, 470)).toEqual({ maxWidth: 109 });
     expect(pillBesideTabs(480, 470)).toEqual({ maxWidth: 0 });

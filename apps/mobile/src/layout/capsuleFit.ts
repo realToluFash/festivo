@@ -1,4 +1,4 @@
-import { PILL_BESIDE_TABS } from '../kit/frameBand.ts';
+import { PILL_BESIDE_TABS, pillBesideTabs } from '../kit/frameBand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fitWidest } from './textSize.ts';
 
@@ -77,7 +77,7 @@ export function capsuleWidth(
 
 /** The widest an upright tablet's opener may be and stay clear of a capsule `capsule` wide centred in a row `row` wide, its side margins included; no limit before the capsule is drawn (sc-92188). */
 export function openerRoom(row: number | undefined, capsule: number): number | undefined {
-  if (row == null || capsule <= 0) return undefined;
+  if (row == null) return undefined;
 
-  return Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+  return pillBesideTabs(row, capsule, tokens.space3xl + tokens.spaceSm)?.maxWidth;
 }
