@@ -27,7 +27,7 @@ import {
   type StripBar,
 } from '../kit/today.ts';
 import { useTodayShell } from './todayShell.ts';
-import { tileWidth } from './todayTile.ts';
+import { tileWidth } from '../layout/todayTile.ts';
 
 /** The board's type, in Instrument Sans: titles at 700 and set close, rows from 13 to 16. */
 export const TYPE = {

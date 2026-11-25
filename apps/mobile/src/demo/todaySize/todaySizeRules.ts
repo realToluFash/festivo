@@ -1,5 +1,6 @@
 import type { LayoutKind } from '../../layout/classify.ts';
 import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
+import { tokens } from '../../theme/tokens.ts';
 
 export type TodayName = 'qa' | 'long';
 export type TodayGreeting = 'morning' | 'evening' | 'welcome';
@@ -77,14 +78,7 @@ export const EVENT_CHIP = 12;
 export const EVENT_CHIP_ON_COVER = 12.5;
 export const EVENT_READY = 12.5;
 
-/** Main's tile; from AX1 the phone's width less its gutters and a 40 of the next tile, so the words have room and the row still reads as one to swipe. */
-export const TILE = 232;
-export const TILE_PEEK = 40;
-export const TODAY_GUTTER = 20;
-
-export function tileWidth(scale: number, window: number): number {
-  return atAccessibilitySizes(scale) ? Math.max(TILE, window - 2 * TODAY_GUTTER - TILE_PEEK) : TILE;
-}
+export const TODAY_GUTTER = tokens.spaceXxl;
 
 export function thumbAbove(scale: number): boolean {
   return atAccessibilitySizes(scale);
