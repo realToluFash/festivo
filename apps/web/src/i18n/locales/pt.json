@@ -2796,6 +2796,7 @@
     "roomSettings": "Definições da sala",
     "roomLine": "{{name}} · {{width}} × {{roomLength}}",
     "roomLineUnnamed": "{{width}} × {{roomLength}}",
+    "roomNameCut": "{{name}}…",
     "roomGroup": "Planta da sala, {{name}}, {{width}} por {{roomLength}}",
     "roomGroupUnnamed": "Planta da sala, {{width}} por {{roomLength}}",
     "firstItem": "Adicione a primeira mesa, fila ou lugar a partir da barra abaixo.",
