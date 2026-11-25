@@ -593,6 +593,7 @@
 }
 
 .mg-system,
+.mg-follow-line,
 .mg-info {
   display: flex;
   align-items: flex-start;
@@ -602,6 +603,7 @@
 }
 
 .mg-system svg,
+.mg-follow-line svg,
 .mg-info svg,
 .mg-status svg,
 .mg-answer-line svg {
@@ -1002,6 +1004,10 @@
   box-shadow:
     var(--mgFloat),
     0 0 0 2px var(--colorAccent);
+}
+
+.mg-follow-line {
+  margin: 0;
 }
 
 .mg-mini-to {

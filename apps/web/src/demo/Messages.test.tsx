@@ -548,7 +548,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   );
 
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 96 guests, under the first message on their page.';
+
     await messages('sent');
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(within(mini as HTMLElement).queryByRole('button', { name: /Everyone/ })).toBeNull();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
       target: { value: 'One more thing.' },
@@ -558,6 +565,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     expect(within(thread).getByText('Parking and the dress code')).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Message' }).textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(
+      within(screen.getByRole('textbox', { name: 'Message' }).closest('form')!).getByText(goes),
+    ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Send to 96 people' }));
@@ -565,14 +577,33 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const log = await screen.findByRole('log', { name: 'Parking and the dress code' });
 
     expect(within(log).getByText('One more thing.')).toBeDefined();
-    expect(
-      within(log).getByText(
-        'A follow-up goes to the same 96 guests, under the first message on their page.',
-      ),
-    ).toBeDefined();
+    expect(within(log).getByText(goes)).toBeDefined();
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Parking and the dress code, Follow-up · Sending in 10…/,
     );
+  });
+
+  it('follows Parking at The Landmark with no To and no Subject', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 142 guests, under the first message on their page.';
+
+    await messages(null);
+    fireEvent.click(row(/^Parking at The Landmark/));
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(mini.querySelector('.mg-to-chip')).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
+      target: { value: 'One more thing.' },
+    });
+
+    const field = await screen.findByRole('textbox', { name: 'Message' });
+
+    expect(field.textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(within(field.closest('form')!).getByText(goes)).toBeDefined();
   });
 
   it('names a message with no Subject by its first line, shortened', SLOW, async () => {
@@ -1584,13 +1615,20 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
       expectFieldOff(field);
       expectOff(screen.getByRole('button', { name: 'Send' }));
-      const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
-      expectOff(to);
-      fireEvent.click(to);
       expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
       expect(screen.getAllByTestId('messages-closed')).toHaveLength(1);
     },
   );
+
+  it('turns off the invitation’s To on closedEnded', SLOW, async () => {
+    await messages('closedEnded');
+    fireEvent.click(row(/^Invitation/));
+
+    const to = document.querySelector<HTMLElement>('.mg-to-chip') as HTMLElement;
+    expectOff(to);
+    fireEvent.click(to);
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+  });
 
   it('turns off a guest’s answer on closedEnded, and offers no R', SLOW, async () => {
     await messages('closedEnded');
