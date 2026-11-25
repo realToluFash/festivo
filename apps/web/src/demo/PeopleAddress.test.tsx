@@ -48,6 +48,7 @@ describe('an outsider’s address breaks after its @, never inside its domain (s
       expect(shown.textContent).toBe(address);
       expect(shown.querySelectorAll('wbr').length).toBeGreaterThan(0);
       expect(shown.querySelector('.whole-address-domain')?.textContent).toBe('soirely.test');
+      expect(shown.querySelector('.whole-address-at')?.textContent).toMatch(/^[a-z]@$/u);
       expect(
         screen.getByRole('button', {
           hidden: true,
