@@ -122,8 +122,11 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         return $this->notice($event, $this->guestRepository->findOneInEvent($event->getId(), $recipient->id), $recipient->name, $recipient->locale);
     }
 
-    /** The email that tells one guest, as sent and as the preview shows it (sc-3960): {greeting} is their Greet as or full name, {hosts} the event's hosts in their language. */
-    /** @param bool $preview the link stops at the page's path, since the guest's own link is not the writer's to see */
+    /**
+     * The email that tells one guest, as sent and as the preview shows it (sc-3960): {greeting} is their Greet as or full name, {hosts} the event's hosts in their language.
+     *
+     * @param bool $preview the link stops at the page's path, since the guest's own link is not the writer's to see
+     */
     public function notice(Event $event, ?Guest $guest, string $name, string $locale, bool $preview = false): RenderedNotification
     {
         $hosts = [] === $event->getHosts() ? $event->getOrganisation()->getName() : $this->guestReplyWording->names(Vec\values($event->getHosts()), $locale);
