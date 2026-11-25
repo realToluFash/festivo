@@ -39,6 +39,7 @@ import {
   many,
   noticeOf,
   noticePrice,
+  outReach,
   outTitle,
   outsIn,
   toLine,
@@ -71,6 +72,7 @@ import {
   HostBubble,
   LeadMark,
   Stub,
+  FollowLine,
   SystemLine,
   Words,
   WhereGlyph,
@@ -155,11 +157,13 @@ export function MiniComposer({
   placeholder,
   thread,
   world,
+  follows,
 }: {
   to: Audience;
   placeholder: string;
   thread: ConvoId;
   world?: World;
+  follows?: number;
 }) {
   const { act, focus, inbox, whyOff, to: event } = useInbox();
 
@@ -173,6 +177,7 @@ export function MiniComposer({
         body: text === '' ? [] : [{ kind: 'text', text }],
         seed: (inbox.draft?.seed ?? 0) + 1,
         openTo: toPick,
+        follows,
       },
     });
     if (!toPick) focus('body');
@@ -180,21 +185,23 @@ export function MiniComposer({
 
   return (
     <div className="mg-mini">
-      <div className="mg-mini-to">
-        <span>{MW.to}</span>
-        <button
-          type="button"
-          className="mg-to-chip"
-          aria-haspopup="dialog"
-          aria-expanded="false"
-          aria-describedby={whyOff}
-          onClick={() => open('', true)}
-          {...offButton(whyOff != null)}
-        >
-          {chipWords(to, event.book, world)}
-          <Glyph name="chevdown" size={14} weight={2.6} />
-        </button>
-      </div>
+      {follows == null && (
+        <div className="mg-mini-to">
+          <span>{MW.to}</span>
+          <button
+            type="button"
+            className="mg-to-chip"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-describedby={whyOff}
+            onClick={() => open('', true)}
+            {...offButton(whyOff != null)}
+          >
+            {chipWords(to, event.book, world)}
+            <Glyph name="chevdown" size={14} weight={2.6} />
+          </button>
+        </div>
+      )}
       <div className="mg-mini-row">
         <input
           className="mg-mini-field"
@@ -216,6 +223,7 @@ export function MiniComposer({
           <Glyph name="send" size={20} weight={2.4} />
         </button>
       </div>
+      {follows != null && <FollowLine count={follows} />}
     </div>
   );
 }
@@ -741,6 +749,7 @@ function ManyThread({ id }: { id: ConvoId }) {
   const { inbox, to: event } = useInbox();
   const first = outsIn(inbox, id)[0];
   const resending = inbox.resend?.thread === id;
+  const toThem = id === 'invite' || first?.invite != null;
   const fixed = id === 'parking' || id === 'invite' || id === 'receipts';
   const to: Audience = fixed ? { kind: 'all' } : (first?.to ?? { kind: 'all' });
   const world = first?.invite == null ? MESSAGES_WORLD : INVITE_WORLD;
@@ -780,9 +789,10 @@ function ManyThread({ id }: { id: ConvoId }) {
       {!resending && (
         <MiniComposer
           to={to}
-          placeholder={id === 'invite' || first?.invite != null ? MW.writeToThem : MW.writeFollowUp}
+          placeholder={toThem ? MW.writeToThem : MW.writeFollowUp}
           thread={id}
           world={world}
+          follows={toThem || first == null ? undefined : outReach(first, event.book.groups).count}
         />
       )}
     </div>

@@ -548,7 +548,14 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
   );
 
   it('keeps the sent message and adds a follow-up after it', SLOW, async () => {
+    const goes = 'A follow-up goes to the same 96 guests, under the first message on their page.';
+
     await messages('sent');
+
+    const mini = screen.getByRole('textbox', { name: 'Write a follow-up' }).closest('.mg-mini')!;
+
+    expect(within(mini as HTMLElement).getByText(goes)).toBeDefined();
+    expect(within(mini as HTMLElement).queryByRole('button', { name: /Everyone/ })).toBeNull();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Write a follow-up' }), {
       target: { value: 'One more thing.' },
@@ -558,6 +565,11 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
 
     expect(within(thread).getByText('Parking and the dress code')).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Message' }).textContent).toBe('One more thing.');
+    expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
+    expect(screen.queryByText('To')).toBeNull();
+    expect(
+      within(screen.getByRole('textbox', { name: 'Message' }).closest('form')!).getByText(goes),
+    ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Send to 96 people' }));
@@ -565,11 +577,7 @@ describe('Messages in B · Conversations at a desk (sc-31371)', () => {
     const log = await screen.findByRole('log', { name: 'Parking and the dress code' });
 
     expect(within(log).getByText('One more thing.')).toBeDefined();
-    expect(
-      within(log).getByText(
-        'A follow-up goes to the same 96 guests, under the first message on their page.',
-      ),
-    ).toBeDefined();
+    expect(within(log).getByText(goes)).toBeDefined();
     expect(within(list()).getAllByRole('link')[0]?.getAttribute('aria-label')).toMatch(
       /^Parking and the dress code, Follow-up · Sending in 10…/,
     );

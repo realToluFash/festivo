@@ -50,7 +50,7 @@ import {
 } from './messagesRefusals.ts';
 import { LaterDialog } from './MessagesDialogs.tsx';
 import { InsertMenu } from './MessagesInsert.tsx';
-import { WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
+import { FollowLine, WhatsAppReach, WhereGlyph } from './MessagesParts.tsx';
 import { Preview } from './MessagesPreview.tsx';
 import { PW } from './messagesPreviewWords.ts';
 import { StreamItems } from './MessagesStream.tsx';
@@ -122,61 +122,65 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
       <h2 className="desk-unseen">{MW.newMessage}</h2>
       {draft.step !== 'preview' && (
         <header className="mg-to-head">
-          <div className="mg-to-row">
-            <span className="mg-to-label">{MW.to}</span>
-            <div className="mg-to-at">
-              <button
-                ref={chip}
-                type="button"
-                className={wrong.who == null ? 'mg-to-chip' : 'mg-to-chip is-wrong'}
-                aria-haspopup="dialog"
-                aria-expanded={toOpen}
-                data-focus="to-chip"
-                aria-describedby={wrong.who == null ? undefined : whoId}
-                onClick={() => {
-                  setToChoosing(false);
-                  setToOpen((open) => !open);
+          {draft.follows == null && (
+            <>
+              <div className="mg-to-row">
+                <span className="mg-to-label">{MW.to}</span>
+                <div className="mg-to-at">
+                  <button
+                    ref={chip}
+                    type="button"
+                    className={wrong.who == null ? 'mg-to-chip' : 'mg-to-chip is-wrong'}
+                    aria-haspopup="dialog"
+                    aria-expanded={toOpen}
+                    data-focus="to-chip"
+                    aria-describedby={wrong.who == null ? undefined : whoId}
+                    onClick={() => {
+                      setToChoosing(false);
+                      setToOpen((open) => !open);
+                    }}
+                  >
+                    {chipWords(draft.to, event.book)}
+                    <Glyph name="chevdown" size={14} weight={2.6} />
+                  </button>
+                  {toOpen && (
+                    <ToPopover
+                      to={draft.to}
+                      chip={chip}
+                      onPick={(to) => {
+                        act({ kind: 'draft', draft: { to } });
+                        setRefused(null);
+                        fixed('who', { to });
+                      }}
+                      onClose={(back) => {
+                        setToOpen(false);
+                        if (back) focus('to-chip');
+                      }}
+                      onNobody={() => {
+                        setToOpen(false);
+                        setWrong((was) => ({ ...was, who: MW.chooseOne }));
+                        focus('to-chip');
+                      }}
+                      choosingFirst={toChoosing}
+                    />
+                  )}
+                </div>
+              </div>
+              <ChosenChips
+                to={draft.to}
+                onPick={(to) => act({ kind: 'draft', draft: { to } })}
+                onMore={() => {
+                  setToChoosing(true);
+                  setToOpen(true);
                 }}
-              >
-                {chipWords(draft.to, event.book)}
-                <Glyph name="chevdown" size={14} weight={2.6} />
-              </button>
-              {toOpen && (
-                <ToPopover
-                  to={draft.to}
-                  chip={chip}
-                  onPick={(to) => {
-                    act({ kind: 'draft', draft: { to } });
-                    setRefused(null);
-                    fixed('who', { to });
-                  }}
-                  onClose={(back) => {
-                    setToOpen(false);
-                    if (back) focus('to-chip');
-                  }}
-                  onNobody={() => {
-                    setToOpen(false);
-                    setWrong((was) => ({ ...was, who: MW.chooseOne }));
-                    focus('to-chip');
-                  }}
-                  choosingFirst={toChoosing}
-                />
+              />
+              {wrong.who != null && (
+                <p id={whoId} className="desk-error mg-field-error">
+                  <Glyph name="alert" size={15} weight={2.2} />
+                  {wrong.who}
+                </p>
               )}
-            </div>
-          </div>
-          <ChosenChips
-            to={draft.to}
-            onPick={(to) => act({ kind: 'draft', draft: { to } })}
-            onMore={() => {
-              setToChoosing(true);
-              setToOpen(true);
-            }}
-          />
-          {wrong.who != null && (
-            <p id={whoId} className="desk-error mg-field-error">
-              <Glyph name="alert" size={15} weight={2.2} />
-              {wrong.who}
-            </p>
+            </>
           )}
           <div className="mg-by-row" role="group" aria-labelledby={byId}>
             <span id={byId} className="mg-by-label">
@@ -253,6 +257,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           tools={draft.step === 'write'}
           refused={refused}
           wrong={wrong}
+          follows={draft.follows}
           previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
           onDraft={(next) => {
             if (next.subject != null) fixed('subject', next);
@@ -440,6 +445,7 @@ export function Composer({
   onDraft,
   editing,
   previewOff = null,
+  follows,
 }: {
   draft: Pick<Draft, 'subject' | 'body' | 'seed' | 'opens'>;
   tools: boolean;
@@ -450,6 +456,7 @@ export function Composer({
   onDraft: (draft: Partial<Draft>) => void;
   editing?: { onChangeWhen: () => void };
   previewOff?: string | null;
+  follows?: number | undefined;
 }) {
   const optionalId = useId();
   const refusedId = useId();
@@ -493,25 +500,27 @@ export function Composer({
         onSend();
       }}
     >
-      <div className="mg-subject-row">
-        <input
-          className="mg-subject"
-          value={draft.subject}
-          aria-label={MW.subject}
-          aria-invalid={wrong.subject == null ? undefined : true}
-          aria-describedby={wrong.subject == null ? optionalId : `${subjectId} ${optionalId}`}
-          readOnly={!tools}
-          data-focus="subject"
-          onChange={(event) => onDraft({ subject: event.target.value })}
-          onKeyDown={(event) => commandEnter(event, onSend)}
-        />
-        <span className={draft.subject === '' ? 'mg-subject-hint' : 'desk-unseen'} aria-hidden>
-          {draft.subject === '' && MW.subject}
-          <span id={optionalId} className="mg-optional">
-            {MW.optional}
+      {follows == null && (
+        <div className="mg-subject-row">
+          <input
+            className="mg-subject"
+            value={draft.subject}
+            aria-label={MW.subject}
+            aria-invalid={wrong.subject == null ? undefined : true}
+            aria-describedby={wrong.subject == null ? optionalId : `${subjectId} ${optionalId}`}
+            readOnly={!tools}
+            data-focus="subject"
+            onChange={(event) => onDraft({ subject: event.target.value })}
+            onKeyDown={(event) => commandEnter(event, onSend)}
+          />
+          <span className={draft.subject === '' ? 'mg-subject-hint' : 'desk-unseen'} aria-hidden>
+            {draft.subject === '' && MW.subject}
+            <span id={optionalId} className="mg-optional">
+              {MW.optional}
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
+      )}
       {wrong.subject != null && (
         <p id={subjectId} className="desk-error mg-field-error">
           <Glyph name="alert" size={15} weight={2.2} />
@@ -593,6 +602,7 @@ export function Composer({
           <span>{previewOff}</span>
         </p>
       )}
+      {follows != null && <FollowLine count={follows} />}
     </form>
   );
 }
