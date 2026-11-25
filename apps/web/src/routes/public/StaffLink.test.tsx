@@ -120,6 +120,32 @@ const YOURS = {
   timeZone: 'Europe/Lisbon',
 };
 
+const SIGNED_IN = {
+  accessToken: 'a',
+  refreshExpiresAt: '2027-03-07T02:00:00+00:00',
+  sessionId: 's',
+  account: {
+    id: 'u_ana',
+    userId: 'u_ana',
+    name: 'Ana Sousa',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: null,
+    locale: 'en',
+    timezone: null,
+    verified: true,
+    complete: false,
+    needsOrganisation: false,
+    hasPassword: false,
+    emailAddresses: [],
+    phoneNumbers: [],
+    providers: [],
+  },
+};
+
+// The link, its code, then the app's code: more than findBy's default second under load.
+const THE_WAY_IN = { timeout: 3000 };
+
 const ANA: Session = {
   userId: 'u_ana',
   name: 'Ana Sousa',
@@ -198,29 +224,7 @@ describe('A link opened signed out (sc-4235)', () => {
       'POST /api/staff-links/sign-in/send': () => answer({ handle: 'h1', cooldownSeconds: 60 }),
       'POST /api/auth/phone-sign-in/state': () =>
         answer({ cooldownSeconds: 60, codeState: 'live', route: 'sms_only' }),
-      'POST /api/staff-links/sign-in': () =>
-        answer({
-          accessToken: 'a',
-          refreshExpiresAt: '2027-03-07T02:00:00+00:00',
-          sessionId: 's',
-          account: {
-            id: 'u_ana',
-            userId: 'u_ana',
-            name: 'Ana Sousa',
-            businessName: null,
-            countryCode: null,
-            organisationCountry: null,
-            locale: 'en',
-            timezone: null,
-            verified: true,
-            complete: false,
-            needsOrganisation: false,
-            hasPassword: false,
-            emailAddresses: [],
-            phoneNumbers: [],
-            providers: [],
-          },
-        }),
+      'POST /api/staff-links/sign-in': () => answer(SIGNED_IN),
       'POST /api/staff-links/look': () => answer(YOURS),
     });
 
@@ -233,6 +237,50 @@ describe('A link opened signed out (sc-4235)', () => {
     expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
     expect(asked).toContain('POST /api/staff-links/look {"token":"tok_ada"}');
+  });
+
+  it('with two-factor on, signs in by the code and the app’s code, and lands back on the link', async () => {
+    let verified = false;
+    const asked = routed({
+      'POST /api/staff-links/opened': () => answer(verified ? YOURS : OPEN),
+      'POST /api/staff-links/look': () => answer(verified ? YOURS : OPEN),
+      'POST /api/staff-links/sign-in/send': () => answer({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () =>
+        answer({ cooldownSeconds: 60, codeState: 'live', route: 'sms_only' }),
+      'POST /api/staff-links/sign-in': () =>
+        answer(
+          {
+            twoFactorChallenge: 'c1',
+            challengeExpiresAt: '2030-11-14T15:05:00+00:00',
+            email: null,
+            phone: { countryCode: 'PT', lastDigits: '4512' },
+            factors: { app: true, passkeys: false },
+          },
+          202,
+        ),
+      'POST /api/auth/two-factor/verify': () => {
+        verified = true;
+        return answer(SIGNED_IN);
+      },
+      'GET /api/orgs': () => answer({ organisations: [] }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send code' }));
+    fireEvent.change(await screen.findByLabelText('Code from the text'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Enter your code' }, THE_WAY_IN),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '654 321' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+
+    expect(await screen.findByRole('button', { name: 'Sign out' }, THE_WAY_IN)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
+    expect(asked.find((line) => line.startsWith('POST /api/auth/two-factor/verify'))).toContain(
+      '"challenge":"c1","code":"654321"',
+    );
   });
 
   it('says an alternative number cannot sign in', async () => {
