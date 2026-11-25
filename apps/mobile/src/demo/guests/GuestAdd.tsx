@@ -43,6 +43,8 @@ import {
   OVER_LIMIT_STATES,
   type ReviewRow,
   type ReviewState,
+  START_COUNTRY,
+  addHoldsChange,
   addedGuest,
   countryName,
   emailCheck,
@@ -209,7 +211,9 @@ export function AddGuest({
           ? LUCAS.name
           : start === 'addGroupNeeds'
             ? 'Abena Owusu'
-            : '',
+            : start === 'addDiscard'
+              ? BIMPE.name
+              : '',
   );
   const [email, setEmail] = useState(
     start === 'addDuplicate' ? 'm.silva@gmail.com' : kept ? BIMPE.email : lucas ? LUCAS.email : '',
@@ -217,7 +221,7 @@ export function AddGuest({
   const [greetAs, setGreetAs] = useState('');
   const [language, setLanguage] = useState<GuestLanguage | null>(lucas ? LUCAS.language : null);
   const [choosing, setChoosing] = useState(false);
-  const [country, setCountry] = useState('GB');
+  const [country, setCountry] = useState(START_COUNTRY);
   const [number, setNumber] = useState(
     start === 'addRefused' ? '7700 90' : kept ? BIMPE.number : '',
   );
@@ -228,6 +232,7 @@ export function AddGuest({
     start === 'addNotAdded' ? 'notAdded' : start === 'addOffline' ? 'offline' : null,
   );
   const [added, setAdded] = useState<string | null>(start === 'added' ? BIMPE.name : null);
+  const [discarding, setDiscarding] = useState(start === 'addDiscard');
   const [gn] = useState(() => addNeedsStart(start, guests));
   const group = useGroupChoice(gn, name.trim() === '' ? null : name.trim(), 'guests.add.group');
   const [needs, setNeeds] = useState<Needs>(gn.needs);
@@ -323,12 +328,36 @@ export function AddGuest({
     focusChecked(nameRef);
   };
 
+  const changed = addHoldsChange({
+    texts: [name, greetAs, email, number],
+    country,
+    language,
+    companions: companions.length,
+    needs: JSON.stringify(needs) !== JSON.stringify(NO_NEEDS),
+    group: group.name != null,
+  });
+  const discard: AskProps | null = discarding
+    ? {
+        title: W.discardTitle,
+        line: say.discardLine(name.trim()),
+        keep: { label: W.keepEditing, testID: 'guests.add.keep' },
+        confirm: { label: W.discardChanges, removes: true, testID: 'guests.add.discard' },
+        onKeep: () => setDiscarding(false),
+        onConfirm: () => {
+          setDiscarding(false);
+          onClose();
+        },
+        width: ASK_WIDTH,
+      }
+    : null;
+
   return (
     <PinnedScreen
       open={open}
       title={W.addGuest}
       opener={opener}
-      onCancel={onClose}
+      onCancel={() => (changed ? setDiscarding(true) : onClose())}
+      ask={discard}
       over={
         picking
           ? { layer: <IosPicker onClose={onPickClose} onDone={onPicked} />, onClose: onPickClose }

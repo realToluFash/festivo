@@ -8,6 +8,8 @@ use App\Entity\Event;
 use App\Entity\EventCover;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Type;
+use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<EventCover> */
 final class EventCoverRepository extends ServiceEntityRepository
@@ -39,5 +41,14 @@ final class EventCoverRepository extends ServiceEntityRepository
         }
 
         return $covers;
+    }
+
+    /** @return list<string> every cover its events hold, a deleted event's included until the purge removes it */
+    public function photoKeysOf(Uuid $organisationId): array
+    {
+        return Type\vec(Type\string())->coerce($this->getEntityManager()->getConnection()->fetchFirstColumn(
+            'SELECT c.photo_key FROM event_covers c JOIN events e ON e.id = c.event_id WHERE e.organisation_id = :organisation',
+            ['organisation' => $organisationId->toRfc4122()],
+        ));
     }
 }

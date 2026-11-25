@@ -17,7 +17,8 @@ import {
   everyoneOn,
   type EventRole,
   FIRST_ROLE,
-  firstName,
+  calledIn,
+  keepWords,
   inOrganisation,
   leadOff,
   type Level,
@@ -52,6 +53,7 @@ import {
   RowWords,
   TextAction,
 } from '../components/SettingsParts.tsx';
+import { AddressIn, WholeAddress } from '../components/WholeAddress.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -71,6 +73,7 @@ export function RoleDialog({
   roleFails,
   organisation,
   removing,
+  asking: askingFirst = false,
   onSaved,
   onLost,
   onClose,
@@ -80,6 +83,7 @@ export function RoleDialog({
   roleFails: boolean;
   organisation?: string;
   removing?: Removing | undefined;
+  asking?: boolean;
   onSaved: (role: Level) => void;
   onLost: (words: string) => void;
   onClose: () => void;
@@ -90,7 +94,7 @@ export function RoleDialog({
   const [saving, setSaving] = useState<Saving>('idle');
   const [lost, setLost] = useState<string | null>(null);
   const [live, setLive] = useState('');
-  const [asking, setAsking] = useState(removing?.start != null);
+  const [asking, setAsking] = useState(askingFirst || removing?.start != null);
   const [gone, setGone] = useState<number | null>(
     removing?.start === 'held' ? removing.heldMs : null,
   );
@@ -202,7 +206,10 @@ export function RoleDialog({
       >
         <div className="people-who">
           <Avatar initials={person.initials} tone={person.tone} size="face" />
-          <RowWords title={person.name} lines={[sheetLine(person, organisation)]} />
+          <RowWords
+            title={<WholeAddress text={person.name} />}
+            lines={[sheetLine(person, organisation)]}
+          />
         </div>
         {person.door != null ? (
           <div className="people-ends dc-door-lines">
@@ -219,7 +226,7 @@ export function RoleDialog({
           </p>
         )}
         <fieldset className="desk-choices">
-          <legend className="desk-unseen">{`${firstName(person)}’s role on this event`}</legend>
+          <legend className="desk-unseen">{`${calledIn(person)}’s role on this event`}</legend>
           <ul className="desk-rows">{EVENT_ROLES.map(row)}</ul>
           {person.outside && (
             <>
@@ -238,9 +245,9 @@ export function RoleDialog({
       </Dialog>
       {asking && (
         <Ask
-          title={removeTitle(person)}
+          title={<AddressIn text={person.name} words={removeTitle} />}
           line={removeLine(person, organisation)}
-          keep={`Keep ${firstName(person)}`}
+          keep={keepWords(person)}
           go="Remove"
           busy={gone == null ? undefined : removing?.words}
           onKeep={() => setAsking(false)}

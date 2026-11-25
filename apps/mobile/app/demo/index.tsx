@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Text } from '../../src/components/Text.tsx';
 import { DemoScreen, NavBar } from '../../src/demo/DemoScreen.tsx';
 import { BELL_BOARDS } from '../../src/demo/bell/BellBoards.ts';
+import { USAGE_WARNING_BOARDS } from '../../src/demo/usageWarning/UsageWarningBoards.ts';
 import { BOLD_TEXT_BOARDS } from '../../src/demo/boldText/BoldTextBoards.ts';
 import { BUDGET_BOARDS } from '../../src/demo/budget/BudgetBoards.ts';
 import { PILL_FIT_BOARDS } from '../../src/demo/pillFit/PillFitBoards.ts';
@@ -31,6 +32,11 @@ import {
 } from '../../src/demo/filterSize/FilterSizeBoards.ts';
 import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
+import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
+import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
+import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
+import { BELL_SIZE_BOARDS } from '../../src/demo/bellSize/BellSizeBoards.ts';
+import { BAND_LIVE_BOARDS } from '../../src/demo/bandLive/BandLiveBoards.ts';
 import { CALENDAR_HEADER_BOARDS } from '../../src/demo/calendarHeader/CalendarHeaderBoards.ts';
 import { SWITCHER_BOARDS } from '../../src/demo/OrgSwitcherBoards.ts';
 import { Heading } from '../../src/steps/Lines.tsx';
@@ -134,6 +140,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: BELL_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
+    page: '37 · Billing · The 80% and 100% usage warning in the bell (sc-3931)',
+    boards: USAGE_WARNING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
     page: 'Bold text · the weight map',
     boards: BOLD_TEXT_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
@@ -168,6 +182,46 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Events · the Filter menu’s drilled levels whole at the largest text sizes (sc-75213)',
     boards: FILTER_DRILLED_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the greeting and headings whole at the largest text sizes (sc-91291)',
+    boards: TODAY_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Settings, Events and the Calendar · the organisation pill keeps its words whole at the largest text sizes (sc-92464)',
+    boards: TOP_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'The iPad bell’s panel · its heading whole and Mark all read beside it or under it at the largest text sizes (sc-92580)',
+    boards: BELL_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the scrolled band’s title between the tile and Search at the largest text sizes (sc-92248)',
+    boards: BAND_TITLE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · the upright iPad’s band holds its live line whole under the tabs at the largest text sizes (sc-92315)',
+    boards: BAND_LIVE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
@@ -2461,6 +2515,16 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         title: 'People · nobody left to add',
         what: 'Everyone in Ire Events is on it already',
         href: '/demo/people?state=everyoneOn',
+      },
+      {
+        title: 'People · a long organisation name',
+        what: 'Outside Fundação Comunitária…: at AX1 to AX5 the tag keeps every word whole',
+        href: '/demo/people?state=longOrganisation',
+      },
+      {
+        title: 'People · a one-word organisation name',
+        what: 'A 50-letter name: at AX5 the tag draws at 12.5 pt and only that word breaks',
+        href: '/demo/people?state=oneWordOrganisation',
       },
       {
         title: 'People · loading',

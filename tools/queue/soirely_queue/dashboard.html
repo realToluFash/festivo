@@ -216,6 +216,35 @@
         margin-left: auto;
         padding: 3px 10px;
       }
+      .card .control ~ .control {
+        margin-left: 0;
+      }
+      .settings {
+        margin-bottom: 20px;
+        display: grid;
+        gap: 12px;
+      }
+      .settings[hidden] {
+        display: none;
+      }
+      .settings-fields {
+        display: grid;
+        grid-template-columns: minmax(120px, auto) minmax(160px, 260px) 1fr;
+        gap: 8px 12px;
+        align-items: center;
+        font-size: 13px;
+      }
+      .settings-fields input,
+      .settings-fields select {
+        font: inherit;
+        font-size: 13px;
+        min-width: 0;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+      }
       .kpis {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
@@ -872,6 +901,7 @@
       </header>
       <div class="alerts" id="alerts"></div>
       <div class="controls" id="controls" aria-live="polite"></div>
+      <div class="panel settings" id="settings" aria-live="polite" hidden></div>
       <div class="kpis" id="kpis"></div>
       <section id="logins-section" hidden>
         <h2>Claude logins <span class="count" id="logins-count"></span></h2>
@@ -1342,6 +1372,13 @@
             ? controlButton('resume-everywhere', 'Resume every machine', null, 'copy quiet')
             : controlButton('pause-everywhere', 'Pause every machine', null, 'copy quiet'),
         ];
+        bits.push(
+          `<button class="copy quiet" type="button" data-settings="defaults">Settings</button>`,
+        );
+        if (d.settings_undo && controlsOn)
+          bits.push(
+            `<button class="copy quiet" type="button" data-settings-undo="${esc(d.settings_undo)}"${failing ? ' disabled' : ''}>Undo last change</button>`,
+          );
         if (!controlsOn)
           bits.push(
             `<span>Controls are off on this page. Open it once as <code>${esc(location.origin)}/?token=…</code>, with <code>SQ_WEB_TOKEN</code> from <code>~/.config/soirely/env</code>.</span>`,
@@ -1373,6 +1410,254 @@
         if (button) control(button.dataset.control, button.dataset.controlRole || null);
       });
 
+      // A role's own fields; the machine's Settings shows the same in defaults, then its cap
+      // and its account.
+      const ACCOUNT = ['claudeConfigDir', 'Claude account'];
+      const FIELDS = [
+        ['model', 'Model'],
+        ['effort', 'Effort'],
+        ['inboxEffort', 'Inbox effort'],
+        ['wakeEvery', 'Wakes every'],
+        ['workers', 'Workers'],
+        ['maxBudgetUsd', 'Budget per run, USD'],
+      ];
+      const NUMBERS = ['workers', 'maxBudgetUsd', 'dailyBudgetUsd'];
+      const FROM = {
+        role: 'set for this role',
+        defaults: 'from defaults',
+        'built-in': "sq's floor",
+      };
+      let settingsOpen = null;
+
+      // Each field as the form shows it: its own value, the one in force, and where that is set.
+      function settingsFields(s) {
+        const d = s.data;
+        if (s.where !== 'defaults')
+          return FIELDS.concat(d.accounts ? [ACCOUNT] : []).map(([key, label]) => ({
+            key,
+            label,
+            ...d.roles[s.where][key],
+          }));
+        const own = [['dailyBudgetUsd', 'Daily budget, USD']].concat(d.accounts ? [ACCOUNT] : []);
+        return FIELDS.map(([key, label]) => ({ key, label, ...d.defaults[key] })).concat(
+          own.map(([key, label]) => ({
+            key,
+            label,
+            value: d.machine[key],
+            in_force: d.machine[key],
+            from: 'machine',
+            machine: true,
+          })),
+        );
+      }
+
+      // The value in force and where it is set; an account also says who it runs as.
+      function inForce(s, f) {
+        if (f.in_force == null) return 'not set';
+        const from = FROM[f.from] || (f.from === 'machine' ? 'this machine' : 'not set');
+        if (f.key !== 'claudeConfigDir') return `${f.in_force}, ${from}`;
+        const held = (s.data.accounts || []).find((a) => a.folder === f.in_force);
+        return `${f.in_force} (${(held && held.account) || 'not logged in'}), ${from}`;
+      }
+
+      function settingsInput(s, f, fields) {
+        const d = s.data;
+        const role = s.where !== 'defaults';
+        const clearable = role || !['model', 'effort'].includes(f.key);
+        const blank =
+          f.key === 'dailyBudgetUsd'
+            ? 'No daily cap'
+            : role
+              ? `From defaults${f.from === 'role' ? '' : ` (${f.in_force ?? 'unset'})`}`
+              : f.from === 'built-in'
+                ? `sq's floor (${f.in_force})`
+                : 'Unset';
+        const attrs = `data-field="${f.key}" aria-label="${esc(f.label)}"${controlsOn ? '' : ' disabled'}`;
+        if (f.key === 'claudeConfigDir') {
+          const blankAccount = `The machine's (${d.machine.claudeConfigDir || 'none'})`;
+          // A folder in force that the logins do not list stays chosen, so a Save of
+          // another field does not move the account to the first folder listed.
+          const listed = d.accounts.some((a) => a.folder === f.value);
+          const kept =
+            f.value && !listed
+              ? `<option value="${esc(f.value)}" selected>${esc(`${f.value}: not listed`)}</option>`
+              : '';
+          return `<select ${attrs}>${role ? `<option value="">${esc(blankAccount)}</option>` : ''}${kept}${d.accounts
+            .map((a) => {
+              const who = a.account || 'not logged in';
+              const on = a.roles.length ? `; ${a.roles.join(', ')}` : '';
+              return `<option value="${esc(a.folder)}"${a.folder === f.value ? ' selected' : ''}>${esc(`${a.folder}: ${who}${on}`)}</option>`;
+            })
+            .join('')}</select>`;
+        }
+        if (['model', 'effort', 'inboxEffort'].includes(f.key)) {
+          const model = fields.find((g) => g.key === 'model').in_force;
+          const options = f.key === 'model' ? Object.keys(d.models) : d.models[model] || [];
+          return `<select ${attrs}>${clearable ? `<option value="">${esc(blank)}</option>` : ''}${options
+            .map((o) => `<option${o === f.value ? ' selected' : ''}>${esc(o)}</option>`)
+            .join('')}</select>`;
+        }
+        const one = f.key === 'workers' && role && !d.parallel.includes(s.where);
+        const kind = NUMBERS.includes(f.key)
+          ? ` type="number" min="${f.key === 'workers' ? 1 : 0}"${one ? ' max="1"' : ''} step="${f.key === 'workers' ? 1 : 'any'}"`
+          : ' type="text" spellcheck="false" autocomplete="off"';
+        return `<input ${attrs}${kind} value="${esc(f.value ?? '')}" placeholder="${esc(blank)}" />`;
+      }
+
+      function drawSettings() {
+        const panel = document.getElementById('settings');
+        const s = settingsOpen;
+        panel.hidden = !s;
+        if (!s) return (panel.innerHTML = '');
+        const name = s.m || localName || 'this machine';
+        const title = s.where === 'defaults' ? `Defaults on ${name}` : `${s.where} on ${name}`;
+        const said = s.said
+          ? `<p class="control-said${s.failed ? ' fail' : ''}">${esc(s.said)}</p>`
+          : '';
+        if (!s.data) {
+          panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div>${said || '<p class="role-title">Reading agents.json…</p>'}
+      <div class="login-row"><button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+          return;
+        }
+        if (s.where !== 'defaults' && !s.data.roles[s.where]) {
+          panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div><p class="control-said fail">${esc(s.where)} is not listed in this machine's agents.json, so it has no settings to change here.</p>
+      <div class="login-row"><button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+          return;
+        }
+        const fields = settingsFields(s);
+        panel.innerHTML = `<div class="k"><b>${esc(title)}</b></div>
+      <form class="settings-fields" id="settings-form">${fields
+        .map(
+          (f) =>
+            `<span>${esc(f.label)}</span>${settingsInput(s, f, fields)}<span class="role-title">${esc(inForce(s, f))}</span>`,
+        )
+        .join('')}</form>${said}
+      <div class="login-row">${controlsOn ? `<button class="copy" type="button" data-settings-save${s.saving ? ' disabled' : ''}>Save</button>` : ''}<button class="copy quiet" type="button" data-settings-close>Close</button></div>`;
+      }
+
+      async function readSettings(s) {
+        const response = await fetch(
+          (s.m ? `m/${encodeURIComponent(s.m)}/` : '') + 'settings.json',
+          {
+            cache: 'no-store',
+          },
+        );
+        const said = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(said.error || `it answered ${response.status}`);
+        return said;
+      }
+
+      async function openSettings(where) {
+        const s = (settingsOpen = { m: machine || '', where, data: null });
+        drawSettings();
+        try {
+          s.data = await readSettings(s);
+        } catch (error) {
+          Object.assign(s, { said: error.message, failed: true });
+        }
+        if (s === settingsOpen) drawSettings();
+        document.getElementById('settings').scrollIntoView({ block: 'nearest' });
+      }
+
+      // Only what the form changed, a cleared field as null. A browser reads a number field it
+      // cannot parse as empty, which would clear the field, so that is refused here by name.
+      function settingsChanges(s) {
+        const changes = { here: {}, machine: {}, unread: [] };
+        for (const f of settingsFields(s)) {
+          const input = document.querySelector(`#settings-form [data-field="${f.key}"]`);
+          if (!input) continue;
+          if (input.validity && input.validity.badInput) {
+            changes.unread.push(f.label);
+            continue;
+          }
+          const typed = input.value.trim();
+          let value = typed === '' ? null : typed;
+          if (value !== null && NUMBERS.includes(f.key) && !Number.isNaN(Number(value)))
+            value = Number(value);
+          if (value !== (f.value ?? null)) changes[f.machine ? 'machine' : 'here'][f.key] = value;
+        }
+        return changes;
+      }
+
+      async function postSettings(path, body) {
+        const response = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const said = await response.json().catch(() => ({}));
+        return {
+          ok: response.ok,
+          said: said.said || said.error || `sq web answered ${response.status}`,
+          settings: said.settings,
+        };
+      }
+
+      async function saveSettings() {
+        const s = settingsOpen;
+        if (!s || !s.data || s.saving) return;
+        const changes = settingsChanges(s);
+        if (changes.unread.length) {
+          Object.assign(s, { said: `${changes.unread.join(', ')}: not a number`, failed: true });
+          return drawSettings();
+        }
+        const saves = Object.fromEntries(
+          [
+            [s.where, changes.here],
+            ['machine', changes.machine],
+          ].filter(([, fields]) => Object.keys(fields).length),
+        );
+        if (!Object.keys(saves).length) {
+          Object.assign(s, { said: 'Nothing changed.', failed: false });
+          return drawSettings();
+        }
+        s.saving = true;
+        drawSettings();
+        const answer = await postSettings('settings', {
+          machine: s.m,
+          changes: saves,
+          revision: s.data.revision,
+        });
+        if (answer.settings) s.data = answer.settings;
+        Object.assign(s, { saving: false, said: answer.said, failed: !answer.ok });
+        if (s === settingsOpen) drawSettings();
+        refresh();
+      }
+
+      // The revision the page last read, from an open Settings or the status: the server
+      // refuses the undo if agents.json changed since, so a hand edit is never put back.
+      async function undoSettings(button) {
+        button.disabled = true;
+        const s = { m: machine || '' };
+        const open = settingsOpen && settingsOpen.m === s.m && settingsOpen.data;
+        try {
+          const answer = await postSettings('settings/undo', {
+            machine: s.m,
+            revision: open && open.undo ? open.revision : button.dataset.settingsUndo,
+          });
+          controlSaid = { text: answer.said, failed: !answer.ok };
+          if (settingsOpen && settingsOpen.m === s.m && answer.settings) {
+            settingsOpen.data = answer.settings;
+            drawSettings();
+          }
+        } catch (error) {
+          controlSaid = { text: error.message, failed: true };
+        }
+        await refresh();
+      }
+
+      document.addEventListener('click', (event) => {
+        const open = event.target.closest('[data-settings]');
+        if (open) return openSettings(open.dataset.settings);
+        if (event.target.closest('[data-settings-save]')) return saveSettings();
+        const undo = event.target.closest('[data-settings-undo]');
+        if (undo) return undoSettings(undo);
+        if (event.target.closest('[data-settings-close]')) {
+          settingsOpen = null;
+          drawSettings();
+        }
+      });
+
       function roleCard(r) {
         const [cls, label] = STATES[r.state] || ['', r.state];
         const stateLabel =
@@ -1384,8 +1669,9 @@
         const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
     <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
     ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting ?? '?'}</div><div class="l">waiting</div></div>`}</div>`;
+        const settingsButton = `<button class="copy quiet control" type="button" data-settings="${esc(r.role)}">Settings</button>`;
         if (r.state === 'refused')
-          return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span></div>
+          return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span>${settingsButton}</div>
       <div class="block"><div class="v">${esc(r.detail)}</div></div></div>`;
         const tags = [
           `<span class="pill ${cls}">${esc(stateLabel)}</span>`,
@@ -1398,6 +1684,7 @@
           tags.push(controlButton('stop', 'Stop', r.role, 'copy quiet control'));
         else if (r.state === 'stopped')
           tags.push(controlButton('start', 'Start', r.role, 'copy control'));
+        tags.push(settingsButton);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
         if (r.prompt)
@@ -1766,6 +2053,8 @@
           machine = shown;
           data = null;
           controlSaid = null;
+          settingsOpen = null;
+          drawSettings();
           peerError = null;
           failing = false;
           sessionId = null;

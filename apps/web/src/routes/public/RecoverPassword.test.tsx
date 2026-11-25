@@ -366,7 +366,7 @@ describe('setting a new password from the link', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Cannot reach Soirely' }),
     ).toBeDefined();
-    expect(screen.queryByText("This link doesn't work")).toBeNull();
+    expect(screen.queryByText('This link doesn’t work')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
@@ -417,7 +417,7 @@ describe('setting a new password from the link', () => {
     [
       'an unknown link',
       () => problem('reset_link_invalid', 404),
-      "This link doesn't work",
+      'This link doesn’t work',
       'title',
     ],
   ];
@@ -478,7 +478,7 @@ describe('setting a new password from the link', () => {
     'Enter your code': () => screen.getByRole('textbox'),
     'This link has expired': () => screen.getByRole('link', { name: 'Send a new link' }),
     'This link has already been used': () => screen.getByRole('link', { name: 'Send a new link' }),
-    "This link doesn't work": () => screen.getByRole('link', { name: 'Send a new link' }),
+    'This link doesn’t work': () => screen.getByRole('link', { name: 'Send a new link' }),
     'Cannot reach Soirely': () => screen.getByRole('button', { name: 'Try again' }),
     'That did not work': () => screen.getByRole('button', { name: 'Try again' }),
   };
@@ -792,7 +792,7 @@ describe('setting a new password from the link', () => {
   it.each([
     ['reset_link_used', 410, 'This link has already been used'],
     ['reset_link_expired', 410, 'This link has expired'],
-    ['reset_link_invalid', 404, "This link doesn't work"],
+    ['reset_link_invalid', 404, 'This link doesn’t work'],
   ])('shows its own page for %s, with a way to send a new link', async (code, status, title) => {
     answering({ 'POST /api/auth/password/reset/check': () => problem(code, status) });
     at('/reset-password?token=t1');

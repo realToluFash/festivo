@@ -699,6 +699,64 @@ describe('two-factor at a desk', () => {
     ).toHaveLength(2);
   });
 
+  it('asks a passkey member for a recovery code where this environment offers no passkeys (sc-89577)', async () => {
+    let sheets = 0;
+    vi.stubGlobal('PublicKeyCredential', class {});
+    Object.defineProperty(navigator, 'credentials', {
+      value: {
+        get: async () => {
+          sheets += 1;
+          return new Promise(() => {});
+        },
+      },
+      configurable: true,
+    });
+    const sent = answering(
+      {
+        'GET /api/auth/two-factor': () =>
+          json({
+            on: true,
+            recoveryCodesLeft: 10,
+            passkeysOffered: false,
+            mostPasskeys: 10,
+            factors: [
+              {
+                kind: 'passkey',
+                id: 'pk-1',
+                provider: 'Apple Passwords',
+                synced: true,
+                addedAt: '2026-11-20T10:00:00+00:00',
+              },
+            ],
+          }),
+      },
+      true,
+    );
+    openSecurity();
+
+    fireEvent.click(
+      await section('Two-factor authentication').findByRole('button', { name: /Recovery codes/ }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Recovery codes' })).getByRole('button', {
+        name: 'Make new codes',
+      }),
+    );
+    fireEvent.click(
+      asked('Make new recovery codes?').getByRole('button', { name: 'Make new codes' }),
+    );
+
+    expect(
+      await dialog(/Confirm it.s you/).findByText(/^Enter one of your recovery codes\. Each/),
+    ).toBeDefined();
+    expect(dialog(/Confirm it.s you/).queryByText('Waiting for your passkey…')).toBeNull();
+    expect(
+      dialog(/Confirm it.s you/).queryByRole('button', { name: 'Use a passkey instead' }),
+    ).toBeNull();
+    expect(sheets).toBe(0);
+    expect(sent.filter((one) => one.call.includes('passkeys/options'))).toHaveLength(0);
+  });
+
   it('says a wrong code is wrong, and keeps it on', async () => {
     answering(
       { 'POST /api/auth/two-factor/disable': () => problem('two_factor_code_invalid', 422) },
@@ -1133,20 +1191,20 @@ describe('linking and unlinking at a desk', () => {
     ).toBeDefined();
   });
 
-  it("says Google didn't finish under its row when the trip failed, and nothing when it was cancelled", async () => {
+  it('says Google didn’t finish under its row when the trip failed, and nothing when it was cancelled', async () => {
     returnedFrom({ kind: 'link' }, { failed: 'failed' });
     answering({});
     const { unmount } = openSecurity();
 
     expect(
-      await screen.findByText("Google didn't finish, so nothing changed. Try again."),
+      await screen.findByText('Google didn’t finish, so nothing changed. Try again.'),
     ).toBeDefined();
     unmount();
 
     returnedFrom({ kind: 'link' }, { failed: 'cancelled' });
     openSecurity();
     await screen.findByText('Two-factor is off');
-    expect(screen.queryByText(/didn't finish/)).toBeNull();
+    expect(screen.queryByText(/didn’t finish/)).toBeNull();
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 

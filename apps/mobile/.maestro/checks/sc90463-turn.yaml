@@ -1,0 +1,51 @@
+# sc-90463: on the iPad at the device's text size (set outside the flow), open PAGE upright, then turn it on its side and back three times; the sidebar at its top and foot after each turn. Vars: METRO_URL, PAGE.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/${PAGE}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: up-0
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-1-top
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: side-1-foot
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: up-1
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-2-top
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: side-2-foot
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: up-2
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side-3-top
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: side-3-foot
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- swipe: { start: '8%, 15%', end: '8%, 85%', duration: 600 }
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: up-3

@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\CatalogueVersion;
 use App\Entity\Subscription;
+use App\Enum\SubscriptionStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
@@ -45,5 +46,18 @@ final class SubscriptionRepository extends ServiceEntityRepository
 
         /** @var list<Subscription> */
         return $query->getQuery()->getResult();
+    }
+
+    /** @return list<Subscription> those a provider bills and has not cancelled, for the nightly reconciliation (sc-3933) */
+    public function findPaying(): array
+    {
+        /** @var list<Subscription> */
+        return $this->createQueryBuilder('s')
+            ->andWhere('s.externalRef IS NOT NULL')
+            ->andWhere('s.status != :cancelled')
+            ->setParameter('cancelled', SubscriptionStatus::Cancelled->value)
+            ->orderBy('s.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

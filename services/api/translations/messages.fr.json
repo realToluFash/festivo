@@ -519,5 +519,8 @@
     "menu.default_option": "{option} fait partie du plat par défaut du service « {course} ». Choisissez d’abord un autre plat par défaut, dans « Modifier le service ».",
     "menu.default_move": "Changer le plat par défaut change aussi celui des invités qui l’ont reçu. Confirmez pour continuer.",
     "menu.change_asks": "Ce changement demande aux invités de choisir à nouveau. Confirmez pour continuer.",
-    "menu.event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié."
+    "menu.event_over": "La date de cet événement est passée, son menu ne peut donc plus changer. Rien n’a été modifié.",
+    "billing.plan_sold_by_contract": "Ce forfait est vendu sur contrat, et non par paiement en ligne. Contactez Soirely pour y souscrire.",
+    "billing.plan_not_priced": "Ce forfait n’a pas de prix dans votre devise de facturation.",
+    "billing.nothing_paid_through_provider": "Il n’y a aucun moyen de paiement à mettre à jour avant le paiement d’un forfait."
 }

@@ -17,6 +17,7 @@ import { InsideField } from '../../steps/InsideField.tsx';
 import { Heading, Says } from '../../steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../steps/rules.ts';
 import { useCountdown } from '../../steps/useCountdown.ts';
+import { useAccessibilitySizes } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Choices } from '../Choices.tsx';
 import { COUNTRIES } from '../countries.ts';
@@ -49,6 +50,7 @@ import {
   youreIn,
 } from './DoorCodeWords.ts';
 import { SEND_MS } from './HoldItUp.tsx';
+import { TurningButton } from './TurningButton.tsx';
 import { InsideEvent, You } from './Inside.tsx';
 import {
   afterPhoneCode,
@@ -294,7 +296,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
     <DemoScreen
       nav={<NavBar onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.continue}
           busy={sending}
           onPress={send}
@@ -375,7 +377,7 @@ function NameStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string }) 
     <DemoScreen
       nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={joining ? W.joining : W.join}
           busy={joining}
           onPress={join}
@@ -426,6 +428,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
   const [nameSaid, setNameSaid] = useState(flow.nameSaid);
   const [numberSaid, setNumberSaid] = useState(flow.numberSaid);
   const [sending, setSending] = useState(flow.held);
+  const over = useAccessibilitySizes();
 
   useEffect(() => {
     if (!sending) return;
@@ -468,7 +471,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
     <DemoScreen
       nav={<NavBar left="close" onLeft={() => go({ step: 'welcome' })} />}
       foot={
-        <PrimaryButton
+        <TurningButton
           label={W.sendCode}
           busy={sending}
           onPress={send}
@@ -504,7 +507,8 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
           {nameSaid != null && <Says words={nameSaid} />}
         </View>
         <View>
-          <View style={styles.phoneRow}>
+          {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
+          <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
             <SelectRow
               label={W.countryCode}
               country={country}
@@ -513,7 +517,7 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
               pickerRef={picker}
               testID="redeem.event.country"
             />
-            <View style={styles.grow}>
+            <View style={over ? undefined : styles.grow}>
               <InsideField
                 ref={numberField}
                 label={W.mobileNumber}
@@ -651,6 +655,7 @@ const styles = StyleSheet.create({
   tile: { marginTop: tokens.spaceLg },
   fields: { marginTop: tokens.space3xl, gap: tokens.spaceLg },
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+  phoneOver: { gap: tokens.spaceSm },
   refused: { color: tokens.colorBrokenText },
   refusal: { marginTop: tokens.space3xl },
   refusalWords: { gap: tokens.spaceXxs },

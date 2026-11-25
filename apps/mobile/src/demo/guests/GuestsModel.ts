@@ -184,6 +184,7 @@ export const ADD_STATES = [
   'added',
   'addNotAdded',
   'addOffline',
+  'addDiscard',
   'picker',
   'androidPick',
   'androidNone',
@@ -300,6 +301,28 @@ function one<T extends string>(states: readonly T[], value: string | null | unde
 
 export const guestsStateOf = (value: string | undefined) => one(GUESTS_STATES, value);
 export const doorStateOf = (value: string | undefined) => one(DOOR_STATES, value);
+
+/** The country Add guest's number starts on. */
+export const START_COUNTRY = 'GB';
+
+/** Add guest holds a change once anything differs from the empty form, so its Cancel asks (sc-82245). */
+export function addHoldsChange(form: {
+  texts: readonly string[];
+  country: string;
+  language: string | null;
+  companions: number;
+  needs: boolean;
+  group: boolean;
+}): boolean {
+  return (
+    form.texts.some((text) => text.trim() !== '') ||
+    form.country !== START_COUNTRY ||
+    form.language != null ||
+    form.companions > 0 ||
+    form.needs ||
+    form.group
+  );
+}
 
 export function isIn<T extends string>(states: readonly T[], state: string | null): state is T {
   return state != null && (states as readonly string[]).includes(state);
@@ -1279,6 +1302,14 @@ export function countsAt(
   return state === 'first' ? countsFrom(guests) : countsOf(guests, added);
 }
 
+/** Overview's Guests block (sc-30303): an event's own sample, nobody invited on a draft, and no block for an event the demo has no list for. */
+export function overviewCountsOf(event: string, phase: string): Counts | null {
+  const own = ownStateOf(event);
+  if (phase === 'draft') return own === 'draft' ? DRAFT : countsFrom([]);
+  if (own != null) return own === 'draft' ? DRAFT : PAUSED;
+  return event === WEDDING ? countsOf(GUESTS) : null;
+}
+
 /** Guests as it opens on an event: the state, the list, the counts and the card, all from the event when the URL gives no state. */
 export function guestsOpening(given: GuestsState | null, event: string, locale: string) {
   const state = startStateOf(given, event);
@@ -1373,6 +1404,14 @@ const QUIET: AreaStart = {
   added: 0,
   walkIn: false,
 };
+
+export function guestPageShows(
+  phase: AreaStart['guestPhase'],
+  hasGuest: boolean,
+): 'guest' | 'loading' | 'notFound' {
+  if (phase === 'notFound') return 'notFound';
+  return phase === 'loading' || !hasGuest ? 'loading' : 'guest';
+}
 
 export function guestOf(state: GuestsState | null): string | null {
   switch (state) {

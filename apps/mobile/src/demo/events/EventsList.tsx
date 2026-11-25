@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import {
   FIGURE_OPENS,
@@ -123,6 +124,7 @@ export function EventsList({
 }) {
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
+  const shownLocale = dateLocale();
   const now = useMemo(() => new Date(CLOCKS.reader), []);
   const start = useMemo(() => listStart(state), [state]);
   const [tab, setTab] = useState(start.tab);
@@ -174,8 +176,12 @@ export function EventsList({
     [looking, events, searched, filters, now, locale],
   );
   const hosts = useMemo(() => hostNames(EVENTS, locale), [locale]);
-  const filterWords = useFilterWords(filters, locale);
-  const calendar: Calendar = { today: wallDay(now, READER_ZONE), firstDay: 1, locale };
+  const filterWords = useFilterWords(filters, shownLocale);
+  const calendar: Calendar = {
+    today: wallDay(now, READER_ZONE),
+    firstDay: 1,
+    locale: shownLocale,
+  };
 
   useEffect(() => {
     if (typed === searched) return;
@@ -222,7 +228,7 @@ export function EventsList({
       <View>
         <Row
           title={event.name}
-          line={rowLine(event, locale)}
+          line={rowLine(event, shownLocale)}
           lead={<EventThumb event={event} />}
           tag={rowTag(event, everyPhase)}
           value={wide ? (howSoon(event, now) ?? undefined) : undefined}
@@ -341,7 +347,7 @@ export function EventsList({
         <>
           <EventsFilterMenu
             at={menuAt}
-            onClose={() => setMenuAt(null)}
+            onAt={setMenuAt}
             opener={filterRef}
             filters={filters}
             onFilters={setFilters}
@@ -408,7 +414,7 @@ export function EventsList({
               <EventCard
                 event={card}
                 now={now}
-                locale={locale}
+                locale={shownLocale}
                 wide={wide}
                 onOpen={() => openEvent(card.id)}
                 takes={() => true}
@@ -444,7 +450,7 @@ export function EventsList({
             count: group.events.length,
             rows: <RowList items={group.events.map((event) => row(event, true))} />,
           }))}
-          locale={locale}
+          locale={shownLocale}
           onClearSearch={clearSearch}
           onClearFilters={() => setFilters(NO_FILTERS)}
         />

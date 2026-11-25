@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
-import { switcherStateOf } from '../OrgSwitcherModel.ts';
+import { type Place, switcherStateOf } from '../OrgSwitcherModel.ts';
 import { PHONE_TAB_BAR, type Tab } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { useCoverStatusBar } from '../Welcome.tsx';
@@ -50,10 +50,12 @@ export function EventsShell({
   told: start,
   switcher,
   looking = OWNER,
+  place = null,
   children,
 }: {
   told?: string | undefined;
   switcher?: string | undefined;
+  place?: Place | null;
   looking?: Looking;
   children: ReactNode;
 }) {
@@ -96,7 +98,7 @@ export function EventsShell({
 
   return (
     <ShellContext.Provider value={shell}>
-      <OrgSwitcherProvider state={switcherStateOf(switcher)} tell={tell}>
+      <OrgSwitcherProvider state={switcherStateOf(switcher)} place={place} tell={tell}>
         <View style={styles.fill}>
           {children}
           {told != null && (

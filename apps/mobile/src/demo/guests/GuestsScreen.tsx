@@ -19,6 +19,7 @@ import {
   moveScreenReaderFocus,
 } from '../../components/screenReaderFocus.ts';
 import { Text, type TextHandle } from '../../components/Text.tsx';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { type AreaBadge, EventFrame } from '../events/EventFrame.tsx';
 import { OfflineBand } from '../events/EventsList.tsx';
@@ -432,7 +433,7 @@ export function GuestsScreen({
         onShowAll={() => setPaste({ ...paste, all: true })}
         typed={paste.typed}
         onTyped={(typed) => setPaste({ ...paste, typed })}
-        rows={whoseRows(guests, paste.typed, locale, t)}
+        rows={whoseRows(guests, paste.typed, dateLocale(), t)}
         waiting={waitingCount(guests)}
         onPick={pickWhose}
         onBack={closeWhose}

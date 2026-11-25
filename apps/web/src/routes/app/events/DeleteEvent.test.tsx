@@ -176,7 +176,7 @@ describe('Delete an event (sc-3592)', () => {
 
     expect(
       screen.getByText(
-        "Removes the event and everything in it for your whole team. Guests following its link see that it isn't available.",
+        'Removes the event and everything in it for your whole team. Guests following its link see that it isn’t available.',
       ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Delete event…' })).toBeDefined();
@@ -199,7 +199,7 @@ describe('Delete an event (sc-3592)', () => {
     );
     expect(
       within(dialog).getByText(
-        "It's a draft with nobody on its guest list. It will be removed for your whole team.",
+        'It’s a draft with nobody on its guest list. It will be removed for your whole team.',
       ),
     ).toBeDefined();
     expect(within(dialog).queryByRole('textbox')).toBeNull();
@@ -300,8 +300,8 @@ describe('Delete an event (sc-3592)', () => {
     ).toEqual([
       'This removes, for your whole team:',
       'the event, its details and its schedule',
-      "Guests following their link will see that it isn't available.",
-      "If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it's gone for good.",
+      'Guests following their link will see that it isn’t available.',
+      'If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it’s gone for good.',
     ]);
     const field = within(dialog).getByLabelText('Type Adaeze and Tunde to delete it');
     await waitFor(() => expect(document.activeElement).toBe(field));
@@ -330,8 +330,8 @@ describe('Delete an event (sc-3592)', () => {
     ).toEqual([
       'This removes, for your whole team:',
       'the event, its details and its scheduleits guest list, with the 2 people on it',
-      "Guests following their link will see that it isn't available.",
-      "If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it's gone for good.",
+      'Guests following their link will see that it isn’t available.',
+      'If this was a mistake, support can restore it until Wednesday, Nov 25 at 14:20 WAT. After that it’s gone for good.',
     ]);
   });
 

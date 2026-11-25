@@ -32,9 +32,11 @@ import {
   capUnderTitle,
   grownPad,
   piecesIn,
+  windowAt,
   wordsIn,
   wrapOf,
 } from '../layout/textSize.ts';
+import { useWindowFrame } from '../layout/useLayout.ts';
 import { Glyph, type GlyphName } from './Glyph.tsx';
 import type { ShellSection } from './settingsShell.ts';
 import { TurningMark } from './SummaryRows.tsx';
@@ -322,12 +324,12 @@ export function Pair({
   );
 }
 
-/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
+/** A back's word sized by `backWordSize`, measured; the room is relearned when Refreshing… comes or goes beside it (sc-68778) or a turn changes the window or its frame (sc-90463), and a room learned stepped down is dropped once the word is remeasured (sc-74113). */
 export function useBackWord(word: string, back: BackSizing, besideShown = false) {
   const { width: windowWidth } = useWindowDimensions();
   const key = `${back.full}|${word}`;
   const [width, setWidth] = useState<{ key: string; width: number } | null>(null);
-  const roomKey = `${key}|${windowWidth}|${besideShown}`;
+  const roomKey = `${key}|${windowAt(windowWidth, useWindowFrame().width)}|${besideShown}`;
   const [room, setRoom] = useState<{
     key: string;
     width: number;

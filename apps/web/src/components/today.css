@@ -108,7 +108,7 @@
 }
 
 :is(.today, .today-page, .cal-page, .today-side-events) .is-party {
-  --todayEvent: var(--coverAccent, var(--colorAccent));
+  --todayEvent: var(--coverParty);
 }
 
 :is(.today, .today-page, .cal-page, .today-side-events) .is-draft {

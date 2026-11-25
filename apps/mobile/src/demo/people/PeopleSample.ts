@@ -173,6 +173,10 @@ export const DOTTED = 'fundacao.comunitaria.de.oyo.e.artes@soirely.test';
 export const UNBROKEN = 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test';
 export const LONG_MOBILE = '+2348031234567';
 
+/** sc-90472: an organisation whose name makes the Outside tag wider than its line at the accessibility sizes, with the AC's own names. */
+export const LONG_ORGANISATION = 'Fundação Comunitária de Ọ̀yọ́ e Artes Contemporâneas Lisboa';
+export const ONE_WORD_ORGANISATION = 'Fundacaocomunitariadeoyoeartescontemporaneaslisboa';
+
 /** sc-70353: addresses wider than the phone sheet's heading, with the AC's own examples. */
 export function longOutsiders(): OnEvent[] {
   return [
@@ -273,6 +277,21 @@ export function firstName(person: Pick<OnEvent, 'name'>): string {
   return person.name.split(' ')[0] ?? person.name;
 }
 
+/** Added by an address or a number and not joined: the API has no account name, only what they were added by (sc-91678). */
+export function unnamed(person: Pick<OnEvent, 'outside' | 'initials'>): boolean {
+  return person.outside && person.initials == null;
+}
+
+/** Only an account name is cut to its first word; nobody else is named on a button (sc-91678). */
+export function keepWords(person: Pick<OnEvent, 'name' | 'outside' | 'initials'>): string {
+  return unnamed(person) ? 'Keep them' : `Keep ${firstName(person)}`;
+}
+
+/** In a sentence, someone with no account name is their whole address or number (sc-91678). */
+export function calledIn(person: Pick<OnEvent, 'name' | 'outside' | 'initials'>): string {
+  return unnamed(person) ? person.name : firstName(person);
+}
+
 export function rolesOff(person: Pick<OnEvent, 'outside'>): EventRole[] {
   return person.outside ? ['Lead'] : [];
 }
@@ -319,7 +338,7 @@ export function savedWords(person: OnEvent, role: Level): string {
 }
 
 export function notChangedLine(person: OnEvent): string {
-  return `We couldn’t change ${firstName(person)}’s role, so it’s still ${person.role}. Check your connection and pick again.`;
+  return `We couldn’t change ${calledIn(person)}’s role, so it’s still ${person.role}. Check your connection and pick again.`;
 }
 
 export function removedToast(person: OnEvent): string {
@@ -489,6 +508,8 @@ export const PEOPLE_STATES = [
   'longAddressUnbroken',
   'longMobile',
   'longAddressRemove',
+  'longOrganisation',
+  'oneWordOrganisation',
   'loading',
   'failed',
 ] as const;
@@ -587,6 +608,10 @@ export function peopleStart(state: PeopleState): PeopleStart {
         onEvent: [...base.onEvent, ...longOutsiders()],
         opened: { id: LONG_OPENS[state], removing: state === 'longAddressRemove' ? 'ask' : null },
       };
+    case 'longOrganisation':
+      return { ...base, world: { ...ireWorld(), organisation: LONG_ORGANISATION } };
+    case 'oneWordOrganisation':
+      return { ...base, world: { ...ireWorld(), organisation: ONE_WORD_ORGANISATION } };
     case 'loading':
     case 'failed':
       return { ...base, load: state };
@@ -612,7 +637,7 @@ export function sheetWords(person: OnEvent): RoleSheetWords<Level> {
     remove: 'Remove from this event…',
     removeTitle: removeTitle(person),
     removeLine: removeLine(person),
-    keep: `Keep ${firstName(person)}`,
+    keep: keepWords(person),
     removeConfirm: 'Remove',
     removing: REMOVING,
     savedHeard: (role) => savedWords(person, role),

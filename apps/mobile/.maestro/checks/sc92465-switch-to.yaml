@@ -1,0 +1,18 @@
+# sc-92465: from Today, the switcher, one tap on another organisation's row; Today after. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today', optional: true }
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 15000 }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { id: 'home.switchOrganisation' }
+- waitForAnimationToEnd
+- swipe: { start: '50%, 70%', end: '50%, 45%', duration: 900 }
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- tapOn: { text: 'Studio Lumière.*' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: switched

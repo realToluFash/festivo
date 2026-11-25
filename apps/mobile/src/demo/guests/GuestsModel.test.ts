@@ -41,6 +41,7 @@ import {
   filtersFor,
   groupRows,
   guestOf,
+  guestPageShows,
   guestsAt,
   handMarked,
   invitationWords,
@@ -59,6 +60,8 @@ import {
   roleOf,
   rowsOf,
   sameNameAs,
+  START_COUNTRY,
+  addHoldsChange,
 } from './GuestsModel.ts';
 import {
   CLOCKS,
@@ -88,7 +91,7 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(
       GUESTS_STATES.filter((state) => (DOOR_STATES as readonly string[]).includes(state)),
     ).toEqual([]);
-    expect(GUESTS_STATES).toHaveLength(190);
+    expect(GUESTS_STATES).toHaveLength(191);
     expect(DOOR_STATES).toHaveLength(13);
   });
 
@@ -104,10 +107,20 @@ describe('the states, as guests-a-spec §15 names them', () => {
     expect(guestOf('inUse')).toBeNull();
   });
 
+  it('shows a guest no longer there over the guest it opened on (sc-31780)', () => {
+    const start = areaStart('notFound');
+    expect(start.open).toBe('emeka');
+    expect(guestPageShows(start.guestPhase, true)).toBe('notFound');
+    expect(guestPageShows(areaStart('guestLoading').guestPhase, true)).toBe('loading');
+    expect(guestPageShows(areaStart('guest').guestPhase, true)).toBe('guest');
+    expect(guestPageShows('ok', false)).toBe('loading');
+  });
+
   it('starts each group with its screen open', () => {
     expect(areaStart('edit412').overlay).toBe('edit');
     expect(areaStart('recordComing').overlay).toBe('record');
     expect(areaStart('addOffline').overlay).toBe('add');
+    expect(areaStart('addDiscard').overlay).toBe('add');
     expect(areaStart('picker').overlay).toBe('picker');
     expect(areaStart('androidPick').overlay).toBe('android');
     expect(areaStart('androidNone').overlay).toBe('android');
@@ -917,5 +930,42 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
     expect(areaStart('recordNotYet')).toMatchObject({ open: 'bisi', overlay: 'record' });
     expect(areaStart('recordedNotYet')).toMatchObject({ open: 'bisi', recorded: true });
     expect(guestsAt('recordedNotYet').find((g) => g.key === 'bisi')?.kind).toBe('coming');
+  });
+});
+
+describe('Add guest asks on Cancel only while it holds a change (sc-82245)', () => {
+  const empty = {
+    texts: ['', ' '],
+    country: START_COUNTRY,
+    language: null,
+    companions: 0,
+    needs: false,
+    group: false,
+  };
+
+  it('leaves an empty form without asking', () => {
+    expect(addHoldsChange(empty)).toBe(false);
+  });
+
+  it('asks once anything is typed or chosen', () => {
+    expect(addHoldsChange({ ...empty, texts: ['Bimpe Adeyemi', ''] })).toBe(true);
+    expect(addHoldsChange({ ...empty, country: 'NG' })).toBe(true);
+    expect(addHoldsChange({ ...empty, language: 'fr' })).toBe(true);
+    expect(addHoldsChange({ ...empty, companions: 1 })).toBe(true);
+    expect(addHoldsChange({ ...empty, needs: true })).toBe(true);
+    expect(addHoldsChange({ ...empty, group: true })).toBe(true);
+  });
+});
+
+describe("A guest form with no name to use asks with the event form's line (sc-82245, pm 25 Nov)", () => {
+  it('names the guest when there is a name', () => {
+    expect(say.discardLine('Bimpe Adeyemi')).toBe(
+      'Your changes to Bimpe Adeyemi have not been saved.',
+    );
+  });
+
+  it('never reads a blank name', () => {
+    expect(say.discardLine('')).toBe('What you changed here is not saved.');
+    expect(say.discardLine('   ')).toBe('What you changed here is not saved.');
   });
 });

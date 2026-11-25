@@ -27,6 +27,7 @@ import {
   tabBarFoot,
 } from './TodayCover.tsx';
 import { sidePadding } from './bodyEdges.ts';
+import { TitleCap } from './Text.tsx';
 import { FirstRun, NeedsYou, ThisWeek, YourEvents } from './TodayParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
 
@@ -107,7 +108,9 @@ function Scrolled({
   const scroller = useRef<ScrollViewInstance>(null);
   // The cover grows past the board's height when its words wrap, so the fold follows what it measures.
   const [body, setBody] = useState(() => coverBody(moment, layout));
-  const foldAt = body - bandBody(moment, layout) - SHEET_RISE;
+  // At the accessibility sizes the tablet's band grows past its body to keep the live line whole, so the fold follows what the band measures.
+  const [bandHeight, setBandHeight] = useState(() => bandBody(moment, layout));
+  const foldAt = body - bandHeight - SHEET_RISE;
   const bandFrom = foldAt - tokens.space3xl;
   const band = offset.interpolate({
     inputRange: [bandFrom, foldAt],
@@ -139,6 +142,7 @@ function Scrolled({
     [onTab],
   );
   const foot = tabBarFoot(insets.bottom);
+  const [greeting, setGreeting] = useState<number | null>(null);
 
   return (
     <View style={styles.page}>
@@ -161,9 +165,9 @@ function Scrolled({
             moment={moment}
             layout={layout}
             top={insets.top}
-
             onTab={tabs}
             words={words}
+            onGreeting={setGreeting}
           />
         </View>
         <View
@@ -173,11 +177,14 @@ function Scrolled({
           ]}
         >
           {notices}
-          <Body moment={moment} wide={!phone} />
+          <TitleCap.Provider value={greeting}>
+            <Body moment={moment} wide={!phone} />
+          </TitleCap.Provider>
         </View>
       </Animated.ScrollView>
       <Animated.View
         style={[styles.band, { opacity: band }]}
+        onLayout={(event) => setBandHeight(event.nativeEvent.layout.height - insets.top)}
         pointerEvents={folded ? 'box-none' : 'none'}
         accessibilityElementsHidden={!folded}
         importantForAccessibility={folded ? 'auto' : 'no-hide-descendants'}
@@ -206,29 +213,38 @@ function Landscape({
   const insets = useSafeAreaInsets();
   const events = moment.events.map(({ event }) => event);
   const below = moment.needs == null ? 0 : BELOW_HEAD;
+  const [greeting, setGreeting] = useState<number | null>(null);
 
   return (
     <View style={[styles.chrome, { paddingTop: insets.top }]}>
       <TodaySidebar events={events} onTab={onTab} />
       <View style={[styles.pageCard, { marginBottom: Math.max(insets.bottom, tokens.spaceMd) }]}>
         <ScrollView contentContainerStyle={styles.cardPage} showsVerticalScrollIndicator={false}>
-          <TodayCover moment={moment} layout="landscape" top={0} onTab={onTab} />
+          <TodayCover
+            moment={moment}
+            layout="landscape"
+            top={0}
+            onTab={onTab}
+            onGreeting={setGreeting}
+          />
           {notices}
-          {moment.kind === 'first' ? (
-            <View style={styles.firstPad}>
-              <FirstRun wide />
-            </View>
-          ) : (
-            <View style={styles.columns}>
-              <View style={styles.grow}>
-                <NeedsYou moment={moment} wide top={0} />
-                <ThisWeek moment={moment} wide top={below} />
+          <TitleCap.Provider value={greeting}>
+            {moment.kind === 'first' ? (
+              <View style={styles.firstPad}>
+                <FirstRun wide />
               </View>
-              <View style={styles.events}>
-                <YourEvents moment={moment} layout="list" top={0} />
+            ) : (
+              <View style={styles.columns}>
+                <View style={styles.grow}>
+                  <NeedsYou moment={moment} wide top={0} />
+                  <ThisWeek moment={moment} wide top={below} />
+                </View>
+                <View style={styles.events}>
+                  <YourEvents moment={moment} layout="list" top={0} />
+                </View>
               </View>
-            </View>
-          )}
+            )}
+          </TitleCap.Provider>
         </ScrollView>
       </View>
     </View>

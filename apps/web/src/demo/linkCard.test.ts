@@ -52,7 +52,7 @@ describe('the card a guest’s link answers (sc-89272)', () => {
 
     expect(card.lang).toBe('fr');
     expect(card.title).toBe(EVENT.name);
-    expect(card.line).toBe('Votre invitation de la part de Adaeze Obi et Tunde Bakare');
+    expect(card.line).toBe('Votre invitation, envoyée par Adaeze Obi et Tunde Bakare');
   });
 
   it('is the name alone once the event is Called off or Finished', () => {

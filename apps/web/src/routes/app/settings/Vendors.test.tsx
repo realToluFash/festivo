@@ -185,7 +185,7 @@ describe('Settings › Vendors at a desk (sc-82)', () => {
     fireEvent.click(form.getByRole('button', { name: 'Add' }));
 
     expect(form.getByText('2 fields need fixing, so nothing was sent.')).toBeDefined();
-    expect(form.getByText("Enter the vendor's name.")).toBeDefined();
+    expect(form.getByText('Enter the vendor’s name.')).toBeDefined();
     expect(form.getByText('Choose the category.')).toBeDefined();
     expect(sent.filter(({ method }) => method !== 'GET')).toEqual([]);
   });

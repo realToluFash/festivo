@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   foot: { marginTop: 'auto', paddingTop: tokens.spaceXs },
   steps: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   glassStep: { justifyContent: 'center', paddingHorizontal: 18 },
-  count: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  count: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 10 },
   big: { lineHeight: 42, letterSpacing: 40 * -0.02, fontVariant: ['tabular-nums'] },
   toast: {
     position: 'absolute',

@@ -6,6 +6,8 @@ import {
   phoneLengthProblem,
 } from '@soirely/domain';
 
+import { BUDGET_EVENT } from './budget.ts';
+import type { Owing } from './quotes.ts';
 import { SAMPLE, countryName, fullNumber } from './rules.ts';
 import { CATEGORY_WORDS, VW } from './vendorsWords.ts';
 
@@ -407,7 +409,14 @@ export type Load = 'loaded' | 'loading' | 'failed';
 
 export type VendorsDialog =
   | { kind: 'add'; draft: Draft; problems: Problems }
-  | { kind: 'edit'; id: string; draft: Draft; problems: Problems; refused?: boolean };
+  | {
+      kind: 'edit';
+      id: string;
+      draft: Draft;
+      problems: Problems;
+      refused?: boolean;
+      owing?: readonly Owing[];
+    };
 
 export interface VendorsStart {
   load: Load;
@@ -439,6 +448,19 @@ const REFUSED: Draft = {
   phone: '000 000 0000',
   website: 'ftp://harbourboats.co.uk',
 };
+
+export const LONGEST_EVENT_NAME =
+  'Adaeze & Tunde’s wedding weekend in Lagos: welcome drinks on Friday, the church and reception on Saturday, Sunday brunch';
+
+export const ONE_WORD_EVENT_NAME = 'Oluwadamilareoluwaseunfunmilayoadebayoadeyemiakinwalebabatun';
+
+const owingNamed = (state: string): readonly Owing[] => [
+  {
+    id: BUDGET_EVENT,
+    name: state === 'archive_refused_long' ? LONGEST_EVENT_NAME : ONE_WORD_EVENT_NAME,
+  },
+  { id: 'evt-ireti-2', name: 'Ireti at 40' },
+];
 
 export function vendorsStart(state: string, vendor: string | null = null): VendorsStart {
   const vendors = state === 'empty' ? [] : sampleVendors();
@@ -518,6 +540,8 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
         dialog: { kind: 'edit', id: BLOOM, draft: bloomDraft(vendors), problems: {} },
       };
     case 'archive_refused':
+    case 'archive_refused_long':
+    case 'archive_refused_one_word':
       return {
         ...start,
         dialog: {
@@ -526,6 +550,7 @@ export function vendorsStart(state: string, vendor: string | null = null): Vendo
           draft: bloomDraft(vendors),
           problems: {},
           refused: true,
+          ...(state === 'archive_refused' ? {} : { owing: owingNamed(state) }),
         },
       };
     case 'archived_toast': {
@@ -591,6 +616,14 @@ export const VENDORS_PAGES: readonly { name: string; states: readonly DemoLink[]
       {
         to: at('archive_refused'),
         name: 'Archive refused: two events still owe Bloom & Co (archive_refused, sc-87)',
+      },
+      {
+        to: at('archive_refused_long'),
+        name: 'Archive refused, one event named in 120 characters (archive_refused_long, sc-91886)',
+      },
+      {
+        to: at('archive_refused_one_word'),
+        name: 'Archive refused, one event named in a single 60-letter word (archive_refused_one_word, sc-91886)',
       },
     ],
   },

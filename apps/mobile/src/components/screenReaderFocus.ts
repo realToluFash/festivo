@@ -43,7 +43,12 @@ export function moveScreenReaderFocus(view: ScreenReaderTarget | null): void {
 
 /** Whether a screen reader is on, false until the answer comes. */
 export function useScreenReaderOn(): boolean {
-  const [on, setOn] = useState(false);
+  return useScreenReader() === true;
+}
+
+/** Whether a screen reader is on, or null until the device has said. */
+export function useScreenReader(): boolean | null {
+  const [on, setOn] = useState<boolean | null>(null);
 
   useEffect(() => {
     let gone = false;
