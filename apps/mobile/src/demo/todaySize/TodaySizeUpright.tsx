@@ -38,7 +38,13 @@ export function UprightRow({
   const keep = (key: string) => (width: number) =>
     setWidths((now) => (now[key] === width ? now : { ...now, [key]: width }));
   const tabWidths = labels.map((label) => widths[`tab|${own}|${label}`]);
-  const known = row > 0 && tabWidths.every((width) => width != null);
+  const nameWidth = widths[`name|${scale}|${start}`];
+  const waitingWidth = line == null ? null : widths[`waiting|${scale}|${line}`];
+  const known =
+    row > 0 &&
+    tabWidths.every((width) => width != null) &&
+    nameWidth != null &&
+    waitingWidth !== undefined;
   const top = uprightTop(
     scale,
     tabWidths.map((width) => width ?? 0),
@@ -46,8 +52,8 @@ export function UprightRow({
   );
   const large = atAccessibilitySizes(scale);
   const tile = uprightTile(scale, top, {
-    nameStart: widths[`name|${scale}|${start}`] ?? 0,
-    waitingLine: line == null ? null : (widths[`waiting|${scale}|${line}`] ?? 0),
+    nameStart: nameWidth ?? 0,
+    waitingLine: waitingWidth === null ? null : (waitingWidth ?? 0),
   });
 
   return (
@@ -94,7 +100,7 @@ export function UprightRow({
           </View>
         )}
       </View>
-      {known && <Capsule labels={labels} size={top.labelSize} onTab={onTab} />}
+      {known && <StandInCapsule labels={labels} size={top.labelSize} onTab={onTab} />}
       <View style={[styles.side, styles.end]}>
         <View style={styles.ends}>
           <SearchGlass />
@@ -106,7 +112,7 @@ export function UprightRow({
 }
 
 /** iPadOS 26's tab bar in glass, its four labels at the one size the row chose, Today chosen. */
-function Capsule({
+function StandInCapsule({
   labels,
   size,
   onTab,
