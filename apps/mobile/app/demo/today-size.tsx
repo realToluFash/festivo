@@ -1,0 +1,26 @@
+import { useLocalSearchParams } from 'expo-router';
+
+import {
+  FILTER_LANGUAGES,
+  FILTER_SIZES,
+  keyOf,
+} from '../../src/demo/filterSize/filterSizeRules.ts';
+import { TodaySizeScreen } from '../../src/demo/todaySize/TodaySizeScreen.tsx';
+import { TODAY_GREETINGS, TODAY_NAMES } from '../../src/demo/todaySize/todaySizeRules.ts';
+
+export default function DemoTodaySize() {
+  const { size, lang, name, greeting } = useLocalSearchParams<{
+    size?: string;
+    lang?: string;
+    name?: string;
+    greeting?: string;
+  }>();
+  const start = {
+    size: keyOf(FILTER_SIZES, size, 'device'),
+    language: keyOf(FILTER_LANGUAGES, lang, 'en'),
+    name: keyOf(TODAY_NAMES, name, 'qa'),
+    greeting: keyOf(TODAY_GREETINGS, greeting, 'morning'),
+  };
+
+  return <TodaySizeScreen key={JSON.stringify(start)} start={start} />;
+}
