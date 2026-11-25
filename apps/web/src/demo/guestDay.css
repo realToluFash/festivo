@@ -1,0 +1,134 @@
+/* sc-24381: a Coming guest's page on the event's day. Sizes are GuestPage.dc.html's On the day row (page 30). */
+
+.gp .gp-band {
+  flex: none;
+  min-height: 0;
+  height: 40px;
+  margin-top: 4px;
+  border-radius: 14px;
+}
+
+.gp-head {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  color: var(--colorInk);
+}
+
+.gp .gp-head .gp-cover-h1 {
+  color: var(--colorInkSecondary);
+}
+
+.gp .gp-head .gp-cover-name {
+  font-size: 26px;
+}
+
+.gp .gp-head .gp-cover-line {
+  color: var(--colorInkSecondary);
+}
+
+.gp-day-code,
+.gp-day-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gp-day-block {
+  align-items: flex-start;
+  padding-top: 20px;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.gp-under.is-day {
+  gap: 20px;
+}
+
+.gp-day-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 18px;
+  background: var(--colorCard);
+  text-align: center;
+}
+
+.gp-day-door {
+  font: 600 17px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gp-day-card .gp-code {
+  align-self: center;
+  margin-top: 0;
+}
+
+.gp-day-place {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gp-day-time {
+  font: 700 20px/1.3 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-day-venue {
+  font: 600 17px/1.4 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gp-day-address {
+  color: var(--colorInkSecondary);
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gp-day-note {
+  align-self: stretch;
+  padding: 12px 14px;
+  border: 1px solid var(--colorBorder);
+  border-radius: 14px;
+  background: var(--colorInset);
+  font: 400 16px/1.5 var(--fontFamily);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.gp-day-answered {
+  font: 400 17px/1.5 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.gp-day-skel {
+  gap: 10px;
+}
+
+.gp-day-skel .gp-skel {
+  margin: 0;
+}
+
+.gp-day-skel-door {
+  width: 62%;
+  height: 23.8px;
+}
+
+.gp-day-skel-qr {
+  width: 226px;
+  height: 226px;
+  border-radius: 20px;
+}
+
+.gp-day-skel-line {
+  width: 56%;
+  height: 22.5px;
+}

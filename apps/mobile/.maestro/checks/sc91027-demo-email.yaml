@@ -1,0 +1,78 @@
+# Android phone. sc-91027: Add email opens with the keys up and takes typing at once, with no tap on the field: on the first opening, after a clean Cancel, and after Discard. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.email.add'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- inputText: 'zq@x.test'
+- takeScreenshot: open1-typed
+- assertVisible:
+    id: 'account.email.add.field'
+    text: '.*zq@x\.test.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open1
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: open2-untyped
+- tapOn: 'Cancel'
+- waitForAnimationToEnd:
+    timeout: 4000
+- assertNotVisible:
+    id: 'account.email.add.field'
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- inputText: 'zq@x.test'
+- takeScreenshot: open3-typed
+- assertVisible:
+    id: 'account.email.add.field'
+    text: '.*zq@x\.test.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open3
+- tapOn:
+    id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 4000
+- inputText: 'zq@x.test'
+- takeScreenshot: open4-after-discard-typed
+- assertVisible:
+    id: 'account.email.add.field'
+    text: '.*zq@x\.test.*'
+- runFlow:
+    file: sc91027/close.yaml
+    env:
+      SHOT: open4

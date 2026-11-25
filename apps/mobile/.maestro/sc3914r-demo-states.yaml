@@ -1,0 +1,229 @@
+# sc-3914 retest: each demo state of /demo/menu-picks at ${ORIENT}, top then three scrolls, to set beside the product.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=populated
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: populated-1
+- scroll
+- takeScreenshot: populated-2
+- scroll
+- takeScreenshot: populated-3
+- scroll
+- takeScreenshot: populated-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=oneClosed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: oneClosed-1
+- scroll
+- takeScreenshot: oneClosed-2
+- scroll
+- takeScreenshot: oneClosed-3
+- scroll
+- takeScreenshot: oneClosed-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=allClosed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: allClosed-1
+- scroll
+- takeScreenshot: allClosed-2
+- scroll
+- takeScreenshot: allClosed-3
+- scroll
+- takeScreenshot: allClosed-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=noMenu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: noMenu-1
+- scroll
+- takeScreenshot: noMenu-2
+- scroll
+- takeScreenshot: noMenu-3
+- scroll
+- takeScreenshot: noMenu-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=defaultBefore
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: defaultBefore-1
+- scroll
+- takeScreenshot: defaultBefore-2
+- scroll
+- takeScreenshot: defaultBefore-3
+- scroll
+- takeScreenshot: defaultBefore-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=defaultAfter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: defaultAfter-1
+- scroll
+- takeScreenshot: defaultAfter-2
+- scroll
+- takeScreenshot: defaultAfter-3
+- scroll
+- takeScreenshot: defaultAfter-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseFor
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseFor-1
+- scroll
+- takeScreenshot: chooseFor-2
+- scroll
+- takeScreenshot: chooseFor-3
+- scroll
+- takeScreenshot: chooseFor-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=override
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: override-1
+- scroll
+- takeScreenshot: override-2
+- scroll
+- takeScreenshot: override-3
+- scroll
+- takeScreenshot: override-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWho
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWho-1
+- scroll
+- takeScreenshot: chooseWho-2
+- scroll
+- takeScreenshot: chooseWho-3
+- scroll
+- takeScreenshot: chooseWho-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWhoStarter
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWhoStarter-1
+- scroll
+- takeScreenshot: chooseWhoStarter-2
+- scroll
+- takeScreenshot: chooseWhoStarter-3
+- scroll
+- takeScreenshot: chooseWhoStarter-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWhoUntick
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWhoUntick-1
+- scroll
+- takeScreenshot: chooseWhoUntick-2
+- scroll
+- takeScreenshot: chooseWhoUntick-3
+- scroll
+- takeScreenshot: chooseWhoUntick-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWhoOverride
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWhoOverride-1
+- scroll
+- takeScreenshot: chooseWhoOverride-2
+- scroll
+- takeScreenshot: chooseWhoOverride-3
+- scroll
+- takeScreenshot: chooseWhoOverride-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWhoSaved
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWhoSaved-1
+- scroll
+- takeScreenshot: chooseWhoSaved-2
+- scroll
+- takeScreenshot: chooseWhoSaved-3
+- scroll
+- takeScreenshot: chooseWhoSaved-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=refused
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: refused-1
+- scroll
+- takeScreenshot: refused-2
+- scroll
+- takeScreenshot: refused-3
+- scroll
+- takeScreenshot: refused-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseWhoRefused
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseWhoRefused-1
+- scroll
+- takeScreenshot: chooseWhoRefused-2
+- scroll
+- takeScreenshot: chooseWhoRefused-3
+- scroll
+- takeScreenshot: chooseWhoRefused-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=readOnly
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: readOnly-1
+- scroll
+- takeScreenshot: readOnly-2
+- scroll
+- takeScreenshot: readOnly-3
+- scroll
+- takeScreenshot: readOnly-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=countsOnly
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: countsOnly-1
+- scroll
+- takeScreenshot: countsOnly-2
+- scroll
+- takeScreenshot: countsOnly-3
+- scroll
+- takeScreenshot: countsOnly-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=defaultReadOnly
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: defaultReadOnly-1
+- scroll
+- takeScreenshot: defaultReadOnly-2
+- scroll
+- takeScreenshot: defaultReadOnly-3
+- scroll
+- takeScreenshot: defaultReadOnly-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=defaultCountsOnly
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: defaultCountsOnly-1
+- scroll
+- takeScreenshot: defaultCountsOnly-2
+- scroll
+- takeScreenshot: defaultCountsOnly-3
+- scroll
+- takeScreenshot: defaultCountsOnly-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=sheetDownloading
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: sheetDownloading-1
+- scroll
+- takeScreenshot: sheetDownloading-2
+- scroll
+- takeScreenshot: sheetDownloading-3
+- scroll
+- takeScreenshot: sheetDownloading-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=sheetFailed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: sheetFailed-1
+- scroll
+- takeScreenshot: sheetFailed-2
+- scroll
+- takeScreenshot: sheetFailed-3
+- scroll
+- takeScreenshot: sheetFailed-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=stale
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: stale-1
+- scroll
+- takeScreenshot: stale-2
+- scroll
+- takeScreenshot: stale-3
+- scroll
+- takeScreenshot: stale-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=refreshing
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: refreshing-1
+- scroll
+- takeScreenshot: refreshing-2
+- scroll
+- takeScreenshot: refreshing-3
+- scroll
+- takeScreenshot: refreshing-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseBlank
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseBlank-1
+- scroll
+- takeScreenshot: chooseBlank-2
+- scroll
+- takeScreenshot: chooseBlank-3
+- scroll
+- takeScreenshot: chooseBlank-4
+- openLink: ${METRO_URL}/--/demo/menu-picks?state=chooseForDefaulted
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: chooseForDefaulted-1
+- scroll
+- takeScreenshot: chooseForDefaulted-2
+- scroll
+- takeScreenshot: chooseForDefaulted-3
+- scroll
+- takeScreenshot: chooseForDefaulted-4

@@ -1,0 +1,6 @@
+# sc-563: Your organisation's Continue and Your mobile number's Skip with the tablet on its side, in one check so the batch's reset cannot turn it back.
+appId: host.exp.Exponent
+---
+- runFlow: sc563-landscape.yaml
+- runFlow: sc563-details-save-product.yaml
+- runFlow: sc563-details-skip-product.yaml

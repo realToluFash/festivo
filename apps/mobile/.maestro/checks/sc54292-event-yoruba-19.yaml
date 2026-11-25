@@ -1,0 +1,15 @@
+# sc-54292: the app's event name counts visible letters; an account owning an organisation.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: eventForm.name
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: eventForm.name
+- inputText: 'Ẹ̀gbẹ́ Ọ̀rẹ́ Ìyàwó Àgbà'
+- waitForAnimationToEnd
+- takeScreenshot: event-19
+- assertVisible: '.*19.*120.*'

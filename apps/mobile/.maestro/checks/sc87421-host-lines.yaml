@@ -1,0 +1,15 @@
+# sc-87421: on ${EVENT_ID}'s Menu picks, screenshots Needs the host.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.needsHost'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.needsHost'
+    centerElement: true
+- takeScreenshot: host-1
+- scroll
+- takeScreenshot: host-2

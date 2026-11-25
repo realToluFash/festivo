@@ -1,0 +1,10 @@
+# sc-88403 tablet portrait: sc88403-demo-loading, with the tablet turned portrait first.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /portrait
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc88403-demo-loading.yaml

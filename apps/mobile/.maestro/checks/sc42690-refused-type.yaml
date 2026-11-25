@@ -1,0 +1,18 @@
+# New event with a name and no Type, scrolled to Create event, so a TalkBack submit is refused at the Type picker (sc-9950 regression). sc-42690.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- tapOn:
+    id: 'eventForm.name'
+- inputText: 'TalkBack refused'
+- pressKey: back
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: refused-ready

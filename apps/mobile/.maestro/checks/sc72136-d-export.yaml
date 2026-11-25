@@ -1,0 +1,15 @@
+# sc-72136: the Guests demo's Export sheet, state ${STATE}, its head then scrolled, at a text size set before the batch.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/guests?state=${STATE}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- takeScreenshot: head
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-1
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-2
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-3
+- swipe: { start: '50%, 85%', end: '50%, 45%', duration: 800 }
+- takeScreenshot: scroll-4

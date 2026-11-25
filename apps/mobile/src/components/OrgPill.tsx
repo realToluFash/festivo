@@ -1,0 +1,292 @@
+import type { ReactNode, Ref } from 'react';
+import {
+  Platform,
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  View,
+  type ViewInstance,
+  type ViewStyle,
+  useWindowDimensions,
+} from 'react-native';
+
+import { ROOMS, rowPad } from '../layout/sidebarSize.ts';
+
+import { tokens } from '../theme/tokens.ts';
+import { Glyph } from './Glyph.tsx';
+import { OrgMark } from './OrgMark.tsx';
+import { Text } from './Text.tsx';
+import { pressOnDoubleTap } from './screenReaderFocus.ts';
+import { useSideFit } from './sideFit.tsx';
+import { titleWithInkRoom } from './titleWidth.ts';
+
+const NAME_LINE = 1.25;
+const WAITING_LINE = 1.3;
+
+export const OPENER = { rest: tokens.sizeHit, waiting: 56 } as const;
+
+/** The opener's words: the name, and under it a ring and how many invitations wait. */
+export function OpenerWords({
+  name,
+  waiting,
+  onDark = false,
+  grow = false,
+  wrap = false,
+  lines,
+  size,
+  waitingSize,
+}: {
+  name: string;
+  /** How many invitations wait, in words, or null when none do. */
+  waiting: string | null;
+  onDark?: boolean;
+  grow?: boolean;
+  wrap?: boolean;
+  /** The most lines the name takes before its ellipsis; without it, one line, or no limit when it wraps. */
+  lines?: number | undefined;
+  /** The name's size as iPad landscape's sidebar fits it, which the text size no longer grows (sc-68441). */
+  size?: number | undefined;
+  /** The invitation line's size as the sidebar fits it on its own, apart from the name's (sc-79559). */
+  waitingSize?: number | undefined;
+}) {
+  const ink = { color: onDark ? tokens.colorInkOnDark : tokens.colorInk };
+
+  return (
+    <OpenerColumn
+      onDark={onDark}
+      style={grow && styles.grow}
+      name={
+        <Text
+          size={size ?? 15}
+          weight="semibold"
+          numberOfLines={lines ?? (wrap ? undefined : 1)}
+          allowFontScaling={size == null}
+          accessible={false}
+          style={[styles.name, size != null && { lineHeight: size * NAME_LINE }, ink]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </Text>
+      }
+      waiting={
+        waiting == null ? null : (
+          <Text
+            size={waitingSize ?? 12.5}
+            weight="semibold"
+            numberOfLines={wrap ? undefined : 1}
+            allowFontScaling={waitingSize == null}
+            accessible={false}
+            style={[
+              styles.waitingWords,
+              waitingSize != null && { lineHeight: waitingSize * WAITING_LINE },
+              ink,
+            ]}
+          >
+            {waiting}
+          </Text>
+        )
+      }
+    />
+  );
+}
+
+/** The opener's column, whatever draws its words: the name, and under it the ring before the invitation line. */
+export function OpenerColumn({
+  name,
+  waiting,
+  onDark,
+  style,
+}: {
+  name: ReactNode;
+  /** The invitation line, or null when no invitation waits. */
+  waiting: ReactNode | null;
+  onDark: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.words, style]}>
+      {name}
+      {waiting != null && (
+        <View style={styles.waitingLine}>
+          <View
+            style={[
+              styles.waitingRing,
+              { borderColor: onDark ? tokens.colorInkOnDark : tokens.colorInk },
+            ]}
+          />
+          {waiting}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** The opener's words at the head of iPad landscape's sidebar: the name and the invitation line each on one line, each stepped down alone until it fits whole there (sc-68441, sc-79559). */
+function SidebarOpenerWords({
+  name,
+  waiting,
+  wrap,
+  lines,
+}: {
+  name: string;
+  waiting: string | null;
+  wrap: boolean;
+  lines?: number | undefined;
+}) {
+  const { fontScale } = useWindowDimensions();
+  const { size, measure } = useSideFit(name, ROOMS.org, fontScale, 'semibold', 'line');
+  const line = useSideFit(waiting ?? '', ROOMS.waiting, fontScale, 'semibold', 'line');
+
+  return (
+    <>
+      {measure}
+      {waiting != null && line.measure}
+      <OpenerWords
+        name={name}
+        waiting={waiting}
+        wrap={wrap}
+        lines={lines}
+        size={size}
+        waitingSize={waiting == null ? undefined : line.size}
+        grow
+      />
+    </>
+  );
+}
+
+/** The organisation switcher on white, at the top of every top-level page, or at the head of iPad landscape's sidebar; without `onPress` it only names the organisation. */
+export function OrgPill({
+  id,
+  name,
+  waiting,
+  label,
+  expanded,
+  onPress,
+  bare = false,
+  wrap = false,
+  sidebar = false,
+  tileAlone = false,
+  lines,
+  testID,
+  ref,
+}: {
+  id: string;
+  name: string;
+  waiting: string | null;
+  label: string;
+  expanded?: boolean;
+  onPress?: (() => void) | undefined;
+  /** At the largest text sizes the tile gives its room to the name. */
+  bare?: boolean;
+  wrap?: boolean;
+  sidebar?: boolean;
+  /** Where the room runs out the pill is its tile, its name kept for the screen reader and the switcher. */
+  tileAlone?: boolean;
+  lines?: number | undefined;
+  testID?: string;
+  ref?: Ref<ViewInstance> | undefined;
+}) {
+  const { fontScale } = useWindowDimensions();
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      disabled={onPress == null}
+      style={({ pressed }) =>
+        sidebar
+          ? [
+              styles.side,
+              { paddingVertical: rowPad(fontScale) },
+              (waiting != null || wrap) && styles.sideWaiting,
+              (expanded === true || pressed) && styles.sideOpen,
+            ]
+          : [
+              styles.org,
+              (waiting != null || wrap) && styles.orgWaiting,
+              tileAlone && styles.orgTile,
+              pressed && styles.orgPressed,
+            ]
+      }
+      accessibilityRole={onPress == null ? 'text' : 'button'}
+      accessibilityLabel={label}
+      accessibilityState={onPress == null || expanded == null ? undefined : { expanded }}
+      {...quietTap(onPress, expanded)}
+      testID={testID}
+    >
+      {tileAlone ? (
+        <View>
+          <OrgMark id={id} name={name} side={28} />
+          {waiting != null && (
+            <View style={styles.tileRingHalo}>
+              <View style={[styles.waitingRing, { borderColor: tokens.colorInk }]} />
+            </View>
+          )}
+        </View>
+      ) : (
+        !bare && <OrgMark id={id} name={name} side={28} />
+      )}
+      {!tileAlone &&
+        (sidebar ? (
+          <SidebarOpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
+        ) : (
+          <OpenerWords name={name} waiting={waiting} wrap={wrap} lines={lines} />
+        ))}
+      {onPress != null && !tileAlone && (
+        <Glyph name="updown" size={14} ink={tokens.colorInkSecondary} />
+      )}
+    </Pressable>
+  );
+}
+
+/** On Android, TalkBack's double tap opens the switcher without the click that had TalkBack say the opener's state, "collapsed", before the switcher's title (sc-42690). Every switcher opener takes it. */
+export function quietTap(onPress: (() => void) | undefined, expanded: boolean | undefined) {
+  if (Platform.OS !== 'android' || expanded == null) return {};
+
+  return pressOnDoubleTap(onPress);
+}
+
+const styles = StyleSheet.create({
+  grow: { flex: 1, minWidth: 0 },
+  words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
+  name: { lineHeight: 15 * NAME_LINE },
+  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingRing: { width: 11, height: 11, borderRadius: 5.5, borderWidth: 2 },
+  tileRingHalo: {
+    position: 'absolute',
+    top: -10,
+    end: -10,
+    padding: 2,
+    borderRadius: 7.5,
+    backgroundColor: tokens.colorInset,
+  },
+  waitingWords: { lineHeight: 12.5 * WAITING_LINE },
+  org: {
+    minHeight: OPENER.rest,
+    flexShrink: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spacePillEnd,
+    borderRadius: OPENER.rest / 2,
+    backgroundColor: tokens.colorInset,
+  },
+  orgWaiting: { minHeight: OPENER.waiting, borderRadius: OPENER.waiting / 2 },
+  orgTile: { minHeight: OPENER.rest, paddingRight: tokens.spaceSm, borderRadius: OPENER.rest / 2 },
+  orgPressed: { backgroundColor: tokens.colorNeutralFill },
+  side: {
+    minHeight: OPENER.rest,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    paddingLeft: tokens.spaceSm,
+    paddingRight: tokens.spaceMd,
+    borderRadius: tokens.radiusRow,
+  },
+  sideWaiting: { minHeight: OPENER.waiting },
+  sideOpen: {
+    backgroundColor: tokens.colorCard,
+    ...tokens.elevationNative.card.ios,
+    elevation: tokens.elevationNative.card.android.elevation,
+  },
+});

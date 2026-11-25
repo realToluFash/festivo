@@ -1,0 +1,22 @@
+# sc-71337: a member's switcher with Events from outside, then opening one and its More (Your organisations, Your events).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runFlow: ../open-switcher.yaml
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: switcher
+- scroll
+- takeScreenshot: switcher-scrolled
+- scrollUntilVisible: { element: { id: 'switcher.outside.${TO}' }, timeout: 10000 }
+- tapOn: { id: 'switcher.outside.${TO}' }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: inside
+- tapOn: { id: event.nav.more, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: inside-more
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: inside-more-scrolled

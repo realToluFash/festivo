@@ -1,0 +1,11 @@
+# The mobile number step: its intro says how the team reaches you, on the day.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.number'
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: '{{t:steps.mobileIntro}}'
+- takeScreenshot: sc29384-mobile-step

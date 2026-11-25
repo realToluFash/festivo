@@ -1,0 +1,37 @@
+# sc-1454 regression: opens Record a reply on ${G_OWN}, chooses Not coming, in person; stops before Save for a TalkBack check.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_OWN_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_OWN}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_OWN}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_OWN}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.record'
+    direction: DOWN
+- tapOn:
+    id: 'guest.record'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.notComing'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.notComing'
+- tapOn:
+    id: 'guest.record.how.inPerson'
+- takeScreenshot: before-save

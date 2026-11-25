@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Menu;
+
+use App\Domain\Event\Timeline\Interfaces\MilestoneSourceInterface;
+use App\Domain\Event\Timeline\Model\Milestone;
+use App\Domain\Event\Timeline\Model\MilestoneAction;
+use App\Domain\Menu\Http\MenuSerialiser;
+use App\Entity\Event;
+use App\Enum\MilestoneOwner;
+use App\Enum\PermissionArea;
+use DateTimeImmutable;
+use Psl\Type;
+use Psl\Vec;
+use Symfony\Contracts\Translation\TranslatorInterface;
+
+/** Picks close, on the earliest close of a course that asks guests anything (each course's own, sc-1362), linked to the event's Menu (sc-3905). None while no course asks. */
+final readonly class PicksCloseDates implements MilestoneSourceInterface
+{
+    public const string KEY = 'menu.picks_close';
+
+    public function __construct(
+        private MenuSerialiser $menuSerialiser,
+        private TranslatorInterface $translator,
+    ) {
+    }
+
+    public function milestones(Event $event): array
+    {
+        $courses = $this->menuSerialiser->menu($event)['courses'];
+
+        $closes = Vec\filter_nulls(Vec\map($courses, static fn (array $course): ?string => Type\nullable(Type\shape(['at' => Type\string()], true))->coerce($course['picksClose'] ?? null)['at'] ?? null));
+
+        if ([] === $closes) {
+            return [];
+        }
+
+        $earliest = Vec\sort_by($closes, static fn (string $at): int => new DateTimeImmutable($at)->getTimestamp())[0];
+
+        $action = new MilestoneAction($this->translator->trans('timeline.open_menu'), '/app/events/' . $event->getId()->toRfc4122() . '/menu');
+
+        return [new Milestone(self::KEY, new DateTimeImmutable($earliest), $this->translator->trans('timeline.picks_close'), null, MilestoneOwner::Automatic, PermissionArea::Menu, $action)];
+    }
+}

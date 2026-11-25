@@ -1,0 +1,26 @@
+# sc-83965: the event page's did-not-load message, in the batch's language: Events loaded, the API stopped, then an event opened. Pass EVENT and ORIENT.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '.*Winter Gala.*'
+    timeout: 30000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.retry'
+    timeout: 60000
+- assertVisible: '{{t:eventsScreen.failedLoadEvent}}'
+- waitForAnimationToEnd
+- takeScreenshot: failed

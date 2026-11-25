@@ -1,0 +1,23 @@
+# sc-21336: from Home, ${EVENT_ID}'s Edit details link, nothing changed; Save changes leaves for the event's page with no Saved.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.send'
+    direction: DOWN
+- tapOn:
+    id: 'eventForm.send'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 3000
+- assertNotVisible:
+    id: 'eventForm.name'
+- assertNotVisible: '{{t:eventEdit.saved}}'
+- takeScreenshot: landed

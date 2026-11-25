@@ -1,0 +1,68 @@
+# sc-49170: Members at 12,345 on the tablet in its landscape layout; the shell changes the stack during the 25 s wait (API paused, API stopped or Postgres stopped), then the list column is swiped to the end of its first page.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- takeScreenshot: ready
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 25000, optional: true }
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- swipe:
+    start: 27%, 85%
+    end: 27%, 20%
+    duration: 400
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: state

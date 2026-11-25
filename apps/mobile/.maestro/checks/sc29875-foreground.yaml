@@ -1,0 +1,23 @@
+# sc-29875: Today catches up on returning to the foreground: Drinks is Now, the app goes to the background, Done is pressed elsewhere, and on return Now reads "Nothing is on" within a few seconds. Needs ${METRO_URL}, ${API_URL}, ${WEB_URL} and ${EVENT}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:todayScreen.openRunOfShow}}'
+    timeout: 45000
+- assertVisible: 'until.*'
+- takeScreenshot: before
+- pressKey: home
+- runScript:
+    file: sc29875-press-done.js
+- assertTrue: ${output.pressed == 200}
+- extendedWaitUntil:
+    visible: 'a text never on the home screen'
+    timeout: 25000
+    optional: true
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: '{{t:runView.nothingNow}}'
+    timeout: 8000
+- takeScreenshot: after

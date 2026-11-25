@@ -1,0 +1,15 @@
+# sc-31370: the app demo's Messages (B), upright, one screenshot per state.
+appId: host.exp.Exponent
+---
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: first, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: loading, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: inUse, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: conversation, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: replyArrived, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: answered, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: channelReply, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: to, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: write, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: preview, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: check, LAYOUT: upright } }
+- runFlow: { file: sc31370/demo-state.yaml, env: { STATE: countdown, LAYOUT: upright } }

@@ -1,0 +1,16 @@
+# sc-40153: the app demo's member page, state ${STATE}, scrolled to Remove from ‹organisation›….
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/members?state=${STATE}
+- extendedWaitUntil:
+    visible:
+      text: 'Remove from.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'Remove from.*'
+    direction: DOWN
+    centerElement: true
+- waitForAnimationToEnd
+- takeScreenshot: demo-remove

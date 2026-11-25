@@ -1,0 +1,33 @@
+# sc-57219: 40 one-word lines. TOKEN.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- repeat:
+    times: 40
+    commands:
+      - inputText: 'word'
+      - pressKey: Enter
+- inputText: 'last'
+- waitForAnimationToEnd
+- takeScreenshot: lines-typed
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: DOWN
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: DOWN
+- swipe:
+    from:
+      id: requestToJoin.message
+    direction: DOWN
+- waitForAnimationToEnd
+- takeScreenshot: lines-first-line

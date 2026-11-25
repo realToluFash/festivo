@@ -1,0 +1,7 @@
+# sc-80438: Check-in, the two state, alone so the screen mounts for this event.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_TWO}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: two

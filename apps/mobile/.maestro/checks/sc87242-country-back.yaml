@@ -1,0 +1,23 @@
+# sc-87242: Your organisation with Country unchosen (app locale sq-XK); Organisation name typed, the save tapped, then the system Back straight after; the screen it leaves for shows no warning.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil: { visible: { id: 'completeProfile.organisation' }, timeout: 30000 }
+- runFlow:
+    when:
+      visible: { id: 'completeProfile.name' }
+    commands:
+      - tapOn: { id: 'completeProfile.name' }
+      - eraseText: 60
+      - inputText: 'QA Kosovo'
+- tapOn: { id: 'completeProfile.organisation' }
+- eraseText: 60
+- inputText: 'Prishtina Events'
+- hideKeyboard
+- scrollUntilVisible:
+    element: { id: 'completeProfile.save' }
+    direction: DOWN
+- takeScreenshot: ready
+- tapOn: { id: 'completeProfile.save' }
+- back
+- waitForAnimationToEnd
+- takeScreenshot: after-back
