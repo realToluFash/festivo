@@ -921,7 +921,11 @@ export function SecurityDesk() {
           purpose={dialog.purpose}
           email={session.email}
           held={held}
-          passkeyOptions={() => api.passkeyOptions(PASSKEY_STEPS[dialog.purpose])}
+          passkeyOptions={
+            status?.passkeysOffered === true
+              ? () => api.passkeyOptions(PASSKEY_STEPS[dialog.purpose])
+              : undefined
+          }
           submit={(current) => passFactor(dialog.purpose, current, dialog.factor)}
           onClose={() => setDialog(null)}
           onDone={() => {
@@ -943,9 +947,7 @@ export function SecurityDesk() {
               : proveWith(ways.password, session.providers, provingAct.provider)
           }
           twoFactorOn={status?.on ?? false}
-          passkey={
-            held.passkeys && canUsePasskeys() ? () => api.passkeyOptions('proof') : undefined
-          }
+          passkey={held.passkeys && passkeysHere ? () => api.passkeyOptions('proof') : undefined}
           held={held}
           returned={proving.returned}
           purpose={

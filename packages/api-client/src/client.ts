@@ -1570,20 +1570,17 @@ export class ApiClient {
     email: string;
     twoFactor: boolean;
     factors: HeldFactors;
-    passkeysOffered: boolean;
   }> {
     const body = await this.post<{
       email?: unknown;
       twoFactor?: unknown;
       factors?: unknown;
-      passkeysOffered?: unknown;
     }>('/api/auth/password/reset/check', { token });
 
     return {
       email: typeof body?.email === 'string' ? body.email : '',
       twoFactor: body?.twoFactor === true,
       factors: asHeldFactors(body?.factors),
-      passkeysOffered: body?.passkeysOffered === true,
     };
   }
 
