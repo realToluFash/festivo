@@ -107,9 +107,14 @@ as `--delay` says. Pass `--clear` when starting `ios` or `android`, or Metro kee
 reverses that port onto the emulator as it does the stack's. A physical phone cannot reach
 127.0.0.1, so for one start the proxy with `--host` set to the machine's network address and
 put that address in `QA_API_URL`. Every matching GET is held, the first load
-included, so let the screen settle, then pull to refresh: reopening a screen remounts it and
-shows its first load, not its refresh. Raise `--delay` (30000) where a tap is slow to land,
-as on the iPad, or the hold runs out before the next screenshot.
+included, so let the screen settle, then pull to refresh: reopening a screen or a popover remounts it and
+shows its first load, not its refresh. Keep `--delay` under the app's 20-second no-answer limit
+(`NO_ANSWER_MS`, `packages/domain/src/connection.ts`), or the Offline band replaces the
+loading state: 15000 leaves room for a slow tap on the iPad. Where no pull to refresh exists,
+`--drop '<METHOD> <path regex>'` closes each matching request unanswered, so the screen goes
+stale with its rows, and Try again then starts the held reload: `--path '^/api/notifications$'
+--delay 15000 --drop '^POST /api/notifications/read-all$'` reaches the bell panel's refreshing row
+through Mark all read.
 
 Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
 offline from first launch, or its own splash screen, needs the app itself.
