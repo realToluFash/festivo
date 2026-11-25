@@ -551,9 +551,11 @@ permit = [
 # organisation scope keeps them, through the access layer's grants, and a person's language as the
 # user scope chooses it (AccountLanguage). The bell publishes its items on a declared topic (sc-3980).
 # An event's changes write dates in the house order for each language (SupportedLocales, sc-13214).
+# A host's send to guests is in the audit log (sc-3942).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Messaging\\"
 permit = [
+    "@layer:audit",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

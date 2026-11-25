@@ -20,6 +20,7 @@ enum RealtimeTopic: string
     case EventMenu = 'events/{id}/menu';
     case EventScreens = 'events/{id}/screens';
     case EventGuestPages = 'events/{id}/guest-pages';
+    case EventMessages = 'events/{id}/messages';
     case EventBudget = 'events/{id}/budget';
     case EventBudgetMargin = 'events/{id}/budget/margin';
     case EventQuotes = 'events/{id}/budget/quotes';

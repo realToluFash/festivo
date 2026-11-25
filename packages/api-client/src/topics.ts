@@ -11,6 +11,7 @@ export const REALTIME_TOPICS = {
   EventMenu: 'events/{id}/menu',
   EventScreens: 'events/{id}/screens',
   EventGuestPages: 'events/{id}/guest-pages',
+  EventMessages: 'events/{id}/messages',
   EventBudget: 'events/{id}/budget',
   EventBudgetMargin: 'events/{id}/budget/margin',
   EventQuotes: 'events/{id}/budget/quotes',

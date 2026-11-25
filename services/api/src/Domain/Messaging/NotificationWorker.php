@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\Messaging;
 
 use App\Domain\Messaging\Exception\Unreachable;
+use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
+use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\Interfaces\AudienceResolverInterface;
 use App\Domain\Messaging\Interfaces\NotificationPreferencesInterface;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventState;
 use App\Domain\Messaging\Model\EventVerdict;
+use App\Domain\Messaging\Model\Recipient;
+use App\Enum\DeliveryNotSentReason;
 use App\Enum\EventStatus;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
@@ -60,6 +64,7 @@ final class NotificationWorker
         private readonly EventMuteRepository $eventMuteRepository,
         private readonly NotificationPreferencesInterface $notificationPreferences,
         private readonly EmailSuppressions $emailSuppressions,
+        private readonly GuestMessagesChanged $guestMessagesChanged,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         #[AutowireIterator(AudienceResolverInterface::TAG)]
@@ -351,6 +356,12 @@ final class NotificationWorker
             return;
         }
 
+        $fixed = Type\nullable(Type\string())->coerce($row['address']);
+
+        if (null !== $fixed) {
+            $recipient = new Recipient($recipient->kind, $recipient->id, $recipient->name, $recipient->locale, $fixed);
+        }
+
         $channel = NotificationChannel::from(Type\string()->coerce($row['channel']));
 
         if (NotificationChannel::Email === $channel && !$type->reachesSuppressed() && null !== $recipient->emailAddress && $this->emailSuppressions->isSuppressed($recipient->emailAddress)) {
@@ -374,8 +385,15 @@ final class NotificationWorker
         try {
             $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $collapseKey);
         } catch (Unreachable $unreachable) {
+            if ($unreachable->providerBlocked && GuestMessageNotice::NAME !== $type->name()) {
+                $this->failed($id, Type\int()->coerce($row['attempts']) + 1, $unreachable->getPrevious() ?? $unreachable);
+                $this->release($collapsed);
+
+                return;
+            }
+
             if (!$this->forgetIfCancelled($id)) {
-                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
+                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true, notSent: $unreachable->providerBlocked ? DeliveryNotSentReason::ProviderBlocked : null);
             }
 
             $this->release($collapsed);
@@ -699,23 +717,26 @@ final class NotificationWorker
         );
     }
 
-    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null): void
+    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null, ?DeliveryNotSentReason $notSent = null): void
     {
-        $this->connection->executeStatement(
+        $finished = $this->connection->fetchAssociative(
             <<<'SQL'
                 UPDATE notification_deliveries
                 SET status = :status,
                     last_error = COALESCE(:reason, last_error),
+                    not_sent_reason = COALESCE(:notSent, not_sent_reason),
                     attempts = attempts + :attempted,
                     provider_message_id = :provider,
                     held = NULL,
                     finished_at = :now,
                     claimed_until = NULL
                 WHERE id = :id
+                RETURNING type, event_id
                 SQL,
             [
                 'status' => $status->value,
                 'reason' => $reason,
+                'notSent' => $notSent?->value,
                 'attempted' => $attempted ? 1 : 0,
                 'provider' => $providerId,
                 'now' => $this->clock->now(),
@@ -723,6 +744,10 @@ final class NotificationWorker
             ],
             ['now' => Types::DATETIME_IMMUTABLE],
         );
+
+        if (false !== $finished) {
+            $this->guestMessagesChanged->afterFinished(Type\string()->coerce($finished['type']), Type\nullable(Type\string())->coerce($finished['event_id']));
+        }
 
         // The database keeps only a code's hash: its words go once the send is over, not when the rows are pruned.
         $this->connection->executeStatement(
@@ -754,7 +779,7 @@ final class NotificationWorker
     {
         $row = $this->connection->fetchAssociative(
             <<<'SQL'
-                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
+                SELECT d.id, d.type, d.source_id, d.event_id, d.created_at, d.recipient_kind, d.recipient_id, d.channel, d.address, d.send_by, d.attempts, s.organisation_id, s.audience, s.payload
                 FROM notification_deliveries d
                 JOIN scheduled_notifications s ON s.id = d.scheduled_notification_id
                 WHERE d.id = :id

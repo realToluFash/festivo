@@ -7,6 +7,7 @@ namespace App\Domain\Messaging;
 use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventAnchor;
 use App\Domain\Messaging\Model\EventTimes;
+use App\Domain\Messaging\Model\PlannedDelivery;
 use App\Domain\Messaging\Model\Trigger;
 use App\Entity\Event;
 use App\Enum\NotificationAudienceKind;
@@ -196,6 +197,73 @@ final readonly class NotificationScheduler
 
             return $written;
         });
+    }
+
+    /**
+     * Fanned out now, in the caller's transaction (sc-3942): each delivery is queued, or recorded Not sent with its reason, with the address fixed as it goes. The send's answer counts exactly these rows.
+     *
+     * @param array<string, mixed>  $payload
+     * @param list<PlannedDelivery> $deliveries
+     */
+    public function scheduleFannedOut(string $type, string $sourceId, Audience $audience, array $payload, Event $event, array $deliveries): Uuid
+    {
+        $definition = $this->notificationRegistry->type($type);
+
+        if ($definition->audienceKind() !== $audience->kind || [NotificationChannel::Email] !== $definition->channels()) {
+            throw new InvalidArgumentException(Str\format('"%s" is not emailed to a fixed list.', $type));
+        }
+
+        if (!$this->connection->isTransactionActive()) {
+            throw new LogicException(Str\format('"%s" is written in the transaction of the message it tells of, so the two commit together.', $type));
+        }
+
+        $now = $this->clock->now();
+        $id = Uuid::v7();
+        $this->connection->insert('scheduled_notifications', [
+            'id' => $id->toRfc4122(),
+            'type' => $type,
+            'cancellation_key' => $type . ':' . $sourceId,
+            'source_id' => $sourceId,
+            'event_id' => $event->getId()->toRfc4122(),
+            'organisation_id' => $event->getOrganisation()->getId()->toRfc4122(),
+            'trigger' => Json\encode(Trigger::at($now)->toArray()),
+            'due_at' => $now,
+            'audience' => Json\encode($audience->toArray()),
+            'payload' => Json\encode([] === $payload ? new stdClass() : $payload),
+            'priority' => $definition->priority()->value,
+            'status' => ScheduledNotificationStatus::FannedOut->value,
+            'created_at' => $now,
+            'finished_at' => $now,
+        ], ['due_at' => Types::DATETIME_IMMUTABLE, 'created_at' => Types::DATETIME_IMMUTABLE, 'finished_at' => Types::DATETIME_IMMUTABLE]);
+
+        foreach ($deliveries as $delivery) {
+            $this->connection->insert('notification_deliveries', [
+                'id' => Uuid::v7()->toRfc4122(),
+                'scheduled_notification_id' => $id->toRfc4122(),
+                'event_id' => $event->getId()->toRfc4122(),
+                'type' => $type,
+                'source_id' => $sourceId,
+                'recipient_kind' => $audience->kind->value,
+                'recipient_id' => $delivery->recipientId->toRfc4122(),
+                'channel' => NotificationChannel::Email->value,
+                'priority' => $definition->priority()->value,
+                'status' => ($delivery->isQueued() ? NotificationDeliveryStatus::Pending : NotificationDeliveryStatus::Failed)->value,
+                'not_sent_reason' => $delivery->notSent?->value,
+                'address' => $delivery->address,
+                'due_at' => $now,
+                'next_attempt_at' => $now,
+                'attempts' => 0,
+                'finished_at' => $delivery->isQueued() ? null : $now,
+                'created_at' => $now,
+            ], [
+                'due_at' => Types::DATETIME_IMMUTABLE,
+                'next_attempt_at' => Types::DATETIME_IMMUTABLE,
+                'finished_at' => Types::DATETIME_IMMUTABLE,
+                'created_at' => Types::DATETIME_IMMUTABLE,
+            ]);
+        }
+
+        return $id;
     }
 
     /** @return int how many pending rows the key had, scheduled and fanned out */

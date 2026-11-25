@@ -10,6 +10,8 @@ use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
+use Psl\Str;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -34,7 +36,7 @@ final readonly class EmailSender implements ChannelSenderInterface
         $address = $recipient->emailAddress ?? throw new Unreachable('No email address.');
         $messageId = $deliveryId->toRfc4122() . '@notifications.soirely';
         $email = new Email()
-            ->from(Address::create($this->mailFrom))
+            ->from(null === $notification->senderName ? Address::create($this->mailFrom) : new Address(Address::create($this->mailFrom)->getAddress(), $notification->senderName))
             ->to($address)
             ->subject($notification->subject)
             ->text($notification->body);
@@ -47,7 +49,16 @@ final readonly class EmailSender implements ChannelSenderInterface
             $email->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         }
 
-        $this->mailer->send($email);
+        try {
+            $this->mailer->send($email);
+        } catch (TransportExceptionInterface $refused) {
+            // Postmark's error 406, an inactive recipient: "… marked as inactive. Found inactive addresses: …". The worker takes it as Not sent only for a guest's message.
+            if (Str\contains_ci($refused->getMessage(), 'marked as inactive')) {
+                throw Unreachable::providerBlocked($refused);
+            }
+
+            throw $refused;
+        }
 
         return $messageId;
     }
