@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
@@ -11,9 +11,8 @@ import {
 import { Bell } from '../../components/BellButton.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
-import { OPENER, quietTap } from '../../components/OrgPill.tsx';
+import { OPENER, quietTap, useWholeTile } from '../../components/OrgPill.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
@@ -24,8 +23,7 @@ import {
   PILL_NAME,
   PILL_WAITING,
   PILL_WAITING_LINE,
-  piecesOfLine,
-  pillTileAlone,
+  tileRoom,
   waitingFirstLine,
 } from '../todaySize/todaySizeRules.ts';
 import { topPillNameRoom, topPillWaitingRoom } from './topSizeRules.ts';
@@ -85,14 +83,10 @@ export function TopPill({
   const org = useOrgOpener(ref);
   const large = atAccessibilitySizes(scale);
   const line = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const pieces = useMemo(() => piecesOfLine(org.name), [org.name]);
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const widest = pieces.every((piece) => widths[piece] != null)
-    ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
-    : null;
+  const fit = useWholeTile(org.name, line, tileRoom(scale, room));
   const [nameAt, setNameAt] = useState<number | null>(null);
   const [waitingAt, setWaitingAt] = useState<number | null>(null);
-  const alone = tile || pillTileAlone(scale, widest, room);
+  const alone = tile || fit.tileAlone;
   const shared = {
     ref,
     onPress: org.onPress,
@@ -102,22 +96,11 @@ export function TopPill({
     ...quietTap(org.onPress, org.expanded),
     testID: 'demo.topSize.pill',
   } as const;
-  const measure = (
-    <MeasuredWords
-      words={pieces}
-      size={PILL_NAME}
-      weight="semibold"
-      allowFontScaling={false}
-      onWidth={(piece, width) =>
-        setWidths((now) => (now[piece] === width ? now : { ...now, [piece]: width }))
-      }
-    />
-  );
 
   if (alone)
     return (
       <View style={styles.fit}>
-        {measure}
+        {fit.measure}
         <Pressable
           {...shared}
           style={({ pressed }) => [styles.pill, styles.tile, pressed && styles.pressed]}
@@ -136,7 +119,7 @@ export function TopPill({
 
   return (
     <View style={styles.fit}>
-      {measure}
+      {fit.measure}
       <Pressable
         {...shared}
         style={({ pressed }) => [
