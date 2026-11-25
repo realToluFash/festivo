@@ -193,6 +193,8 @@ export const GUEST_GROUPS_MOST = 50;
 export interface Guest {
   id: string;
   fullName: string;
+  /** How messages greet them (sc-3960), null for none; sent to every reader, unlike the contact details. */
+  greetAs: string | null;
   /** Null for none; a companion is in their host's. */
   group: GuestGroup | null;
   /** Null for none, and for anyone without guests.manage, whom the API never sends it (sc-3773). */
@@ -280,6 +282,8 @@ export interface NewGuest {
   companions?: { fullName?: string | null; needs?: NeedsInput }[];
   /** The host's Language for them, null for Not set. Left out of an edit, it stays as it was. */
   language?: string | null;
+  /** Trimmed by the API, blank saved as none; left out of an edit, it stays as it was. */
+  greetAs?: string | null;
   /** Left out of an edit, they stay as they were; so does a kept companion's. */
   needs?: NeedsInput;
   group?: GroupChoice;
@@ -779,6 +783,7 @@ export function asGuest(value: unknown): Guest | null {
   return {
     id,
     fullName,
+    greetAs: text(row.greetAs),
     group,
     email: text(row.email),
     mobile: text(row.mobile),

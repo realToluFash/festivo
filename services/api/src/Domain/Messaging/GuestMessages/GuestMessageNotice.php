@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Messaging\GuestMessages;
 
+use App\Domain\Messaging\GuestReplies\GuestReplyWording;
 use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\GuestMessage;
 use App\Enum\NotificationAudienceKind;
@@ -21,6 +23,7 @@ use DateTimeImmutable;
 use LogicException;
 use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -34,6 +37,7 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         private GuestMessageRepository $guestMessageRepository,
         private GuestRepository $guestRepository,
         private TranslatorInterface $translator,
+        private GuestReplyWording $guestReplyWording,
         #[Autowire(env: 'CORS_WEB_ORIGIN')]
         private string $webOrigin,
     ) {
@@ -114,15 +118,21 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
     {
         $message = $this->message($payloads[0]) ?? throw new LogicException('A guest message rendered after it was deleted.');
         $event = $message->getEvent();
-        $hosts = $event->getOrganisation()->getName();
-        $guest = $this->guestRepository->findOneInEvent($event->getId(), $recipient->id);
+
+        return $this->notice($event, $this->guestRepository->findOneInEvent($event->getId(), $recipient->id), $recipient->name, $recipient->locale);
+    }
+
+    /** The email that tells one guest, as sent and as the preview shows it (sc-3960): {greeting} is their Greet as or full name, {hosts} the event's hosts in their language. */
+    /** @param bool $preview the link stops at the page's path, since the guest's own link is not the writer's to see */
+    public function notice(Event $event, ?Guest $guest, string $name, string $locale, bool $preview = false): RenderedNotification
+    {
+        $hosts = [] === $event->getHosts() ? $event->getOrganisation()->getName() : $this->guestReplyWording->names(Vec\values($event->getHosts()), $locale);
         $token = $guest?->getLinkToken();
-        $link = null === $token ? null : Str\trim_right($this->webOrigin, '/') . Guest::PAGE_PATH . $token;
-        $locale = $recipient->locale;
+        $link = null === $token ? null : Str\trim_right($this->webOrigin, '/') . Guest::PAGE_PATH . ($preview ? '…' : $token);
         $subject = $this->trans('guest_message.notice.subject', ['event' => $event->getName(), 'hosts' => $hosts], $locale);
 
         $lines = [
-            $this->trans('guest_message.notice.dear', ['greeting' => $recipient->name], $locale),
+            $this->trans('guest_message.notice.dear', ['greeting' => $guest?->greeting() ?? $name], $locale),
             '',
             $this->trans('guest_message.notice.body', ['hosts' => $hosts, 'event' => $event->getName()], $locale),
         ];
@@ -135,7 +145,7 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
         return new RenderedNotification(
             $subject,
             Str\join($lines, "\n"),
-            senderName: $this->trans('guest_message.notice.from', ['organisation' => $hosts], $locale),
+            senderName: $this->trans('guest_message.notice.from', ['organisation' => $event->getOrganisation()->getName()], $locale),
         );
     }
 

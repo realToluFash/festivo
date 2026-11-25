@@ -78,6 +78,8 @@ final readonly class GuestMessageSender
             $violations[] = $this->violation('message', 'validation.guest_message_required');
         } elseif (VisibleText::tooLong($message, GuestMessage::BODY_MAXIMUM)) {
             $violations[] = $this->violation('message', 'validation.guest_message_too_long', GuestMessage::BODY_MAXIMUM);
+        } elseif (!MessageTokens::wellFormed($message)) {
+            $violations[] = $this->violation('message', 'validation.guest_message_token_unknown');
         }
 
         if ([] !== $violations) {

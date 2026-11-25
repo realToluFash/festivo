@@ -30,6 +30,8 @@ class Guest
 
     public const int COMPANIONS_MAXIMUM = 10;
 
+    public const int GREET_AS_MAXIMUM = 60;
+
     /** The guest's own page, followed by their link token (sc-1526). */
     public const string PAGE_PATH = '/i/';
 
@@ -123,6 +125,10 @@ class Guest
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $invitedBy = null;
+
+    /** How messages address them (sc-3960), such as "Auntie Bisi"; null greets them by their full name. */
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $greetAs = null;
 
     /** The host's Language for them (sc-3790): one of SupportedLocales::ALL, or null for Not set. */
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
@@ -438,6 +444,22 @@ class Guest
     public function setMobile(?string $mobile): void
     {
         $this->mobile = $mobile;
+    }
+
+    public function getGreetAs(): ?string
+    {
+        return $this->greetAs;
+    }
+
+    public function setGreetAs(?string $greetAs): void
+    {
+        $this->greetAs = $greetAs;
+    }
+
+    /** What {greeting} fills in: their Greet as, or their full name. */
+    public function greeting(): string
+    {
+        return $this->greetAs ?? $this->fullName ?? '';
     }
 
     public function getLanguage(): ?string

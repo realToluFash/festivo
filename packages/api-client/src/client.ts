@@ -82,6 +82,7 @@ import type {
   GuestMessageCheck,
   GuestMessageDetails,
   GuestMessageInput,
+  GuestMessagePreview,
   GuestMessageRow,
   GuestMessageSent,
   PickableGuest,
@@ -3744,6 +3745,13 @@ export class ApiClient {
     );
 
     return body.guests ?? [];
+  }
+
+  /** As one guest will see it (sc-3960); 404 for a companion or a guest of another event. */
+  guestMessagePreview(eventId: string, guestId: string): Promise<GuestMessagePreview> {
+    return this.get<GuestMessagePreview>(
+      `${this.messagesPath(eventId)}/preview/${encodeURIComponent(guestId)}`,
+    );
   }
 
   /** The check before Send, worked out by the same rule as Send, a follow-up's from whom its first message went: refused 422 on `guestIds` for nobody chosen, 409 on an event that can't send. */
