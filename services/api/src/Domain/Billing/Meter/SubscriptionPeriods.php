@@ -32,7 +32,7 @@ final readonly class SubscriptionPeriods
     public function containing(Subscription $subscription, DateTimeImmutable $at): PeriodTerms
     {
         $changes = $this->changesOf($subscription);
-        $moves = Vec\values(Vec\filter($changes, static fn (array $change): bool => 'period' === $change['kind']));
+        $moves = Vec\values(Vec\filter($changes, static fn (array $change): bool => 'period_start' === $change['kind']));
         $starts = [] === $moves
             ? [$subscription->getPeriodStart()]
             : [self::moment($moves[0]['from_value']), ...Vec\map($moves, static fn (array $move): DateTimeImmutable => self::moment($move['to_value']))];
@@ -71,7 +71,7 @@ final readonly class SubscriptionPeriods
     /** @param list<array{kind: string, from_value: ?string, to_value: ?string, occurred_at: DateTimeImmutable, from_version: ?string}> $changes */
     private function termsInForceBefore(Subscription $subscription, array $changes, DateTimeImmutable $moment): PlanTerms
     {
-        $later = Vec\reverse(Vec\filter($changes, static fn (array $change): bool => 'period' !== $change['kind'] && $change['occurred_at'] >= $moment));
+        $later = Vec\reverse(Vec\filter($changes, static fn (array $change): bool => 'period_start' !== $change['kind'] && $change['occurred_at'] >= $moment));
 
         if ([] === $later) {
             return $this->entitlements->of($subscription->getOrganisation()->getId())->terms;
@@ -106,7 +106,7 @@ final readonly class SubscriptionPeriods
                 FROM subscription_changes change
                 LEFT JOIN catalogue_versions version
                     ON change.kind = 'catalogue_version' AND version.part = 'plans' AND version.name = change.from_value
-                WHERE change.subscription_id = :subscription AND change.kind IN ('plan', 'period', 'catalogue_version')
+                WHERE change.subscription_id = :subscription AND change.kind IN ('plan', 'period_start', 'catalogue_version')
                 ORDER BY change.occurred_at, change.id
                 SQL,
             ['subscription' => $subscription->getId()->toRfc4122()],
