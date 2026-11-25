@@ -26,7 +26,7 @@ export interface ArrivedFocus {
   arrival: WindowArrival;
   /** The field has input focus now, by Android's own focus and blur events, not JS's record of them, which a lost focus leaves pointing at the field (sc-44356). */
   focused: boolean;
-  /** Another field has input focus, by the same events: a tap put it there. */
+  /** Another `Field` has input focus, by the same events: a tap put it there. A bare TextInput outside a `Field` sends this hook nothing, so a tap on one within the ticks has the field take focus back; JS's record of the focused input is no check, since a lost focus leaves it stale (qa2 #91741). */
   heldElsewhere: boolean;
   ticks: number;
 }
