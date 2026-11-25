@@ -3549,17 +3549,17 @@
     "openEvent": "Ouvrir l’événement",
     "signedInAs": "Session ouverte : {{name}}",
     "phone": {
-      "mobile": "Mobile number",
-      "countryCode": "Country code",
-      "sendCode": "Send code",
-      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
-      "checkWhatsApp": "Check WhatsApp",
-      "checkMessages": "Check your messages",
-      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
-      "texted": "We texted a code to {{number}}.",
-      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
-      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
-      "textInstead": "Text it to me instead"
+      "mobile": "Numéro de portable",
+      "countryCode": "Indicatif",
+      "sendCode": "Envoyer le code",
+      "alternative": "Ce numéro est associé à un compte Soirely sans en être le numéro principal : il ne permet donc pas de vous connecter. Saisissez le numéro principal de ce compte, ou définissez celui-ci comme numéro principal.",
+      "checkWhatsApp": "Consultez WhatsApp",
+      "checkMessages": "Code envoyé",
+      "sentWhatsApp": "Nous avons envoyé un code sur votre WhatsApp au {{number}}.",
+      "texted": "Nous avons envoyé un code par SMS au {{number}}.",
+      "wrongWhatsApp": "Ce code ne correspond pas. Vérifiez le dernier message WhatsApp de Soirely et réessayez.",
+      "wrongText": "Ce code ne correspond pas. Vérifiez le dernier SMS de Soirely et réessayez.",
+      "textInstead": "Me l’envoyer par SMS"
     }
   },
   "doorCodes": {

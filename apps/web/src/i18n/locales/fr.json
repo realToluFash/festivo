@@ -2015,11 +2015,11 @@
         "line": "L’invitation à rejoindre {{organisation}} ne peut plus être acceptée."
       },
       "invitation_needs_email": {
-        "title": "Add your email address first",
-        "line": "This invitation is for {{email}}. Add that address to your account and verify it, then accept the invitation."
+        "title": "Ajoutez d’abord votre adresse e-mail",
+        "line": "Cette invitation est destinée à {{email}}. Ajoutez cette adresse à votre compte et vérifiez-la, puis acceptez l’invitation."
       }
     },
-    "addEmail": "Add an email address"
+    "addEmail": "Ajouter une adresse e-mail"
   },
   "invitations": {
     "heading": "Invitations",
@@ -2433,18 +2433,18 @@
     "foot": "Rien n’est conservé sur cet appareil.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
     "signIn": {
-      "staffLink": "Staff link",
-      "confirm": "Confirm it’s you",
-      "sendTo": "We’ll send a code to {{number}}.",
-      "notYours": "Not your number?",
-      "askToChange": "Ask the event’s organiser to change it on the roster.",
-      "askToAdd": "Ask the event’s organiser to add your mobile number to the roster.",
-      "signIn": "Sign in",
-      "signingIn": "Signing in…",
-      "tryAt": "Try again at {{time}}",
-      "linkFor": "This link is for {{name}}.",
-      "signOutContinue": "Sign out and continue",
-      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster."
+      "staffLink": "Lien du personnel",
+      "confirm": "Confirmez que c’est bien vous",
+      "sendTo": "Nous allons envoyer un code au {{number}}.",
+      "notYours": "Ce n’est pas votre numéro ?",
+      "askToChange": "Demandez à l’organisateur de l’événement de le modifier sur la liste du personnel.",
+      "askToAdd": "Demandez à l’organisateur de l’événement d’ajouter votre numéro de portable à la liste du personnel.",
+      "signIn": "Se connecter",
+      "signingIn": "Connexion…",
+      "tryAt": "Réessayez à partir de {{time}}.",
+      "linkFor": "Ce lien est destiné à {{name}}.",
+      "signOutContinue": "Se déconnecter et continuer",
+      "alternative": "Ce numéro est associé à un compte Soirely sans en être le numéro principal : il ne permet donc pas de vous connecter. Définissez-le comme numéro principal de ce compte, ou demandez à l’organisateur de l’événement d’inscrire votre numéro principal sur la liste du personnel."
     }
   },
   "ownerClaim": {
@@ -3547,31 +3547,31 @@
     "signedOutAt": "Fin de votre session : {{time}}.",
     "signedOut": "Session fermée.",
     "phone": {
-      "mobile": "Mobile number",
-      "countryCode": "Country code",
-      "sendCode": "Send code",
-      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
-      "checkWhatsApp": "Check WhatsApp",
-      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
-      "checkMessages": "Check your messages",
-      "texted": "We texted a code to {{number}}.",
-      "codeFromWhatsApp": "Code from WhatsApp",
-      "codeFromText": "Code from the text",
-      "blankWhatsApp": "Enter the 6-digit code from WhatsApp.",
-      "blankText": "Enter the 6-digit code from the text.",
-      "shortWhatsApp": "The code is 6 digits.",
-      "shortText": "The code is 6 digits.",
-      "verify": "Verify",
-      "verifying": "Verifying…",
-      "textInstead": "Text it to me instead",
-      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
-      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
-      "expiredTitle": "That code has expired",
-      "expiredBody": "Codes only work for a while. Send a new one and use the code in the newest text.",
-      "expiredBodyWhatsApp": "Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.",
-      "exhaustedTitle": "Too many wrong tries",
-      "exhaustedBody": "That code no longer works. Send a new one to carry on.",
-      "failedTitle": "That did not work"
+      "mobile": "Numéro de portable",
+      "countryCode": "Indicatif",
+      "sendCode": "Envoyer le code",
+      "alternative": "Ce numéro est associé à un compte Soirely sans en être le numéro principal : il ne permet donc pas de vous connecter. Saisissez le numéro principal de ce compte, ou définissez celui-ci comme numéro principal.",
+      "checkWhatsApp": "Consultez WhatsApp",
+      "sentWhatsApp": "Nous avons envoyé un code sur votre WhatsApp au {{number}}.",
+      "checkMessages": "Consultez vos messages",
+      "texted": "Nous avons envoyé un code par SMS au {{number}}.",
+      "codeFromWhatsApp": "Code reçu sur WhatsApp",
+      "codeFromText": "Code reçu par SMS",
+      "blankWhatsApp": "Saisissez le code à 6 chiffres reçu sur WhatsApp.",
+      "blankText": "Saisissez le code à 6 chiffres du SMS.",
+      "shortWhatsApp": "Le code compte 6 chiffres.",
+      "shortText": "Le code compte 6 chiffres.",
+      "verify": "Vérifier",
+      "verifying": "Vérification…",
+      "textInstead": "Me l’envoyer par SMS",
+      "wrongWhatsApp": "Ce code ne correspond pas. Vérifiez le dernier message WhatsApp de Soirely et réessayez.",
+      "wrongText": "Ce code ne correspond pas. Vérifiez le dernier SMS de Soirely et réessayez.",
+      "expiredTitle": "Ce code a expiré",
+      "expiredBody": "Les codes ne fonctionnent qu’un temps. Demandez-en un nouveau et utilisez celui du dernier SMS.",
+      "expiredBodyWhatsApp": "Les codes ne fonctionnent qu’un temps. Demandez-en un nouveau et utilisez celui du dernier message WhatsApp.",
+      "exhaustedTitle": "Trop de tentatives",
+      "exhaustedBody": "Ce code ne fonctionne plus. Demandez-en un nouveau pour continuer.",
+      "failedTitle": "Cela n’a pas fonctionné"
     }
   },
   "guestList": {

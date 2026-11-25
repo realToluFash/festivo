@@ -2363,7 +2363,7 @@
       "askToAdd": "Ask the event’s organiser to add your mobile number to the roster.",
       "signIn": "Sign in",
       "signingIn": "Signing in…",
-      "tryAt": "Try again at {{time}}",
+      "tryAt": "Try again at {{time}}.",
       "linkFor": "This link is for {{name}}.",
       "signOutContinue": "Sign out and continue",
       "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster."
