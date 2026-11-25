@@ -6,7 +6,9 @@ import {
   capsuleLabelSize,
   capsuleRoom,
   fittedLabelSize,
+  measuredAt,
   pillGivesWay,
+  withMeasure,
 } from './capsuleFit.ts';
 
 const ROW_800 = 800 - 2 * 24;
@@ -95,5 +97,21 @@ describe('the pill beside the capsule', () => {
     expect(pillGivesWay(2, 17)).toBe(true);
     expect(pillGivesWay(2, 30)).toBe(false);
     expect(pillGivesWay(1, 15)).toBe(false);
+  });
+});
+
+describe('the band’s capsule height, upright, as layouts arrive (sc-91290)', () => {
+  const A = { width: 300, height: 46 };
+  const B = { width: 420, height: 92 };
+
+  it('keeps the current fit’s height when an earlier fit’s layout arrives after it', () => {
+    const late = withMeasure(withMeasure({}, 40, B), 30, A);
+
+    expect(measuredAt(late, 40)).toEqual(B);
+  });
+
+  it('reads nothing before the capsule at the fitted size has been laid out', () => {
+    expect(measuredAt(withMeasure({}, 30, A), 40)).toEqual({ width: 0, height: 0 });
+    expect(measuredAt(withMeasure({}, 30, A), undefined)).toEqual({ width: 0, height: 0 });
   });
 });

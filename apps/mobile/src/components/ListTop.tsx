@@ -4,7 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
-import { capsuleGrowth } from '../layout/capsuleFit.ts';
+import {
+  type CapsuleMeasures,
+  capsuleGrowth,
+  measuredAt,
+  withMeasure,
+} from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type TextHandle } from './Text.tsx';
 import { useCapsuleLabels } from './CapsuleLabels.tsx';
@@ -128,10 +133,8 @@ export function PortraitRow({
   const [rowWidth, setRowWidth] = useState(0);
   const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
-  const [tabs, setTabs] = useState<{ at: number; width: number; height: number }>();
-  const atSize = tabs != null && tabs.at === labelSize ? tabs : undefined;
-  const tabsWidth = atSize?.width ?? 0;
-  const tabsHeight = atSize?.height ?? 0;
+  const [measures, setMeasures] = useState<CapsuleMeasures>({});
+  const { width: tabsWidth, height: tabsHeight } = measuredAt(measures, labelSize);
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
@@ -149,13 +152,12 @@ export function PortraitRow({
       <View style={styles.fill} />
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        {/* Keyed by the fitted size and read only at it, so a layout reported late from an earlier fit, or from before the capsule was drawn, never sets the band's height (sc-91290). */}
         <View
           key={labelSize}
           onLayout={(event) => {
             if (labelSize == null) return;
             const { width, height } = event.nativeEvent.layout;
-            setTabs({ at: labelSize, width, height });
+            setMeasures((prev) => withMeasure(prev, labelSize, { width, height }));
           }}
         >
           {labelSize != null && renderTabs(labelSize)}
