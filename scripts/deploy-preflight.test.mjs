@@ -33,6 +33,11 @@ describe('the pre-flight', () => {
     expect(preflight('APP_HOST=\n')).toContain('FAIL  APP_HOST is not empty');
   });
 
+  it('refuses a server without the key both email lists are hashed under', () => {
+    expect(preflight('')).toContain('FAIL  GUEST_COMPLAINT_KEY is set');
+    expect(preflight('GUEST_COMPLAINT_KEY=\n')).toContain('FAIL  GUEST_COMPLAINT_KEY is not empty');
+  });
+
   it.each([
     'not-a-range',
     '10.0.0.0/33',

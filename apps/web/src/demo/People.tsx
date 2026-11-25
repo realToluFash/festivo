@@ -19,6 +19,7 @@ import {
 import {
   ADD_PROMPT,
   addedToast,
+  isServiceLevel,
   EMPTY_LINE,
   EMPTY_TITLE,
   type EventPlace,
@@ -298,7 +299,9 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             onClose={() => setAdding(false)}
             onAdd={(added, finished) => {
               setOnEvent((was) => {
-                const next = withAdded(was, added.role, added.members);
+                const next = isServiceLevel(added.role)
+                  ? was
+                  : withAdded(was, added.role, added.members);
                 return added.outside == null
                   ? next
                   : withOutside(next, added.role, added.outside.address, added.outside.job);

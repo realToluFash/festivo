@@ -251,7 +251,7 @@ services:
             $secret: '%kernel.secret%'
     App\Domain\Messaging\EmailAddressHash:
         arguments:
-            $secret: '%kernel.secret%'
+            $key: '%env(GUEST_COMPLAINT_KEY)%'
     App\Domain\Guest\Calendar\GuestCalendarWriter:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

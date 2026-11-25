@@ -673,7 +673,7 @@ export function NowBlock({
   if (!moment.full) {
     const words = (
       <>
-        <Chips now={now} />
+        <Chips now={now} grows={wide && whole} />
         <Text
           size={wide ? 48 : 36}
           weight="bold"

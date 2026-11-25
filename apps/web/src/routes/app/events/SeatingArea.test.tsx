@@ -188,7 +188,22 @@ describe('Seating at a desk (sc-3998)', () => {
       widthCm: 2400,
       lengthCm: 1850,
     });
-    expect(screen.getByText('Add your first table, row or seat from the bar below.')).toBeDefined();
+    expect(
+      screen
+        .getByText('Add your first table, row or seat from the bar below.')
+        .closest('.st-bar')
+        ?.classList.contains('is-floor'),
+    ).toBe(true);
+  });
+
+  it("puts the first-table banner in the frame's middle, 12 px in from each side when it is narrow", () => {
+    const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+    const floor = cssRule('.st-bar.is-floor', SHEET);
+
+    expect(floor).toContain('top: 50%;');
+    expect(floor).toContain('left: 50%;');
+    expect(floor).toContain('width: min(470px, calc(100% - 2 * var(--spaceLg)));');
+    expect(floor).toContain('transform: translate(-50%, -50%);');
   });
 
   it('asks for feet and inches where the organisation is US customary', async () => {
@@ -6893,8 +6908,8 @@ describe('the save line beside the switch (sc-91971)', () => {
     const SHEET = stylesheet(import.meta.dirname, 'seating.css');
 
     expect(cssRule('.is-row-down > .st-top-right', SHEET)).toContain('top: 72px;');
-    expect(cssRule('.is-row-down > :is(.st-bar, .st-under-views, .st-view-wrap)', SHEET)).toContain(
-      'top: 132px;',
-    );
+    expect(
+      cssRule('.is-row-down > :is(.st-bar:not(.is-floor), .st-under-views, .st-view-wrap)', SHEET),
+    ).toContain('top: 132px;');
   });
 });

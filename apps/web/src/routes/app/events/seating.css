@@ -481,6 +481,19 @@
   border-radius: var(--spaceLg);
 }
 
+.st-bar.is-floor {
+  top: 50%;
+  left: 50%;
+  align-items: flex-start;
+  width: min(470px, calc(100% - 2 * var(--spaceLg)));
+  transform: translate(-50%, -50%);
+}
+
+/* sc-92210: on two lines or three the info icon stays at the start of the first. */
+.st-bar.is-floor > :first-child {
+  margin-top: calc(var(--spaceLg) + (14.5px * 1.4 - 17px) / 2);
+}
+
 .st-bar.is-inline {
   position: static;
   width: auto;
@@ -2203,7 +2216,8 @@
   top: 72px;
 }
 
-.is-row-down > :is(.st-bar, .st-under-views, .st-view-wrap) {
+/* sc-92210: the first-table banner keeps the frame's middle, so it is the one floating bar that does not step down. */
+.is-row-down > :is(.st-bar:not(.is-floor), .st-under-views, .st-view-wrap) {
   top: 132px;
 }
 

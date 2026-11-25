@@ -385,7 +385,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
   );
 
   it(
-    'keeps the role’s list and the role on the person while two-factor is overdue (sc-86077)',
+    'keeps the role on the person while two-factor is overdue, and hides Members as the product does (sc-86077, sc-93443)',
     SLOW,
     async () => {
       open('/demo/settings/general?as=julien&switcher=overdue');
@@ -393,7 +393,7 @@ describe('the organisation switcher in B · Places at a desk (sc-30323)', () => 
       fireEvent.keyDown(document.body, { key: 'Escape' });
       const list = within(screen.getByRole('navigation', { name: 'Settings' }));
 
-      expect(list.getByRole('link', { name: 'Members' })).toBeDefined();
+      expect(list.queryByRole('link', { name: 'Members' })).toBeNull();
       expect(list.getByRole('link', { name: 'General' }).textContent).toContain('IE');
       expect(screen.getByRole('button', { name: 'Julien Moreau, Admin' })).toBeDefined();
     },
