@@ -6811,3 +6811,55 @@ describe('the zoom bar at 40rem and under (sc-91971)', () => {
     );
   });
 });
+
+describe('the save line beside the switch (sc-91971)', () => {
+  it.each([
+    [282, false],
+    [283, true],
+  ])(
+    'on a 718 px room with the switch 400 px wide and the save line %i px, the save line steps down: %s',
+    async (saveWidth, down) => {
+      signedIn();
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-views')
+            ? 400
+            : this.classList.contains('st-top-right')
+              ? saveWidth
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+        await screen.findByRole('group', { name: 'View' });
+
+        await waitFor(() =>
+          expect(document.querySelector('.st-canvas.is-row-down') != null).toBe(down),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it('steps the save line one line down, and what stood on that line a line further', () => {
+    const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+
+    expect(cssRule('.is-row-down > .st-top-right', SHEET)).toContain('top: 72px;');
+    expect(cssRule('.is-row-down > :is(.st-bar, .st-under-views, .st-view-wrap)', SHEET)).toContain(
+      'top: 132px;',
+    );
+  });
+});

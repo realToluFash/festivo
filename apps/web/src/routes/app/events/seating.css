@@ -2198,6 +2198,15 @@
   flex: none;
 }
 
+/* sc-91971: when the switch and the save line, as drawn in the page's language, would come within 12 px, the save line steps down a line at the room's right, and what stood on that line steps down with it (sc-57282). */
+.is-row-down > .st-top-right {
+  top: 72px;
+}
+
+.is-row-down > :is(.st-bar, .st-under-views, .st-view-wrap) {
+  top: 132px;
+}
+
 .st-view {
   display: flex;
   flex-direction: column;
