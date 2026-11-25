@@ -107,6 +107,10 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'no longer a guest, nobody left',
     'The preview closed; Preview not offered, and the line says why',
   ],
+  previewNobody: [
+    'nobody to preview',
+    'Coming · 0: Preview not offered, its tokens unfilled; Nobody matches is the reason',
+  ],
   previewMarkup: ['a Greet as with markup', 'Kemi Bankole’s Greet as shown as text'],
   typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
   previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],

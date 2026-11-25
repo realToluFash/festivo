@@ -171,6 +171,7 @@ export const MESSAGES_STATES = [
   'previewFailed',
   'previewGone',
   'previewGoneLast',
+  'previewNobody',
   'previewMarkup',
   'typedBraces',
   'previewBraces',
@@ -529,6 +530,7 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   previewFailed: { ...sampleDraft('preview'), body: DATED_BODY },
   previewGone: { ...sampleDraft('preview'), body: DATED_BODY },
   previewGoneLast: { ...sampleDraft('write'), body: DATED_BODY },
+  previewNobody: { ...sampleDraft('write'), body: DATED_BODY, zero: ['coming'] },
   previewMarkup: { ...sampleDraft('preview'), body: DATED_BODY },
   typedBraces: { ...sampleDraft('write'), body: BRACED_BODY },
   previewBraces: { ...sampleDraft('preview'), body: BRACED_BODY },
@@ -1125,7 +1127,9 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'body':
       return withDraft(m, (draft) => stillOver({ ...draft, body: action.text, cancelled: false }));
     case 'preview':
-      return m.preview?.nobodyLeft == null ? stepped(m, ['write'], 'preview') : m;
+      return m.preview?.nobodyLeft == null && m.draft != null && !matchesNobody(m.draft)
+        ? stepped(m, ['write'], 'preview')
+        : m;
     case 'edit': {
       const back = stepped(m, ['preview'], 'write');
       if (back.preview?.goneSaid == null) return back;
