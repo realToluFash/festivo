@@ -22,12 +22,9 @@ export function SignInSecondFactor({ recovery = false }: { recovery?: boolean })
       intro={
         recovery
           ? t('twoFactor.recoveryIntro')
-          : t('twoFactor.intro', {
-              email:
-                challenge.email === '' && challenge.phone != null
-                  ? maskedPhone(challenge.phone)
-                  : challenge.email,
-            })
+          : challenge.email === '' && challenge.phone != null
+            ? t('twoFactor.introNumber', { number: maskedPhone(challenge.phone) })
+            : t('twoFactor.intro', { email: challenge.email })
       }
       failedTitle={t('signIn.failedTitle')}
       failedBody={t('signIn.failedBody')}

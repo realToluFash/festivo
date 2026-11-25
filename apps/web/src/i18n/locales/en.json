@@ -1182,6 +1182,7 @@
   "twoFactor": {
     "title": "Enter your code",
     "intro": "Open your authenticator app and enter the 6-digit code for {{email}}.",
+    "introNumber": "Open your authenticator app and enter the 6-digit code for {{number}}.",
     "code": "Code",
     "verify": "Verify and sign in",
     "useRecovery": "Use a recovery code instead",
@@ -6313,6 +6314,7 @@
   "passkey": {
     "waitTitle": "Use your passkey",
     "signInLead": "Your browser asks for your passkey for {{email}}. Unlock it with your face, fingerprint, PIN or screen lock.",
+    "signInLeadNumber": "Your browser asks for your passkey for {{number}}. Unlock it with your face, fingerprint, PIN or screen lock.",
     "resetLead": "Your account uses two-factor, so the reset asks for your passkey first. Nothing changes until it passes.",
     "use": "Use a passkey",
     "useCode": "Use a code instead",

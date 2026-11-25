@@ -256,6 +256,7 @@
   "twoFactor": {
     "title": "Introduzca su código",
     "intro": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{email}}.",
+    "introNumber": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{number}}.",
     "code": "Código",
     "useRecovery": "Usar un código de recuperación",
     "recoveryTitle": "Introduzca un código de recuperación",

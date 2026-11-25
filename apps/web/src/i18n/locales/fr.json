@@ -1226,6 +1226,7 @@
   "twoFactor": {
     "title": "Saisissez votre code",
     "intro": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{email}}.",
+    "introNumber": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{number}}.",
     "code": "Code",
     "verify": "Vérifier et se connecter",
     "useRecovery": "Utiliser plutôt un code de récupération",
@@ -6662,6 +6663,7 @@
   "passkey": {
     "waitTitle": "Utilisez votre clé d’accès",
     "signInLead": "Votre navigateur vous demande votre clé d’accès pour {{email}}. Déverrouillez-la avec votre visage, votre empreinte, votre code PIN ou le verrouillage de l’écran.",
+    "signInLeadNumber": "Votre navigateur vous demande votre clé d’accès pour {{number}}. Déverrouillez-la avec votre visage, votre empreinte, votre code PIN ou le verrouillage de l’écran.",
     "resetLead": "Votre compte utilise la double authentification : la réinitialisation demande donc d’abord votre clé d’accès. Rien ne change tant qu’elle n’est pas validée.",
     "use": "Utiliser une clé d’accès",
     "useCode": "Utiliser plutôt un code",

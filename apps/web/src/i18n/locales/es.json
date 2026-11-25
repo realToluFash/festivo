@@ -1226,6 +1226,7 @@
   "twoFactor": {
     "title": "Introduzca su código",
     "intro": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{email}}.",
+    "introNumber": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{number}}.",
     "code": "Código",
     "verify": "Verificar e iniciar sesión",
     "useRecovery": "Usar un código de recuperación",
@@ -6662,6 +6663,7 @@
   "passkey": {
     "waitTitle": "Use su llave de acceso",
     "signInLead": "Su navegador le pide la llave de acceso de {{email}}. Desbloquéela con la cara, la huella, el PIN o el bloqueo de pantalla.",
+    "signInLeadNumber": "Su navegador le pide la llave de acceso de {{number}}. Desbloquéela con la cara, la huella, el PIN o el bloqueo de pantalla.",
     "resetLead": "Su cuenta usa la verificación en dos pasos, así que el restablecimiento le pide primero su llave de acceso. No cambia nada hasta que se valide.",
     "use": "Usar una llave de acceso",
     "useCode": "Usar un código",

@@ -256,6 +256,7 @@
   "twoFactor": {
     "title": "Saisissez votre code",
     "intro": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{email}}.",
+    "introNumber": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{number}}.",
     "code": "Code",
     "useRecovery": "Utiliser plutôt un code de récupération",
     "recoveryTitle": "Saisissez un code de récupération",

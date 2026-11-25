@@ -16,11 +16,16 @@ export function TwoFactorSignIn() {
   const challenge = useLocation().state as TwoFactorChallenge | null;
 
   if (challenge?.challenge == null) return <Navigate to="/sign-in" replace />;
+  const number = numberOf(challenge);
 
   return (
     <AuthPage bare end={null}>
       <SecondFactorStep
-        intro={t('twoFactor.intro', { email: whose(challenge) })}
+        intro={
+          number == null
+            ? t('twoFactor.intro', { email: challenge.email })
+            : t('twoFactor.introNumber', { number })
+        }
         recoveryIntro={t('twoFactor.recoveryIntro')}
         submitLabel={t('twoFactor.verify')}
         failedTitle={t('signIn.failedTitle')}
@@ -34,7 +39,10 @@ export function TwoFactorSignIn() {
         lostBoth={{ to: '/two-factor/recovery', state: challenge }}
         factors={challenge.factors}
         passkey={{
-          lead: t('passkey.signInLead', { email: whose(challenge) }),
+          lead:
+            number == null
+              ? t('passkey.signInLead', { email: challenge.email })
+              : t('passkey.signInLeadNumber', { number }),
           options: () => api.signInPasskeyOptions(challenge.challenge),
         }}
         onExpired={() =>
@@ -49,9 +57,7 @@ export function TwoFactorSignIn() {
   );
 }
 
-/** The address the code is for, or on an account with no email its primary number, masked (sc-4235). */
-function whose(challenge: TwoFactorChallenge): string {
-  return challenge.email === '' && challenge.phone != null
-    ? maskedPhone(challenge.phone)
-    : challenge.email;
+/** On an account with no email, its primary number, masked (sc-4235). */
+function numberOf(challenge: TwoFactorChallenge): string | null {
+  return challenge.email === '' && challenge.phone != null ? maskedPhone(challenge.phone) : null;
 }
