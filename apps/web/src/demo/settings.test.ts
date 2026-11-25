@@ -23,9 +23,9 @@ describe('the Settings list at a desk (sc-29708)', () => {
   });
 
   it('lists only General and Sign-in rules for a paused membership, whatever the role elsewhere (sc-86077)', () => {
-    expect(groupsFor(VIEWERS.folake, true)[1]?.sections).toEqual(['general', 'signInRules']);
-    expect(groupsFor(VIEWERS.ana, true)[1]?.sections).toEqual(['general', 'signInRules']);
-    expect(groupsFor(VIEWERS.folake, true)[0]?.sections).toHaveLength(4);
+    expect(groupsFor(VIEWERS.folake, 'paused')[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.ana, 'paused')[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.folake, 'paused')[0]?.sections).toHaveLength(4);
   });
 
   it('is Folake, the owner, unless the link names somebody it knows', () => {
