@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  calledIn,
+  keepWords,
+  LONG_ADDRESSES,
+  notChangedLine,
+  type OnEvent,
   listed,
   manages,
   NOT_JOINED,
@@ -166,5 +171,50 @@ describe('staff links on the access list (sc-3912)', () => {
   it('does not open the role dialog: a link is changed on the roster', () => {
     const start = peopleStart('staffLinks');
     expect(linked.some((one) => opens(one, start.viewer, start.onEvent))).toBe(false);
+  });
+});
+
+describe('someone with no account name on the Remove ask (sc-91678)', () => {
+  const outsider = (name: string): OnEvent => ({
+    id: name,
+    name,
+    initials: '',
+    tone: 5,
+    role: 'Can view',
+    outside: true,
+    label: null,
+  });
+  const amaka = outsider(LONG_ADDRESSES.addressShort);
+  const mobile = outsider('+234 803 123 4567');
+  const ada: OnEvent = {
+    id: 'ada@ire.events',
+    name: 'Ada Obiageli Chukwuemeka Oluwaseun Obi',
+    initials: 'AO',
+    tone: 2,
+    role: 'Can edit',
+    outside: false,
+    label: null,
+  };
+
+  it('keeps them as Keep them, never part of an address or a number', () => {
+    expect(keepWords(amaka)).toBe('Keep them');
+    expect(keepWords(mobile)).toBe('Keep them');
+    expect(keepWords(ada)).toBe('Keep Ada');
+    expect(keepWords({ ...ada, outside: true })).toBe('Keep Ada');
+  });
+
+  it('names them whole when their role change does not save', () => {
+    expect(notChangedLine(mobile)).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
+    expect(calledIn(amaka)).toBe('amaka.outside@soirely.test');
+    expect(notChangedLine(ada)).toBe(
+      'We couldn’t change Ada’s role, so it’s still Can edit. Check your connection and pick again.',
+    );
+  });
+
+  it('counts a withheld outsider as unnamed too', () => {
+    const [hidden] = seenBy([mobile], false);
+    expect(hidden && keepWords(hidden)).toBe('Keep them');
   });
 });
