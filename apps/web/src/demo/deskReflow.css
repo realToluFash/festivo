@@ -100,8 +100,8 @@
     justify-content: center;
   }
 
-  /* The room holds the tallest stack from the top (the views, Print, the select bar on three rows) and from the floor (Add, the stepped-up zoom bar, the small map), 12 px apart, with one 46 px row to spare for a longer locale. */
-  .today.desk:not(.dp-fit) .st-main:not(.is-none) .st-canvas {
+  /* The Floor plan's room holds the tallest stack from the top (the views, Print, the select bar on three rows) and from the floor (Add, the stepped-up zoom bar, the small map), 12 px apart, with one 46 px row to spare for a longer locale. */
+  .today.desk:not(.dp-fit) .st-main:not(.is-none) .st-canvas.is-plan {
     height: 704px;
   }
 

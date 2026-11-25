@@ -98,7 +98,7 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
       'bottom: 190px;',
     );
     expect(cssRule(`${DESK} .is-zoom-up .st-keys`, AT_320)).toContain('bottom: 188px;');
-    expect(cssRule(`${DESK} .st-main:not(.is-none) .st-canvas`, AT_320)).toContain(
+    expect(cssRule(`${DESK} .st-main:not(.is-none) .st-canvas.is-plan`, AT_320)).toContain(
       'height: 704px;',
     );
     expect(cssRule('.st-tool', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
