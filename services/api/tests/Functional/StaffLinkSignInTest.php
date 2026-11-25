@@ -8,6 +8,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\RecordingTextMessageSender;
 use App\Domain\User\Verification\RecordingWhatsAppSender;
+use App\Entity\EmailAddress;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
 use App\Entity\RefreshToken;
@@ -15,7 +16,9 @@ use App\Entity\StaffMember;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
+use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -33,6 +36,7 @@ use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 final class StaffLinkSignInTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -146,6 +150,58 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertSame(['countryCode' => 'NG', 'lastDigits' => '0009'], $answer['phone']);
         self::assertFalse(Str\contains(Json\encode($answer), 'Ada'));
         self::assertFalse(Str\contains(Json\encode($answer), '8031110009'));
+    }
+
+    #[Test]
+    public function anAccountWithNoEmailLabelsItsAuthenticatorEntryWithItsNumber(): void
+    {
+        $token = $this->link($this->ada);
+        $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+        $account = $this->accountOn(self::NUMBER) ?? self::fail('no account');
+
+        $enrolled = $this->as($account, 'POST', '/api/auth/two-factor/enrol');
+
+        self::assertStringStartsWith('otpauth://totp/Soirely%3A%2B2348031110009?', Type\string()->coerce($enrolled['otpauthUri']));
+    }
+
+    #[Test]
+    public function anAccountWithAnEmailKeepsItAsTheAuthenticatorLabel(): void
+    {
+        $kemi = $this->account('kemi@ade.ng', 'Kemi Ade');
+        $this->phone($kemi, self::NUMBER, primary: true, verified: true);
+
+        $enrolled = $this->as($kemi, 'POST', '/api/auth/two-factor/enrol');
+
+        self::assertStringStartsWith('otpauth://totp/Soirely%3Akemi%40ade.ng?', Type\string()->coerce($enrolled['otpauthUri']));
+    }
+
+    #[Test]
+    public function aPhoneOnlyAccountIsRefusedAnInvitationUntilItHasTheAddressVerified(): void
+    {
+        $token = $this->link($this->ada);
+        $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+        $account = $this->accountOn(self::NUMBER) ?? self::fail('no account');
+        [$invitation, $link] = self::invitationTo('ada@obi.ng');
+
+        $preview = $this->as($account, 'POST', '/api/invitations/link', ['token' => $link]);
+        self::assertTrue($preview['needsEmail']);
+        self::assertNull($preview['signedInAs']);
+        self::assertSame(['countryCode' => 'NG', 'lastDigits' => '0009'], $preview['signedInAsPhone']);
+
+        $refused = $this->as($account, 'POST', '/api/invitations/' . $invitation->getId()->toRfc4122() . '/accept');
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::InvitationNeedsEmail->type(), $refused['type']);
+
+        $user = self::em()->find(User::class, $account->getId()) ?? self::fail('no user');
+        $address = new EmailAddress($user, 'ada@obi.ng', true);
+        $address->setVerifiedAt(new DateTimeImmutable());
+        $user->addEmailAddress($address);
+        self::em()->persist($address);
+        self::em()->flush();
+
+        self::assertFalse($this->as($account, 'POST', '/api/invitations/link', ['token' => $link])['needsEmail']);
+        $this->as($account, 'POST', '/api/invitations/' . $invitation->getId()->toRfc4122() . '/accept');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
     #[Test]
