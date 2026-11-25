@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 const CAPTION_INSET = 12;
 
-const CAPTION_FONT = '600 12.5px "Instrument Sans", sans-serif';
+export const CAPTION_FONT = '600 12.5px "Instrument Sans", sans-serif';
 
 let pen: CanvasRenderingContext2D | null | undefined;
 
