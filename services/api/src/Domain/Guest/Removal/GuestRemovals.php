@@ -12,6 +12,7 @@ use App\Entity\Guest;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\NotificationAudienceKind;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestRepository;
 use DateInterval;
@@ -248,6 +249,11 @@ final readonly class GuestRemovals
         ] : [];
         $this->auditor->record($action, 'Event', $first->getEvent()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName(), changes: $changes, occurredAt: $first->getRemovedAt());
         $this->entityManager->flush();
+        $this->connection->executeStatement(
+            'UPDATE notification_deliveries SET address = NULL WHERE recipient_kind = :guest AND recipient_id IN (:ids)',
+            ['guest' => NotificationAudienceKind::Guest->value, 'ids' => Vec\map(Vec\flatten($parties), static fn (Guest $person): string => $person->getId()->toRfc4122())],
+            ['ids' => ArrayParameterType::STRING],
+        );
         $this->connection->executeStatement('DELETE FROM guests WHERE id IN (:ids)', ['ids' => Vec\map($hosts, static fn (Guest $host): string => $host->getId()->toRfc4122())], ['ids' => ArrayParameterType::STRING]);
 
         foreach (Vec\flatten($parties) as $person) {

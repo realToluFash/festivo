@@ -84,7 +84,7 @@ final readonly class GuestMessageSerialiser
     {
         $rows = $this->connection->fetchAllAssociative(
             <<<'SQL'
-                SELECT d.recipient_id, g.full_name, d.status, d.not_sent_reason, d.provider_report, d.provider_reported_at, d.address, d.finished_at, d.created_at
+                SELECT d.recipient_id, g.full_name, d.status, d.not_sent_reason, d.provider_report, d.provider_code, d.provider_reported_at, d.address, d.finished_at, d.created_at
                 FROM notification_deliveries d
                 LEFT JOIN guests g ON g.id = d.recipient_id
                 WHERE d.type = :type AND d.source_id = :id
@@ -101,6 +101,7 @@ final readonly class GuestMessageSerialiser
                 'channel' => 'email',
                 'state' => $state,
                 'reason' => $reason,
+                'code' => Type\nullable(Type\string())->coerce($row['provider_code']),
                 'at' => self::moment($row['provider_reported_at'] ?? $row['finished_at'] ?? $row['created_at']),
             ];
 

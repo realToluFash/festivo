@@ -30,6 +30,8 @@ export interface GuestMessageDelivery {
   channel: 'email';
   state: DeliveryState;
   reason: NotSentReason | null;
+  /** The receiving server's enhanced status code on a bounce or a complaint, "5.1.1" say. */
+  code: string | null;
   at: string | null;
   /** Only for a member with guests.manage; null when the guest had none. */
   address?: string | null;

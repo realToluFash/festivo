@@ -111,6 +111,10 @@ class NotificationDelivery
     #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: DeliveryNotSentReason::class)]
     private ?DeliveryNotSentReason $notSentReason = null;
 
+    /** The receiving server's enhanced status code on a bounce (RFC 3463), "5.1.1" say. */
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true)]
+    private ?string $providerCode = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
@@ -146,6 +150,11 @@ class NotificationDelivery
     public function getNotSentReason(): ?DeliveryNotSentReason
     {
         return $this->notSentReason;
+    }
+
+    public function getProviderCode(): ?string
+    {
+        return $this->providerCode;
     }
 
     public function getId(): Uuid

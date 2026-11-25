@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Messaging;
 
+use App\Domain\Messaging\Channel\EmailSender;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\Messaging\NotificationWorker;
+use App\Domain\Messaging\Webhook\MailWebhook;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Guest;
@@ -33,6 +35,10 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mailer\Envelope;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\RawMessage;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class GuestMessagesTest extends ApiTestCase
@@ -250,6 +256,89 @@ final class GuestMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aHardBounceMarksTheGuestBouncingWithItsCodeAndTheNextSendSkipsThem(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'One'])['id']);
+        $this->work();
+
+        self::service(MailWebhook::class)->receive(['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'emeka@example.test', 'Details' => 'smtp;550 5.1.1 The email account that you tried to reach does not exist', 'Metadata' => ['delivery' => $this->deliveryOf($first)]]);
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
+
+        self::assertSame([['Emeka Nwosu', 'bounced', null]], $this->states($first));
+        self::assertSame('5.1.1', $this->deliveries($first)[0]['code']);
+        self::assertSame([['Emeka Nwosu', 'not_sent', 'bouncing']], $this->states($second));
+    }
+
+    #[Test]
+    public function aBounceAfterTheAddressChangedLeavesTheNewAddressAlone(): void
+    {
+        $guest = $this->add('Emeka Nwosu', 'emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'One'])['id']);
+        $this->work();
+        $this->changeEmail($guest, 'fixed@example.test');
+
+        self::service(MailWebhook::class)->receive(['RecordType' => 'Bounce', 'Type' => 'HardBounce', 'Email' => 'emeka@example.test', 'Metadata' => ['delivery' => $this->deliveryOf($first)]]);
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
+
+        self::assertSame([['Emeka Nwosu', 'bounced', null]], $this->states($first));
+        self::assertSame('emeka@example.test', $this->deliveries($first)[0]['address']);
+        self::assertSame([['Emeka Nwosu', 'queued', null]], $this->states($second));
+    }
+
+    #[Test]
+    public function anAddressTheProviderBlocksIsNotSentAtOnceAndTriedOnTheNextSend(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $sender = self::service(RecordingEmailSender::class);
+        $sender->through = new EmailSender(new class implements MailerInterface {
+            public function send(RawMessage $message, ?Envelope $envelope = null): void
+            {
+                throw new TransportException('Expected response code "250" but got code "406", with message "406 You tried to send to a recipient that has been marked as inactive."', 406);
+            }
+        }, 'notices@soirely.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'One'])['id']);
+        $this->work();
+        $sender->through = null;
+
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
+
+        self::assertSame([['Emeka Nwosu', 'not_sent', 'provider_blocked']], $this->states($first));
+        self::assertNull($this->deliveries($first)[0]['code']);
+        self::assertSame([['Emeka Nwosu', 'queued', null]], $this->states($second));
+        self::assertNull(self::service(Connection::class)->fetchOne('SELECT email_bouncing_at FROM guests'));
+    }
+
+    #[Test]
+    public function anAddressTheProviderReportsBlockedIsNotSentAndNeverBounced(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'One'])['id']);
+        $this->work();
+
+        self::service(MailWebhook::class)->receive(['RecordType' => 'Bounce', 'Type' => 'ManuallyDeactivated', 'Email' => 'emeka@example.test', 'Details' => 'smtp;550 5.1.1 inactive', 'Metadata' => ['delivery' => $this->deliveryOf($first)]]);
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Two'])['id']);
+
+        self::assertSame([['Emeka Nwosu', 'not_sent', 'provider_blocked']], $this->states($first));
+        self::assertNull($this->deliveries($first)[0]['code']);
+        self::assertSame([['Emeka Nwosu', 'queued', null]], $this->states($second));
+    }
+
+    #[Test]
+    public function anErasedGuestsDeliveriesLoseTheirAddress(): void
+    {
+        $guest = $this->add('Emeka Nwosu', 'emeka@example.test', ['Ada Nwosu']);
+        $this->send(['audience' => 'all', 'message' => 'One']);
+
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId . '/guests/' . $guest);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/guests/' . $guest . '/erasure');
+
+        self::assertSame(204, $this->statusCode());
+        self::assertSame(0, (int) self::service(Connection::class)->fetchOne('SELECT COUNT(*) FROM notification_deliveries WHERE address IS NOT NULL'));
+        self::assertGreaterThan(0, (int) self::service(Connection::class)->fetchOne('SELECT COUNT(*) FROM notification_deliveries'));
+    }
+
+    #[Test]
     public function aDraftCannotSend(): void
     {
         $draft = $this->draft('Not yet');
@@ -376,6 +465,11 @@ final class GuestMessagesTest extends ApiTestCase
     private function toGuests(): array
     {
         return Vec\filter(self::service(RecordingEmailSender::class)->sent, static fn (array $sent): bool => NotificationAudienceKind::Guest === $sent['recipient']->kind);
+    }
+
+    private function deliveryOf(string $messageId): string
+    {
+        return Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT id FROM notification_deliveries WHERE source_id = :id', ['id' => $messageId]));
     }
 
     private function work(): void

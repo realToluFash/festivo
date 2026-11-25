@@ -13,6 +13,7 @@ use App\Domain\Messaging\Model\Audience;
 use App\Domain\Messaging\Model\EventState;
 use App\Domain\Messaging\Model\EventVerdict;
 use App\Domain\Messaging\Model\Recipient;
+use App\Enum\DeliveryNotSentReason;
 use App\Enum\EventStatus;
 use App\Enum\NotificationAudienceKind;
 use App\Enum\NotificationChannel;
@@ -384,7 +385,7 @@ final class NotificationWorker
             $providerId = $sender->send(Uuid::fromString($id), $recipient, $type->category(), $type->render($channel, $recipient, $payloads), $collapseKey);
         } catch (Unreachable $unreachable) {
             if (!$this->forgetIfCancelled($id)) {
-                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true);
+                $this->finishDelivery($id, NotificationDeliveryStatus::Failed, $unreachable->getMessage(), attempted: true, notSent: $unreachable->providerBlocked ? DeliveryNotSentReason::ProviderBlocked : null);
             }
 
             $this->release($collapsed);
@@ -708,13 +709,14 @@ final class NotificationWorker
         );
     }
 
-    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null): void
+    private function finishDelivery(string $id, NotificationDeliveryStatus $status, ?string $reason, bool $attempted = false, ?string $providerId = null, ?DeliveryNotSentReason $notSent = null): void
     {
         $this->connection->executeStatement(
             <<<'SQL'
                 UPDATE notification_deliveries
                 SET status = :status,
                     last_error = COALESCE(:reason, last_error),
+                    not_sent_reason = COALESCE(:notSent, not_sent_reason),
                     attempts = attempts + :attempted,
                     provider_message_id = :provider,
                     held = NULL,
@@ -725,6 +727,7 @@ final class NotificationWorker
             [
                 'status' => $status->value,
                 'reason' => $reason,
+                'notSent' => $notSent?->value,
                 'attempted' => $attempted ? 1 : 0,
                 'provider' => $providerId,
                 'now' => $this->clock->now(),

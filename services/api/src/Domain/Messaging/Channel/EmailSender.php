@@ -10,6 +10,8 @@ use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
 use App\Enum\NotificationCategory;
 use App\Enum\NotificationChannel;
+use Psl\Str;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -47,7 +49,16 @@ final readonly class EmailSender implements ChannelSenderInterface
             $email->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
         }
 
-        $this->mailer->send($email);
+        try {
+            $this->mailer->send($email);
+        } catch (TransportExceptionInterface $refused) {
+            // Postmark answers 406 for an address on its inactive list, over its API and in its SMTP reply.
+            if (406 === $refused->getCode() || Str\contains_ci($refused->getMessage(), 'inactive')) {
+                throw Unreachable::providerBlocked($refused);
+            }
+
+            throw $refused;
+        }
 
         return $messageId;
     }

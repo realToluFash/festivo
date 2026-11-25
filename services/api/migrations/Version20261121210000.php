@@ -41,6 +41,7 @@ final class Version20261121210000 extends AbstractMigration
 
         $this->addSql('ALTER TABLE notification_deliveries ADD address VARCHAR(254) DEFAULT NULL');
         $this->addSql('ALTER TABLE notification_deliveries ADD not_sent_reason VARCHAR(20) DEFAULT NULL');
+        $this->addSql('ALTER TABLE notification_deliveries ADD provider_code VARCHAR(16) DEFAULT NULL');
 
         $this->addSql('ALTER TABLE guests ADD email_bouncing_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
     }
@@ -48,6 +49,7 @@ final class Version20261121210000 extends AbstractMigration
     public function down(Schema $schema): void
     {
         $this->addSql('ALTER TABLE guests DROP email_bouncing_at');
+        $this->addSql('ALTER TABLE notification_deliveries DROP provider_code');
         $this->addSql('ALTER TABLE notification_deliveries DROP not_sent_reason');
         $this->addSql('ALTER TABLE notification_deliveries DROP address');
         $this->addSql('DROP TABLE guest_messages');
