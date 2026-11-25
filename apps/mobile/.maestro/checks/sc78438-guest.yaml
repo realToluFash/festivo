@@ -28,36 +28,17 @@ appId: host.exp.Exponent
       id: 'guest.form'
     timeout: 20000
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.number'
-    timeout: 10000
-    centerElement: true
-- takeScreenshot: guest-field
 - repeat:
     while:
       notVisible:
-        id: 'guest.form.mobile.number'
-    times: 12
+        id: 'guest.form.mobile.country'
+    times: 15
     commands:
       - swipe:
-          start: 50%, 88%
-          end: 50%, 62%
+          start: 50%, 80%
+          end: 50%, 50%
       - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.country'
-    direction: DOWN
-    centerElement: true
-    timeout: 25000
-    optional: true
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.country'
-    direction: UP
-    centerElement: true
-    timeout: 8000
-    optional: true
+- takeScreenshot: guest-field
 - tapOn:
     id: 'guest.form.mobile.country'
 - waitForAnimationToEnd
@@ -77,9 +58,11 @@ appId: host.exp.Exponent
       - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: 'guest.form.mobile.number'
-    timeout: 10000
+      id: 'guest.form.mobile.country'
+    direction: UP
     centerElement: true
+    timeout: 10000
+    optional: true
 - swipe:
     start: 50%, 55%
     end: 50%, 80%
