@@ -1,5 +1,5 @@
 import { phoneLengthProblem, refusedPhoneField } from '@soirely/domain';
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 import type { TextInputInstance, ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -10,7 +10,6 @@ import { discardAsk } from './AccountName.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, keysStayDown, TextField } from './Field.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
-import { SETTLED_MS } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { FocusedScreen } from './Summary.tsx';
 import { useLeaveAsk } from './useLeaveAsk.ts';
@@ -50,13 +49,6 @@ export function AddScreen({
   const [sending, setSending] = useState(false);
   const changed = typed.trim() !== '';
   const leaves = useLeaveAsk(open && changed && !sending, () => setDiscarding(true), onClose);
-
-  useEffect(() => {
-    if (!open || email) return;
-    const focus = setTimeout(() => focusChecked(field), SETTLED_MS);
-
-    return () => clearTimeout(focus);
-  }, [open, email]);
 
   function typing(text: string): void {
     setTyped(text);
@@ -156,6 +148,7 @@ export function AddScreen({
           error={error}
           errorOn={errorOn}
           submitting={sending}
+          opensFocused
           pickerRef={picker}
           onCountry={(code) => {
             setCountry(code);

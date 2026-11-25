@@ -5,6 +5,7 @@ import {
   type ArrivedFocus,
   arrivedFocusStep,
   openedFocus,
+  settledFocus,
   windowArrival,
 } from './openedFocus.ts';
 
@@ -13,6 +14,7 @@ const waiting: ArrivedFocus = {
   arrival: 'arrived',
   focused: false,
   heldElsewhere: false,
+  readerOn: false,
   ticks: 0,
 };
 
@@ -59,7 +61,34 @@ describe('a field a sliding Android window opens with takes typing at once (sc-9
     expect(arrivedFocusStep({ ...waiting, ticks: 3, heldElsewhere: true })).toBe('done');
   });
 
+  it('sends focus once with a screen reader on, so the reader stays on the title (qa #91929)', () => {
+    const reading = { ...waiting, readerOn: true };
+    expect(arrivedFocusStep({ ...reading, arrival: 'arriving' })).toBe('wait');
+    expect(arrivedFocusStep(reading)).toBe('focus');
+    expect(arrivedFocusStep({ ...reading, ticks: 1 })).toBe('done');
+  });
+
   it('moves nothing for a field that took its focus at mount', () => {
     expect(arrivedFocusStep({ ...waiting, opened: 'mount' })).toBe('done');
+  });
+});
+
+describe('Add a phone number takes digits with no tap once it has settled (sc-91027)', () => {
+  it('waits for a sliding window to arrive, not for a timer whose focus Android loses', () => {
+    expect(settledFocus(true, 'arriving')).toBe('arrival');
+    expect(settledFocus(true, 'arrived')).toBe('arrival');
+  });
+
+  it('keeps its timer on an iPhone and a tablet, and does nothing for a number that does not open focused', () => {
+    expect(settledFocus(true, 'still')).toBe('timer');
+    expect(settledFocus(false, 'arriving')).toBe('none');
+  });
+});
+
+describe('a field sends no focus before the device says whether a screen reader is on (sc-91027)', () => {
+  it('waits for the answer in an arrived window, then sends focus once', () => {
+    expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
+    expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('focus');
+    expect(arrivedFocusStep({ ...waiting, readerOn: true, ticks: 1 })).toBe('done');
   });
 });

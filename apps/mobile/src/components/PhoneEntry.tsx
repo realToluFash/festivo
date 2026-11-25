@@ -1,11 +1,13 @@
-import type { Ref, RefObject } from 'react';
+import { type Ref, type RefObject, useContext, useEffect, useRef } from 'react';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { CountryPicker } from './CountryPicker.tsx';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, TextField } from './Field.tsx';
+import { settledFocus, WindowArriving } from './openedFocus.ts';
+import { bothRefs, SETTLED_MS } from './Screen.tsx';
 
 /** The code and the number side by side, as Verify phone draws them; from the accessibility sizes on, the code over the number, each the field's full width (sc-78438). */
 export function PhoneEntry({
@@ -17,6 +19,7 @@ export function PhoneEntry({
   error,
   errorOn = 'number',
   submitting,
+  opensFocused = false,
   ref,
   pickerRef,
   onCountry,
@@ -34,6 +37,8 @@ export function PhoneEntry({
   errorOn?: 'country' | 'number';
   /** A submit runs: the picker is off and the number held. */
   submitting: boolean;
+  /** The number takes focus once the screen has settled. */
+  opensFocused?: boolean;
   ref?: Ref<TextInputInstance> | undefined;
   pickerRef?: RefObject<ViewInstance | null> | undefined;
   onCountry: (code: string) => void;
@@ -43,6 +48,15 @@ export function PhoneEntry({
 }) {
   const { t } = useTranslation();
   const over = useAccessibilitySizes();
+  const input = useRef<TextInputInstance>(null);
+  const focus = settledFocus(opensFocused, useContext(WindowArriving));
+
+  useEffect(() => {
+    if (focus !== 'timer') return undefined;
+    const settled = setTimeout(() => focusChecked(input), SETTLED_MS);
+
+    return () => clearTimeout(settled);
+  }, [focus]);
 
   return (
     <Field label={label} pill={pill} error={error} help={help}>
@@ -61,11 +75,12 @@ export function PhoneEntry({
           />
         </View>
         <TextField
-          ref={ref}
+          ref={bothRefs(input, ref)}
           style={over ? styles.whole : styles.number}
           value={number}
           wrong={error != null && errorOn === 'number'}
           submitting={submitting}
+          autoFocus={focus === 'arrival'}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
