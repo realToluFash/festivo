@@ -8,7 +8,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Staff\Model\StaffDetails;
 use App\Domain\Staff\StaffRoster;
 use App\Domain\Staff\Station\ServiceTables;
-use App\Domain\Staff\VerifiedContactOwners;
+use App\Domain\Staff\VerifiedContactOwner;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
 use App\Entity\PhoneNumber;
@@ -61,6 +61,8 @@ final class ServiceTablesTest extends ApiTestCase
 
     private SeatingTable $unverified;
 
+    private SeatingTable $shared;
+
     private StaffMember $bisiOnA;
 
     protected function setUp(): void
@@ -87,6 +89,7 @@ final class ServiceTablesTest extends ApiTestCase
         $this->theirs = $this->table($event, $plan, 'Section B', new StaffDetails('Kemi', null, 'kemi@lagoslights.example'));
         $this->nobodys = $this->table($event, $plan, 'Section C', null);
         $this->unverified = $this->table($event, $plan, 'Section D', new StaffDetails('Bisi', '+2348035550143', null));
+        $this->shared = $this->table($event, $plan, 'Section E', new StaffDetails('Bisi', '+2348035550142', 'kemi@lagoslights.example'));
         self::em()->flush();
         $this->bisiOnA = $this->onSection('Section A');
     }
@@ -110,6 +113,15 @@ final class ServiceTablesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEntryIsWhoeverVerifiedItsNumberBeforeWhoeverVerifiedItsEmail(): void
+    {
+        $grants = Grants::fromOutside(EventRole::CanWorkFloor);
+
+        $this->assertReaches($grants, $this->waiter, $this->shared, null);
+        $this->assertReaches($grants, $this->other, $this->shared, ErrorCode::TableNotYours);
+    }
+
+    #[Test]
     public function runningTheFloorReachesEveryTable(): void
     {
         foreach ([Grants::fromOutside(EventRole::CanRunFloor), Grants::onEvent(EventRole::CanEdit), Grants::onEvent(EventRole::Lead), Grants::everything()] as $grants) {
@@ -128,7 +140,7 @@ final class ServiceTablesTest extends ApiTestCase
     private function assertReaches(Grants $grants, User $user, SeatingTable $table, ?ErrorCode $refusal): void
     {
         try {
-            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class), self::service(VerifiedContactOwners::class))->requireYours($grants, $user, $table);
+            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class), self::service(VerifiedContactOwner::class))->requireYours($grants, $user, $table);
             self::assertNull($refusal, $table->getName() . ' should be refused');
         } catch (ApiException $refused) {
             self::assertSame($refusal, $refused->errorCode, $table->getName());

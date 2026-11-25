@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\Station;
 
-use App\Domain\Staff\VerifiedContactOwners;
+use App\Domain\Staff\VerifiedContactOwner;
 use App\Entity\SeatingTable;
 use App\Entity\StaffMember;
 use App\Entity\User;
@@ -23,7 +23,7 @@ final readonly class ServiceTables
     public function __construct(
         private StaffStationRepository $staffStationRepository,
         private StaffMemberRepository $staffMemberRepository,
-        private VerifiedContactOwners $verifiedContactOwners,
+        private VerifiedContactOwner $verifiedContactOwner,
     ) {
     }
 
@@ -52,6 +52,6 @@ final readonly class ServiceTables
             return true;
         }
 
-        return Iter\any($this->verifiedContactOwners->of($entry->getMobile(), $entry->getEmail()), static fn (User $owner): bool => $owner->getId()->equals($user->getId()));
+        return $this->verifiedContactOwner->of($entry->getMobile(), $entry->getEmail())?->getId()->equals($user->getId()) ?? false;
     }
 }
