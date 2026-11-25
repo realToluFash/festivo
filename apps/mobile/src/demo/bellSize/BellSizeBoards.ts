@@ -52,3 +52,37 @@ export const BELL_SIZE_BOARDS: readonly BellSizeBoard[] = [
     href: '/demo/bell-size?size=default&lang=en',
   },
 ];
+
+/** The phone's own bell screen at the accessibility sizes (sc-92959); open each on the iPhone 17 Pro, upright. */
+export const PHONE_BELL_SIZE_BOARDS: readonly BellSizeBoard[] = [
+  {
+    title: 'Notifications · AX2, English',
+    what: 'The title whole on one line, Notifications and never Notification / s, stepped down only until its word fits; the list below it',
+    href: '/demo/bell-size?size=ax2&lang=en',
+  },
+  {
+    title: 'Notificaciones · AX2, Spanish',
+    what: 'The longest title whole on one line, stepped down only for its own word',
+    href: '/demo/bell-size?size=ax2&lang=es',
+  },
+  {
+    title: 'Notifications · AX5, English',
+    what: 'The title whole on one line at the largest size, the list below it and the page scrolling as on main',
+    href: '/demo/bell-size?size=ax5&lang=en',
+  },
+  {
+    title: 'Notificaciones · AX5, Spanish',
+    what: 'The title whole on one line at the largest size',
+    href: '/demo/bell-size?size=ax5&lang=es',
+  },
+  {
+    title: 'Notifications · AX5, refreshing',
+    what: 'The refreshing mark on the line under the title, which keeps its size',
+    href: '/demo/bell-size?size=ax5&lang=en&refreshing=on',
+  },
+  {
+    title: 'Notifications · default size',
+    what: 'As on main: the title at 30, the refreshing mark beside it when shown',
+    href: '/demo/bell-size?size=default&lang=en',
+  },
+];

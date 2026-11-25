@@ -7,6 +7,8 @@ import {
   markAllSize,
   markAllStart,
   markAllUnder,
+  PHONE_TITLE,
+  phoneTitleSize,
 } from './bellSizeRules.ts';
 
 const DEFAULT = 1;
@@ -48,5 +50,28 @@ describe('the iPad bell panel’s top at the accessibility sizes (sc-92580)', ()
 
   it('draws all four languages', () => {
     expect(BELL_LANGUAGES.map((one) => one.key)).toEqual(['en', 'es', 'fr', 'pt']);
+  });
+});
+
+describe('the phone bell screen’s title at the accessibility sizes (sc-92959)', () => {
+  // The page's 402 less its 24 on each side.
+  const PAGE = 354;
+
+  it('draws as main below AX1, however wide its word', () => {
+    expect(phoneTitleSize(DEFAULT, 5000, PAGE)).toBe(PHONE_TITLE);
+    expect(phoneTitleSize(SEVENTH, 5000, PAGE)).toBeCloseTo(PHONE_TITLE * SEVENTH);
+  });
+
+  it('grows with no cap while its word fits', () => {
+    expect(phoneTitleSize(AX2, 300, PAGE)).toBeCloseTo(PHONE_TITLE * AX2);
+  });
+
+  it('steps down only until its word fits, never under 30', () => {
+    const start = PHONE_TITLE * AX5;
+    const drawn = phoneTitleSize(AX5, 500, PAGE);
+
+    expect((500 * drawn) / start).toBeLessThanOrEqual(PAGE);
+    expect((500 * (drawn + 1)) / start).toBeGreaterThan(PAGE);
+    expect(phoneTitleSize(AX5, 50000, PAGE)).toBe(PHONE_TITLE);
   });
 });

@@ -4,7 +4,6 @@ import { StyleSheet, View, type ViewInstance, useWindowDimensions } from 'react-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Bell } from '../../components/BellButton.tsx';
-import { BellBody, type BellRowData } from '../../components/BellParts.tsx';
 import { QuietButton } from '../../components/Buttons.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Refreshing } from '../../components/Refreshing.tsx';
@@ -19,7 +18,6 @@ import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { goBack } from '../DemoScreen.tsx';
 import { FILTER_SIZES, type FilterSize, filterScale } from '../filterSize/filterSizeRules.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { measuredUnder } from '../measuredUnder.ts';
@@ -38,6 +36,8 @@ import {
   markAllStart,
   markAllUnder,
 } from './bellSizeRules.ts';
+import { BellSampleBody, unreadAt } from './BellSamples.tsx';
+import { PhoneBellScreen } from './PhoneBellScreen.tsx';
 
 export interface BellSizeStart {
   size: FilterSize;
@@ -48,55 +48,6 @@ export interface BellSizeStart {
 
 const MENU_AFTER_MS = 300;
 const HEADING_LINE = 1.2;
-
-interface Sample {
-  id: string;
-  category: string;
-  title: string;
-  lines: readonly string[];
-  event: string | null;
-  time: string;
-  unread: boolean;
-}
-
-const SAMPLES: readonly Sample[] = [
-  {
-    id: 'reply',
-    category: 'guest_replies',
-    title: 'Ada Obi replied: coming, with 1 guest',
-    lines: ['Dietary: vegetarian'],
-    event: 'Adaeze & Tunde’s wedding',
-    time: '09:40',
-    unread: true,
-  },
-  {
-    id: 'change',
-    category: 'event_changes',
-    title: 'Ana Souza changed the event',
-    lines: ['Starts at 19:30, was 19:00'],
-    event: 'Adaeze & Tunde’s wedding',
-    time: '08:15',
-    unread: true,
-  },
-  {
-    id: 'day',
-    category: 'event_day',
-    title: 'Event day tomorrow',
-    lines: ['Doors at 18:00. Seating is final.'],
-    event: 'Lagos launch dinner',
-    time: '07:30',
-    unread: false,
-  },
-  {
-    id: 'security',
-    category: 'account_security',
-    title: 'A new sign-in to your account',
-    lines: ['iPad, Lagos'],
-    event: null,
-    time: '07:05',
-    unread: false,
-  },
-];
 
 /** sc-92580: the iPad bell's 380 panel under the bell at a stand-in text size and language, its heading whole on one line and Mark all read whole beside it or, where the two cannot share the row, under it. */
 export function BellSizeScreen({ start }: { start: BellSizeStart }) {
@@ -113,10 +64,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
   const [menu, setMenu] = useState<string | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const [drawnAt, setDrawnAt] = useState<string | null>(null);
-  const [unread, setUnread] = useState<ReadonlySet<string>>(
-    () =>
-      new Set(start.read === 'all' ? [] : SAMPLES.filter((one) => one.unread).map((one) => one.id)),
-  );
+  const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadAt(start.read));
   const bellRef = useRef<ViewInstance>(null);
   const heading = useRef<TextHandle>(null);
   const words = useMemo(
@@ -144,15 +92,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
     setMenu(null);
   };
 
-  if (phone)
-    return (
-      <View style={[styles.page, styles.side, { paddingTop: insets.top + tokens.spaceXl }]}>
-        <QuietButton label="Back to the demo" onPress={goBack} testID="demo.bellSize.back" />
-        <DemoOnly title="On a phone the bell opens its own screen, which sc-92580 leaves as on main. Open this demo on an iPad, upright or on its side.">
-          {null}
-        </DemoOnly>
-      </View>
-    );
+  if (phone) return <PhoneBellScreen start={start} />;
 
   return (
     <I18nextProvider i18n={words}>
@@ -188,11 +128,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
             chosen={read}
             onChoose={(next) => {
               setRead(next);
-              setUnread(
-                new Set(
-                  next === 'all' ? [] : SAMPLES.filter((one) => one.unread).map((one) => one.id),
-                ),
-              );
+              setUnread(unreadAt(next));
             }}
             id="read"
             prefix="demo.bellSize"
@@ -226,7 +162,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
           testID="demo.bellSize.panel"
         >
           <View style={styles.popover}>
-            <PanelBody
+            <BellSampleBody
               unread={unread}
               menu={menu}
               onMenu={setMenu}
@@ -387,55 +323,6 @@ function PanelTop({
 
 function tenths(size: number): string {
   return String(Math.round(size * 10) / 10);
-}
-
-function PanelBody({
-  unread,
-  menu,
-  onMenu,
-  onPick,
-  onSettings,
-}: {
-  unread: ReadonlySet<string>;
-  menu: string | null;
-  onMenu: (id: string | null) => void;
-  onPick: (row: BellRowData) => void;
-  onSettings: () => void;
-}) {
-  const { t } = useTranslation();
-  const rows: BellRowData[] = SAMPLES.map((one) => ({
-    id: one.id,
-    category: one.category,
-    title: one.title,
-    lines: one.lines,
-    where:
-      one.event == null
-        ? t('notifications.atTime', { time: one.time })
-        : t('notifications.whereWhen', {
-            event: one.event,
-            when: t('notifications.atTime', { time: one.time }),
-          }),
-    unread: unread.has(one.id),
-    muted: false,
-    more: null,
-    goneShown: false,
-    testID: `demo.bellSize.item.${one.id}`,
-  }));
-
-  return (
-    <BellBody
-      ask={null}
-      feed="loaded"
-      rows={rows}
-      menu={menu}
-      onMenu={onMenu}
-      onPick={onPick}
-      onTryAgain={() => undefined}
-      more={null}
-      onSettings={onSettings}
-      testID="demo.bellSize.body"
-    />
-  );
 }
 
 const styles = StyleSheet.create({
