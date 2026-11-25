@@ -399,7 +399,7 @@ export function TabCapsule({
   const { t } = useTranslation();
 
   return (
-    <Glass height={46} style={styles.capsule}>
+    <Glass height={CAPSULE_HEIGHT} grows style={styles.capsule}>
       {TABS.map(([label, glyph]) => {
         const on = label === at;
         const ink = on ? tokens.colorAccent : tokens.colorInkOnDark;
@@ -420,6 +420,7 @@ export function TabCapsule({
               weight="semibold"
               maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
               numberOfLines={labelSize == null ? undefined : 1}
+              wholeLines
               accessible={false}
               style={{ color: ink }}
             >
@@ -989,10 +990,16 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   );
   const room = openerRoom(row, width);
   const large = useAccessibilitySizes();
+  const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
 
   return (
     <View
-      style={[styles.topTablet, large && styles.topTabletTall, { marginTop: top }]}
+      style={[
+        styles.topTablet,
+        large && styles.topTabletTall,
+        { marginTop: top },
+        capsule > CAPSULE_HEIGHT && { minHeight: CAPSULE_TOP + capsule },
+      ]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {measure}
@@ -1006,7 +1013,7 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
         <SearchAndBell />
       </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
-        <View key={labelSize}>
+        <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
           {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
@@ -1397,9 +1404,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: tokens.colorInkOnDark,
   },
-  capsule: { paddingHorizontal: tokens.spaceXxs, gap: tokens.spaceHair },
+  capsule: { padding: tokens.spaceXxs, gap: tokens.spaceHair },
   capsuleTab: {
-    height: 38,
+    minHeight: CAPSULE_HEIGHT - 2 * tokens.spaceXxs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,

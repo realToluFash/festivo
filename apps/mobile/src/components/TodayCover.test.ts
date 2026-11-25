@@ -48,6 +48,18 @@ describe('the capsule the upright band is laid out beside (sc-91290)', () => {
   });
 });
 
+describe('the upright capsule at the largest sizes (sc-92571)', () => {
+  it('grows with its labels, and the top row keeps room for it', () => {
+    const capsule = /export function TabCapsule\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(capsule).toMatch(/<Glass height=\{CAPSULE_HEIGHT\} grows /u);
+    expect(capsule).toMatch(/\s+wholeLines\s/u);
+    const tab = / {2}capsuleTab: \{[\s\S]*?\n {2}\},/u.exec(cover)?.[0] ?? '';
+    expect(tab).toMatch(/minHeight: CAPSULE_HEIGHT - 2 \* tokens\.spaceXxs,/u);
+    expect(tab).not.toMatch(/\bheight:/u);
+    expect(cover).toMatch(/capsule > CAPSULE_HEIGHT && \{ minHeight: CAPSULE_TOP \+ capsule \}/u);
+  });
+});
+
 describe('the band’s tile while an invitation waits (sc-40298)', () => {
   it('draws the cover tile’s ring, so the band returns the same tile', () => {
     expect(cover).toMatch(/\{org\.waiting != null && <View style=\{styles\.tileRing\} \/>\}/u);
