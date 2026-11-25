@@ -8,7 +8,7 @@ import { __setConfig, config } from '../../../config.ts';
 import fr from '../../../i18n/locales/fr.json';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 import { routes } from '../../index.tsx';
 import { deletePlanWords, sectionDeleteWords } from './SeatingArea.tsx';
 import { KeysStrip, Overlaps } from './SeatingArrange.tsx';
@@ -6777,6 +6777,124 @@ describe('The keyboard focus ring on the Floor plan (sc-64879)', () => {
     );
     expect(cssRule('.st-focus-halo', SHEET)).toMatch(
       /stroke: color-mix\(in srgb, var\(--colorAccent\) 22%, transparent\);\s*stroke-width: 5;/u,
+    );
+  });
+});
+
+describe('the zoom bar at 40rem and under (sc-91971)', () => {
+  const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+  const NARROW = mediaBlock('(width <= 40rem)', SHEET.slice(SHEET.indexOf('sc-91971')));
+
+  it('wraps by rule onto two rows, Fit the room across the second, and stays 12 px inside the room', () => {
+    expect(cssRule('.st-zoom', NARROW)).toMatch(
+      /display: grid;\s+grid-template-columns: repeat\(3, auto\);[\s\S]+max-width: calc\(100% - 2 \* var\(--spaceLg\)\);/u,
+    );
+    expect(cssRule('.st-zoom > .st-tool', NARROW)).toMatch(
+      /grid-column: 1 \/ -1;\s+justify-self: stretch;/u,
+    );
+    expect(cssRule('.st-tool', SHEET)).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
+  it('steps what stands above it up by that 46 px row, crowded or not, in a 704 px room', () => {
+    expect(cssRule('.st-minimap,\n  .st-another', NARROW)).toContain('bottom: 126px;');
+    expect(cssRule('.st-keys', NARROW)).toContain('bottom: 124px;');
+    expect(
+      cssRule('.st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another)', NARROW),
+    ).toContain('bottom: 190px;');
+    expect(cssRule('.st-canvas:has(> .st-add.is-crowded) .st-keys', NARROW)).toContain(
+      'bottom: 188px;',
+    );
+    expect(cssRule('.st-main:not(.is-none) .st-canvas.is-plan', NARROW)).toContain(
+      'height: 704px;',
+    );
+  });
+});
+
+describe('the save line beside the switch (sc-91971)', () => {
+  it.each([
+    [282, false],
+    [283, true],
+  ])(
+    'on a 718 px room with the switch 400 px wide and the save line %i px, the save line steps down: %s',
+    async (saveWidth, down) => {
+      signedIn();
+      const measured = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          const width = this.classList.contains('st-views')
+            ? 400
+            : this.classList.contains('st-top-right')
+              ? saveWidth
+              : 0;
+
+          return {
+            width,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 0,
+            x: 0,
+            y: 0,
+          } as DOMRect;
+        });
+
+      try {
+        await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+        await screen.findByRole('group', { name: 'View' });
+
+        await waitFor(() =>
+          expect(document.querySelector('.st-canvas.is-row-down') != null).toBe(down),
+        );
+      } finally {
+        measured.mockRestore();
+      }
+    },
+  );
+
+  it("measures the row as drawn in the page's language: Floor plan · Saved steps down, Plan · Enregistré stays", async () => {
+    signedIn();
+    const measured = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const drawn =
+          this.classList.contains('st-views') || this.classList.contains('st-top-right');
+        const width = drawn ? 33 * (this.textContent ?? '').length : 0;
+
+        return {
+          width,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: width,
+          bottom: 0,
+          x: 0,
+          y: 0,
+        } as DOMRect;
+      });
+
+    try {
+      await onSeating({ 'GET /api/events/ev_1/seating-plan': () => seating(plan()) });
+      await screen.findByRole('group', { name: 'View' });
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).not.toBeNull());
+
+      await act(() => i18next.changeLanguage('fr'));
+      await screen.findByText('Enregistré');
+      await waitFor(() => expect(document.querySelector('.st-canvas.is-row-down')).toBeNull());
+    } finally {
+      measured.mockRestore();
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
+
+  it('steps the save line one line down, and what stood on that line a line further', () => {
+    const SHEET = stylesheet(import.meta.dirname, 'seating.css');
+
+    expect(cssRule('.is-row-down > .st-top-right', SHEET)).toContain('top: 72px;');
+    expect(cssRule('.is-row-down > :is(.st-bar, .st-under-views, .st-view-wrap)', SHEET)).toContain(
+      'top: 132px;',
     );
   });
 });
