@@ -1,4 +1,4 @@
-import { type GuestMessagePreview, type OrganisationEvent } from '@soirely/api-client';
+import { ApiError, type GuestMessagePreview, type OrganisationEvent } from '@soirely/api-client';
 import {
   INSERTABLE_TOKENS,
   type MessageSegment,
@@ -14,6 +14,7 @@ import {
   type KeyboardEvent,
   type RefObject,
   useEffect,
+  useEffectEvent,
   useId,
   useImperativeHandle,
   useLayoutEffect,
@@ -317,8 +318,8 @@ export function InsertMenu({ onPick }: { onPick: (token: MessageToken) => void }
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed'; id: string }
-  | { kind: 'loaded'; id: string; preview: GuestMessagePreview };
+  | { kind: 'failed'; id: string; tries: number }
+  | { kind: 'loaded'; id: string; tries: number; preview: GuestMessagePreview };
 
 /** As one guest will see it: their page with the message filled in, what Soirely sends them, and the lines that say why. */
 export function MessagePreview({
@@ -327,32 +328,51 @@ export function MessagePreview({
   subject,
   wire,
   now,
+  onGone,
 }: {
   event: OrganisationEvent;
   people: readonly { id: string; name: string; language: string }[];
   subject: string;
   wire: string;
   now: Date;
+  onGone: (person: { id: string; name: string }) => void;
 }) {
   const { t } = useTranslation();
   const [who, setWho] = useState(people[0]?.id ?? '');
+  const [tries, setTries] = useState(0);
   const [got, setGot] = useState<Load>({ kind: 'loading' });
-  const load: Load = got.kind !== 'loading' && got.id === who ? got : { kind: 'loading' };
+  const [said, setSaid] = useState<string | null>(null);
+  const load: Load =
+    got.kind !== 'loading' && got.id === who && got.tries === tries ? got : { kind: 'loading' };
   const sendsId = useId();
   const person = people.find((one) => one.id === who) ?? people[0];
+  const gone = useEffectEvent((id: string) => {
+    const left = people.filter((one) => one.id !== id);
+    const them = people.find((one) => one.id === id);
+
+    if (them == null) return;
+    onGone(them);
+    if (left[0] == null) return;
+    setSaid(t('eventMessages.noLongerGuest', { name: them.name, next: left[0].name }));
+    setWho(left[0].id);
+  });
 
   useEffect(() => {
     let current = true;
 
     api.guestMessagePreview(event.id, who).then(
-      (preview) => current && setGot({ kind: 'loaded', id: who, preview }),
-      () => current && setGot({ kind: 'failed', id: who }),
+      (preview) => current && setGot({ kind: 'loaded', id: who, tries, preview }),
+      (error: unknown) => {
+        if (!current) return;
+        if (error instanceof ApiError && error.status === 404) gone(who);
+        else setGot({ kind: 'failed', id: who, tries });
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [event.id, who]);
+  }, [event.id, who, tries]);
 
   if (person == null) return null;
 
@@ -373,17 +393,34 @@ export function MessagePreview({
               language: languageName(t, one.language),
             }),
           }))}
-          onPick={setWho}
+          onPick={(id) => {
+            setSaid(null);
+            setWho(id);
+          }}
         />
+      </div>
+      <div role="status">
+        {said != null && (
+          <p className="mg-preview-gone">
+            <Glyph name="info" size={16} weight={2.2} />
+            {said}
+          </p>
+        )}
       </div>
       <p className="desk-unseen" role="status">
         {load.kind === 'loading' ? t('eventMessages.filling', { name: person.name }) : ''}
       </p>
       {load.kind === 'failed' ? (
-        <p className="desk-error" role="alert">
-          <Glyph name="alert" size={15} weight={2.2} />
-          {t('eventMessages.previewFailed')}
-        </p>
+        <div className="mg-preview-failed" role="alert">
+          <p className="mg-preview-failed-words">
+            <Glyph name="alert" size={18} weight={2.2} />
+            {t('eventMessages.previewFailed', { name: person.name })}
+          </p>
+          <p className="desk-line">{t('eventMessages.previewFailedLine')}</p>
+          <button type="button" className="desk-text" onClick={() => setTries((n) => n + 1)}>
+            {t('eventMessages.tryAgain')}
+          </button>
+        </div>
       ) : load.kind === 'loading' ? (
         <PreviewBones name={person.name} />
       ) : (

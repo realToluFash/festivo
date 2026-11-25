@@ -155,6 +155,24 @@ final class WriteItOnceTest extends ApiTestCase
     }
 
     #[Test]
+    public function thePreviewIs404ForAGuestRemovedFromTheListAndForACompanion(): void
+    {
+        $removed = $this->add('Bisi Adewale');
+        $this->preview($removed);
+        $this->as($this->owner, 'DELETE', $this->guests() . '/' . $removed);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'GET', $this->messages() . '/preview/' . $removed);
+        self::assertSame(404, $this->statusCode());
+
+        $host = $this->add('Kemi Bankole', ['companions' => [['fullName' => 'Tunde Bankole']]]);
+        $companion = Type\shape(['companions' => Type\vec(Type\shape(['id' => Type\string()], true))], true)->coerce($this->guest($host))['companions'][0]['id'] ?? self::fail('no companion');
+
+        $this->as($this->owner, 'GET', $this->messages() . '/preview/' . $companion);
+        self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
     public function chooseGuestsGivesTheLanguageEachIsWrittenTo(): void
     {
         $this->add('Bisi Adewale', ['language' => 'fr']);

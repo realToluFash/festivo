@@ -442,6 +442,89 @@ describe('Write it once (sc-3960)', () => {
     expect(screen.getByText('Hello Auntie Ada', { selector: 'blockquote' })).toBeTruthy();
   });
 
+  it('says it could not fill it in for Ada Obi, and Try again fills it in', async () => {
+    let tries = 0;
+    onMessages({
+      'GET /api/events/ev_1/messages/preview/g_ada': () =>
+        (tries += 1) === 1 ? json({ error: { code: 'server_error' } }, 500) : json(ADA_PREVIEW),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    writeMessage(screen.getByRole('textbox', { name: 'Message' }), 'Hello');
+    await previewOn();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('We could not fill it in for Ada Obi.');
+    expect(alert.textContent).toContain('Check your connection and try again.');
+    expect(screen.getByRole('heading', { name: 'As Ada Obi will see it' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Preview as/ })).toBeTruthy();
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('In English, the language you set for them.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(tries).toBe(2);
+  });
+
+  it('drops one who is no longer a guest from Preview as, and fills it in for the first left', async () => {
+    onMessages({
+      'GET /api/events/ev_1/messages/preview/g_ada': () =>
+        json({ error: { code: 'not_found' } }, 404),
+      'GET /api/events/ev_1/messages/preview/g_kwame': () =>
+        json({
+          guest: {
+            id: 'g_kwame',
+            name: 'Kwame Mensah',
+            greetAs: null,
+            language: 'fr',
+            languageFrom: 'chose',
+          },
+          notices: [],
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    writeMessage(screen.getByRole('textbox', { name: 'Message' }), 'Hello');
+    await previewOn();
+
+    expect(
+      await screen.findByRole('heading', { name: 'As Kwame Mensah will see it' }),
+    ).toBeTruthy();
+    const line = screen.getByText(
+      'Ada Obi is no longer a guest, so it is filled in for Kwame Mensah instead.',
+    );
+    expect(line.closest('[role=status]')).not.toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      await screen.findByText('In French, the language they chose on their page.'),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Preview as/ }));
+    expect(screen.getAllByRole('option').map((one) => one.textContent)).toEqual([
+      'Kwame Mensah · French',
+    ]);
+  });
+
+  it('closes the preview when nobody is left, and says why beside Preview', async () => {
+    onMessages({
+      'GET /api/events/ev_1/messages/guests': () => json({ guests: [GUESTS[1]] }),
+      'GET /api/events/ev_1/messages/preview/g_ada': () =>
+        json({ error: { code: 'not_found' } }, 404),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    writeMessage(screen.getByRole('textbox', { name: 'Message' }), 'Hello');
+    await previewOn();
+
+    expect(
+      await screen.findByText('Ada Obi is no longer a guest, so there is nobody to preview it as.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /will see it$/ })).toBeNull();
+    const preview = screen.getByRole('button', { name: 'Preview' });
+    expect(preview.getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('textbox', { name: 'Message' }).textContent).toBe('Hello');
+  });
+
   it('offers no preview while nobody is in To, and says why', async () => {
     onMessages({ 'GET /api/events/ev_1/messages/guests': () => json({ guests: [] }) });
 

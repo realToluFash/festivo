@@ -556,6 +556,8 @@ function ComposePane({
   const [step, setStep] = useState<Step>({ kind: 'write' });
   const [guests, setGuests] = useState<PickableGuest[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [gone, setGone] = useState<readonly string[]>([]);
+  const [nobodyLeft, setNobodyLeft] = useState<{ name: string; who: Who } | null>(null);
   const chip = useRef<HTMLButtonElement>(null);
   const field = useRef<FieldHandle>(null);
   const ids = useId();
@@ -647,8 +649,14 @@ function ComposePane({
   const chosen = who.kind === 'chosen' ? who.ids : [];
   const people = (guests ?? [])
     .filter((guest) => who.kind === 'all' || chosen.includes(guest.id))
+    .filter((guest) => !gone.includes(guest.id))
     .sort((a, b) => a.name.localeCompare(b.name, currentLocale()));
-  const previewOff = people.length === 0 ? t('eventMessages.nobodyToPreview') : null;
+  const previewOff =
+    nobodyLeft?.who === who
+      ? t('eventMessages.nobodyLeft', { name: nobodyLeft.name })
+      : people.length === 0
+        ? t('eventMessages.nobodyToPreview')
+        : null;
 
   function preview(on: boolean): void {
     setPreviewing(on);
@@ -666,6 +674,13 @@ function ComposePane({
             subject={subject}
             wire={message}
             now={now}
+            onGone={(person) => {
+              setGone((was) => [...was, person.id]);
+              if (people.every((one) => one.id === person.id)) {
+                setNobodyLeft({ name: person.name, who });
+                preview(false);
+              }
+            }}
           />
         </div>
         <div className="mg-preview-bar">

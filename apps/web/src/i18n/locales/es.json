@@ -6841,7 +6841,10 @@
     "previewAs": "Preview as",
     "previewOption": "{{name}} · {{language}}",
     "filling": "Filling it in for {{name}}…",
-    "previewFailed": "We could not fill it in for them. Check your connection and try again.",
+    "previewFailed": "We could not fill it in for {{name}}.",
+    "previewFailedLine": "Check your connection and try again.",
+    "noLongerGuest": "{{name}} is no longer a guest, so it is filled in for {{next}} instead.",
+    "nobodyLeft": "{{name}} is no longer a guest, so there is nobody to preview it as.",
     "greetedAsGreetAs": "Greeted as “{{greetAs}}”, their Greet as.",
     "greetedAsName": "Greeted as {{name}}, their full name. They have no Greet as.",
     "languageFrom": {
