@@ -47,12 +47,12 @@ class StaffMember
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $member;
 
-    /** One job on the event (sc-3908), and every shift of theirs is of it; kept through the erasure. */
     /** The person's own account, once a code to this entry's number signed it in (sc-4235); deleting the account leaves the entry its name and hours. */
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $account = null;
 
+    /** One job on the event (sc-3908), and every shift of theirs is of it; kept through the erasure. */
     #[ORM\ManyToOne(targetEntity: StaffJob::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?StaffJob $job = null;
