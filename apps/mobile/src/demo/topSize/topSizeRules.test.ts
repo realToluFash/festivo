@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { PILL_CHROME, phoneNameRoom } from '../../layout/pillFit.ts';
 import { pillTileAlone } from '../todaySize/todaySizeRules.ts';
-import { TOP_SCREENS, topPillChrome, topPillNameRoom, topPillWaitingRoom } from './topSizeRules.ts';
+import {
+  TOP_SCREENS,
+  topPillChrome,
+  topPillNameRoom,
+  topPillWaitingRoom,
+  topUprightNameRoom,
+  topUprightWaitingRoom,
+} from './topSizeRules.ts';
 
 const AX1 = 1.786;
 const AX5 = 3.571;
@@ -40,5 +47,21 @@ describe('the white pill over Settings, Events and the Calendar (sc-92464)', () 
 
   it('draws the three screens that share one top', () => {
     expect(TOP_SCREENS.map((one) => one.key)).toEqual(['settings', 'events', 'calendar']);
+  });
+});
+
+describe('the white pill beside the upright iPad’s tabs over Settings (sc-92728)', () => {
+  it('gives the bare pill’s name the tile’s room back from AX1', () => {
+    expect(topUprightNameRoom(260, AX1) - topUprightNameRoom(260, SEVENTH)).toBe(36);
+    expect(topUprightNameRoom(260, SEVENTH)).toBe(260 - PILL_CHROME);
+  });
+
+  it('gives the invitation line the name’s room less its ring', () => {
+    expect(topUprightNameRoom(260, AX5) - topUprightWaitingRoom(260, AX5)).toBe(17);
+  });
+
+  it('never gives a negative room', () => {
+    expect(topUprightNameRoom(0, AX5)).toBe(0);
+    expect(topUprightWaitingRoom(20, AX5)).toBe(0);
   });
 });

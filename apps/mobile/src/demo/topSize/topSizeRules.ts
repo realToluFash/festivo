@@ -27,3 +27,13 @@ export function topPillNameRoom(row: number, ends: number, scale: number): numbe
 export function topPillWaitingRoom(row: number, ends: number, scale: number): number {
   return waitingRoomUnder(topPillNameRoom(row, ends, scale));
 }
+
+/** Beside the upright iPad's tabs, the white pill's name line: the most the pill may take there (`uprightTop`'s `pill`), less what it draws around its words at this size, so from AX1 the bare pill gives the tile's room to its name (sc-92728). */
+export function topUprightNameRoom(pill: number, scale: number): number {
+  return Math.max(pill - topPillChrome(scale), 0);
+}
+
+/** The invitation line's room under that name. */
+export function topUprightWaitingRoom(pill: number, scale: number): number {
+  return waitingRoomUnder(topUprightNameRoom(pill, scale));
+}

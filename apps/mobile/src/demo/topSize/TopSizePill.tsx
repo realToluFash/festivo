@@ -46,7 +46,12 @@ export function TopPillRow({
       style={styles.row}
       onLayout={(event: LayoutChangeEvent) => setRow(event.nativeEvent.layout.width)}
     >
-      <TopPill scale={scale} waiting={waiting} row={row} ends={ends} />
+      <TopPill
+        scale={scale}
+        waiting={waiting}
+        room={row > 0 && ends > 0 ? topPillNameRoom(row, ends, scale) : 0}
+        waitingRoom={row > 0 && ends > 0 ? topPillWaitingRoom(row, ends, scale) : 0}
+      />
       <View style={styles.grow} />
       <View
         style={styles.ends}
@@ -59,31 +64,32 @@ export function TopPillRow({
   );
 }
 
-function TopPill({
+/** The white pill: its name and invitation line each whole in `room` and `waitingRoom`, 0 until measured; or its tile, where its widest word at its default size is wider than `room`, or where `tile` says so. */
+export function TopPill({
   scale,
   waiting,
-  row,
-  ends,
+  room,
+  waitingRoom,
+  tile = false,
 }: {
   scale: number;
   waiting: number;
-  row: number;
-  ends: number;
+  room: number;
+  waitingRoom: number;
+  tile?: boolean;
 }) {
   const { t } = useTranslation();
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
   const large = atAccessibilitySizes(scale);
   const line = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const measured = row > 0 && ends > 0;
-  const room = measured ? topPillNameRoom(row, ends, scale) : 0;
   const pieces = useMemo(() => piecesOfLine(org.name), [org.name]);
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const widest = pieces.every((piece) => widths[piece] != null)
     ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
     : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
-  const alone = pillTileAlone(scale, widest, room);
+  const alone = tile || pillTileAlone(scale, widest, room);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -160,7 +166,7 @@ function TopPill({
                   size={PILL_WAITING}
                   scale={scale}
                   cap={nameAt ?? Infinity}
-                  room={measured ? topPillWaitingRoom(row, ends, scale) : 0}
+                  room={waitingRoom}
                   weight="semibold"
                   line={1.3}
                   lines={large ? undefined : 1}
