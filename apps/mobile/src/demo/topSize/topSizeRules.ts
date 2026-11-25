@@ -1,4 +1,4 @@
-import { PILL_CHROME, phoneNameRoom, phoneWaitingRoom } from '../../layout/pillFit.ts';
+import { PILL_CHROME, phoneNameRoom, waitingRoomUnder } from '../../layout/pillFit.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
@@ -23,7 +23,7 @@ export function topPillNameRoom(row: number, ends: number, scale: number): numbe
   return phoneNameRoom(row + PILL_CHROME - topPillChrome(scale), ends);
 }
 
-/** The invitation line's room, by Today's phone rule (`phoneWaitingRoom`). */
+/** The invitation line's room, by Today's phone rule (`waitingRoomUnder`). */
 export function topPillWaitingRoom(row: number, ends: number, scale: number): number {
-  return phoneWaitingRoom(topPillNameRoom(row, ends, scale));
+  return waitingRoomUnder(topPillNameRoom(row, ends, scale));
 }
