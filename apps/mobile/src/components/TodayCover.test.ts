@@ -62,3 +62,17 @@ describe('the greeting on the iPad’s side banner (sc-91291)', () => {
     expect(greeting).not.toMatch(/position: 'absolute'/u);
   });
 });
+
+describe('the phone cover’s pill from AX1 (sc-92247)', () => {
+  it('fits its name and invitation line on the shared whole-words rule, the line under the name', () => {
+    const words = /function WholeOpenerWords\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(words.match(/<CappedWholeWords/gu)).toHaveLength(2);
+    expect(words).toMatch(/under=\{named\}/u);
+    expect(words).not.toMatch(/numberOfLines/u);
+  });
+
+  it('caps the pill under the greeting, and keeps main’s pill below AX1', () => {
+    expect(cover).toMatch(/<TitleCap\.Provider value=\{greeting\}>\s+<OrgButton/u);
+    expect(cover).toMatch(/const whole = phone && large && !compact && nameRoom != null;/u);
+  });
+});
