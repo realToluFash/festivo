@@ -465,6 +465,10 @@ export const PEOPLE_STATES = [
   'loading',
   'failed',
   'staffLinks',
+  'addressShort',
+  'addressDots',
+  'addressUnbroken',
+  'addressRemove',
 ] as const;
 
 export type PeopleState = (typeof PEOPLE_STATES)[number];
@@ -484,6 +488,8 @@ export interface PeopleStart {
   place: EventPlace;
   members: OrgMember[];
   adding?: { typed: string; role: EventRole };
+  /** The row whose role dialog is open, and whether its Remove ask is too. */
+  open?: { id: string; asking: boolean };
 }
 
 export function peopleStateOf(name: string | null): PeopleState {
@@ -502,6 +508,34 @@ export const BISI_ON: OnEvent = {
   outside: true,
   label: 'Lighting',
 };
+
+/** sc-91529's three addresses, added from outside and not joined, so each stands for its name. */
+export const LONG_ADDRESSES = {
+  addressShort: 'amaka.outside@soirely.test',
+  addressDots: 'fundacao.comunitaria.de.oyo.e.artes@soirely.test',
+  addressUnbroken: 'fundacaocomunitariadeoyoeartescontemporaneas@soirely.test',
+} as const;
+
+/** An outsider added by mobile number, whose groups stay whole. */
+const MOBILE_ON: OnEvent = {
+  id: '+2348031234567',
+  name: '+234 803 123 4567',
+  initials: '',
+  tone: 6,
+  role: 'Can view',
+  outside: true,
+  label: null,
+};
+
+function withAddress(start: PeopleStart, address: string, asking: boolean): PeopleStart {
+  const outsider: OnEvent = { ...BISI_ON, id: address, name: address, label: null };
+
+  return {
+    ...start,
+    onEvent: [...start.onEvent, outsider, MOBILE_ON],
+    open: { id: address, asking },
+  };
+}
 
 export function peopleStart(state: PeopleState): PeopleStart {
   const start: PeopleStart = {
@@ -532,6 +566,12 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...start, adding: { typed: 'kofi@ire.events', role: FIRST_ROLE } };
     case 'staffLinks':
       return { ...start, onEvent: [...start.onEvent, ...STAFF_LINKS] };
+    case 'addressShort':
+    case 'addressDots':
+    case 'addressUnbroken':
+      return withAddress(start, LONG_ADDRESSES[state], false);
+    case 'addressRemove':
+      return withAddress(start, LONG_ADDRESSES.addressUnbroken, true);
     default:
       return start;
   }
@@ -559,6 +599,10 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('loading', 'Loading'),
       people('failed', 'Failed'),
       people('staffLinks', 'Staff links from the roster, one signed in and one not yet (sc-3912)'),
+      people('addressShort', 'An outsider’s address, broken after its @ (sc-91529)'),
+      people('addressDots', 'An address wider than a line, broken before its dots'),
+      people('addressUnbroken', 'An address with no dot before its @, cut at the line’s end'),
+      people('addressRemove', 'Remove asked for that address'),
     ],
   },
 ];

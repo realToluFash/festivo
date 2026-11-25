@@ -52,6 +52,7 @@ import {
   RowWords,
   TextAction,
 } from '../components/SettingsParts.tsx';
+import { WholeAddress } from './WholeAddress.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -71,6 +72,7 @@ export function RoleDialog({
   roleFails,
   organisation,
   removing,
+  asking: askingFirst = false,
   onSaved,
   onLost,
   onClose,
@@ -80,6 +82,7 @@ export function RoleDialog({
   roleFails: boolean;
   organisation?: string;
   removing?: Removing | undefined;
+  asking?: boolean;
   onSaved: (role: Level) => void;
   onLost: (words: string) => void;
   onClose: () => void;
@@ -90,7 +93,7 @@ export function RoleDialog({
   const [saving, setSaving] = useState<Saving>('idle');
   const [lost, setLost] = useState<string | null>(null);
   const [live, setLive] = useState('');
-  const [asking, setAsking] = useState(removing?.start != null);
+  const [asking, setAsking] = useState(askingFirst || removing?.start != null);
   const [gone, setGone] = useState<number | null>(
     removing?.start === 'held' ? removing.heldMs : null,
   );
@@ -202,7 +205,10 @@ export function RoleDialog({
       >
         <div className="people-who">
           <Avatar initials={person.initials} tone={person.tone} size="face" />
-          <RowWords title={person.name} lines={[sheetLine(person, organisation)]} />
+          <RowWords
+            title={<WholeAddress text={person.name} />}
+            lines={[sheetLine(person, organisation)]}
+          />
         </div>
         {person.door != null ? (
           <div className="people-ends dc-door-lines">
