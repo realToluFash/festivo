@@ -15,6 +15,9 @@ export const PW = {
   nothingToFill: 'Nothing to fill in, so every guest gets exactly these words.',
   nobodyToPreview: 'No guests chosen yet, so there is nobody to preview it as.',
   filling: 'Filling it in for {{name}}…',
+  failed: 'We could not fill it in for {{name}}.',
+  failedLine: 'Check your connection and try again.',
+  tryAgain: 'Try again',
 };
 
 /** Soirely's words in a guest's own language: length stand-ins in brackets, not [fr]'s or [es]'s words (STATES.md, 8 Nov). */

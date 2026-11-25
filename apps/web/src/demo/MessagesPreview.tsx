@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { Glyph } from '../components/Glyph.tsx';
+import { TextAction } from '../components/SettingsParts.tsx';
 import { useLater } from '../useLater.ts';
 import {
   type Draft,
@@ -158,6 +159,7 @@ export function Preview({ draft }: { draft: Draft }) {
   const later = useLater();
   const [who, setWho] = useState<PersonId>(draft.previewAs ?? FIRST_PERSON);
   const [filling, setFilling] = useState(draft.opens === 'filling');
+  const [failed, setFailed] = useState(draft.opens === 'failed');
   const [first] = useState(draft.opens === 'previewAs');
   const person = personOf(who);
   const notice = noticeFor(person);
@@ -175,6 +177,7 @@ export function Preview({ draft }: { draft: Draft }) {
 
   function pick(id: PersonId): void {
     setWho(id);
+    setFailed(false);
     setFilling(true);
     act({ kind: 'draft', draft: { previewAs: id } });
     later(FILL_MS, () => setFilling(false));
@@ -196,6 +199,8 @@ export function Preview({ draft }: { draft: Draft }) {
       </p>
       {filling ? (
         <PreviewBones name={person.name} />
+      ) : failed ? (
+        <PreviewFailed name={person.name} onRetry={() => pick(who)} />
       ) : (
         <>
           <div className="mg-preview-cols">
@@ -270,6 +275,20 @@ export function Preview({ draft }: { draft: Draft }) {
           </ul>
         </>
       )}
+    </div>
+  );
+}
+
+/** In place of the page when it could not be filled; Preview as stays, and Try again fills it for the same guest. */
+export function PreviewFailed({ name, onRetry }: { name: string; onRetry: () => void }) {
+  return (
+    <div className="mg-preview-failed" role="alert">
+      <p className="mg-preview-failed-words">
+        <Glyph name="alert" size={18} weight={2.2} />
+        {filled(PW.failed, { name })}
+      </p>
+      <p className="desk-line">{PW.failedLine}</p>
+      <TextAction label={PW.tryAgain} onClick={onRetry} />
     </div>
   );
 }

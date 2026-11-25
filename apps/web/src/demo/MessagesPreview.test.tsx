@@ -200,6 +200,36 @@ describe('Write it once at a desk: Insert, Preview as and its lines (sc-3960)', 
     expect(document.querySelector('.mg-page-figure')).toBeNull();
   });
 
+  it(
+    'says it could not fill it in for Camille Dubois, and Try again fills it in',
+    SLOW,
+    async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      await messages('previewFailed');
+
+      const alert = screen.getByRole('alert');
+      expect(screen.getByRole('heading', { name: 'As Camille Dubois will see it' })).toBeDefined();
+      expect(alert.textContent).toContain('We could not fill it in for Camille Dubois.');
+      expect(alert.textContent).toContain('Check your connection and try again.');
+      expect(
+        screen.getByRole('button', { name: 'Preview as Camille Dubois · French' }),
+      ).toBeDefined();
+      expect(document.querySelector('.mg-page-figure')).toBeNull();
+      expect(document.querySelector('.mg-preview-lines')).toBeNull();
+
+      fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }));
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(
+        screen.getByText('Filling it in for Camille Dubois…', { selector: '[role=status]' }),
+      ).toBeDefined();
+
+      await act(() => vi.advanceTimersByTime(1000));
+
+      expect(page()).toMatch(/^Camille Dubois, a few things before /u);
+    },
+  );
+
   it('shows a Greet as with markup as text, never as markup', SLOW, async () => {
     await messages('previewMarkup');
 

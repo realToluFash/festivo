@@ -131,6 +131,31 @@
   gap: 14px;
 }
 
+.mg-preview-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1.5px solid var(--colorBrokenText);
+  border-radius: var(--radiusInset);
+  background: var(--colorBrokenTint);
+}
+
+.mg-preview-failed-words {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.mg-preview-failed-words svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorBrokenText);
+}
+
 .mg-preview-filling {
   color: var(--colorInkSecondary);
   font: 600 14px/1.4 var(--fontFamily);

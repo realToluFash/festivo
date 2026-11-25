@@ -191,6 +191,7 @@ export const MESSAGE_STATES = [
   { key: 'previewGreetAs', name: 'Previewed as Bisi Adewale' },
   { key: 'previewChose', name: 'Previewed as Camille Dubois' },
   { key: 'previewLoading', name: 'Filling it in' },
+  { key: 'previewFailed', name: 'Could not fill it in' },
   { key: 'previewMarkup', name: 'A Greet as with markup' },
   { key: 'typedBraces', name: 'A typed {Greeting}' },
   { key: 'previewBraces', name: 'Typed braces, previewed' },
@@ -2254,7 +2255,7 @@ export interface Draft {
   step: 'write' | 'preview' | 'check';
   seed: number;
   openTo?: boolean;
-  opens?: 'insert' | 'previewAs' | 'filling' | undefined;
+  opens?: 'insert' | 'previewAs' | 'filling' | 'failed' | undefined;
   previewAs?: PersonId;
   seeAll?: boolean;
   hour?: Hour;
@@ -2950,6 +2951,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'previewGreetAs':
     case 'previewChose':
     case 'previewLoading':
+    case 'previewFailed':
     case 'previewMarkup':
     case 'typedBraces':
     case 'previewBraces':

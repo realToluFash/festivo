@@ -110,6 +110,8 @@ export function previewDraftOf(state: MessagesState): Partial<Draft> {
       return { step: 'preview', body: WITH_DATE, previewAs: 'camille' };
     case 'previewLoading':
       return { step: 'preview', body: WITH_DATE, previewAs: 'camille', opens: 'filling' };
+    case 'previewFailed':
+      return { step: 'preview', body: WITH_DATE, previewAs: 'camille', opens: 'failed' };
     case 'previewMarkup':
       return { step: 'preview', previewAs: 'kemi' };
     case 'typedBraces':
