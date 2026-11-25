@@ -156,6 +156,19 @@
   color: var(--colorBrokenText);
 }
 
+.mg-preview-gone {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-preview-gone svg {
+  flex: none;
+  margin-top: 1px;
+}
+
 .mg-preview-filling {
   color: var(--colorInkSecondary);
   font: 600 14px/1.4 var(--fontFamily);

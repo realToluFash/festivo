@@ -112,6 +112,15 @@ export function previewDraftOf(state: MessagesState): Partial<Draft> {
       return { step: 'preview', body: WITH_DATE, previewAs: 'camille', opens: 'filling' };
     case 'previewFailed':
       return { step: 'preview', body: WITH_DATE, previewAs: 'camille', opens: 'failed' };
+    case 'previewGone':
+      return {
+        step: 'preview',
+        body: WITH_DATE,
+        previewAs: 'amaka',
+        gone: ['camille', 'lucia'],
+        dropped: ['camille'],
+        goneSaid: 'camille',
+      };
     case 'previewMarkup':
       return { step: 'preview', previewAs: 'kemi' };
     case 'typedBraces':

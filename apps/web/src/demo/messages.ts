@@ -4,6 +4,7 @@ import {
   CHOOSE_STATES,
   choseAudience,
   chooseSeedOf,
+  idOf,
   chosenIds,
   flagWord,
   isChooseState,
@@ -192,6 +193,8 @@ export const MESSAGE_STATES = [
   { key: 'previewChose', name: 'Previewed as Camille Dubois' },
   { key: 'previewLoading', name: 'Filling it in' },
   { key: 'previewFailed', name: 'Could not fill it in' },
+  { key: 'previewGone', name: 'No longer a guest' },
+  { key: 'previewGoneLast', name: 'No longer a guest, nobody left' },
   { key: 'previewMarkup', name: 'A Greet as with markup' },
   { key: 'typedBraces', name: 'A typed {Greeting}' },
   { key: 'previewBraces', name: 'Typed braces, previewed' },
@@ -2257,6 +2260,14 @@ export interface Draft {
   openTo?: boolean;
   opens?: 'insert' | 'previewAs' | 'filling' | 'failed' | undefined;
   previewAs?: PersonId;
+  /** The preview answers 404 for them: removed from the guest list while the host writes, or a companion. */
+  gone?: readonly PersonId[];
+  /** Out of Preview as, once the preview found they are no longer a guest. */
+  dropped?: readonly PersonId[];
+  /** The one the status line names, until the host picks someone or closes the preview. */
+  goneSaid?: PersonId | undefined;
+  /** Nobody was left in Preview as: Preview is not offered while To is this one. */
+  nobodyLeft?: { name: string; to: Audience };
   seeAll?: boolean;
   hour?: Hour;
   invite?: InviteDraft;
@@ -2952,6 +2963,7 @@ export function seedOf(state: MessagesState | null): Inbox {
     case 'previewChose':
     case 'previewLoading':
     case 'previewFailed':
+    case 'previewGone':
     case 'previewMarkup':
     case 'typedBraces':
     case 'previewBraces':
@@ -2963,6 +2975,15 @@ export function seedOf(state: MessagesState | null): Inbox {
       };
     case 'previewNobody':
       return compose(base, { kind: 'who', conditions: [] }, 'write');
+    case 'previewGoneLast': {
+      const to = choseAudience([idOf('Camille Dubois')]);
+
+      return {
+        ...base,
+        pane: { kind: 'compose' },
+        draft: { ...draftOf(to), nobodyLeft: { name: 'Camille Dubois', to } },
+      };
+    }
     case 'sendWithout':
       return {
         ...base,
