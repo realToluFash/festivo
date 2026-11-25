@@ -223,6 +223,10 @@ describe('Messages at a desk (sc-3942)', () => {
         follows: 'm_1',
       }),
     );
+    expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/messages/check')?.body).toEqual({
+      audience: 'all',
+      follows: 'm_1',
+    });
   });
 
   it('checks, then sends to all guests, and opens what went', async () => {

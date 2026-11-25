@@ -550,6 +550,19 @@ final class GuestMessagesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aFollowUpsCheckCountsWhomTheFirstMessageWentNotGuestsAddedSince(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Hello'])['id']);
+        $this->add('Kemi Bello', 'kemi@example.test');
+
+        $check = $this->as($this->owner, 'POST', $this->messages() . '/check', ['audience' => 'all', 'follows' => $first]);
+
+        self::assertSame(1, $check['people']);
+        self::assertSame(1, $check['toldByEmail']);
+    }
+
+    #[Test]
     public function everySendIsAudited(): void
     {
         $this->add('Emeka Nwosu', 'emeka@example.test');

@@ -596,7 +596,7 @@ function ComposePane({
     setStep({ kind: 'checking' });
     desk.focus('check');
     api
-      .guestMessageCheck(desk.event.id, audienceOf(who))
+      .guestMessageCheck(desk.event.id, { ...audienceOf(who), follows: first.follows?.id ?? null })
       .then((check) => {
         setStep({ kind: 'check', check, seeAll: false });
         desk.focus('check');

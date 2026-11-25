@@ -101,7 +101,7 @@ final readonly class GuestMessagesController
         ]);
     }
 
-    /** The send check's figures, from the same rule as Send: everyone it goes to on their page, how many email tells, and who it can't, by name with why. */
+    /** The send check's figures, from the same rule as Send (a follow-up's from its first message's recipients): everyone it goes to on their page, how many email tells, and who it can't, by name with why. */
     #[Route('/api/events/{eventId}/messages/check', name: 'guest_messages_check', methods: ['POST'])]
     #[InEvent(Permission::MessagesManage)]
     public function check(Request $request, string $eventId): JsonResponse
@@ -109,8 +109,9 @@ final readonly class GuestMessagesController
         $body = Input::body($request, Type\shape([
             'audience' => self::audienceType(),
             'guestIds' => Type\optional(Type\vec(Type\string())),
+            'follows' => Type\optional(Type\nullable(Type\string())),
         ]));
-        $plan = $this->guestMessageSender->check($this->event($eventId), $body['audience'], $body['guestIds'] ?? []);
+        $plan = $this->guestMessageSender->check($this->event($eventId), $body['audience'], $body['guestIds'] ?? [], $body['follows'] ?? null);
 
         return new JsonResponse([
             'people' => Iter\count($plan->deliveries),

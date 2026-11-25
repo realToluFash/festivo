@@ -49,11 +49,10 @@ final readonly class GuestMessageSender
     }
 
     /** @param list<string> $guestIds */
-    public function check(Event $event, string $choice, array $guestIds): GuestMessagePlan
+    public function check(Event $event, string $choice, array $guestIds, ?string $follows = null): GuestMessagePlan
     {
         $this->assertCanSend($event);
-        $guestIds = self::uuids($guestIds);
-        $violations = $this->audienceViolations($choice, $guestIds);
+        [$choice, $guestIds, , $violations] = $this->audience($event, $choice, $guestIds, $follows);
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
@@ -66,11 +65,10 @@ final readonly class GuestMessageSender
     public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null): GuestMessageSent
     {
         $this->assertCanSend($event);
-        $guestIds = self::uuids($guestIds);
+        [$choice, $guestIds, $conversation, $violations] = $this->audience($event, $choice, $guestIds, $follows);
         $subject = null === $subject ? null : Str\trim($subject);
         $subject = '' === $subject ? null : $subject;
         $message = Str\trim($message);
-        $violations = $this->audienceViolations($choice, $guestIds);
 
         if (null !== $subject && VisibleText::tooLong($subject, GuestMessage::SUBJECT_MAXIMUM)) {
             $violations[] = $this->violation('subject', 'validation.guest_message_subject_too_long', GuestMessage::SUBJECT_MAXIMUM);
@@ -82,19 +80,8 @@ final readonly class GuestMessageSender
             $violations[] = $this->violation('message', 'validation.guest_message_too_long', GuestMessage::BODY_MAXIMUM);
         }
 
-        $conversation = null === $follows ? null : $this->guestMessageRepository->findOneOn($event, $follows)?->conversation();
-
-        if (null !== $follows && null === $conversation) {
-            $violations[] = $this->violation('follows', 'validation.guest_message_follows_unknown');
-        }
-
         if ([] !== $violations) {
             throw ApiException::validation($violations);
-        }
-
-        if (null !== $conversation) {
-            $choice = GuestMessage::CHOSEN;
-            $guestIds = $this->recipientsOf($conversation);
         }
 
         $id = Uuid::v7();
@@ -153,13 +140,25 @@ final readonly class GuestMessageSender
     }
 
     /**
+     * Who a message goes to, the one rule for the check and for Send: a follow-up goes to whom its conversation's first message went, whatever the audience says.
+     *
      * @param list<string> $guestIds
      *
-     * @return list<array{propertyPath: string, message: string, code: string}>
+     * @return array{string, list<string>, ?GuestMessage, list<array{propertyPath: string, message: string, code: string}>}
      */
-    private function audienceViolations(string $choice, array $guestIds): array
+    private function audience(Event $event, string $choice, array $guestIds, ?string $follows): array
     {
-        return GuestMessage::CHOSEN === $choice && [] === $guestIds ? [$this->violation('guestIds', 'validation.guest_message_choose_guests')] : [];
+        if (null !== $follows) {
+            $conversation = $this->guestMessageRepository->findOneOn($event, $follows)?->conversation();
+
+            return null === $conversation
+                ? [$choice, [], null, [$this->violation('follows', 'validation.guest_message_follows_unknown')]]
+                : [GuestMessage::CHOSEN, $this->recipientsOf($conversation), $conversation, []];
+        }
+
+        $guestIds = self::uuids($guestIds);
+
+        return [$choice, $guestIds, null, GuestMessage::CHOSEN === $choice && [] === $guestIds ? [$this->violation('guestIds', 'validation.guest_message_choose_guests')] : []];
     }
 
     /**

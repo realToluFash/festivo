@@ -3746,10 +3746,10 @@ export class ApiClient {
     return body.guests ?? [];
   }
 
-  /** The check before Send, worked out by the same rule as Send: refused 422 on `guestIds` for nobody chosen, 409 on an event that can't send. */
+  /** The check before Send, worked out by the same rule as Send, a follow-up's from whom its first message went: refused 422 on `guestIds` for nobody chosen, 409 on an event that can't send. */
   guestMessageCheck(
     eventId: string,
-    input: Pick<GuestMessageInput, 'audience' | 'guestIds'>,
+    input: Pick<GuestMessageInput, 'audience' | 'guestIds' | 'follows'>,
   ): Promise<GuestMessageCheck> {
     return this.post<GuestMessageCheck>(`${this.messagesPath(eventId)}/check`, input);
   }
