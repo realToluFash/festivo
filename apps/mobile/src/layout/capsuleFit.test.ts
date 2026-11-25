@@ -19,6 +19,11 @@ describe('the upright tablet’s capsule', () => {
     expect(capsuleRoom(ROW_800)).toBe(ROW_800 - 2 * 58);
   });
 
+  it('stops 12 short of Search and the bell where they end the row, on each side as it is centred', () => {
+    expect(capsuleRoom(ROW_800, 96)).toBe(ROW_800 - 2 * 108);
+    expect(capsuleRoom(ROW_800, 40)).toBe(capsuleRoom(ROW_800));
+  });
+
   it('grows its row only by what a taller label adds to its 46', () => {
     expect(capsuleGrowth(0)).toBe(0);
     expect(capsuleGrowth(46)).toBe(0);

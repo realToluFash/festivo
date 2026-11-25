@@ -18,8 +18,12 @@ export interface CapsuleLabels {
   measure: ReactNode;
 }
 
-/** The size an upright tablet's capsule draws `labels` at in a row `rowWidth` wide from the tile's edge to the bell's (sc-40401). */
-export function useCapsuleLabels(labels: readonly string[], rowWidth: number): CapsuleLabels {
+/** The size an upright tablet's capsule draws `labels` at in a row `rowWidth` wide from the tile's edge to the bell's, its end `end` wide (sc-40401). */
+export function useCapsuleLabels(
+  labels: readonly string[],
+  rowWidth: number,
+  end = 0,
+): CapsuleLabels {
   const { fontScale } = useWindowDimensions();
   const start = CAPSULE_LABEL * fontScale;
   const { widths, measure } = useMeasuredAt(start, labels);
@@ -30,7 +34,7 @@ export function useCapsuleLabels(labels: readonly string[], rowWidth: number): C
     fontScale,
     labels.length,
     total,
-    rowWidth > 0 ? capsuleRoom(rowWidth) : 0,
+    rowWidth > 0 ? capsuleRoom(rowWidth, end) : 0,
   );
 
   return {

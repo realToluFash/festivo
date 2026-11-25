@@ -25,9 +25,9 @@ export function capsuleChrome(tabs: number): number {
 /** The tile reaches 2 past its 44 where the invitation's ring sits on its corner. */
 const TILE_REACH = 46;
 
-/** The widest the centred capsule may be and still stop sc-30410's 12 short of the tile with its ring and of the bell. */
-export function capsuleRoom(rowWidth: number): number {
-  return rowWidth - 2 * (Math.max(TILE_REACH, tokens.sizeHit) + PILL_BESIDE_TABS.gap);
+/** The widest the centred capsule may be and still stop sc-30410's 12 short of the tile with its ring and of the row's end, `end` wide where Search stands before the bell (sc-91290). */
+export function capsuleRoom(rowWidth: number, end = 0): number {
+  return rowWidth - 2 * (Math.max(TILE_REACH, tokens.sizeHit, end) + PILL_BESIDE_TABS.gap);
 }
 
 /** One size for the labels, `labels` wide together at the text size's own: that size where the capsule fits at it, otherwise the largest that fits, never under the default (sc-40401, as sc-37298). */
