@@ -164,13 +164,14 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   );
 }
 
-export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'oneWord';
+export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';
 
 export const TODAY_ORGS: readonly { key: TodayOrg; label: string }[] = [
   { key: 'qa', label: 'QA Organisation' },
   { key: 'lumen', label: 'Lumen Studio' },
   { key: 'ire', label: 'Ìrè Events' },
+  { key: 'several', label: 'Atelier Céleste Réceptions et Mariages' },
   { key: 'oneWord', label: ONE_WORD },
 ];
 

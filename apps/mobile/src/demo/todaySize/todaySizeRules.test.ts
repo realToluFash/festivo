@@ -130,9 +130,11 @@ describe('the organisation pill on the phone (sc-92247)', () => {
     expect(pillTileAlone(AX1, null, 186)).toBe(false);
   });
 
-  it('names the four organisations the AC renames it to', () => {
+  it('names the five organisations the AC renames it to', () => {
     expect(orgName('qa')).toBe('QA Organisation');
+    expect(orgName('lumen')).toBe('Lumen Studio');
     expect(orgName('ire')).toBe('Ìrè Events');
+    expect(orgName('several')).toBe('Atelier Céleste Réceptions et Mariages');
     expect(orgName('oneWord')).toBe(ONE_WORD);
   });
 });

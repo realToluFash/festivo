@@ -17,6 +17,11 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     href: '/demo/today-size?size=ax5&lang=fr&org=qa&invite=one',
   },
   {
+    title: 'La pastille · AX5, several long words',
+    what: 'Atelier Céleste Réceptions et Mariages on as many lines as its words need, Réceptions alone on its line, the greeting below',
+    href: '/demo/today-size?size=ax5&lang=fr&org=several',
+  },
+  {
     title: 'The pill · AX5, one long word',
     what: 'The tile alone, its ring while an invitation waits; one tap opens Where are you working?',
     href: '/demo/today-size?size=ax5&lang=en&org=oneWord&invite=one',
