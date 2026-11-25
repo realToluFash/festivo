@@ -63,7 +63,9 @@ export function SentToThread({ id }: { id: SentToId }) {
         </HostBubble>
         {outsIn(inbox, id).length > 0 && <StreamItems thread={id} />}
       </ol>
-      {!nobody && <MiniComposer to={message.to} placeholder={MW.writeFollowUp} thread={id} />}
+      {!nobody && (
+        <MiniComposer to={message.to} placeholder={MW.writeFollowUp} thread={id} follows={count} />
+      )}
     </div>
   );
 }

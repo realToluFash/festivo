@@ -174,6 +174,15 @@ describe('forwarding through the proxy', () => {
     expect(answer.status).toBe(503);
   });
 
+  it('drops a matching request unanswered and forwards the rest', async () => {
+    const base = await stack(0, 'GET', { drop: /^POST \/api\/events\/[^/]+\/guests$/ });
+    await expect(
+      fetch(`${base}/api/events/ev1/guests`, { method: 'POST', body: 'x=1' }),
+    ).rejects.toThrow();
+    const other = await fetch(`${base}/api/events/ev1/guests`);
+    expect(other.status).toBe(201);
+  });
+
   it('answers 502 when the API is not there', async () => {
     const proxy = await startProxy({ target: 'http://127.0.0.1:1', delay: 0, pattern: guests });
     servers.push(proxy);

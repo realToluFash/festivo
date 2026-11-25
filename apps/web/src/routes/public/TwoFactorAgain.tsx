@@ -11,6 +11,7 @@ import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
+import { SECURITY, securityOn } from '../app/settings/signInRulesDesk.ts';
 
 /** After an approved recovery (sc-509): set two-factor up again, or carry on and find it in Security. */
 export function TwoFactorAgain() {
@@ -45,7 +46,7 @@ export function TwoFactorAgain() {
         <p>{t('lostTwoFactor.setupIntro')}</p>
       </div>
       <div className="auth-buttons">
-        <Link className="button button-primary" to="/app/account/security">
+        <Link className="button button-primary" to={SECURITY} state={securityOn('turnOn')}>
           {t('lostTwoFactor.setup')}
         </Link>
         <button className="button" type="button" aria-busy={skipping} onClick={() => void notNow()}>

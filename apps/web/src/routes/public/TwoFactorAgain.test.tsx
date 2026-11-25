@@ -106,3 +106,16 @@ describe('Not now, with a product link opened signed out (sc-612)', () => {
     });
   });
 });
+
+describe('Set up two-factor (sc-89710)', () => {
+  it('opens Security with the Turn on two-factor choice', async () => {
+    answering(() => json(ACCOUNT));
+    const router = createMemoryRouter(routes, { initialEntries: ['/two-factor/again'] });
+    render(<RouterProvider router={router} />);
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Set up two-factor' }));
+
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe('/app/account/security'));
+    expect(router.state.location.state).toEqual({ opens: 'turnOn' });
+  });
+});

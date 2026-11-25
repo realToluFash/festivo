@@ -11,6 +11,7 @@ import {
   MW,
   filled,
   legendWord,
+  many,
   tokenWord,
 } from './messages.ts';
 import { type Bit, useInbox } from './messagesContext.ts';
@@ -231,6 +232,16 @@ export function Stub({
         </div>
       </div>
     </li>
+  );
+}
+
+/** Where a follow-up goes, said under its composer in place of To and Subject (ux, #93128). */
+export function FollowLine({ count }: { count: number }) {
+  return (
+    <p className="mg-follow-line">
+      <Glyph name="group" size={15} weight={2.1} />
+      {many('followLine', count)}
+    </p>
   );
 }
 
