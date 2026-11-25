@@ -10,7 +10,7 @@ export function WholeAddress({ text }: { text: string }) {
   const [wide, setWide] = useState(false);
 
   useLayoutEffect(() => {
-    const box = domain.current?.parentElement?.parentElement;
+    const box = domain.current?.closest('.desk-row-words');
     if (domain.current == null || box == null) return;
     if (!domain.current.classList.contains('is-wide')) {
       natural.current = domain.current.getBoundingClientRect().width;
@@ -27,24 +27,13 @@ export function WholeAddress({ text }: { text: string }) {
 
   return (
     <span className="whole-address">
-      {pieces(sides.local.slice(0, -1))}
-      {sides.local.length > 1 && <wbr />}
-      {lastBeforeAt(sides.local.at(-1) ?? '')}
+      {pieces(sides.local)}
+      <span className="whole-address-at">{sides.at}</span>
       <wbr />
       <span ref={domain} className={wide ? 'whole-address-domain is-wide' : 'whole-address-domain'}>
         {pieces(sides.domain)}
       </span>
     </span>
-  );
-}
-
-/** The @ ends its line with the character before it, so a cut at the line's end never leaves it to start the next. */
-function lastBeforeAt(part: string) {
-  return (
-    <>
-      {part.slice(0, -2)}
-      <span className="whole-address-at">{part.slice(-2)}</span>
-    </>
   );
 }
 

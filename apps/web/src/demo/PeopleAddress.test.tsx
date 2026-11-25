@@ -28,12 +28,18 @@ async function people(state: string) {
 describe('an outsider’s address breaks after its @, never inside its domain (sc-91529)', () => {
   it('cuts each side before its dots and keeps the @ on the side before it', () => {
     expect(addressSides('amaka.outside@soirely.test')).toEqual({
-      local: ['amaka', '.outside@'],
+      local: ['amaka', '.outsid'],
+      at: 'e@',
       domain: ['soirely', '.test'],
     });
     expect(addressSides(LONG_ADDRESSES.addressUnbroken)?.local).toEqual([
-      'fundacaocomunitariadeoyoeartescontemporaneas@',
+      'fundacaocomunitariadeoyoeartescontemporanea',
     ]);
+    expect(addressSides('a@soirely.test')).toEqual({
+      local: [],
+      at: 'a@',
+      domain: ['soirely', '.test'],
+    });
     expect(addressSides('+234 803 123 4567')).toBeNull();
     expect(addressSides('Ada Obiageli Chukwuemeka Oluwaseun Obi')).toBeNull();
   });
