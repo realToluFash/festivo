@@ -13,10 +13,11 @@ import {
   TODAY_LIVES,
   TODAY_NAMES,
   TODAY_ORGS,
+  TODAY_WEEKS,
 } from '../../src/demo/todaySize/todaySizeRules.ts';
 
 export default function DemoTodaySize() {
-  const { size, lang, name, greeting, event, org, invite, live } = useLocalSearchParams<{
+  const { size, lang, name, greeting, event, org, invite, live, week } = useLocalSearchParams<{
     size?: string;
     lang?: string;
     name?: string;
@@ -25,6 +26,7 @@ export default function DemoTodaySize() {
     org?: string;
     invite?: string;
     live?: string;
+    week?: string;
   }>();
   const start = {
     size: keyOf(FILTER_SIZES, size, 'device'),
@@ -35,6 +37,7 @@ export default function DemoTodaySize() {
     org: keyOf(TODAY_ORGS, org, 'qa'),
     invite: keyOf(TODAY_INVITES, invite, 'none'),
     live: keyOf(TODAY_LIVES, live, 'none'),
+    week: keyOf(TODAY_WEEKS, week, 'quiet'),
   };
 
   return <TodaySizeScreen key={JSON.stringify(start)} start={start} />;
