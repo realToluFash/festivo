@@ -93,11 +93,7 @@ final readonly class DoorCodeRedeemer
         };
     }
 
-    /**
-     * Signed in only (sc-4235): signed out, a door code is redeemed by phone code, through `DoorCodeSignIn`.
-     *
-     * @return array{person: EventPerson, again: bool}
-     */
+    /** @return array{person: EventPerson, again: bool} signed in only (sc-4235): signed out, a door code is redeemed through `DoorCodeSignIn` */
     public function redeem(string $typed, ?User $reader, Request $request): array
     {
         if (null === $reader) {
@@ -208,7 +204,6 @@ final readonly class DoorCodeRedeemer
         }
     }
 
-    /** "Too many tries" with the time to try again, in UTC. */
     public function tooMany(DateTimeImmutable $until): ApiException
     {
         return ApiException::tooManyAttemptsUntil(

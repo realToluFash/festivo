@@ -233,7 +233,6 @@ export interface HeldFactors {
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
 
-/** The code step of a sign-in by phone code (sc-4235), by its handle. */
 export interface PhoneSignInSent {
   handle: string;
   cooldownSeconds: number;
@@ -3986,7 +3985,6 @@ export class ApiClient {
     return window;
   }
 
-  /** Sends the code to the number on the link's roster entry (sc-4235). */
   async sendStaffLinkSignIn(token: string): Promise<PhoneSignInSent> {
     return this.phoneSignInSent(
       await this.post<unknown>('/api/staff-links/sign-in/send', { token }, { anonymous: true }),
@@ -6085,7 +6083,6 @@ export class ApiClient {
     return this.adopt(response, path, controller);
   }
 
-  /** As `signedIn`, keeping the rest of the answer beside the tokens. */
   private async signedInWithBody(
     path: string,
     credentials: Record<string, unknown>,

@@ -25,10 +25,7 @@ use Symfony\Component\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
-/**
- * Redeeming a door code signed out (sc-4235): a name and a mobile number, one code to it, and the grant held by that number's account.
- * The use cap counts people, so an account already in by the code signs back in at a full one and takes no use.
- */
+/** Redeeming a door code signed out (sc-4235): the use cap counts people, so an account already in signs back in at a full code and takes no use. */
 final readonly class DoorCodeSignIn
 {
     private const int SENDS_PER_USE_AN_HOUR = 2;

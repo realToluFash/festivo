@@ -38,9 +38,9 @@ use Symfony\Component\HttpFoundation\Request;
 /** Signing in with one code to a mobile number (sc-4235), with a phone's code, limits and route (sc-62, sc-750); no account until the code is right. */
 final readonly class PhoneSignIns
 {
-    public const string SIGNED_IN = 'auth.phone_sign_in';
+    public const string SIGNED_IN = 'phone.signed_in';
 
-    public const string ACCOUNT_MADE = 'auth.account_made_by_phone';
+    public const string ACCOUNT_MADE = 'phone.account_made';
 
     private const int HANDLE_BYTES = 24;
 

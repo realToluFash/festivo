@@ -85,9 +85,9 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertTrue($user->isVerified());
         self::assertSame($user->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122());
         self::assertSame('Ada Obi', Type\shape(['name' => Type\string()], true)->coerce($answer['account'] ?? null)['name']);
-        self::assertTrue($this->audited('auth.account_made_by_phone'));
+        self::assertTrue($this->audited('phone.account_made'));
         self::assertTrue($this->audited('staff.account_linked'));
-        self::assertTrue($this->audited('auth.phone_sign_in'));
+        self::assertTrue($this->audited('phone.signed_in'));
     }
 
     #[Test]
