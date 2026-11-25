@@ -1182,6 +1182,7 @@
   "twoFactor": {
     "title": "Enter your code",
     "intro": "Open your authenticator app and enter the 6-digit code for {{email}}.",
+    "introNumber": "Open your authenticator app and enter the 6-digit code for {{number}}.",
     "code": "Code",
     "verify": "Verify and sign in",
     "useRecovery": "Use a recovery code instead",
@@ -1954,8 +1955,13 @@
       "organisation_deleted": {
         "title": "This organisation is gone",
         "line": "The invitation to {{organisation}} can no longer be accepted."
+      },
+      "invitation_needs_email": {
+        "title": "Add your email address first",
+        "line": "This invitation is for {{email}}. Add that address to your account and verify it, then accept the invitation."
       }
-    }
+    },
+    "addEmail": "Add an email address"
   },
   "invitations": {
     "heading": "Invitations",
@@ -2347,7 +2353,21 @@
     "endedBody": "It stopped working 2 hours after your last shift.",
     "endedNext": "If you are working another event, you will get a new link for it.",
     "foot": "Nothing stays on this device.",
-    "failed": "That did not work. Try again in a moment."
+    "failed": "That did not work. Try again in a moment.",
+    "signIn": {
+      "staffLink": "Staff link",
+      "confirm": "Confirm it’s you",
+      "sendTo": "We’ll send a code to {{number}}.",
+      "notYours": "Not your number?",
+      "askToChange": "Ask the event’s organiser to change it on the roster.",
+      "askToAdd": "Ask the event’s organiser to add your mobile number to the roster.",
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "tryAt": "Try again at {{time}}.",
+      "linkFor": "This link is for {{name}}.",
+      "signOutContinue": "Sign out and continue",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster."
+    }
   },
   "ownerClaim": {
     "loading": "Loading",
@@ -3342,7 +3362,34 @@
     "openEvent": "Open the event",
     "signedInAs": "Signed in as {{name}}",
     "signedOutAt": "You’ll be signed out at {{time}}.",
-    "signedOut": "Signed out."
+    "signedOut": "Signed out.",
+    "phone": {
+      "mobile": "Mobile number",
+      "countryCode": "Country code",
+      "sendCode": "Send code",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
+      "checkWhatsApp": "Check WhatsApp",
+      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
+      "checkMessages": "Check your messages",
+      "texted": "We texted a code to {{number}}.",
+      "codeFromWhatsApp": "Code from WhatsApp",
+      "codeFromText": "Code from the text",
+      "blankWhatsApp": "Enter the 6-digit code from WhatsApp.",
+      "blankText": "Enter the 6-digit code from the text.",
+      "shortWhatsApp": "The code is 6 digits.",
+      "shortText": "The code is 6 digits.",
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "textInstead": "Text it to me instead",
+      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
+      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
+      "expiredTitle": "That code has expired",
+      "expiredBody": "Codes only work for a while. Send a new one and use the code in the newest text.",
+      "expiredBodyWhatsApp": "Codes only work for a while. Send a new one and use the code in the newest WhatsApp message.",
+      "exhaustedTitle": "Too many wrong tries",
+      "exhaustedBody": "That code no longer works. Send a new one to carry on.",
+      "failedTitle": "That did not work"
+    }
   },
   "guestList": {
     "addGuest": "Add guest",
@@ -6268,6 +6315,7 @@
   "passkey": {
     "waitTitle": "Use your passkey",
     "signInLead": "Your browser asks for your passkey for {{email}}. Unlock it with your face, fingerprint, PIN or screen lock.",
+    "signInLeadNumber": "Your browser asks for your passkey for {{number}}. Unlock it with your face, fingerprint, PIN or screen lock.",
     "resetLead": "Your account uses two-factor, so the reset asks for your passkey first. Nothing changes until it passes.",
     "use": "Use a passkey",
     "useCode": "Use a code instead",

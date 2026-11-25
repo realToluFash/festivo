@@ -6,6 +6,7 @@ namespace App\Domain\Organisation;
 
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\PlanFeature;
@@ -26,6 +27,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         private SignInRules $signInRules,
         private ClockInterface $clock,
         private Entitlements $entitlements,
+        private StaffLinkGrants $staffLinkGrants,
     ) {
     }
 
@@ -37,15 +39,16 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         return null === $membership ? null : $this->signInRules->narrow($this->grantsOf($membership), $membership);
     }
 
-    /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71). */
+    /** Read on every request, so a change applies on the next one. A member reaches the event through the membership alone, never a grant from outside (sc-71) or a staff link (sc-4235). */
     public function grantsOnEvent(User $user, Uuid $organisationId, Uuid $eventId): ?Grants
     {
         $membership = $this->membershipRepository->findActive($user, $organisationId);
 
         if (null === $membership) {
             $outside = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());
+            $role = $outside?->getRole() ?? $this->staffLinkGrants->onEvent($user, $eventId);
 
-            return null === $outside ? null : Grants::fromOutside($outside->getRole());
+            return null === $role ? null : Grants::fromOutside($role);
         }
 
         if (SeededRole::Member !== $membership->getRole()->getSeededAs()) {

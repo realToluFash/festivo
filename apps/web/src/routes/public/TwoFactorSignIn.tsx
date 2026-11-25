@@ -1,4 +1,5 @@
 import { type TwoFactorChallenge } from '@soirely/api-client';
+import { maskedPhone } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 
@@ -15,11 +16,16 @@ export function TwoFactorSignIn() {
   const challenge = useLocation().state as TwoFactorChallenge | null;
 
   if (challenge?.challenge == null) return <Navigate to="/sign-in" replace />;
+  const number = numberOf(challenge);
 
   return (
     <AuthPage bare end={null}>
       <SecondFactorStep
-        intro={t('twoFactor.intro', { email: challenge.email })}
+        intro={
+          number == null
+            ? t('twoFactor.intro', { email: challenge.email })
+            : t('twoFactor.introNumber', { number })
+        }
         recoveryIntro={t('twoFactor.recoveryIntro')}
         submitLabel={t('twoFactor.verify')}
         failedTitle={t('signIn.failedTitle')}
@@ -33,7 +39,10 @@ export function TwoFactorSignIn() {
         lostBoth={{ to: '/two-factor/recovery', state: challenge }}
         factors={challenge.factors}
         passkey={{
-          lead: t('passkey.signInLead', { email: challenge.email }),
+          lead:
+            number == null
+              ? t('passkey.signInLead', { email: challenge.email })
+              : t('passkey.signInLeadNumber', { number }),
           options: () => api.signInPasskeyOptions(challenge.challenge),
         }}
         onExpired={() =>
@@ -46,4 +55,9 @@ export function TwoFactorSignIn() {
       />
     </AuthPage>
   );
+}
+
+/** On an account with no email, its primary number, masked (sc-4235). */
+function numberOf(challenge: TwoFactorChallenge): string | null {
+  return challenge.email === '' && challenge.phone != null ? maskedPhone(challenge.phone) : null;
 }

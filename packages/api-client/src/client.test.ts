@@ -2443,6 +2443,7 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
+      phone: null,
       factors: { app: true, passkeys: false },
     });
     expect(tokens.saved).toBeNull();
@@ -2685,6 +2686,8 @@ describe('invitations and members', () => {
     refusal: null,
     forYou: null,
     signedInAs: null,
+    signedInAsPhone: null,
+    needsEmail: false,
     managed: null,
   };
 
@@ -4265,22 +4268,61 @@ describe('door codes (sc-72)', () => {
     expect(await client(json(OPENED), store(null, null)).openDoorCode('K7P2QX9M')).toEqual(OPENED);
   });
 
-  test('signed out, redeeming sends the name and keeps the session it answers with', async () => {
+  test('signed out, Send code sends the name and the number typed', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const answer = await client(
+      json({ handle: 'h1', cooldownSeconds: 60 }),
+      store(null, null),
+      sent,
+    ).sendDoorCodeSignIn('K7P2QX9M', 'João Pereira', 'PT', '912 344 512');
+
+    expect(answer).toEqual({ handle: 'h1', cooldownSeconds: 60 });
+    expect(sent[0]).toEqual({
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in/send',
+      body: { name: 'João Pereira', countryCode: 'PT', number: '912 344 512' },
+      auth: null,
+    });
+  });
+
+  test('signed out, the right code keeps the session it answers with and You’re in', async () => {
     const tokens = store(null, null);
     const sent: { path: string; body: unknown; auth: string | null }[] = [];
-    const redeemed = await client(
-      json({ accessToken: 'door', sessionId: 's1', ...REDEEMED }, 201),
+    const signedIn = await client(
+      json({ accessToken: 'door', sessionId: 's1', account: ACCOUNT, ...REDEEMED }),
       tokens,
       sent,
-    ).redeemDoorCode('K7P2QX9M', 'João Pereira');
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
 
-    expect(redeemed).toEqual(REDEEMED);
+    expect(signedIn.redeemed).toEqual(REDEEMED);
     expect(sent[0]).toEqual({
-      path: 'POST /api/door-codes/K7P2QX9M/redeem',
-      body: { name: 'João Pereira', refreshTokenIn: 'cookie' },
+      path: 'POST /api/door-codes/K7P2QX9M/sign-in',
+      body: { handle: 'h1', code: '123456', refreshTokenIn: 'cookie' },
       auth: null,
     });
     expect((tokens.saved as IssuedTokens | null)?.accessToken).toBe('door');
+  });
+
+  test('signed out, two-factor comes before You’re in and names the masked number', async () => {
+    const signedIn = await client(
+      json(
+        {
+          twoFactorChallenge: 'c1',
+          challengeExpiresAt: '2026-11-25T20:00:00Z',
+          email: null,
+          phone: { countryCode: 'PT', lastDigits: '4512' },
+          factors: { app: true, passkeys: false },
+        },
+        202,
+      ),
+      store(null, null),
+    ).doorCodeSignIn('K7P2QX9M', 'h1', '123456');
+
+    expect(signedIn.redeemed).toBeNull();
+    expect(signedIn.outcome).toMatchObject({
+      kind: 'twoFactor',
+      email: '',
+      phone: { countryCode: 'PT', lastDigits: '4512' },
+    });
   });
 
   test('signed in, redeeming is the account’s and lands on You’re in again', async () => {
@@ -4289,7 +4331,7 @@ describe('door codes (sc-72)', () => {
       json({ ...REDEEMED, again: true }),
       store('live', null),
       sent,
-    ).redeemDoorCode('K7P2QX9M', null);
+    ).redeemDoorCode('K7P2QX9M');
 
     expect(redeemed.again).toBe(true);
     expect(sent[0]?.auth).toBe('Bearer live');

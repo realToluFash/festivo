@@ -6,16 +6,25 @@ namespace App\Domain\Staff\Controller;
 
 use App\Domain\Staff\Http\StaffSerialiser;
 use App\Domain\Staff\Link\StaffLinks;
+use App\Domain\Staff\Link\StaffLinkSignIn;
 use App\Domain\Staff\Link\StaffLinkWindow;
+use App\Domain\User\CallerSession;
+use App\Domain\User\Http\SignInResponse;
+use App\Domain\User\PhoneSignIn\PhoneHint;
+use App\Domain\User\TokenIssuer;
 use App\Entity\StaffMember;
 use App\Entity\User;
+use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
+use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\InThisEvent;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\PublicAccess;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Repository\RefreshTokenRepository;
 use DateTimeZone;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -32,6 +41,12 @@ final readonly class StaffLinkController
         private StaffLinks $staffLinks,
         private StaffSerialiser $staffSerialiser,
         private RateLimiterFactoryInterface $staffLinkLimiter,
+        private StaffLinkSignIn $staffLinkSignIn,
+        private SignInResponse $signInResponse,
+        private CodeField $codeField,
+        private CallerSession $callerSession,
+        private RefreshTokenRepository $refreshTokenRepository,
+        private TokenIssuer $tokenIssuer,
     ) {
     }
 
@@ -70,7 +85,35 @@ final readonly class StaffLinkController
     {
         $entry = $this->entry($request);
 
-        return new JsonResponse(self::state($this->staffLinks->window($entry), $entry));
+        return new JsonResponse($this->shown($entry));
+    }
+
+    /** Sends the code to the entry's own number (sc-4235); answers the same whatever account the number is on. */
+    #[Route('/api/staff-links/sign-in/send', name: 'staff_links_sign_in_send', methods: ['POST'])]
+    #[PublicAccess]
+    public function send(Request $request): JsonResponse
+    {
+        $handle = $this->staffLinkSignIn->send($this->entry($request), $request);
+
+        return new JsonResponse(['handle' => $handle, 'cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
+    }
+
+    /** The code makes or signs into the number's account and links the entry to it; with two-factor on, a 202 challenge first, as sign-in's. */
+    #[Route('/api/staff-links/sign-in', name: 'staff_links_sign_in', methods: ['POST'])]
+    #[PublicAccess]
+    public function signIn(Request $request): JsonResponse
+    {
+        $entry = $this->entry($request);
+        $body = Input::body($request, Type\shape([
+            'token' => Type\string(),
+            'handle' => Type\string(),
+            'code' => Type\optional(Type\mixed()),
+            'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
+        ]));
+        $delivery = $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body;
+        $signedIn = $this->staffLinkSignIn->signIn($entry, $body['handle'], $this->codeField->required($body, 'code', CodeField::FROM_TEXT), $request, RefreshTokenDelivery::Cookie === $delivery);
+
+        return $this->signInResponse->for($signedIn['admission'], $signedIn['user'], $delivery, $request);
     }
 
     /** Sent by the page once it is visible, so a preview fetch records nothing; answers as `look` does. */
@@ -81,7 +124,46 @@ final readonly class StaffLinkController
         $entry = $this->entry($request);
         $this->staffLinks->opened($entry);
 
-        return new JsonResponse(self::state($this->staffLinks->window($entry), $entry));
+        return new JsonResponse($this->shown($entry));
+    }
+
+    /** @return array<string, mixed> open, nothing past the event, the job and the masked number before the code (sc-4235); only another signed-in account is told whose link it is, and only the entry's own when its browser session ends */
+    private function shown(StaffMember $entry): array
+    {
+        $state = self::state($this->staffLinks->window($entry), $entry);
+
+        if ('open' !== $state['state']) {
+            return $state;
+        }
+
+        $reader = $this->security->getUser();
+        $mobile = $entry->getMobile();
+        $mine = $reader instanceof User && true === $entry->getAccount()?->getId()->equals($reader->getId());
+
+        return $state + [
+            'event' => ['name' => $entry->getEvent()->getName()],
+            'job' => $entry->getJob()?->getName(),
+            'mobile' => null === $mobile ? null : PhoneHint::ofNumber($mobile),
+            'reader' => match (true) {
+                !$reader instanceof User => null,
+                $mine => 'yours',
+                default => 'other',
+            },
+            'name' => $reader instanceof User && !$mine ? $entry->getFullName() : null,
+        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->signedOutAt($reader, $entry), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
+    }
+
+    /** The moment a session that ends with its account's grants ends, in the event's zone; null for one that does not, as the app's. */
+    private function signedOutAt(User $reader, StaffMember $entry): ?string
+    {
+        $chain = $this->callerSession->chain();
+        $session = null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]);
+
+        if (true !== $session?->endsWithGrants()) {
+            return null;
+        }
+
+        return $this->tokenIssuer->grantsEndFor($reader)->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM);
     }
 
     /** @return array<string, string> */
@@ -110,7 +192,7 @@ final readonly class StaffLinkController
             throw ApiException::tooManyAttempts('limits.staff_links', $limit->getRetryAfter());
         }
 
-        $token = Input::body($request, Type\shape(['token' => Type\string()]))['token'];
+        $token = Input::body($request, Type\shape(['token' => Type\string()], true))['token'];
 
         return $this->staffLinks->find($token) ?? throw ApiException::notFound('access.not_found');
     }

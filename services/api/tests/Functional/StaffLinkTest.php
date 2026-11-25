@@ -129,7 +129,7 @@ final class StaffLinkTest extends ApiTestCase
 
         $second = self::token($this->deliver($this->ada));
         self::assertSame($before, $this->row($this->ada));
-        self::assertSame(['state' => 'open'], $this->open('opened', $second));
+        self::assertSame('open', $this->open('opened', $second)['state']);
         self::assertSame($before, $this->row($this->ada));
     }
 
@@ -141,8 +141,8 @@ final class StaffLinkTest extends ApiTestCase
         $this->at('2027-03-06T17:00:00Z');
 
         self::assertNotSame($first, $second);
-        self::assertSame(['state' => 'open'], $this->open('look', $first));
-        self::assertSame(['state' => 'open'], $this->open('look', $second));
+        self::assertSame('open', $this->open('look', $first)['state']);
+        self::assertSame('open', $this->open('look', $second)['state']);
     }
 
     #[Test]
@@ -177,9 +177,9 @@ final class StaffLinkTest extends ApiTestCase
         $this->at('2027-03-06T04:59:59Z');
         self::assertSame(['state' => 'not_yet', 'from' => '2027-03-06T06:00:00+01:00'], $this->open('look', $token));
         $this->at('2027-03-06T05:00:00Z');
-        self::assertSame(['state' => 'open'], $this->open('look', $token));
+        self::assertSame('open', $this->open('look', $token)['state']);
         $this->at('2027-03-06T23:59:59Z');
-        self::assertSame(['state' => 'open'], $this->open('look', $token));
+        self::assertSame('open', $this->open('look', $token)['state']);
         $this->at('2027-03-07T00:00:00Z');
         self::assertSame(['state' => 'ended'], $this->open('look', $token));
     }
@@ -194,7 +194,7 @@ final class StaffLinkTest extends ApiTestCase
         $this->as($this->owner, 'PUT', $this->path('shifts/' . $this->shift['id']), ['job' => $this->jobId, 'startsAt' => '2027-03-06T18:00', 'endsAt' => '2027-03-07T01:00', 'needed' => 1]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
-        self::assertSame(['state' => 'open'], $this->open('look', $token));
+        self::assertSame('open', $this->open('look', $token)['state']);
     }
 
     #[Test]
@@ -212,7 +212,7 @@ final class StaffLinkTest extends ApiTestCase
 
         self::assertSame(['state' => 'not_yet', 'from' => '2027-03-06T06:00:00+01:00'], $this->open('look', $token));
         $this->at('2027-03-06T05:00:00Z');
-        self::assertSame(['state' => 'open'], $this->open('look', $token));
+        self::assertSame('open', $this->open('look', $token)['state']);
     }
 
     #[Test]
@@ -271,14 +271,25 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
-    public function insideTheWindowNothingAboutTheShiftGuestsOrStaffReachesACallerBeforeSignIn(): void
+    public function insideTheWindowOnlyTheEventTheJobAndTheMaskedNumberReachACallerBeforeSignIn(): void
     {
         $token = self::token($this->deliver($this->ada));
         $this->at('2027-03-06T17:00:00Z');
 
         foreach (['look', 'opened'] as $what) {
-            self::assertSame(['state' => 'open'], $this->open($what, $token));
-            self::assertSame('{"state":"open"}', (string) $this->client->getResponse()->getContent());
+            self::assertSame([
+                'state' => 'open',
+                'event' => ['name' => 'Owambe'],
+                'job' => 'Bartender',
+                'mobile' => ['countryCode' => 'NG', 'lastDigits' => '0009'],
+                'reader' => null,
+                'name' => null,
+            ], $this->open($what, $token));
+            $raw = (string) $this->client->getResponse()->getContent();
+
+            foreach (['Ada', 'Obi', '0803', '2348031110009', 'Ìrè', $this->ada] as $told) {
+                self::assertFalse(Str\contains($raw, $told), $told . ' in ' . $raw);
+            }
         }
     }
 
@@ -295,7 +306,7 @@ final class StaffLinkTest extends ApiTestCase
         $this->at('2027-03-06T17:00:00Z');
         self::assertSame($this->unknown(), $this->gone('look', $first));
         self::assertSame($this->unknown(), $this->gone('opened', $second));
-        self::assertSame(['state' => 'open'], $this->open('look', self::token($this->deliver($this->ada))));
+        self::assertSame('open', $this->open('look', self::token($this->deliver($this->ada)))['state']);
     }
 
     #[Test]

@@ -1,0 +1,23 @@
+# sc-93211: Today's live cover upright (top, then scrolled to the band), then on its side. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: { text: 'Today|Aujourd.hui', index: 0, optional: true }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- swipe: { start: '50%, 30%', end: '50%, 85%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: upright
+- swipe: { start: '50%, 80%', end: '50%, 35%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: band
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: side
+- setOrientation: PORTRAIT
