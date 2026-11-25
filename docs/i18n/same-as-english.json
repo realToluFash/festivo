@@ -305,6 +305,7 @@
     "mobile:auditLog.jsonLines",
     "messagesCounts:guestReplies.push.title",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "messagesCounts:guest_message.notice.from"
   ]
 }
