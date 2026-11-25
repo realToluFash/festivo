@@ -1,4 +1,4 @@
-# sc-70353: the long-domain outsider removed on the phone: ask, confirm, toast, row gone.
+# sc-70353: the long-domain outsider removed on the phone: ask, confirm, row gone, in any locale. It removes P_DOMAIN, so run it last against a fresh seed.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
@@ -21,6 +21,5 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 3000 }
 - takeScreenshot: ask-domain
 - tapOn: { id: 'people.remove.confirm' }
-- extendedWaitUntil: { visible: '.*is off this event.*', timeout: 10000 }
+- extendedWaitUntil: { notVisible: { id: 'people.row.${P_DOMAIN}' }, timeout: 10000 }
 - takeScreenshot: toast
-- assertNotVisible: { id: 'people.row.${P_DOMAIN}' }

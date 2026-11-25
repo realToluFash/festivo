@@ -1,8 +1,8 @@
-# sc-70353: every person's role sheet on the phone, the list back at its top before each, waiting for the scroll to settle.
+# sc-70353: every person's role sheet on the phone, waiting on the member's row at the top of the list (amaka's sits below the first screen in French).
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
-- extendedWaitUntil: { visible: { id: 'people.row.${P_AMAKA}' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'people.row.${P_MEMBER}' }, timeout: 30000 }
 - swipe: { direction: DOWN, duration: 300 }
 - swipe: { direction: DOWN, duration: 300 }
 - waitForAnimationToEnd: { timeout: 3000 }
