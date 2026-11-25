@@ -23,8 +23,10 @@ import { FitWords } from '../todaySize/FitWords.tsx';
 import {
   PILL_NAME,
   PILL_WAITING,
+  PILL_WAITING_LINE,
   piecesOfLine,
   pillTileAlone,
+  waitingFirstLine,
 } from '../todaySize/todaySizeRules.ts';
 import { topPillNameRoom, topPillWaitingRoom } from './topSizeRules.ts';
 
@@ -89,6 +91,7 @@ export function TopPill({
     ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
     : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
+  const [waitingAt, setWaitingAt] = useState<number | null>(null);
   const alone = tile || pillTileAlone(scale, widest, room);
   const shared = {
     ref,
@@ -159,7 +162,14 @@ export function TopPill({
           />
           {line != null && (
             <View style={styles.waitingLine}>
-              <View style={styles.ring} />
+              <View
+                style={[
+                  styles.ringLine,
+                  waitingAt != null && { height: waitingFirstLine(waitingAt) },
+                ]}
+              >
+                <View style={styles.ring} />
+              </View>
               <View style={styles.grow}>
                 <FitWords
                   text={line}
@@ -168,9 +178,10 @@ export function TopPill({
                   cap={nameAt ?? Infinity}
                   room={waitingRoom}
                   weight="semibold"
-                  line={1.3}
+                  line={PILL_WAITING_LINE}
                   lines={large ? undefined : 1}
                   style={styles.ink}
+                  onDrawn={setWaitingAt}
                   testID="demo.topSize.pillWaiting"
                 />
               </View>
@@ -208,7 +219,8 @@ const styles = StyleSheet.create({
   tile: { paddingRight: tokens.spaceSm },
   pressed: { backgroundColor: tokens.colorNeutralFill },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
-  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  ringLine: { justifyContent: 'center' },
   ring: {
     width: 11,
     height: 11,
