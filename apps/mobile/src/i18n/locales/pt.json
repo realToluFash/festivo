@@ -3530,17 +3530,17 @@
     "openEvent": "Abrir o evento",
     "signedInAs": "Sessão iniciada como {{name}}",
     "phone": {
-      "mobile": "Mobile number",
-      "countryCode": "Country code",
-      "sendCode": "Send code",
-      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.",
-      "checkWhatsApp": "Check WhatsApp",
-      "checkMessages": "Check your messages",
-      "sentWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
-      "texted": "We texted a code to {{number}}.",
-      "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
-      "wrongText": "That code does not match. Check the newest text from Soirely and try again.",
-      "textInstead": "Text it to me instead"
+      "mobile": "Número de telemóvel",
+      "countryCode": "Indicativo",
+      "sendCode": "Enviar código",
+      "alternative": "Este é um número alternativo de uma conta Soirely, por isso não pode ser usado para iniciar sessão. Introduza o número principal dessa conta ou torne este número principal.",
+      "checkWhatsApp": "Veja o WhatsApp",
+      "checkMessages": "Código enviado",
+      "sentWhatsApp": "Enviámos um código para o seu WhatsApp no {{number}}.",
+      "texted": "Enviámos um código por SMS para {{number}}.",
+      "wrongWhatsApp": "Esse código não corresponde. Verifique a mensagem de WhatsApp mais recente da Soirely e tente novamente.",
+      "wrongText": "Esse código não corresponde. Veja o SMS mais recente da Soirely e tente novamente.",
+      "textInstead": "Enviar por SMS"
     }
   },
   "doorCodes": {

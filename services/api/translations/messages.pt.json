@@ -520,8 +520,8 @@
     "menu.default_move": "Mudar o prato predefinido muda também o dos convidados que o receberam. Confirme para continuar.",
     "menu.change_asks": "Esta alteração pede aos convidados que escolham de novo. Confirme para continuar.",
     "menu.event_over": "A data deste evento já passou, por isso o menu não pode mudar. Nada foi alterado.",
-    "phone_sign_in.alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
-    "invitations.needs_email": "Add that address to your account and verify it, then accept the invitation.",
+    "phone_sign_in.alternative": "Este é um número alternativo de uma conta Soirely, por isso não pode ser usado para iniciar sessão.",
+    "invitations.needs_email": "Adicione esse endereço à sua conta, verifique-o e depois aceite o convite.",
     "billing.plan_sold_by_contract": "Este plano é vendido por contrato, não através do pagamento online. Contacte a Soirely para o contratar.",
     "billing.plan_not_priced": "Este plano não tem preço na sua moeda de faturação.",
     "billing.nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até um plano ser pago."
