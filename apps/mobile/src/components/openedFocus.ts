@@ -18,30 +18,23 @@ export function openedFocus(autoFocus: boolean | undefined, arrival: WindowArriv
   return arrival !== 'still' && autoFocus === true ? 'arrived' : 'mount';
 }
 
-/** Tries a field that waited for its window gets: a focus sent as the window arrives can land before Android lets the window take focus, and is lost with no blur to say so. */
-export const ARRIVED_FOCUS_TRIES = 8;
+/** Ticks, `NEW_FIELD_BOUND_MS` apart, through which a field that waited for its window holds the focus it opens with: Android can give the window focus late, and a focus sent before that is lost (qa2 #91741). */
+export const ARRIVED_FOCUS_TICKS = 20;
 
 export interface ArrivedFocus {
   opened: OpenedFocus;
   arrival: WindowArrival;
-  /** The field has had input focus, by a tap or by a try: Android's own event, not JS's record of it, which a lost focus leaves pointing at the field (sc-44356). */
-  focusedOnce: boolean;
-  /** Another field, still drawn, holds input focus. */
+  /** The field has input focus now, by Android's own focus and blur events, not JS's record of them, which a lost focus leaves pointing at the field (sc-44356). */
+  focused: boolean;
+  /** Another field has input focus, by the same events: a tap put it there. */
   heldElsewhere: boolean;
-  tries: number;
+  ticks: number;
 }
 
-/** What a field that waited for its window does now: wait for it, send focus again, or nothing more. */
-export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'done' {
-  if (at.opened !== 'arrived' || at.focusedOnce || at.heldElsewhere) return 'done';
-  if (at.arrival === 'arriving') return 'wait';
+/** What a field that waited for its window does on this tick: wait for the window, send focus, keep the focus it has, or nothing more. */
+export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 'done' {
+  if (at.opened !== 'arrived' || at.heldElsewhere || at.ticks >= ARRIVED_FOCUS_TICKS) return 'done';
+  if (at.arrival === 'arriving') return at.focused ? 'done' : 'wait';
 
-  return at.tries < ARRIVED_FOCUS_TRIES ? 'focus' : 'done';
-}
-
-/** Whether `holder`, the field JS counts as focused, is another field still drawn. One gone from the screen holds nothing. */
-export function heldByAnother(holder: unknown, field: unknown): boolean {
-  if (holder == null || holder === field) return false;
-
-  return (holder as { isConnected?: boolean }).isConnected !== false;
+  return at.focused ? 'hold' : 'focus';
 }

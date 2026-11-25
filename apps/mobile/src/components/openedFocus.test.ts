@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  ARRIVED_FOCUS_TRIES,
+  ARRIVED_FOCUS_TICKS,
   type ArrivedFocus,
   arrivedFocusStep,
-  heldByAnother,
   openedFocus,
   windowArrival,
 } from './openedFocus.ts';
@@ -12,9 +11,9 @@ import {
 const waiting: ArrivedFocus = {
   opened: 'arrived',
   arrival: 'arrived',
-  focusedOnce: false,
+  focused: false,
   heldElsewhere: false,
-  tries: 0,
+  ticks: 0,
 };
 
 describe('a field a sliding Android window opens with takes typing at once (sc-91027)', () => {
@@ -40,29 +39,27 @@ describe('a field a sliding Android window opens with takes typing at once (sc-9
     expect(arrivedFocusStep(waiting)).toBe('focus');
   });
 
-  it('sends it again until Android says the field has it, a few times at most', () => {
-    expect(arrivedFocusStep({ ...waiting, tries: 1 })).toBe('focus');
-    expect(arrivedFocusStep({ ...waiting, tries: ARRIVED_FOCUS_TRIES - 1 })).toBe('focus');
-    expect(arrivedFocusStep({ ...waiting, tries: ARRIVED_FOCUS_TRIES })).toBe('done');
-    expect(arrivedFocusStep({ ...waiting, tries: 1, focusedOnce: true })).toBe('done');
+  it('sends it again on each tick Android says the field does not have it, and keeps it while it does', () => {
+    expect(arrivedFocusStep({ ...waiting, ticks: 1 })).toBe('focus');
+    expect(arrivedFocusStep({ ...waiting, ticks: 1, focused: true })).toBe('hold');
+    expect(arrivedFocusStep({ ...waiting, ticks: 2 })).toBe('focus');
+  });
+
+  it('stops after a few seconds, focused or not', () => {
+    expect(arrivedFocusStep({ ...waiting, ticks: ARRIVED_FOCUS_TICKS - 1 })).toBe('focus');
+    expect(arrivedFocusStep({ ...waiting, ticks: ARRIVED_FOCUS_TICKS })).toBe('done');
+    expect(arrivedFocusStep({ ...waiting, ticks: ARRIVED_FOCUS_TICKS, focused: true })).toBe(
+      'done',
+    );
   });
 
   it('leaves focus where a tap put it, on this field or another', () => {
-    expect(arrivedFocusStep({ ...waiting, arrival: 'arriving', focusedOnce: true })).toBe('done');
+    expect(arrivedFocusStep({ ...waiting, arrival: 'arriving', focused: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, heldElsewhere: true })).toBe('done');
+    expect(arrivedFocusStep({ ...waiting, ticks: 3, heldElsewhere: true })).toBe('done');
   });
 
   it('moves nothing for a field that took its focus at mount', () => {
     expect(arrivedFocusStep({ ...waiting, opened: 'mount' })).toBe('done');
-  });
-
-  it('counts a field gone from the screen, or JS counting this field as focused, as holding nothing', () => {
-    const field = { isConnected: true };
-
-    expect(heldByAnother(null, field)).toBe(false);
-    expect(heldByAnother(undefined, field)).toBe(false);
-    expect(heldByAnother(field, field)).toBe(false);
-    expect(heldByAnother({ isConnected: false }, field)).toBe(false);
-    expect(heldByAnother({ isConnected: true }, field)).toBe(true);
   });
 });
