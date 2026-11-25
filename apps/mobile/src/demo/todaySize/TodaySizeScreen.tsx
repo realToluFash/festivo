@@ -41,6 +41,7 @@ import { FitWords } from './FitWords.tsx';
 import { PillRow } from './TodaySizePill.tsx';
 import { SizeEvents } from './TodaySizeEvents.tsx';
 import { UprightRow } from './TodaySizeUpright.tsx';
+import { WeekDays } from './TodaySizeWeek.tsx';
 import {
   HEAD,
   HEAD_LINK,
@@ -51,11 +52,13 @@ import {
   TODAY_INVITES,
   TODAY_NAMES,
   TODAY_ORGS,
+  TODAY_WEEKS,
   type TodayEventName,
   type TodayGreeting,
   type TodayInvite,
   type TodayName,
   type TodayOrg,
+  type TodayWeek,
   greetingMost,
   greetingName,
   greetingSize,
@@ -75,6 +78,7 @@ export interface TodaySizeStart {
   event: TodayEventName;
   org: TodayOrg;
   invite: TodayInvite;
+  week: TodayWeek;
 }
 
 const TODAY = '2026-11-25';
@@ -106,6 +110,7 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   const [org, setOrg] = useState(start.org);
   const [invite, setInvite] = useState(start.invite);
   const place = useMemo(() => ({ id: 'org-qa', name: orgName(org), role: 'Owner' }), [org]);
+  const [week, setWeek] = useState(start.week);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -134,12 +139,13 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
         greeting={greeting}
         event={event}
         waiting={invite === 'one' ? 1 : 0}
+        week={week}
       />
     </I18nextProvider>
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. Under This week each day’s date follows its name after a dot only while both fit one line whole; otherwise the date takes the line under, without its dot. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -194,6 +200,14 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           chosen={invite}
           onChoose={setInvite}
           id="invite"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="This week"
+          options={TODAY_WEEKS}
+          chosen={week}
+          onChoose={setWeek}
+          id="week"
           prefix="demo.todaySize"
         />
       </DemoOnly>
@@ -259,6 +273,7 @@ function TodayPage({
   greeting,
   event,
   waiting,
+  week,
 }: {
   kind: LayoutKind;
   scale: number;
@@ -267,6 +282,7 @@ function TodayPage({
   greeting: TodayGreeting;
   event: TodayEventName;
   waiting: number;
+  week: TodayWeek;
 }) {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
@@ -281,7 +297,7 @@ function TodayPage({
   const cap = greetingDrawn ?? Infinity;
 
   const needs = <Head title={t('todayScreen.needsYou')} count={2} scale={scale} cap={cap} />;
-  const week = (
+  const thisWeek = (
     <>
       <Head
         title={t('todayScreen.thisWeek')}
@@ -290,7 +306,11 @@ function TodayPage({
         scale={scale}
         cap={cap}
       />
-      <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
+      {week === 'days' ? (
+        <WeekDays locale={language} scale={scale} cap={cap} wide={kind !== 'phone'} />
+      ) : (
+        <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
+      )}
     </>
   );
   const events = (
@@ -327,7 +347,7 @@ function TodayPage({
         <View style={styles.columns}>
           <View style={styles.grow}>
             {needs}
-            <View style={styles.gapAbove}>{week}</View>
+            <View style={styles.gapAbove}>{thisWeek}</View>
           </View>
           <View style={styles.eventsColumn}>{events}</View>
         </View>
@@ -335,14 +355,14 @@ function TodayPage({
         <View style={styles.sections}>
           {needs}
           <View style={[styles.columns, styles.gapAbove]}>
-            <View style={{ width: weekWidth(width) }}>{week}</View>
+            <View style={{ width: weekWidth(width) }}>{thisWeek}</View>
             <View style={styles.grow}>{events}</View>
           </View>
         </View>
       ) : (
         <View style={styles.sections}>
           {needs}
-          <View style={styles.gapAbove}>{week}</View>
+          <View style={styles.gapAbove}>{thisWeek}</View>
           <View style={styles.gapAbove}>{events}</View>
         </View>
       )}

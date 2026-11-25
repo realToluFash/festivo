@@ -4,7 +4,7 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's organisation pill on the phone (sc-92247) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's organisation pill on the phone (sc-92247) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   {
     title: 'La pastille · AX5, iPhone',
@@ -65,6 +65,26 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     title: 'The pill · AX5, iPad upright',
     what: 'In English too the tabs take the row and the pill is its tile, clear of them',
     href: '/demo/today-size?size=ax5&lang=en&org=several',
+  },
+  {
+    title: 'Cette semaine · AX5, upright',
+    what: 'Aujourd’hui with mer. 25 nov. on the line under it, no dot; never · mer. 25 nov.',
+    href: '/demo/today-size?size=ax5&lang=fr&week=days',
+  },
+  {
+    title: 'Cette semaine · AX1, upright',
+    what: 'Aujourd’hui · mer. 25 nov. on one line where it fits, the date alone under it where not',
+    href: '/demo/today-size?size=ax1&lang=fr&week=days',
+  },
+  {
+    title: 'This week · AX5, English',
+    what: 'Today, then Wed, Nov 25 under it; Thu, Nov 26 then tomorrow under it',
+    href: '/demo/today-size?size=ax5&lang=en&week=days',
+  },
+  {
+    title: 'This week · default size',
+    what: 'As on main: Today · Wed, Nov 25 on one line, the accent on Today',
+    href: '/demo/today-size?size=default&lang=en&week=days',
   },
   {
     title: 'Vos événements · AX5, on its side',
