@@ -190,7 +190,13 @@ describe('an iPad’s Calendar title keeps its row from AX1 (sc-79265)', () => {
 describe('upright, the band takes the capsule’s height at every fitted size (sc-91290)', () => {
   it('keys the capsule’s measuring View by the fitted label size', () => {
     expect(listTop).toMatch(
-      /<View\s+key=\{labelSize\}\s+onLayout=\{\(event\) => \{\s+setTabsWidth\(event\.nativeEvent\.layout\.width\);\s+setTabsHeight\(/u,
+      /<View\s+key=\{labelSize\}\s+onLayout=\{\(event\) => \{\s+if \(labelSize == null\) return;[^}]*\}[^}]*setTabs\(\{ at: labelSize, width, height \}\);/u,
+    );
+  });
+
+  it('reads the capsule’s height only at the size it was measured at', () => {
+    expect(listTop).toMatch(
+      /const atSize = tabs != null && tabs\.at === labelSize \? tabs : undefined;/u,
     );
   });
 });

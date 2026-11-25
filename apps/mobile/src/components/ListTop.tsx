@@ -126,10 +126,12 @@ export function PortraitRow({
   tabsCentred = false,
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const [tabsHeight, setTabsHeight] = useState(0);
   const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
+  const [tabs, setTabs] = useState<{ at: number; width: number; height: number }>();
+  const atSize = tabs != null && tabs.at === labelSize ? tabs : undefined;
+  const tabsWidth = atSize?.width ?? 0;
+  const tabsHeight = atSize?.height ?? 0;
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
@@ -147,12 +149,13 @@ export function PortraitRow({
       <View style={styles.fill} />
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        {/* Keyed by the fitted size, so a fresh onLayout reports the capsule's height at each fitted size, from undefined to the first fit and every refit after; without it the band can keep a height measured before the capsule was drawn (sc-91290). */}
+        {/* Keyed by the fitted size and read only at it, so a layout reported late from an earlier fit, or from before the capsule was drawn, never sets the band's height (sc-91290). */}
         <View
           key={labelSize}
           onLayout={(event) => {
-            setTabsWidth(event.nativeEvent.layout.width);
-            setTabsHeight(event.nativeEvent.layout.height);
+            if (labelSize == null) return;
+            const { width, height } = event.nativeEvent.layout;
+            setTabs({ at: labelSize, width, height });
           }}
         >
           {labelSize != null && renderTabs(labelSize)}
