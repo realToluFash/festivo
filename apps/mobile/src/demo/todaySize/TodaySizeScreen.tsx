@@ -38,6 +38,7 @@ import {
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { EVENTS, type EventKey, sample, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
+import { PillRow } from './TodaySizePill.tsx';
 import { SizeEvents } from './TodaySizeEvents.tsx';
 import {
   HEAD,
@@ -46,14 +47,19 @@ import {
   SIZE_EVENTS,
   TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
+  TODAY_INVITES,
   TODAY_NAMES,
+  TODAY_ORGS,
   type TodayEventName,
   type TodayGreeting,
+  type TodayInvite,
   type TodayName,
+  type TodayOrg,
   greetingMost,
   greetingName,
   greetingSize,
   linkUnder,
+  orgName,
   sizeEvents,
   subSize,
   weekWidth,
@@ -66,6 +72,8 @@ export interface TodaySizeStart {
   name: TodayName;
   greeting: TodayGreeting;
   event: TodayEventName;
+  org: TodayOrg;
+  invite: TodayInvite;
 }
 
 const TODAY = '2026-11-25';
@@ -94,6 +102,9 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   const [name, setName] = useState(start.name);
   const [greeting, setGreeting] = useState(start.greeting);
   const [event, setEvent] = useState(start.event);
+  const [org, setOrg] = useState(start.org);
+  const [invite, setInvite] = useState(start.invite);
+  const place = useMemo(() => ({ id: 'org-qa', name: orgName(org), role: 'Owner' }), [org]);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -121,12 +132,13 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
         name={name}
         greeting={greeting}
         event={event}
+        waiting={invite === 'one' ? 1 : 0}
       />
     </I18nextProvider>
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day and the events’ names. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -167,6 +179,22 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
           id="event"
           prefix="demo.todaySize"
         />
+        <Choices
+          heading="Organisation"
+          options={TODAY_ORGS}
+          chosen={org}
+          onChoose={setOrg}
+          id="org"
+          prefix="demo.todaySize"
+        />
+        <Choices
+          heading="Invitations"
+          options={TODAY_INVITES}
+          chosen={invite}
+          onChoose={setInvite}
+          id="invite"
+          prefix="demo.todaySize"
+        />
       </DemoOnly>
     </View>
   );
@@ -201,15 +229,24 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   }
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}
-      >
-        <NavBar />
-        {page}
-        {choices}
-      </ScrollView>
-    </View>
+    <OrgSwitcherProvider state={null} place={place} tell={tell}>
+      <TodayShellProvider value={shell}>
+        <View style={styles.screen}>
+          <ScrollView
+            contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 40 }}
+          >
+            <NavBar />
+            {page}
+            {choices}
+          </ScrollView>
+          {told != null && (
+            <View style={[styles.toast, { bottom: insets.bottom + tokens.spaceXl }]}>
+              <Toast key={told} words={told} onClose={() => setTold(null)} />
+            </View>
+          )}
+        </View>
+      </TodayShellProvider>
+    </OrgSwitcherProvider>
   );
 }
 
@@ -220,6 +257,7 @@ function TodayPage({
   name,
   greeting,
   event,
+  waiting,
 }: {
   kind: LayoutKind;
   scale: number;
@@ -227,6 +265,7 @@ function TodayPage({
   name: TodayName;
   greeting: TodayGreeting;
   event: TodayEventName;
+  waiting: number;
 }) {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
@@ -280,6 +319,7 @@ function TodayPage({
         eyebrow={say.long(TODAY)}
         hello={hello}
         sub={sub}
+        waiting={waiting}
         onDrawn={setGreetingDrawn}
       />
       {kind === 'tabletLandscape' ? (
@@ -315,6 +355,7 @@ function Cover({
   eyebrow,
   hello,
   sub,
+  waiting,
   onDrawn,
 }: {
   kind: LayoutKind;
@@ -322,6 +363,7 @@ function Cover({
   eyebrow: string;
   hello: string;
   sub: string;
+  waiting: number;
   onDrawn: (size: number) => void;
 }) {
   const [room, setRoom] = useState(0);
@@ -332,6 +374,11 @@ function Cover({
 
   return (
     <View style={kind === 'tabletLandscape' ? styles.banner : styles.cover}>
+      {kind === 'phone' && (
+        <View style={styles.coverTop}>
+          <PillRow scale={scale} cap={drawn ?? Infinity} waiting={waiting} />
+        </View>
+      )}
       <View
         style={[styles.foot, greetingMost(kind) != null && { maxWidth: greetingMost(kind) }]}
         onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
@@ -544,6 +591,7 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space4xl,
     paddingHorizontal: 30,
   },
+  coverTop: { marginTop: -tokens.space4xl, marginBottom: tokens.space4xl },
   foot: { gap: tokens.spaceSm },
   white: { color: tokens.colorInkOnDark },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
