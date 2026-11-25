@@ -12,6 +12,7 @@ import {
   ONE_WORD,
   SWITCHER_NAME,
   TODAY_ORGS,
+  TODAY_VENUES,
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
@@ -21,6 +22,8 @@ import {
   liveName,
   piecesKeepingDot,
   switcherOrgs,
+  uprightChipSize,
+  venueName,
   openUnder,
   orgName,
   pillNameRoom,
@@ -296,5 +299,19 @@ describe('the switcher’s rows from AX1 (sc-92465)', () => {
   it('centres the ring on the invitation line’s first line, the height of one line at its drawn size', () => {
     expect(waitingFirstLine(12.5)).toBe(17);
     expect(waitingFirstLine(23)).toBe(30);
+  });
+
+  it("draws an upright chip at main's size at every stand-in size, never stepped down (sc-93211)", () => {
+    for (const scale of [1, 1.353, 2.118, 3.118])
+      expect(uprightChipSize(scale)).toBe(LIVE_CHIP * scale);
+  });
+
+  it("puts the long venue on the day's chip only when chosen, and keeps its dot on the word before (sc-93211)", () => {
+    expect(TODAY_VENUES.map((one) => one.key)).toEqual(['none', 'chantilly']);
+    expect(venueName('none')).toBeNull();
+    expect(venueName('chantilly')).toBe('Salle des fêtes du Château de Chantilly');
+    expect(dotKept('Jour 1 sur 1 · Salle des fêtes du Château de Chantilly')).toBe(
+      'Jour 1 sur 1\u00a0· Salle des fêtes du Château de Chantilly',
+    );
   });
 });
