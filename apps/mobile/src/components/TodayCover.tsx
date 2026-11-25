@@ -693,13 +693,7 @@ export function TodayCover({
 
   if (layout === 'landscape')
     return (
-      <View
-        style={
-          day
-            ? [styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]
-            : [styles.banner, { height: coverBody(moment, layout) }]
-        }
-      >
+      <View style={[styles.banner, styles.bannerGrows, { minHeight: coverBody(moment, layout) }]}>
         <Mesh
           moment={moment}
           pieces={BANNER_PIECES}
@@ -1293,10 +1287,9 @@ const styles = StyleSheet.create({
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
   bannerBell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
   bannerGreeting: {
-    position: 'absolute',
-    left: 30,
-    right: 30,
-    bottom: tokens.space4xl,
+    marginHorizontal: 30,
+    marginBottom: tokens.space4xl,
+    marginTop: 18,
     maxWidth: 520,
   },
   bannerGrows: { justifyContent: 'flex-end' },
