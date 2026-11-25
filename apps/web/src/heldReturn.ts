@@ -15,7 +15,7 @@ export function takeHeldReturn(): string | null {
     const path = sessionStorage.getItem(KEY);
     sessionStorage.removeItem(KEY);
 
-    return path != null && /^\/app(?:[/?#]|$)/.test(path) ? path : null;
+    return path != null && /^\/(?:app|d)(?:[/?#]|$)/.test(path) ? path : null;
   } catch {
     return null;
   }

@@ -16,9 +16,12 @@ import {
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { holdReturn } from '../../heldReturn.ts';
 import { useSignOut } from '../../signOut.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import { dayWords } from '../app/events/staffTimes.ts';
+import { type Leave, PhoneCodeStep, PhoneEntryStep, Primary, Title } from './RedeemPhone.tsx';
+import { type PhoneEntry, shownNumber, startingEntry } from './redeemEntry.ts';
 import '../../components/desk.css';
 import './redeem.css';
 
@@ -35,8 +38,14 @@ type Step =
       opened: OpenedDoorCode;
       busy: boolean;
       trouble: 'refused' | 'failed' | null;
-      named: string;
-      checked: boolean;
+      entry: PhoneEntry;
+    }
+  | {
+      kind: 'code';
+      code: string;
+      opened: OpenedDoorCode;
+      entry: PhoneEntry;
+      handle: string;
     }
   | { kind: 'member'; organisation: string; eventId: string }
   | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event']; held: boolean };
@@ -107,26 +116,79 @@ function Redeem({ code }: { code: string }) {
   async function join(event: Extract<Step, { kind: 'event' }>): Promise<void> {
     setStep({ ...event, busy: true, trouble: null });
     try {
-      const redeemed = await api.redeemDoorCode(event.code, signedIn ? null : event.named.trim());
-      if (signedIn) await rereadOutsideEvents().catch(() => undefined);
-      else await refreshAccount();
-      go({ kind: 'in', redeemed, event: event.opened.event, held: !signedIn });
+      const redeemed = await api.redeemDoorCode(event.code);
+      await rereadOutsideEvents().catch(() => undefined);
+      go({ kind: 'in', redeemed, event: event.opened.event, held: false });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409)
-        go({
-          kind: 'member',
-          organisation: event.opened.event.organisation,
-          eventId: event.opened.event.id,
-        });
-      else if (error instanceof ApiError && error.status === 429) go(tooMany(error));
-      else
-        setStep({
-          ...event,
-          busy: false,
-          trouble:
-            error instanceof ApiError && error.is('door_code_invalid') ? 'refused' : 'failed',
-        });
+      refused(event, error);
     }
+  }
+
+  /** Signed out, Send code: the code goes to the number typed, whether or not it has an account (sc-4235). */
+  async function send(event: Extract<Step, { kind: 'event' }>): Promise<void> {
+    setStep({ ...event, busy: true, trouble: null });
+    try {
+      const { handle } = await api.sendDoorCodeSignIn(
+        event.code,
+        event.entry.named.trim(),
+        event.entry.country,
+        event.entry.number,
+      );
+      go(
+        { kind: 'code', code: event.code, opened: event.opened, entry: event.entry, handle },
+        'field',
+      );
+    } catch (error) {
+      refused(event, error);
+    }
+  }
+
+  function refused(event: Extract<Step, { kind: 'event' }>, error: unknown): void {
+    if (error instanceof ApiError && error.is('already_a_member'))
+      go({
+        kind: 'member',
+        organisation: event.opened.event.organisation,
+        eventId: event.opened.event.id,
+      });
+    else if (error instanceof ApiError && error.status === 429) go(tooMany(error));
+    else
+      setStep({
+        ...event,
+        busy: false,
+        trouble:
+          error instanceof ApiError && (error.is('door_code_invalid') || error.status === 404)
+            ? 'refused'
+            : 'failed',
+      });
+  }
+
+  async function left(at: Extract<Step, { kind: 'code' }>, leave: Leave): Promise<void> {
+    const back: Extract<Step, { kind: 'event' }> = {
+      kind: 'event',
+      code: at.code,
+      opened: at.opened,
+      busy: false,
+      trouble: null,
+      entry: at.entry,
+    };
+    if (leave.kind === 'alternative') {
+      go({ ...back, entry: { ...at.entry, alternative: true } });
+      document.getElementById('rd-number')?.focus();
+      return;
+    }
+    if (leave.kind === 'refused') {
+      refused(back, leave.error);
+      return;
+    }
+    const { outcome, redeemed } = leave.signedIn;
+    if ('challenge' in outcome) {
+      // Two-factor is asked before the grant: its code screen, then back here to join as the account.
+      holdReturn(`/d/${at.code}`);
+      void navigate('/sign-in/code', { replace: true, state: outcome });
+      return;
+    }
+    await refreshAccount();
+    if (redeemed != null) go({ kind: 'in', redeemed, event: at.opened.event, held: true });
   }
 
   const { signOut } = useSignOut(() =>
@@ -177,18 +239,12 @@ function Redeem({ code }: { code: string }) {
               </p>
             )}
             {!signedIn && (
-              <NameStep
-                step={step}
+              <PhoneEntryStep
+                entry={step.entry}
+                busy={step.busy}
                 fieldRef={field}
-                onName={(named) => setStep({ ...step, named })}
-                onJoin={() => {
-                  if (nameLine(step.named, t) != null) {
-                    setStep({ ...step, checked: true });
-                    field.current?.focus();
-                    return;
-                  }
-                  void join({ ...step, checked: true });
-                }}
+                onChange={(entry) => setStep({ ...step, entry })}
+                onSend={() => void send(step)}
               />
             )}
             {signedIn && (
@@ -202,6 +258,17 @@ function Redeem({ code }: { code: string }) {
               </div>
             )}
           </>
+        );
+      case 'code':
+        return (
+          <PhoneCodeStep
+            code={step.code}
+            handle={step.handle}
+            number={shownNumber(step.entry)}
+            titleRef={title}
+            fieldRef={field}
+            onLeave={(leave) => void left(step, leave)}
+          />
         );
       case 'member':
         return (
@@ -285,8 +352,7 @@ async function opening(typed: string): Promise<{ next: Step; to: 'title' | 'fiel
         opened,
         busy: false,
         trouble: null,
-        named: '',
-        checked: false,
+        entry: startingEntry(),
       },
       to: 'title',
     };
@@ -332,50 +398,8 @@ function eventLine(opened: OpenedDoorCode, t: TFunction): string {
     .join(' · ');
 }
 
-function Title({
-  titleRef,
-  children,
-}: {
-  titleRef: RefObject<HTMLHeadingElement | null>;
-  children: ReactNode;
-}) {
-  return (
-    <h1 ref={titleRef} className="rd-title" tabIndex={-1}>
-      {children}
-    </h1>
-  );
-}
-
 function Tile({ id }: { id: string }) {
   return <span className={`rd-tile today-cover is-${meshFor(id)}`} aria-hidden="true" />;
-}
-
-function Primary({
-  busy = false,
-  submit = false,
-  onClick,
-  children,
-}: {
-  busy?: boolean;
-  submit?: boolean;
-  onClick?: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type={submit ? 'submit' : 'button'}
-      className="rd-primary"
-      aria-busy={busy || undefined}
-      aria-disabled={busy || undefined}
-      onClick={(event) => {
-        if (busy) event.preventDefault();
-        else onClick?.();
-      }}
-    >
-      {busy && <span className="rd-spin" aria-hidden="true" />}
-      <span className="rd-primary-words">{children}</span>
-    </button>
-  );
 }
 
 function EnterStep({
@@ -440,66 +464,6 @@ function EnterStep({
       )}
       <Primary submit busy={step.busy}>
         {t('redeem.continue')}
-      </Primary>
-    </form>
-  );
-}
-
-function nameLine(named: string, t: TFunction): string | null {
-  return named.trim() === '' ? t('redeem.nameBlank') : null;
-}
-
-/** Signed out, the device-held grant asks a name and nothing else: no number, no phone code (sc-72, until sc-4235). */
-function NameStep({
-  step,
-  fieldRef,
-  onName,
-  onJoin,
-}: {
-  step: Extract<Step, { kind: 'event' }>;
-  fieldRef: RefObject<HTMLInputElement | null>;
-  onName: (named: string) => void;
-  onJoin: () => void;
-}) {
-  const { t } = useTranslation();
-  const said = step.checked ? nameLine(step.named, t) : null;
-
-  function submit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (!step.busy) onJoin();
-  }
-
-  return (
-    <form className="rd-form" noValidate onSubmit={submit}>
-      <div className="rd-group">
-        <div
-          className={['rd-field', said != null && 'is-wrong', step.named !== '' && 'is-filled']
-            .filter(Boolean)
-            .join(' ')}
-        >
-          <label htmlFor="rd-name" className="rd-label">
-            {t('redeem.yourName')}
-          </label>
-          <input
-            ref={fieldRef}
-            id="rd-name"
-            className="rd-input"
-            value={step.named}
-            autoComplete="name"
-            spellCheck={false}
-            aria-invalid={said != null}
-            aria-describedby={said == null ? undefined : 'rd-name-line'}
-            onChange={(event) => onName(event.target.value)}
-          />
-        </div>
-        {said != null && (
-          <p id="rd-name-line" className="rd-says">
-            {said}
-          </p>
-        )}
-      </div>
-      <Primary submit busy={step.busy}>
-        {step.busy ? t('redeem.joining') : t('redeem.join')}
       </Primary>
     </form>
   );

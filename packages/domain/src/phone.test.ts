@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  maskedPhone,
   callingCode,
   followCountry,
   formatPhone,
@@ -126,5 +127,12 @@ describe('the phone screens', () => {
     expect(refusedPhoneField('blank')).toBe('number');
     expect(refusedPhoneField('tooShort')).toBe('number');
     expect(refusedPhoneField(null)).toBeNull();
+  });
+});
+
+describe('a number before sign-in completes (sc-4235)', () => {
+  it('shows the country code and the last four digits', () => {
+    expect(maskedPhone({ countryCode: 'PT', lastDigits: '4512' })).toBe('+351 ••• ••• 4512');
+    expect(maskedPhone({ countryCode: null, lastDigits: '4512' })).toBe('••• ••• 4512');
   });
 });
