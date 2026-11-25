@@ -178,6 +178,45 @@ optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty nu
 no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
 alongside the screen's other fields, and nothing is saved or texted until all of them pass.
 
+## Signing in by phone code
+
+Staff sign in with one code to a mobile number (sc-4235): no password and no email. The
+code is a phone verification's (sc-62, sc-750), with its length, expiry, cooldown and
+attempt limit, and it is never charged to the organisation's message credits. The number
+signing in sits on a `PhoneSignIn` row, so **no account exists until the code is right.**
+
+- Two ways in send it. A personal link (`POST /api/staff-links/sign-in/send`, `token`)
+  sends to the number on the roster entry, which the page shows only as
+  `{countryCode, lastDigits}`. A door code signed out (`POST
+/api/door-codes/{code}/sign-in/send`, `name`, `countryCode`, `number`) sends to the
+  number typed, with the name and number checked as registration and `PUT
+/api/auth/phone` check them. Either answers `{handle, cooldownSeconds}`, the same
+  whether or not the number has an account.
+- The code step is shared, by `handle` in the body: `POST
+/api/auth/phone-sign-in/state`, `…/resend` and `…/text-instead`.
+- `POST /api/staff-links/sign-in` and `POST /api/door-codes/{code}/sign-in` take
+  `handle`, `code` and `refreshTokenIn`, and answer as sign-in does: the tokens and
+  `account`, or `202` with a two-factor challenge. That challenge names `email`, or `phone`
+  as `{countryCode, lastDigits}` on an account with no email, and an account with no email
+  labels its authenticator entry with its number in E.164.
+- **Only the verified primary signs in.** A number that is one makes no second account; a
+  new number makes a staff account with the name alone. A verified alternative is
+  `409 phone_alternative` after the right code, with nothing made, released or granted,
+  and an unverified number on another account is released.
+- **A door code's use cap counts people.** A full code still opens. After the right code,
+  an account already in by it is signed in with `again: true` and takes no use, and any
+  other number gets the one `404 door_code_invalid`, with no account made. With two-factor
+  on, nothing is granted until it is passed; the signed-in `POST
+/api/door-codes/{code}/redeem` then takes the use. Signed out, that route is
+  `401 unauthenticated`: the device-held account is no longer made.
+- Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
+  an hour per code, on top of the number's cooldown: `429` with `Retry-After`.
+- In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
+  account's last live grant, checked on each refresh. In the app it keeps the usual life.
+- A phone-only account is refused an invitation with `409 invitation_needs_email` until
+  the invited address is on it and verified. The invitation's preview carries
+  `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.
+
 ## Alternative addresses and numbers
 
 From Settings > Account (sc-113). **A primary identifies; an alternative only reaches.**
