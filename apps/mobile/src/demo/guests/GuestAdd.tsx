@@ -43,6 +43,7 @@ import {
   OVER_LIMIT_STATES,
   type ReviewRow,
   type ReviewState,
+  START_COUNTRY,
   addHoldsChange,
   addedGuest,
   countryName,
@@ -220,7 +221,7 @@ export function AddGuest({
   const [greetAs, setGreetAs] = useState('');
   const [language, setLanguage] = useState<GuestLanguage | null>(lucas ? LUCAS.language : null);
   const [choosing, setChoosing] = useState(false);
-  const [country, setCountry] = useState('GB');
+  const [country, setCountry] = useState(START_COUNTRY);
   const [number, setNumber] = useState(
     start === 'addRefused' ? '7700 90' : kept ? BIMPE.number : '',
   );

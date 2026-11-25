@@ -60,6 +60,7 @@ import {
   roleOf,
   rowsOf,
   sameNameAs,
+  START_COUNTRY,
   addHoldsChange,
 } from './GuestsModel.ts';
 import {
@@ -935,7 +936,7 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
 describe('Add guest asks on Cancel only while it holds a change (sc-82245)', () => {
   const empty = {
     texts: ['', ' '],
-    country: 'GB',
+    country: START_COUNTRY,
     language: null,
     companions: 0,
     needs: false,
@@ -953,5 +954,18 @@ describe('Add guest asks on Cancel only while it holds a change (sc-82245)', () 
     expect(addHoldsChange({ ...empty, companions: 1 })).toBe(true);
     expect(addHoldsChange({ ...empty, needs: true })).toBe(true);
     expect(addHoldsChange({ ...empty, group: true })).toBe(true);
+  });
+});
+
+describe("A guest form with no name to use asks with the event form's line (sc-82245, pm 25 Nov)", () => {
+  it('names the guest when there is a name', () => {
+    expect(say.discardLine('Bimpe Adeyemi')).toBe(
+      'Your changes to Bimpe Adeyemi have not been saved.',
+    );
+  });
+
+  it('never reads a blank name', () => {
+    expect(say.discardLine('')).toBe('What you changed here is not saved.');
+    expect(say.discardLine('   ')).toBe('What you changed here is not saved.');
   });
 });

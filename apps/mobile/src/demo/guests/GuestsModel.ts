@@ -302,6 +302,9 @@ function one<T extends string>(states: readonly T[], value: string | null | unde
 export const guestsStateOf = (value: string | undefined) => one(GUESTS_STATES, value);
 export const doorStateOf = (value: string | undefined) => one(DOOR_STATES, value);
 
+/** The country Add guest's number starts on. */
+export const START_COUNTRY = 'GB';
+
 /** Add guest holds a change once anything differs from the empty form, so its Cancel asks (sc-82245). */
 export function addHoldsChange(form: {
   texts: readonly string[];
@@ -313,7 +316,7 @@ export function addHoldsChange(form: {
 }): boolean {
   return (
     form.texts.some((text) => text.trim() !== '') ||
-    form.country !== 'GB' ||
+    form.country !== START_COUNTRY ||
     form.language != null ||
     form.companions > 0 ||
     form.needs ||
