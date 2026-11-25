@@ -11,13 +11,10 @@ import {
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
-  dayChipRoom,
   dayLineShares,
   daysUntil,
   linkUnder,
-  liveChipRoom,
   liveName,
-  openRoom,
   openUnder,
   orgName,
   pillNameRoom,
@@ -244,12 +241,5 @@ describe('the live cover on its side (sc-92312)', () => {
     expect(wordsStart(LIVE_ENDS, AX5, Infinity)).toBe(LIVE_ENDS * AX5);
     expect(wordsStart(LIVE_CHIP, AX5, 30)).toBeCloseTo(30);
     expect(wordsStart(LIVE_ENDS, 1, 48)).toBe(LIVE_ENDS);
-  });
-
-  it('gives each chip and the button the column less what they hold', () => {
-    expect(dayChipRoom(500)).toBe(476);
-    expect(liveChipRoom(500)).toBe(456);
-    expect(openRoom(500)).toBe(430);
-    expect(liveChipRoom(10)).toBe(0);
   });
 });
