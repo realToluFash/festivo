@@ -4,7 +4,7 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's organisation pill on the phone (sc-92247), greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's organisation pill on the phone (sc-92247) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291) and Your events rows (sc-92090) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   {
     title: 'La pastille · AX5, iPhone',
@@ -30,6 +30,41 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     title: 'The pill · AX1, iPhone',
     what: 'QA Organisation at AX1, every word whole',
     href: '/demo/today-size?size=ax1&lang=en&org=qa&invite=one',
+  },
+  {
+    title: 'The pill · AX1, iPad upright',
+    what: 'QA / Organisation beside the tabs, stepped down until Organisation fits, never Organi / sation, 12 clear of the tabs',
+    href: '/demo/today-size?size=ax1&lang=en&org=qa',
+  },
+  {
+    title: 'The pill · AX1, iPad upright, one invitation',
+    what: 'The name and 1 invitation each whole and stepped alone; one tap opens Where are you working?',
+    href: '/demo/today-size?size=ax1&lang=en&org=qa&invite=one',
+  },
+  {
+    title: 'The pill · AX1, iPad upright, several long words',
+    what: 'Atelier Céleste Réceptions et Mariages on as many lines as its words need; the pill grows down, the tabs, Search and the bell stay at the top, the greeting below',
+    href: '/demo/today-size?size=ax1&lang=en&org=several',
+  },
+  {
+    title: 'The pill · AX1, iPad upright, one long word',
+    what: 'Internationalisationsorganisationsgesellschaft: the tile alone with its ring, never the word broken',
+    href: '/demo/today-size?size=ax1&lang=en&org=oneWord&invite=one',
+  },
+  {
+    title: 'La pastille · AX1, iPad upright',
+    what: 'Aujourd’hui, Événements, Calendrier, Réglages leave the pill under 120, so it is its tile; Où travaillez-vous ? on a tap',
+    href: '/demo/today-size?size=ax1&lang=fr&org=several&invite=one',
+  },
+  {
+    title: 'La pastille · AX5, iPad upright',
+    what: 'The tabs step under their own size to fit, so the pill gives way to its tile, the tabs whole',
+    href: '/demo/today-size?size=ax5&lang=fr&org=qa',
+  },
+  {
+    title: 'The pill · AX5, iPad upright',
+    what: 'In English too the tabs take the row and the pill is its tile, clear of them',
+    href: '/demo/today-size?size=ax5&lang=en&org=several',
   },
   {
     title: 'Vos événements · AX5, on its side',

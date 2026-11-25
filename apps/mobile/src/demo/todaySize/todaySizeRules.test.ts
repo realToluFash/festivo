@@ -17,6 +17,8 @@ import {
   sizeEvents,
   thumbAbove,
   underName,
+  uprightTile,
+  uprightTop,
   wordsSize,
   wordsStart,
 } from './todaySizeRules.ts';
@@ -136,5 +138,52 @@ describe('the organisation pill on the phone (sc-92247)', () => {
     expect(orgName('ire')).toBe('Ìrè Events');
     expect(orgName('several')).toBe('Atelier Céleste Réceptions et Mariages');
     expect(orgName('oneWord')).toBe(ONE_WORD);
+  });
+});
+
+describe('the upright iPad’s top row (sc-92314)', () => {
+  // The iPad Pro 13-inch upright: 1032 wide, 984 inside its side margins.
+  const ROW = 984;
+  // Today, Events, Calendar and Settings, semibold at 15 × AX1, as macOS draws them.
+  const EN_AX1 = [72, 85, 113, 101];
+  const EN_AX5 = EN_AX1.map((width) => (width * AX5) / AX1);
+
+  it('at AX1 in English keeps the tabs at their own size and leaves the pill room for Organisation', () => {
+    const top = uprightTop(AX1, EN_AX1, ROW);
+
+    expect(top.givesWay).toBe(false);
+    expect(top.labelSize).toBeCloseTo(15 * AX1);
+    expect(top.pill).toBeCloseTo((ROW - top.capsule) / 2 - 12);
+    expect(top.pill).toBeGreaterThanOrEqual(120);
+    expect(uprightTile(AX1, top, { nameStart: 0, waitingLine: null })).toBe(false);
+    expect(pillTileAlone(AX1, 92, top.nameRoom)).toBe(false);
+    expect(wordsSize(15, AX1, Infinity, 92 * AX1, top.nameRoom)).toBeLessThan(15 * AX1);
+  });
+
+  it('at AX1 a word too wide even at its default size is the tile alone', () => {
+    const top = uprightTop(AX1, EN_AX1, ROW);
+
+    expect(pillTileAlone(AX1, 331, top.nameRoom)).toBe(true);
+  });
+
+  it('at AX5 the tabs step under their own size, so the pill gives way to its tile', () => {
+    const top = uprightTop(AX5, EN_AX5, ROW);
+
+    expect(top.givesWay).toBe(true);
+    expect(uprightTile(AX5, top, { nameStart: 0, waitingLine: null })).toBe(true);
+  });
+
+  it('leaves the pill under 120 its tile', () => {
+    const top = uprightTop(AX1, [150, 140, 140, 130], ROW);
+
+    expect(top.pill).toBeLessThan(120);
+    expect(uprightTile(AX1, top, { nameStart: 0, waitingLine: null })).toBe(true);
+  });
+
+  it('below AX1 is main’s: the first word and its “…” on one line, or the tile', () => {
+    const top = uprightTop(SEVENTH, [55, 64, 85, 76], ROW);
+
+    expect(uprightTile(SEVENTH, top, { nameStart: 40, waitingLine: null })).toBe(false);
+    expect(uprightTile(SEVENTH, top, { nameStart: top.pill, waitingLine: null })).toBe(true);
   });
 });

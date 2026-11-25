@@ -37,7 +37,13 @@ export function PillRow({ scale, cap, waiting }: { scale: number; cap: number; w
       style={styles.row}
       onLayout={(event: LayoutChangeEvent) => setRow(event.nativeEvent.layout.width)}
     >
-      <Pill scale={scale} cap={cap} waiting={waiting} row={row} />
+      <Pill
+        scale={scale}
+        cap={cap}
+        waiting={waiting}
+        room={pillNameRoom(row)}
+        waitingRoom={pillWaitingRoom(row)}
+      />
       <View style={styles.grow} />
       <View style={styles.ends}>
         <SearchGlass />
@@ -47,28 +53,35 @@ export function PillRow({ scale, cap, waiting }: { scale: number; cap: number; w
   );
 }
 
-function Pill({
+/** The pill: its name and invitation line each whole in `room` and `waitingRoom`, or its tile where its widest word at its default size is wider than `room`, or where `tile` says so. */
+export function Pill({
   scale,
   cap,
   waiting,
-  row,
+  room,
+  waitingRoom,
+  tile = false,
+  lines,
 }: {
   scale: number;
   cap: number;
   waiting: number;
-  row: number;
+  room: number;
+  waitingRoom: number;
+  tile?: boolean;
+  /** Main's line limit for the name below AX1 beside the tabs (`nameLines`). */
+  lines?: number | undefined;
 }) {
   const { t } = useTranslation();
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
   const line = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const room = pillNameRoom(row);
   const pieces = useMemo(() => piecesOfLine(org.name), [org.name]);
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const known = pieces.every((piece) => widths[piece] != null);
   const widest = known ? Math.max(...pieces.map((piece) => widths[piece] ?? 0)) : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
-  const alone = pillTileAlone(scale, widest, room);
+  const alone = tile || pillTileAlone(scale, widest, room);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -121,6 +134,7 @@ function Pill({
               room={room}
               weight="semibold"
               line={1.25}
+              lines={lines}
               style={styles.white}
               onDrawn={setNameAt}
               testID="demo.todaySize.pillName"
@@ -134,7 +148,7 @@ function Pill({
                     size={PILL_WAITING}
                     scale={scale}
                     cap={Math.min(cap, nameAt ?? Infinity)}
-                    room={pillWaitingRoom(row)}
+                    room={waitingRoom}
                     weight="semibold"
                     line={1.3}
                     style={styles.white}
@@ -151,7 +165,7 @@ function Pill({
   );
 }
 
-function SearchGlass() {
+export function SearchGlass() {
   const { t } = useTranslation();
   const { open } = useTodayShell();
 

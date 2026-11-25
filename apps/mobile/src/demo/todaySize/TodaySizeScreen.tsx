@@ -40,6 +40,7 @@ import { EVENTS, type EventKey, sample, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
 import { PillRow } from './TodaySizePill.tsx';
 import { SizeEvents } from './TodaySizeEvents.tsx';
+import { UprightRow } from './TodaySizeUpright.tsx';
 import {
   HEAD,
   HEAD_LINK,
@@ -138,7 +139,7 @@ export function TodaySizeScreen({ start }: { start: TodaySizeStart }) {
   );
   const choices = (
     <View style={styles.choices}>
-      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
+      <DemoOnly title="Stand-ins for the device’s text size, its language, the account’s first name, the time of day, the events’ names, and on the phone and the upright iPad the organisation’s name and its waiting invitations. The greeting, every section heading and every row under Your events (a tile on the phone) draw at the size chosen; the sidebar stays as main draws it at this device’s size. From AX1 each text wraps only between words, a word too wide for its line steps that text alone down until it fits, never under its default size, and every line of one text is one size. A comma stays on the word before it, so the greeting breaks after it (Bonjour, / QA), and a name breaks only after its own hyphen. From AX1 See all and Calendar take the line under their heading, no heading starts larger than the greeting, a row’s thumbnail sits above its words, a tile is the phone’s width less a glimpse of the next and its chips sit under its dates, and nothing in a row starts larger than its event’s name. One long word draws at its default size and breaks inside itself, as on main. On the phone the organisation pill’s name and its invitation line step the same way, each alone, the invitation line never larger than the name; where the name’s widest word is too wide for its line even at its default size, the pill is its tile, with its ring while an invitation waits. On the upright iPad the tabs take their size first and the pill keeps 12 clear of them; it is its tile where the tabs are under their own size or leave it under 120, and from AX1 the tabs, Search and the bell keep to the top while the pill grows down, the greeting below it. At the standard sizes Today is main’s. Nothing is sent and no string is added.">
         <Choices
           heading="Text size"
           options={FILTER_SIZES}
@@ -377,6 +378,11 @@ function Cover({
       {kind === 'phone' && (
         <View style={styles.coverTop}>
           <PillRow scale={scale} cap={drawn ?? Infinity} waiting={waiting} />
+        </View>
+      )}
+      {kind === 'tabletPortrait' && (
+        <View style={styles.coverTop}>
+          <UprightRow scale={scale} cap={drawn ?? Infinity} waiting={waiting} onTab={toTab} />
         </View>
       )}
       <View
