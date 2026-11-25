@@ -168,7 +168,7 @@ describe('Messages at a desk (sc-3942)', () => {
       sentAt: '2030-11-10T20:05:00+01:00',
       sending: true,
       deliveries: [{ ...SENT.deliveries[0], state: 'queued' }],
-      follows: 'm_1',
+      follows: 'm_1' as string | null,
     };
     const row = ({ message: _body, deliveries, ...summary }: typeof FOLLOW) => ({
       ...summary,
