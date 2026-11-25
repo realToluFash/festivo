@@ -11,6 +11,11 @@ export function holds(method, url, pattern, held = 'GET', query) {
   return pattern.test(pathname) && (query === undefined || query.test(search.slice(1)));
 }
 
+export function drops(method, url, pattern) {
+  if (pattern === undefined) return false;
+  return pattern.test(`${method} ${new URL(url, 'http://proxy').pathname}`);
+}
+
 export function startProxy({
   target,
   delay,
@@ -19,6 +24,7 @@ export function startProxy({
   method = 'GET',
   status,
   body,
+  drop,
   port = 0,
   host = '127.0.0.1',
 }) {
@@ -54,7 +60,9 @@ export function startProxy({
       res.end(body ?? '');
     };
 
-    if (holds(req.method, req.url, pattern, method, query)) {
+    if (drops(req.method, req.url, drop)) {
+      req.socket.destroy();
+    } else if (holds(req.method, req.url, pattern, method, query)) {
       req.pause();
       const held = setTimeout(() => {
         if (status === undefined && body === undefined) {
@@ -76,7 +84,7 @@ export function startProxy({
 }
 
 const usage =
-  'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--query regex] [--port n] [--host addr]';
+  'usage: node scripts/qa-slow-proxy.mjs --target <api url> [--delay ms] [--status code] [--body file.json] [--method GET|POST|…] [--path regex] [--query regex] [--drop "METHOD path-regex"] [--port n] [--host addr]';
 
 export class UsageError extends Error {}
 
@@ -113,6 +121,7 @@ async function main() {
       method: { type: 'string', default: 'GET' },
       path: { type: 'string', default: '^/api/events/[^/]+/guests$' },
       query: { type: 'string' },
+      drop: { type: 'string' },
       port: { type: 'string', default: '0' },
       host: { type: 'string', default: '127.0.0.1' },
     },
@@ -134,6 +143,7 @@ async function main() {
     pattern: new RegExp(values.path),
     query: values.query === undefined ? undefined : new RegExp(values.query),
     method: values.method.toUpperCase(),
+    drop: values.drop === undefined ? undefined : new RegExp(values.drop),
     port: Number(values.port),
     host: values.host,
   });
@@ -142,7 +152,7 @@ async function main() {
     ? `answered ${status ?? 200}${values.body ? ` with ${values.body}` : ''}`
     : 'forwarded';
   console.log(
-    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, ${values.method.toUpperCase()} ${values.path}${values.query === undefined ? '' : ` ?${values.query}`} held ${delay} ms, then ${outcome}`,
+    `qa-slow-proxy: http://${values.host}:${port} → ${values.target}, ${values.method.toUpperCase()} ${values.path}${values.query === undefined ? '' : ` ?${values.query}`} held ${delay} ms, then ${outcome}${values.drop === undefined ? '' : `; ${values.drop} dropped unanswered`}`,
   );
 }
 

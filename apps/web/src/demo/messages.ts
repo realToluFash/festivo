@@ -2259,6 +2259,7 @@ export interface Draft {
   seeAll?: boolean;
   hour?: Hour;
   invite?: InviteDraft;
+  follows?: number | undefined;
 }
 
 export interface Sched {

@@ -763,7 +763,12 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       expect(screen.getByText('Worked out at 10:00, when it went: 6 guests.')).toBeDefined();
       expect(screen.getByText('Reached 6 of 6 · seen by 4 on their page')).toBeDefined();
       expect(screen.getByRole('textbox', { name: 'Write a follow-up' })).toBeDefined();
-      expect(screen.getByRole('button', { name: 'Guests who… · 6 guests' })).toBeDefined();
+      expect(
+        screen.getByText(
+          'A follow-up goes to the same 6 guests, under the first message on their page.',
+        ),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Guests who… · 6 guests' })).toBeNull();
     },
   );
 

@@ -9,7 +9,7 @@ export interface RuleNoticeWords {
   kind: 'attention' | 'quiet';
   title: string;
   body: string | null;
-  step: { label: string; to: string };
+  step: { label: string; to: string; state?: unknown };
   close: string | null;
 }
 
@@ -32,7 +32,7 @@ export function RuleNoticeBox({
           {words.body != null && <p className="rn-body">{words.body}</p>}
         </div>
         <div className="rn-actions">
-          <Link className="desk-step" to={words.step.to}>
+          <Link className="desk-step" to={words.step.to} state={words.step.state}>
             {words.step.label}
           </Link>
           {words.close != null && onClose != null && (
