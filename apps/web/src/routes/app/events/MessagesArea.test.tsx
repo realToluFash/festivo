@@ -52,6 +52,17 @@ function signedIn(): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+async function previewOn(): Promise<void> {
+  const button = screen.getByRole('button', { name: 'Preview' });
+  await waitFor(() => expect(button.getAttribute('aria-disabled')).toBe('false'));
+  fireEvent.click(button);
+}
+
+function writeMessage(field: HTMLElement, words: string): void {
+  field.textContent = words;
+  fireEvent.input(field);
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -62,8 +73,8 @@ function json(body: unknown, status = 200): Response {
 type Answer = (body: unknown) => Response | Promise<Response>;
 
 const GUESTS = [
-  { id: 'g_ada', name: 'Ada Obi', flag: null, email: 'ada@example.test' },
-  { id: 'g_kwame', name: 'Kwame Mensah', flag: 'no_address', email: null },
+  { id: 'g_kwame', name: 'Kwame Mensah', flag: 'no_address', email: null, language: 'fr' },
+  { id: 'g_ada', name: 'Ada Obi', flag: null, email: 'ada@example.test', language: 'en' },
 ];
 
 const SENT = {
@@ -202,12 +213,12 @@ describe('Messages at a desk (sc-3942)', () => {
 
     fireEvent.change(field, { target: { value: 'G' } });
     const body = await screen.findByRole('textbox', { name: 'Message' });
-    expect((body as HTMLTextAreaElement).value).toBe('G');
+    expect(body.textContent).toBe('G');
     expect(screen.queryByRole('textbox', { name: 'Subject' })).toBeNull();
     expect(screen.queryByRole('button', { name: /All guests/ })).toBeNull();
     expect(screen.getByText(followLine)).toBeTruthy();
 
-    fireEvent.change(body, { target: { value: 'Gates open at six' } });
+    writeMessage(body, 'Gates open at six');
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     fireEvent.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {
@@ -243,9 +254,7 @@ describe('Messages at a desk (sc-3942)', () => {
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'New' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
-      target: { value: 'Dinner starts at seven' },
-    });
+    writeMessage(screen.getByRole('textbox', { name: 'Message' }), 'Dinner starts at seven');
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     const check = await screen.findByRole('alertdialog');
@@ -301,5 +310,148 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Messages' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New' })).toBeNull();
+  });
+});
+
+describe('Write it once (sc-3960)', () => {
+  const ADA_PREVIEW = {
+    guest: {
+      id: 'g_ada',
+      name: 'Ada Obi',
+      greetAs: 'Auntie Ada',
+      language: 'en',
+      languageFrom: 'host',
+    },
+    notices: [
+      {
+        channel: 'email',
+        subject: 'Adaeze and Tunde: a message from Ìrè Events',
+        text: 'Dear Auntie Ada,',
+      },
+    ],
+  };
+
+  it('puts a token where Insert is pressed, and Send carries it as a token, not as braces', async () => {
+    const sent = onMessages({
+      'POST /api/events/ev_1/messages/check': () =>
+        json({ people: 2, toldByEmail: 1, cantBeTold: [] }),
+      'POST /api/events/ev_1/messages': () => json({ id: 'm_1', queued: { email: 1 } }, 202),
+      'GET /api/events/ev_1/messages/m_1': () => json({ message: SENT }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    const field = screen.getByRole('textbox', { name: 'Message' });
+    writeMessage(field, 'Dear {name}, ');
+    fireEvent.click(screen.getByRole('button', { name: 'Insert' }));
+    const menu = screen.getByRole('menu', { name: 'Insert' });
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((one) => one.getAttribute('aria-label')),
+    ).toEqual(['Greeting', 'Event', 'Date', 'Hosts']);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Greeting' }));
+
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(
+      within(field).getByRole('img', { name: 'Greeting, filled in for each guest' }),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Send to 2 people',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        sent.find(({ line }) => line === 'POST /api/events/ev_1/messages')?.body,
+      ).toMatchObject({
+        message: 'Dear {name}, \uE000greeting\uE001',
+      }),
+    );
+  });
+
+  it('previews as the first guest in To, A to Z, then as another, with the lines that say why', async () => {
+    const sent = onMessages({
+      'GET /api/events/ev_1/messages/preview/g_ada': () => json(ADA_PREVIEW),
+      'GET /api/events/ev_1/messages/preview/g_kwame': () =>
+        json({
+          guest: {
+            id: 'g_kwame',
+            name: 'Kwame Mensah',
+            greetAs: null,
+            language: 'fr',
+            languageFrom: 'chose',
+          },
+          notices: [],
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    writeMessage(screen.getByRole('textbox', { name: 'Message' }), 'Bring a {plus one}');
+    await previewOn();
+
+    expect(await screen.findByRole('heading', { name: 'As Ada Obi will see it' })).toBeTruthy();
+    expect(await screen.findByText('In English, the language you set for them.')).toBeTruthy();
+    expect(screen.getByText('Bring a {plus one}', { selector: 'blockquote' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Nothing to fill in, so every guest gets exactly these words.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Adaeze and Tunde: a message from Ìrè Events')).toBeTruthy();
+    expect(screen.queryByText(/^Greeted as/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Preview as/ }));
+    const options = screen.getAllByRole('option');
+    expect(options.map((one) => one.textContent)).toEqual([
+      'Ada Obi · English',
+      'Kwame Mensah · French',
+    ]);
+    fireEvent.click(options[1] as HTMLElement);
+
+    expect(
+      await screen.findByRole('heading', { name: 'As Kwame Mensah will see it' }),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText('In French, the language they chose on their page.'),
+    ).toBeTruthy();
+    expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/messages/preview/g_kwame')).toBe(
+      true,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('textbox', { name: 'Message' }).textContent).toBe('Bring a {plus one}');
+  });
+
+  it('says who the greeting reaches as, and fills it in on their page', async () => {
+    onMessages({ 'GET /api/events/ev_1/messages/preview/g_ada': () => json(ADA_PREVIEW) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    const field = screen.getByRole('textbox', { name: 'Message' });
+    writeMessage(field, 'Hello ');
+    fireEvent.click(screen.getByRole('button', { name: 'Insert' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Greeting' }));
+    await previewOn();
+
+    expect(await screen.findByText('Greeted as “Auntie Ada”, their Greet as.')).toBeTruthy();
+    expect(screen.getByText('Hello Auntie Ada', { selector: 'blockquote' })).toBeTruthy();
+  });
+
+  it('offers no preview while nobody is in To, and says why', async () => {
+    onMessages({ 'GET /api/events/ev_1/messages/guests': () => json({ guests: [] }) });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    const preview = screen.getByRole('button', { name: 'Preview' });
+    expect(
+      await screen.findByText('No guests chosen yet, so there is nobody to preview it as.'),
+    ).toBeTruthy();
+    expect(preview.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(preview);
+    expect(screen.queryByRole('heading', { name: /will see it$/ })).toBeNull();
   });
 });
