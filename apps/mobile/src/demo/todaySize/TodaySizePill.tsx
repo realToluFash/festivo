@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type LayoutChangeEvent,
@@ -11,8 +11,7 @@ import {
 import { Glass } from '../../components/Glass.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { OrgMark } from '../../components/OrgMark.tsx';
-import { MeasuredWords } from '../../components/Title.tsx';
-import { OPENER, quietTap } from '../../components/OrgPill.tsx';
+import { OPENER, quietTap, useWholeTile } from '../../components/OrgPill.tsx';
 import { BellButton } from '../../components/TodayCover.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
@@ -25,9 +24,8 @@ import {
   PILL_NAME,
   PILL_WAITING,
   PILL_WAITING_LINE,
-  piecesOfLine,
   pillNameRoom,
-  pillTileAlone,
+  tileRoom,
   pillWaitingRoom,
   waitingFirstLine,
 } from './todaySizeRules.ts';
@@ -84,13 +82,10 @@ export function Pill({
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
   const line = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const pieces = useMemo(() => piecesOfLine(org.name), [org.name]);
-  const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
-  const known = pieces.every((piece) => widths[piece] != null);
-  const widest = known ? Math.max(...pieces.map((piece) => widths[piece] ?? 0)) : null;
+  const fit = useWholeTile(org.name, line, tileRoom(scale, room));
   const [nameAt, setNameAt] = useState<number | null>(null);
   const [waitingAt, setWaitingAt] = useState<number | null>(null);
-  const alone = tile || pillTileAlone(scale, widest, room);
+  const alone = tile || fit.tileAlone;
   const ours = standIn && atAccessibilitySizes(scale);
   const switcher = useSizeSwitcher(ref, scale, ours);
   const onPress = ours ? switcher.show : org.onPress;
@@ -105,22 +100,11 @@ export function Pill({
     hitSlop: tokens.spaceXxs,
     testID: 'demo.todaySize.pill',
   } as const;
-  const measure = (
-    <MeasuredWords
-      words={pieces}
-      size={PILL_NAME}
-      weight="semibold"
-      allowFontScaling={false}
-      onWidth={(piece, width) =>
-        setWidths((now) => (now[piece] === width ? now : { ...now, [piece]: width }))
-      }
-    />
-  );
 
   if (alone)
     return (
       <View style={styles.fit}>
-        {measure}
+        {fit.measure}
         <Pressable {...shared}>
           <Glass style={styles.compact}>
             <OrgMark id={org.id} name={org.name} side={30} glass />
@@ -135,7 +119,7 @@ export function Pill({
 
   return (
     <View style={styles.fit}>
-      {measure}
+      {fit.measure}
       <Pressable {...shared} style={styles.wide}>
         <Glass height={tall} style={[styles.glass, { height: undefined, minHeight: tall }]}>
           <OrgMark id={org.id} name={org.name} side={28} glass />
