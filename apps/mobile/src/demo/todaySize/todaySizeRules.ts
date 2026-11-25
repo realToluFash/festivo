@@ -353,11 +353,6 @@ export function switcherOrgs(current: TodayOrg): TodayOrg[] {
 
 const NO_BREAK = String.fromCharCode(0xa0);
 
-/** The role line with a no-break space before its dot, so no line starts with · (sc-92250). */
-export function dotKept(line: string): string {
-  return line.replaceAll(' ·', `${NO_BREAK}·`);
-}
-
 /** The pieces a dot-kept line wraps between: a lone · stays on the word before it. */
 export function piecesKeepingDot(line: string): string[] {
   const pieces: string[] = [];

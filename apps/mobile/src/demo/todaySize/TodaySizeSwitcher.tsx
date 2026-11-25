@@ -20,6 +20,7 @@ import { useFocusBack } from '../../components/Sheet.tsx';
 import { type TextHandle } from '../../components/Text.tsx';
 import { inModal } from '../../kit/anchoredMenu.ts';
 import { TURNS_WITH_THE_APP } from '../../layout/orientations.ts';
+import { dotKept } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useModalOpen } from '../../updateRequired.ts';
 import { useStartWalk } from '../OrgSwitcher.tsx';
@@ -31,7 +32,6 @@ import {
   SWITCHER_NAME,
   SWITCHER_TILE,
   type TodayOrg,
-  dotKept,
   orgName,
   piecesKeepingDot,
   switcherOrgs,

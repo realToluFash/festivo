@@ -101,9 +101,20 @@ export function frameTitleSize(tablet: boolean, shortSide: number): number {
     : tokens.typeTitleFrame.size;
 }
 
-/** Every distinct word in these texts. */
+/** Every distinct word in these texts, a no-break space keeping its two sides one word, as the line wraps them. */
 export function wordsIn(texts: readonly string[]): string[] {
-  return [...new Set(texts.flatMap((text) => text.split(/\s+/u)).filter((word) => word !== ''))];
+  return [
+    ...new Set(
+      texts
+        .flatMap((text) => text.split(/[^\S\u00a0\u2007\u202f]+/u))
+        .filter((word) => word !== ''),
+    ),
+  ];
+}
+
+/** The role line with a no-break space before its dot, so no line starts with · (sc-92250). */
+export function dotKept(line: string): string {
+  return line.replaceAll(' ·', '\u00a0·');
 }
 
 /** Every distinct piece a line may wrap between: each word, split after a hyphen it already has, the hyphen kept on the first part (sc-69816). */
