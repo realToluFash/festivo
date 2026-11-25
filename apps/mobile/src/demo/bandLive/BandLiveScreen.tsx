@@ -90,7 +90,7 @@ export function BandLiveScreen({ start }: { start: BandLiveStart }) {
             <NavBar />
             <View style={styles.page}>
               <DemoOnly
-                title={`${kind === 'tabletPortrait' ? '' : UPRIGHT_ONLY}Stand-ins for the device’s text size, its language and the live event’s name. The live line draws at the size chosen; the tile, the tabs, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s: 92 under the status bar, the line on one line. From AX1 the line sits 10 under the tab capsule and 12 above the band’s foot, the band growing down to hold it; it wraps only between words, steps down only as far as its widest word needs, never under 13.5, and a word too wide even at 13.5 breaks at the line’s end. The page scrolls on under the band. Nothing is sent and no string is added.`}
+                title={`${kind === 'tabletPortrait' ? '' : UPRIGHT_ONLY}Stand-ins for the device’s text size, its language and the live event’s name. The live line draws at the size chosen; the tile, the tabs, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s: 92 under the status bar, the line on one line. From AX1 the tab capsule grows with its labels, which are never drawn smaller to fit it (sc-92571), and the line sits 10 under the capsule’s foot and 12 above the band’s foot, the band growing down to hold both; it wraps only between words, steps down only as far as its widest word needs, never under 13.5, and a word too wide even at 13.5 breaks at the line’s end. The page scrolls on under the band. Nothing is sent and no string is added.`}
               >
                 <Choices
                   heading="Text size"
@@ -159,6 +159,7 @@ function Band({
     row == null ? 0 : Math.max(0, row - 2 * tokens.space3xl),
     end,
   );
+  const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
 
   return (
     <View
@@ -170,7 +171,13 @@ function Band({
       ) : (
         <EventMesh event={now.event} shade="day" />
       )}
-      <View style={[styles.capsuleRoom, { marginTop: top }]}>
+      <View
+        style={[
+          styles.capsuleRoom,
+          { marginTop: top },
+          capsule > CAPSULE_HEIGHT && { minHeight: CAPSULE_TOP + capsule },
+        ]}
+      >
         <View style={styles.row} onLayout={(layout) => setRow(layout.nativeEvent.layout.width)}>
           {measure}
           <OrgButton compact />
@@ -180,7 +187,10 @@ function Band({
             <BellButton />
           </View>
           <View style={styles.capsuleAt} pointerEvents="box-none">
-            <View key={labelSize}>
+            <View
+              key={labelSize}
+              onLayout={(layout) => setCapsule(layout.nativeEvent.layout.height)}
+            >
               {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
             </View>
           </View>
