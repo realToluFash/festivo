@@ -353,7 +353,7 @@ function Head({
   const room = count == null ? row : badge === 0 ? 0 : row - badge - tokens.spaceMd;
   const linkAt = wordsStart(HEAD_LINK, scale, drawn);
 
-  const heading = (
+  const heading = (beside?: boolean) => (
     <FitWords
       text={title}
       size={HEAD}
@@ -363,7 +363,7 @@ function Head({
       weight="bold"
       line={1.15}
       role="header"
-      style={{ letterSpacing: HEAD * -0.02 }}
+      style={[{ letterSpacing: HEAD * -0.02 }, beside && styles.besideCount]}
       onDrawn={setDrawn}
       testID="demo.todaySize.heading"
     />
@@ -408,7 +408,7 @@ function Head({
   if (!under) {
     return (
       <View style={styles.head}>
-        {heading}
+        {heading()}
         {chip}
         <View style={styles.grow} />
         {more}
@@ -422,7 +422,7 @@ function Head({
         style={styles.headLine}
         onLayout={(event: LayoutChangeEvent) => setRow(event.nativeEvent.layout.width)}
       >
-        {heading}
+        {heading(true)}
         {chip}
       </View>
       {more}
@@ -614,6 +614,7 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
   },
   shrink: { flexShrink: 1 },
+  besideCount: { flexShrink: 1, minWidth: 0 },
   panel: {
     backgroundColor: tokens.colorInset,
     borderRadius: tokens.space3xl,
