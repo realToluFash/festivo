@@ -106,7 +106,7 @@ final class ServiceTablesTest extends ApiTestCase
     private function assertReaches(Grants $grants, User $user, SeatingTable $table, ?ErrorCode $refusal): void
     {
         try {
-            (new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class)))->requireYours($grants, $user, $table);
+            new ServiceTables(self::service(StaffStationRepository::class), self::service(StaffMemberRepository::class))->requireYours($grants, $user, $table);
             self::assertNull($refusal, $table->getName() . ' should be refused');
         } catch (ApiException $refused) {
             self::assertSame($refusal, $refused->errorCode, $table->getName());

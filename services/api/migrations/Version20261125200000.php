@@ -6,6 +6,7 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use RuntimeException;
 
 final class Version20261125200000 extends AbstractMigration
 {
@@ -22,6 +23,6 @@ final class Version20261125200000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        throw new \RuntimeException('Narrowing the check would refuse every code already made at Can work the floor or Can work the pass.');
+        throw new RuntimeException('Narrowing the check would refuse every code already made at Can work the floor or Can work the pass.');
     }
 }

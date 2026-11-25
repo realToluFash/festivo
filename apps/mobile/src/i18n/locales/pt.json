@@ -2441,10 +2441,13 @@
       "can_check_in_many": "{{count, number}} de pessoas podem agora registar entradas.",
       "can_check_in_other": "{{count, number}} pessoas podem agora registar entradas.",
       "can_work_floor_one": "{{count, number}} person can work the floor now.",
+      "can_work_floor_many": "{{count, number}} people can work the floor now.",
       "can_work_floor_other": "{{count, number}} people can work the floor now.",
       "can_work_pass_one": "{{count, number}} person can work the pass now.",
+      "can_work_pass_many": "{{count, number}} people can work the pass now.",
       "can_work_pass_other": "{{count, number}} people can work the pass now.",
       "can_run_floor_one": "{{count, number}} person can run the floor now.",
+      "can_run_floor_many": "{{count, number}} people can run the floor now.",
       "can_run_floor_other": "{{count, number}} people can run the floor now."
     },
     "failedTitle": "Não foi possível carregar as pessoas deste evento.",
