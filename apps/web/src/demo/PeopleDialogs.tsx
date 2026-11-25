@@ -52,7 +52,7 @@ import {
   RowWords,
   TextAction,
 } from '../components/SettingsParts.tsx';
-import { WholeAddress } from './WholeAddress.tsx';
+import { AddressIn, WholeAddress } from '../components/WholeAddress.tsx';
 
 const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -244,7 +244,7 @@ export function RoleDialog({
       </Dialog>
       {asking && (
         <Ask
-          title={removeTitle(person)}
+          title={<AddressIn text={person.name} words={removeTitle} />}
           line={removeLine(person, organisation)}
           keep={`Keep ${firstName(person)}`}
           go="Remove"
