@@ -24,10 +24,12 @@ import { useSizeSwitcher } from './TodaySizeSwitcher.tsx';
 import {
   PILL_NAME,
   PILL_WAITING,
+  PILL_WAITING_LINE,
   piecesOfLine,
   pillNameRoom,
   pillTileAlone,
   pillWaitingRoom,
+  waitingFirstLine,
 } from './todaySizeRules.ts';
 
 /** sc-92247: the phone cover's top row, the pill's name and invitation line each whole at the stand-in size, then Search and the bell. */
@@ -87,6 +89,7 @@ export function Pill({
   const known = pieces.every((piece) => widths[piece] != null);
   const widest = known ? Math.max(...pieces.map((piece) => widths[piece] ?? 0)) : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
+  const [waitingAt, setWaitingAt] = useState<number | null>(null);
   const alone = tile || pillTileAlone(scale, widest, room);
   const ours = standIn && atAccessibilitySizes(scale);
   const switcher = useSizeSwitcher(ref, scale, ours);
@@ -152,7 +155,14 @@ export function Pill({
             />
             {line != null && (
               <View style={styles.waitingLine}>
-                <View style={styles.ring} />
+                <View
+                  style={[
+                    styles.ringLine,
+                    waitingAt != null && { height: waitingFirstLine(waitingAt) },
+                  ]}
+                >
+                  <View style={styles.ring} />
+                </View>
                 <View style={styles.grow}>
                   <FitWords
                     text={line}
@@ -161,8 +171,9 @@ export function Pill({
                     cap={Math.min(cap, nameAt ?? Infinity)}
                     room={waitingRoom}
                     weight="semibold"
-                    line={1.3}
+                    line={PILL_WAITING_LINE}
                     style={styles.white}
+                    onDrawn={setWaitingAt}
                     testID="demo.todaySize.pillWaiting"
                   />
                 </View>
@@ -207,7 +218,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInkOnDark,
   },
   words: { flexShrink: 1, minWidth: 0, gap: tokens.spaceHair },
-  waitingLine: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  waitingLine: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  ringLine: { justifyContent: 'center' },
   ring: {
     width: 11,
     height: 11,

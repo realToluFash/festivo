@@ -237,6 +237,12 @@ export function orgName(org: TodayOrg): string {
 /** Main's pill on the phone's cover: the name at 15, the invitation line at 12.5, the tile 28, the caret 14. */
 export const PILL_NAME = 15;
 export const PILL_WAITING = 12.5;
+export const PILL_WAITING_LINE = 1.3;
+
+/** The invitation line's first line at `drawn`, the height the ring is centred on where the line wraps (sc-92912). */
+export function waitingFirstLine(drawn: number): number {
+  return Math.ceil(drawn * PILL_WAITING_LINE);
+}
 const PILL_TILE = 28;
 const PILL_CARET = 14;
 const PILL_RING = 11;

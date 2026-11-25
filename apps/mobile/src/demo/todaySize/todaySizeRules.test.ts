@@ -31,6 +31,7 @@ import {
   underName,
   uprightTile,
   uprightTop,
+  waitingFirstLine,
   wordsSize,
   wordsStart,
 } from './todaySizeRules.ts';
@@ -280,5 +281,10 @@ describe('the switcher’s rows from AX1 (sc-92465)', () => {
       Math.floor((start * 238) / 311),
     );
     expect(wordsSize(SWITCHER_NAME, 3.571, Infinity, 2000, 238)).toBe(SWITCHER_NAME);
+  });
+
+  it('centres the ring on the invitation line’s first line, the height of one line at its drawn size', () => {
+    expect(waitingFirstLine(12.5)).toBe(17);
+    expect(waitingFirstLine(23)).toBe(30);
   });
 });
