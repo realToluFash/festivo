@@ -29,7 +29,7 @@ import {
   uprightChipSize,
 } from './todaySizeRules.ts';
 
-/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. With `top`, the upright cover under that row (sc-93211): from AX1 its chips keep main's size and grow to hold their words. */
+/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. With `top`, the upright cover under that row: from AX1 its chips keep main's size and grow to hold their words (sc-93211), and the name, the end line and Open the event take the cover's width by the same rule as on its side (sc-93578). */
 export function LiveBanner({
   name,
   place,

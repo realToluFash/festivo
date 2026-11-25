@@ -272,6 +272,24 @@ describe('the live cover on its side (sc-92312)', () => {
   });
 });
 
+describe('the live cover upright (sc-93578)', () => {
+  // The iPad Pro 13-inch upright: 1032 wide, the cover's words 28 in from each side.
+  const COVER = 1032 - 2 * 28;
+  const BESIDE_FR = 343;
+  const DIRECT_AT_AX5 = 560;
+
+  it('keeps the name at its size at AX5 across the cover, where beside Open the event it would step down', () => {
+    const start = wordsStart(LIVE_NAME, AX5, Infinity);
+    expect(wordsSize(LIVE_NAME, AX5, Infinity, DIRECT_AT_AX5, COVER)).toBe(start);
+    expect(wordsSize(LIVE_NAME, AX5, Infinity, DIRECT_AT_AX5, BESIDE_FR)).toBeLessThan(start);
+  });
+
+  it('moves Open the event under the end line from AX1, as on its side', () => {
+    expect(openUnder(SEVENTH)).toBe(false);
+    expect(openUnder(AX1)).toBe(true);
+  });
+});
+
 describe('the switcher’s rows from AX1 (sc-92465)', () => {
   it('puts the organisation you are in first, then every other once each', () => {
     expect(switcherOrgs('several')).toEqual(['several', 'qa', 'lumen', 'ire', 'oneWord']);
