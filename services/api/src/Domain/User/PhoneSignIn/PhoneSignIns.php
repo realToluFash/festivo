@@ -212,7 +212,7 @@ final readonly class PhoneSignIns
 
         $ends = $newest->getCreatedAt()->getTimestamp() + VerificationChallenge::RESEND_COOLDOWN_SECONDS;
 
-        return Math\maxva(0, $ends - $this->clock->now()->getTimestamp());
+        return Math\maxva(0, $ends - new DateTimeImmutable()->getTimestamp());
     }
 
     private static function wait(int $seconds): ApiException
