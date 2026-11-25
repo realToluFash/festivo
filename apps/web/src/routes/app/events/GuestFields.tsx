@@ -6,7 +6,6 @@ import {
   countryChoices,
   greetAsLength,
   namedCount,
-  numberFormat,
   ownLanguageName,
   placesTo,
 } from '@soirely/domain';
@@ -271,7 +270,6 @@ export function GreetAsField({
   onChange: (greetAs: string) => void;
 }) {
   const { t } = useTranslation();
-  const figure = numberFormat(currentLocale());
 
   return (
     <GuestField
@@ -281,8 +279,8 @@ export function GreetAsField({
       error={error}
       help={t('guestList.greetAsHint')}
       counter={t('guestList.greetAsCounter', {
-        count: figure.format(greetAsLength(value)),
-        max: figure.format(GREET_AS_MAXIMUM),
+        count: greetAsLength(value),
+        max: GREET_AS_MAXIMUM,
       })}
       focusKey="greetAs"
       onChange={onChange}

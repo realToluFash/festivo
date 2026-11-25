@@ -2701,9 +2701,8 @@
     },
     "greetAs": "Greet as",
     "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
-    "greetAsCounter": "{{count}} of {{max}}",
-    "greetAsTooLong_one": "Shorten Greet as to {{count}} character or fewer.",
-    "greetAsTooLong_other": "Shorten Greet as to {{count}} characters or fewer.",
+    "greetAsCounter": "{{count, number}} of {{max, number}}",
+    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
     "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
     "greetsByFullName": "Messages greet them by their full name."
   },
