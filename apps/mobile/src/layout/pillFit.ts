@@ -35,6 +35,19 @@ export function phoneNameRoom(row: number, ends: number): number {
   return Math.max(row - ends - 2 * tokens.spaceSm - PILL_CHROME, 0);
 }
 
+/** A phone's top row counts as measured once both it and what sits at its end have a width; until then its pill's name line is 0, on the cover and above the titles alike. */
+export function rowMeasured(row: number, ends: number): boolean {
+  return row > 0 && ends > 0;
+}
+
+/** The tile and the gap after it, which the white pill over Events, the Calendar and Settings gives its name from AX1, where it is bare. */
+export const PILL_TILE = 28 + tokens.spaceSm;
+
+/** The name's line in the white pill above a phone's Events, Calendar and Settings titles from AX1, bare, by the cover's rule (`phoneNameRoom`) with the tile's room given back: 206 on an iPhone 17 Pro with Search and the bell, 258 with the bell alone (sc-92464). */
+export function barePhoneNameRoom(row: number, ends: number): number {
+  return phoneNameRoom(row + PILL_TILE, ends);
+}
+
 /** The name's line in the pill beside the upright iPad's tabs, from the most the pill may take there, 0 until the row is measured (sc-92314). */
 export function uprightNameRoom(pill: number | undefined): number {
   return Math.max((pill ?? 0) - PILL_CHROME, 0);
