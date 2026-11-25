@@ -14,10 +14,10 @@ import { OrgMark } from '../../components/OrgMark.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { OPENER, quietTap } from '../../components/OrgPill.tsx';
 import { BellButton } from '../../components/TodayCover.tsx';
-import { useTodayShell } from '../../components/todayShell.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { openerLabel } from '../OrgSwitcherModel.ts';
+import { SearchGlass } from '../SearchGlass.tsx';
 import { FitWords } from './FitWords.tsx';
 import {
   PILL_NAME,
@@ -151,24 +151,6 @@ function Pill({
   );
 }
 
-function SearchGlass() {
-  const { t } = useTranslation();
-  const { open } = useTodayShell();
-
-  return (
-    <Pressable
-      onPress={() => open({ to: 'search' })}
-      accessibilityRole="button"
-      accessibilityLabel={t('search.row')}
-      hitSlop={tokens.spaceXxs}
-    >
-      <Glass style={styles.round}>
-        <Glyph name="search" size={19} ink={tokens.colorInkOnDark} />
-      </Glass>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
@@ -208,5 +190,4 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInkOnDark,
   },
   white: { color: tokens.colorInkOnDark },
-  round: { width: 40, justifyContent: 'center' },
 });

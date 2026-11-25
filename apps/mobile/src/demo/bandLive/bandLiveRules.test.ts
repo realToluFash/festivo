@@ -4,12 +4,9 @@ import { filterScale } from '../filterSize/filterSizeRules.ts';
 import {
   EVENT_NAME_MAXIMUM,
   LIVE_LINE,
-  MAIN_BAND,
-  liveBandBody,
   liveEventName,
   liveEventOf,
   liveLine,
-  liveLineHeight,
   liveRoom,
 } from './bandLiveRules.ts';
 
@@ -26,52 +23,44 @@ const AT_AX5 = {
 };
 
 describe('the live line at the standard sizes', () => {
-  it('is main’s: one line at 13.5 × the scale, whatever its width', () => {
+  it('is main’s: 13.5 × the scale, whatever its width', () => {
     for (const size of ['default', 'seventh'] as const) {
       const scale = filterScale(size, 1);
 
-      expect(liveLine(scale, 5000, ROOM)).toEqual({ size: LIVE_LINE * scale, wrap: 'one' });
+      expect(liveLine(scale, 5000, ROOM)).toBe(LIVE_LINE * scale);
     }
   });
 });
 
 describe('the live line at the accessibility sizes', () => {
-  it('keeps its chosen size and wraps between words while its widest word fits the room', () => {
-    expect(liveLine(AX5, AT_AX5.cours, ROOM)).toEqual({ size: LIVE_LINE * AX5, wrap: 'words' });
-    expect(liveLine(AX1, 60, ROOM)).toEqual({ size: LIVE_LINE * AX1, wrap: 'words' });
+  it('keeps its chosen size while its widest word fits the room', () => {
+    expect(liveLine(AX5, AT_AX5.cours, ROOM)).toBe(LIVE_LINE * AX5);
+    expect(liveLine(AX1, 60, ROOM)).toBe(LIVE_LINE * AX1);
   });
 
   it('steps the whole line down to the largest size at which its widest word fits whole', () => {
     const start = LIVE_LINE * AX5;
-    const { size, wrap } = liveLine(AX5, AT_AX5.word, ROOM);
+    const size = liveLine(AX5, AT_AX5.word, ROOM);
 
-    expect(wrap).toBe('words');
     expect(size).toBe(45);
     expect((AT_AX5.word * size) / start).toBeLessThanOrEqual(ROOM);
     expect((AT_AX5.word * (size + 1)) / start).toBeGreaterThan(ROOM);
   });
 
-  it('never goes under 13.5, and breaks a word wider than the room even at 13.5 at the line’s end', () => {
+  it('never goes under 13.5, even for a word wider than the room at 13.5', () => {
     const wide = AT_AX5.w * EVENT_NAME_MAXIMUM;
 
-    expect(liveLine(AX5, wide, ROOM)).toEqual({ size: LIVE_LINE, wrap: 'breaks' });
+    expect(liveLine(AX5, wide, ROOM)).toBe(LIVE_LINE);
   });
 
   it('is never larger than its chosen size', () => {
-    expect(liveLine(AX1, 10, ROOM).size).toBe(LIVE_LINE * AX1);
+    expect(liveLine(AX1, 10, ROOM)).toBe(LIVE_LINE * AX1);
   });
 });
 
 describe('the band', () => {
   it('has the room of an iPad Pro 13-inch upright less 16 either side, the dot and its gap', () => {
     expect(ROOM).toBe(986);
-  });
-
-  it('keeps main’s 92 while the line fits it, and grows down to hold every line', () => {
-    expect(liveBandBody(1, liveLineHeight(LIVE_LINE))).toBe(MAIN_BAND);
-    expect(liveBandBody(1, liveLineHeight(LIVE_LINE * AX5))).toBe(53 + 10 + 59 + 12);
-    expect(liveBandBody(2, liveLineHeight(45))).toBe(53 + 10 + 2 * 55 + 12);
-    expect(liveBandBody(3, liveLineHeight(LIVE_LINE))).toBe(53 + 10 + 3 * 17 + 12);
   });
 });
 

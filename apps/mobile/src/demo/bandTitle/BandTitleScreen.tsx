@@ -1,19 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { coverRowSides, pastSides } from '../../components/bodyEdges.ts';
 import { Cover } from '../../components/Cover.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
-import { Glass } from '../../components/Glass.tsx';
-import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { BellButton, bandBody, OrgButton } from '../../components/TodayCover.tsx';
 import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
-import { TodayShellProvider, useTodayShell } from '../../components/todayShell.ts';
+import { TodayShellProvider } from '../../components/todayShell.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -28,6 +26,7 @@ import {
 } from '../filterSize/filterSizeRules.ts';
 import { Choices } from '../focusedHeader/FocusedHeaderScreen.tsx';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
+import { SearchGlass } from '../SearchGlass.tsx';
 import { momentOf, sayIn } from '../today.ts';
 import {
   BAND_CLEAR,
@@ -235,25 +234,6 @@ function BandRowWithTitle({
   );
 }
 
-/** Search in glass, the bell's twin, as the product's band draws it. */
-function SearchGlass() {
-  const { t } = useTranslation();
-  const { open } = useTodayShell();
-
-  return (
-    <Pressable
-      onPress={() => open({ to: 'search' })}
-      accessibilityRole="button"
-      accessibilityLabel={t('search.row')}
-      hitSlop={tokens.spaceXxs}
-    >
-      <Glass style={styles.glass}>
-        <Glyph name="search" size={19} ink={tokens.colorInkOnDark} />
-      </Glass>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: tokens.colorPage },
   page: { gap: tokens.spaceMd, paddingHorizontal: tokens.spaceXxl, paddingTop: tokens.spaceLg },
@@ -266,7 +246,6 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1, minWidth: 0 },
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  glass: { width: 40, justifyContent: 'center' },
   title: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   white: { color: tokens.colorInkOnDark },
   waiting: { opacity: 0 },
