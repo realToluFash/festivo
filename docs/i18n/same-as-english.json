@@ -236,7 +236,9 @@
     "web:kitchenSheet.allergies",
     "messagesCounts:kitchen_sheet.allergies",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "web:eventMessages.message",
+    "messagesCounts:guest_message.notice.from"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
