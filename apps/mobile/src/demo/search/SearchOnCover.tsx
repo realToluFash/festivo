@@ -20,6 +20,7 @@ import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
 import { useLayout } from '../../layout/useLayout.ts';
+import { openerRoom } from '../../layout/capsuleFit.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { demoShell } from '../demoShell.ts';
 import { OrgSwitcherProvider } from '../OrgSwitcher.tsx';
@@ -134,14 +135,10 @@ function TabletTop({
 }) {
   const { t } = useTranslation();
   const [row, setRow] = useState<number>();
-  const [capsule, setCapsule] = useState<number>();
   const labels = TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
   const inside = row == null ? 0 : Math.max(0, row - 2 * tokens.space3xl);
-  const { labelSize, givesWay, measure } = useCapsuleLabels(labels, inside, ENDS);
-  const room =
-    row == null || capsule == null
-      ? undefined
-      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(labels, inside, ENDS);
+  const room = openerRoom(row, width);
 
   return (
     <View
@@ -156,8 +153,8 @@ function TabletTop({
         <BellButton />
       </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
-        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} labelSize={labelSize} />
+        <View key={labelSize}>
+          {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
     </View>

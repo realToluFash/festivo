@@ -16,7 +16,7 @@ import { Text, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
 import { capUnderTitle, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
-import { CAPSULE_HEIGHT, CAPSULE_LABEL } from '../layout/capsuleFit.ts';
+import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -782,13 +782,13 @@ export function TodayCover({
 /** The upright iPad's top row: the opener keeps to the left of the centred capsule, its name wrapping rather than running under it. */
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
-  const [capsule, setCapsule] = useState<number>();
   const [end, setEnd] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row), end);
-  const room =
-    row == null || capsule == null
-      ? undefined
-      : Math.max(0, (row - capsule) / 2 - tokens.space3xl - tokens.spaceSm);
+  const { labelSize, givesWay, width, measure } = useCapsuleLabels(
+    useTabLabels(),
+    tabletRow(row),
+    end,
+  );
+  const room = openerRoom(row, width);
 
   return (
     <View
@@ -802,7 +802,7 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
         <SearchAndBell />
       </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
-        <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
+        <View key={labelSize}>
           {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
