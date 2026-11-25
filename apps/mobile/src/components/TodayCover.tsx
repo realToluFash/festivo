@@ -13,10 +13,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
+import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { capUnderTitle, piecesIn, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  capUnderTitle,
+  piecesIn,
+  wholeLineHeight,
+  wordsIn,
+} from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -946,10 +953,19 @@ export function Band({
   const [row, setRow] = useState<number>();
   const [end, setEnd] = useState<number>();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row), end);
+  const named =
+    now == null || moment.run != null || moment.full
+      ? null
+      : t('todayScreen.liveName', { name: now.name });
+  const grown = !phone && named != null && atAccessibilitySizes(fontScale);
 
   return (
-    <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
+    <View
+      style={[styles.band, { [grown ? 'minHeight' : 'height']: top + bandBody(moment, layout) }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
       {now == null ? (
         <>
           <Cover pieces={[]} shade="foot" />
@@ -962,10 +978,9 @@ export function Band({
       )}
       <View
         style={[
-          phone ? [styles.topPhone, coverRowSides(insets)] : styles.topTablet,
+          phone ? [styles.topPhone, coverRowSides(insets)] : [styles.topTablet, styles.capsuleRoom],
           { marginTop: top },
         ]}
-        onLayout={(event) => setRow(event.nativeEvent.layout.width)}
       >
         {!phone && measure}
         <OrgButton compact />
@@ -983,17 +998,20 @@ export function Band({
           )}
         </View>
       </View>
-      {now != null && (
-        <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
-          <View style={styles.liveDot} />
-          <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
-            {moment.run != null
-              ? moment.run.band
-              : moment.full
-                ? t('todayScreen.nowLine', { happening: now.happening, until: now.until })
-                : t('todayScreen.liveName', { name: now.name })}
-          </Text>
-        </View>
+      {grown ? (
+        <BandLiveLine scale={fontScale} said={named} width={row} />
+      ) : (
+        now != null && (
+          <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
+            <View style={styles.liveDot} />
+            <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
+              {moment.run != null
+                ? moment.run.band
+                : (named ??
+                  t('todayScreen.nowLine', { happening: now.happening, until: now.until }))}
+            </Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -1302,6 +1320,7 @@ const styles = StyleSheet.create({
   },
   capsuleOn: { backgroundColor: tokens.colorCard },
   capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
+  capsuleRoom: { minHeight: 7 + CAPSULE_HEIGHT },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
   subLine: { flexDirection: 'row', flexWrap: 'wrap' },
   liveDot: {
