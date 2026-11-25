@@ -4,8 +4,23 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312) and upright (sc-93211), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'En cours · AX5, upright',
+    what: 'En cours and Jour 1 sur 1 at their full size, each chip grown to hold its words, the second under the first where both do not fit, both clear of the tabs above and the name below',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner',
+  },
+  {
+    title: 'Live now · AX1, upright',
+    what: 'Live now with its dot and Day 1 of 1, each whole in its chip at the size chosen, nothing in “…”',
+    href: '/demo/today-size?size=ax1&lang=en&live=dinner',
+  },
+  {
+    title: 'Jour 1 sur 1 · AX5, upright, a venue',
+    what: 'Jour 1 sur 1 · Salle des fêtes du Château de Chantilly in full on as many lines as it needs, each ending between words, the dot on the word before it, the cover grown down',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&venue=chantilly',
+  },
   {
     title: 'En cours · AX5, on its side',
     what: 'Dîner en direct whole, or Dîner en / direct; En cours and Jour 1 sur 1 each whole in its chip, the second under the first where both do not fit; Ouvrir l’événement under the end line',

@@ -340,6 +340,23 @@ export const LIVE_OPEN = 16;
 /** The one-day event is live until 23:30 today, with no venue, so its chip reads Day 1 of 1 alone. */
 export const LIVE_ENDS_AT = '23:30';
 
+export type TodayVenue = 'none' | 'chantilly';
+
+/** The live event's venue: none, so the day's chip reads Day 1 of 1 alone, or a long one that takes the chip several lines from AX1 (sc-93211). */
+export const TODAY_VENUES: readonly { key: TodayVenue; label: string }[] = [
+  { key: 'none', label: 'No venue' },
+  { key: 'chantilly', label: 'Salle des fêtes du Château de Chantilly' },
+];
+
+export function venueName(venue: TodayVenue): string | null {
+  return venue === 'none' ? null : (TODAY_VENUES.find((one) => one.key === venue)?.label ?? null);
+}
+
+/** sc-93211: upright from AX1 a chip's words draw at main's size at the stand-in size and never step down; the chip grows to hold them. */
+export function uprightChipSize(scale: number): number {
+  return LIVE_CHIP * scale;
+}
+
 /** From AX1 Open the event takes the line under the end line, so the name keeps the cover's width (sc-92312). */
 export function openUnder(scale: number): boolean {
   return atAccessibilitySizes(scale);

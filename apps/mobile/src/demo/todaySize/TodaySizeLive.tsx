@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  type TextStyle,
+  View,
+} from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
+import { Text } from '../../components/Text.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { BellButton } from '../../components/TodayCover.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
 import { meshFor } from '../../kit/today.ts';
 import { dayChipRoom, liveChipRoom, openRoom } from '../../layout/liveCoverFit.ts';
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
+import { atAccessibilitySizes, dotKept } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { FitWords } from './FitWords.tsx';
 import {
@@ -18,10 +26,21 @@ import {
   LIVE_NAME,
   LIVE_OPEN,
   openUnder,
+  uprightChipSize,
 } from './todaySizeRules.ts';
 
-/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. */
-export function LiveBanner({ name, scale }: { name: string; scale: number }) {
+/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. With `top`, the upright cover under that row (sc-93211): from AX1 its chips keep main's size and grow to hold their words. */
+export function LiveBanner({
+  name,
+  place,
+  scale,
+  top,
+}: {
+  name: string;
+  place: string | null;
+  scale: number;
+  top?: ReactNode;
+}) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
   const [column, setColumn] = useState(0);
@@ -30,6 +49,10 @@ export function LiveBanner({ name, scale }: { name: string; scale: number }) {
   const big = atAccessibilitySizes(scale);
   const under = openUnder(scale);
   const label = t('todayScreen.openEvent');
+  const upright = top != null;
+  const grown = upright && big;
+  const dayLine = t('todayScreen.dayOfCapital', { day: 1, total: 1 });
+  const day = place == null ? dayLine : t('todayScreen.dayAndPlace', { day: dayLine, place });
 
   const open = (
     <Pressable
@@ -72,29 +95,46 @@ export function LiveBanner({ name, scale }: { name: string; scale: number }) {
           <View style={styles.liveRing}>
             <View style={styles.liveDot} />
           </View>
-          <FitWords
-            text={t('todayScreen.liveNow')}
-            size={LIVE_CHIP}
-            scale={scale}
-            cap={cap}
-            room={liveChipRoom(column)}
-            weight="semibold"
-            line={1.22}
-            style={styles.shrink}
-          />
+          {grown ? (
+            <GrownWords
+              text={t('todayScreen.liveNow')}
+              scale={scale}
+              testID="demo.todaySize.liveChip"
+            />
+          ) : (
+            <FitWords
+              text={t('todayScreen.liveNow')}
+              size={LIVE_CHIP}
+              scale={scale}
+              cap={cap}
+              room={liveChipRoom(column)}
+              weight="semibold"
+              line={1.22}
+              style={styles.shrink}
+            />
+          )}
         </View>
         <View style={[styles.chip, styles.chipDark, big ? styles.chipGrows : styles.chipFixed]}>
-          <FitWords
-            text={t('todayScreen.dayOfCapital', { day: 1, total: 1 })}
-            size={LIVE_CHIP}
-            scale={scale}
-            cap={cap}
-            room={dayChipRoom(column)}
-            weight="semibold"
-            line={1.22}
-            lines={big ? undefined : 1}
-            style={[styles.white, styles.shrink]}
-          />
+          {grown ? (
+            <GrownWords
+              text={dotKept(day)}
+              scale={scale}
+              style={styles.white}
+              testID="demo.todaySize.dayChip"
+            />
+          ) : (
+            <FitWords
+              text={dotKept(day)}
+              size={LIVE_CHIP}
+              scale={scale}
+              cap={cap}
+              room={dayChipRoom(column)}
+              weight="semibold"
+              line={1.22}
+              lines={big ? undefined : 1}
+              style={[styles.white, styles.shrink]}
+            />
+          )}
         </View>
       </View>
       <FitWords
@@ -124,23 +164,61 @@ export function LiveBanner({ name, scale }: { name: string; scale: number }) {
     </View>
   );
 
+  const block = under ? (
+    words
+  ) : (
+    <View style={styles.wideRow}>
+      {words}
+      {open}
+    </View>
+  );
+
+  if (upright)
+    return (
+      <View style={styles.upright} testID="demo.todaySize.liveUpright">
+        <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
+        <View style={styles.uprightTop}>{top}</View>
+        <View style={styles.grow} />
+        <View style={styles.uprightNow}>{block}</View>
+      </View>
+    );
+
   return (
     <View style={styles.banner}>
       <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
       <View style={styles.bell}>
         <BellButton />
       </View>
-      <View style={styles.now}>
-        {under ? (
-          words
-        ) : (
-          <View style={styles.wideRow}>
-            {words}
-            {open}
-          </View>
-        )}
-      </View>
+      <View style={styles.now}>{block}</View>
     </View>
+  );
+}
+
+/** A chip's words upright from AX1: main's 13 at the stand-in size, wrapping only between words, and never stepped down (sc-93211). */
+function GrownWords({
+  text,
+  scale,
+  style,
+  testID,
+}: {
+  text: string;
+  scale: number;
+  style?: StyleProp<TextStyle>;
+  testID: string;
+}) {
+  const size = uprightChipSize(scale);
+
+  return (
+    <Text
+      key={size}
+      size={size}
+      weight="semibold"
+      allowFontScaling={false}
+      style={[{ lineHeight: Math.ceil(size * 1.22) }, style, styles.shrink]}
+      testID={testID}
+    >
+      {text}
+    </Text>
   );
 }
 
@@ -150,6 +228,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 236,
     justifyContent: 'flex-end',
+  },
+  upright: { overflow: 'hidden', minHeight: 410, paddingTop: tokens.space6xl },
+  uprightTop: { marginTop: -tokens.space4xl, marginBottom: tokens.space4xl },
+  uprightNow: {
+    marginHorizontal: tokens.space4xl,
+    marginBottom: tokens.space4xl,
+    marginTop: tokens.spaceXl,
   },
   bell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
   now: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
