@@ -159,6 +159,6 @@
     "plan_sold_by_contract": "Este plan se vende por contrato, no mediante el pago en línea. Consulte a Soirely para contratarlo.",
     "plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
     "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan.",
-    "table_not_yours": "Esta mesa está en la sección de otra persona. Pregúntele a esa persona o al jefe de sala.",
+    "table_not_yours": "Esta mesa está en la sección de otra persona. Pregúntele a esa persona o al responsable de sala.",
     "level_not_allowed_for_code": "Un código no puede dar acceso para dirigir la sala. Dé ese acceso a una sola persona, con su propio enlace desde la plantilla."
 }
