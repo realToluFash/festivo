@@ -16,6 +16,7 @@ use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
 use App\Http\Exception\ApiException;
 use App\Locale\VisibleText;
+use App\Repository\GuestMessageRepository;
 use DateInterval;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
@@ -35,6 +36,7 @@ final readonly class GuestMessageSender
 
     public function __construct(
         private GuestReach $guestReach,
+        private GuestMessageRepository $guestMessageRepository,
         private NotificationScheduler $notificationScheduler,
         private Connection $connection,
         private EntityManagerInterface $entityManager,
@@ -48,6 +50,7 @@ final readonly class GuestMessageSender
     public function check(Event $event, string $choice, array $guestIds): GuestMessagePlan
     {
         $this->assertCanSend($event);
+        $guestIds = self::uuids($guestIds);
         $violations = $this->audienceViolations($choice, $guestIds);
 
         if ([] !== $violations) {
@@ -58,9 +61,10 @@ final readonly class GuestMessageSender
     }
 
     /** @param list<string> $guestIds */
-    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message): GuestMessageSent
+    public function send(Event $event, User $by, string $choice, array $guestIds, ?string $subject, string $message, ?string $follows = null): GuestMessageSent
     {
         $this->assertCanSend($event);
+        $guestIds = self::uuids($guestIds);
         $subject = null === $subject ? null : Str\trim($subject);
         $subject = '' === $subject ? null : $subject;
         $message = Str\trim($message);
@@ -76,13 +80,19 @@ final readonly class GuestMessageSender
             $violations[] = $this->violation('message', 'validation.guest_message_too_long', GuestMessage::BODY_MAXIMUM);
         }
 
+        $conversation = null === $follows ? null : $this->guestMessageRepository->findOneOn($event, $follows)?->conversation();
+
+        if (null !== $follows && null === $conversation) {
+            $violations[] = $this->violation('follows', 'validation.guest_message_follows_unknown');
+        }
+
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
 
         $id = Uuid::v7();
 
-        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $subject, $message, $id): GuestMessageSent {
+        return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $subject, $message, $id, $conversation): GuestMessageSent {
             $plan = $this->plan($event, $choice, $guestIds);
             $audience = GuestAudienceResolver::audience($event->getId(), $choice, $guestIds);
             $scheduled = $this->notificationScheduler->scheduleFannedOut(GuestMessageNotice::NAME, $id->toRfc4122(), $audience, ['message' => $id->toRfc4122()], $event, $plan->deliveries);
@@ -98,6 +108,7 @@ final readonly class GuestMessageSender
                 'created_by_name' => $by->getName(),
                 'scheduled_notification_id' => $scheduled->toRfc4122(),
                 'created_at' => $this->clock->now(),
+                'follows_id' => $conversation?->getId()->toRfc4122(),
             ], ['created_at' => Types::DATETIME_IMMUTABLE]);
 
             $this->auditor->record(self::SENT, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), [
@@ -132,9 +143,17 @@ final readonly class GuestMessageSender
      */
     private function audienceViolations(string $choice, array $guestIds): array
     {
-        $valid = Vec\filter($guestIds, Uuid::isValid(...));
+        return GuestMessage::CHOSEN === $choice && [] === $guestIds ? [$this->violation('guestIds', 'validation.guest_message_choose_guests')] : [];
+    }
 
-        return GuestMessage::CHOSEN === $choice && [] === $valid ? [$this->violation('guestIds', 'validation.guest_message_choose_guests')] : [];
+    /**
+     * @param list<string> $guestIds
+     *
+     * @return list<string>
+     */
+    private static function uuids(array $guestIds): array
+    {
+        return Vec\values(Vec\filter($guestIds, Uuid::isValid(...)));
     }
 
     /** A Draft can't send yet, and a finished event only for 30 days after it ended; a paused one can, so the host can say why. */

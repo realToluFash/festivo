@@ -59,6 +59,11 @@ class GuestMessage
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $createdAt;
 
+    /** The first message of the conversation this one follows up; null on a conversation's first. */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?GuestMessage $follows = null;
+
     public function getId(): Uuid
     {
         return $this->id;
@@ -108,5 +113,16 @@ class GuestMessage
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getFollows(): ?self
+    {
+        return $this->follows;
+    }
+
+    /** The conversation's first message, which names it. */
+    public function conversation(): self
+    {
+        return $this->follows ?? $this;
     }
 }

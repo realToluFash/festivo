@@ -29,6 +29,7 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -440,6 +441,59 @@ final class GuestMessagesTest extends ApiTestCase
         $this->as($stranger, 'GET', $this->messages());
 
         self::assertSame(404, $this->statusCode());
+    }
+
+    #[Test]
+    public function aDeletedEventTakesNoSendAndNoCheck(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        self::service(Connection::class)->executeStatement('UPDATE events SET deleted_at = NOW() WHERE id = :id', ['id' => $this->eventId]);
+        self::em()->clear();
+
+        $this->send(['audience' => 'all', 'message' => 'Hello']);
+        self::assertSame(404, $this->statusCode());
+        $this->as($this->owner, 'POST', $this->messages() . '/check', ['audience' => 'all']);
+        self::assertSame(404, $this->statusCode());
+        self::assertSame(0, $this->messageCount());
+    }
+
+    #[Test]
+    public function aMalformedGuestIdIsLeftOutOfTheChoice(): void
+    {
+        $emeka = $this->add('Emeka Nwosu', 'emeka@example.test');
+        $this->add('Kemi Bello', 'kemi@example.test');
+
+        $check = $this->as($this->owner, 'POST', $this->messages() . '/check', ['audience' => 'chosen', 'guestIds' => ['x', $emeka]]);
+        self::assertSame(200, $this->statusCode(), Json\encode($check));
+        self::assertSame(1, $check['people']);
+
+        $sent = $this->send(['audience' => 'chosen', 'guestIds' => ['x', $emeka], 'message' => 'Hello']);
+        self::assertSame(202, $this->statusCode(), Json\encode($sent));
+        self::assertSame([$emeka], Json\decode(Type\string()->coerce(self::service(Connection::class)->fetchOne('SELECT chosen_guest_ids FROM guest_messages'))));
+
+        $this->send(['audience' => 'chosen', 'guestIds' => ['x'], 'message' => 'Hello']);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['guestIds'], $this->paths($this->last()['violations'] ?? null));
+    }
+
+    #[Test]
+    public function aFollowUpJoinsTheConversationOfTheMessageItAnswers(): void
+    {
+        $this->add('Emeka Nwosu', 'emeka@example.test');
+        $first = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'Hello'])['id']);
+        $second = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'And parking', 'follows' => $first])['id']);
+        $third = Type\string()->coerce($this->send(['audience' => 'all', 'message' => 'And the gate', 'follows' => $second])['id']);
+        self::assertSame(202, $this->statusCode());
+
+        $follows = Dict\from_entries(Vec\map(
+            Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($this->as($this->owner, 'GET', $this->messages())['messages'] ?? null),
+            static fn (array $row): array => [Type\string()->coerce($row['id']), $row['follows']],
+        ));
+        self::assertSame([$third => $first, $second => $first, $first => null], $follows);
+
+        $this->send(['audience' => 'all', 'message' => 'Lost', 'follows' => '0190c9a5-0000-7000-8000-000000000000']);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(['follows'], $this->paths($this->last()['violations'] ?? null));
     }
 
     #[Test]

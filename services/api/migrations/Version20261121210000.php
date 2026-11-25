@@ -11,7 +11,7 @@ final class Version20261121210000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'A host\'s message to guests (sc-3942): the message, the address each email delivery went to and why one was not sent, and a guest\'s address marked bouncing. No delivery predates the columns.';
+        return 'A host\'s message to guests (sc-3942): the message and the conversation it follows up, the address each email delivery went to and why one was not sent, and a guest\'s address marked bouncing. No delivery predates the columns.';
     }
 
     public function up(Schema $schema): void
@@ -28,15 +28,18 @@ final class Version20261121210000 extends AbstractMigration
                 created_by_name           VARCHAR(255) NOT NULL,
                 scheduled_notification_id UUID NOT NULL,
                 created_at                TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                follows_id                UUID DEFAULT NULL,
                 PRIMARY KEY (id),
                 CONSTRAINT chk_guest_message_audience CHECK (audience IN ('all', 'chosen'))
             )
             SQL);
         $this->addSql('CREATE INDEX idx_guest_message_event ON guest_messages (event_id, created_at)');
         $this->addSql('CREATE INDEX IDX_GUEST_MESSAGE_CREATED_BY ON guest_messages (created_by_id)');
+        $this->addSql('CREATE INDEX IDX_GUEST_MESSAGE_FOLLOWS ON guest_messages (follows_id)');
         $this->addSql('CREATE UNIQUE INDEX uniq_guest_message_scheduled ON guest_messages (scheduled_notification_id)');
         $this->addSql('ALTER TABLE guest_messages ADD CONSTRAINT FK_GUEST_MESSAGE_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE');
         $this->addSql('ALTER TABLE guest_messages ADD CONSTRAINT FK_GUEST_MESSAGE_CREATED_BY FOREIGN KEY (created_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
+        $this->addSql('ALTER TABLE guest_messages ADD CONSTRAINT FK_GUEST_MESSAGE_FOLLOWS FOREIGN KEY (follows_id) REFERENCES guest_messages (id) ON DELETE CASCADE NOT DEFERRABLE');
         $this->addSql('ALTER TABLE guest_messages ADD CONSTRAINT FK_GUEST_MESSAGE_SCHEDULED FOREIGN KEY (scheduled_notification_id) REFERENCES scheduled_notifications (id) ON DELETE CASCADE NOT DEFERRABLE');
 
         $this->addSql('ALTER TABLE notification_deliveries ADD address VARCHAR(254) DEFAULT NULL');

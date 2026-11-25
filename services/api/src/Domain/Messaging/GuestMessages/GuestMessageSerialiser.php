@@ -129,6 +129,7 @@ final readonly class GuestMessageSerialiser
             'channels' => ['email'],
             'sentBy' => $message->getCreatedByName(),
             'sentAt' => $message->getCreatedAt()->format(DateTimeInterface::ATOM),
+            'follows' => $message->getFollows()?->getId()->toRfc4122(),
         ];
     }
 

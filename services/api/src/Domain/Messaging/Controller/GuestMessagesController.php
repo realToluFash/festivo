@@ -123,7 +123,7 @@ final readonly class GuestMessagesController
         ]);
     }
 
-    /** 202 with how many email deliveries were queued and how many can't be told, even when none can: the message is on their pages all the same. */
+    /** 202 with how many email deliveries were queued and how many can't be told, even when none can: the message is on their pages all the same. `follows` names a message of this event whose conversation it continues. */
     #[Route('/api/events/{eventId}/messages', name: 'guest_messages_send', methods: ['POST'])]
     #[InEvent(Permission::MessagesManage)]
     public function send(Request $request, string $eventId): JsonResponse
@@ -133,8 +133,9 @@ final readonly class GuestMessagesController
             'guestIds' => Type\optional(Type\vec(Type\string())),
             'subject' => Type\optional(Type\nullable(Type\string())),
             'message' => Type\string(),
+            'follows' => Type\optional(Type\nullable(Type\string())),
         ]));
-        $sent = $this->guestMessageSender->send($this->event($eventId), $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message']);
+        $sent = $this->guestMessageSender->send($this->event($eventId), $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message'], $body['follows'] ?? null);
         $queued = $sent->plan->toldByEmail();
         $this->guestMessagesChanged->onEvent($eventId);
 
