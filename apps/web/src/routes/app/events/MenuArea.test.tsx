@@ -307,7 +307,9 @@ describe('The event’s Menu (sc-3902)', () => {
       ),
     ).toBeDefined();
     expect(within(dialog).getByText('Nobody is messaged from here.')).toBeDefined();
-    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' })),
+    );
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog')).toBeNull();
@@ -1820,7 +1822,7 @@ describe('The event’s Menu (sc-3902)', () => {
         name: 'Move 21 guests to Rice and stew, Plate?',
       });
       expect(dialog.textContent).toContain('2 go back to not chosen');
-      expect(document.activeElement?.textContent).toBe('Cancel');
+      await waitFor(() => expect(document.activeElement?.textContent).toBe('Cancel'));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Move 21 guests' }));
 
       expect(
