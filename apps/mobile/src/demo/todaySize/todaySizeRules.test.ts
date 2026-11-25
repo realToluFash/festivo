@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
 import { dotKept } from '../../layout/textSize.ts';
@@ -273,15 +276,17 @@ describe('the live cover on its side (sc-92312)', () => {
 });
 
 describe('the live cover upright (sc-93578)', () => {
-  // The iPad Pro 13-inch upright: 1032 wide, the cover's words 28 in from each side.
-  const COVER = 1032 - 2 * 28;
-  const BESIDE_FR = 343;
-  const DIRECT_AT_AX5 = 560;
+  const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
 
-  it('keeps the name at its size at AX5 across the cover, where beside Open the event it would step down', () => {
-    const start = wordsStart(LIVE_NAME, AX5, Infinity);
-    expect(wordsSize(LIVE_NAME, AX5, Infinity, DIRECT_AT_AX5, COVER)).toBe(start);
-    expect(wordsSize(LIVE_NAME, AX5, Infinity, DIRECT_AT_AX5, BESIDE_FR)).toBeLessThan(start);
+  it('draws Open the event inside the words column upright, as on its side, never beside the name', () => {
+    const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+    const upright = /\n {2}if \(upright\)[\s\S]*?\n {4}\);\n/u.exec(live)?.[0] ?? '';
+
+    expect(words).toMatch(
+      /\{under && <View style=\{styles\.openUnder\}>\{open\}<\/View>\}\n {4}<\/View>\n/u,
+    );
+    expect(live).toMatch(/\n {2}const block = under \? \(\n {4}words\n {2}\) : \(/u);
+    expect(upright).toMatch(/<View style=\{styles\.uprightNow\}>\{block\}<\/View>/u);
   });
 
   it('moves Open the event under the end line from AX1, as on its side', () => {
