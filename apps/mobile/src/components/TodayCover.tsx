@@ -251,11 +251,6 @@ function SearchAndBell() {
   );
 }
 
-/** How far Search beside the bell takes the upright row's end past the 46 tile the capsule's room allows for at each side. */
-function useEndsPastTile(): number {
-  return useTodayShell().search ? 40 + tokens.spaceSm + 40 - 46 : 0;
-}
-
 /** iPadOS 26's tab bar, in glass at the top of the cover. */
 export function TabCapsule({
   onTab,
@@ -732,10 +727,8 @@ export function TodayCover({
 function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
   const [row, setRow] = useState<number>();
   const [capsule, setCapsule] = useState<number>();
-  const { labelSize, givesWay, measure } = useCapsuleLabels(
-    useTabLabels(),
-    tabletRow(row, useEndsPastTile()),
-  );
+  const [end, setEnd] = useState<number>();
+  const { labelSize, givesWay, measure } = useCapsuleLabels(useTabLabels(), tabletRow(row), end);
   const room =
     row == null || capsule == null
       ? undefined
@@ -749,10 +742,12 @@ function TabletTop({ top, onTab }: { top: number; onTab: (tab: Tab) => void }) {
       {measure}
       <OrgButton maxWidth={room} givesWay={givesWay} />
       <View style={styles.grow} />
-      <SearchAndBell />
+      <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+        <SearchAndBell />
+      </View>
       <View style={styles.capsuleAt} pointerEvents="box-none">
         <View onLayout={(event) => setCapsule(event.nativeEvent.layout.width)}>
-          <TabCapsule onTab={onTab} labelSize={labelSize} />
+          {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
         </View>
       </View>
     </View>
@@ -765,9 +760,9 @@ function useTabLabels(): string[] {
   return TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
 }
 
-/** The upright tablet's row from the tile's edge to the bell's, inside its side margins, less what the end takes past the tile at each side, as the capsule is centred. */
-function tabletRow(width: number | undefined, endsPastTile = 0): number {
-  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl - 2 * endsPastTile);
+/** The upright tablet's row inside its side margins. */
+function tabletRow(width: number | undefined): number {
+  return width == null ? 0 : Math.max(0, width - 2 * tokens.space3xl);
 }
 
 export function Band({
@@ -785,12 +780,9 @@ export function Band({
   const { now } = moment;
   const phone = layout === 'phone';
   const [row, setRow] = useState<number>();
-  const endsPastTile = useEndsPastTile();
+  const [end, setEnd] = useState<number>();
   const insets = useSafeAreaInsets();
-  const { labelSize, measure } = useCapsuleLabels(
-    useTabLabels(),
-    phone ? 0 : tabletRow(row, endsPastTile),
-  );
+  const { labelSize, measure } = useCapsuleLabels(useTabLabels(), phone ? 0 : tabletRow(row), end);
 
   return (
     <View style={[styles.band, { height: top + bandBody(moment, layout) }]}>
@@ -814,14 +806,16 @@ export function Band({
         {!phone && measure}
         <OrgButton compact />
         <View style={styles.grow} />
-        <SearchAndBell />
+        <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+          <SearchAndBell />
+        </View>
         <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
           {phone ? (
             <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
               {t('todayScreen.today')}
             </Text>
           ) : (
-            <TabCapsule onTab={onTab} labelSize={labelSize} />
+            labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />
           )}
         </View>
       </View>

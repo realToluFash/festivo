@@ -44,6 +44,21 @@ export function capsuleLabelSize(
   return fitWidest(Math.min(CAPSULE_LABEL, own), own, labels, room - capsuleChrome(tabs));
 }
 
+/** The labels' one size once each label, the row and its end have been laid out, and nothing before: a capsule drawn ahead of them is drawn at its own size and sets the band's height from it (sc-91290). */
+export function fittedLabelSize(
+  fontScale: number,
+  labels: readonly (number | undefined)[],
+  rowWidth: number,
+  end: number | undefined,
+): number | undefined {
+  if (labels.length === 0 || rowWidth <= 0 || end == null) return undefined;
+  if (labels.some((width) => width == null)) return undefined;
+
+  const total = labels.reduce<number>((sum, width) => sum + (width ?? 0), 0);
+
+  return capsuleLabelSize(fontScale, labels.length, total, capsuleRoom(rowWidth, end));
+}
+
 /** The tabs take their room first: while their labels are under their own size the pill is its tile. */
 export function pillGivesWay(fontScale: number, labelSize: number): boolean {
   return labelSize < CAPSULE_LABEL * fontScale;

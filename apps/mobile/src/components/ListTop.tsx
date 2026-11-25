@@ -128,7 +128,7 @@ export function PortraitRow({
   const [rowWidth, setRowWidth] = useState(0);
   const [tabsWidth, setTabsWidth] = useState(0);
   const [tabsHeight, setTabsHeight] = useState(0);
-  const [endWidth, setEndWidth] = useState(0);
+  const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
@@ -153,7 +153,7 @@ export function PortraitRow({
             setTabsHeight(event.nativeEvent.layout.height);
           }}
         >
-          {renderTabs(labelSize)}
+          {labelSize != null && renderTabs(labelSize)}
         </View>
       </View>
     </View>

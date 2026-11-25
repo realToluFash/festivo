@@ -1,45 +1,31 @@
 import { type ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
 
-import {
-  CAPSULE_LABEL,
-  capsuleLabelSize,
-  capsuleRoom,
-  pillGivesWay,
-} from '../layout/capsuleFit.ts';
+import { CAPSULE_LABEL, fittedLabelSize, pillGivesWay } from '../layout/capsuleFit.ts';
 import { useMeasuredAt } from './Title.tsx';
 
 export interface CapsuleLabels {
-  /** The one size the capsule's labels are drawn at. */
-  labelSize: number;
+  /** The one size the capsule's labels are drawn at, undefined until the labels, the row and its end are measured, when the capsule is not drawn yet. */
+  labelSize: number | undefined;
   /** The labels are under their own size, so the pill beside them is its tile. */
   givesWay: boolean;
   /** The labels drawn unseen at their own size, to be measured; it goes in the row. */
   measure: ReactNode;
 }
 
-/** The size an upright tablet's capsule draws `labels` at in a row `rowWidth` wide from the tile's edge to the bell's, its end `end` wide (sc-40401). */
+/** The size an upright tablet's capsule draws `labels` at in a row `rowWidth` wide, its end `end` wide as laid out (sc-40401, sc-91290). */
 export function useCapsuleLabels(
   labels: readonly string[],
   rowWidth: number,
-  end = 0,
+  end: number | undefined,
 ): CapsuleLabels {
   const { fontScale } = useWindowDimensions();
-  const start = CAPSULE_LABEL * fontScale;
-  const { widths, measure } = useMeasuredAt(start, labels);
-  const total = widths.every((width) => width != null)
-    ? widths.reduce<number>((sum, width) => sum + (width ?? 0), 0)
-    : 0;
-  const labelSize = capsuleLabelSize(
-    fontScale,
-    labels.length,
-    total,
-    rowWidth > 0 ? capsuleRoom(rowWidth, end) : 0,
-  );
+  const { widths, measure } = useMeasuredAt(CAPSULE_LABEL * fontScale, labels);
+  const labelSize = fittedLabelSize(fontScale, widths, rowWidth, end);
 
   return {
     labelSize,
-    givesWay: pillGivesWay(fontScale, labelSize),
+    givesWay: labelSize != null && pillGivesWay(fontScale, labelSize),
     measure,
   };
 }
