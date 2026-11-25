@@ -1,0 +1,11 @@
+appId: com.soirely.app
+---
+- launchApp:
+    appId: com.soirely.app
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: 'welcome\.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}

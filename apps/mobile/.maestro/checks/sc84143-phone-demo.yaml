@@ -1,0 +1,9 @@
+# sc-84143 on a phone: the app's demo of bellUnknown, for the side-by-side.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bellUnknown
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: 'Ana Souza added a note to the event'
+    timeout: 20000
+- takeScreenshot: bell-phone-unknown-demo

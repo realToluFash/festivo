@@ -1,0 +1,17 @@
+# sc-48600: /events/${EVENT_ID}/edit?at=hosts opens the event's page with the hosts edit open, never the ShellContext Render Error. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- assertNotVisible: '.*ShellContext.*'
+- takeScreenshot: at-hosts
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- takeScreenshot: at-hosts-closed

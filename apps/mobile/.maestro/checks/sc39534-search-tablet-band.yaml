@@ -1,0 +1,56 @@
+# sc-39534: the upright tablet's header band carries the Search button on Today, Events, Calendar and Settings, and it opens the 600 palette. Needs UPRIGHT: LANDSCAPE_LEFT on a landscape-natural tablet, PORTRAIT otherwise.
+appId: host.exp.Exponent
+---
+- setOrientation: ${UPRIGHT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'frame.search'
+    timeout: 30000
+- tapOn: '^Today$'
+- extendedWaitUntil:
+    visible:
+      id: 'today.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: today
+- tapOn: '^Events$'
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 30000
+- assertVisible:
+    id: 'frame.search'
+- waitForAnimationToEnd
+- takeScreenshot: events
+- tapOn: '^Calendar$'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.grid'
+    timeout: 30000
+- assertVisible:
+    id: 'frame.search'
+- waitForAnimationToEnd
+- takeScreenshot: calendar
+- tapOn: '^Settings$'
+- extendedWaitUntil:
+    visible: 'Choose a section|Security'
+    timeout: 30000
+- assertVisible:
+    id: 'frame.search'
+- waitForAnimationToEnd
+- takeScreenshot: settings
+- tapOn:
+    id: 'frame.search'
+- extendedWaitUntil:
+    visible:
+      id: 'search.field'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: idle
+- inputText: 'ines'
+- extendedWaitUntil:
+    visible: 'Inês Duarte'
+    timeout: 15000
+- takeScreenshot: mixed

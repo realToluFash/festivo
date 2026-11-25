@@ -1,0 +1,90 @@
+# sc-75211: a drilled level opens at its top with Back in view; Back finds the top level where it was left.
+appId: host.exp.Exponent
+---
+- runFlow: sc75211-setup.yaml
+- takeScreenshot: l-top
+- swipe: { start: '40%,80%', end: '40%,70%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: l-partway
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- takeScreenshot: l-when-from-partway
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: l-back-from-when-partway
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: l-top-foot
+- tapOn: { id: 'events.filter.hosts' }
+- waitForAnimationToEnd
+- takeScreenshot: l-hosts-opened
+- assertVisible: { id: 'events.filter.back' }
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: l-back-from-hosts
+- assertVisible: { id: 'events.filter.hosts' }
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: l-foot-before-type
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: l-type-opened
+- assertVisible: { id: 'events.filter.back' }
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: l-back-from-type
+- assertVisible: { id: 'events.filter.type' }
+- swipe: { start: '40%,88%', end: '40%,60%', duration: 400 }
+- waitForAnimationToEnd
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- takeScreenshot: l-when-opened
+- assertVisible: { id: 'events.filter.back' }
+- repeat:
+    while: { notVisible: { id: 'events.filter.when.between' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.when.between' }
+- waitForAnimationToEnd
+- repeat:
+    while: { notVisible: { id: 'events.filter.to' } }
+    times: 6
+    commands:
+      - swipe: { start: '40%,88%', end: '40%,60%', duration: 500 }
+      - waitForAnimationToEnd
+- takeScreenshot: l-between
+- swipe: { from: { id: 'events.filter.to' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: l-drag-up-from-to
+- swipe: { start: '40%,60%', end: '40%,92%', duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: l-drag-down-from-to
+- repeat:
+    while: { notVisible: { id: 'events.filter.from' } }
+    times: 8
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 500 }
+      - waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.from' }, direction: UP, duration: 400 }
+- waitForAnimationToEnd
+- takeScreenshot: l-drag-up-from-from
+- repeat:
+    while: { notVisible: { id: 'events.filter.when.any' } }
+    times: 8
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.when.any' }
+- waitForAnimationToEnd
+- takeScreenshot: l-when-any
+- repeat:
+    while: { notVisible: { id: 'events.filter.back' } }
+    times: 8
+    commands:
+      - swipe: { start: '40%,60%', end: '40%,88%', duration: 500 }
+      - waitForAnimationToEnd
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: l-back-from-when

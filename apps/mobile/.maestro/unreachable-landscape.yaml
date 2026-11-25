@@ -1,0 +1,12 @@
+# Turns the tablet to landscape on Cannot reach Soirely, screenshots, and turns it back. sc-13256. Pass SHOT.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 10000
+- takeScreenshot: ${SHOT}
+- setOrientation: PORTRAIT

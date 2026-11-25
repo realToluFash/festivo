@@ -1,0 +1,14 @@
+# Change your mobile number with a number typed and its cursor left in Mobile number, left at rest, for a TalkBack pass on Code. sc-43908. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/phone
+- extendedWaitUntil:
+    visible:
+      id: 'phone.country'
+    timeout: 30000
+- tapOn:
+    id: 'phone.number'
+- inputText: '612345678'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: phone-held

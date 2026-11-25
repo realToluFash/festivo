@@ -1,0 +1,23 @@
+# sc-30138: an event's People with the API stopped: the load-failed title and line, in each locale.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible:
+      id: 'people.retry'
+    timeout: 45000
+    optional: true
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

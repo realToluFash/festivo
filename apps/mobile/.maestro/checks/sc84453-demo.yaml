@@ -1,0 +1,70 @@
+# sc-84453: the demo states beside the product, iPad upright, for the side-by-side pairs.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?area=guests&filter=coming&from=today
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: party-guests-coming
+- openLink: ${METRO_URL}/--/demo/events/evt-party-2?area=guests&filter=coming&from=today&bell=open
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: bell-over-party
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?from=eventBell&pushed=1
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-overview-from-bell
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests&filter=changed&from=eventBell&pushed=1
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-guests-changed-from-bell
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=guests&filter=changed&from=today
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: same-event-guests-changed
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?from=eventBell&pushed=1&lang=es
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-overview-es
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?from=eventBellGone&pushed=1
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-over-gone
+- tapOn:
+    id: frame.back
+    optional: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: sc84453.never
+    timeout: 3000
+    optional: true
+- takeScreenshot: wedding-over-gone-back

@@ -1,0 +1,10 @@
+# sc-70353: an event's People on the phone, with outsiders whose addresses stand for their names.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'people.row.${P_AMAKA}' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: people
+- scrollUntilVisible: { element: { id: 'people.row.${P_MOBILE}' }, direction: DOWN, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: people-down

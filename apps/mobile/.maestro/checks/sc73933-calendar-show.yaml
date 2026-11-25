@@ -1,0 +1,9 @@
+# sc-73933 regression: the Calendar's Show menu opens at the device's text size.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil: { visible: { id: 'calendar.show' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'calendar.show' }
+- waitForAnimationToEnd
+- takeScreenshot: show-open

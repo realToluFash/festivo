@@ -1,0 +1,24 @@
+# Android only. sc-18108: the event ${EVENT} opened by its link from Home; Back shows the Events list, a second Back shows Home.
+appId: host.exp.Exponent
+---
+- runFlow: ../return-home.yaml
+- openLink: ${METRO_URL}/--/events/${EVENT}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: page
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'events.tab.upcoming'
+    timeout: 10000
+- assertNotVisible:
+    id: 'events.page'
+- takeScreenshot: after-back
+- back
+- extendedWaitUntil:
+    visible:
+      id: 'home.openSettings'
+    timeout: 10000
+- takeScreenshot: after-second-back

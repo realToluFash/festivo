@@ -1,0 +1,55 @@
+# sc-67708: on an iPad on its side, each area opened from the event's sidebar draws no ‹ Overview (events.back) above its name; Guests waits on ${GUEST_ID}'s row.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'event.side.card' }, timeout: 30000 }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: overview
+- tapOn: { id: 'event.nav.guests' }
+- extendedWaitUntil: { visible: { id: 'guests.row.${GUEST_ID}' }, timeout: 20000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: guests
+- tapOn: { id: 'event.nav.menu' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: menu
+- tapOn: { id: 'event.nav.seating' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: seating
+- tapOn: { id: 'event.nav.messages' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: messages
+- tapOn: { id: 'event.nav.schedule' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: schedule
+- tapOn: { id: 'event.nav.staff' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: staff
+- tapOn: { id: 'event.nav.people' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: people
+- tapOn: { id: 'event.nav.budget' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: budget
+- tapOn: { id: 'event.nav.reports' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- assertNotVisible: { id: 'events.back' }
+- takeScreenshot: reports

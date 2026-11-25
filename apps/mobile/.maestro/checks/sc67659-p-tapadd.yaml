@@ -1,0 +1,10 @@
+# sc-67659: one tap on + Add guest opens adding a guest.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.add' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- tapOn: { id: 'guests.add' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: t-add

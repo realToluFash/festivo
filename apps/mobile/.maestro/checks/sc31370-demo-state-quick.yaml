@@ -1,0 +1,7 @@
+# sc-31370: a timed state of the app demo's Messages (B) (the countdown, a reply arriving), screenshotted within two seconds.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 300
+- takeScreenshot: messages-${LAYOUT}-${STATE}-demo

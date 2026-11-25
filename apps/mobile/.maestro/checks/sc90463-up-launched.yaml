@@ -1,0 +1,12 @@
+# sc-90463: the reference upright. Expo Go closed, the iPad upright, then the app opened on PAGE. Vars: METRO_URL, PAGE.
+appId: host.exp.Exponent
+---
+- stopApp
+- setOrientation: PORTRAIT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/${PAGE}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 15000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/${PAGE}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: up-launched

@@ -1,0 +1,24 @@
+# sc-3787: the details of ${G_COVER}, whose reply a host recorded in an event with a Reply by, open on a cover card reading "{reply} · recorded by {name}, {how}, {date}". Pass METRO_URL, EVENT_ID, G_COVER (the guest's id) and G_COVER_NAME (their name, typed into search).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_COVER_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_COVER}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_COVER}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_COVER}'
+    timeout: 30000
+- assertVisible: '{{t:guestList.recordedLine}}'
+- takeScreenshot: cover

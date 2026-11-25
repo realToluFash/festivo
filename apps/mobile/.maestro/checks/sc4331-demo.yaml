@@ -1,0 +1,30 @@
+# sc-4331: the app demos' states for this story, for side-by-side pairs.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=bell
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: bell-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?area=messages&state=replyArrived
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: replyArrived-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changedRow
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changedRow-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changedMenu
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changedMenu-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changed-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changedNone
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changedNone-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changedFails
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changedFails-demo
+- openLink: ${METRO_URL}/--/demo/guests?state=changedFailed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: changedFailed-demo

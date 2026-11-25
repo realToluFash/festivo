@@ -1,0 +1,10 @@
+# sc-92580 regression: on the phone, the bell opens its own Notifications screen (Back and Mark all read on one row over the title). Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 5000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- tapOn: 'Notifica.*, .*'
+- extendedWaitUntil: { visible: { id: 'notifications.markAllRead' }, timeout: 15000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 1500, optional: true }
+- takeScreenshot: phone

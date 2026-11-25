@@ -1,0 +1,13 @@
+# Opens the app cold at LINK ('' for launch, or join/<token>) with the API stopped, and waits for
+# Cannot reach Soirely. sc-13256. Pass LINK and SHOT.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/${LINK}
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 60000
+- takeScreenshot: ${SHOT}

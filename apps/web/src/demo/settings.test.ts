@@ -1,0 +1,54 @@
+import { describe, expect, it } from 'vitest';
+
+import { VIEWERS, groupsFor, settingsPath, settingsSayIn, viewerOf } from './settings.ts';
+
+describe('the Settings list at a desk (sc-29708)', () => {
+  it('lists your account’s four sections, then the organisation’s five, with no Roles', () => {
+    expect(groupsFor(VIEWERS.folake)).toEqual([
+      {
+        name: 'Your account',
+        sections: ['account', 'security', 'notifications', 'personalisation'],
+      },
+      {
+        name: 'Organisation settings',
+        sections: ['general', 'members', 'signInRules', 'vendors', 'data'],
+      },
+    ]);
+  });
+
+  it('lists Members and Data for an owner or an admin, and not for a member', () => {
+    expect(groupsFor(VIEWERS.julien)[1]?.sections).toContain('members');
+    expect(groupsFor(VIEWERS.julien)[1]?.sections).toContain('data');
+    expect(groupsFor(VIEWERS.ana)[1]?.sections).toEqual(['general', 'signInRules']);
+  });
+
+  it('lists only General and Sign-in rules for a paused membership, whatever the role elsewhere (sc-86077)', () => {
+    expect(groupsFor(VIEWERS.folake, true)[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.ana, true)[1]?.sections).toEqual(['general', 'signInRules']);
+    expect(groupsFor(VIEWERS.folake, true)[0]?.sections).toHaveLength(4);
+  });
+
+  it('is Folake, the owner, unless the link names somebody it knows', () => {
+    expect(viewerOf(null).name).toBe('Folake Adeyemi');
+    expect(viewerOf('nobody').key).toBe('folake');
+    expect(viewerOf('ana')).toMatchObject({ role: 'Member', manages: false });
+    expect(viewerOf('tom').key).toBe('folake');
+  });
+
+  it('names who is looking and the state in the link, and leaves the owner out', () => {
+    expect(settingsPath('members', VIEWERS.folake)).toBe('/demo/settings/members');
+    expect(settingsPath('members', VIEWERS.julien, 'claim')).toBe(
+      '/demo/settings/members?as=julien&state=claim',
+    );
+  });
+
+  it('writes dates in the reader’s region, and deadlines in Lagos time', () => {
+    const say = settingsSayIn('en-US');
+
+    expect(say.date('2026-11-02')).toBe('Nov 2, 2026');
+    expect(say.day('2026-11-02')).toBe('Monday, Nov 2');
+    expect(settingsSayIn('en-GB').day('2026-11-02')).toBe('Monday 2 Nov');
+    expect(say.deadline('2026-11-16T09:12')).toBe('Monday, Nov 16 at 09:12 WAT');
+    expect(settingsSayIn('en-GB').date('2026-11-02')).toBe('2 Nov 2026');
+  });
+});

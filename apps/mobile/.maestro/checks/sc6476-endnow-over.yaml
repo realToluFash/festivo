@@ -1,0 +1,40 @@
+# sc-6476: End now's field at 280 characters and over it. Needs ${METRO_URL}, ${EV_END2}, ${ORIENT}, ${HELPER_URL}, ${ROT} (the harness path `/portrait` or `/landscape`, agreeing with ORIENT).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: ${ROT}
+- waitForAnimationToEnd:
+    timeout: 3000
+- openLink: ${METRO_URL}/--/events/${EV_END2}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 90000
+- scrollUntilVisible:
+    element:
+      id: 'events.end'
+    timeout: 30000
+- tapOn:
+    id: 'events.end'
+- waitForAnimationToEnd
+- tapOn:
+    id: 'events.endThankYou'
+- inputText: 'Thank you for coming, for dancing until the very last song and for every kind word you shared with us. Our day was better because you were in it, and we will remember it for a long time. With love from both of us and our families, see you very soon, all of you!!Thank you for comi'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: endNowLong
+- tapOn:
+    id: 'events.endThankYou'
+- inputText: ' More words.'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: endNowOverTyped
+- tapOn:
+    id: 'events.endYes'
+- waitForAnimationToEnd
+- takeScreenshot: endNowOver
+- tapOn:
+    id: 'events.endNo'

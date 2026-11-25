@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Soirely uses the camera to scan the codes guests show at the door."
+  }
+}

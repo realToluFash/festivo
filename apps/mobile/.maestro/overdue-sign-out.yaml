@@ -1,0 +1,19 @@
+# Signs out from the two-factor overdue screen, which has no Settings button, and ends on the screen the app opens on signed out. sc-28020.
+# At a large text size Sign out is drawn below the fold. sc-88284.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:any:signInRules.overdueTitle}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'twoFactorOverdue.signOut'
+    timeout: 20000
+- tapOn:
+    id: 'twoFactorOverdue.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 30000
+- takeScreenshot: signed-out
