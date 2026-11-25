@@ -84,3 +84,11 @@ describe('Add a phone number takes digits with no tap once it has settled (sc-91
     expect(settledFocus(false, 'arriving')).toBe('none');
   });
 });
+
+describe('a field sends no focus before the device says whether a screen reader is on (sc-91027)', () => {
+  it('waits for the answer in an arrived window, then sends focus once', () => {
+    expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
+    expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('focus');
+    expect(arrivedFocusStep({ ...waiting, readerOn: true, ticks: 1 })).toBe('done');
+  });
+});

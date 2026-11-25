@@ -51,7 +51,7 @@ import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
 import { arrivedFocusStep, openedFocus, WindowArriving } from './openedFocus.ts';
 import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
-import { moveScreenReaderFocus, useScreenReaderOn } from './screenReaderFocus.ts';
+import { moveScreenReaderFocus, useScreenReader } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
 import { Text, type TextHandle, TitleCap } from './Text.tsx';
 import { UnseenName } from './UnseenName.tsx';
@@ -409,7 +409,7 @@ export function useOpenedFocus(
   const arrival = useContext(WindowArriving);
   const [opened] = useState(() => openedFocus(autoFocus, arrival));
   const [ticks, setTicks] = useState(0);
-  const readerOn = useScreenReaderOn();
+  const readerOn = useScreenReader();
 
   useEffect(() => {
     const field = input.current;
@@ -424,7 +424,7 @@ export function useOpenedFocus(
     if (step === 'wait' || step === 'done' || field == null) return undefined;
     // TextInput's focus() skips a field JS already counts as focused, which a lost focus leaves it doing; with a reader on, the one focus is the one sent before the ticks.
     if (step === 'focus') {
-      if (readerOn) focusChecked(input);
+      if (readerOn === true) focusChecked(input);
       else raiseKeysOn(field);
     }
     const next = setTimeout(() => setTicks((count) => count + 1), NEW_FIELD_BOUND_MS);

@@ -38,8 +38,8 @@ export interface ArrivedFocus {
   focused: boolean;
   /** Another `Field` has input focus, by the same events: a tap put it there. A bare TextInput outside a `Field` sends this hook nothing, so a tap on one within the ticks has the field take focus back; JS's record of the focused input is no check, since a lost focus leaves it stale (qa2 #91741). */
   heldElsewhere: boolean;
-  /** TalkBack or another screen reader is on. Focus sent again after the reader has settled on the window's title pulls the reader onto the field, so the field is sent focus once, as before the ticks (qa #91929). */
-  readerOn: boolean;
+  /** TalkBack or another screen reader is on, or null until the device has said. Focus sent again after the reader has settled on the window's title pulls the reader onto the field, so the field is sent focus once, as before the ticks, and none until the answer is in (qa #91929). */
+  readerOn: boolean | null;
   ticks: number;
 }
 
@@ -48,6 +48,7 @@ export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 
   const last = at.readerOn ? 1 : ARRIVED_FOCUS_TICKS;
   if (at.opened !== 'arrived' || at.heldElsewhere || at.ticks >= last) return 'done';
   if (at.arrival === 'arriving') return at.focused ? 'done' : 'wait';
+  if (at.readerOn == null) return 'wait';
 
   return at.focused ? 'hold' : 'focus';
 }
