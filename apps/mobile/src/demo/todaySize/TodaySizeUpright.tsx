@@ -12,7 +12,8 @@ import { nameStart } from '../../layout/pillFit.ts';
 import { atAccessibilitySizes, nameLines } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useCurrentPlace } from '../OrgSwitcher.tsx';
-import { Pill, SearchGlass } from './TodaySizePill.tsx';
+import { SearchGlass } from '../SearchGlass.tsx';
+import { Pill } from './TodaySizePill.tsx';
 import { PILL_NAME, PILL_WAITING, uprightTile, uprightTop } from './todaySizeRules.ts';
 
 /** sc-92314: the upright iPad's top row at the stand-in size: the tabs centred at the size they fit, the pill beside them whole or its tile, Search and the bell at the end; from AX1 every item keeps to the top and the pill grows down. */

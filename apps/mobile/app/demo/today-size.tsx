@@ -10,13 +10,14 @@ import {
   TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
   TODAY_INVITES,
+  TODAY_LIVES,
   TODAY_NAMES,
   TODAY_ORGS,
   TODAY_WEEKS,
 } from '../../src/demo/todaySize/todaySizeRules.ts';
 
 export default function DemoTodaySize() {
-  const { size, lang, name, greeting, event, org, invite, week } = useLocalSearchParams<{
+  const { size, lang, name, greeting, event, org, invite, live, week } = useLocalSearchParams<{
     size?: string;
     lang?: string;
     name?: string;
@@ -24,6 +25,7 @@ export default function DemoTodaySize() {
     event?: string;
     org?: string;
     invite?: string;
+    live?: string;
     week?: string;
   }>();
   const start = {
@@ -34,6 +36,7 @@ export default function DemoTodaySize() {
     event: keyOf(TODAY_EVENT_NAMES, event, 'sample'),
     org: keyOf(TODAY_ORGS, org, 'qa'),
     invite: keyOf(TODAY_INVITES, invite, 'none'),
+    live: keyOf(TODAY_LIVES, live, 'none'),
     week: keyOf(TODAY_WEEKS, week, 'quiet'),
   };
 

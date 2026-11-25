@@ -4,13 +4,21 @@ import {
   EVENT_DATES,
   EVENT_NAME,
   HEAD,
+  LIVE_CHIP,
+  LIVE_ENDS,
+  LIVE_NAME,
   ONE_WORD,
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
+  dayChipRoom,
   dayLineShares,
   daysUntil,
   linkUnder,
+  liveChipRoom,
+  liveName,
+  openRoom,
+  openUnder,
   orgName,
   pillNameRoom,
   pillTileAlone,
@@ -204,5 +212,44 @@ describe('the upright iPad’s top row (sc-92314)', () => {
 
     expect(uprightTile(SEVENTH, top, { nameStart: 40, waitingLine: null })).toBe(false);
     expect(uprightTile(SEVENTH, top, { nameStart: top.pill, waitingLine: null })).toBe(true);
+  });
+});
+
+describe('the live cover on its side (sc-92312)', () => {
+  it('has a live event only once one is chosen', () => {
+    expect(liveName('none')).toBeNull();
+    expect(liveName('dinner')).toBe('Dîner en direct');
+    expect(liveName('oneWord')).toBe(ONE_WORD);
+  });
+
+  it('puts Open the event under the words from AX1 only', () => {
+    expect(openUnder(SEVENTH)).toBe(false);
+    expect(openUnder(AX1)).toBe(true);
+    expect(openUnder(AX5)).toBe(true);
+  });
+
+  it('breaks the name only between its words', () => {
+    expect(piecesOfLine('Dîner en direct')).toEqual(['Dîner', 'en', 'direct']);
+  });
+
+  it('steps the name down until direct fits, never under 48', () => {
+    const start = wordsStart(LIVE_NAME, AX5, Infinity);
+    expect(wordsSize(LIVE_NAME, AX5, Infinity, 600, 1000)).toBe(start);
+    expect(wordsSize(LIVE_NAME, AX5, Infinity, 1200, 1000)).toBe(Math.floor((start * 1000) / 1200));
+    expect(wordsSize(LIVE_NAME, AX5, Infinity, 9000, 1000)).toBe(LIVE_NAME);
+  });
+
+  it('starts the end line and the chips no larger than the name draws', () => {
+    expect(wordsStart(LIVE_ENDS, AX5, 40)).toBeCloseTo(40);
+    expect(wordsStart(LIVE_ENDS, AX5, Infinity)).toBe(LIVE_ENDS * AX5);
+    expect(wordsStart(LIVE_CHIP, AX5, 30)).toBeCloseTo(30);
+    expect(wordsStart(LIVE_ENDS, 1, 48)).toBe(LIVE_ENDS);
+  });
+
+  it('gives each chip and the button the column less what they hold', () => {
+    expect(dayChipRoom(500)).toBe(476);
+    expect(liveChipRoom(500)).toBe(456);
+    expect(openRoom(500)).toBe(430);
+    expect(liveChipRoom(10)).toBe(0);
   });
 });
