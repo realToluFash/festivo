@@ -25,6 +25,7 @@ import {
   wordsIn,
 } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
+import { CAPSULE_TOP } from '../layout/bandLive.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -1319,8 +1320,8 @@ const styles = StyleSheet.create({
     borderRadius: 19,
   },
   capsuleOn: { backgroundColor: tokens.colorCard },
-  capsuleAt: { position: 'absolute', left: 0, right: 0, top: 7, alignItems: 'center' },
-  capsuleRoom: { minHeight: 7 + CAPSULE_HEIGHT },
+  capsuleAt: { position: 'absolute', left: 0, right: 0, top: CAPSULE_TOP, alignItems: 'center' },
+  capsuleRoom: { minHeight: CAPSULE_TOP + CAPSULE_HEIGHT },
   eyebrow: { letterSpacing: 12 * 0.08, opacity: 0.92 },
   subLine: { flexDirection: 'row', flexWrap: 'wrap' },
   liveDot: {
