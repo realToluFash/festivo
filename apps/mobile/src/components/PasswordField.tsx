@@ -54,7 +54,7 @@ export function PasswordField({
   const labelID = useFieldLabel();
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useOpenedFocus(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <View>

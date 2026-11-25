@@ -49,7 +49,7 @@ import { tokens } from '../theme/tokens.ts';
 import { fieldChecked, fieldFocused, fieldLeft, fieldTyped } from './focusedField.ts';
 import { raiseKeysOn } from './keyboardWatch.ts';
 import { useReadOut } from './ReadOut.tsx';
-import { openedFocus, takesArrivedFocus, WindowArriving } from './openedFocus.ts';
+import { arrivedFocusStep, heldByAnother, openedFocus, WindowArriving } from './openedFocus.ts';
 import { bothRefs, useFocusOnAnswer } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { capUnderTitle, CONTROL_TEXT_SIZE } from '../layout/textSize.ts';
@@ -397,19 +397,37 @@ export function focusNewField(input: TextInputInstance | null): () => void {
   return () => clearTimeout(bound);
 }
 
-/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount (sc-91027). Spread `autoFocus` after the field's own props. */
-export function useOpenedFocus(autoFocus: boolean | undefined): {
+/** A field that opens focused in a sliding Android window takes its focus once the window has arrived, not at mount, sent again until Android says the field has it (sc-91027). Spread `autoFocus` after the field's own props; `focused` is the field's own focus, from its focus and blur events. */
+export function useOpenedFocus(
+  autoFocus: boolean | undefined,
+  focused: boolean,
+): {
   input: RefObject<TextInputInstance | null>;
   autoFocus: boolean | undefined;
 } {
   const input = useRef<TextInputInstance>(null);
-  const arriving = useContext(WindowArriving);
-  const [opened] = useState(() => openedFocus(autoFocus, arriving));
+  const arrival = useContext(WindowArriving);
+  const [opened] = useState(() => openedFocus(autoFocus, arrival));
+  const [focusedOnce, setFocusedOnce] = useState(false);
+  const [tries, setTries] = useState(0);
+  if (focused && !focusedOnce) setFocusedOnce(true);
 
   useEffect(() => {
-    if (takesArrivedFocus(opened, arriving, TextInput.State.currentlyFocusedInput()))
-      focusChecked(input);
-  }, [opened, arriving]);
+    const field = input.current;
+    const step = arrivedFocusStep({
+      opened,
+      arrival,
+      focusedOnce,
+      heldElsewhere: heldByAnother(TextInput.State.currentlyFocusedInput(), field),
+      tries,
+    });
+    if (step !== 'focus' || field == null) return undefined;
+    // TextInput's focus() skips a field JS already counts as focused, which a lost focus leaves it doing.
+    raiseKeysOn(field);
+    const again = setTimeout(() => setTries((count) => count + 1), NEW_FIELD_BOUND_MS);
+
+    return () => clearTimeout(again);
+  }, [opened, arrival, focusedOnce, tries]);
 
   return { input, autoFocus: opened === 'arrived' ? false : autoFocus };
 }
@@ -472,7 +490,7 @@ export function TextField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useOpenedFocus(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <TextInput
@@ -512,7 +530,7 @@ export function CodeField({
   const refused = useRefused(wrong);
   const { focused, edging } = useFocusEdge(rest.onFocus, rest.onBlur);
   const bold = useBoldText();
-  const opened = useOpenedFocus(rest.autoFocus);
+  const opened = useOpenedFocus(rest.autoFocus, focused);
 
   return (
     <TextInput
