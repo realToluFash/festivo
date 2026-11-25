@@ -98,7 +98,7 @@ export function TitleBesideTag({
   );
 }
 
-/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). */
+/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). `shown` reaches only what ends the name, so nothing it adds sits between the @ and the domain. */
 export function NameText({
   name,
   box,
@@ -134,7 +134,7 @@ export function NameText({
           if (isLoneAt(event.nativeEvent.lines.at(-1)?.text ?? '')) setAtAlone(true);
         }}
       >
-        {shown(atAlone ? atWithItsLastCharacter(runs[0]) : runs[0])}
+        {atAlone ? atWithItsLastCharacter(runs[0]) : runs[0]}
       </Text>
       <Text {...text} accessible={false}>
         {shown(runs[1])}
