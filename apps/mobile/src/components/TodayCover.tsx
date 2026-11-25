@@ -1,7 +1,8 @@
-import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
+  Platform,
   Pressable,
   StyleSheet,
   useWindowDimensions,
@@ -12,10 +13,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.ts';
-import { Text, type TextProps } from './Text.tsx';
+import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
-import { capUnderTitle, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
+import { capUnderTitle, piecesIn, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
@@ -27,9 +28,11 @@ import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
 import { Chips, RunNowBlock, WhiteButton } from './TodayRun.tsx';
-import { OPENER, OpenerWords, quietTap } from './OrgPill.tsx';
+import { OPENER, OpenerColumn, OpenerWords, quietTap } from './OrgPill.tsx';
 import { usePlainBell, useTodayShell } from './todayShell.ts';
 import { usePillFit } from './usePillFit.tsx';
+import { phoneNameRoom, phoneTileAlone, phoneWaitingRoom } from '../layout/pillFit.ts';
+import { titleWithInkRoom } from './titleWidth.ts';
 
 export type CoverLayout = 'phone' | 'portrait' | 'landscape';
 
@@ -115,17 +118,23 @@ export type Tab = (typeof TABS)[number][0];
 /** The ways out that the Maestro flows open Settings and the switcher by, from the signed-in home before Today too. */
 export const SETTINGS_ID: Partial<Record<Tab, string>> = { Settings: 'home.openSettings' };
 
+const NAME = 15;
+const WAITING = 12.5;
+
 /** The switcher's opener in glass: the tile alone on the band, the tile, the name and what waits on the cover. */
 export function OrgButton({
   compact = false,
   maxWidth,
   givesWay = false,
+  nameRoom,
 }: {
   compact?: boolean;
   /** The most it may take, so it stops short of what sits beside it. */
   maxWidth?: number | undefined;
   /** The tabs beside it took their room first, so it is its tile (sc-40401). */
   givesWay?: boolean;
+  /** On the phone's cover from AX1, the name's line, 0 until the row is measured (sc-92247). */
+  nameRoom?: number | undefined;
 }) {
   const ref = useRef<ViewInstance>(null);
   const org = useTodayShell().useOrgOpener(ref, !compact);
@@ -133,6 +142,13 @@ export function OrgButton({
   const large = useAccessibilitySizes();
   const lines = useNameLines();
   const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
+  const whole = phone && large && !compact && nameRoom != null;
+  const atDefault = useMeasuredAt(NAME, whole ? piecesIn([org.name]) : []);
+  const known = atDefault.widths.length > 0 && atDefault.widths.every((width) => width != null);
+  const wholeTile =
+    whole &&
+    known &&
+    phoneTileAlone(Math.max(...atDefault.widths.map((width) => width ?? 0)), nameRoom ?? 0);
   const shared = {
     ref,
     onPress: org.onPress,
@@ -160,10 +176,11 @@ export function OrgButton({
   const clear = phone ? tokens.spaceXl - 2 * tokens.spaceSm : tokens.space3xl;
   const wrap = phone || large;
 
-  if (tileAlone || givesWay)
+  if (tileAlone || givesWay || wholeTile)
     return (
       <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
         {measure}
+        {whole && atDefault.measure}
         {tile}
       </View>
     );
@@ -171,19 +188,116 @@ export function OrgButton({
   return (
     <View style={[styles.orgFit, { marginRight: clear, maxWidth }]}>
       {measure}
+      {whole && atDefault.measure}
       <Pressable {...shared} style={styles.orgWide}>
         <Glass height={tall} style={[styles.orgGlass, { height: undefined, minHeight: tall }]}>
           <OrgMark id={org.id} name={org.name} side={28} glass />
-          <OpenerWords
-            name={org.name}
-            waiting={org.waiting}
-            onDark
-            wrap={wrap}
-            lines={wrap ? undefined : lines}
-          />
+          {whole ? (
+            <WholeOpenerWords
+              name={org.name}
+              waiting={org.waiting}
+              room={nameRoom ?? 0}
+              hidden={!known || !nameRoom}
+            />
+          ) : (
+            <OpenerWords
+              name={org.name}
+              waiting={org.waiting}
+              onDark
+              wrap={wrap}
+              lines={wrap ? undefined : lines}
+            />
+          )}
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
       </Pressable>
+    </View>
+  );
+}
+
+/** From AX1 on the phone's cover, the name and the invitation line each step down alone rather than break a word, never under their default sizes, the invitation line never larger than the name; hidden until measured (sc-92247). */
+function WholeOpenerWords({
+  name,
+  waiting,
+  room,
+  hidden,
+}: {
+  name: string;
+  waiting: string | null;
+  room: number;
+  hidden: boolean;
+}) {
+  const [named, setNamed] = useState<number>();
+  const [line, setLine] = useState<number>();
+  const given = room > 0 ? room : undefined;
+
+  return (
+    <OpenerColumn
+      onDark
+      style={hidden && styles.hidden}
+      name={
+        <CappedWholeWords
+          size={NAME}
+          weight="semibold"
+          accessible={false}
+          room={given}
+          breakAfterHyphens
+          onDrawn={setNamed}
+          style={[
+            styles.white,
+            named != null && { lineHeight: wholeLineHeight(NAME, named, 1.25) },
+          ]}
+        >
+          {titleWithInkRoom(name, Platform.OS)}
+        </CappedWholeWords>
+      }
+      waiting={
+        waiting == null ? null : (
+          <View style={styles.grow}>
+            <CappedWholeWords
+              size={WAITING}
+              weight="semibold"
+              accessible={false}
+              under={named}
+              room={given == null ? undefined : phoneWaitingRoom(given)}
+              onDrawn={setLine}
+              style={[
+                styles.white,
+                line != null && { lineHeight: wholeLineHeight(WAITING, line, 1.3) },
+              ]}
+            >
+              {waiting}
+            </CappedWholeWords>
+          </View>
+        )
+      }
+    />
+  );
+}
+
+/** The phone cover's top row: the pill, then Search and the bell, the pill's line measured from the row from AX1 and its name capped under the greeting (sc-92247). */
+function PhoneTop({ top, greeting }: { top: number; greeting: number | null }) {
+  const insets = useSafeAreaInsets();
+  const sides = coverRowSides(insets);
+  const large = useAccessibilitySizes();
+  const [row, setRow] = useState(0);
+  const [ends, setEnds] = useState(0);
+  const inside = row - sides.paddingLeft - sides.paddingRight;
+
+  return (
+    <View
+      style={[styles.topPhone, sides, { marginTop: top }]}
+      onLayout={(event) => setRow(event.nativeEvent.layout.width)}
+    >
+      <TitleCap.Provider value={greeting}>
+        <OrgButton
+          nameRoom={large ? (row > 0 && ends > 0 ? phoneNameRoom(inside, ends) : 0) : undefined}
+        />
+      </TitleCap.Provider>
+      <View style={styles.grow} />
+      <View onLayout={(event) => setEnds(event.nativeEvent.layout.width)}>
+        <SearchAndBell />
+      </View>
     </View>
   );
 }
@@ -690,6 +804,14 @@ export function TodayCover({
 }) {
   const day = moment.kind === 'day';
   const insets = useSafeAreaInsets();
+  const [greeting, setGreeting] = useState<number | null>(null);
+  const greeted = useCallback(
+    (size: number | null) => {
+      setGreeting(size);
+      onGreeting?.(size);
+    },
+    [onGreeting],
+  );
 
   if (layout === 'landscape')
     return (
@@ -735,15 +857,7 @@ export function TodayCover({
         shade="foot"
       />
       <Animated.View style={[styles.coverWords, { opacity: words }]}>
-        {phone ? (
-          <View style={[styles.topPhone, coverRowSides(insets), { marginTop: top }]}>
-            <OrgButton />
-            <View style={styles.grow} />
-            <SearchAndBell />
-          </View>
-        ) : (
-          <TabletTop top={top} onTab={onTab} />
-        )}
+        {phone ? <PhoneTop top={top} greeting={greeting} /> : <TabletTop top={top} onTab={onTab} />}
         <View style={[styles.grow, { minHeight: footClear(moment, phone) }]} />
         <View
           style={
@@ -757,13 +871,7 @@ export function TodayCover({
           {day ? (
             <NowBlock moment={moment} wide={!phone} />
           ) : phone ? (
-            <Greeting
-              moment={moment}
-              size={32}
-              sub={16}
-              gap={tokens.spaceSm}
-              onDrawn={onGreeting}
-            />
+            <Greeting moment={moment} size={32} sub={16} gap={tokens.spaceSm} onDrawn={greeted} />
           ) : (
             <Greeting
               moment={moment}
@@ -1150,6 +1258,7 @@ const styles = StyleSheet.create({
   gapLg: { gap: tokens.spaceXl },
   gapXl: { gap: 22 },
   orgFit: { flexDirection: 'row', flexShrink: 1, minWidth: 0 },
+  hidden: { opacity: 0 },
   orgWide: { flexShrink: 1 },
   orgGlass: {
     flexShrink: 1,

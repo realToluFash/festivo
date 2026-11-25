@@ -30,6 +30,21 @@ export function pillShowsWords(
   return words >= Math.max(widths.nameStart, waiting);
 }
 
+/** The name's line in the phone cover's pill, from the top row inside its sides and what Search and the bell take: 186 on an iPhone 17 Pro (sc-92247). */
+export function phoneNameRoom(row: number, ends: number): number {
+  return Math.max(row - ends - 2 * tokens.spaceSm - PILL_CHROME, 0);
+}
+
+/** The invitation line's room under the name: the name's, less its ring and the gap after it. */
+export function phoneWaitingRoom(name: number): number {
+  return Math.max(name - WAITING_RING, 0);
+}
+
+/** From AX1 the phone's pill is its tile alone only where the name's widest word, at its default size, is wider than its line (sc-38149, sc-92247). */
+export function phoneTileAlone(widestAtDefault: number, room: number): boolean {
+  return room > 0 && widestAtDefault > room;
+}
+
 /** The switcher's answer pill: its spinner and the gap after it while sending, and its sides (`Pill` drawn full, `pillFull`, and its border). */
 export const ANSWER = {
   spinner: 16 + tokens.spaceSm,
