@@ -20,13 +20,13 @@ import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { openerLabel } from '../OrgSwitcherModel.ts';
 import { SearchButton } from '../search/SearchHeader.tsx';
 import { FitWords } from '../todaySize/FitWords.tsx';
-import { piecesOfLine, pillTileAlone } from '../todaySize/todaySizeRules.ts';
 import {
-  TOP_PILL_NAME,
-  TOP_PILL_WAITING,
-  topPillNameRoom,
-  topPillWaitingRoom,
-} from './topSizeRules.ts';
+  PILL_NAME,
+  PILL_WAITING,
+  piecesOfLine,
+  pillTileAlone,
+} from '../todaySize/todaySizeRules.ts';
+import { topPillNameRoom, topPillWaitingRoom } from './topSizeRules.ts';
 
 /** sc-92464: the phone's row above Settings', Events' and the Calendar's titles, the white pill's name and invitation line each whole at the stand-in size, then Search and the bell. */
 export function TopPillRow({
@@ -39,15 +39,19 @@ export function TopPillRow({
   tell: Tell;
 }) {
   const [row, setRow] = useState(0);
+  const [ends, setEnds] = useState(0);
 
   return (
     <View
       style={styles.row}
       onLayout={(event: LayoutChangeEvent) => setRow(event.nativeEvent.layout.width)}
     >
-      <TopPill scale={scale} waiting={waiting} row={row} />
+      <TopPill scale={scale} waiting={waiting} row={row} ends={ends} />
       <View style={styles.grow} />
-      <View style={styles.ends}>
+      <View
+        style={styles.ends}
+        onLayout={(event: LayoutChangeEvent) => setEnds(event.nativeEvent.layout.width)}
+      >
         <SearchButton />
         <Bell unread={3} onPress={() => tell('Notifications have their own design.')} />
       </View>
@@ -55,13 +59,24 @@ export function TopPillRow({
   );
 }
 
-function TopPill({ scale, waiting, row }: { scale: number; waiting: number; row: number }) {
+function TopPill({
+  scale,
+  waiting,
+  row,
+  ends,
+}: {
+  scale: number;
+  waiting: number;
+  row: number;
+  ends: number;
+}) {
   const { t } = useTranslation();
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
   const large = atAccessibilitySizes(scale);
   const line = waiting > 0 ? t('invitations.count', { count: waiting }) : null;
-  const room = topPillNameRoom(row, scale);
+  const measured = row > 0 && ends > 0;
+  const room = measured ? topPillNameRoom(row, ends, scale) : 0;
   const pieces = useMemo(() => piecesOfLine(org.name), [org.name]);
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const widest = pieces.every((piece) => widths[piece] != null)
@@ -81,7 +96,7 @@ function TopPill({ scale, waiting, row }: { scale: number; waiting: number; row:
   const measure = (
     <MeasuredWords
       words={pieces}
-      size={TOP_PILL_NAME}
+      size={PILL_NAME}
       weight="semibold"
       allowFontScaling={false}
       onWidth={(piece, width) =>
@@ -125,7 +140,7 @@ function TopPill({ scale, waiting, row }: { scale: number; waiting: number; row:
         <View style={styles.words}>
           <FitWords
             text={org.name}
-            size={TOP_PILL_NAME}
+            size={PILL_NAME}
             scale={scale}
             cap={Infinity}
             room={room}
@@ -142,10 +157,10 @@ function TopPill({ scale, waiting, row }: { scale: number; waiting: number; row:
               <View style={styles.grow}>
                 <FitWords
                   text={line}
-                  size={TOP_PILL_WAITING}
+                  size={PILL_WAITING}
                   scale={scale}
                   cap={nameAt ?? Infinity}
-                  room={topPillWaitingRoom(row, scale)}
+                  room={measured ? topPillWaitingRoom(row, ends, scale) : 0}
                   weight="semibold"
                   line={1.3}
                   lines={large ? undefined : 1}
@@ -178,7 +193,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spaceSm,
-    paddingVertical: tokens.spaceXs,
     paddingLeft: tokens.spaceSm,
     paddingRight: tokens.spacePillEnd,
     borderRadius: OPENER.rest / 2,
