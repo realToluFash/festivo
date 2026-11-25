@@ -105,15 +105,17 @@ final readonly class MailWebhook
         }
 
         $now = $this->clock->now();
-        $this->connection->executeStatement(
-            'UPDATE notification_deliveries SET provider_report = :report, provider_code = :code, provider_reported_at = :now WHERE id = :id',
-            ['report' => $said->value, 'code' => $code, 'now' => $now, 'id' => $deliveryId],
-            ['now' => Types::DATETIME_IMMUTABLE],
-        );
+        $this->connection->transactional(function () use ($deliveryId, $said, $code, $now): void {
+            $this->connection->executeStatement(
+                'UPDATE notification_deliveries SET provider_report = :report, provider_code = :code, provider_reported_at = :now WHERE id = :id',
+                ['report' => $said->value, 'code' => $code, 'now' => $now, 'id' => $deliveryId],
+                ['now' => Types::DATETIME_IMMUTABLE],
+            );
 
-        if (MailProviderReport::Complained === $said) {
-            $this->guestComplaints->keep($deliveryId);
-        }
+            if (MailProviderReport::Complained === $said) {
+                $this->guestComplaints->keep($deliveryId);
+            }
+        });
 
         if (MailProviderReport::Bounced === $said && NotificationAudienceKind::Guest->value === $earlier['recipient_kind'] && null !== $earlier['address']) {
             $this->connection->executeStatement(

@@ -13,7 +13,6 @@ use App\Enum\DeliveryNotSentReason;
 use App\Repository\GuestRepository;
 use Psl\Dict;
 use Psl\Iter;
-use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
@@ -63,16 +62,11 @@ final readonly class GuestReach
             $reason = match (true) {
                 null === $address || '' === $address => DeliveryNotSentReason::NoAddress,
                 $guest->isEmailBouncing() => DeliveryNotSentReason::Bouncing,
-                Iter\contains($complained, self::key($address)) => DeliveryNotSentReason::Complained,
+                Iter\contains($complained, $address) => DeliveryNotSentReason::Complained,
                 default => null,
             };
 
             return new PlannedDelivery($id, $guest->getFullName() ?? '', '' === $address ? null : $address, $reason);
         }));
-    }
-
-    private static function key(string $address): string
-    {
-        return Str\lowercase(Str\trim($address));
     }
 }

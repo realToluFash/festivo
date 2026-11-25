@@ -56,7 +56,7 @@ final readonly class GuestComplaints
     /**
      * @param list<string> $addresses
      *
-     * @return list<string> those among them a guest of this organisation complained from, lowercased and trimmed
+     * @return list<string> those among them a guest of this organisation complained from, as given
      */
     public function among(Uuid $organisation, array $addresses): array
     {
@@ -64,7 +64,7 @@ final readonly class GuestComplaints
             return [];
         }
 
-        $byHash = Dict\from_keys(Vec\map($addresses, self::normalised(...)), $this->hash(...));
+        $byHash = Dict\from_keys($addresses, $this->hash(...));
         $kept = Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
             'SELECT address_hash FROM guest_complaints WHERE organisation_id = :organisation AND address_hash IN (:hashes)',
             ['organisation' => $organisation->toRfc4122(), 'hashes' => Vec\values($byHash)],
