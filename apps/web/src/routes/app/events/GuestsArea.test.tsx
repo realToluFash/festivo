@@ -849,6 +849,33 @@ describe('Finding a guest (sc-3772)', () => {
     )!;
   }
 
+  it('offers Write to them while guests haven’t replied, opening New message to Hasn’t replied (sc-3957)', async () => {
+    const card = await cardOn({});
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Write to them' }));
+
+    await waitFor(() =>
+      expect(shownRouter?.state.location.pathname).toBe('/app/events/ev_1/messages'),
+    );
+    expect(shownRouter?.state.location.state).toEqual({ write: 'notReplied' });
+  });
+
+  it('offers no Write to them without messages.manage, or once everyone has replied', async () => {
+    const card = await cardOn(
+      {},
+      OWNER_PERMISSIONS.filter((one) => one !== 'messages.manage'),
+    );
+    expect(within(card).queryByRole('button', { name: 'Write to them' })).toBeNull();
+    cleanup();
+
+    signedIn();
+    await onGuests({
+      'GET /api/events/ev_1/guests': () => json(listOf([NGOZI, { ...AMAKA, invitation: INVITED }])),
+    });
+    const replied = (await screen.findByText('Everyone has replied.')).closest('section')!;
+    expect(within(replied).queryByRole('button', { name: 'Write to them' })).toBeNull();
+  });
+
   it('says Paused on the card, with its line and no step, as the demo draws it', async () => {
     const card = await cardOn({
       status: 'paused',

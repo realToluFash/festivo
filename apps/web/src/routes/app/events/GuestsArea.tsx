@@ -102,6 +102,7 @@ import { useLoadedAt, useServerNow } from '../../../serverNow.ts';
 import { canOn, useSession } from '../../../session.ts';
 import { useMakeLive } from './MakeLive.tsx';
 import { inPlace } from './openInPlace.ts';
+import { writingToNotReplied } from './messagesArea.ts';
 import { ExportDialog } from './GuestExport.tsx';
 import { GroupChips, GroupField, GroupTag, GroupsColumn } from './GuestGroups.tsx';
 import {
@@ -973,13 +974,20 @@ export function GuestsArea({
         step: manages ? 'add' : null,
       };
 
-    return { says: comingOf, line: counts.invited === 0 ? null : haventLine(t, counts) };
+    return {
+      says: comingOf,
+      line: counts.invited === 0 ? null : haventLine(t, counts),
+      step: counts.havent > 0 && canOn(event, 'messages.manage') ? 'write' : null,
+    };
   }
 
   function onStep(step: CoverStep): void {
     if (step === 'add') startAdd();
     else if (step === 'makeLive') makeLive.start();
-    else {
+    else if (step === 'write') {
+      const write = writingToNotReplied(event.id);
+      void navigate(write.to, { state: write.state });
+    } else {
       const dates = inPlace(event.id, 'dates');
       void navigate(dates.to, { state: dates.state });
     }
@@ -1525,7 +1533,7 @@ export function GuestsArea({
 
 const PIECES = [1, 2, 3, 4, 5, 6];
 
-type CoverStep = 'add' | 'makeLive' | 'changeDates';
+type CoverStep = 'add' | 'makeLive' | 'changeDates' | 'write';
 
 interface Cover {
   tag?: { mark: 'draft' | 'paused' | null; word: string } | null;
@@ -1533,13 +1541,14 @@ interface Cover {
   line?: string | null;
   step?: CoverStep | null;
   /** sc-50409: Make live or Change dates beside an empty Draft's Add guest, quieter, as the app's card (sc-46879). */
-  also?: Exclude<CoverStep, 'add'> | null;
+  also?: Exclude<CoverStep, 'add' | 'write'> | null;
 }
 
 const STEP_KEY: Record<CoverStep, string> = {
   add: 'guestList.addGuest',
   makeLive: 'eventLive.makeLive',
   changeDates: 'eventLive.changeDates',
+  write: 'guestList.writeToThem',
 };
 
 /** How the room stands, in the event's colours, with the one step this page can take. */

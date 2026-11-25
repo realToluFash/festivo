@@ -111,9 +111,96 @@ const SENT = {
   ],
 };
 
+type Condition = { type: string; groupId?: string | null };
+
+const GROUPS = { grp_family: 'Family', grp_work: 'Work', grp_old: 'Old friends' } as const;
+
+const PEOPLE = [
+  {
+    id: 'g_ada',
+    name: 'Ada Obi',
+    reply: 'coming',
+    invited: true,
+    group: 'grp_family',
+    email: true,
+    mobile: true,
+  },
+  {
+    id: 'g_bisi',
+    name: 'Bisi Ade',
+    reply: null,
+    invited: true,
+    group: 'grp_family',
+    email: true,
+    mobile: false,
+  },
+  {
+    id: 'g_kwame',
+    name: 'Kwame Mensah',
+    reply: null,
+    invited: false,
+    group: null,
+    email: false,
+    mobile: true,
+  },
+];
+
+function shown(condition: Condition) {
+  if (condition.type !== 'inGroup' || condition.groupId == null) return condition;
+  const id = condition.groupId as keyof typeof GROUPS;
+
+  return { ...condition, group: { name: GROUPS[id], deleted: id === 'grp_old' } };
+}
+
+function matched(conditions: Condition[]) {
+  const fits = (person: (typeof PEOPLE)[number], condition: Condition): boolean => {
+    switch (condition.type) {
+      case 'coming':
+        return person.reply === 'coming';
+      case 'notReplied':
+        return person.invited && person.reply == null;
+      case 'hasMobile':
+        return person.mobile;
+      case 'hasEmail':
+        return person.email;
+      case 'inGroup':
+        return condition.groupId !== 'grp_old' && person.group === condition.groupId;
+      default:
+        return false;
+    }
+  };
+  const guests = PEOPLE.filter((person) => conditions.every((one) => fits(person, one))).map(
+    ({ id, name, email, mobile }) => ({ id, name, email, mobile }),
+  );
+
+  return { count: guests.length, conditions: conditions.map(shown), guests };
+}
+
+const COMING_MOBILE = {
+  id: 'a_cm',
+  name: 'Coming, with a mobile',
+  conditions: [{ type: 'coming' }, { type: 'hasMobile' }],
+};
+
+const BOOK = {
+  audiences: [
+    COMING_MOBILE,
+    {
+      id: 'a_school',
+      name: 'School crowd',
+      conditions: [shown({ type: 'inGroup', groupId: 'grp_old' })],
+    },
+  ],
+  groups: [
+    { id: 'grp_family', name: 'Family' },
+    { id: 'grp_work', name: 'Work' },
+  ],
+};
+
 function onMessages(
   answers: Record<string, Answer> = {},
   event: Record<string, unknown> = {},
+  arriving: unknown = null,
 ): { line: string; body: unknown }[] {
   const sent: { line: string; body: unknown }[] = [];
   signedIn();
@@ -126,12 +213,17 @@ function onMessages(
     if (line === 'GET /api/events/ev_1') return json({ event: { ...EVENT, ...event } });
     if (line === 'GET /api/events/ev_1/messages') return json({ messages: [] });
     if (line === 'GET /api/events/ev_1/messages/guests') return json({ guests: GUESTS });
+    if (line === 'GET /api/events/ev_1/messages/audiences') return json(BOOK);
+    if (line === 'POST /api/events/ev_1/messages/audience')
+      return json(matched((body as { conditions: Condition[] }).conditions));
 
     return json({});
   });
   render(
     <RouterProvider
-      router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/messages'] })}
+      router={createMemoryRouter(routes, {
+        initialEntries: [{ pathname: '/app/events/ev_1/messages', state: arriving }],
+      })}
     />,
   );
 
@@ -301,5 +393,324 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Messages' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New' })).toBeNull();
+  });
+});
+
+function problem(code: string, status: number, violations?: unknown[]): Response {
+  return new Response(
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, violations }),
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
+}
+
+async function openTo(answers: Record<string, Answer> = {}) {
+  const sent = onMessages(answers);
+
+  fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+  fireEvent.click(screen.getByRole('button', { name: /^All guests/ }));
+
+  return { sent, to: await screen.findByRole('dialog', { name: 'To' }) };
+}
+
+function quick(name: 'Coming' | 'Hasn’t replied'): void {
+  fireEvent.click(screen.getByRole('radio', { name: new RegExp(`^${name}( \\d+)?$`, 'u') }));
+}
+
+function add(word: string, group?: string): void {
+  fireEvent.click(screen.getByRole('button', { name: 'Add a condition' }));
+  fireEvent.click(screen.getByRole('button', { name: word }));
+  if (group != null) fireEvent.click(screen.getByRole('button', { name: group }));
+}
+
+function closeTo(): void {
+  fireEvent.keyDown(document, { key: 'Escape' });
+}
+
+function chips(): string[] {
+  return [...document.querySelectorAll('.mg-conds .mg-cond')].map((one) => one.textContent ?? '');
+}
+
+describe('Who gets it (sc-3957)', () => {
+  it('copies a quick pick’s one condition into the message, with its chip and count', async () => {
+    await openTo();
+
+    quick('Coming');
+
+    expect(chips()).toEqual(['Is coming']);
+    expect(await screen.findByText('1 guest')).toBeTruthy();
+    expect(screen.getByText('1 guest').getAttribute('role')).toBe('status');
+    expect(screen.getByRole('button', { name: /^Coming · 1/ })).toBeTruthy();
+  });
+
+  it('counts again as conditions are added and removed, this message only', async () => {
+    await openTo();
+    quick('Hasn’t replied');
+    expect(await screen.findByText('1 guest')).toBeTruthy();
+
+    add('Is in group', 'Work');
+    expect(screen.getByText('Counting…')).toBeTruthy();
+    expect(await screen.findByText('Nobody matches')).toBeTruthy();
+    expect(screen.getByText('Changing a condition here changes this message only.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove condition: Is in group: Work' }));
+    expect(await screen.findByText('1 guest')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'See who' }));
+    expect(screen.getByRole('list', { name: 'See who' }).textContent).toBe(
+      'Bisi Ade · Email address',
+    );
+  });
+
+  it('refuses Save and Send with no condition, saying why beside each', async () => {
+    const { sent } = await openTo();
+    fireEvent.click(screen.getByRole('radio', { name: 'Guests who…' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save this audience' }));
+    const why =
+      'Add a condition first. With none, Guests who… matches nobody, so there is nothing to send or save.';
+    expect(screen.getByRole('alert').textContent).toBe(why);
+
+    closeTo();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'Please reply' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(why);
+    expect(sent.some(({ line }) => line.endsWith('/messages/check'))).toBe(false);
+  });
+
+  it('refuses Send when nobody matches', async () => {
+    const { sent } = await openTo();
+    quick('Coming');
+    add('Is in group', 'Work');
+    expect(await screen.findByText('Nobody matches')).toBeTruthy();
+
+    closeTo();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'Hello' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nobody matches these conditions, so there is no one to send it to.',
+    );
+    expect(sent.some(({ line }) => line.endsWith('/messages/check'))).toBe(false);
+  });
+
+  it('names a deleted group on its chip and refuses Send because of it', async () => {
+    await openTo();
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'School crowd' }));
+
+    expect(chips()).toEqual(['Is in group: Old friends (deleted)']);
+    expect(
+      screen.getByText(
+        'Old friends was deleted from this event’s groups, so this condition matches nobody.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('From your saved audience “School crowd”')).toBeTruthy();
+
+    closeTo();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'Hello' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Nobody matches, because Old friends was deleted. Remove that condition or choose another audience to send it.',
+    );
+  });
+
+  it('sends the message’s own conditions', async () => {
+    const { sent } = await openTo({
+      'POST /api/events/ev_1/messages/check': () =>
+        json({ people: 1, toldByEmail: 1, cantBeTold: [] }),
+      'POST /api/events/ev_1/messages': () =>
+        json({ id: 'm_1', queued: { email: 1 }, notSent: { email: 0 } }, 202),
+    });
+    quick('Coming');
+    await screen.findByText('1 guest');
+    closeTo();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'See you' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Send to 1 person',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line === 'POST /api/events/ev_1/messages')?.body).toEqual({
+        audience: 'conditions',
+        conditions: [{ type: 'coming' }],
+        subject: null,
+        message: 'See you',
+        follows: null,
+      }),
+    );
+  });
+
+  it('refuses a blank, a too long, a used name and a 21st audience, then saves', async () => {
+    const full = {
+      ...BOOK,
+      audiences: Array.from({ length: 20 }, (_, n) => ({
+        id: `a_${n}`,
+        name: `Audience ${n}`,
+        conditions: [{ type: 'coming' }],
+      })),
+    };
+    let answer: () => Response = () => json(full);
+    const { sent } = await openTo({
+      'GET /api/events/ev_1/messages/audiences': () => answer(),
+      'POST /api/events/ev_1/messages/audiences': (body) =>
+        json({ audience: { id: 'a_new', ...(body as object) } }, 201),
+    });
+    quick('Hasn’t replied');
+    fireEvent.click(screen.getByRole('button', { name: 'Save this audience' }));
+    const field = screen.getByRole('textbox', { name: 'Name this audience' });
+    const saveIt = () => fireEvent.click(screen.getByRole('button', { name: 'Save audience' }));
+    const said = () => screen.getByRole('alert').textContent;
+
+    saveIt();
+    expect(said()).toBe('Enter a name for this audience.');
+
+    fireEvent.change(field, { target: { value: 'x'.repeat(61) } });
+    expect(screen.getByText('61 of 60 characters')).toBeTruthy();
+    saveIt();
+    expect(said()).toBe('A saved audience’s name can be up to 60 characters.');
+
+    fireEvent.change(field, { target: { value: 'AUDIENCE 3' } });
+    saveIt();
+    expect(said()).toBe('There’s already a saved audience called Audience 3.');
+
+    fireEvent.change(field, { target: { value: 'Reminder' } });
+    saveIt();
+    expect(said()).toBe(
+      'This event has 20 saved audiences, the most it can have. Delete one to save another.',
+    );
+    expect(sent.some(({ line }) => line === 'POST /api/events/ev_1/messages/audiences')).toBe(
+      false,
+    );
+
+    answer = () => json(BOOK);
+    cleanup();
+    await openTo({
+      'POST /api/events/ev_1/messages/audiences': () => problem('audience_name_taken', 409),
+    });
+    quick('Hasn’t replied');
+    fireEvent.click(screen.getByRole('button', { name: 'Save this audience' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name this audience' }), {
+      target: { value: 'Reminder' },
+    });
+    saveIt();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'There’s already a saved audience called Reminder.',
+    );
+  });
+
+  it('saves the conditions under a name, and picks it', async () => {
+    const { sent } = await openTo({
+      'POST /api/events/ev_1/messages/audiences': (body) =>
+        json({ audience: { id: 'a_new', ...(body as object) } }, 201),
+    });
+    quick('Hasn’t replied');
+    fireEvent.click(screen.getByRole('button', { name: 'Save this audience' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name this audience' }), {
+      target: { value: ' Reminder ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save audience' }));
+
+    const saved = await screen.findByRole('radio', { name: 'Reminder' });
+    expect((saved as HTMLInputElement).checked).toBe(true);
+    expect(
+      sent.find(({ line }) => line === 'POST /api/events/ev_1/messages/audiences')?.body,
+    ).toEqual({
+      name: 'Reminder',
+      conditions: [{ type: 'notReplied' }],
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText('Saved as Reminder. It is with your saved audiences, at the top of To.'),
+      ).toBeTruthy(),
+    );
+  });
+
+  it('renames a saved audience in place', async () => {
+    const { sent } = await openTo({
+      'PATCH /api/events/ev_1/messages/audiences/a_cm': (body) =>
+        json({ audience: { ...COMING_MOBILE, ...(body as object) } }),
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'More actions for Coming, with a mobile' }),
+    );
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Rename “Coming, with a mobile”' }), {
+      target: { value: 'Coming, mobiles' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('radio', { name: 'Coming, mobiles' })).toBeTruthy();
+    expect(
+      sent.find(({ line }) => line === 'PATCH /api/events/ev_1/messages/audiences/a_cm')?.body,
+    ).toEqual({ name: 'Coming, mobiles' });
+  });
+
+  it('asks before deleting, Keep it focused, and keeps the conditions the message was picked from', async () => {
+    const { sent } = await openTo({
+      'DELETE /api/events/ev_1/messages/audiences/a_cm': () => new Response(null, { status: 204 }),
+    });
+    fireEvent.click(await screen.findByRole('radio', { name: 'Coming, with a mobile' }));
+    expect(await screen.findByText('1 guest')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions for Coming, with a mobile' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Delete…/ }));
+    const ask = screen.getByRole('alertdialog', {
+      name: 'Delete the saved audience Coming, with a mobile?',
+    });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Keep it' })),
+    );
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete saved audience' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('radio', { name: 'Coming, with a mobile' })).toBeNull(),
+    );
+    expect(
+      sent.some(({ line }) => line === 'DELETE /api/events/ev_1/messages/audiences/a_cm'),
+    ).toBe(true);
+    expect((screen.getByRole('radio', { name: 'Guests who…' }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    expect(chips()).toEqual(['Is coming', 'Has a mobile number']);
+    expect(screen.getByText('1 guest')).toBeTruthy();
+  });
+
+  it('opens on Hasn’t replied from the Guests card’s Write to them', async () => {
+    onMessages({}, {}, { write: 'notReplied' });
+
+    expect(await screen.findByRole('button', { name: /^Hasn’t replied · 1/ })).toBeTruthy();
+  });
+
+  it('says what a message to conditions was worked out to when it went', async () => {
+    const TO_COMING = {
+      ...SENT,
+      audience: 'conditions',
+      conditions: [{ type: 'coming' }, shown({ type: 'inGroup', groupId: 'grp_family' })],
+      sentAt: '2030-11-10T10:00:00+01:00',
+    };
+    onMessages({
+      'GET /api/events/ev_1/messages': () =>
+        json({ messages: [{ ...TO_COMING, message: undefined, deliveries: 3, follows: null }] }),
+      'GET /api/events/ev_1/messages/m_1': () => json({ message: { ...TO_COMING, follows: null } }),
+    });
+
+    const row = await screen.findByRole('button', { name: /Dinner starts at seven/ });
+    expect(row.textContent).toContain('To Guests who… Is coming · Is in group: Family');
+    fireEvent.click(row);
+    expect(
+      await screen.findByText(/^Worked out at \d\d:\d\d, when it went: 3 guests\.$/u),
+    ).toBeTruthy();
   });
 });
