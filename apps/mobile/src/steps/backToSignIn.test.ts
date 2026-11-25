@@ -21,6 +21,7 @@ const CHALLENGE = {
   challenge: 'the-challenge',
   expiresAt: '2026-10-17T12:05:00+00:00',
   email: 'folake@ire.events',
+  phone: null,
   factors: { app: true, passkeys: false },
 };
 

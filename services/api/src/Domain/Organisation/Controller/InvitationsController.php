@@ -9,6 +9,7 @@ use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\Invitations\InvitationResponder;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\User\PhoneSignIn\PhoneHint;
 use App\Entity\Invitation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -116,6 +117,8 @@ final readonly class InvitationsController
             'refusal' => $this->invitationResponder->refusalOf($invitation)?->value,
             'forYou' => null === $user ? null : $this->invitationResponder->isFor($invitation, $user),
             'signedInAs' => $user?->getPrimaryEmailAddress()?->getAddress(),
+            'signedInAsPhone' => null === $user || null !== $user->getPrimaryEmailAddress() ? null : PhoneHint::of($user->getPrimaryPhoneNumber()),
+            'needsEmail' => null === $user ? null : $this->invitationResponder->needsEmail($user),
             'managed' => null === $user ? null : $this->managedAccounts->describeFor($user, $invitation->getOrganisation()),
         ];
     }

@@ -166,6 +166,13 @@ framework:
             limit: 10
             interval: '1 minute'
 
+        door_code_send:
+            # Per IP, every code sent to redeem a door code signed out (sc-4235), on top of the number's
+            # own resend cooldown, so one network cannot text its way through a list of numbers.
+            policy: fixed_window
+            limit: 30
+            interval: '1 hour'
+
         door_code_code:
             # Per code, keyed by its hash, spent only by a refused try at it (sc-72), so one code cannot be worked
             # at from many sources while a crew of 500 opening and joining a working code together is never refused.

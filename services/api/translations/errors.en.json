@@ -156,6 +156,8 @@
     "menu_default_move": "Changing the default moves the guests given it. Confirm to change it.",
     "menu_change_asks": "This change asks guests to pick again. Confirm to change it.",
     "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed.",
+    "phone_alternative": "This is an alternative number on a Soirely account, so it cannot sign you in.",
+    "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation.",
     "plan_sold_by_contract": "This plan is sold by contract, not through checkout. Contact Soirely to arrange it.",
     "plan_not_priced": "This plan has no price in your billing currency.",
     "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for."

@@ -7,12 +7,10 @@ namespace App\Entity;
 use DateTimeImmutable;
 use Symfony\Component\Uid\Uuid;
 
-/** An email address or a phone number: proved by a code, with one set of rules for both. */
+/** An email address, a phone number, or a number signing in by phone: proved by a code, with one set of rules for all. */
 interface VerifiableContact
 {
     public function getId(): Uuid;
-
-    public function getUser(): User;
 
     public function isVerified(): bool;
 

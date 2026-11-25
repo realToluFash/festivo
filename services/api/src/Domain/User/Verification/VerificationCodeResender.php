@@ -6,7 +6,7 @@ namespace App\Domain\User\Verification;
 
 use App\Domain\User\Model\IssuedVerificationCode;
 use App\Entity\EmailAddress;
-use App\Entity\PhoneNumber;
+use App\Entity\TextableContact;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -21,7 +21,7 @@ final readonly class VerificationCodeResender
     }
 
     /** The new code, or the seconds before one may be sent (0 once verified), re-read under the row lock. An address's email is queued with it; a phone's is the caller's to send. */
-    public function resend(EmailAddress|PhoneNumber $contact): IssuedVerificationCode|int
+    public function resend(EmailAddress|TextableContact $contact): IssuedVerificationCode|int
     {
         return $this->entityManager->wrapInTransaction(function () use ($contact): IssuedVerificationCode|int {
             $this->entityManager->refresh($contact, LockMode::PESSIMISTIC_WRITE);

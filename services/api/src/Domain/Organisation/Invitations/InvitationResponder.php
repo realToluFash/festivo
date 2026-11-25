@@ -131,9 +131,19 @@ final readonly class InvitationResponder
         });
     }
 
-    /** Whose it is first: somebody else is told it is not theirs, not what became of it. */
+    /** A phone-only account (sc-4235) joins an organisation only once it holds the invited address, verified. */
+    public function needsEmail(User $user): bool
+    {
+        return !$user->hasVerifiedEmailAddress() && true === $user->getPrimaryPhoneNumber()?->isVerified();
+    }
+
+    /** A phone-only account is asked for the address before anything, as it can match no invitation yet; then whose it is: somebody else is told it is not theirs, not what became of it. */
     private function refuseUnless(Invitation $invitation, User $user): void
     {
+        if ($this->needsEmail($user)) {
+            throw new ApiException(ErrorCode::InvitationNeedsEmail, $this->translator->trans('invitations.needs_email'));
+        }
+
         if (!$this->isFor($invitation, $user)) {
             throw new ApiException(ErrorCode::InvitationNotYours, $this->translator->trans('invitations.not_yours'));
         }

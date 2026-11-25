@@ -135,6 +135,32 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const OPENING = { cooldownSeconds: 60, codeState: 'live', route: 'whatsapp' };
+
+const IN = {
+  eventId: 'ev_1',
+  name: 'Adébáyọ̀ Ọlá',
+  role: 'can_check_in',
+  jobLabel: 'Bar and drinks',
+  endsAt: '2030-11-14T23:30:00+00:00',
+  again: false,
+};
+
+/** Signed out: the name, Portugal's code and a mobile, then Send code (sc-4235). */
+async function sendTo(name: string, number = '912 344 512'): Promise<void> {
+  fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: name } });
+  fireEvent.change(screen.getByLabelText('Country code'), { target: { value: 'PT' } });
+  fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: number } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+}
+
+async function typeCode(code = '123456'): Promise<void> {
+  fireEvent.change(await screen.findByLabelText('Code from WhatsApp'), {
+    target: { value: code },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
+}
+
 describe('the browser’s redeem pages (sc-72)', () => {
   it('checks the code before it sends anything, in any case and with spaces ignored', async () => {
     signedOut();
@@ -240,45 +266,38 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
   });
 
-  it('signed out, asks a name and nothing else, and joins with it trimmed', async () => {
+  it('signed out, asks a name and a mobile, sends a code to it, and joins on the right one', async () => {
     signedOut();
     const sent = at('/d/K7P2QX9M', {
       'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
-      'POST /api/door-codes/K7P2QX9M/redeem': () =>
-        json(
-          {
-            accessToken: 'an-access-token',
-            refreshExpiresAt: '2030-11-15T00:00:00+00:00',
-            sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
-            eventId: 'ev_1',
-            name: 'Adébáyọ̀ Ọlá',
-            role: 'can_check_in',
-            jobLabel: 'Bar and drinks',
-            endsAt: '2030-11-14T23:30:00+00:00',
-            again: false,
-          },
-          201,
-        ),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json({ ...ISSUED, account: account({ name: 'Adébáyọ̀ Ọlá' }), ...IN }),
     });
 
     const title = await screen.findByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' });
     await waitFor(() => expect(document.activeElement).toBe(title));
-    const field = screen.getByLabelText('Your name');
-    expect((field as HTMLInputElement).value).toBe('');
-    expect(screen.queryByLabelText(/Mobile number/u)).toBeNull();
     expect(screen.queryByRole('button', { name: /Join as/u })).toBeNull();
 
-    fireEvent.change(field, { target: { value: '   ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
     expect(screen.getByText('Enter your full name.')).toBeDefined();
-    expect(field.getAttribute('aria-invalid')).toBe('true');
-    expect(document.activeElement).toBe(field);
+    expect(screen.getByText('Enter your mobile number.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
     expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
 
-    fireEvent.change(field, { target: { value: '  Adébáyọ̀ Ọlá ' } });
-    expect(screen.queryByText('Enter your full name.')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    await sendTo('  Adébáyọ̀ Ọlá ');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Check WhatsApp' })).toBeDefined();
+    expect(screen.getByText('We sent a code to your WhatsApp on +351 912 344 512.')).toBeDefined();
+    expect(
+      sent.find((one) => one.line === 'POST /api/door-codes/K7P2QX9M/sign-in/send')?.body,
+    ).toEqual({ name: 'Adébáyọ̀ Ọlá', countryCode: 'PT', number: '912 344 512' });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Verify' }));
+    expect(screen.getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+
+    await typeCode();
     expect(
       await screen.findByRole('heading', {
         level: 1,
@@ -287,44 +306,80 @@ describe('the browser’s redeem pages (sc-72)', () => {
     ).toBeDefined();
     expect(screen.getByText('Signed in as Adébáyọ̀ Ọlá')).toBeDefined();
     expect(screen.getByText(/^You’ll be signed out at .*23:30\.$/u)).toBeDefined();
-    expect(sent.find((one) => one.line === 'POST /api/door-codes/K7P2QX9M/redeem')?.body).toEqual(
-      expect.objectContaining({ name: 'Adébáyọ̀ Ọlá' }),
+    expect(sent.find((one) => one.line === 'POST /api/door-codes/K7P2QX9M/sign-in')?.body).toEqual(
+      expect.objectContaining({ handle: 'h1', code: '123456' }),
     );
   });
 
-  it('shows Joining… while it works, and keeps the name when the code stops working', async () => {
+  it('keeps the name and the number when the code stops working', async () => {
     signedOut();
-    let answer: (response: Response) => void = () => {};
     at('/d/K7P2QX9M', {
       'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
-    });
-    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
-      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
-      if (line === 'GET /api/door-codes/K7P2QX9M') return json(OPENED);
-      if (line === 'POST /api/door-codes/K7P2QX9M/redeem')
-        return new Promise<Response>((resolve) => {
-          answer = resolve;
-        });
-
-      return json({});
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () => json(REFUSED, 404),
     });
 
-    fireEvent.change(await screen.findByLabelText('Your name'), {
-      target: { value: 'Hugo Brandão' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
-
-    const busy = await screen.findByRole('button', { name: 'Joining…' });
-    expect(busy.getAttribute('aria-busy')).toBe('true');
-
-    answer(json(REFUSED, 404));
+    await sendTo('Hugo Brandão');
 
     expect(
       await screen.findByText('That code does not work. Check it with whoever gave it to you.'),
     ).toBeDefined();
     expect(screen.getByRole('alert')).toBeDefined();
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Brandão');
-    expect(screen.getByRole('button', { name: 'Join' })).toBeDefined();
+    expect((screen.getByLabelText('Mobile number') as HTMLInputElement).value).toBe('912 344 512');
+  });
+
+  it('says an alternative number cannot sign in, back on the number', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/phone_alternative',
+            title: 'Alternative',
+            status: 409,
+          },
+          409,
+        ),
+    });
+
+    await sendTo('Hugo Brandão');
+    await typeCode();
+
+    expect(
+      await screen.findByText(/^This is an alternative number on a Soirely account/u),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Mobile number').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('asks two-factor before the grant, on the code screen', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json(
+          {
+            twoFactorChallenge: 'c1',
+            challengeExpiresAt: '2030-11-14T15:05:00+00:00',
+            email: null,
+            phone: { countryCode: 'PT', lastDigits: '4512' },
+            factors: { app: true, passkeys: false },
+          },
+          202,
+        ),
+    });
+
+    await sendTo('Hugo Brandão');
+    await typeCode();
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sign-in/code'));
+    expect(await screen.findByText(/\+351 ••• ••• 4512/u)).toBeDefined();
   });
 
   it('turns a member of the organisation away, with Open Events', async () => {
@@ -401,25 +456,20 @@ describe('the browser’s redeem pages (sc-72)', () => {
             ),
       'POST /api/auth/refresh': () => json({ status: 401 }, 401),
       'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
-      'POST /api/door-codes/K7P2QX9M/redeem': () =>
-        json(
-          {
-            ...ISSUED,
-            eventId: 'ev_1',
-            name: 'Hugo Brandão',
-            role: 'can_check_in',
-            jobLabel: 'Bar and drinks',
-            endsAt: '2030-11-14T23:30:00+00:00',
-            again: false,
-          },
-          201,
-        ),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json({
+          ...ISSUED,
+          account: account({ name: 'Hugo Brandão', emailAddresses: [], hasPassword: false }),
+          ...IN,
+          name: 'Hugo Brandão',
+        }),
     });
 
-    fireEvent.change(await screen.findByLabelText('Your name'), {
-      target: { value: 'Hugo Brandão' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    await sendTo('Hugo Brandão');
+    await typeCode();
     fireEvent.click(await screen.findByRole('button', { name: 'Open the event' }));
 
     expect(
@@ -487,13 +537,10 @@ describe('the browser’s redeem pages (sc-72)', () => {
     signedOut();
     at('/d/K7P2QX9M', {
       'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
-      'POST /api/door-codes/K7P2QX9M/redeem': fails,
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': fails,
     });
 
-    fireEvent.change(await screen.findByLabelText('Your name'), {
-      target: { value: 'Hugo Brandão' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
+    await sendTo('Hugo Brandão');
 
     expect((await screen.findByRole('alert')).textContent).toBe(
       'Something went wrong on the way. Try again in a moment.',
