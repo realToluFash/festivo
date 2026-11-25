@@ -7,7 +7,7 @@ import {
   pillGivesWay,
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
-import { PILL_CHROME, WAITING_RING, pillShowsWords, wholeTileAlone } from '../../layout/pillFit.ts';
+import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
 import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
@@ -261,19 +261,9 @@ export function pillWaitingRoom(row: number): number {
   return Math.max(pillNameRoom(row) - PILL_RING - tokens.spaceXs, 0);
 }
 
-/** From AX1 the pill is its tile alone by the app's rule (`wholeTileAlone`): where its widest word, at the name's default size, is wider than its line, or the invitation line's widest word, at 12.5, is wider than the room under the name (sc-38149, sc-92314). */
-export function pillTileAlone(
-  scale: number,
-  widestAtDefault: number | null,
-  room: number,
-  waitingWidest: number | null = 0,
-): boolean {
-  return (
-    atAccessibilitySizes(scale) &&
-    widestAtDefault != null &&
-    waitingWidest != null &&
-    wholeTileAlone(widestAtDefault, room, waitingWidest)
-  );
+/** The name's line the app's tile rule (`useWholeTile`) is given: from AX1 the pill's `room`, below it none, where the pill keeps its tile by main's rules (sc-38149, sc-92314). */
+export function tileRoom(scale: number, room: number): number | undefined {
+  return atAccessibilitySizes(scale) ? room : undefined;
 }
 
 /** Search and the bell at the upright iPad's right, 40 each with 8 between (`SearchAndBell`). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { waitingRoomUnder } from '../../layout/pillFit.ts';
+import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
 import { dotKept } from '../../layout/textSize.ts';
 
 import {
@@ -24,7 +24,7 @@ import {
   openUnder,
   orgName,
   pillNameRoom,
-  pillTileAlone,
+  tileRoom,
   pillWaitingRoom,
   piecesOfLine,
   sizeEvents,
@@ -157,18 +157,20 @@ describe('the organisation pill on the phone (sc-92247)', () => {
     expect((organisation * at) / start).toBeLessThanOrEqual(pillNameRoom(370));
   });
 
-  it('is its tile alone only from AX1, and only for a word too wide at 15', () => {
-    expect(pillTileAlone(AX5, 380, 186)).toBe(true);
-    expect(pillTileAlone(AX5, 99, 186)).toBe(false);
-    expect(pillTileAlone(SEVENTH, 380, 186)).toBe(false);
-    expect(pillTileAlone(AX1, null, 186)).toBe(false);
+  it('gives the app’s tile rule its line only from AX1, so below it the pill keeps its words', () => {
+    expect(tileRoom(AX5, 186)).toBe(186);
+    expect(tileRoom(AX1, 186)).toBe(186);
+    expect(tileRoom(SEVENTH, 186)).toBeUndefined();
+  });
+
+  it('is its tile alone only for a word too wide at 15', () => {
+    expect(wholeTileAlone(380, 186)).toBe(true);
+    expect(wholeTileAlone(99, 186)).toBe(false);
   });
 
   it('is its tile alone too where the invitation line’s widest word at 12.5 is wider than the room under the name, as the app (sc-92314)', () => {
-    expect(pillTileAlone(AX1, 50, 93, waitingRoomUnder(93) + 1)).toBe(true);
-    expect(pillTileAlone(AX1, 50, 93, waitingRoomUnder(93))).toBe(false);
-    expect(pillTileAlone(AX1, 50, 93, null)).toBe(false);
-    expect(pillTileAlone(SEVENTH, 50, 93, 200)).toBe(false);
+    expect(wholeTileAlone(50, 93, waitingRoomUnder(93) + 1)).toBe(true);
+    expect(wholeTileAlone(50, 93, waitingRoomUnder(93))).toBe(false);
   });
 
   it('names the five organisations the AC renames it to', () => {
@@ -195,7 +197,7 @@ describe('the upright iPad’s top row (sc-92314)', () => {
     expect(top.pill).toBeCloseTo((ROW - top.capsule) / 2 - 8);
     expect(top.pill).toBeGreaterThanOrEqual(120);
     expect(uprightTile(AX1, top, { nameStart: 0, waitingLine: null })).toBe(false);
-    expect(pillTileAlone(AX1, 92, top.nameRoom)).toBe(false);
+    expect(wholeTileAlone(92, top.nameRoom)).toBe(false);
     expect(wordsSize(15, AX1, Infinity, 92 * AX1, top.nameRoom)).toBeLessThan(15 * AX1);
   });
 
@@ -204,13 +206,13 @@ describe('the upright iPad’s top row (sc-92314)', () => {
     const top = uprightTop(AX1, measured, ROW);
 
     expect(top.givesWay).toBe(false);
-    expect(pillTileAlone(AX1, 91.8, top.nameRoom)).toBe(false);
+    expect(wholeTileAlone(91.8, top.nameRoom)).toBe(false);
   });
 
   it('at AX1 a word too wide even at its default size is the tile alone', () => {
     const top = uprightTop(AX1, EN_AX1, ROW);
 
-    expect(pillTileAlone(AX1, 331, top.nameRoom)).toBe(true);
+    expect(wholeTileAlone(331, top.nameRoom)).toBe(true);
   });
 
   it('at AX5 the tabs step under their own size, so the pill gives way to its tile', () => {
