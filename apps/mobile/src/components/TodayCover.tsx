@@ -152,7 +152,7 @@ export function OrgButton({
   const lines = useNameLines();
   const { tileAlone, measure } = usePillFit(org.name, org.waiting, maxWidth, large);
   const whole = large && !compact && nameRoom != null;
-  const fit = useWholeTile(org.name, whole ? nameRoom : undefined);
+  const fit = useWholeTile(org.name, org.waiting, whole ? nameRoom : undefined);
   const shared = {
     ref,
     onPress: org.onPress,

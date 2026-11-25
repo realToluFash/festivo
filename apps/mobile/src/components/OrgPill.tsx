@@ -12,7 +12,7 @@ import {
 
 import { waitingRoomUnder, wholeTileAlone } from '../layout/pillFit.ts';
 import { ROOMS, rowPad } from '../layout/sidebarSize.ts';
-import { piecesIn, wholeLineHeight } from '../layout/textSize.ts';
+import { piecesIn, wholeLineHeight, wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { OrgMark } from './OrgMark.tsx';
@@ -184,17 +184,33 @@ export function WholeOpenerWords({
   );
 }
 
-/** Whether the whole-words pill is its tile alone, its name's widest word at the default size wider than its line, and whether that is known yet; `room` undefined where the pill is not given its name's line (sc-38149, sc-92247, sc-92464). */
-export function useWholeTile(name: string, room: number | undefined) {
+/** Whether the whole-words pill is its tile alone, its name's widest word at the default size wider than its line, or the invitation line's at its own wider than the room under the name, and whether that is known yet; `room` undefined where the pill is not given its name's line (sc-38149, sc-92247, sc-92464, sc-92314). */
+export function useWholeTile(name: string, waiting: string | null, room: number | undefined) {
   const whole = room != null;
-  const atDefault = useMeasuredAt(NAME, whole ? piecesIn([name]) : []);
-  const known = atDefault.widths.length > 0 && atDefault.widths.every((width) => width != null);
+  const named = useMeasuredAt(NAME, whole ? piecesIn([name]) : []);
+  const line = useMeasuredAt(WAITING, whole && waiting != null ? wordsIn([waiting]) : []);
+  const widths = [...named.widths, ...line.widths];
+  const known = named.widths.length > 0 && widths.every((width) => width != null);
   const tileAlone =
     whole &&
     known &&
-    wholeTileAlone(Math.max(...atDefault.widths.map((width) => width ?? 0)), room);
+    wholeTileAlone(
+      Math.max(...named.widths.map(Number)),
+      room,
+      Math.max(0, ...line.widths.map(Number)),
+    );
 
-  return { whole, known, tileAlone, measure: whole && atDefault.measure };
+  return {
+    whole,
+    known,
+    tileAlone,
+    measure: whole && (
+      <>
+        {named.measure}
+        {line.measure}
+      </>
+    ),
+  };
 }
 
 /** The opener's words at the head of iPad landscape's sidebar: the name and the invitation line each on one line, each stepped down alone until it fits whole there (sc-68441, sc-79559). */
@@ -266,7 +282,7 @@ export function OrgPill({
   ref?: Ref<ViewInstance> | undefined;
 }) {
   const { fontScale } = useWindowDimensions();
-  const whole = useWholeTile(name, sidebar ? undefined : nameRoom);
+  const whole = useWholeTile(name, waiting, sidebar ? undefined : nameRoom);
   const tile = tileAlone || whole.tileAlone;
 
   return (

@@ -58,9 +58,9 @@ export function waitingRoomUnder(name: number): number {
   return Math.max(name - WAITING_RING, 0);
 }
 
-/** From AX1 the cover's pill, on the phone and beside the upright iPad's tabs, is its tile alone only where the name's widest word, at its default size, is wider than its line (sc-38149, sc-92247, sc-92314). */
-export function wholeTileAlone(widestAtDefault: number, room: number): boolean {
-  return room > 0 && widestAtDefault > room;
+/** From AX1 the cover's pill, on the phone and beside the upright iPad's tabs, is its tile alone only where the name's widest word, at its default size, is wider than its line, or the invitation line's widest, at its own, is wider than the room under the name (sc-38149, sc-92247, sc-92314). */
+export function wholeTileAlone(widestAtDefault: number, room: number, waitingWidest = 0): boolean {
+  return room > 0 && (widestAtDefault > room || waitingWidest > waitingRoomUnder(room));
 }
 
 /** The switcher's answer pill: its spinner and the gap after it while sending, and its sides (`Pill` drawn full, `pillFull`, and its border). */
