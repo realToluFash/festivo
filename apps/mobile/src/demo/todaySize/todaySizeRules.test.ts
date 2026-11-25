@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
 import { dotKept } from '../../layout/textSize.ts';
@@ -269,6 +272,26 @@ describe('the live cover on its side (sc-92312)', () => {
     expect(wordsStart(LIVE_ENDS, AX5, Infinity)).toBe(LIVE_ENDS * AX5);
     expect(wordsStart(LIVE_CHIP, AX5, 30)).toBeCloseTo(30);
     expect(wordsStart(LIVE_ENDS, 1, 48)).toBe(LIVE_ENDS);
+  });
+});
+
+describe('the live cover upright (sc-93578)', () => {
+  const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
+
+  it('draws Open the event inside the words column upright, as on its side, never beside the name', () => {
+    const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+    const upright = /\n {2}if \(upright\)[\s\S]*?\n {4}\);\n/u.exec(live)?.[0] ?? '';
+
+    expect(words).toMatch(
+      /\{under && <View style=\{styles\.openUnder\}>\{open\}<\/View>\}\n {4}<\/View>\n/u,
+    );
+    expect(live).toMatch(/\n {2}const block = under \? \(\n {4}words\n {2}\) : \(/u);
+    expect(upright).toMatch(/<View style=\{styles\.uprightNow\}>\{block\}<\/View>/u);
+  });
+
+  it('moves Open the event under the end line from AX1, as on its side', () => {
+    expect(openUnder(SEVENTH)).toBe(false);
+    expect(openUnder(AX1)).toBe(true);
   });
 });
 
