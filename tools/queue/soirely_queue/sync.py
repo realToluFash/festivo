@@ -78,8 +78,10 @@ def sync_shortcut(db, shortcut, now, full=False):
             found.update({s["id"]: s for s in hits})
         stale = [story_id for story_id, hit in found.items()
                  if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
-        for raw in pool.map(shortcut.story, stale):
+        raws = list(pool.map(shortcut.story, stale))
+        for raw in raws:
             store.put_story(db, slim(raw, states, epics))
+    undo_design_branch_moves(db, shortcut, raws, states, epics)
     fetched = len(stale) + sync_blockers(db, shortcut, states, epics)
     store.set_meta(db, "shortcut_at", now)
     if full:
@@ -87,6 +89,46 @@ def sync_shortcut(db, shortcut, now, full=False):
     if ready:
         store.set_meta(db, "ready_at", now)
     return fetched
+
+
+def design_branch_move(history, states, prs):
+    """The ux/ branch or pull request whose push moved a story from Needs Design to Ready For
+    Dev, if its last move was that one; otherwise None."""
+    branches = {pr["number"]: pr.get("branch") for pr in prs}
+    for entry in reversed(history):
+        moves = [(action.get("changes") or {}).get("workflow_state_id")
+                 for action in entry.get("actions", [])]
+        move = next((m for m in moves if m), None)
+        if not move:
+            continue
+        if (states.get(str(move.get("old"))), states.get(str(move.get("new")))) \
+                != ("Needs Design", "Ready For Dev"):
+            return None
+        for thing in [*entry.get("references", []), *entry.get("actions", [])]:
+            kind = thing.get("entity_type")
+            name = thing.get("name") if kind == "branch" else \
+                branches.get(thing.get("number")) if kind == "pull-request" else None
+            if roles.is_design_branch(name):
+                return name
+        return None
+    return None
+
+
+def undo_design_branch_moves(db, shortcut, raws, states, epics):
+    """Shortcut's GitHub integration moves a story to Ready For Dev when a branch naming it is
+    pushed, a designer's ux/ branch too, while its demo is still under review. Ready For Dev
+    means a merged demo, so the move is undone and the designer moves it on after the merge."""
+    ids = {name: int(state_id) for state_id, name in states.items()}
+    if "Needs Design" not in ids:
+        return
+    prs = store.prs(db)
+    for raw in raws:
+        if states.get(str(raw.get("workflow_state_id"))) != "Ready For Dev" or not any(
+                roles.is_design_branch(b.get("name")) for b in raw.get("branches") or []):
+            continue
+        if design_branch_move(shortcut.history(raw["id"]), states, prs):
+            moved = shortcut.update(raw["id"], workflow_state_id=ids["Needs Design"])
+            store.put_story(db, slim(moved or shortcut.story(raw["id"]), states, epics))
 
 
 def sync_blockers(db, shortcut, states, epics):

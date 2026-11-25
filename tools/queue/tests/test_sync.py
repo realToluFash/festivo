@@ -122,6 +122,81 @@ class Since(unittest.TestCase):
         self.assertEqual(self.since(db, NOW + 60), [self.at(NOW + 60 - 86400)])
 
 
+class DesignBranchMoves(unittest.TestCase):
+    """GitHub moves a story to Ready For Dev when a ux/ branch naming it is pushed; the sync
+    puts it back in Needs Design, since its demo has not merged."""
+
+    ID = {name: i for i, name in enumerate(roles.QUEUE_STATES, 1)}
+
+    def move(self, old, new, **source):
+        return {"actions": [{"changes": {"workflow_state_id": {
+            "old": self.ID[old], "new": self.ID[new]}}}], **source}
+
+    def branch(self, name):
+        return {"references": [{"entity_type": "branch", "id": 7, "name": name}]}
+
+    def sync(self, history, branch="ux/sc-5-pill", prs=()):
+        db, test = store.connect(":memory:"), self
+        store.put_prs(db, list(prs))
+        updates = []
+
+        class Pushed(FakeShortcut):
+            def find(self, **filters):
+                super().find(**filters)
+                return [] if filters.get("archived") else [{"id": 5, "updated_at": "t1"}]
+
+            def story(self, story_id):
+                return {"id": story_id, "name": "pill", "updated_at": "t1",
+                        "workflow_state_id": test.ID["Ready For Dev"],
+                        "branches": [{"name": branch}]}
+
+            def history(self, story_id):
+                return history
+
+            def update(self, story_id, **fields):
+                updates.append((story_id, fields))
+                return dict(self.story(story_id), **fields, updated_at="t2")
+        sync.sync_shortcut(db, Pushed(), NOW)
+        return updates, store.story(db, 5)["state"]
+
+    def test_a_ux_branch_push_out_of_needs_design_is_undone(self):
+        updates, state = self.sync([self.move("To Do", "Needs Design"),
+                                    self.move("Needs Design", "Ready For Dev",
+                                              **self.branch("ux/sc-5-pill"))])
+        self.assertEqual(updates, [(5, {"workflow_state_id": self.ID["Needs Design"]})])
+        self.assertEqual(state, "Needs Design")
+
+    def test_a_ux_pull_request_opened_out_of_needs_design_is_undone(self):
+        pr = {"entity_type": "pull-request", "id": 9, "number": 3888}
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev", references=[pr])],
+                               prs=[{"number": 3888, "story_id": 5, "branch": "ux/sc-5-pill"}])
+        self.assertEqual(len(updates), 1)
+
+    def test_a_person_moving_it_is_left_alone(self):
+        updates, state = self.sync([self.move("Needs Design", "Ready For Dev",
+                                              member_id="m-1")])
+        self.assertEqual((updates, state), ([], "Ready For Dev"))
+
+    def test_a_feature_branch_is_left_alone(self):
+        name = "feature/sc-5/pill"
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",
+                                          **self.branch(name))], branch=name)
+        self.assertEqual(updates, [])
+
+    def test_a_move_from_another_state_is_left_alone(self):
+        updates, _ = self.sync([self.move("To Do", "Ready For Dev",
+                                          **self.branch("ux/sc-5-pill"))])
+        self.assertEqual(updates, [])
+
+    def test_only_the_last_move_counts(self):
+        updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",
+                                          **self.branch("ux/sc-5-pill")),
+                                {"changed_at": "later"},
+                                self.move("Ready For Dev", "Needs Design"),
+                                self.move("Needs Design", "Ready For Dev", member_id="m-1")])
+        self.assertEqual(updates, [])
+
+
 class Epics(unittest.TestCase):
     def test_epics_are_read_every_minute_with_their_state_name(self):
         db, shortcut = store.connect(":memory:"), FakeShortcut()
