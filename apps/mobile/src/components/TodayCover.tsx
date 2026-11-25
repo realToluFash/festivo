@@ -1056,10 +1056,15 @@ export function Band({
       ? null
       : t('todayScreen.liveName', { name: now.name });
   const grown = !phone && named != null && atAccessibilitySizes(fontScale);
+  const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
+  const tall = capsule > CAPSULE_HEIGHT;
 
   return (
     <View
-      style={[styles.band, { [grown ? 'minHeight' : 'height']: top + bandBody(moment, layout) }]}
+      style={[
+        styles.band,
+        { [grown || tall ? 'minHeight' : 'height']: top + bandBody(moment, layout) },
+      ]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {now == null ? (
@@ -1076,6 +1081,7 @@ export function Band({
         style={[
           phone ? [styles.topPhone, coverRowSides(insets)] : [styles.topTablet, styles.capsuleRoom],
           { marginTop: top },
+          tall && { minHeight: CAPSULE_TOP + capsule },
         ]}
       >
         {!phone && measure}
@@ -1090,7 +1096,9 @@ export function Band({
               {t('todayScreen.today')}
             </Text>
           ) : (
-            labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />
+            <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
+              {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
+            </View>
           )}
         </View>
       </View>
