@@ -91,6 +91,11 @@ appId: host.exp.Exponent
 - inputText: '7400123458'
 - waitForAnimationToEnd
 - takeScreenshot: guest-keypad
+- tapOn:
+    text: '(Done|OK|Terminé)'
+    optional: true
+- hideKeyboard
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: 'guest.form.fullName'
@@ -108,6 +113,17 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'guest.form.fullName'
 - inputText: '${GUEST_NAME}'
+- tapOn:
+    text: '(Done|OK|Terminé)'
+    optional: true
+- hideKeyboard
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.save'
+    direction: DOWN
+    timeout: 15000
+    optional: true
 - tapOn:
     id: 'guest.form.save'
     optional: true
