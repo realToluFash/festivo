@@ -72,8 +72,14 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
     );
     expect(cssRule(`${DESK} .st-print`, AT_320)).toContain('top: 116px;');
     expect(
-      cssRule(`${DESK} :is(.st-float.st-bar, .st-under-views, .st-view-wrap)`, AT_320),
+      cssRule(
+        `${DESK} :is(.st-float.st-bar:not(.is-floor), .st-under-views, .st-view-wrap)`,
+        AT_320,
+      ),
     ).toContain('top: 118px;');
+    expect(cssRule('.st-bar.is-floor', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
+      /top: 50%;\s+left: 50%;\s+align-items: flex-start;\s+width: min\(470px, calc\(100% - 2 \* var\(--spaceLg\)\)\);/u,
+    );
     expect(cssRule(`${DESK} .is-row-down .st-top-right`, AT_320)).toContain('top: 118px;');
     expect(cssRule(`${DESK} .is-row-down .st-print`, AT_320)).toContain('top: 176px;');
     expect(cssRule(`${DESK} .is-row-down :is(.st-under-views, .st-view-wrap)`, AT_320)).toContain(
