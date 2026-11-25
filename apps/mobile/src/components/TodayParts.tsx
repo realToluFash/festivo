@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { Text } from './Text.tsx';
-import { CappedWholeWords } from './Title.tsx';
+import { CappedWholeWords, MenuWords } from './Title.tsx';
 import { atAccessibilitySizes, capUnderTitle, wholeLineHeight } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
@@ -546,7 +546,14 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
           >
             {!agendaAlone && <EventThumb event={nextUp.event} side={48} />}
             <View style={styles.words}>
-              <NextUpLabel words={t('todayScreen.nextUp').toLocaleUpperCase()} />
+              <MenuWords
+                size={12}
+                weight="semibold"
+                grows={false}
+                style={[styles.secondary, styles.caps]}
+              >
+                {t('todayScreen.nextUp').toLocaleUpperCase()}
+              </MenuWords>
               <Text size={15} weight="semibold" accessible={false}>
                 {nextUp.name}
               </Text>
@@ -559,28 +566,6 @@ export function ThisWeek({ moment, wide, top }: { moment: Moment; wide: boolean;
         </Panel>
       )}
     </>
-  );
-}
-
-/** Next up's label: main's below AX1; from AX1 whole words in its room, no larger than the greeting (sc-91291). */
-function NextUpLabel({ words }: { words: string }) {
-  const { fontScale } = useWindowDimensions();
-  const [room, setRoom] = useState(0);
-  const look = {
-    size: 12,
-    weight: 'semibold',
-    accessible: false,
-    style: [styles.secondary, styles.caps],
-  } as const;
-
-  if (!atAccessibilitySizes(fontScale)) return <Text {...look}>{words}</Text>;
-
-  return (
-    <View onLayout={(event) => setRoom(event.nativeEvent.layout.width)}>
-      <CappedWholeWords {...look} room={room} breakAfterHyphens>
-        {words}
-      </CappedWholeWords>
-    </View>
   );
 }
 
