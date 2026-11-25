@@ -85,6 +85,27 @@ describe('every desk page at 400% zoom, 320 CSS px (sc-32279)', () => {
     );
   });
 
+  it('wraps the zoom bar by rule, Fit the room across its second row, and steps what stands above it up that 46 px row (sc-91971)', () => {
+    expect(cssRule(`${DESK} .st-zoom`, AT_320)).toMatch(
+      /display: grid;\s+grid-template-columns: repeat\(3, auto\);[\s\S]+max-width: calc\(100% - 2 \* var\(--spaceLg\)\);/u,
+    );
+    expect(cssRule(`${DESK} .st-zoom > .st-tool`, AT_320)).toMatch(
+      /grid-column: 1 \/ -1;\s+justify-self: stretch;/u,
+    );
+    expect(cssRule(`${DESK} :is(.st-minimap, .st-another)`, AT_320)).toContain('bottom: 126px;');
+    expect(cssRule(`${DESK} .st-keys`, AT_320)).toContain('bottom: 124px;');
+    expect(cssRule(`${DESK} .is-zoom-up :is(.st-minimap, .st-another)`, AT_320)).toContain(
+      'bottom: 190px;',
+    );
+    expect(cssRule(`${DESK} .is-zoom-up .st-keys`, AT_320)).toContain('bottom: 188px;');
+    expect(cssRule(`${DESK} .st-main:not(.is-none) .st-canvas.is-plan`, AT_320)).toContain(
+      'height: 704px;',
+    );
+    expect(cssRule('.st-tool', stylesheet(import.meta.dirname, 'seating.css'))).toMatch(
+      /height: var\(--sizeHit\);[\s\S]+white-space: nowrap;/u,
+    );
+  });
+
   it('lets the open conversation’s header wrap, its name breaking inside its own line (sc-91763)', () => {
     expect(cssRule(`${DESK} .mg-head`, AT_320)).toContain('flex-wrap: wrap;');
     expect(cssRule(`${DESK} .mg-head-words`, AT_320)).toMatch(
