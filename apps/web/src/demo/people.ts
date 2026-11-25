@@ -40,6 +40,14 @@ export const LEVEL_LINES: Record<Level, string> = { ...ROLE_LINES, ...SERVICE_LI
 export const SERVICE_HEAD = 'For the service';
 export const SERVICE_CLOSING =
   'The service levels open only the service. None of them sees contact details or the budget.';
+/** sc-4002, #93365: on Add people a service level goes only to the address from outside, never to a ticked member. */
+export const SERVICE_NOT_MEMBERS = 'For someone from outside only. Untick the members to give it.';
+export const MEMBERS_NOT_SERVICE =
+  'Members take one of the four roles above. Pick one to add them as well.';
+
+export function isServiceLevel(level: Level): level is ServiceLevel {
+  return SERVICE_LEVELS.some((one) => one === level);
+}
 
 const NOW_CAN: Record<Level, { one: string; several: string }> = {
   'Can work the floor': { one: 'can work the floor now.', several: 'can work the floor now.' },
@@ -328,7 +336,7 @@ export function removedToast(person: OnEvent): string {
   return `${person.name} is off this event.`;
 }
 
-export function addedToast(names: readonly string[], role: EventRole): string {
+export function addedToast(names: readonly string[], role: Level): string {
   return names.length === 1
     ? `${names[0] ?? ''} ${NOW_CAN[role].one}`
     : `${names.length} people ${NOW_CAN[role].several}`;
@@ -394,7 +402,7 @@ function readAddress(text: string, country: string): Address | 'name' | 'unusabl
 export function outsideView(
   typed: string,
   country: string,
-  role: EventRole,
+  role: Level,
   onEvent: readonly OnEvent[] = [],
 ): OutsideView {
   const read = readAddress(typed.trim(), country);
@@ -419,7 +427,7 @@ export function outsideRefusal(address: Address, members: readonly OrgMember[]):
 
 export function withOutside(
   onEvent: readonly OnEvent[],
-  role: EventRole,
+  role: Level,
   address: Address,
   job: string,
 ): OnEvent[] {
@@ -477,6 +485,7 @@ export const PEOPLE_STATES = [
   'addUnusable',
   'addLeadOutside',
   'addMemberAddress',
+  'addServiceLevel',
   'loading',
   'failed',
   'staffLinks',
@@ -502,7 +511,7 @@ export interface PeopleStart {
   load: 'loaded' | 'loading' | 'failed';
   place: EventPlace;
   members: OrgMember[];
-  adding?: { typed: string; role: EventRole };
+  adding?: { typed: string; role: Level };
   /** The row whose role dialog is open, and whether its Remove ask is too. */
   open?: { id: string; asking: boolean };
 }
@@ -579,6 +588,8 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return { ...start, adding: { typed: BISI, role: 'Lead' } };
     case 'addMemberAddress':
       return { ...start, adding: { typed: 'kofi@ire.events', role: FIRST_ROLE } };
+    case 'addServiceLevel':
+      return { ...start, adding: { typed: BISI, role: 'Can work the floor' } };
     case 'staffLinks':
       return { ...start, onEvent: [...start.onEvent, ...STAFF_LINKS] };
     case 'addressShort':
@@ -611,6 +622,7 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('addUnusable', 'Half an address'),
       people('addLeadOutside', 'An address under Lead'),
       people('addMemberAddress', 'A member’s own address, refused by the server'),
+      people('addServiceLevel', 'Someone from outside at a service level (sc-4002)'),
       people('loading', 'Loading'),
       people('failed', 'Failed'),
       people('staffLinks', 'Staff links from the roster, one signed in and one not yet (sc-3912)'),
