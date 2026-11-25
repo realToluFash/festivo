@@ -552,7 +552,7 @@ export function FactorDialog({
   email: string;
   start?: Opening;
   held?: HeldFactors;
-  passkeyOptions?: () => Promise<PasskeyOptions>;
+  passkeyOptions?: (() => Promise<PasskeyOptions>) | undefined;
   submit: (current: CurrentFactor) => Promise<void>;
   onClose: () => void;
   onDone: () => void;
