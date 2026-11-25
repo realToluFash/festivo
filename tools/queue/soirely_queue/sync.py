@@ -6,7 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import github, roles, store, work
-from .shortcut import OutOfTime, Shortcut, ShortcutError, slim
+from .shortcut import OutOfTime, Shortcut, ShortcutError, history_moves, history_vcs, slim
 
 FRESH_SECONDS = 60
 FULL_EVERY_SECONDS = 15 * 60
@@ -78,8 +78,10 @@ def sync_shortcut(db, shortcut, now, full=False):
             found.update({s["id"]: s for s in hits})
         stale = [story_id for story_id, hit in found.items()
                  if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
-        for raw in pool.map(shortcut.story, stale):
+        raws = list(pool.map(shortcut.story, stale))
+        for raw in raws:
             store.put_story(db, slim(raw, states, epics))
+    undo_design_branch_moves(db, shortcut, raws, states, epics)
     fetched = len(stale) + sync_blockers(db, shortcut, states, epics)
     store.set_meta(db, "shortcut_at", now)
     if full:
@@ -87,6 +89,48 @@ def sync_shortcut(db, shortcut, now, full=False):
     if ready:
         store.set_meta(db, "ready_at", now)
     return fetched
+
+
+def design_branch_move(history, states, prs):
+    """The ux/ branch or pull request whose push moved a story from Needs Design to Ready For
+    Dev, if its last move was that one; otherwise None."""
+    branches = {pr["number"]: pr.get("branch") for pr in prs}
+    for entry in reversed(history):
+        moves = history_moves(entry)
+        if not moves:
+            continue
+        if (states.get(str(moves[0].get("old"))), states.get(str(moves[0].get("new")))) \
+                != ("Needs Design", "Ready For Dev"):
+            return None
+        for thing in history_vcs(entry):
+            kind = thing["entity_type"]
+            name = thing.get("name") if kind == "branch" else \
+                branches.get(thing.get("number")) if kind == "pull-request" else None
+            if roles.is_design_branch(name):
+                return name
+        return None
+    return None
+
+
+def undo_design_branch_moves(db, shortcut, raws, states, epics):
+    """Shortcut's GitHub integration moves a story to Ready For Dev when a branch naming it is
+    pushed, a designer's ux/ branch too, while its demo is still under review. Ready For Dev
+    means a merged demo, so the move is undone and the designer moves it on after the merge.
+    A story Shortcut fails on is stored without its `updated_at`, so the next sync tries again."""
+    ids = {name: int(state_id) for state_id, name in states.items()}
+    if "Needs Design" not in ids:
+        return
+    prs = store.prs(db)
+    for raw in raws:
+        if states.get(str(raw.get("workflow_state_id"))) != "Ready For Dev" or not any(
+                roles.is_design_branch(b.get("name")) for b in raw.get("branches") or []):
+            continue
+        try:
+            if design_branch_move(shortcut.history(raw["id"]), states, prs):
+                moved = shortcut.update(raw["id"], workflow_state_id=ids["Needs Design"])
+                store.put_story(db, slim(moved or shortcut.story(raw["id"]), states, epics))
+        except ShortcutError:
+            store.put_story(db, dict(slim(raw, states, epics), updated_at=None))
 
 
 def sync_blockers(db, shortcut, states, epics):
