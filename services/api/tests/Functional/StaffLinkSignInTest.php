@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Staff\Link\StaffLinkGrants;
+use App\Domain\Staff\Link\StaffLinks;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
@@ -154,11 +155,7 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertFalse($this->audited('staff.account_linked'));
         self::assertFalse($this->audited('phone.signed_in'));
 
-        $this->client->request('POST', '/api/auth/two-factor/verify', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode([
-            'challenge' => $asked['twoFactorChallenge'],
-            'code' => TOTP::createFromSecret($secret)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp())),
-            'refreshTokenIn' => 'cookie',
-        ]));
+        $this->verify($asked, $secret);
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($kemi->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122());
@@ -411,6 +408,34 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
+    public function aBrowserSignInCloseToTheWindowsEndHoldsAnAccessTokenEndingWithIt(): void
+    {
+        $until = $this->closeToTheEnd();
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        self::assertSame($until->getTimestamp(), $this->expiryOf($answer));
+    }
+
+    #[Test]
+    public function withTwoFactorOnABrowserSignInCloseToTheWindowsEndHoldsAnAccessTokenEndingWithIt(): void
+    {
+        $kemi = $this->account('kemi@ade.ng', 'Kemi Ade');
+        $this->phone($kemi, self::NUMBER, primary: true, verified: true);
+        $secret = $this->twoFactorOn($kemi);
+        $until = $this->closeToTheEnd();
+        $token = $this->link($this->ada);
+        $asked = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+
+        $answer = $this->verify($asked, $secret);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        self::assertSame($until->getTimestamp(), $this->expiryOf($answer));
+    }
+
+    #[Test]
     public function anAppSessionKeepsTheUsualLife(): void
     {
         $token = $this->link($this->ada);
@@ -512,7 +537,41 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::em()->flush();
     }
 
-    /** @return non-empty-string the authenticator's secret */
+    /**
+     * @param array<string, mixed> $asked
+     * @param non-empty-string     $secret
+     *
+     * @return array<string, mixed>
+     */
+    private function verify(array $asked, #[SensitiveParameter] string $secret): array
+    {
+        $this->client->request('POST', '/api/auth/two-factor/verify', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode([
+            'challenge' => $asked['twoFactorChallenge'],
+            'code' => TOTP::createFromSecret($secret)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp())),
+            'refreshTokenIn' => 'cookie',
+        ]));
+
+        return $this->last();
+    }
+
+    /** Five minutes before Ada's window ends, well inside an access token's usual life. */
+    private function closeToTheEnd(): DateTimeImmutable
+    {
+        $until = self::service(StaffLinks::class)->window($this->entry($this->ada))->until ?? self::fail('no window');
+        $this->at($until->modify('-5 minutes')->format(\DATE_ATOM));
+
+        return $until;
+    }
+
+    /** @param array<string, mixed> $answer */
+    private function expiryOf(array $answer): int
+    {
+        $claims = self::service(JWTTokenManagerInterface::class)->parse(Type\string()->coerce($answer['accessToken'] ?? null));
+
+        return Type\int()->coerce($claims['exp'] ?? null);
+    }
+
+    /** @return non-empty-string */
     private function twoFactorOn(User $user): string
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');

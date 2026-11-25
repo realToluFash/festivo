@@ -21,6 +21,7 @@ use Psl\SecureRandom;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -48,6 +49,7 @@ final readonly class TokenIssuer
         #[Autowire(env: 'int:JWT_TOKEN_TTL')]
         private int $accessTokenTtl,
         private StaffLinkGrants $staffLinkGrants,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -189,7 +191,7 @@ final readonly class TokenIssuer
         $end = $endsWithGrants ? $this->staffLinkGrants->lastEndFor($user) : null;
 
         if (null !== $end) {
-            $claims['exp'] = Math\minva($end->getTimestamp(), \time() + $this->accessTokenTtl);
+            $claims['exp'] = Math\minva($end->getTimestamp(), $this->clock->now()->getTimestamp() + $this->accessTokenTtl);
         }
 
         return new IssuedTokens(

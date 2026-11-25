@@ -200,6 +200,8 @@ final readonly class PhoneSignIns
         }
 
         $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
+        // Before the token is issued: its cap reads the link's grant by DQL, which sees only what is flushed.
+        $this->entityManager->flush();
     }
 
     private function secondsLeftForNumber(string $number): int
