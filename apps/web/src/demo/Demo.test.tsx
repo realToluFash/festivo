@@ -2359,4 +2359,58 @@ describe('People on an event at a desk (sc-29915)', () => {
     expect(add.getByText('That person is already a member of this organisation.')).toBeDefined();
     expect(screen.getByRole('dialog', { name: 'Add people' })).toBeDefined();
   });
+
+  it('gives someone from outside a service level from Add people (sc-4002, #93365)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByText('For the service')).toBeDefined();
+    expect(
+      (add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(add.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByText('bisi@lagoslights.example can work the floor now.')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /^bisi@lagoslights\.example.*Can work the floor/u }),
+    ).toBeDefined();
+  });
+
+  it('offers the service levels only while it sends outside, never to a ticked member (sc-4002)', async () => {
+    await people('addOutside');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    expect(add.getByRole('radio', { name: /^Can run the floor/u })).toBeDefined();
+    const field = add.getByLabelText('Name, email or mobile number');
+    fireEvent.change(field, { target: { value: '' } });
+    expect(add.queryByText('For the service')).toBeNull();
+    const [member] = add.getAllByRole('checkbox');
+    if (member == null) throw new Error('no member offered');
+    fireEvent.click(member);
+    fireEvent.change(field, { target: { value: 'bisi@lagoslights.example' } });
+
+    const floor = add.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement;
+    expect(floor.disabled).toBe(true);
+    expect(
+      add.getAllByText('For someone from outside only. Untick the members to give it.'),
+    ).toHaveLength(3);
+  });
+
+  it('keeps members off while a service level is picked (sc-4002)', async () => {
+    await people('addServiceLevel');
+
+    const add = within(screen.getByRole('dialog', { name: 'Add people' }));
+    fireEvent.change(add.getByLabelText('Name, email or mobile number'), {
+      target: { value: '' },
+    });
+    expect(
+      add.getByText('Members take one of the four roles above. Pick one to add them as well.'),
+    ).toBeDefined();
+    for (const box of add.getAllByRole('checkbox')) {
+      expect((box as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(add.getByRole('button', { name: 'Add' }).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(add.getByRole('radio', { name: /^Can view/u }));
+    expect(add.queryByText('For the service')).toBeNull();
+  });
 });

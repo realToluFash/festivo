@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\EmailAddressHash;
 use App\Domain\Messaging\EmailSuppressions;
 use App\Entity\EmailSuppression;
 use App\Enum\MailProviderReport;
@@ -39,6 +40,12 @@ final class EmailSuppressionHashBackfillTest extends FunctionalTestCase
         self::assertTrue($suppressions->isSuppressed('bounced@ire.events'));
         self::assertTrue($suppressions->isSuppressed('  Complained@IRE.events '));
         self::assertFalse($suppressions->isSuppressed('someone.else@ire.events'));
+
+        $hashes = self::em()->getConnection()->fetchFirstColumn('SELECT address_hash FROM email_suppressions');
+        $key = Type\string()->coerce($_ENV['GUEST_COMPLAINT_KEY']);
+        $appSecret = Type\string()->coerce($_ENV['APP_SECRET']);
+        self::assertContains(new EmailAddressHash($key)->of('bounced@ire.events'), $hashes);
+        self::assertNotContains(new EmailAddressHash($appSecret)->of('bounced@ire.events'), $hashes, 'no address is hashed under the app secret on the way');
 
         $kept = [];
         foreach (self::em()->getRepository(EmailSuppression::class)->findAll() as $row) {
