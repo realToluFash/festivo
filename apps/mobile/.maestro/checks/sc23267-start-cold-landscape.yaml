@@ -1,0 +1,23 @@
+# sc-23267, on the iPad in landscape: Start organisation from a cold app, five times; every start-cold-landscape-* shot shows the card in landscape.
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: sc23267-start-cold-landscape-once.yaml
+    env:
+      RUN: 'l1'
+- runFlow:
+    file: sc23267-start-cold-landscape-once.yaml
+    env:
+      RUN: 'l2'
+- runFlow:
+    file: sc23267-start-cold-landscape-once.yaml
+    env:
+      RUN: 'l3'
+- runFlow:
+    file: sc23267-start-cold-landscape-once.yaml
+    env:
+      RUN: 'l4'
+- runFlow:
+    file: sc23267-start-cold-landscape-once.yaml
+    env:
+      RUN: 'l5'

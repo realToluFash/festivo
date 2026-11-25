@@ -1,0 +1,15 @@
+# sc-3786: each event on Events shows its guest line, the wedding's under its card.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: 'events.line.${EVENT}'
+    timeout: 30000
+- takeScreenshot: events-top
+- scrollUntilVisible:
+    element:
+      id: 'events.line.${PAUSED}'
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: events-more

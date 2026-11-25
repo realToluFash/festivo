@@ -1,0 +1,8 @@
+# Turns the tablet to landscape and runs sc23279-lost-back-from-sign-in, then the dead link, and
+# turns it back. Pass EMAIL and PASSWORD of a two-factor account. sc-23279.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: sc23279-lost-back-from-sign-in.yaml
+- runFlow: sc23279-dead-link-no-back.yaml
+- setOrientation: PORTRAIT

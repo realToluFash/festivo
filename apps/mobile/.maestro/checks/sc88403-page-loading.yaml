@@ -1,0 +1,10 @@
+# sc-88403: the real page's loading line, with the API paused so the read hangs.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/notifications
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible: 'Loading your notification settings…'
+    timeout: 15000
+- assertNotVisible: 'notificationSettings.loading'
+- takeScreenshot: page-loading

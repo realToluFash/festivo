@@ -1,0 +1,38 @@
+# sc-87539: Sign out while Your organisation reads invitations and join-offers (held back by a proxy, QA_API_URL); the late reads change nothing.
+# Pass METRO_URL, TOKEN (a reset token for an account with its profile complete, in no organisation), NEW_PASSWORD,
+# (no ACTION).
+# Hold /api/invitations and /api/join-offers back with a proxy in front of the API (QA_API_URL) to make the landing slow.
+appId: host.exp.Exponent
+---
+- stopApp
+# On the iPhone a cold start drops the link (sc-36253): open the app on welcome first.
+- openLink: ${METRO_URL}
+- extendedWaitUntil: { visible: { id: 'welcome.email' }, timeout: 20000, optional: true }
+# Still signed in as the run before's account, on Your organisation: sign it out.
+- runFlow:
+    when:
+      visible: { id: 'completeProfile.left' }
+    file: sign-out-from-complete-profile.yaml
+- runFlow:
+    when:
+      visible: { id: 'noOrganisation.signOut' }
+    commands:
+      - tapOn: { id: 'noOrganisation.signOut' }
+- extendedWaitUntil: { visible: { id: 'welcome.email' }, timeout: 120000 }
+- pressKey: home
+- openLink: ${METRO_URL}/--/reset-password?token=${TOKEN}
+- extendedWaitUntil: { visible: { id: 'recovery.password' }, timeout: 120000 }
+- tapOn: { id: 'recovery.password' }
+- inputText: ${NEW_PASSWORD}
+- tapOn: { id: 'recovery.save' }
+- extendedWaitUntil: { visible: { id: 'pending' }, timeout: 30000 }
+- assertVisible: { id: 'completeProfile.left' }
+- takeScreenshot: wait-01-loading
+- tapOn: { id: 'completeProfile.left' }
+- extendedWaitUntil: { visible: { id: 'welcome.email' }, timeout: 30000 }
+- takeScreenshot: wait-02-welcome
+# The reads still out come back after this; welcome must stay.
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- assertVisible: { id: 'welcome.email' }
+- assertNotVisible: { id: 'completeProfile.organisation' }
+- takeScreenshot: wait-03-welcome-after-reads

@@ -1,0 +1,935 @@
+/* The event's Menu (sc-3902), as the web demo's Menu draws it (apps/web/src/demo/menuCourses.css, and the course rules of demo/menu.css). */
+.mc .mn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+}
+
+.mn-head {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mn-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.mn-course {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-height: 0;
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  color: var(--colorInk);
+}
+
+.mn-course.is-lit,
+.mn-dish.is-lit {
+  box-shadow: 0 0 0 2px var(--colorAccent);
+}
+
+.mn-course-top,
+.mn-dish-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.mn-course-names,
+.mn-dish-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mn-course h2 {
+  margin: 0;
+  font: 700 22px/1.2 var(--fontFamily);
+  letter-spacing: -0.01em;
+}
+
+.mn-dishes {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mn-dish {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceMd) 0;
+  border-top: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusSmall);
+}
+
+.mn-dish h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: 600 15px/1.35 var(--fontFamily);
+}
+
+.mn-course-foot {
+  display: flex;
+}
+
+.mn-add-dish {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  border: 1px dashed var(--colorFieldBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 14px/1.25 var(--fontFamily);
+}
+
+.mn-add-dish:hover {
+  background: var(--colorRowHover);
+}
+
+.mc-back {
+  display: none;
+}
+
+.mc-top {
+  align-items: flex-start;
+}
+
+.mc-counts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceLg);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mc-ready-line,
+.mc-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.mc-ring {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--colorInkTertiary);
+  border-radius: 50%;
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.mc-ring.is-empty {
+  border-style: dashed;
+}
+
+.mc-ring.is-ready {
+  border-color: var(--colorAccent);
+  background: var(--colorAccent);
+  color: var(--colorCard);
+}
+
+.mc-ring.is-warn {
+  border-color: var(--colorAttention);
+  color: var(--colorAttentionText);
+}
+
+.mc-state {
+  margin: var(--spaceXxs) 0 0;
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mc-state.is-ready {
+  color: var(--colorAccentText);
+}
+
+.mc-state.is-empty {
+  color: var(--colorInkSecondary);
+}
+
+.mc-add-wrap {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spaceXs);
+  max-width: 22rem;
+}
+
+.mc-add-end {
+  align-items: flex-start;
+}
+
+.mc-add-course {
+  gap: var(--spaceXs);
+}
+
+.mc-limit,
+.mc-refused,
+.mc-said-more {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAttentionText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.mc-limit:empty {
+  display: none;
+}
+
+.mc-said {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mc-limit:focus,
+.mc-said:focus {
+  outline: none;
+}
+
+.mc-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.mc-said-line {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.mc-said-line.is-fail {
+  color: var(--colorBrokenText);
+}
+
+.mc-picks-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.mc-picks-head {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInk);
+  font-weight: 600;
+}
+
+.mc-close {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceSm);
+  margin: var(--spaceSm) 0 0;
+}
+
+.mc-close-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mc-close-pill.is-closed {
+  border-color: var(--colorBorder);
+  background: var(--colorNeutralFill);
+}
+
+.mc-close-source {
+  color: var(--colorInkSecondary);
+  font: 400 13px/1.4 var(--fontFamily);
+}
+
+.mc-closed-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm) var(--spaceLg);
+  margin-top: var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border-radius: var(--radiusRow);
+  background: var(--colorNeutralFill);
+}
+
+.mc-closed-line p {
+  display: flex;
+  flex: 1 1 240px;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mc-closed-line svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.mc-courses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-course.desk-card {
+  overflow: visible;
+}
+
+.mc-course-top {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+/* A title or dish name keeps 12rem beside the panel (sc-3902, 961 to 1279 px); short of it, the actions go under. */
+.mc-course-top > .mn-course-names,
+.mc-dish .mn-dish-words {
+  flex-basis: 12rem;
+}
+
+.mc-dish .mn-dish-top {
+  flex-wrap: wrap;
+}
+
+.mc-acts,
+.mc-dish .lib-acts {
+  margin-left: auto;
+}
+
+.mc-course.is-dragging {
+  opacity: 0.6;
+}
+
+.mc-grip {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: var(--sizeHit);
+  color: var(--colorInkTertiary);
+  cursor: grab;
+}
+
+.mc-acts {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mc-dish .mn-dish-words {
+  gap: var(--spaceXs);
+}
+
+.mc-no-dishes {
+  margin: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1px dashed var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mc-refused {
+  padding: 0 var(--spaceXl);
+}
+
+.mc-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-top: var(--spaceLg);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.mc-answer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceXl);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mc-answer legend {
+  margin-bottom: var(--spaceXs);
+}
+
+.mc-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  color: var(--colorInk);
+  font: 400 15px/1.4 var(--fontFamily);
+}
+
+.mc-radio.is-off {
+  color: var(--colorInkSecondary);
+}
+
+.mc-same-note {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.mc-skip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+}
+
+.mc-skip-label {
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.mc-settings-read {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceLg);
+  margin: 0;
+  padding: var(--spaceLg) 0 0;
+  border-top: 1px solid var(--colorInsetBorder);
+  color: var(--colorInkSecondary);
+  list-style: none;
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.mc-panel {
+  width: 420px;
+}
+
+.mc-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  margin-top: var(--spaceSm);
+}
+
+.mc-time {
+  max-width: 10rem;
+}
+
+.mc-tabs {
+  margin-bottom: var(--spaceLg);
+}
+
+.mc-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mc-added {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.mc-added:empty {
+  display: none;
+}
+
+.mc-no-match {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.mc-no-match p {
+  margin: 0;
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.mc-picks {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mc-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) 0;
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.mc-pick-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+}
+
+.mc-pick h3 {
+  margin: 0;
+  font: 700 15px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.mc-pick-add {
+  flex: none;
+}
+
+.mc-on-course {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mc-only {
+  gap: var(--spaceXs);
+}
+
+.mc-refusal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  max-width: 36rem;
+  padding: var(--spaceXl);
+}
+
+.mc-bone {
+  height: 180px;
+}
+
+.mc .lib-tags,
+.mc .lib-contains {
+  overflow-wrap: break-word;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mc-panel {
+    animation: mc-fade 160ms ease-out;
+  }
+}
+
+@keyframes mc-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes mc-push {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+/* 961 to 1199 px: docked, the panel leaves a course card under 26rem, so it stacks above the menu. */
+@media (60rem < width < 75rem) {
+  .mc-split:has(> .mc-panel) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mc-split > .mc-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .mc-split > .mc-panel .mn-panel-body {
+    overflow: visible;
+  }
+}
+
+/* Up to 40rem (390 and 320 px windows, WCAG 2.2 1.4.10): one column, and an open form in the menu's place. */
+@media (width <= 40rem) {
+  .shell-content:has(.mc.desk-page) {
+    padding-inline: var(--spaceSm);
+  }
+
+  .mc.desk-page {
+    padding: var(--spaceLg) var(--spaceMd) var(--space3xl);
+    overflow: visible;
+  }
+
+  .mc .ev-crumb-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    row-gap: var(--spaceMd);
+  }
+
+  .mc .ev-crumb {
+    flex: 1 0 100%;
+    order: 1;
+  }
+
+  .mc .lib-acts {
+    flex-direction: row;
+  }
+
+  .mc .ev-crumb ol {
+    flex-wrap: wrap;
+  }
+
+  .mc-top {
+    flex-wrap: wrap;
+  }
+
+  .mc-add-wrap,
+  .mc-add-end {
+    align-items: stretch;
+    width: 100%;
+    max-width: none;
+  }
+
+  .mc .gs-pill {
+    min-height: 48px;
+  }
+
+  .mn-page:has(.mc-split.is-open) .mc-top .mc-add-wrap {
+    display: none;
+  }
+
+  .mc-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mc-split.is-open .mc-list {
+    display: none;
+  }
+
+  .mc-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+  }
+
+  .mc-panel .mn-panel-body {
+    overflow: visible;
+  }
+
+  .mc-back {
+    display: inline-flex;
+    gap: var(--spaceXs);
+    align-self: flex-start;
+    margin: var(--spaceLg) var(--spaceXl) 0;
+  }
+
+  .mc-acts {
+    flex: 1 0 100%;
+    justify-content: flex-start;
+  }
+
+  .mc-pick {
+    flex-wrap: wrap;
+  }
+
+  .mc .lib-ticks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (width <= 40rem) and (prefers-reduced-motion: no-preference) {
+  .mc-panel {
+    animation: mc-push 200ms ease-out;
+  }
+}
+
+/* A dish's items and a course's own (sc-34230), as the demo draws them. */
+.mn-course-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mn-course-facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs) var(--spaceSm);
+}
+
+.mn-course-facts dt {
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+}
+
+.mn-course-facts dd {
+  margin: 0;
+}
+
+.mn-item-chips,
+.mn-item-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mn-item-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.mn-items-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin-left: var(--spaceXl);
+}
+
+.mn-items-head {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.4 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mn-item-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  counter-reset: item;
+}
+
+.mn-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: 28px;
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 600 13px/1.3 var(--fontFamily);
+  counter-increment: item;
+}
+
+.mn-item-chip::before {
+  color: var(--colorInkSecondary);
+  content: counter(item) ' ·';
+}
+
+.mn-item-chip.is-draft,
+.mn-choice-item.is-draft {
+  border-style: dashed;
+  border-color: var(--colorAttention);
+}
+
+.mn-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mn-items legend {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  padding: 0;
+  margin-bottom: var(--spaceXs);
+}
+
+.mn-moved {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mn-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.mn-item-n {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: var(--sizeHit);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.mn-item-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mn-item-acts {
+  display: flex;
+  flex: none;
+  gap: var(--spaceXxs);
+}
+
+.mn-choice-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-height: var(--sizeHit);
+  margin: 0;
+  padding: 0 var(--spaceMd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorInset);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mn-choice-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mn-tag {
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorNeutralFill);
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.3 var(--fontFamily);
+}
+
+.mn-add-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.mn-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mn-offer-head {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.4 var(--fontFamily);
+}
+
+.mn-offer-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.mn-offer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 14px/1.25 var(--fontFamily);
+}
+
+.mn-offer-button:hover {
+  background: var(--colorRowHover);
+}
+
+.mn-contains-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mn-contains-box .desk-label {
+  margin: 0;
+}
+
+.mn-moved:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.mn-offer-button .mn-tag {
+  margin-left: var(--spaceXxs);
+}
+
+.mc-preview {
+  flex: none;
+}

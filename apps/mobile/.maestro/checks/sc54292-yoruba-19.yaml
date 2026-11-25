@@ -1,0 +1,15 @@
+# sc-54292: a request's message counts visible letters. TOKEN, a link this account has not asked through.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/join/${TOKEN}
+- extendedWaitUntil:
+    visible:
+      id: requestToJoin.message
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: requestToJoin.message
+- inputText: 'Ẹ̀gbẹ́ Ọ̀rẹ́ Ìyàwó Àgbà'
+- waitForAnimationToEnd
+- takeScreenshot: yoruba-19
+- assertVisible: '.*19 of 500 characters.*'

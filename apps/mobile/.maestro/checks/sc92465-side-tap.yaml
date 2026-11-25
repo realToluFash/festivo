@@ -1,0 +1,11 @@
+# sc-92465: Today on its side, one tap on the organisation pill, the switcher it opens. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'home.switchOrganisation' }, timeout: 15000 }
+- runFlow: ../developer-menu-close.yaml
+- takeScreenshot: before
+- tapOn: { id: 'home.switchOrganisation' }
+- waitForAnimationToEnd
+- takeScreenshot: opened

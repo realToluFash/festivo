@@ -1,0 +1,51 @@
+# sc-52008 regression of sc-48600 / sc-3780: ${EVENT_ID}'s Dates (24 Dec 14:00 to 18:00, Reply by 23 Dec, a guest yet to reply): Starts' date set to the 20th; Ends moves with it; Save asks before replies close sooner; Keep editing keeps the screen. Then the time zone picker opens. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.details.dates'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.startDate'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.dates.startDate'
+- extendedWaitUntil:
+    visible:
+      text: 'OK'
+    timeout: 10000
+- tapOn:
+    text: '20'
+- tapOn:
+    text: 'OK'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'event.edit.dates.endDate'
+    text: '.*\b20\b.*'
+- takeScreenshot: start-moved
+- tapOn:
+    id: 'event.edit.dates.save'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.replyBy.keep'
+    timeout: 10000
+- takeScreenshot: replyby-ask
+- tapOn:
+    id: 'event.edit.dates.replyBy.keep'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'event.edit.dates.save'
+- tapOn:
+    id: 'event.edit.dates.zone'
+- waitForAnimationToEnd
+- takeScreenshot: zone-open

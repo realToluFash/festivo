@@ -1,0 +1,122 @@
+# Add guest at the current text size: the mobile field with Royaume-Uni, the keypad up, and the guest saved with that number. sc-78438. Phone only: on a tablet the form is a sheet, and keys-away's blank-page tap lands on its scrim.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible: '(Invités|Guests)'
+    timeout: 30000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: 'guests.add'
+    commands:
+      - tapOn:
+          id: 'guests.add'
+- runFlow:
+    when:
+      notVisible:
+        id: 'guest.form'
+    commands:
+      - scrollUntilVisible:
+          element: '(Ajouter un invité|Add guest).*'
+          timeout: 15000
+      - tapOn: '(Ajouter un invité|Add guest).*'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.form'
+    timeout: 20000
+- waitForAnimationToEnd
+- repeat:
+    while:
+      notVisible:
+        id: 'guest.form.mobile.country'
+    times: 15
+    commands:
+      - swipe:
+          start: 50%, 80%
+          end: 50%, 50%
+      - waitForAnimationToEnd
+- takeScreenshot: guest-field
+- tapOn:
+    id: 'guest.form.mobile.country'
+- waitForAnimationToEnd
+- takeScreenshot: guest-list-open
+- tapOn:
+    id: 'guest.form.mobile.country.search'
+- inputText: 'Royaume'
+- waitForAnimationToEnd
+- tapOn:
+    point: '30%,57%'
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: '(Terminé|Done)'
+    commands:
+      - tapOn: '(Terminé|Done)'
+      - waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.country'
+    direction: UP
+    centerElement: true
+    timeout: 10000
+    optional: true
+- swipe:
+    start: 50%, 55%
+    end: 50%, 80%
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'guest.form.mobile.country.search'
+- assertVisible: '.*\+44.*'
+- takeScreenshot: guest-gb
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.mobile.number'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'guest.form.mobile.number'
+- eraseText: 60
+- inputText: '7400123458'
+- waitForAnimationToEnd
+- takeScreenshot: guest-keypad
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.fullName'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'guest.form.fullName'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'guest.form.fullName'
+- inputText: '${GUEST_NAME}'
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
+- tapOn:
+    id: 'guest.form.save'
+    optional: true
+- extendedWaitUntil:
+    notVisible:
+      id: 'guest.form'
+    timeout: 20000
+- takeScreenshot: guest-saved

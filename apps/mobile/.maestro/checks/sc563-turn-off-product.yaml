@@ -1,0 +1,28 @@
+# sc-563: the Owner switches Only our organisation off on a domain where it is on; it applies at once, with no question. Pass DOMAIN: a proved email domain with Only our organisation on.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.only
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: sc563-turn-off-before
+- tapOn:
+    id: emailDomains.${DOMAIN}.only
+- extendedWaitUntil:
+    visible:
+      text: '.*is off.*'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.card
+    direction: UP
+    timeout: 10000
+- takeScreenshot: sc563-turn-off-product

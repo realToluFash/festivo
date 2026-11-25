@@ -1,0 +1,15 @@
+# sc-85006: the demo's held cards for a one-organisation member and for one with others, under Settings.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings?held=paused&switcher=one
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-paused-one
+- openLink: ${METRO_URL}/--/demo/settings?held=overdue&switcher=one
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-overdue-one
+- openLink: ${METRO_URL}/--/demo/settings?held=paused
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-paused-others
+- openLink: ${METRO_URL}/--/demo/settings?held=overdue
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-overdue-others

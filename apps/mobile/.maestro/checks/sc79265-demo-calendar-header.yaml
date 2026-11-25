@@ -1,0 +1,46 @@
+# sc-79265: every board of the app's design demo /demo/calendar-header, held ${ORIENT}: AX1 and AX5 in en and es without and with Refreshing…, and the default size in en and es.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax1&lang=en&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax1-en-off
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax1&lang=en&refreshing=on
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax1-en-on
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax1&lang=es&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax1-es-off
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax1&lang=es&refreshing=on
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax1-es-on
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax5&lang=en&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-en-off
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax5&lang=en&refreshing=on
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-en-on
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax5&lang=es&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-es-off
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=ax5&lang=es&refreshing=on
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-ax5-es-on
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=default&lang=en&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-default-en-off
+- openLink: ${METRO_URL}/--/demo/calendar-header?size=default&lang=es&refreshing=off
+- waitForAnimationToEnd: { timeout: 6000 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo-default-es-off
+- setOrientation: PORTRAIT

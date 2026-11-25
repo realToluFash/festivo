@@ -1,0 +1,17 @@
+# sc-65714: the owner claim's card on Members, as its claimant sees it, in the organisation ORG_ID, switched to first. Needs ORG_ID.
+appId: host.exp.Exponent
+---
+- runFlow: sc65714-switch-to.yaml
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      text: '.*[Cc]laim.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-claim
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: members-claim-scrolled

@@ -1,0 +1,12 @@
+# sc-85022 setup: put ${ORG} in use through Your organisations.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- scrollUntilVisible:
+    element: '.*${ORG}.*'
+    direction: UP
+    timeout: 15000
+- tapOn: '.*${ORG}.*'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: picked
