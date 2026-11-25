@@ -281,10 +281,15 @@ export interface UprightTop {
   waitingRoom: number;
 }
 
-/** The upright iPad's top row at a stand-in scale, as main fits it: the tabs take their room first, from their labels `labels` wide at their own size in a row `row` wide inside its side margins. */
-export function uprightTop(scale: number, labels: readonly number[], row: number): UprightTop {
+/** The upright iPad's top row at a stand-in scale, as main fits it: the tabs take their room first, from their labels `labels` wide at their own size in a row `row` wide inside its side margins, `end` wide at its right. */
+export function uprightTop(
+  scale: number,
+  labels: readonly number[],
+  row: number,
+  end = UPRIGHT_END,
+): UprightTop {
   const total = labels.reduce((sum, width) => sum + width, 0);
-  const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, UPRIGHT_END));
+  const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, end));
   const capsule = capsuleWidth(scale, labels, labelSize);
   const pill = openerRoom(row + 2 * tokens.space3xl, capsule) ?? 0;
   const nameRoom = Math.max(pill - PILL_CHROME, 0);
