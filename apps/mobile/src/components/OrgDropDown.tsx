@@ -15,6 +15,7 @@ import {
   type TextInputInstance,
   View,
   type ViewInstance,
+  useWindowDimensions,
 } from 'react-native';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -37,6 +38,7 @@ import {
 } from '../kit/orgSwitcher.ts';
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { answersStack, answerWidth } from '../layout/pillFit.ts';
+import { labelStart } from '../layout/textSize.ts';
 import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { fadeAway, glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
@@ -60,8 +62,8 @@ import {
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Pill, TYPE } from './SettingsParts.tsx';
 import { SilentWindowName, useFocusBack, useWindowTurn } from './Sheet.tsx';
-import { Text, type TextHandle } from './Text.tsx';
-import { MeasuredWords } from './Title.tsx';
+import { Text, type TextHandle, TitleCap } from './Text.tsx';
+import { MeasuredWords, WholeWords } from './Title.tsx';
 
 const GROW_FROM = 0.92;
 const CARET = 16;
@@ -637,58 +639,136 @@ function Cell({
               lit ? tokens.colorAccentTint : open || pressed ? tokens.colorInset : tokens.colorCard
             }
           />
-          <View style={beside ? styles.entryWords : styles.cellWords}>
-            <Text
-              size={sizes.name}
-              weight="semibold"
-              numberOfLines={NAME_LINES}
-              accessible={false}
-              maxFontSizeMultiplier={cap}
-              style={[
-                beside ? styles.left : styles.centred,
-                { lineHeight: sizes.name * (beside ? 1.25 : 1.3) },
-                tile.kind === 'create' && styles.violet,
-              ]}
-            >
-              {words.name}
-            </Text>
-            {words.line != null && (
+          {sizes === ROWS ? (
+            <WholeRowWords tile={tile} name={words.name} line={words.line} lit={lit} />
+          ) : (
+            <View style={beside ? styles.entryWords : styles.cellWords}>
               <Text
-                size={sizes.line}
-                weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
-                accessible={false}
-                maxFontSizeMultiplier={cap}
-                style={[
-                  beside ? styles.left : styles.centred,
-                  styles.line,
-                  { lineHeight: sizes.line * 1.35 },
-                  tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
-                ]}
-              >
-                {words.line}
-              </Text>
-            )}
-            {lit && (
-              <Text
-                size={sizes.line}
+                size={sizes.name}
                 weight="semibold"
+                numberOfLines={NAME_LINES}
                 accessible={false}
                 maxFontSizeMultiplier={cap}
                 style={[
                   beside ? styles.left : styles.centred,
-                  styles.line,
-                  styles.violet,
-                  { lineHeight: sizes.line * 1.35 },
+                  { lineHeight: sizes.name * (beside ? 1.25 : 1.3) },
+                  tile.kind === 'create' && styles.violet,
                 ]}
               >
-                {t('switcher.current')}
+                {words.name}
               </Text>
-            )}
-          </View>
+              {words.line != null && (
+                <Text
+                  size={sizes.line}
+                  weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
+                  accessible={false}
+                  maxFontSizeMultiplier={cap}
+                  style={[
+                    beside ? styles.left : styles.centred,
+                    styles.line,
+                    { lineHeight: sizes.line * 1.35 },
+                    tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
+                  ]}
+                >
+                  {words.line}
+                </Text>
+              )}
+              {lit && (
+                <Text
+                  size={sizes.line}
+                  weight="semibold"
+                  accessible={false}
+                  maxFontSizeMultiplier={cap}
+                  style={[
+                    beside ? styles.left : styles.centred,
+                    styles.line,
+                    styles.violet,
+                    { lineHeight: sizes.line * 1.35 },
+                  ]}
+                >
+                  {t('switcher.current')}
+                </Text>
+              )}
+            </View>
+          )}
         </>
       )}
     </Pressable>
   );
+}
+
+/** A row's words from AX1 (sc-92465): every line wraps between words with no line limit, the name stepping down only until its widest word fits, never under its default size; the role line and Current each step alone, never larger than the name. A word too wide even at the default size breaks where its line is full. */
+function WholeRowWords({
+  tile,
+  name,
+  line,
+  lit,
+}: {
+  tile: Tile;
+  name: string;
+  line: string | null;
+  lit: boolean;
+}) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+  const [nameAt, setNameAt] = useState<number | null>(null);
+  const under = nameAt ?? ROWS.name * fontScale;
+
+  return (
+    <View
+      style={styles.entryWords}
+      onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <TitleCap.Provider value={null}>
+        <WholeWords
+          size={ROWS.name}
+          start={labelStart(ROWS.name, fontScale, Infinity)}
+          room={room}
+          breakAfterHyphens
+          weight="semibold"
+          accessible={false}
+          onDrawn={setNameAt}
+          style={[styles.left, tile.kind === 'create' && styles.violet]}
+        >
+          {name}
+        </WholeWords>
+        {line != null && (
+          <WholeWords
+            size={ROWS.line}
+            start={labelStart(ROWS.line, fontScale, under)}
+            room={room}
+            weight={tile.kind === 'invitation' ? 'semibold' : 'medium'}
+            accessible={false}
+            style={[
+              styles.left,
+              styles.line,
+              tile.kind === 'invitation' ? styles.invitationInk : styles.secondary,
+            ]}
+          >
+            {dotKept(line)}
+          </WholeWords>
+        )}
+        {lit && (
+          <WholeWords
+            size={ROWS.line}
+            start={labelStart(ROWS.line, fontScale, under)}
+            room={room}
+            weight="semibold"
+            accessible={false}
+            style={[styles.left, styles.line, styles.violet]}
+          >
+            {t('switcher.current')}
+          </WholeWords>
+        )}
+      </TitleCap.Provider>
+    </View>
+  );
+}
+
+/** The dot after "Your role" stays on the word before it, so no line starts with it (sc-92250). */
+function dotKept(line: string): string {
+  return line.replaceAll(' ·', '\u00a0·');
 }
 
 function TileFace({
