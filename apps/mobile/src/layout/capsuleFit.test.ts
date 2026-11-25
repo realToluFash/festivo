@@ -2,14 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   capsuleChrome,
+  capsuleWidth as laidOut,
   capsuleLabelSize,
   capsuleRoom,
   CAPSULE_HEIGHT,
   fittedLabelSize,
   LABEL_IN_BAND,
-  measuredAt,
   pillGivesWay,
-  withMeasure,
 } from './capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -104,18 +103,13 @@ describe('the pill beside the capsule', () => {
   });
 });
 
-describe('the capsule’s width, upright, as layouts arrive (sc-91290)', () => {
-  const A = 300;
-  const B = 420;
-
-  it('keeps the current fit’s width when an earlier fit’s layout arrives after it', () => {
-    const late = withMeasure(withMeasure({}, 40, B), 30, A);
-
-    expect(measuredAt(late, 40)).toBe(B);
+describe('the capsule’s width, upright (sc-91290)', () => {
+  it('is its chrome and its labels at the fitted size, from their widths at their own', () => {
+    expect(laidOut(2, [60, 80, 100, 120], 20)).toBe(capsuleWidth(4, 360, 30, 20));
   });
 
-  it('reads nothing before the capsule at the fitted size has been laid out', () => {
-    expect(measuredAt(withMeasure({}, 30, A), 40)).toBe(0);
-    expect(measuredAt(withMeasure({}, 30, A), undefined)).toBe(0);
+  it('is nothing before the labels are measured and fitted', () => {
+    expect(laidOut(2, [60, undefined], 20)).toBe(0);
+    expect(laidOut(2, [60, 80], undefined)).toBe(0);
   });
 });

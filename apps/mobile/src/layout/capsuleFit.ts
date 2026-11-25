@@ -62,19 +62,15 @@ export function pillGivesWay(fontScale: number, labelSize: number): boolean {
   return labelSize < CAPSULE_LABEL * fontScale;
 }
 
-/** The capsule's width as laid out, by the label size it was drawn at. */
-export type CapsuleMeasures = Readonly<Record<number, number>>;
+/** The capsule's width at `labelSize`, from its labels measured at the text size's own: laid out with it, never read back from it (sc-91290). */
+export function capsuleWidth(
+  fontScale: number,
+  labels: readonly (number | undefined)[],
+  labelSize: number | undefined,
+): number {
+  if (labelSize == null || labels.some((width) => width == null)) return 0;
 
-/** The capsule's width at `labelSize`, so a layout reported late from an earlier fit adds its own entry and never removes the current one (sc-91290). */
-export function measuredAt(measures: CapsuleMeasures, labelSize: number | undefined): number {
-  return (labelSize == null ? undefined : measures[labelSize]) ?? 0;
-}
+  const total = labels.reduce<number>((sum, width) => sum + (width ?? 0), 0);
 
-/** `measures` with the capsule's width as laid out at `labelSize`, beside every other size's. */
-export function withMeasure(
-  measures: CapsuleMeasures,
-  labelSize: number,
-  width: number,
-): CapsuleMeasures {
-  return { ...measures, [labelSize]: width };
+  return capsuleChrome(labels.length) + (total * labelSize) / (CAPSULE_LABEL * fontScale);
 }
