@@ -63,3 +63,23 @@ export function fittedLabelSize(
 export function pillGivesWay(fontScale: number, labelSize: number): boolean {
   return labelSize < CAPSULE_LABEL * fontScale;
 }
+
+/** The capsule as laid out, by the label size it was drawn at. */
+export type CapsuleMeasures = Readonly<Record<number, { width: number; height: number }>>;
+
+/** The capsule's measure at `labelSize`, so a layout reported late from an earlier fit adds its own entry and never removes the current one (sc-91290). */
+export function measuredAt(
+  measures: CapsuleMeasures,
+  labelSize: number | undefined,
+): { width: number; height: number } {
+  return (labelSize == null ? undefined : measures[labelSize]) ?? { width: 0, height: 0 };
+}
+
+/** `measures` with the capsule as laid out at `labelSize`, beside every other size's. */
+export function withMeasure(
+  measures: CapsuleMeasures,
+  labelSize: number,
+  measure: { width: number; height: number },
+): CapsuleMeasures {
+  return { ...measures, [labelSize]: measure };
+}

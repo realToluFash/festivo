@@ -4,7 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
-import { capsuleGrowth } from '../layout/capsuleFit.ts';
+import {
+  type CapsuleMeasures,
+  capsuleGrowth,
+  measuredAt,
+  withMeasure,
+} from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
 import { type TextHandle } from './Text.tsx';
 import { useCapsuleLabels } from './CapsuleLabels.tsx';
@@ -126,10 +131,10 @@ export function PortraitRow({
   tabsCentred = false,
 }: PortraitRowProps) {
   const [rowWidth, setRowWidth] = useState(0);
-  const [tabsWidth, setTabsWidth] = useState(0);
-  const [tabsHeight, setTabsHeight] = useState(0);
   const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
+  const [measures, setMeasures] = useState<CapsuleMeasures>({});
+  const { width: tabsWidth, height: tabsHeight } = measuredAt(measures, labelSize);
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
@@ -147,12 +152,12 @@ export function PortraitRow({
       <View style={styles.fill} />
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
-        {/* Keyed by the fitted size, so a fresh onLayout reports the capsule's height at each fitted size, from undefined to the first fit and every refit after; without it the band can keep a height measured before the capsule was drawn (sc-91290). */}
         <View
           key={labelSize}
           onLayout={(event) => {
-            setTabsWidth(event.nativeEvent.layout.width);
-            setTabsHeight(event.nativeEvent.layout.height);
+            if (labelSize == null) return;
+            const { width, height } = event.nativeEvent.layout;
+            setMeasures((prev) => withMeasure(prev, labelSize, { width, height }));
           }}
         >
           {labelSize != null && renderTabs(labelSize)}
