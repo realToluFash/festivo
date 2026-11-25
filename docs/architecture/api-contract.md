@@ -198,7 +198,9 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
   `handle`, `code` and `refreshTokenIn`, and answer as sign-in does: the tokens and
   `account`, or `202` with a two-factor challenge. That challenge names `email`, or `phone`
   as `{countryCode, lastDigits}` on an account with no email, and an account with no email
-  labels its authenticator entry with its number in E.164.
+  labels its authenticator entry with its number in E.164. A personal link's roster entry is
+  linked, and the sign-in audited, only once the session is issued: after two-factor when
+  it is on.
 - **Only the verified primary signs in.** A number that is one makes no second account; a
   new number makes a staff account with the name alone. A verified alternative is
   `409 phone_alternative` after the right code, with nothing made, released or granted,
@@ -212,7 +214,10 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
 - Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
   an hour per code, on top of the number's cooldown: `429` with `Retry-After`.
 - In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
-  account's last live grant, checked on each refresh. In the app it keeps the usual life.
+  account's last live grant, checked on each refresh; with none live yet (a door code
+  behind two-factor) the access token keeps its usual life for the signed-in redeem. In the
+  app it keeps the usual life. A link read by the entry's own account names `signedOutAt`
+  and the event's `timeZone`, `signedOutAt` null for a session that does not end so.
 - A phone-only account is refused an invitation with `409 invitation_needs_email` until
   the invited address is on it and verified. The invitation's preview carries
   `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.

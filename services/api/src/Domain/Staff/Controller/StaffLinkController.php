@@ -150,9 +150,7 @@ final readonly class StaffLinkController
                 default => 'other',
             },
             'name' => $reader instanceof User && !$mine ? $entry->getFullName() : null,
-            'signedOutAt' => $reader instanceof User && $mine ? $this->signedOutAt($reader, $entry) : null,
-            'timeZone' => $mine ? $entry->getEvent()->getTimeZone() : null,
-        ];
+        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->signedOutAt($reader, $entry), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
     }
 
     /** The moment a session that ends with its account's grants ends, in the event's zone; null for one that does not, as the app's. */
