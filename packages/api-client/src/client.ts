@@ -3972,11 +3972,9 @@ export class ApiClient {
   /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
   async staffLinkWindow(token: string, seen: boolean): Promise<StaffLinkWindow> {
     const window = asStaffLinkWindow(
-      await this.post<unknown>(
-        seen ? '/api/staff-links/opened' : '/api/staff-links/look',
-        { token },
-        { anonymous: true },
-      ),
+      await this.post<unknown>(seen ? '/api/staff-links/opened' : '/api/staff-links/look', {
+        token,
+      }),
     );
 
     if (window == null) {

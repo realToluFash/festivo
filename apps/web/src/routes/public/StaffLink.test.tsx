@@ -1,7 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setSessionState } from '../../session.ts';
+import { tokens } from '../../tokens.ts';
 import { routes } from '../index.tsx';
 
 function answer(body: unknown, status = 200): Response {
@@ -31,6 +33,10 @@ async function open(reply: () => Response, visible = true): Promise<string[]> {
 }
 
 describe('A person’s own link (sc-3912)', () => {
+  beforeEach(() => {
+    tokens.clear();
+    __setSessionState({ status: 'signedOut', ended: false });
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it('sends its token in the body of a POST, never in the address', async () => {
@@ -93,5 +99,94 @@ describe('A person’s own link (sc-3912)', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'That did not work. Try again in a moment.',
     );
+  });
+});
+
+const OPEN = {
+  state: 'open',
+  event: { name: 'Joana & Rui’s wedding' },
+  job: 'Bar and drinks',
+  mobile: { countryCode: 'PT', lastDigits: '4512' },
+  reader: null,
+  name: null,
+};
+
+function routed(answers: Record<string, () => Response>): string[] {
+  const asked: string[] = [];
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    asked.push(`${line} ${String(init?.body ?? '')}`);
+
+    return answers[line]?.() ?? answer({});
+  });
+  render(
+    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/w/tok_ada'] })} />,
+  );
+
+  return asked;
+}
+
+describe('A link opened signed out (sc-4235)', () => {
+  beforeEach(() => {
+    tokens.clear();
+    __setSessionState({ status: 'signedOut', ended: false });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('shows the event, the job and the masked number, and sends the code to it', async () => {
+    const asked = routed({
+      'POST /api/staff-links/opened': () => answer(OPEN),
+      'POST /api/staff-links/sign-in/send': () => answer({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () =>
+        answer({ cooldownSeconds: 60, codeState: 'live', route: 'whatsapp' }),
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Confirm it’s you' })).toBeTruthy();
+    expect(screen.getByText('Joana & Rui’s wedding')).toBeTruthy();
+    expect(screen.getByText('Bar and drinks')).toBeTruthy();
+    expect(screen.getByText('We’ll send a code to +351 ••• ••• 4512.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Not your number?' }));
+    expect(screen.getByText('Ask the event’s organiser to change it on the roster.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
+    expect(await screen.findByRole('heading', { name: 'Check WhatsApp' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    expect(asked).toContain('POST /api/staff-links/sign-in/send {"token":"tok_ada"}');
+  });
+
+  it('asks the organiser for a number when the roster has none', async () => {
+    routed({ 'POST /api/staff-links/opened': () => answer({ ...OPEN, mobile: null }) });
+
+    expect(await screen.findByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
+    expect(
+      screen.getByText('Ask the event’s organiser to add your mobile number to the roster.'),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+  });
+
+  it('says an alternative number cannot sign in', async () => {
+    routed({
+      'POST /api/staff-links/opened': () => answer(OPEN),
+      'POST /api/staff-links/sign-in/send': () => answer({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () =>
+        answer({ cooldownSeconds: 60, codeState: 'live', route: 'sms_only' }),
+      'POST /api/staff-links/sign-in': () =>
+        answer(
+          { type: 'https://soirely.com/errors/phone_alternative', title: 'No', status: 409 },
+          409,
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send code' }));
+    fireEvent.change(await screen.findByLabelText('Code from the text'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(
+      await screen.findByText(/^This is an alternative number on a Soirely account/u),
+    ).toBeTruthy();
   });
 });

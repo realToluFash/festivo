@@ -1,6 +1,14 @@
-import { ApiError, type DoorCodeSignedIn } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { callingCode, countryChoices, phoneLengthProblem } from '@soirely/domain';
-import { type FormEvent, type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../api.ts';
@@ -122,41 +130,49 @@ function CountryCode({ country, onChange }: { country: string; onChange: (code: 
 }
 
 /** Where the code step leaves to: signed in (You're in, or two-factor first), or a refusal the page shows itself. */
-export type Leave =
-  | { kind: 'signedIn'; signedIn: DoorCodeSignedIn }
+export type Leave<Signed> =
+  | { kind: 'signedIn'; signedIn: Signed }
   | { kind: 'alternative' }
   | { kind: 'refused'; error: ApiError };
 
 /** The phone code in a browser: one field and Verify, nothing sent as it is typed (WCAG 3.2.2). */
-export function PhoneCodeStep({
-  code,
+export function PhoneCodeStep<Signed>({
+  signIn,
   handle,
   number,
   titleRef,
   fieldRef,
   onLeave,
+  action,
 }: {
-  code: string;
+  signIn: (typed: string) => Promise<Signed>;
   handle: string;
   number: string;
   titleRef: RefObject<HTMLHeadingElement | null>;
   fieldRef: RefObject<HTMLInputElement | null>;
-  onLeave: (leave: Leave) => void;
+  onLeave: (leave: Leave<Signed>) => void;
+  /** The button, Verify by default; Sign in on a staff link. */
+  action?: { idle: string; busy: string };
 }) {
   const { t } = useTranslation();
-  const signed = useRef<DoorCodeSignedIn | null>(null);
+  const signed = useRef<{ signedIn: Signed } | null>(null);
+  // Read at the press, so a new function each render never reopens the code.
+  const signInNow = useRef(signIn);
+  useEffect(() => {
+    signInNow.current = signIn;
+  });
   const source = useMemo<CodeSource>(
     () => ({
       opening: () => api.phoneSignInOpening(handle),
       verify: async (typed) => {
-        signed.current = await api.doorCodeSignIn(code, handle, typed);
+        signed.current = { signedIn: await signInNow.current(typed) };
 
         return { primary: true };
       },
       resend: () => api.resendPhoneSignIn(handle),
       textInstead: () => api.textPhoneSignInInstead(handle),
     }),
-    [code, handle],
+    [handle],
   );
   const check = useCodeCheck('phone', source, {
     leaves: (error, when) => {
@@ -198,7 +214,7 @@ export function PhoneCodeStep({
     setLine(null);
     const checked = await check.verify(digits);
     if (checked?.verified === true && signed.current != null)
-      onLeave({ kind: 'signedIn', signedIn: signed.current });
+      onLeave({ kind: 'signedIn', signedIn: signed.current.signedIn });
     else if (checked?.verified === false) fieldRef.current?.select();
   }
 
@@ -245,7 +261,9 @@ export function PhoneCodeStep({
               />
             </div>
             <Primary submit busy={busy}>
-              {busy ? t('redeem.phone.verifying') : t('redeem.phone.verify')}
+              {busy
+                ? (action?.busy ?? t('redeem.phone.verifying'))
+                : (action?.idle ?? t('redeem.phone.verify'))}
             </Primary>
           </form>
           <div className="rd-ways">
@@ -385,5 +403,26 @@ export function Primary({
       {busy && <span className="rd-spin" aria-hidden="true" />}
       <span className="rd-primary-words">{children}</span>
     </button>
+  );
+}
+
+export function SignOutLine({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="rd-out-mark"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
   );
 }

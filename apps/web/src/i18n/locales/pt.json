@@ -2425,7 +2425,21 @@
     "endedBody": "Deixou de funcionar 2 horas depois do seu último turno.",
     "endedNext": "Se trabalhar noutro evento, vai receber uma nova ligação para esse evento.",
     "foot": "Nada fica guardado neste dispositivo.",
-    "failed": "Não funcionou. Tente de novo dentro de momentos."
+    "failed": "Não funcionou. Tente de novo dentro de momentos.",
+    "signIn": {
+      "staffLink": "Staff link",
+      "confirm": "Confirm it’s you",
+      "sendTo": "We’ll send a code to {{number}}.",
+      "notYours": "Not your number?",
+      "askToChange": "Ask the event’s organiser to change it on the roster.",
+      "askToAdd": "Ask the event’s organiser to add your mobile number to the roster.",
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "tryAt": "Try again at {{time}}",
+      "linkFor": "This link is for {{name}}.",
+      "signOutContinue": "Sign out and continue",
+      "alternative": "This is an alternative number on a Soirely account, so it cannot sign you in. Make it that account’s primary number, or ask the event’s organiser to put your primary number on the roster."
+    }
   },
   "ownerClaim": {
     "loading": "A carregar",

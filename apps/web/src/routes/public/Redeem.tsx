@@ -1,4 +1,9 @@
-import { ApiError, type OpenedDoorCode, type RedeemedDoorCode } from '@soirely/api-client';
+import {
+  ApiError,
+  type DoorCodeSignedIn,
+  type OpenedDoorCode,
+  type RedeemedDoorCode,
+} from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
@@ -20,7 +25,14 @@ import { holdReturn } from '../../heldReturn.ts';
 import { useSignOut } from '../../signOut.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import { dayWords } from '../app/events/staffTimes.ts';
-import { type Leave, PhoneCodeStep, PhoneEntryStep, Primary, Title } from './RedeemPhone.tsx';
+import {
+  type Leave,
+  PhoneCodeStep,
+  PhoneEntryStep,
+  Primary,
+  SignOutLine,
+  Title,
+} from './RedeemPhone.tsx';
 import { type PhoneEntry, shownNumber, startingEntry } from './redeemEntry.ts';
 import '../../components/desk.css';
 import './redeem.css';
@@ -162,7 +174,10 @@ function Redeem({ code }: { code: string }) {
       });
   }
 
-  async function left(at: Extract<Step, { kind: 'code' }>, leave: Leave): Promise<void> {
+  async function left(
+    at: Extract<Step, { kind: 'code' }>,
+    leave: Leave<DoorCodeSignedIn>,
+  ): Promise<void> {
     const back: Extract<Step, { kind: 'event' }> = {
       kind: 'event',
       code: at.code,
@@ -259,10 +274,12 @@ function Redeem({ code }: { code: string }) {
             )}
           </>
         );
-      case 'code':
+      case 'code': {
+        const signInWith = (typed: string) => api.doorCodeSignIn(step.code, step.handle, typed);
+
         return (
           <PhoneCodeStep
-            code={step.code}
+            signIn={signInWith}
             handle={step.handle}
             number={shownNumber(step.entry)}
             titleRef={title}
@@ -270,6 +287,7 @@ function Redeem({ code }: { code: string }) {
             onLeave={(leave) => void left(step, leave)}
           />
         );
+      }
       case 'member':
         return (
           <>
@@ -466,26 +484,5 @@ function EnterStep({
         {t('redeem.continue')}
       </Primary>
     </form>
-  );
-}
-
-function SignOutLine({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="rd-out-mark"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="m16 17 5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
   );
 }
