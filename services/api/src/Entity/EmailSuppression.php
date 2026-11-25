@@ -14,10 +14,10 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'email_suppressions')]
 class EmailSuppression
 {
-    /** Lowercased, as the worker and the webhook both compare it. */
+    /** {@see \App\Domain\Messaging\EmailAddressHash}: the address itself is never kept. */
     #[ORM\Id]
-    #[ORM\Column(type: Types::STRING, length: 320)]
-    private string $address;
+    #[ORM\Column(type: Types::STRING, length: 64)]
+    private string $addressHash;
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: MailProviderReport::class)]
     private MailProviderReport $reason;
@@ -25,16 +25,16 @@ class EmailSuppression
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $suppressedAt;
 
-    public function __construct(string $address, MailProviderReport $reason, DateTimeImmutable $suppressedAt)
+    public function __construct(string $addressHash, MailProviderReport $reason, DateTimeImmutable $suppressedAt)
     {
-        $this->address = $address;
+        $this->addressHash = $addressHash;
         $this->reason = $reason;
         $this->suppressedAt = $suppressedAt;
     }
 
-    public function getAddress(): string
+    public function getAddressHash(): string
     {
-        return $this->address;
+        return $this->addressHash;
     }
 
     public function getReason(): MailProviderReport

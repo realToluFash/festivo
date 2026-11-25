@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Messaging;
 
 use App\Domain\Messaging\Controller\MailWebhookController;
+use App\Domain\Messaging\EmailAddressHash;
 use App\Domain\Messaging\EmailSuppressions;
 use App\Domain\Messaging\Webhook\MailWebhook;
 use App\Domain\User\Mail\UserMailer;
@@ -44,6 +45,7 @@ final class MailWebhookTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame(['sent', 'bounced'], $this->state($delivery));
         self::assertTrue(self::service(EmailSuppressions::class)->isSuppressed('ada@example.test'));
+        self::assertSame([self::service(EmailAddressHash::class)->of('ada@example.test')], self::connection()->fetchFirstColumn('SELECT address_hash FROM email_suppressions'));
     }
 
     #[Test]
