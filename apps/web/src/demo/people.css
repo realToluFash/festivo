@@ -75,16 +75,3 @@
   border: 1.5px dashed var(--colorInkSecondary);
   border-radius: var(--radiusPill);
 }
-
-/* sc-91747: at 400% zoom (320 CSS px) People leaves the product shell's 16 px gutter, not the general rule's 10 + 12 (deskReflow.css), so its column is the product's 288 px. The page runs flat to the window's edges, as Settings' demo and the product's shell do at this width. */
-@media (width <= 40rem) {
-  .today.desk:has(.event-page.is-people) > .desk-main {
-    margin: 0;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .today.desk:has(.event-page.is-people) .desk-page {
-    padding-inline: var(--spaceXl);
-  }
-}
