@@ -14,6 +14,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\EventPhase;
+use App\Enum\NotificationAudienceKind;
 use App\Http\Exception\ApiException;
 use App\Locale\VisibleText;
 use App\Repository\GuestMessageRepository;
@@ -24,6 +25,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
+use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -90,6 +92,11 @@ final readonly class GuestMessageSender
             throw ApiException::validation($violations);
         }
 
+        if (null !== $conversation) {
+            $choice = GuestMessage::CHOSEN;
+            $guestIds = $this->recipientsOf($conversation);
+        }
+
         $id = Uuid::v7();
 
         return $this->connection->transactional(function () use ($event, $by, $choice, $guestIds, $subject, $message, $id, $conversation): GuestMessageSent {
@@ -134,6 +141,15 @@ final readonly class GuestMessageSender
         }
 
         return new GuestMessagePlan($deliveries);
+    }
+
+    /** @return list<string> a follow-up goes to whom the conversation's first message went, not to its audience worked out again */
+    private function recipientsOf(GuestMessage $first): array
+    {
+        return Type\vec(Type\string())->coerce($this->connection->fetchFirstColumn(
+            'SELECT DISTINCT recipient_id FROM notification_deliveries WHERE source_id = :message AND recipient_kind = :guest',
+            ['message' => $first->getId()->toRfc4122(), 'guest' => NotificationAudienceKind::Guest->value],
+        ));
     }
 
     /**
