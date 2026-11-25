@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type DeliveryState,
   type GuestMessageCheck,
   type GuestMessageDelivery,
   type GuestMessageDetails,
@@ -791,6 +792,20 @@ function reasonWords(reason: NotSentReason | null, t: TFunction): string {
   }
 }
 
+/** The receiving server's reason in plain words, its enhanced status code (RFC 3463) after it. */
+function providerWords(state: DeliveryState, code: string | null, t: TFunction): string | null {
+  if (code == null) return null;
+  if (state !== 'bounced') return `(${code})`;
+
+  const words = code.startsWith('5.1.')
+    ? t('eventMessages.doesntExist')
+    : code.endsWith('.2.2')
+      ? t('eventMessages.inboxFull')
+      : t('eventMessages.refusedIt');
+
+  return `${words} (${code})`;
+}
+
 function CheckCard({
   step,
   onSeeAll,
@@ -1541,7 +1556,10 @@ function ReachedPane({
         <ul className="mg-people">
           {message.deliveries.map((delivery) => {
             const name = delivery.name ?? '';
-            const why = delivery.state === 'not_sent' ? reasonWords(delivery.reason, t) : null;
+            const why =
+              delivery.state === 'not_sent'
+                ? reasonWords(delivery.reason, t)
+                : providerWords(delivery.state, delivery.code, t);
             const lines = [
               why,
               delivery.at == null ? null : whenWords(delivery.at),

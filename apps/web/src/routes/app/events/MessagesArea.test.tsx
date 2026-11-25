@@ -84,8 +84,19 @@ const SENT = {
       channel: 'email',
       state: 'delivered',
       reason: null,
+      code: null,
       at: null,
       address: 'ada@example.test',
+    },
+    {
+      guestId: 'g_bisi',
+      name: 'Bisi Ade',
+      channel: 'email',
+      state: 'bounced',
+      reason: null,
+      code: '5.1.1',
+      at: null,
+      address: 'bisi@example.test',
     },
     {
       guestId: 'g_kwame',
@@ -93,6 +104,7 @@ const SENT = {
       channel: 'email',
       state: 'not_sent',
       reason: 'no_address',
+      code: null,
       at: null,
       address: null,
     },
@@ -182,6 +194,9 @@ describe('Messages at a desk (sc-3942)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Who it reached/ }));
     const kwame = (await screen.findByText('Kwame Mensah')).closest('li');
     expect(kwame?.textContent).toContain('Not sent · No email address');
+    expect(screen.getByText('Bisi Ade').closest('li')?.textContent).toContain(
+      'Bounced · This address doesn’t exist (5.1.1)',
+    );
   });
 
   it('refuses Done with nobody chosen, under To', async () => {
