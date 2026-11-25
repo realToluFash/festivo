@@ -189,7 +189,7 @@ final readonly class PhoneSignIns
         });
     }
 
-    /** Once the session is issued, after two-factor when it is on: a link's roster entry is linked to the account then, and not before. */
+    /** After two-factor when it is on, and before the session is issued: the token's cap reads the link's grant by DQL, so the entry is flushed once linked. */
     public function signedIn(User $user, PhoneSignIn $signIn): void
     {
         $entry = $signIn->getStaffMember();
@@ -200,7 +200,6 @@ final readonly class PhoneSignIns
         }
 
         $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
-        // Before the token is issued: its cap reads the link's grant by DQL, which sees only what is flushed.
         $this->entityManager->flush();
     }
 
