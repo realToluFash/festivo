@@ -3332,13 +3332,19 @@
       "lead": "Responsable",
       "can_edit": "Peut modifier",
       "can_view": "Peut consulter",
-      "can_check_in": "Peut accueillir les invités"
+      "can_check_in": "Peut accueillir les invités",
+      "can_work_floor": "Can work the floor",
+      "can_work_pass": "Can work the pass",
+      "can_run_floor": "Can run the floor"
     },
     "roleMeans": {
       "lead": "Tout sur cet événement, y compris son budget et qui y participe.",
       "can_edit": "Tout sauf le budget et qui participe à l’événement.",
       "can_view": "Voit l’événement sans rien modifier. Aucune coordonnée.",
-      "can_check_in": "Accueille les invités le jour de l’événement. Les noms seulement, aucune coordonnée."
+      "can_check_in": "Accueille les invités le jour de l’événement. Les noms seulement, aucune coordonnée.",
+      "can_work_floor": "Marks plates and requests at their own tables.",
+      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
+      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
     },
     "memberOf": "Membre de {{organisation}}",
     "roleFor": "Rôle de {{name}} sur cet événement",
@@ -3373,7 +3379,10 @@
       "lead": "{{name}} est désormais responsable de cet événement.",
       "can_edit": "{{name}} peut désormais modifier l’événement.",
       "can_view": "{{name}} peut désormais consulter l’événement.",
-      "can_check_in": "{{name}} peut désormais accueillir les invités."
+      "can_check_in": "{{name}} peut désormais accueillir les invités.",
+      "can_work_floor": "{{name}} can work the floor now.",
+      "can_work_pass": "{{name}} can work the pass now.",
+      "can_run_floor": "{{name}} can run the floor now."
     },
     "nowMany": {
       "lead_one": "{{count, number}} personne est désormais responsable de cet événement.",
@@ -3387,7 +3396,13 @@
       "can_view_other": "{{count, number}} personnes peuvent désormais consulter l’événement.",
       "can_check_in_one": "{{count, number}} personne peut désormais accueillir les invités.",
       "can_check_in_many": "{{count, number}} de personnes peuvent désormais accueillir les invités.",
-      "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités."
+      "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités.",
+      "can_work_floor_one": "{{count, number}} person can work the floor now.",
+      "can_work_floor_other": "{{count, number}} people can work the floor now.",
+      "can_work_pass_one": "{{count, number}} person can work the pass now.",
+      "can_work_pass_other": "{{count, number}} people can work the pass now.",
+      "can_run_floor_one": "{{count, number}} person can run the floor now.",
+      "can_run_floor_other": "{{count, number}} people can run the floor now."
     },
     "notJoined": "Invitation en attente",
     "outsideTag": "Externe à {{organisation}}",
@@ -3404,7 +3419,9 @@
     "staffLink": "Lien du personnel · {{name}} · {{job}} · fin à {{time}}",
     "staffLinkNoJob": "Lien du personnel · {{name}} · fin à {{time}}",
     "endsOn": "{{time}} le {{date}}",
-    "notSignedIn": "Pas encore de connexion"
+    "notSignedIn": "Pas encore de connexion",
+    "serviceHead": "For the service",
+    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget."
   },
   "doorCodes": {
     "doorCode": "Code d’accès",
@@ -3471,7 +3488,9 @@
     "printWhenNoVenue": "{{day}} · de {{start}} à {{end}}",
     "printLine": "Scannez-le avec l’appareil photo de votre téléphone, ou ouvrez {{address}} et saisissez le code. Il fonctionne jusqu’à {{until}}.",
     "tag": "Code d’accès",
-    "joinedWith": "A rejoint l’événement avec le code d’accès {{code}} ({{time}})."
+    "joinedWith": "A rejoint l’événement avec le code d’accès {{code}} ({{time}}).",
+    "runRefused": "A join code can’t let people run the floor.",
+    "runRefusedLine": "Give Can run the floor to one person, with their own link from the roster."
   },
   "redeem": {
     "enterTitle": "Saisissez un code d’accès",

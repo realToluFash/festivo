@@ -158,5 +158,7 @@
     "menu_event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed.",
     "plan_sold_by_contract": "This plan is sold by contract, not through checkout. Contact Soirely to arrange it.",
     "plan_not_priced": "This plan has no price in your billing currency.",
-    "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for."
+    "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for.",
+    "table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
+    "level_not_allowed_for_code": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster."
 }

@@ -453,6 +453,29 @@ final class OutsideAccessTest extends ApiTestCase
         self::assertSame(422, $this->statusCode(), 'nor changed to it');
     }
 
+    /** @return iterable<string, array{0: string, 1: EventRole}> */
+    public static function serviceLevels(): iterable
+    {
+        yield 'Can work the floor' => ['can_work_floor', EventRole::CanWorkFloor];
+        yield 'Can work the pass' => ['can_work_pass', EventRole::CanWorkPass];
+        yield 'Can run the floor' => ['can_run_floor', EventRole::CanRunFloor];
+    }
+
+    #[Test]
+    #[DataProvider('serviceLevels')]
+    public function someoneFromOutsideWorksTheServiceAtALevelAndReadsNothingElseOfTheEvent(string $level, EventRole $role): void
+    {
+        $waiter = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level, 'Waiter');
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($role, $this->outsider($this->owambe, $waiter)?->getRole());
+
+        foreach (['/people', '/guests', '/budget'] as $rest) {
+            $this->as($waiter, 'GET', '/api/events/' . $this->owambe . $rest);
+            self::assertContains($this->statusCode(), [403, 404], $rest);
+        }
+    }
+
     #[Test]
     public function aJobLabelPast60CharactersIsRefused(): void
     {

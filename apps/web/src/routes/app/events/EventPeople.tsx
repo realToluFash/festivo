@@ -2,9 +2,11 @@ import {
   type AddableMember,
   ApiError,
   type DoorCodeCard,
+  EVENT_LEVELS,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
+  SERVICE_LEVELS,
   type OrganisationEvent,
   type StaffLinkHolder,
 } from '@soirely/api-client';
@@ -477,7 +479,7 @@ function refusal(error: unknown, fallback: string): string {
 function inListOrder(people: readonly EventPerson[]): EventPerson[] {
   return [...people].sort(
     (a, b) =>
-      EVENT_ROLES.indexOf(a.role) - EVENT_ROLES.indexOf(b.role) ||
+      EVENT_LEVELS.indexOf(a.role) - EVENT_LEVELS.indexOf(b.role) ||
       (a.user?.name ?? a.address ?? '').localeCompare(
         b.user?.name ?? b.address ?? '',
         currentLocale(),
@@ -641,6 +643,40 @@ function RoleDialog({
     }
   }
 
+  function row(role: EventRole) {
+    const off = person.outside && role === 'lead';
+    const rowClass = ['desk-row', role === picked && 'is-picked', off && 'is-off'];
+
+    return (
+      <li key={role}>
+        <label className={rowClass.filter(Boolean).join(' ')}>
+          <RowWords
+            title={t(`eventPeople.role.${role}`)}
+            tag={role === picked && <SavingTag saving={saving} />}
+            lines={[
+              off
+                ? t('eventPeople.leadOff', { organisation: organisationName })
+                : t(`eventPeople.roleMeans.${role}`),
+            ]}
+          />
+          <input
+            ref={role === picked ? pickedRadio : undefined}
+            type="radio"
+            className="desk-radio"
+            name={radios}
+            value={role}
+            disabled={off}
+            checked={role === picked}
+            onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
+              byArrow.current = ARROWS.has(key.key);
+            }}
+            onChange={() => pick(role)}
+          />
+        </label>
+      </li>
+    );
+  }
+
   return (
     <>
       <Dialog
@@ -690,41 +726,14 @@ function RoleDialog({
         {failed != null && <Lost words={failed} />}
         <fieldset className="desk-choices">
           <legend className="desk-unseen">{t('eventPeople.roleFor', { name })}</legend>
-          <ul className="desk-rows">
-            {EVENT_ROLES.map((role) => {
-              const off = person.outside && role === 'lead';
-              const rowClass = ['desk-row', role === picked && 'is-picked', off && 'is-off'];
-
-              return (
-                <li key={role}>
-                  <label className={rowClass.filter(Boolean).join(' ')}>
-                    <RowWords
-                      title={t(`eventPeople.role.${role}`)}
-                      tag={role === picked && <SavingTag saving={saving} />}
-                      lines={[
-                        off
-                          ? t('eventPeople.leadOff', { organisation: organisationName })
-                          : t(`eventPeople.roleMeans.${role}`),
-                      ]}
-                    />
-                    <input
-                      ref={role === picked ? pickedRadio : undefined}
-                      type="radio"
-                      className="desk-radio"
-                      name={radios}
-                      value={role}
-                      disabled={off}
-                      checked={role === picked}
-                      onKeyDown={(key: KeyboardEvent<HTMLInputElement>) => {
-                        byArrow.current = ARROWS.has(key.key);
-                      }}
-                      onChange={() => pick(role)}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="desk-rows">{EVENT_ROLES.map(row)}</ul>
+          {person.outside && (
+            <>
+              <p className="desk-legend">{t('eventPeople.serviceHead')}</p>
+              <ul className="desk-rows">{SERVICE_LEVELS.map(row)}</ul>
+              <p className="desk-line">{t('eventPeople.serviceClosing')}</p>
+            </>
+          )}
         </fieldset>
         <p className="desk-unseen" role="status">
           {saving === 'saving'

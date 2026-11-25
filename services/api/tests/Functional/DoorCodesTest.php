@@ -94,6 +94,34 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame($event->getClosesAt()?->format(\DATE_ATOM), $card['expiresAt']);
     }
 
+    /** @return iterable<string, array{0: string, 1: EventRole}> */
+    public static function serviceCodes(): iterable
+    {
+        yield 'Can work the floor' => ['can_work_floor', EventRole::CanWorkFloor];
+        yield 'Can work the pass' => ['can_work_pass', EventRole::CanWorkPass];
+    }
+
+    #[Test]
+    #[DataProvider('serviceCodes')]
+    public function aCodeWorksTheFloorOrThePassAndItsJoinerHoldsThatLevel(string $role, EventRole $level): void
+    {
+        $code = $this->code($role);
+        $joined = $this->redeem($code, 'Adébáyọ̀');
+        self::assertSame(201, $this->statusCode(), Json\encode($joined));
+
+        $person = self::em()->getRepository(EventPerson::class)->findOneBy(['user' => $this->joinedAs()->getId()]) ?? self::fail('no grant');
+        self::assertSame($level, $person->getRole());
+    }
+
+    #[Test]
+    public function aCodeNeverRunsTheFloor(): void
+    {
+        $this->make('can_run_floor', 10, '2030-11-14T10:00:00+00:00');
+
+        self::assertSame([422, ErrorCode::LevelNotAllowedForCode->type()], [$this->statusCode(), $this->last()['type'] ?? null], Json\encode($this->last()));
+        self::assertSame(0, self::em()->getRepository(DoorCode::class)->count([]));
+    }
+
     /** @return iterable<string, array{0: array<string, mixed>, 1: string}> */
     public static function refusedCodes(): iterable
     {

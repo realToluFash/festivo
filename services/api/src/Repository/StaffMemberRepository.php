@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\StaffMember;
+use App\Entity\StaffStation;
 use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
@@ -36,6 +37,17 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
     public function findOnEvent(Event $event): array
     {
         return $this->findBy(['event' => $event], ['id' => 'ASC']);
+    }
+
+    /** @return list<StaffMember> on the station, as their own or as well (sc-3910) */
+    public function findOnStation(StaffStation $station): array
+    {
+        /** @var list<StaffMember> */
+        return $this->createQueryBuilder('s')
+            ->where('s.station = :station OR s.asWellStation = :station')
+            ->setParameter('station', $station)
+            ->getQuery()
+            ->getResult();
     }
 
     /** @return list<StaffMember> not yet erased, on events finished at or before `$cutoff` */

@@ -496,7 +496,7 @@
     "email_domains.only_ours_unproved": "Only our organisation needs a domain this organisation has proved.",
     "validation.payment_reminder_days": "Enter a whole number of days from 1 to 30.",
     "staff.link_needs_mobile": "Add a mobile number to send a link.",
-    "door_codes.role": "A door code lets people view or check guests in, never edit.",
+    "door_codes.role": "A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.",
     "door_codes.use_cap_required": "Enter how many people can use this code.",
     "door_codes.use_cap_range": "Use a whole number from 1 to 500.",
     "door_codes.expiry_past": "Choose a time that has not passed yet.",
@@ -522,5 +522,8 @@
     "menu.event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed.",
     "billing.plan_sold_by_contract": "This plan is sold by contract, not through checkout. Contact Soirely to arrange it.",
     "billing.plan_not_priced": "This plan has no price in your billing currency.",
-    "billing.nothing_paid_through_provider": "There is no payment method to update until a plan is paid for."
+    "billing.nothing_paid_through_provider": "There is no payment method to update until a plan is paid for.",
+    "service.table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
+    "door_codes.run_floor": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.",
+    "people.service_level_outside_only": "The service levels are for people working a shift. Give a member one of the event roles."
 }

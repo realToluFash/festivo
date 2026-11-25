@@ -868,6 +868,60 @@ describe('People from outside the organisation (sc-71)', () => {
     expect(screen.getByText('Their access ends on their next request.')).toBeDefined();
   });
 
+  it('offers someone from outside the service levels under their own heading, and saves one (sc-4002)', async () => {
+    signedIn();
+    const sent = await onPeople([outsider('kemi', { name: 'Kemi Okafor' }, 'can_view')], {
+      'PATCH /api/events/ev_1/people/p_kemi': () =>
+        json({ person: outsider('kemi', { name: 'Kemi Okafor' }, 'can_work_floor') }),
+    });
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Kemi Okafor/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+
+    expect(within(dialog).getByText('For the service')).toBeDefined();
+    expect(
+      within(dialog).getByText(
+        'The service levels open only the service. None of them sees contact details or the budget.',
+      ),
+    ).toBeDefined();
+    expect(
+      within(dialog)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).value),
+    ).toEqual([
+      'lead',
+      'can_edit',
+      'can_view',
+      'can_check_in',
+      'can_work_floor',
+      'can_work_pass',
+      'can_run_floor',
+    ]);
+    expect(
+      within(dialog).getByText('Marks plates and requests at their own tables.'),
+    ).toBeDefined();
+
+    fireEvent.click(within(dialog).getByRole('radio', { name: /Can work the floor/ }));
+
+    expect(
+      await within(dialog).findByText('Saved. Kemi Okafor can work the floor now.'),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === 'PATCH /api/events/ev_1/people/p_kemi')?.body).toEqual({
+      role: 'can_work_floor',
+    });
+  });
+
+  it('never offers a member the service levels (sc-4002)', async () => {
+    signedIn();
+    await onPeople([PRIYA, TOM]);
+
+    fireEvent.click(within(people()).getByRole('button', { name: /Tom Becker/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Role on this event' });
+
+    expect(within(dialog).queryByText('For the service')).toBeNull();
+    expect(within(dialog).queryByRole('radio', { name: /Can work the floor/ })).toBeNull();
+  });
+
   it('adds someone by email address with a job label', async () => {
     signedIn();
     const sent = await onPeople([TOM], {
