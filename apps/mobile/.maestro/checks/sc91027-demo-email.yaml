@@ -1,7 +1,27 @@
-# Android phone. sc-91027: Add email opens with the keys up and takes typing at once, with no tap on the field: on the first opening, after a clean Cancel, and after Discard. Needs ${METRO_URL}.
+# Android phone. sc-91027: the demo resets to two addresses, so the second goes first. Add email opens with the keys up and takes typing at once, with no tap on the field: on the first opening, after a clean Cancel, and after Discard. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/demo/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.email-2'
+    timeout: 30000
+    centerElement: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.email-2'
+- tapOn:
+    id: 'account.email-2.remove'
+- runFlow:
+    when:
+      visible:
+        id: 'account.remove.confirm'
+    commands:
+      - tapOn:
+          id: 'account.remove.confirm'
+- waitForAnimationToEnd:
+    timeout: 4000
 - scrollUntilVisible:
     element:
       id: 'account.email.add'
@@ -37,7 +57,8 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: open2-untyped
-- tapOn: 'Cancel'
+- tapOn:
+    id: '.*\.cancel'
 - waitForAnimationToEnd:
     timeout: 4000
 - assertNotVisible:
