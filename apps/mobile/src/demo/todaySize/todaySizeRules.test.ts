@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { HEAD, linkUnder, piecesOfLine, wordsSize, wordsStart } from './todaySizeRules.ts';
+import {
+  EVENT_DATES,
+  EVENT_NAME,
+  HEAD,
+  ONE_WORD,
+  SIZE_TODAY,
+  TILE,
+  chipsUnderDates,
+  daysUntil,
+  linkUnder,
+  piecesOfLine,
+  sizeEvents,
+  thumbAbove,
+  tileWidth,
+  underName,
+  wordsSize,
+  wordsStart,
+} from './todaySizeRules.ts';
 
 const AX1 = 1.786;
 const AX5 = 3.571;
@@ -46,5 +63,50 @@ describe('a heading’s link', () => {
   it('sits beside the heading at the standard sizes and under it from AX1', () => {
     expect(linkUnder(SEVENTH)).toBe(false);
     expect(linkUnder(AX1)).toBe(true);
+  });
+});
+
+describe('a row under Your events', () => {
+  it('keeps its thumbnail beside its words at the standard sizes and puts it above them from AX1', () => {
+    expect(thumbAbove(SEVENTH)).toBe(false);
+    expect(thumbAbove(AX1)).toBe(true);
+  });
+
+  it('starts its other labels no larger than its name draws', () => {
+    expect(underName(60, 40)).toBe(40);
+    expect(underName(60, null)).toBe(60);
+  });
+
+  it('steps dimanche down alone, never under the dates’ default size', () => {
+    expect(wordsSize(EVENT_DATES, AX5, Infinity, 300, 280)).toBe(
+      Math.floor((EVENT_DATES * AX5 * 280) / 300),
+    );
+    expect(wordsSize(EVENT_NAME, AX5, Infinity, 3000, 280)).toBe(EVENT_NAME);
+  });
+});
+
+describe('a tile on the phone', () => {
+  it('is main’s 232 at the standard sizes', () => {
+    expect(tileWidth(SEVENTH, 402)).toBe(TILE);
+  });
+
+  it('is the phone’s width less its gutters and a glimpse of the next from AX1', () => {
+    expect(tileWidth(AX5, 402)).toBe(402 - 40 - 40);
+    expect(chipsUnderDates(AX1)).toBe(true);
+    expect(chipsUnderDates(SEVENTH)).toBe(false);
+  });
+});
+
+describe('the size demo’s events', () => {
+  it('puts the party on a Sunday, so French reads dimanche', () => {
+    const party = sizeEvents('sample')[0];
+
+    expect(new Date(`${party?.first}T12:00Z`).getUTCDay()).toBe(0);
+    expect(daysUntil(SIZE_TODAY, party?.first ?? '')).toBe(4);
+  });
+
+  it('gives the first event the one long word when asked', () => {
+    expect(sizeEvents('oneWord')[0]?.name).toBe(ONE_WORD);
+    expect(sizeEvents('oneWord')[1]?.name).toBe(sizeEvents('sample')[1]?.name);
   });
 });
