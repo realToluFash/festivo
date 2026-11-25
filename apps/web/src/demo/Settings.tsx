@@ -6,6 +6,7 @@ import { Toast } from '../components/Toast.tsx';
 import { Glyph, type GlyphName } from '../components/Glyph.tsx';
 import {
   type Drawn,
+  type Hold,
   type Section,
   SECTION_NAMES,
   SIDEBAR_EVENTS,
@@ -41,7 +42,7 @@ import { TodaySidebar } from './TodaySidebar.tsx';
 import { DeskSearch } from './Search.tsx';
 import { usePhoneWidth } from '../phoneWidth.ts';
 import { reachOfRole } from './search.ts';
-import { PAUSED, useHeld, usePaused, useSwitcherStart } from './switcher.ts';
+import { PAUSED, useHeld, usePaused, useSwitcherStart, useWhere } from './switcher.ts';
 import './today.css';
 import './phone.css';
 import '../components/SettingsParts.css';
@@ -83,6 +84,14 @@ export function Settings({
   useSwitcherStart();
   const held = useHeld();
   const paused = usePaused();
+  const { overdue } = useWhere();
+  const hold: Hold | null = paused
+    ? 'paused'
+    : overdue
+      ? 'overdue'
+      : state === 'heldTwoFactor' && viewer.role === 'Admin'
+        ? 'adminTwoFactor'
+        : null;
   const [told, setTold] = useState<string | null>(null);
   const tell = useCallback<Tell>((words) => setTold(words), []);
   const [stack, setStack] = useState<readonly string[]>([]);
@@ -120,7 +129,7 @@ export function Settings({
                     : null
                 }
                 viewer={seen}
-                paused={paused}
+                hold={hold}
                 tell={tell}
               />
               {held && !YOURS.includes(open) ? (
@@ -216,24 +225,24 @@ function Forbidden({ tell }: { tell: Tell }) {
   );
 }
 
-/** Your account's sections, then the organisation's, drawn by the product's list: a section with no design yet says so. While paused, the organisation's are the paused one's, General with its initials (sc-86077). */
+/** Your account's sections, then the organisation's, drawn by the product's list: a section with no design yet says so. While paused, the organisation's are the paused one's, General with its initials (sc-86077); a hold hides what the product hides (sc-93443). */
 function SettingsList({
   open,
   viewer,
-  paused,
+  hold,
   tell,
 }: {
   open: Drawn | null;
   viewer: Viewer;
-  paused: boolean;
+  hold: Hold | null;
   tell: Tell;
 }) {
-  const groups = groupsFor(viewer, paused).map((group) => ({
+  const groups = groupsFor(viewer, hold).map((group) => ({
     name: group.name,
     entries: group.sections.map((section) => ({
       section,
       label: SECTION_NAMES[section],
-      tile: <Tile section={section} viewer={viewer} paused={paused} />,
+      tile: <Tile section={section} viewer={viewer} paused={hold === 'paused'} />,
       ...(isDrawn(section)
         ? { to: settingsPath(section, viewer) }
         : { onPress: () => tell(`${SECTION_NAMES[section]} has its own design.`) }),
