@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Event\DoorCode\DoorCodeRedeemer;
+use App\Domain\Event\DoorCode\DoorCodeSignIn;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\DoorCode;
+use App\Entity\DoorCodeRedemption;
 use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Entity\PhoneNumber;
 use App\Entity\Role;
+use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
@@ -23,8 +28,10 @@ use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
+use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -34,14 +41,16 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
+use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Request;
 
-/** sc-72: a door code onto one event, made and stopped on People, redeemed with no account and no membership. */
+/** sc-72: a door code onto one event, made and stopped on People, redeemed with no membership; signed out, by a code to a mobile number (sc-4235). */
 final class DoorCodesTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
     use OnboardsAccounts;
+    use ReadsSentPhoneCodes;
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
@@ -53,6 +62,8 @@ final class DoorCodesTest extends ApiTestCase
     private string $owambe;
 
     private string $naming;
+
+    private int $numbers = 0;
 
     protected function setUp(): void
     {
@@ -178,12 +189,12 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame(422, $this->statusCode(), 'a name before anything');
 
         $joined = $this->redeem($code, 'Adébáyọ̀');
-        self::assertSame(201, $this->statusCode(), Json\encode($joined));
+        self::assertSame(200, $this->statusCode(), Json\encode($joined));
         self::assertSame(['Adébáyọ̀', 'can_check_in', 'Bar and drinks', false], [$joined['name'], $joined['role'], $joined['jobLabel'], $joined['again']]);
         $token = Type\string()->coerce($joined['accessToken']);
 
         $joiner = $this->joinedAs();
-        self::assertSame(AccountOrigin::DoorCode, $joiner->getOrigin());
+        self::assertSame(AccountOrigin::Staff, $joiner->getOrigin());
         self::assertSame(0, self::em()->getRepository(Membership::class)->count(['user' => $joiner->getId()]), 'no membership row');
         $person = self::em()->getRepository(EventPerson::class)->findOneBy(['user' => $joiner->getId()]) ?? self::fail('no grant');
         self::assertSame(EventRole::CanCheckIn, $person->getRole());
@@ -195,7 +206,7 @@ final class DoorCodesTest extends ApiTestCase
         $this->client->request('GET', '/api/events/' . $this->naming, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
         self::assertSame(404, $this->statusCode(), 'a sibling event');
         $this->client->request('GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/members', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
-        self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'the organisation');
+        self::assertSame([404, ErrorCode::NotFound->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'the organisation, as for any non-member');
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'door_code.redeemed']) ?? self::fail('not audited');
         self::assertSame([null, $code], $entry->getChanges()['code'] ?? null);
@@ -246,16 +257,14 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
-    public function fullExpiredStoppedAndUnknownCodesGiveTheOneSameRefusal(): void
+    public function expiredStoppedAndUnknownCodesGiveTheOneSameRefusal(): void
     {
-        $full = $this->code('can_view', useCap: 1);
-        $this->redeem($full, 'Adébáyọ̀');
         $stopped = $this->code('can_view');
         $this->stop($stopped);
         $expiring = $this->code('can_view', expiresAt: '2030-11-02T12:00:00+00:00');
 
         $answers = [];
-        foreach ([$full, $stopped, 'ZZZZZZZZ', 'not a code'] as $code) {
+        foreach ([$stopped, 'ZZZZZZZZ', 'not a code'] as $code) {
             $this->open($code);
             $answers[$code . ' open'] = [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null];
             $this->redeem($code, 'Tolú');
@@ -267,6 +276,145 @@ final class DoorCodesTest extends ApiTestCase
         $answers['expired'] = [$this->statusCode(), $this->last()['type'] ?? null, $this->last()['detail'] ?? null];
 
         self::assertSame([[404, ErrorCode::DoorCodeInvalid->type(), 'That code does not work. Check it with whoever gave it to you.']], Vec\unique_by(Vec\values($answers), Json\encode(...)));
+    }
+
+    #[Test]
+    public function aFullCodeShowsItsEventSignsItsHoldersBackInWithNoUseAndRefusesANewNumberAfterTheCode(): void
+    {
+        $full = $this->code('can_view', useCap: 1);
+        $this->redeem($full, 'Adébáyọ̀', '+2348031110001');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $accounts = self::em()->getRepository(User::class)->count([]);
+
+        $this->open($full);
+        self::assertSame(200, $this->statusCode(), 'it shows its event, as a live code does');
+
+        $this->sendFor($full, 'Tolú', '+2348031110002');
+        self::assertSame(200, $this->statusCode(), 'and Send code answers as always');
+        $this->signInFor($full, Type\string()->coerce($this->last()['handle']), $this->codeTo('+2348031110002'));
+        self::assertSame([404, ErrorCode::DoorCodeInvalid->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'the one refusal, after the code');
+        self::assertArrayNotHasKey('accessToken', $this->last());
+        self::assertSame($accounts, self::em()->getRepository(User::class)->count([]), 'no account made');
+
+        $this->sendFor($full, 'Ade', '+2348031110001');
+        self::assertSame(429, $this->statusCode(), 'a code of one takes two sends an hour');
+        self::assertMatchesRegularExpression('/^Too many tries\. Try again \w+day \d+ \w+ at \d\d:\d\d UTC\.$/', Type\string()->coerce($this->last()['detail'] ?? null));
+        self::em()->getConnection()->executeStatement("UPDATE verification_challenges SET created_at = created_at - INTERVAL '1 hour'");
+        self::em()->getConnection()->executeStatement("UPDATE phone_sign_ins SET created_at = created_at - INTERVAL '61 minutes'");
+        $back = $this->redeem($full, 'Ade', '+2348031110001');
+        self::assertSame(200, $this->statusCode(), Json\encode($back));
+        self::assertSame(['Adébáyọ̀', true], [$back['name'], $back['again']], "the holder signs back in under the account's name");
+        self::assertArrayHasKey('accessToken', $back);
+        self::assertSame(1, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($full)->getId()]), 'no use taken');
+    }
+
+    #[Test]
+    public function aNumberOnAnAccountRedeemsUnderTheAccountsNameAndTheTypedNameIsKeptNowhere(): void
+    {
+        $code = $this->code('can_view');
+        $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
+        $this->phoneOn($joanna, '+2348031110003');
+
+        $joined = $this->redeem($code, 'Jo', '+2348031110003');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($joined));
+        self::assertSame('Joanna Bello', $joined['name']);
+        self::em()->clear();
+        self::assertSame('Joanna Bello', self::em()->find(User::class, $joanna->getId())?->getName(), 'the account keeps its name');
+        self::assertSame('Joanna Bello', self::em()->getRepository(DoorCodeRedemption::class)->findOneBy(['user' => $joanna->getId()])?->getName());
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM phone_sign_ins WHERE typed_name IS NOT NULL'), 'the typed name is dropped once the code is right');
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'door_code.redeemed']) ?? self::fail('not audited');
+        self::assertSame($joanna->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
+    }
+
+    #[Test]
+    public function withTwoFactorOnInABrowserTheGrantWaitsForItAndTheSignedInRedeemTakesItWithTheSessionItIssued(): void
+    {
+        $code = $this->code('can_view');
+        $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
+        $number = '+2348031110004';
+        $this->phoneOn($joanna, $number);
+        $secret = $this->twoFactorOn($joanna);
+        $sent = $this->sendFor($code, 'Jo', $number);
+
+        $asked = $this->signInFor($code, Type\string()->coerce($sent['handle']), $this->codeTo($number), 'cookie');
+
+        self::assertSame(202, $this->statusCode(), Json\encode($asked));
+        self::assertArrayNotHasKey('eventId', $asked);
+        self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]), 'nothing granted before two-factor');
+        self::assertSame(0, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']), 'no sign-in before two-factor');
+
+        $this->client->request('POST', '/api/auth/two-factor/verify', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode([
+            'challenge' => $asked['twoFactorChallenge'],
+            'code' => TOTP::createFromSecret($secret)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp())),
+            'refreshTokenIn' => 'cookie',
+        ]));
+        $passed = $this->last();
+        self::assertSame(200, $this->statusCode(), Json\encode($passed));
+        self::assertSame(1, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']));
+
+        $this->redeemAs(Type\string()->coerce($passed['accessToken']), $code);
+        self::assertSame(201, $this->statusCode(), 'the signed-in redeem takes the use with the token two-factor issued: ' . Json\encode($this->last()));
+        $this->client->request('POST', '/api/auth/refresh', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['refreshTokenIn' => 'cookie']));
+        self::assertSame(200, $this->statusCode(), 'and the session lasts with the grant: ' . Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function signedOutTheRedeemAsksForASignInAndMakesNoDeviceAccount(): void
+    {
+        $code = $this->code('can_view');
+        $this->client->request('POST', '/api/door-codes/' . $code . '/redeem', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['name' => 'Tolú']));
+
+        self::assertSame([401, ErrorCode::Unauthenticated->type()], [$this->statusCode(), $this->last()['type'] ?? null]);
+        self::assertSame(0, self::em()->getRepository(User::class)->count(['origin' => AccountOrigin::DoorCode]));
+    }
+
+    #[Test]
+    public function aVerifiedAlternativeSignsIntoNothingAndTakesNoUse(): void
+    {
+        $code = $this->code('can_view');
+        $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
+        $this->phoneOn($joanna, '+2348031110009');
+        $this->phoneOn($joanna, '+2348031110005', primary: false);
+
+        $answer = $this->redeem($code, 'Rita', '+2348031110005');
+
+        self::assertSame(ErrorCode::PhoneAlternative->type(), $answer['type'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]));
+    }
+
+    /** In one kernel, since the limiter's pool is reset between requests. */
+    #[Test]
+    public function sendsAreCappedAtThirtyAnHourASourceAndTwiceTheCapAnHourACode(): void
+    {
+        $signIn = self::service(DoorCodeSignIn::class);
+        $small = $this->code('can_view', useCap: 2);
+
+        foreach (\range(1, 4) as $n) {
+            $signIn->send($small, 'Crew', '+234803112000' . $n, 'NG', Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.' . $n]));
+        }
+
+        try {
+            $signIn->send($small, 'Crew', '+2348031120099', 'NG', Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.50']));
+            self::fail('a fifth send on a code of two');
+        } catch (ApiException $refusal) {
+            self::assertSame(ErrorCode::TooManyAttempts, $refusal->errorCode);
+        }
+
+        $big = $this->code('can_view', useCap: 100);
+        $source = Request::create('/', server: ['REMOTE_ADDR' => '198.51.100.7']);
+
+        foreach (\range(10, 39) as $n) {
+            $signIn->send($big, 'Crew', '+23480311300' . $n, 'NG', $source);
+        }
+
+        try {
+            $signIn->send($big, 'Crew', '+2348031130099', 'NG', $source);
+            self::fail('a thirty-first send from one source');
+        } catch (ApiException $refusal) {
+            self::assertSame(ErrorCode::TooManyAttempts, $refusal->errorCode);
+        }
     }
 
     #[Test]
@@ -421,8 +569,10 @@ final class DoorCodesTest extends ApiTestCase
 
         foreach (\range(1, 65) as $n) {
             $source = Request::create('/', server: ['REMOTE_ADDR' => '203.0.113.9']);
+            $crew = new User('Crew ' . $n, null, AccountOrigin::Staff);
+            self::em()->persist($crew);
             self::assertSame($code, $redeemer->open($code, null, $source)->getCode(), 'open ' . $n);
-            self::assertFalse($redeemer->redeem($code, 'Crew ' . $n, null, $source)['again'], 'join ' . $n);
+            self::assertFalse($redeemer->redeem($code, $crew, $source)['again'], 'join ' . $n);
         }
     }
 
@@ -457,7 +607,8 @@ final class DoorCodesTest extends ApiTestCase
         $this->client->request('POST', '/api/orgs', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer ' . $token], content: Json\encode(['name' => 'Stranger Events', 'country' => 'NG', 'timeZone' => 'Africa/Lagos']));
         self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'founding an organisation');
         $this->client->request('GET', '/api/orgs', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
-        self::assertSame([403, ErrorCode::AccountUnverified->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'any other signed-in route');
+        self::assertSame(200, $this->statusCode(), 'any other signed-in route answers as for a non-member');
+        self::assertSame([], $this->last()['organisations'] ?? null);
         $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
         self::assertSame(200, $this->statusCode(), 'itself');
         $this->client->request('GET', '/api/events/' . $this->owambe, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
@@ -497,12 +648,59 @@ final class DoorCodesTest extends ApiTestCase
         return $this->last();
     }
 
-    /** @return array<string, mixed> */
-    private function redeem(string $code, string $name): array
+    /**
+     * Signed out: the name and a number, then the code sent to it; a new number each time unless one is given.
+     *
+     * @return array<string, mixed>
+     */
+    private function redeem(string $code, string $name, ?string $number = null): array
     {
-        $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/redeem', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['name' => $name]));
+        $number ??= '+23480311101' . Str\pad_left((string) ++$this->numbers, 2, '0');
+        $sent = $this->sendFor($code, $name, $number);
+
+        if (200 !== $this->statusCode()) {
+            return $sent;
+        }
+
+        return $this->signInFor($code, Type\string()->coerce($sent['handle']), $this->codeTo($number));
+    }
+
+    /** @return array<string, mixed> */
+    private function sendFor(string $code, string $name, string $number): array
+    {
+        $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/sign-in/send', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['name' => $name, 'number' => $number, 'countryCode' => 'NG']));
 
         return $this->last();
+    }
+
+    /** @return array<string, mixed> */
+    private function signInFor(string $code, #[SensitiveParameter] string $handle, #[SensitiveParameter] string $phoneCode, string $delivery = 'body'): array
+    {
+        $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/sign-in', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['handle' => $handle, 'code' => $phoneCode, 'refreshTokenIn' => $delivery]));
+
+        return $this->last();
+    }
+
+    /** @return non-empty-string the authenticator's secret */
+    private function twoFactorOn(User $user): string
+    {
+        $secret = Type\non_empty_string()->coerce(TOTP::generate()->getSecret());
+        $factor = new TwoFactorFactor(self::em()->find(User::class, $user->getId()) ?? self::fail('no user'), self::service(SecretBox::class)->seal($secret));
+        $factor->activate(new DateTimeImmutable());
+        self::em()->persist($factor);
+        self::em()->flush();
+
+        return $secret;
+    }
+
+    private function phoneOn(User $user, string $number, bool $primary = true): void
+    {
+        $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
+        $phone = new PhoneNumber($who, $number, $primary, 'NG');
+        $phone->setVerifiedAt(new DateTimeImmutable());
+        $who->addPhoneNumber($phone);
+        self::em()->persist($phone);
+        self::em()->flush();
     }
 
     /** @return array<string, mixed> */
@@ -522,7 +720,7 @@ final class DoorCodesTest extends ApiTestCase
     {
         self::em()->clear();
 
-        return self::em()->getRepository(User::class)->findOneBy(['origin' => AccountOrigin::DoorCode]) ?? self::fail('no account made at the door');
+        return self::em()->getRepository(User::class)->findOneBy(['origin' => AccountOrigin::Staff]) ?? self::fail('no account made at the door');
     }
 
     /** @return array<string, mixed> */

@@ -6,6 +6,7 @@ namespace App\Domain\User\Http;
 
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
+use App\Domain\User\PhoneSignIn\PhoneHint;
 use App\Entity\User;
 use App\Enum\RefreshTokenDelivery;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -37,6 +38,8 @@ final readonly class SignInResponse
             'twoFactorChallenge' => $admission->token,
             'challengeExpiresAt' => $admission->expiresAt->format(\DATE_ATOM),
             'email' => $user->getPrimaryEmailAddress()?->getAddress(),
+            // With no email, the step names the masked primary number (sc-4235): its country and last digits, never the whole number.
+            'phone' => null === $user->getPrimaryEmailAddress() ? PhoneHint::of($user->getPrimaryPhoneNumber()) : null,
             'factors' => $admission->factors,
         ], Response::HTTP_ACCEPTED);
     }

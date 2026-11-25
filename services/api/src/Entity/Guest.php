@@ -30,6 +30,9 @@ class Guest
 
     public const int COMPANIONS_MAXIMUM = 10;
 
+    /** The guest's own page, followed by their link token (sc-1526). */
+    public const string PAGE_PATH = '/i/';
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -56,6 +59,10 @@ class Guest
     /** E.164. */
     #[ORM\Column(type: Types::STRING, length: 20, nullable: true)]
     private ?string $mobile;
+
+    /** A hard bounce on an email to this address (sc-3942): later messages skip it until the address is changed. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $emailBouncingAt = null;
 
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: GuestReply::class)]
     private ?GuestReply $reply;
@@ -411,7 +418,21 @@ class Guest
 
     public function setEmail(?string $email): void
     {
+        if ($email !== $this->email) {
+            $this->emailBouncingAt = null;
+        }
+
         $this->email = $email;
+    }
+
+    public function isEmailBouncing(): bool
+    {
+        return null !== $this->emailBouncingAt;
+    }
+
+    public function emailBounced(DateTimeImmutable $at): void
+    {
+        $this->emailBouncingAt = $at;
     }
 
     public function setMobile(?string $mobile): void

@@ -499,5 +499,19 @@
     "kitchen_sheet.by_station": "By station",
     "kitchen_sheet.chefs_choice": "Chef’s choice",
     "kitchen_sheet.health": "This sheet holds guests’ health information. Keep it with the kitchen and dispose of it after the event.",
-    "kitchen_sheet.page": "Page {n} of {m}"
+    "kitchen_sheet.page": "Page {n} of {m}",
+    "guest_message.notice.subject": "{event}: a message from {hosts}",
+    "guest_message.notice.dear": "Dear {greeting},",
+    "guest_message.notice.body": "{hosts} sent you a message about {event}. It is on your page.",
+    "guest_message.notice.read": "Read it on your page",
+    "guest_message.notice.link": "{label}: {url}",
+    "guest_message.notice.from": "{organisation} via Soirely",
+    "validation.guest_message_required": "Enter a message.",
+    "validation.guest_message_subject_too_long": "Shorten the subject to {count, number, ::group-auto} characters or fewer.",
+    "validation.guest_message_too_long": "Shorten the message to {count, number, ::group-auto} characters or fewer.",
+    "validation.guest_message_choose_guests": "Choose at least one guest.",
+    "validation.guest_message_follows_unknown": "This conversation is no longer on the event.",
+    "validation.guest_message_no_guests": "This event has no guests to write to yet.",
+    "guest_message.event_draft": "This event is a draft. Make it live to write to your guests.",
+    "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests."
 }

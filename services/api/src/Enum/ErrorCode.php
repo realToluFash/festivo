@@ -106,6 +106,8 @@ enum ErrorCode: string
     case InvitationAccepted = 'invitation_accepted';
     case InvitationDeclined = 'invitation_declined';
     case InvitationNotYours = 'invitation_not_yours';
+    case InvitationNeedsEmail = 'invitation_needs_email';
+    case PhoneAlternative = 'phone_alternative';
     case JoinOfferUnavailable = 'join_offer_unavailable';
     case TeamSeatsInUse = 'team_seats_in_use';
     case RequestLinkDead = 'request_link_dead';
@@ -191,6 +193,7 @@ enum ErrorCode: string
             self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
+            self::InvitationNeedsEmail, self::PhoneAlternative => 409,
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
             self::InvitationNotFound, self::RequestLinkDead, self::DoorCodeInvalid => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,

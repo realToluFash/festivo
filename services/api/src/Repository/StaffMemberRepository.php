@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\StaffMember;
 use App\Entity\StaffStation;
+use App\Entity\User;
 use App\Enum\EventStatus;
 use App\Http\Access\Interfaces\EventScopedRepositoryInterface;
 use DateTimeImmutable;
@@ -31,6 +32,28 @@ final class StaffMemberRepository extends ServiceEntityRepository implements Eve
     public function findOneInEvent(Uuid $eventId, Uuid $id): ?StaffMember
     {
         return $this->findOneBy(['event' => $eventId, 'id' => $id]);
+    }
+
+    /** @return list<StaffMember> the roster entries an account signed in through (sc-4235) that still hold a link, on events not yet closed */
+    public function findSignedInAs(User $account, DateTimeImmutable $now, ?Uuid $eventId = null): array
+    {
+        $query = $this->createQueryBuilder('s')
+            ->select('s', 'e')
+            ->innerJoin('s.event', 'e')
+            ->where('s.account = :account')
+            ->andWhere('e.closesAt IS NULL OR e.closesAt > :now')
+            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = s)')
+            ->setParameter('account', $account->getId(), 'uuid')
+            ->setParameter('now', $now)
+            ->orderBy('e.startsAtUtc', 'ASC')
+            ->addOrderBy('s.id', 'ASC');
+
+        if (null !== $eventId) {
+            $query->andWhere('s.event = :event')->setParameter('event', $eventId, 'uuid');
+        }
+
+        /** @var list<StaffMember> */
+        return $query->getQuery()->getResult();
     }
 
     /** @return list<StaffMember> in the order they were added; RosterOrder sorts them */

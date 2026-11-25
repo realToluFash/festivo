@@ -9,7 +9,7 @@ use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\IssuedVerificationCode;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Entity\PhoneCodeDelivery;
-use App\Entity\PhoneNumber;
+use App\Entity\TextableContact;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\PhoneCodeRoute;
@@ -41,7 +41,7 @@ final readonly class PhoneCodeDispatch
     ) {
     }
 
-    public function send(PhoneNumber $phone, IssuedVerificationCode $issued): void
+    public function send(TextableContact $phone, IssuedVerificationCode $issued): void
     {
         $country = self::countryOf($phone);
 
@@ -52,7 +52,7 @@ final readonly class PhoneCodeDispatch
         }
 
         try {
-            $messageId = $this->whatsAppSender->sendCode(Type\non_empty_string()->assert($phone->getNumber()), $issued->code, $this->accountLanguage->of($phone->getUser()));
+            $messageId = $this->whatsAppSender->sendCode(Type\non_empty_string()->assert($phone->getNumber()), $issued->code, $this->accountLanguage->ofContact($phone));
         } catch (Throwable $e) {
             // Refused outright (no WhatsApp account, a bad template): the text goes now, not in 30 seconds.
             $this->logger->warning('WhatsApp refused a phone code; texting it instead.', ['exception' => $e]);
@@ -68,7 +68,7 @@ final readonly class PhoneCodeDispatch
     }
 
     /** @return bool whether the text went now: WhatsApp failed, or 30 seconds passed with no word it arrived */
-    public function fallBackIfDue(PhoneNumber $phone): bool
+    public function fallBackIfDue(TextableContact $phone): bool
     {
         $live = $this->verificationChallengeRepository->findLiveFor($phone);
 
@@ -76,7 +76,7 @@ final readonly class PhoneCodeDispatch
     }
 
     /** "Text it to me instead": the same code once, for as long as it is live, and later codes by text too. */
-    public function textInstead(PhoneNumber $phone): void
+    public function textInstead(TextableContact $phone): void
     {
         $live = $this->verificationChallengeRepository->findLiveFor($phone);
         $sent = null !== $live && $this->underLock($live, function (VerificationChallenge $challenge) use ($phone): bool {
@@ -130,7 +130,7 @@ final readonly class PhoneCodeDispatch
         return $texted;
     }
 
-    public function routeOf(PhoneNumber $phone): ?PhoneCodeRoute
+    public function routeOf(TextableContact $phone): ?PhoneCodeRoute
     {
         return $this->verificationChallengeRepository->findNewestFor($phone)?->getRoute();
     }
@@ -138,7 +138,7 @@ final readonly class PhoneCodeDispatch
     /** Under the challenge's row lock, so a poll, a report and the backstop text it once between them. */
     private function fallBack(VerificationChallenge $challenge, bool $failed): bool
     {
-        $phone = $challenge->getPhoneNumber();
+        $phone = $challenge->getTextable();
         $silentSince = new DateTimeImmutable('-' . self::FALLBACK_SECONDS . ' seconds');
 
         return null !== $phone && $this->underLock($challenge, function (VerificationChallenge $locked) use ($phone, $failed, $silentSince): bool {
@@ -172,7 +172,7 @@ final readonly class PhoneCodeDispatch
         }
     }
 
-    private function text(PhoneNumber $phone, VerificationChallenge $challenge, #[SensitiveParameter] string $code, PhoneCodeRoute $route): void
+    private function text(TextableContact $phone, VerificationChallenge $challenge, #[SensitiveParameter] string $code, PhoneCodeRoute $route): void
     {
         $this->verificationCodeTexter->send($phone, $code);
         $challenge->texted($route);
@@ -190,7 +190,7 @@ final readonly class PhoneCodeDispatch
         $this->entityManager->persist(new PhoneCodeDelivery($country, $route, new DateTimeImmutable()));
     }
 
-    private static function countryOf(PhoneNumber $phone): ?string
+    private static function countryOf(TextableContact $phone): ?string
     {
         if (null !== $phone->getCountryCode()) {
             return $phone->getCountryCode();

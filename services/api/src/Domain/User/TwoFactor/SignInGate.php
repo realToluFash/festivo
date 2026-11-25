@@ -10,8 +10,10 @@ use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\ProviderLink;
 use App\Domain\User\Model\SecondFactorAnswer;
 use App\Domain\User\Model\TwoFactorSignInResult;
+use App\Domain\User\PhoneSignIn\PhoneSignIns;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\Passkey\Passkeys;
+use App\Entity\PhoneSignIn;
 use App\Entity\ProviderIdentity;
 use App\Entity\TwoFactorChallenge;
 use App\Entity\User;
@@ -39,21 +41,24 @@ final readonly class SignInGate
         private SecondFactorCheck $secondFactorCheck,
         private TokenIssuer $tokenIssuer,
         private KnownDevices $knownDevices,
+        private PhoneSignIns $phoneSignIns,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
     }
 
-    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null): IssuedTokens|IssuedChallenge
+    /** `$byPhoneCode` when the first factor was a phone code (sc-4235); `$endsWithGrants` when that was in a browser. */
+    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null, ?PhoneSignIn $byPhoneCode = null, bool $endsWithGrants = false): IssuedTokens|IssuedChallenge
     {
         if (!$this->secondFactors->isOn($user)) {
             $this->link($user, $link);
+            $this->signedInByPhoneCode($user, $byPhoneCode);
 
-            return $this->issue($user, $request, $link);
+            return $this->issue($user, $request, $link, null !== $byPhoneCode && $endsWithGrants);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
-        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject);
+        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject, $byPhoneCode);
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
@@ -70,7 +75,8 @@ final readonly class SignInGate
         return $this->passkeys->requestOptions($this->open($token)->getUser(), PasskeyStep::SignIn);
     }
 
-    public function complete(#[SensitiveParameter] string $token, SecondFactorAnswer $answer, ?Request $request = null): TwoFactorSignInResult
+    /** `$inBrowser` when the session's refresh token goes in a cookie: after a phone code, it then ends with the account's grants. */
+    public function complete(#[SensitiveParameter] string $token, SecondFactorAnswer $answer, ?Request $request = null, bool $inBrowser = false): TwoFactorSignInResult
     {
         $challenge = $this->open($token);
         $user = $challenge->getUser();
@@ -88,8 +94,10 @@ final readonly class SignInGate
         // A link waits on the code only for sc-58's matching address, so the primary is the one the provider vouched for.
         $link = null === $provider || null === $subject ? null : new ProviderLink($provider, $subject, $user->getPrimaryEmailAddress()?->getAddress());
         $linked = $this->link($user, $link);
+        $byPhoneCode = $challenge->getPhoneSignIn();
+        $this->signedInByPhoneCode($user, $byPhoneCode);
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link), $linked);
+        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link, null !== $byPhoneCode && $inBrowser), $linked);
     }
 
     private function open(#[SensitiveParameter] string $token): TwoFactorChallenge
@@ -115,9 +123,16 @@ final readonly class SignInGate
         return true;
     }
 
-    private function issue(User $user, ?Request $request, ?ProviderLink $link): IssuedTokens
+    private function signedInByPhoneCode(User $user, ?PhoneSignIn $signIn): void
     {
-        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider);
+        if (null !== $signIn) {
+            $this->phoneSignIns->signedIn($user, $signIn);
+        }
+    }
+
+    private function issue(User $user, ?Request $request, ?ProviderLink $link, bool $endsWithGrants): IssuedTokens
+    {
+        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider, $endsWithGrants);
         $this->entityManager->flush();
 
         if (null !== $request) {

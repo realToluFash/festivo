@@ -8,6 +8,7 @@
  */
 export * from './client.ts';
 export * from './problem.ts';
+export * from './phoneHint.ts';
 export * from './oauth.ts';
 export * from './proofRefusal.ts';
 export * from './searchFailure.ts';
@@ -15,6 +16,7 @@ export * from './topics.ts';
 export * from './seating.ts';
 export * from './seatingPresence.ts';
 export * from './guests.ts';
+export * from './guestMessages.ts';
 export * from './vendors.ts';
 export * from './budget.ts';
 export * from './staffRates.ts';
