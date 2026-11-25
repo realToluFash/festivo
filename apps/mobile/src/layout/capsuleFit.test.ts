@@ -2,14 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   capsuleChrome,
-  capsuleGrowth,
   capsuleLabelSize,
   capsuleRoom,
+  CAPSULE_HEIGHT,
   fittedLabelSize,
+  LABEL_IN_BAND,
   measuredAt,
   pillGivesWay,
   withMeasure,
 } from './capsuleFit.ts';
+import { tokens } from '../theme/tokens.ts';
 
 const ROW_800 = 800 - 2 * 24;
 
@@ -27,10 +29,12 @@ describe('the upright tablet’s capsule', () => {
     expect(capsuleRoom(ROW_800, 40)).toBe(capsuleRoom(ROW_800));
   });
 
-  it('grows its row only by what a taller label adds to its 46', () => {
-    expect(capsuleGrowth(0)).toBe(0);
-    expect(capsuleGrowth(46)).toBe(0);
-    expect(capsuleGrowth(61)).toBe(15);
+  it('grows its band only by what a taller label adds to its 46', () => {
+    const capsule = (line: number) => Math.max(CAPSULE_HEIGHT, 2 * tokens.spaceXxs + line);
+    const band = (line: number) => Math.max(tokens.sizeHit, line + 2 * LABEL_IN_BAND);
+
+    for (const line of [18, 38, 53, 80])
+      expect(band(line) - tokens.sizeHit).toBe(capsule(line) - CAPSULE_HEIGHT);
   });
 
   it('counts the chrome of four tabs as the capsule draws it', () => {
@@ -100,18 +104,18 @@ describe('the pill beside the capsule', () => {
   });
 });
 
-describe('the band’s capsule height, upright, as layouts arrive (sc-91290)', () => {
-  const A = { width: 300, height: 46 };
-  const B = { width: 420, height: 92 };
+describe('the capsule’s width, upright, as layouts arrive (sc-91290)', () => {
+  const A = 300;
+  const B = 420;
 
-  it('keeps the current fit’s height when an earlier fit’s layout arrives after it', () => {
+  it('keeps the current fit’s width when an earlier fit’s layout arrives after it', () => {
     const late = withMeasure(withMeasure({}, 40, B), 30, A);
 
-    expect(measuredAt(late, 40)).toEqual(B);
+    expect(measuredAt(late, 40)).toBe(B);
   });
 
   it('reads nothing before the capsule at the fitted size has been laid out', () => {
-    expect(measuredAt(withMeasure({}, 30, A), 40)).toEqual({ width: 0, height: 0 });
-    expect(measuredAt(withMeasure({}, 30, A), undefined)).toEqual({ width: 0, height: 0 });
+    expect(measuredAt(withMeasure({}, 30, A), 40)).toBe(0);
+    expect(measuredAt(withMeasure({}, 30, A), undefined)).toBe(0);
   });
 });

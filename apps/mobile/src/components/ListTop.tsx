@@ -5,14 +5,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { type LayoutKind } from '../layout/classify.ts';
 import { pillBesideTabs } from '../kit/frameBand.ts';
 import {
+  CAPSULE_LABEL,
   type CapsuleMeasures,
-  capsuleGrowth,
+  LABEL_IN_BAND,
   measuredAt,
   withMeasure,
 } from '../layout/capsuleFit.ts';
 import { tokens } from '../theme/tokens.ts';
-import { type TextHandle } from './Text.tsx';
-import { useCapsuleLabels } from './CapsuleLabels.tsx';
+import { Text, type TextHandle } from './Text.tsx';
+import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { Title } from './Title.tsx';
 import { TOP_TITLE, topTitle } from './topTitle.ts';
 import { TopPrimary, type TopPrimaryProps, usePrimaryLabel } from './TopPrimary.tsx';
@@ -134,13 +135,13 @@ export function PortraitRow({
   const [endWidth, setEndWidth] = useState<number>();
   const { labelSize, givesWay, measure } = useCapsuleLabels(tabLabels, rowWidth, endWidth);
   const [measures, setMeasures] = useState<CapsuleMeasures>({});
-  const { width: tabsWidth, height: tabsHeight } = measuredAt(measures, labelSize);
+  const tabsWidth = measuredAt(measures, labelSize);
   const besideTabs = pillBesideTabs(rowWidth, tabsWidth);
   const drawn = renderPill(besideTabs?.maxWidth, givesWay);
 
   return (
     <View
-      style={[styles.row, { minHeight: tokens.sizeHit + capsuleGrowth(tabsHeight) }]}
+      style={[styles.row, styles.portraitRow]}
       onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
     >
       {measure}
@@ -149,15 +150,30 @@ export function PortraitRow({
           {drawn}
         </View>
       )}
-      <View style={styles.fill} />
+      <View style={styles.fill}>
+        {labelSize != null && (
+          <Text
+            size={CAPSULE_LABEL}
+            weight="semibold"
+            maxFontSizeMultiplier={capsuleLabelMultiplier(labelSize)}
+            numberOfLines={1}
+            style={styles.bandHeight}
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {tabLabels.join(' ')}
+          </Text>
+        )}
+      </View>
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
         <View
           key={labelSize}
           onLayout={(event) => {
             if (labelSize == null) return;
-            const { width, height } = event.nativeEvent.layout;
-            setMeasures((prev) => withMeasure(prev, labelSize, { width, height }));
+            const { width } = event.nativeEvent.layout;
+            setMeasures((prev) => withMeasure(prev, labelSize, width));
           }}
         >
           {labelSize != null && renderTabs(labelSize)}
@@ -171,6 +187,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   shrink: { flexShrink: 1, minWidth: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  portraitRow: { minHeight: tokens.sizeHit },
+  bandHeight: { marginVertical: LABEL_IN_BAND, opacity: 0 },
   pillRow: { marginBottom: tokens.spaceSm },
   bellUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceXs },
   titleRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: tokens.spaceMd },

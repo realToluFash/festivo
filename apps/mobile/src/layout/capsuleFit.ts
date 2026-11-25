@@ -8,10 +8,8 @@ export const CAPSULE_LABEL = 15;
 /** The capsule's height at the default size; a taller label makes it taller (`WhiteCapsule`). */
 export const CAPSULE_HEIGHT = 46;
 
-/** How much taller than its default a capsule of `height` is, which its row grows by so nothing clips it (sc-37693). */
-export function capsuleGrowth(height: number): number {
-  return Math.max(0, height - CAPSULE_HEIGHT);
-}
+/** Above and below one line of the capsule's label, the band is as tall as its 44 plus what that line adds to the capsule's 46 (sc-37693); laid out with the capsule, never read back from it (sc-91290). */
+export const LABEL_IN_BAND = (2 * tokens.spaceXxs - (CAPSULE_HEIGHT - tokens.sizeHit)) / 2;
 
 /** Everything in a capsule of `tabs` tabs but its words: its padding, the gaps between tabs, and each tab's sides, glyph and gap (`WhiteCapsule`). */
 export function capsuleChrome(tabs: number): number {
@@ -64,22 +62,19 @@ export function pillGivesWay(fontScale: number, labelSize: number): boolean {
   return labelSize < CAPSULE_LABEL * fontScale;
 }
 
-/** The capsule as laid out, by the label size it was drawn at. */
-export type CapsuleMeasures = Readonly<Record<number, { width: number; height: number }>>;
+/** The capsule's width as laid out, by the label size it was drawn at. */
+export type CapsuleMeasures = Readonly<Record<number, number>>;
 
-/** The capsule's measure at `labelSize`, so a layout reported late from an earlier fit adds its own entry and never removes the current one (sc-91290). */
-export function measuredAt(
-  measures: CapsuleMeasures,
-  labelSize: number | undefined,
-): { width: number; height: number } {
-  return (labelSize == null ? undefined : measures[labelSize]) ?? { width: 0, height: 0 };
+/** The capsule's width at `labelSize`, so a layout reported late from an earlier fit adds its own entry and never removes the current one (sc-91290). */
+export function measuredAt(measures: CapsuleMeasures, labelSize: number | undefined): number {
+  return (labelSize == null ? undefined : measures[labelSize]) ?? 0;
 }
 
-/** `measures` with the capsule as laid out at `labelSize`, beside every other size's. */
+/** `measures` with the capsule's width as laid out at `labelSize`, beside every other size's. */
 export function withMeasure(
   measures: CapsuleMeasures,
   labelSize: number,
-  measure: { width: number; height: number },
+  width: number,
 ): CapsuleMeasures {
-  return { ...measures, [labelSize]: measure };
+  return { ...measures, [labelSize]: width };
 }
