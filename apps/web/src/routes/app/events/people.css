@@ -192,3 +192,10 @@
   border: 1.5px dashed var(--colorInkSecondary);
   border-radius: var(--radiusPill);
 }
+
+/* At 400% zoom (320 CSS px) the page keeps its demo's 22 px gutter, the desk's 10 and the page's 12 (demo/deskReflow.css), where the shell pads only 16: a 6 px wider column put amaka.outside@soirely.test on one line in the row, where the demo breaks it after the @ (sc-91529). */
+@media (width <= 40rem) {
+  .event-people-desk {
+    padding-inline: calc(var(--spaceMd) + var(--spaceLg) - var(--shellInline));
+  }
+}

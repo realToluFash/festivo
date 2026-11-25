@@ -11,6 +11,7 @@ import { __forgetTab } from '../../../tabKept.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { readAddressesInline } from '../../../components/wholeAddressTesting.ts';
 import { routes } from '../../index.tsx';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const MEMBER = membership({
@@ -217,6 +218,24 @@ describe('People on an event, at a desk (sc-29915)', () => {
       /margin: 0;[\s\S]*padding: 0;/u,
     );
     expect(rule(':where(.desk) :is(ul, ol)')).toMatch(/list-style: none;/u);
+  });
+
+  it('keeps the demo’s 22 px gutter at 400% zoom, where the shell pads 16 (sc-91529)', () => {
+    const narrow = mediaBlock('(width <= 40rem)', stylesheet(import.meta.dirname, 'people.css'));
+    const demo = mediaBlock(
+      '(width <= 40rem)',
+      stylesheet(join(import.meta.dirname, '../../../demo'), 'deskReflow.css'),
+    );
+
+    expect(cssRule('.event-people-desk', narrow)).toMatch(
+      /padding-inline: calc\(var\(--spaceMd\) \+ var\(--spaceLg\) - var\(--shellInline\)\);/u,
+    );
+    expect(cssRule('.today.desk:not(.dp-fit) > .desk-main', demo)).toMatch(
+      /margin: 0 var\(--spaceMd\) var\(--spaceMd\);/u,
+    );
+    expect(cssRule('.today.desk:not(.dp-fit) .desk-page', demo)).toMatch(
+      /padding: var\(--spaceXl\) var\(--spaceLg\) var\(--space3xl\);/u,
+    );
   });
 
   it('lists everyone by role, then by name, each with their role and job label', async () => {
