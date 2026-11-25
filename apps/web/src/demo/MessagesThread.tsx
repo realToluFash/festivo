@@ -163,7 +163,7 @@ export function MiniComposer({
   placeholder: string;
   thread: ConvoId;
   world?: World;
-  follows?: number;
+  follows?: number | undefined;
 }) {
   const { act, focus, inbox, whyOff, to: event } = useInbox();
 
