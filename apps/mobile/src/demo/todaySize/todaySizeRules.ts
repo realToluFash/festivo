@@ -358,3 +358,36 @@ export function dayChipRoom(column: number): number {
 export function openRoom(column: number): number {
   return Math.max(column - OPEN_SIDES - tokens.spaceSm - OPEN_ARROW, 0);
 }
+
+/** Main's switcher rows from AX1 (`ROWS`): the question at 18, the name at 15, the role line and Current at 13, the tile 56. */
+export const SWITCHER_ASKS = 18;
+export const SWITCHER_NAME = 15;
+export const SWITCHER_LINE = 13;
+export const SWITCHER_TILE = 56;
+
+/** The switcher's rows in the demo: the organisation you are in first, then every other the demo knows, so each stays reachable from any of them. */
+export function switcherOrgs(current: TodayOrg): TodayOrg[] {
+  return [current, ...TODAY_ORGS.map((one) => one.key).filter((key) => key !== current)];
+}
+
+const NO_BREAK = String.fromCharCode(0xa0);
+
+/** The role line with a no-break space before its dot, so no line starts with · (sc-92250). */
+export function dotKept(line: string): string {
+  return line.replaceAll(' ·', `${NO_BREAK}·`);
+}
+
+/** The pieces a dot-kept line wraps between: a lone · stays on the word before it. */
+export function piecesKeepingDot(line: string): string[] {
+  const pieces: string[] = [];
+  for (const word of line
+    .split(' ')
+    .flatMap((part) => part.split(NO_BREAK))
+    .filter((one) => one !== '')) {
+    const last = pieces.length - 1;
+    if (word === '·' && last >= 0) pieces[last] = `${pieces[last]}${NO_BREAK}·`;
+    else pieces.push(...piecesOfLine(word));
+  }
+
+  return [...new Set(pieces)];
+}

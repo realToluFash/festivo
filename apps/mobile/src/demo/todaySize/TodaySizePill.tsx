@@ -18,7 +18,9 @@ import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { openerLabel } from '../OrgSwitcherModel.ts';
 import { SearchGlass } from '../SearchGlass.tsx';
+import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { FitWords } from './FitWords.tsx';
+import { useSizeSwitcher } from './TodaySizeSwitcher.tsx';
 import {
   PILL_NAME,
   PILL_WAITING,
@@ -43,6 +45,7 @@ export function PillRow({ scale, cap, waiting }: { scale: number; cap: number; w
         waiting={waiting}
         room={pillNameRoom(row)}
         waitingRoom={pillWaitingRoom(row)}
+        standIn
       />
       <View style={styles.grow} />
       <View style={styles.ends}>
@@ -62,6 +65,7 @@ export function Pill({
   waitingRoom,
   tile = false,
   lines,
+  standIn = false,
 }: {
   scale: number;
   cap: number;
@@ -71,6 +75,8 @@ export function Pill({
   tile?: boolean;
   /** Main's line limit for the name below AX1 beside the tabs (`nameLines`). */
   lines?: number | undefined;
+  /** On the phone from AX1, one tap opens the switcher drawn at the size chosen (sc-92465). */
+  standIn?: boolean;
 }) {
   const { t } = useTranslation();
   const ref = useRef<ViewInstance>(null);
@@ -82,13 +88,17 @@ export function Pill({
   const widest = known ? Math.max(...pieces.map((piece) => widths[piece] ?? 0)) : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
   const alone = tile || pillTileAlone(scale, widest, room);
+  const ours = standIn && atAccessibilitySizes(scale);
+  const switcher = useSizeSwitcher(ref, scale, ours);
+  const onPress = ours ? switcher.show : org.onPress;
+  const expanded = ours ? switcher.open : org.expanded;
   const shared = {
     ref,
-    onPress: org.onPress,
+    onPress,
     accessibilityRole: 'button',
     accessibilityLabel: openerLabel({ id: org.id, name: org.name, role: 'Owner' }, waiting),
-    accessibilityState: { expanded: org.expanded },
-    ...quietTap(org.onPress, org.expanded),
+    accessibilityState: { expanded },
+    ...quietTap(onPress, expanded),
     hitSlop: tokens.spaceXxs,
     testID: 'demo.todaySize.pill',
   } as const;
@@ -114,6 +124,7 @@ export function Pill({
           </Glass>
           {line != null && <View style={styles.tileRing} />}
         </Pressable>
+        {switcher.drawn}
       </View>
     );
 
@@ -161,6 +172,7 @@ export function Pill({
           <Glyph name="updown" size={14} ink={tokens.colorInkOnDark} />
         </Glass>
       </Pressable>
+      {switcher.drawn}
     </View>
   );
 }
