@@ -64,15 +64,15 @@ import { BELL_STATES } from './bellFeed.ts';
 const ids = (rows: readonly { id: string }[]) => rows.map((row) => row.id);
 
 describe('Messaging B · Conversations, the rules (sc-31371)', () => {
-  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 10, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-3966’s 7 more, sc-45251’s 14, sc-3978’s 6, sc-4330’s 39, sc-46343’s 19, sc-3942’s 5 refusals, its 10 Choose guests and sc-83081’s bell with its 11 and sc-84143’s one, in order, each linked once from the demo home', () => {
+  it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 2, sc-3960’s 13, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-3966’s 7 more, sc-45251’s 14, sc-3978’s 6, sc-4330’s 39, sc-46343’s 19, sc-3942’s 5 refusals, its 10 Choose guests and sc-83081’s bell with its 11 and sc-84143’s one, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(270);
-    expect(keys.slice(242, 247)).toEqual(REFUSAL_STATES.map((one) => one.key));
-    expect(keys.slice(247, 257)).toEqual(CHOOSE_STATES.map((one) => one.key));
-    expect(keys.slice(257)).toEqual(['bell', ...BELL_STATES.map((one) => one.key)]);
-    expect(keys.slice(98, 101)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
-    expect(keys.slice(101, 107)).toEqual([
+    expect(keys).toHaveLength(273);
+    expect(keys.slice(245, 250)).toEqual(REFUSAL_STATES.map((one) => one.key));
+    expect(keys.slice(250, 260)).toEqual(CHOOSE_STATES.map((one) => one.key));
+    expect(keys.slice(260)).toEqual(['bell', ...BELL_STATES.map((one) => one.key)]);
+    expect(keys.slice(101, 104)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
+    expect(keys.slice(104, 110)).toEqual([
       'channelsWrite',
       'channelsCheck',
       'channelsCant',
@@ -80,7 +80,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'channelsMany',
       'channelsNone',
     ]);
-    expect(keys.slice(107, 114)).toEqual([
+    expect(keys.slice(110, 117)).toEqual([
       'reasons',
       'trySms',
       'trySmsQuiet',
@@ -89,11 +89,11 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'closedReached',
       'reachedQuiet',
     ]);
-    expect(keys.slice(114, 124)).toEqual(WAITS_STATES.map((one) => one.key));
-    expect(keys.slice(124, 141)).toEqual(NOTICE_STATES.map((one) => one.key));
-    expect(keys.slice(141, 157)).toEqual(INVITE_STATES.map((one) => one.key));
-    expect(keys.slice(157, 164)).toEqual(SMS_STATES.map((one) => one.key));
-    expect(keys.slice(184, 223)).toEqual(TELL_STATES.map((one) => one.key));
+    expect(keys.slice(117, 127)).toEqual(WAITS_STATES.map((one) => one.key));
+    expect(keys.slice(127, 144)).toEqual(NOTICE_STATES.map((one) => one.key));
+    expect(keys.slice(144, 160)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(keys.slice(160, 167)).toEqual(SMS_STATES.map((one) => one.key));
+    expect(keys.slice(187, 226)).toEqual(TELL_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -103,12 +103,15 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
     ]);
     expect(keys.slice(25, 28)).toEqual(['scheduled', 'invitedReached', 'sentReached']);
     expect(keys.slice(56, 59)).toEqual(['tellPlace', 'closedDraft', 'closedEnded']);
-    expect(keys.slice(keys.indexOf('insert'), keys.indexOf('insert') + 14)).toEqual([
+    expect(keys.slice(keys.indexOf('insert'), keys.indexOf('insert') + 17)).toEqual([
       'insert',
       'previewAs',
       'previewGreetAs',
       'previewChose',
       'previewLoading',
+      'previewFailed',
+      'previewGone',
+      'previewGoneLast',
       'previewMarkup',
       'typedBraces',
       'previewBraces',
@@ -119,7 +122,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(270);
+    expect(new Set(keys).size).toBe(273);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );

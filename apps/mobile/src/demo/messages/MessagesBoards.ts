@@ -98,6 +98,15 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
   previewGreetAs: ['previewed as Bisi Adewale', 'Greeted as “Auntie Bisi”, their Greet as'],
   previewChose: ['previewed as Camille Dubois', 'The Date in French, the language they chose'],
   previewLoading: ['filling it in', 'Filling it in for Camille Dubois… over the shapes'],
+  previewFailed: ['could not fill it in', 'Offline: the alert in the page’s place, and Try again'],
+  previewGone: [
+    'no longer a guest',
+    'Camille Dubois left Preview as; filled in for Amaka Eze, and the line says so',
+  ],
+  previewGoneLast: [
+    'no longer a guest, nobody left',
+    'The preview closed; Preview not offered, and the line says why',
+  ],
   previewMarkup: ['a Greet as with markup', 'Kemi Bankole’s Greet as shown as text'],
   typedBraces: ['a typed {Greeting}', 'An inserted Greeting, and later {Greeting} typed'],
   previewBraces: ['typed braces, previewed', 'The typed {Greeting} as typed, and the braces line'],
