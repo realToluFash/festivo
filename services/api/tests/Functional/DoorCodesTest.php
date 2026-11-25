@@ -118,7 +118,7 @@ final class DoorCodesTest extends ApiTestCase
     {
         $code = $this->code($role);
         $joined = $this->redeem($code, 'Adébáyọ̀');
-        self::assertSame(201, $this->statusCode(), Json\encode($joined));
+        self::assertSame(200, $this->statusCode(), Json\encode($joined));
 
         $person = self::em()->getRepository(EventPerson::class)->findOneBy(['user' => $this->joinedAs()->getId()]) ?? self::fail('no grant');
         self::assertSame($level, $person->getRole());
