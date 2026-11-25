@@ -144,7 +144,7 @@ final class SubscriptionTest extends ApiTestCase
         $changer->movePeriodStart($subscription, new DateTimeImmutable('2026-12-01 09:00:00+00:00'), ChangedBy::staff('Ada at Soirely', 'Upgraded from Free'));
         self::em()->clear();
 
-        $changes = self::em()->getRepository(SubscriptionChange::class)->findBy(['kind' => SubscriptionChangeKind::Period]);
+        $changes = self::em()->getRepository(SubscriptionChange::class)->findBy(['kind' => SubscriptionChangeKind::PeriodStart]);
         self::assertSame(
             [[$from->format(DateTimeImmutable::ATOM), '2026-12-01T09:00:00+00:00']],
             Vec\map($changes, static fn (SubscriptionChange $change): array => [$change->getFromValue(), $change->getToValue()]),

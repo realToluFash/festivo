@@ -18,6 +18,7 @@ use App\Domain\Billing\Meter\UsageMeter;
 use App\Domain\Billing\Meter\UsagePublisher;
 use App\Domain\Billing\Meter\UsageReader;
 use App\Domain\Billing\Model\ChangedBy;
+use App\Domain\Billing\Model\SubscriptionState;
 use App\Domain\Billing\SubscriptionChanger;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
@@ -26,6 +27,7 @@ use App\Enum\CataloguePart;
 use App\Enum\Plan;
 use App\Enum\RealtimeTopic;
 use App\Enum\SubscriptionSource;
+use App\Enum\SubscriptionStatus;
 use App\Enum\UsageKind;
 use App\Enum\UsagePayer;
 use App\Enum\WhatsAppCategory;
@@ -604,6 +606,44 @@ final class UsageMeterTest extends FunctionalTestCase
 
         self::assertSame([1, 2499], [$november->of(UsageKind::Email)->used, $november->of(UsageKind::Email)->left]);
         self::assertSame([0, 100000], [$december->of(UsageKind::Email)->used, $december->of(UsageKind::Email)->left]);
+    }
+
+    #[Test]
+    public function aPlanChangeRecordedOneSecondBeforeAMoveOfThePeriodStartIsTheEndedPeriodsPlan(): void
+    {
+        $this->meter->record($this->organisation, 'email-1', new MeteredUse(UsageKind::Email));
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        $this->clock->modify('2026-11-20 11:59:59');
+        $this->changer()->changePlan($subscription, Plan::Enterprise, SubscriptionSource::Manual, ChangedBy::staff('Ada at Soirely', 'Moved to Enterprise'));
+        $this->clock->modify('2026-11-20 12:00:00');
+        $this->changer()->movePeriodStart($subscription, new DateTimeImmutable('2026-11-20 12:00:00'), ChangedBy::staff('Ada at Soirely', 'Moved to yearly'));
+        self::em()->clear();
+
+        $ended = $this->read(new DateTimeImmutable('2026-11-15 00:00:00'));
+
+        self::assertSame('2026-11-20T12:00:00+00:00', $ended->period->end->format(\DATE_ATOM));
+        self::assertSame([1, 99999], [$ended->of(UsageKind::Email)->used, $ended->of(UsageKind::Email)->left]);
+    }
+
+    #[Test]
+    public function anUpgradeFromThePaddleRailEndsThePeriodWithTheIncludedAmountsOfThePlanBeforeIt(): void
+    {
+        $this->meter->record($this->organisation, 'email-1', new MeteredUse(UsageKind::Email));
+        $this->clock->modify('2026-11-20 11:59:55');
+        $subscription = self::service(SubscriptionRepository::class)->findCurrentOf($this->organisation);
+        $state = new SubscriptionState(SubscriptionSource::Paddle, 'sub_1', Plan::Enterprise, SubscriptionStatus::Active, new DateTimeImmutable('2026-12-20 12:00:00'), new DateTimeImmutable('2026-11-20 12:00:00'));
+        $this->changer()->apply($subscription, $state, ChangedBy::provider('evt_created', new DateTimeImmutable('2026-11-20 12:00:00')));
+        self::em()->clear();
+        $this->clock->modify('2026-11-20 12:30:00');
+
+        $this->meter->record($this->organisation, 'email-2', new MeteredUse(UsageKind::Email));
+
+        $ended = $this->read(new DateTimeImmutable('2026-11-15 00:00:00'));
+        $next = $this->read();
+        self::assertSame(['2026-11-01T09:00:00+00:00', '2026-11-20T12:00:00+00:00'], [$ended->period->start->format(\DATE_ATOM), $ended->period->end->format(\DATE_ATOM)]);
+        self::assertSame([1, 2499], [$ended->of(UsageKind::Email)->used, $ended->of(UsageKind::Email)->left]);
+        self::assertSame(['2026-11-20T12:00:00+00:00', '2026-12-20T12:00:00+00:00'], [$next->period->start->format(\DATE_ATOM), $next->period->end->format(\DATE_ATOM)]);
+        self::assertSame([1, 99999], [$next->of(UsageKind::Email)->used, $next->of(UsageKind::Email)->left]);
     }
 
     #[Test]
