@@ -1,0 +1,17 @@
+# sc-37693: b-remove.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'members.row.${KOFI}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${KOFI}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible: { element: { id: 'members.remove' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.remove' }
+- waitForAnimationToEnd
+- tapOn: 'Remove'
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: b-remove-after

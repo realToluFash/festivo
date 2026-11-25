@@ -1,0 +1,16 @@
+# sc-39340: the app demo's sidebar on its side, on /demo/today, /demo/events, /demo/calendar and /demo/settings, at ?sidebar=${STATE}. ORIENT: LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/today?sidebar=${STATE}
+- waitForAnimationToEnd
+- takeScreenshot: demo-today
+- openLink: ${METRO_URL}/--/demo/events?sidebar=${STATE}
+- waitForAnimationToEnd
+- takeScreenshot: demo-events
+- openLink: ${METRO_URL}/--/demo/calendar?sidebar=${STATE}
+- waitForAnimationToEnd
+- takeScreenshot: demo-calendar
+- openLink: ${METRO_URL}/--/demo/settings?sidebar=${STATE}
+- waitForAnimationToEnd
+- takeScreenshot: demo-settings

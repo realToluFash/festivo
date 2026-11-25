@@ -1,0 +1,107 @@
+# sc-48600: the demo's /demo/events/evt-wed-4 in each edit state the AC names, one screenshot each, for the side-by-side pairs. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=dates
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: dates-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=datesChanged
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: datesChanged-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=datesError
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: datesError-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=discard
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: discard-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=changedElsewhere
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: changedElsewhere-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=showLatest
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: showLatest-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=saved
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: saved-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venue
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venue-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueSuggestions
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueSuggestions-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueZone
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueZone-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueDown
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueDown-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueNote
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueNote-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueNoteTooLong
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueNoteTooLong-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=venueNoteRefused
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: venueNoteRefused-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=hosts
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: hosts-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=hostsDuplicate
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: hostsDuplicate-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=hostsSix
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: hostsSix-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=lastHost
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: lastHost-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=type
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: type-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=currency
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: currency-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=currencyRefused
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: currencyRefused-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=name
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: name-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=nameBlank
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: nameBlank-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=cover
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: cover-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=coverPhoto
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: coverPhoto-demo
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=coverRefused
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: coverRefused-demo

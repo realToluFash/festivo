@@ -1,0 +1,58 @@
+/* The passkey's parts: the Synced or This device only shape, the waiting line, and the refused one. */
+.passkey-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+}
+
+.passkey-mark svg,
+.passkey-lead svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.passkey-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--spaceXs);
+}
+
+.passkey-waiting,
+.passkey-refused,
+.passkey-nobrowser {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: var(--typeBody);
+  color: var(--colorInk);
+}
+
+.passkey-waiting {
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorInkSecondary);
+}
+
+.passkey-refused {
+  color: var(--colorBrokenText);
+}
+
+.passkey-refused svg,
+.passkey-nobrowser svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.passkey-choices .desk-row-line {
+  white-space: normal;
+}
+
+.passkey-end {
+  margin-top: var(--spaceLg);
+}

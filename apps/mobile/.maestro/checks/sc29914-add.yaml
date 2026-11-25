@@ -1,0 +1,28 @@
+# sc-29914: Add people: the screen, no match, then ${M1} ticked and added, and the toast.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil: { visible: { id: 'people.add.open' }, timeout: 30000 }
+- tapOn: { id: 'people.add.open' }
+- extendedWaitUntil: { visible: { id: 'people.add.role' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: screen
+- tapOn: { id: 'people.add.role' }
+- extendedWaitUntil: { visible: { id: 'people.add.roles.done' }, timeout: 10000 }
+- takeScreenshot: roles
+- tapOn: { id: 'people.add.roles.done' }
+- tapOn: { id: 'people.add.who' }
+- inputText: 'zzz'
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: nomatch
+- eraseText: 20
+- inputText: 'kof'
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: filtered
+- tapOn: { id: 'people.add.member.${M1}' }
+- takeScreenshot: ticked
+- tapOn: { id: 'people.add.add' }
+- extendedWaitUntil: { visible: '.*(can view now|puede ver|peut voir|pode ver).*', timeout: 15000 }
+- takeScreenshot: toast
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: after

@@ -1,0 +1,8 @@
+# sc-31310, side: the app demo state handoverReadOnly, for the side-by-side pair beside board e28.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- openLink: ${METRO_URL}/--/demo/settings/members?state=handoverReadOnly
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: handoverReadOnly

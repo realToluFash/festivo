@@ -1,0 +1,21 @@
+# sc-87421: on ${EVENT_ID}'s Menu picks, opens Choose for ${PERSON} and screenshots the dish list, then cancels.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'menu.wait.${PERSON}'
+    centerElement: true
+- tapOn:
+    id: 'menu.wait.${PERSON}'
+- extendedWaitUntil:
+    visible:
+      id: 'menu.choose.save'
+    timeout: 10000
+- takeScreenshot: look
+- tapOn:
+    id: 'menu.choose.cancel'

@@ -1,0 +1,16 @@
+# sc-37693: p-priya.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil: { visible: { id: 'members.card' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    { element: { id: 'members.row.${PRIYA}' }, direction: DOWN, centerElement: true }
+- tapOn: { id: 'members.row.${PRIYA}' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: p-priya-top
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: p-priya-foot

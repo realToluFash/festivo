@@ -1,0 +1,38 @@
+# sc-49170: Members at 12,345 with the API stopped (from the shell) after People's first page; Former is chosen, People shows its failure block, and Try again with the API back lists Former.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- scrollUntilVisible:
+    element: { id: 'settings.members' }
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn: { id: 'settings.members' }
+- extendedWaitUntil:
+    visible: { id: 'members.card' }
+    timeout: 60000
+- scrollUntilVisible:
+    element: { id: 'members.filter' }
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 20000, optional: true }
+- tapOn: { id: 'members.filter' }
+- tapOn: { id: 'members.filter.former' }
+- extendedWaitUntil:
+    visible: { id: 'members.more.retry' }
+    timeout: 30000
+- takeScreenshot: former-failed
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 40000, optional: true }
+- takeScreenshot: former-failed-api-back
+- scrollUntilVisible:
+    element: { id: 'members.more.retry' }
+    direction: DOWN
+    timeout: 20000
+    centerElement: true
+- takeScreenshot: former-failed-before-try-again
+- tapOn: { id: 'members.more.retry' }
+- extendedWaitUntil:
+    visible: 'Person 12348.*'
+    timeout: 30000
+- takeScreenshot: former-after-try-again

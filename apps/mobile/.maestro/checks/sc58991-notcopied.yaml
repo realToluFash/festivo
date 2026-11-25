@@ -1,0 +1,38 @@
+# sc-58991: Copy invitation link with no way to the API, then the failed-copy line under the row. Pass METRO_URL, EVENT_ID, GUEST_ID, ORIENT. Needs the batch helper's /api to stop the API and bring it back up.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../checks/sc58991/open-guest.yaml
+- scrollUntilVisible:
+    element:
+      id: 'guest.copy'
+    timeout: 20000
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'guest.replace'
+    timeout: 20000
+- tapOn:
+    id: 'guest.copy'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.notCopied'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guest.replace'
+    timeout: 5000
+- waitForAnimationToEnd
+- takeScreenshot: notcopied
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up

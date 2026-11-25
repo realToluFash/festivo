@@ -1,0 +1,45 @@
+# sc-1468: Delete event's typed-name screen. A wrong name left shows the error, emptying brings the hint back, a right name clears it at once, removing a letter waits for the field to be left. Needs ${METRO_URL}, ${EV_MANY}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_MANY}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.delete'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'events.delete'
+- extendedWaitUntil:
+    visible:
+      id: 'events.deleteName'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: opened
+- tapOn:
+    id: 'events.deleteName'
+- inputText: 'QA Many'
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: wrong-left
+- tapOn:
+    id: 'events.deleteName'
+- inputText: ' People'
+- waitForAnimationToEnd
+- takeScreenshot: right-after-wrong
+- eraseText: 1
+- waitForAnimationToEnd
+- takeScreenshot: letter-removed
+- hideKeyboard
+- waitForAnimationToEnd
+- takeScreenshot: letter-removed-left
+- tapOn:
+    id: 'events.deleteName'
+- eraseText: 40
+- waitForAnimationToEnd
+- takeScreenshot: emptied
+- tapOn:
+    id: 'events.deleteKeep'

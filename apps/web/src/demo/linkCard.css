@@ -1,0 +1,247 @@
+/* sc-89272: a guest's link as a chat app draws it, beside the head it is drawn from */
+
+.lk {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: var(--space4xl) var(--space5xl);
+  background: var(--colorPage);
+  color: var(--colorInk);
+  font-family: var(--fontFamily);
+}
+
+.lk-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  max-width: 760px;
+  margin-bottom: var(--space3xl);
+}
+
+.lk-head h1 {
+  margin: 0;
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+}
+
+.lk-head p {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.lk-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  min-height: var(--sizeHit);
+  color: var(--colorInkSecondary);
+  font: var(--typeSmallStrong);
+}
+
+.lk-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space4xl);
+}
+
+.lk-chat {
+  flex: none;
+  width: 390px;
+  overflow: hidden;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardPhone);
+  background: var(--colorInset);
+  box-shadow: var(--shadowRaised);
+}
+
+.lk-chat-top {
+  margin: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border-bottom: 1px solid var(--colorBorder);
+  background: var(--colorCard);
+  font: var(--typeRowTitle);
+}
+
+.lk-chat-body {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 420px;
+  padding: var(--spaceXl) var(--spaceLg);
+}
+
+.lk-bubble {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  gap: var(--spaceXs);
+  box-sizing: border-box;
+  width: 320px;
+  padding: var(--spaceXs);
+  border-radius: var(--radiusRow) var(--spaceXs) var(--radiusRow) var(--radiusRow);
+  background: var(--colorAccentTint);
+}
+
+.lk-preview {
+  overflow: hidden;
+  border-radius: var(--radiusSmall);
+  background: color-mix(in srgb, var(--colorInk) 6%, transparent);
+}
+
+.lk-picture {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.lk-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(at 25% 20%, var(--colorInkTertiary) 0, transparent 60%),
+    linear-gradient(160deg, var(--colorInkSecondary), var(--colorInk));
+  color: color-mix(in srgb, var(--colorInkOnDark) 70%, transparent);
+}
+
+.lk-preview-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding: var(--spaceSm) var(--spaceMd);
+}
+
+.lk-preview-words p,
+.lk-message,
+.lk-time {
+  margin: 0;
+}
+
+.lk-title {
+  font: var(--typeSmallStrong);
+  overflow-wrap: anywhere;
+}
+
+.lk-line,
+.lk-domain {
+  color: var(--colorInkSecondary);
+  font: var(--typeMeta);
+}
+
+.lk-message {
+  padding: 0 var(--spaceXs);
+  font: var(--typeSmall);
+  overflow-wrap: anywhere;
+}
+
+.lk-link {
+  color: var(--colorAccentText);
+  text-decoration: underline;
+}
+
+.lk-time {
+  align-self: flex-end;
+  padding: 0 var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: var(--typeMeta);
+  font-variant-numeric: tabular-nums;
+}
+
+.lk-side {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.lk-side h2 {
+  margin: 0;
+  font: var(--typeTitleSection);
+  letter-spacing: var(--typeTitleSectionTracking);
+}
+
+.lk-code {
+  margin: 0;
+  padding: var(--spaceLg);
+  overflow-x: auto;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  font: var(--typeCode);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lk-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding-left: var(--spaceXl);
+  font: var(--typeSmall);
+}
+
+.lk-demo-only {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg);
+  border: 1px dashed var(--colorControlBorder);
+  border-radius: var(--radiusInset);
+}
+
+.lk-demo-only p {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
+.lk-demo-only .lk-demo-only-head {
+  color: var(--colorInk);
+  font: var(--typeSmallStrong);
+}
+
+.lk-meshes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lk-mesh {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXxs);
+  font: var(--typeMeta);
+  cursor: pointer;
+}
+
+.lk-mesh input {
+  position: absolute;
+  opacity: 0;
+}
+
+.lk-mesh img {
+  border-radius: var(--radiusSmall);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.lk-mesh input:checked + img {
+  outline-color: var(--colorAccent);
+}
+
+.lk-mesh input:focus-visible + img {
+  outline-color: var(--colorAccent);
+  outline-style: dashed;
+}
+
+.lk-mesh-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+}

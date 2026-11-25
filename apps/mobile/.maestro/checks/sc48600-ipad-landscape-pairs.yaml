@@ -1,0 +1,10 @@
+# sc-48600: on the iPad on its side, each part's edit opened by a tap on the product page beside the demo's state of it, and the sidebar keeping the event's card under an open edit. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow: sc48600-rows-open-edits-settled.yaml
+- runFlow: sc48600-currency-search-pair.yaml
+- runFlow: sc48600-demo-states.yaml
+- setOrientation: PORTRAIT

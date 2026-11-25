@@ -1,0 +1,11 @@
+# sc-563: Data and control > Email domains in the app, as it opens, for a role with no switch (an Admin sees oo_not_owner).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: sc563-domains-view

@@ -1,0 +1,16 @@
+# sc-39471: Events upcoming then Past, for the failed and pastFailed states beside the demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${TAG}-events
+- tapOn:
+    id: events.tab.past
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ${TAG}-events-past

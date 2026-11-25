@@ -1,0 +1,25 @@
+# sc-66727: the app demo's Members at ?state=${STATE}, its confirm from the title to the buttons.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/members?state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- openLink: ${METRO_URL}/--/demo/settings/members?state=${STATE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- swipe:
+    start: 50%, 25%
+    end: 50%, 85%
+- waitForAnimationToEnd
+- takeScreenshot: top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+- swipe:
+    start: 50%, 80%
+    end: 50%, 20%
+- waitForAnimationToEnd
+- takeScreenshot: foot

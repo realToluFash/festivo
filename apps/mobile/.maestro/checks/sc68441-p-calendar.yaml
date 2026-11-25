@@ -1,0 +1,14 @@
+# sc-68441: the iPad sidebar on its side, calendar, at its top and scrolled to its foot.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd: { timeout: 10000 }
+- takeScreenshot: p-calendar-top
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: p-mid
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- swipe: { start: '10%, 85%', end: '10%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: p-foot

@@ -1,0 +1,19 @@
+# sc-3914: opens ${EVENT_ID}'s Menu and screenshots the top, then scrolls through it.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.header'
+    timeout: 30000
+- takeScreenshot: menu-1
+- scroll
+- takeScreenshot: menu-2
+- scroll
+- takeScreenshot: menu-3
+- scroll
+- takeScreenshot: menu-4
+- scroll
+- takeScreenshot: menu-5
+- scroll
+- takeScreenshot: menu-6

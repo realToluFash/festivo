@@ -1,0 +1,36 @@
+/**
+ * What both clients use to talk to the API.
+ *
+ * Wire types in `schema.d.ts` are GENERATED from the API's own OpenAPI
+ * document — `npm run generate` in this package. Do not hand-write one: a
+ * client type maintained alongside the server's serialisation is a second copy
+ * of a fact, and two copies diverge while both sides typecheck perfectly.
+ */
+export * from './client.ts';
+export * from './problem.ts';
+export * from './oauth.ts';
+export * from './proofRefusal.ts';
+export * from './searchFailure.ts';
+export * from './topics.ts';
+export * from './seating.ts';
+export * from './seatingPresence.ts';
+export * from './guests.ts';
+export * from './guestMessages.ts';
+export * from './vendors.ts';
+export * from './budget.ts';
+export * from './staffRates.ts';
+export * from './margin.ts';
+export * from './payers.ts';
+export * from './quotes.ts';
+export * from './staff.ts';
+export * from './emailDomains.ts';
+export * from './organisationExport.ts';
+export * from './auditLog.ts';
+export * from './dishes.ts';
+export * from './menu.ts';
+export * from './picks.ts';
+export * from './kitchenSheet.ts';
+export * from './schedule.ts';
+export * from './screens.ts';
+export * from './pressQueue.ts';
+export * from './fileName.ts';

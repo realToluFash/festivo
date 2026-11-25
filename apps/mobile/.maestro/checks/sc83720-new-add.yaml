@@ -1,0 +1,21 @@
+# sc-83720 on New event's Hosted by (Android phone): Add a host gives Host 2 with the cursor and the keyboard up, the row above the keys; a name typed with no tap lands in Host 2.
+# Needs: a signed-in host who can create events.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/new
+- extendedWaitUntil:
+    visible:
+      id: 'eventForm.hosts.field.0'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'eventForm.hosts.add'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'eventForm.hosts.add'
+- waitForAnimationToEnd
+- takeScreenshot: added
+- inputText: 'Ade Bello'
+- waitForAnimationToEnd
+- takeScreenshot: typed-no-tap
