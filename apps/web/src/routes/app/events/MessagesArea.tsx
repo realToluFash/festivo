@@ -23,6 +23,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { numberFormat } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -586,10 +587,10 @@ function ComposePane({
     who.kind === 'all'
       ? guests == null
         ? t('eventMessages.allGuests')
-        : `${t('eventMessages.allGuests')} · ${new Intl.NumberFormat(currentLocale()).format(guests.length)}`
+        : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`
       : chosen.length === 0
         ? t('eventMessages.chooseGuests')
-        : `${t('eventMessages.chooseGuests')} · ${new Intl.NumberFormat(currentLocale()).format(chosen.length)}`;
+        : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
 
   return (
     <div className="mg-in is-compose">
@@ -893,7 +894,7 @@ function CheckCard({
               <li>
                 <Glyph name="mail" size={15} weight={2} />
                 {t('eventMessages.email')} ·{' '}
-                {new Intl.NumberFormat(currentLocale()).format(check.toldByEmail)}
+                {numberFormat(currentLocale()).format(check.toldByEmail)}
               </li>
             </ul>
           )}
@@ -964,7 +965,7 @@ function ToPopover({
   const titleId = useId();
   const name = useId();
   const chosen = who.kind === 'chosen' ? who.ids : [];
-  const number = new Intl.NumberFormat(currentLocale());
+  const number = numberFormat(currentLocale());
 
   useEffect(() => {
     if (!choosing) box.current?.querySelector<HTMLElement>('input:checked')?.focus();

@@ -29,7 +29,15 @@ const LAUNCH: OutsideEvent = {
 };
 
 const READS = ['events.read', 'guests.read', 'schedule.read', 'seating.read', 'people.read'];
-const EDITS = [...READS, 'events.manage', 'guests.manage', 'menu.read', 'menu.manage'];
+const EDITS = [
+  ...READS,
+  'events.manage',
+  'guests.manage',
+  'menu.read',
+  'menu.manage',
+  'messages.read',
+  'messages.manage',
+];
 
 function event(held: OutsideEvent) {
   return {
