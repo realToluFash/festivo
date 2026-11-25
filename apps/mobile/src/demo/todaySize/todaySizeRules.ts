@@ -163,3 +163,35 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
     index === 0 && name === 'oneWord' ? { ...event, name: ONE_WORD } : event,
   );
 }
+
+export type TodayWeek = 'quiet' | 'days';
+
+export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
+  { key: 'quiet', label: 'Nothing on' },
+  { key: 'days', label: 'Days with events' },
+];
+
+export const DAY_NAME = 14;
+export const DAY_DATE = 13.5;
+
+export interface WeekDay {
+  date: string;
+  rows: readonly { time: string; key: SizeEvent['key'] }[];
+}
+
+/** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an event on it. */
+export const WEEK_DAYS: readonly WeekDay[] = [
+  { date: SIZE_TODAY, rows: [{ time: '19:00', key: 'ireti' }] },
+  { date: '2026-11-26', rows: [{ time: '10:30', key: 'wed' }] },
+  { date: '2026-11-29', rows: [{ time: '20:00', key: 'party' }] },
+];
+
+/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
+export function dayLineShares(
+  name: number,
+  dottedDate: number,
+  gap: number,
+  room: number,
+): boolean {
+  return name + gap + dottedDate <= room;
+}
