@@ -62,6 +62,17 @@ describe('the upright capsule at the largest sizes (sc-92571)', () => {
   });
 });
 
+describe('the band’s capsule at the largest sizes (sc-92571)', () => {
+  it('keeps the live line below the grown capsule', () => {
+    const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(band).toMatch(/tall && \{ minHeight: CAPSULE_TOP \+ capsule \}/u);
+    expect(band).toMatch(
+      /onLayout=\{\(event\) => setCapsule\(event\.nativeEvent\.layout\.height\)\}/u,
+    );
+    expect(band).toMatch(/\[grown \|\| tall \? 'minHeight' : 'height'\]/u);
+  });
+});
+
 describe('the band’s tile while an invitation waits (sc-40298)', () => {
   it('draws the cover tile’s ring, so the band returns the same tile', () => {
     expect(cover).toMatch(/\{org\.waiting != null && <View style=\{styles\.tileRing\} \/>\}/u);
