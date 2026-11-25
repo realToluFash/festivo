@@ -147,7 +147,9 @@ export function PortraitRow({
       <View style={styles.fill} />
       <View onLayout={(event) => setEndWidth(event.nativeEvent.layout.width)}>{bell}</View>
       <View style={tabsCentred ? styles.tabsCentred : styles.tabsAt} pointerEvents="box-none">
+        {/* Keyed by the fitted size, so a fresh onLayout reports the capsule's height at each fitted size, from undefined to the first fit and every refit after; without it the band can keep a height measured before the capsule was drawn (sc-91290). */}
         <View
+          key={labelSize}
           onLayout={(event) => {
             setTabsWidth(event.nativeEvent.layout.width);
             setTabsHeight(event.nativeEvent.layout.height);
