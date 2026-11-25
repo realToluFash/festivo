@@ -34,8 +34,10 @@ export function callingCode(country: string): string | null {
   return isPhoneCountry(country) ? `+${getCountryCallingCode(country)}` : null;
 }
 
+const PHONE_COUNTRIES: ReadonlySet<string> = new Set(getCountries());
+
 function isPhoneCountry(country: string): country is CountryCode {
-  return (getCountries() as string[]).includes(country);
+  return PHONE_COUNTRIES.has(country);
 }
 
 /** "+234 803 555 0142": an E.164 number as people read it. */
