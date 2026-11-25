@@ -18,7 +18,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { openerLabel } from '../OrgSwitcherModel.ts';
 import { SearchGlass } from '../SearchGlass.tsx';
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
+import { atAccessibilitySizes, wordsIn } from '../../layout/textSize.ts';
 import { FitWords } from './FitWords.tsx';
 import { useSizeSwitcher } from './TodaySizeSwitcher.tsx';
 import {
@@ -88,9 +88,14 @@ export function Pill({
   const [widths, setWidths] = useState<Readonly<Record<string, number>>>({});
   const known = pieces.every((piece) => widths[piece] != null);
   const widest = known ? Math.max(...pieces.map((piece) => widths[piece] ?? 0)) : null;
+  const lineWords = useMemo(() => (line == null ? [] : wordsIn([line])), [line]);
+  const [lineWidths, setLineWidths] = useState<Readonly<Record<string, number>>>({});
+  const lineWidest = lineWords.every((word) => lineWidths[word] != null)
+    ? Math.max(0, ...lineWords.map((word) => lineWidths[word] ?? 0))
+    : null;
   const [nameAt, setNameAt] = useState<number | null>(null);
   const [waitingAt, setWaitingAt] = useState<number | null>(null);
-  const alone = tile || pillTileAlone(scale, widest, room);
+  const alone = tile || pillTileAlone(scale, widest, room, lineWidest);
   const ours = standIn && atAccessibilitySizes(scale);
   const switcher = useSizeSwitcher(ref, scale, ours);
   const onPress = ours ? switcher.show : org.onPress;
@@ -106,15 +111,26 @@ export function Pill({
     testID: 'demo.todaySize.pill',
   } as const;
   const measure = (
-    <MeasuredWords
-      words={pieces}
-      size={PILL_NAME}
-      weight="semibold"
-      allowFontScaling={false}
-      onWidth={(piece, width) =>
-        setWidths((now) => (now[piece] === width ? now : { ...now, [piece]: width }))
-      }
-    />
+    <>
+      <MeasuredWords
+        words={pieces}
+        size={PILL_NAME}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(piece, width) =>
+          setWidths((now) => (now[piece] === width ? now : { ...now, [piece]: width }))
+        }
+      />
+      <MeasuredWords
+        words={lineWords}
+        size={PILL_WAITING}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(word, width) =>
+          setLineWidths((now) => (now[word] === width ? now : { ...now, [word]: width }))
+        }
+      />
+    </>
   );
 
   if (alone)

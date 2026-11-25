@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { waitingRoomUnder } from '../../layout/pillFit.ts';
 import { dotKept } from '../../layout/textSize.ts';
 
 import {
@@ -161,6 +162,13 @@ describe('the organisation pill on the phone (sc-92247)', () => {
     expect(pillTileAlone(AX5, 99, 186)).toBe(false);
     expect(pillTileAlone(SEVENTH, 380, 186)).toBe(false);
     expect(pillTileAlone(AX1, null, 186)).toBe(false);
+  });
+
+  it('is its tile alone too where the invitation line’s widest word at 12.5 is wider than the room under the name, as the app (sc-92314)', () => {
+    expect(pillTileAlone(AX1, 50, 93, waitingRoomUnder(93) + 1)).toBe(true);
+    expect(pillTileAlone(AX1, 50, 93, waitingRoomUnder(93))).toBe(false);
+    expect(pillTileAlone(AX1, 50, 93, null)).toBe(false);
+    expect(pillTileAlone(SEVENTH, 50, 93, 200)).toBe(false);
   });
 
   it('names the five organisations the AC renames it to', () => {
