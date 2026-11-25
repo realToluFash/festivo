@@ -47,9 +47,6 @@ export function GlassSearchButton() {
 /** Search and the bell together, the right end the upright capsule centres against (the bell alone was 40). */
 const ENDS = 40 + tokens.spaceSm + 40;
 
-/** `capsuleRoom` keeps the capsule clear of a 46 tile at each side; this row keeps it clear of the 88 end instead, as it is centred. */
-const ENDS_PAST_TILE = ENDS - 46;
-
 /** The top of Today's cover, with Search beside the bell on a phone and an upright iPad; held sideways the banner keeps the bell alone, since the sidebar's row is Search. `now` is the band over an event happening now. */
 export function SearchOnCoverScreen({ now }: { now: boolean }) {
   const insets = useSafeAreaInsets();
@@ -139,8 +136,8 @@ function TabletTop({
   const [row, setRow] = useState<number>();
   const [capsule, setCapsule] = useState<number>();
   const labels = TABS.map(([, glyph]) => t(`todayScreen.tab.${glyph}`));
-  const inside = row == null ? 0 : Math.max(0, row - 2 * tokens.space3xl - 2 * ENDS_PAST_TILE);
-  const { labelSize, givesWay, measure } = useCapsuleLabels(labels, inside);
+  const inside = row == null ? 0 : Math.max(0, row - 2 * tokens.space3xl);
+  const { labelSize, givesWay, measure } = useCapsuleLabels(labels, inside, ENDS);
   const room =
     row == null || capsule == null
       ? undefined
