@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 
+import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
-import { EVENT_OF_KEY } from '../events/EventsSample.ts';
-import { openEvent } from '../events/openEvent.ts';
-import { openedOver } from '../events/opener.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
 import {
@@ -22,8 +20,18 @@ import {
   wordsStart,
 } from './todaySizeRules.ts';
 
-/** sc-92250: This week's days at a stand-in size, each day line's date after its dot only while it shares the name's line. */
-export function WeekDays({ locale, scale, cap }: { locale: string; scale: number; cap: number }) {
+/** sc-92250: This week's days at a stand-in size, as main's agenda draws them; only the day line differs, its date after its dot only while it shares the name's line. */
+export function WeekDays({
+  locale,
+  scale,
+  cap,
+  wide,
+}: {
+  locale: string;
+  scale: number;
+  cap: number;
+  wide: boolean;
+}) {
   return (
     <View style={styles.panel}>
       {WEEK_DAYS.map((day, index) => (
@@ -33,6 +41,7 @@ export function WeekDays({ locale, scale, cap }: { locale: string; scale: number
           locale={locale}
           scale={scale}
           cap={cap}
+          wide={wide}
           ruled={index < WEEK_DAYS.length - 1}
         />
       ))}
@@ -45,12 +54,14 @@ function Day({
   locale,
   scale,
   cap,
+  wide,
   ruled,
 }: {
   day: WeekDay;
   locale: string;
   scale: number;
   cap: number;
+  wide: boolean;
   ruled: boolean;
 }) {
   const { t } = useTranslation();
@@ -67,39 +78,81 @@ function Day({
 
   return (
     <View>
-      <DayLine name={name} when={when} today={today} scale={scale} cap={cap} />
-      {day.rows.map((row, index) => (
-        <Pressable
-          key={row.key}
-          onPress={() => openEvent(EVENT_OF_KEY[row.key], openedOver('today'))}
-          style={({ pressed }) => [
-            stacked ? styles.itemStacked : styles.item,
-            index === day.rows.length - 1 && styles.itemLast,
-            index === day.rows.length - 1 && ruled && styles.ruled,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={`${row.time} ${EVENTS[row.key].name}`}
-          testID="demo.todaySize.weekRow"
-        >
+      {stacked ? (
+        <FittedDayLine name={name} when={when} today={today} scale={scale} cap={cap} />
+      ) : (
+        <View style={styles.mainDayLine} testID="demo.todaySize.dayLine">
+          <Text
+            size={DAY_NAME * scale}
+            weight="bold"
+            allowFontScaling={false}
+            style={today ? styles.accent : undefined}
+          >
+            {name}
+          </Text>
+          <Text
+            size={DAY_DATE * scale}
+            weight="medium"
+            allowFontScaling={false}
+            style={styles.secondary}
+          >
+            {`· ${when}`}
+          </Text>
+        </View>
+      )}
+      {day.rows.map((row, index) => {
+        const last = index === day.rows.length - 1;
+        const event = EVENTS[row.key];
+        const time = (
           <Text
             size={14 * scale}
             weight="bold"
             allowFontScaling={false}
-            style={[styles.figures, !stacked && styles.time]}
+            numberOfLines={stacked ? undefined : 1}
+            style={[styles.figures, !stacked && (wide ? styles.timeWide : styles.time)]}
           >
-            {row.time}
+            {say.clock(row.time)}
           </Text>
-          <Text size={14 * scale} weight="semibold" allowFontScaling={false} style={styles.shrink}>
-            {EVENTS[row.key].name}
-          </Text>
-        </Pressable>
-      ))}
+        );
+
+        return (
+          <View
+            key={`${row.key}${row.time}${row.title}`}
+            style={[
+              stacked ? styles.itemStacked : styles.item,
+              last && styles.itemLast,
+              last && ruled && styles.ruled,
+            ]}
+            testID="demo.todaySize.weekRow"
+          >
+            {stacked && time}
+            <View style={styles.itemRow}>
+              {!stacked && time}
+              <View style={[styles.stripe, { backgroundColor: eventColour(event) }]} />
+              <View style={styles.words}>
+                <Text size={15 * scale} weight="semibold" allowFontScaling={false}>
+                  {row.title}
+                </Text>
+                <Text
+                  size={13 * scale}
+                  weight="medium"
+                  allowFontScaling={false}
+                  numberOfLines={stacked ? undefined : 1}
+                  style={styles.secondary}
+                >
+                  {event.name + (row.note === '' ? '' : ` · ${row.note}`)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
-function DayLine({
+/** From AX1: hidden until it knows whether the dotted date fits beside the name whole; if not, the date takes the line under without its dot. */
+function FittedDayLine({
   name,
   when,
   today,
@@ -123,8 +176,6 @@ function DayLine({
   const widths = measured.key === key ? measured : { key };
   const known = widths.name != null && widths.date != null && room > 0;
   const shares = !known || dayLineShares(widths.name ?? 0, widths.date ?? 0, tokens.spaceXs, room);
-  // Below AX1 the line is main's and waits for nothing; from AX1 it is hidden until it knows whether the date shares the name's line.
-  const pending = atAccessibilitySizes(scale) && !known;
   const keep = (which: 'name' | 'date') => (_: string, width: number) =>
     setMeasured((now) => {
       const kept = now.key === key ? now : { key };
@@ -135,7 +186,7 @@ function DayLine({
 
   return (
     <View
-      style={[styles.dayLine, pending && styles.waiting]}
+      style={[styles.dayLine, !known && styles.waiting]}
       onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
       testID="demo.todaySize.dayLine"
     >
@@ -198,22 +249,26 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.spaceHair,
   },
   dayLine: { paddingTop: tokens.spacePillEnd, paddingBottom: tokens.spaceXxs },
+  mainDayLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    columnGap: tokens.spaceXs,
+    paddingTop: tokens.spacePillEnd,
+    paddingBottom: tokens.spaceXxs,
+  },
   oneLine: { flexDirection: 'row', alignItems: 'baseline', columnGap: tokens.spaceXs },
   waiting: { opacity: 0 },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceLg,
-    paddingVertical: 7,
-    minHeight: tokens.sizeHit,
-  },
-  itemStacked: { paddingVertical: 7, gap: tokens.spaceXs, minHeight: tokens.sizeHit },
+  item: { paddingVertical: 7 },
+  itemStacked: { paddingVertical: 7, gap: tokens.spaceXs },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   itemLast: { paddingBottom: 13 },
-  ruled: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tokens.colorBorder },
+  ruled: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   time: { width: 70 },
+  timeWide: { width: 76 },
+  stripe: { width: tokens.spaceXxs, alignSelf: 'stretch', borderRadius: tokens.spaceHair },
+  words: { flex: 1, minWidth: 0, gap: tokens.spaceHair },
   figures: { fontVariant: ['tabular-nums'] },
-  shrink: { flexShrink: 1 },
   secondary: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccent },
-  pressed: { opacity: 0.7 },
 });

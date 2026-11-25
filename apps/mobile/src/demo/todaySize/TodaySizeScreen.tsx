@@ -267,7 +267,7 @@ function TodayPage({
         cap={cap}
       />
       {week === 'days' ? (
-        <WeekDays locale={language} scale={scale} cap={cap} />
+        <WeekDays locale={language} scale={scale} cap={cap} wide={kind !== 'phone'} />
       ) : (
         <NextUp scale={scale} cap={cap} when={say.day(PARTY_DAY)} />
       )}
