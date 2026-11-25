@@ -8,9 +8,7 @@ import { STYLES, cssRule, mediaBlock, stylesheet } from '../test-styles.ts';
 
 const tested = config();
 const NARROW = '(width <= 40rem)';
-const PEOPLE = mediaBlock(NARROW, stylesheet(import.meta.dirname, 'people.css'));
 const REFLOW = mediaBlock(NARROW, stylesheet(import.meta.dirname, 'deskReflow.css'));
-const SHELL = '.today.desk:has(.event-page.is-people)';
 
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 
@@ -20,13 +18,11 @@ afterEach(() => {
 });
 
 describe('People leaves the product’s 16 px at 320 CSS px (sc-91747)', () => {
-  it('gives the page the shell’s gutter, flat to the window’s edges', () => {
-    expect(cssRule(`${SHELL} > .desk-main`, PEOPLE)).toMatch(
-      /margin: 0;\s+border-radius: 0;\s+box-shadow: none;/u,
-    );
-    expect(cssRule(`${SHELL} .desk-page`, PEOPLE)).toMatch(
-      /^\s*padding-inline: var\(--spaceXl\);\s*$/u,
-    );
+  it('has no gutter of its own, so the general rule is the only one that sets it (sc-91763)', () => {
+    const people = stylesheet(import.meta.dirname, 'people.css');
+
+    expect(mediaBlock(NARROW, people)).toBe('');
+    expect(people).not.toMatch(/\.desk-main|\.desk-page/u);
   });
 
   it('is the gutter the product’s shell gives every page at this width, which stays as it is', () => {
@@ -35,7 +31,7 @@ describe('People leaves the product’s 16 px at 320 CSS px (sc-91747)', () => {
     );
   });
 
-  it('is the gutter the general rule now gives every other desk page (sc-91763)', () => {
+  it('is the gutter the general rule gives every desk page, People with them (sc-91763)', () => {
     expect(cssRule('.today.desk:not(.dp-fit) > .desk-main', REFLOW)).toMatch(
       /margin: 0;[\s\S]*border-radius: 0;\s+box-shadow: none;/u,
     );
