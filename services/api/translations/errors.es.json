@@ -158,5 +158,7 @@
     "menu_event_over": "La fecha de este evento ya ha pasado, así que su menú no puede cambiar. No se ha cambiado nada.",
     "plan_sold_by_contract": "Este plan se vende por contrato, no mediante el pago en línea. Consulte a Soirely para contratarlo.",
     "plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
-    "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan."
+    "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan.",
+    "audience_name_taken": "Ese nombre ya lo usa un público guardado.",
+    "audiences_full": "Este evento ya tiene el máximo de públicos guardados."
 }

@@ -1,5 +1,45 @@
 /** A host's messages to an event's guests (sc-3942), as the API answers them. */
-export type GuestMessageAudience = 'all' | 'chosen';
+export type GuestMessageAudience = 'all' | 'chosen' | 'conditions';
+
+/** Who gets it's conditions (sc-3957), combined with AND; `groupId` null is No group. */
+export type GuestCondition =
+  | {
+      type:
+        | 'replied'
+        | 'notReplied'
+        | 'coming'
+        | 'notComing'
+        | 'notSure'
+        | 'invited'
+        | 'notInvited'
+        | 'hasEmail'
+        | 'hasMobile';
+    }
+  | { type: 'inGroup'; groupId: string | null };
+
+/** A condition as the API reads it back: an `inGroup` one names its group as it is now, and says when it was deleted. */
+export type ShownCondition =
+  | Exclude<GuestCondition, { type: 'inGroup' }>
+  | { type: 'inGroup'; groupId: string | null; group: { name: string; deleted: boolean } | null };
+
+/** The live count and See who: each guest with the ways Soirely can tell them. */
+export interface AudienceMatch {
+  count: number;
+  conditions: ShownCondition[];
+  guests: { id: string; name: string; email: boolean; mobile: boolean }[];
+}
+
+export interface SavedAudience {
+  id: string;
+  name: string;
+  conditions: ShownCondition[];
+}
+
+/** Saved audiences A to Z, and the event's groups A to Z for Is in group. */
+export interface AudienceBook {
+  audiences: SavedAudience[];
+  groups: { id: string; name: string }[];
+}
 
 /** Why email can't tell a guest; `provider_blocked` and `failed` only ever end a delivery, never flag a guest. */
 export type NotSentReason =
@@ -13,6 +53,8 @@ export interface GuestMessageSummary {
   subject: string | null;
   firstLine: string;
   audience: GuestMessageAudience;
+  /** The message's own copy of its conditions, when `audience` is `conditions`. */
+  conditions: ShownCondition[] | null;
   channels: string[];
   sentBy: string;
   sentAt: string;
@@ -61,6 +103,7 @@ export interface PickableGuest {
 export interface GuestMessageInput {
   audience: GuestMessageAudience;
   guestIds?: string[];
+  conditions?: GuestCondition[];
   subject?: string | null;
   message: string;
   follows?: string | null;

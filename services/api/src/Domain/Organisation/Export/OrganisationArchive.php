@@ -110,7 +110,7 @@ final readonly class OrganisationArchive
             SELECT gg.id, gg.event_id, gg.name, gg.created_at
               FROM guest_groups gg
               JOIN events ev ON ev.id = gg.event_id
-             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND gg.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, gg.event_id, gg.name_key, gg.id
             SQL,
         'guest_messages' => <<<'SQL'

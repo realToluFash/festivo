@@ -513,5 +513,6 @@
     "validation.guest_message_follows_unknown": "This conversation is no longer on the event.",
     "validation.guest_message_no_guests": "This event has no guests to write to yet.",
     "guest_message.event_draft": "This event is a draft. Make it live to write to your guests.",
-    "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests."
+    "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests.",
+    "saved_audience.full": "This event has {most, number, ::group-auto} saved audiences, the most it can have. Delete one to save another."
 }

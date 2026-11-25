@@ -522,5 +522,13 @@
     "menu.event_over": "La fecha de este evento ya ha pasado, así que su menú no puede cambiar. No se ha cambiado nada.",
     "billing.plan_sold_by_contract": "Este plan se vende por contrato, no mediante el pago en línea. Consulte a Soirely para contratarlo.",
     "billing.plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
-    "billing.nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan."
+    "billing.nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan.",
+    "validation.audience_condition_unknown": "No hay ninguna condición llamada {condition}.",
+    "validation.audience_group_unknown": "Ese grupo no es uno de los grupos de este evento.",
+    "validation.audience_conditions_list": "Envía las condiciones como una lista.",
+    "validation.saved_audience_name_required": "Escribe un nombre para este público.",
+    "validation.saved_audience_name_too_long": "El nombre de un público guardado puede tener hasta {max} caracteres.",
+    "validation.guest_message_conditions_required": "Añade primero una condición. Sin ninguna, Invitados que… no incluye a nadie, así que no hay nada que enviar ni guardar.",
+    "validation.guest_message_nobody_matches": "Nadie cumple estas condiciones, así que no hay a quién enviarlo.",
+    "saved_audience.name_taken": "Ya hay un público guardado llamado {name}."
 }

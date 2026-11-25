@@ -522,5 +522,13 @@
     "menu.event_over": "This event’s date has passed, so its menu can’t change. Nothing was changed.",
     "billing.plan_sold_by_contract": "This plan is sold by contract, not through checkout. Contact Soirely to arrange it.",
     "billing.plan_not_priced": "This plan has no price in your billing currency.",
-    "billing.nothing_paid_through_provider": "There is no payment method to update until a plan is paid for."
+    "billing.nothing_paid_through_provider": "There is no payment method to update until a plan is paid for.",
+    "validation.audience_condition_unknown": "There is no condition called {condition}.",
+    "validation.audience_group_unknown": "That group is not one of this event’s groups.",
+    "validation.audience_conditions_list": "Send the conditions as a list.",
+    "validation.saved_audience_name_required": "Enter a name for this audience.",
+    "validation.saved_audience_name_too_long": "A saved audience’s name can be up to {max} characters.",
+    "validation.guest_message_conditions_required": "Add a condition first. With none, Guests who… matches nobody, so there is nothing to send or save.",
+    "validation.guest_message_nobody_matches": "Nobody matches these conditions, so there is no one to send it to.",
+    "saved_audience.name_taken": "There’s already a saved audience called {name}."
 }
