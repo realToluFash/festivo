@@ -42,6 +42,11 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     href: '/demo/today-size?size=ax1&lang=en&org=qa&invite=one',
   },
   {
+    title: 'The pill · AX1, iPad upright, Lumen Studio',
+    what: 'Lumen Studio in words beside the tabs, each word whole, never the tile alone',
+    href: '/demo/today-size?size=ax1&lang=en&org=lumen',
+  },
+  {
     title: 'The pill · AX1, iPad upright, several long words',
     what: 'Atelier Céleste Réceptions et Mariages on as many lines as its words need; the pill grows down, the tabs, Search and the bell stay at the top, the greeting below',
     href: '/demo/today-size?size=ax1&lang=en&org=several',
