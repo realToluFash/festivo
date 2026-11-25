@@ -35,12 +35,12 @@ describe('People leaves the product’s 16 px at 320 CSS px (sc-91747)', () => {
     );
   });
 
-  it('leaves every other desk page to the general rule, sc-91763’s to move', () => {
-    expect(cssRule('.today.desk:not(.dp-fit) > .desk-main', REFLOW)).toContain(
-      'margin: 0 var(--spaceMd) var(--spaceMd);',
+  it('is the gutter the general rule now gives every other desk page (sc-91763)', () => {
+    expect(cssRule('.today.desk:not(.dp-fit) > .desk-main', REFLOW)).toMatch(
+      /margin: 0;[\s\S]*border-radius: 0;\s+box-shadow: none;/u,
     );
     expect(cssRule('.today.desk:not(.dp-fit) .desk-page', REFLOW)).toContain(
-      'padding: var(--spaceXl) var(--spaceLg) var(--space3xl);',
+      'padding: var(--spaceXl) var(--spaceXl) var(--space3xl);',
     );
   });
 
