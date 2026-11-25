@@ -1954,8 +1954,13 @@
       "organisation_deleted": {
         "title": "This organisation is gone",
         "line": "The invitation to {{organisation}} can no longer be accepted."
+      },
+      "invitation_needs_email": {
+        "title": "Add your email address first",
+        "line": "This invitation is for {{email}}. Add that address to your account and verify it, then accept the invitation."
       }
-    }
+    },
+    "addEmail": "Add an email address"
   },
   "invitations": {
     "heading": "Invitations",
