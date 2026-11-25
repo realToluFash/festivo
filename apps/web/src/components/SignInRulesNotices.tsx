@@ -3,6 +3,7 @@ import { formatDay } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
+import { SECURITY, securityOn } from '../routes/app/settings/signInRulesDesk.ts';
 import { markRulesSeen, useRulesSeen } from '../signInRulesSeen.ts';
 import { afterNotice, useFocusOnceShown } from '../stepFocus.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
@@ -24,7 +25,6 @@ export function SignInRulesNotices({
   const changedAt = organisation.signInRules.changedAt;
   const standing = useTwoFactorStanding(organisation);
   const land = useFocusOnceShown();
-  const security = '/app/account/security';
 
   function close(closing: () => void): (box: HTMLElement | null) => void {
     return (box) => {
@@ -48,7 +48,7 @@ export function SignInRulesNotices({
               deadline: organisation.twoFactorDue.written,
             }),
             body: null,
-            step: { label: t('signInRules.dueSetUp'), to: security },
+            step: { label: t('signInRules.dueSetUp'), to: SECURITY, state: securityOn('turnOn') },
             close: null,
           }}
         />
@@ -60,7 +60,7 @@ export function SignInRulesNotices({
             kind: 'attention',
             title: t('signInRules.unlinkedTitle'),
             body: t('signInRules.unlinkedBody', { organisation: name }),
-            step: { label: t('signInRules.unlinkedLink'), to: security },
+            step: { label: t('signInRules.unlinkedLink'), to: SECURITY },
             close: null,
           }}
         />
@@ -72,7 +72,7 @@ export function SignInRulesNotices({
             kind: 'quiet',
             title: t('signInRules.gateTitle', { organisation: name }),
             body: t('signInRules.gateBody', { organisation: name }),
-            step: { label: t('signInRules.gateTurnOn'), to: security },
+            step: { label: t('signInRules.gateTurnOn'), to: SECURITY, state: securityOn('turnOn') },
             close: t('signInRules.gateLater'),
           }}
           onClose={close(onLater)}
