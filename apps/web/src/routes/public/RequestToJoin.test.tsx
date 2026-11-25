@@ -131,7 +131,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+        'Your request has gone to Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
     expect(sent.find((one) => one.line === ASK)?.body).toEqual({
@@ -160,7 +160,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+        'Your request has gone to Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
     expect(sent.filter((one) => one.line === ASK)).toHaveLength(1);
@@ -240,7 +240,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "You have already asked to join Ìrè Events. We'll email you when they answer.",
+        'You have already asked to join Ìrè Events. We’ll email you when they answer.',
       ),
     ).toBeDefined();
   });
@@ -524,7 +524,7 @@ describe('a request link that did not load (sc-11488)', () => {
 
     const notice = (
       await screen.findByText(
-        "You have already asked to join Ìrè Events. We'll email you when they answer.",
+        'You have already asked to join Ìrè Events. We’ll email you when they answer.',
       )
     ).closest('.auth-notice');
     await waitFor(() => expect(document.activeElement).toBe(notice));
