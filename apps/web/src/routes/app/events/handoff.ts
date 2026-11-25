@@ -72,11 +72,11 @@ function shownAnyway(): boolean {
 }
 
 function rememberAnyway(): void {
-  anywayHere = true;
   try {
     window.sessionStorage.setItem(ANYWAY, '1');
   } catch {
     // Without storage it lasts until the page reloads.
+    anywayHere = true;
   }
 }
 
