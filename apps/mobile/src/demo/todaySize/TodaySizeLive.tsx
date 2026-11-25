@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
+import { EventMesh } from '../../components/EventMesh.tsx';
 import { BellButton } from '../../components/TodayCover.tsx';
 import { useTodayShell } from '../../components/todayShell.ts';
+import { meshFor } from '../../kit/today.ts';
 import { dayChipRoom, liveChipRoom, openRoom } from '../../layout/liveCoverFit.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
@@ -124,6 +126,7 @@ export function LiveBanner({ name, scale }: { name: string; scale: number }) {
 
   return (
     <View style={styles.banner}>
+      <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
       <View style={styles.bell}>
         <BellButton />
       </View>
@@ -143,7 +146,6 @@ export function LiveBanner({ name, scale }: { name: string; scale: number }) {
 
 const styles = StyleSheet.create({
   banner: {
-    backgroundColor: tokens.colorInk,
     borderRadius: tokens.space4xl,
     overflow: 'hidden',
     minHeight: 236,
