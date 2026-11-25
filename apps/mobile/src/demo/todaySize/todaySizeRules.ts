@@ -1,8 +1,9 @@
-import { PILL_BESIDE_TABS, pillBesideTabs } from '../../kit/frameBand.ts';
+import { PILL_BESIDE_TABS } from '../../kit/frameBand.ts';
 import {
   capsuleLabelSize,
   capsuleRoom,
   capsuleWidth,
+  openerRoom,
   pillGivesWay,
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
@@ -272,7 +273,7 @@ export interface UprightTop {
   /** The one size the tabs' labels draw at. */
   labelSize: number;
   capsule: number;
-  /** The widest the pill may be, 12 short of the centred capsule (sc-30410, sc-92188). */
+  /** The widest the pill may be, 8 short of the centred capsule, as the app's `openerRoom` leaves it (sc-30410, sc-92188). */
   pill: number;
   /** The tabs are under their own size, so the pill gives way to its tile (sc-40401). */
   givesWay: boolean;
@@ -285,7 +286,7 @@ export function uprightTop(scale: number, labels: readonly number[], row: number
   const total = labels.reduce((sum, width) => sum + width, 0);
   const labelSize = capsuleLabelSize(scale, labels.length, total, capsuleRoom(row, UPRIGHT_END));
   const capsule = capsuleWidth(scale, labels, labelSize);
-  const pill = pillBesideTabs(row, capsule)?.maxWidth ?? 0;
+  const pill = openerRoom(row + 2 * tokens.space3xl, capsule) ?? 0;
   const nameRoom = Math.max(pill - PILL_CHROME, 0);
 
   return {
