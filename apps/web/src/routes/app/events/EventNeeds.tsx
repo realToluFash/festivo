@@ -36,15 +36,19 @@ export function EventNeeds({
       <Head
         title={
           <span id="ev-needs-you" className="ev-needs-title">
-            <span aria-hidden="true" className="ev-needs-title">
-              {t('eventPage.needsYou')}
-              {rows.length > 0 && <span className="ev-needs-count">{rows.length}</span>}
-            </span>
-            <span className="visually-hidden">
-              {rows.length > 0
-                ? t('eventNeeds.headCount', { count: rows.length })
-                : t('eventPage.needsYou')}
-            </span>
+            {rows.length > 0 ? (
+              <>
+                <span aria-hidden="true" className="ev-needs-title">
+                  {t('eventPage.needsYou')}
+                  <span className="ev-needs-count">{rows.length}</span>
+                </span>
+                <span className="visually-hidden">
+                  {t('eventNeeds.headCount', { count: rows.length })}
+                </span>
+              </>
+            ) : (
+              t('eventPage.needsYou')
+            )}
           </span>
         }
       />
