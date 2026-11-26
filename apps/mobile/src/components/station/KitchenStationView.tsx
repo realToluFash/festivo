@@ -379,25 +379,26 @@ export function KitchenStationView({
         tap.body.item === line.key,
     );
 
+  const backLabel =
+    from == null
+      ? t('station.back')
+      : from === 'overview'
+        ? t('eventNav.overview')
+        : t('myNight.title');
+
   const page = (children: ReactNode) => (
     <View style={[styles.page, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.body, phone && styles.bodyPhone]}>
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
-          accessibilityLabel={
-            from == null
-              ? t('station.back')
-              : from === 'overview'
-                ? t('eventNav.overview')
-                : t('myNight.title')
-          }
+          accessibilityLabel={backLabel}
           style={[styles.back, { minHeight: z.side }]}
           testID="station.back"
         >
           {from == null ? (
             <Text size={15} weight="semibold" style={styles.accent}>
-              {t('station.back')}
+              {backLabel}
             </Text>
           ) : (
             <View style={styles.backTo}>
@@ -410,7 +411,7 @@ export function KitchenStationView({
                 ‹
               </Text>
               <Text size={15} weight="semibold" style={styles.accent}>
-                {from === 'overview' ? t('eventNav.overview') : t('myNight.title')}
+                {backLabel}
               </Text>
             </View>
           )}

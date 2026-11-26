@@ -3,8 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-const page = readFileSync(join('src', 'components', 'EventPage.tsx'), 'utf8');
-const outside = readFileSync(join('src', 'components', 'OutsideOverview.tsx'), 'utf8');
+const page = readFileSync(join(import.meta.dirname, 'EventPage.tsx'), 'utf8');
+const outside = readFileSync(join(import.meta.dirname, 'OutsideOverview.tsx'), 'utf8');
 
 describe('the Kitchen station row on each Overview (sc-95382)', () => {
   it('sits under Your night on the event page', () => {
