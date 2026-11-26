@@ -546,8 +546,8 @@
     "service.ready_in_invalid": "«Listo en unos» admite 5, 10 o 15 minutos, y solo se indica mientras el elemento está «En preparación».",
     "service.item_not_on_course": "Ese elemento no forma parte de este pase.",
     "service.item_not_on_plate": "Ese elemento no está en este plato.",
-    "service.changed": "This changed while you were offline. Nothing was changed.",
-    "service.expected_required": "Send what the tap saw with each service step.",
-    "service.idempotency_key_required": "Send an Idempotency-Key with each service step.",
-    "service.idempotency_key_reused": "This Idempotency-Key was already used for a different step. Nothing was changed."
+    "service.changed": "Alguien ha cambiado esto mientras usted estaba sin conexión. No se ha guardado nada.",
+    "service.expected_required": "Envíe con cada paso del servicio el estado que vio el dispositivo.",
+    "service.idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada paso del servicio.",
+    "service.idempotency_key_reused": "Esta Idempotency-Key ya se usó con otro paso. No se ha cambiado nada."
 }
