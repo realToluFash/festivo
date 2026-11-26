@@ -36,8 +36,11 @@ export interface HoursCorrection {
 
 export interface HoursRow {
   shiftId: string;
+  /** The roster entry's id, kept once they are removed from the roster. */
   staffId: string;
   name: string;
+  /** Removed from the roster after clocking in on this shift: their times stay, and a correction needs the clock-out. */
+  removed: boolean;
   job: string;
   startsAt: string;
   endsAt: string;
@@ -155,6 +158,7 @@ function asRow(raw: unknown): HoursRow | null {
     !(raw.mark === null || raw.mark === 'not_clocked_out' || raw.mark === 'no_attendance') ||
     !LIVES.includes(raw.live as HoursLive) ||
     typeof raw.stillOn !== 'boolean' ||
+    typeof raw.removed !== 'boolean' ||
     !corrections.every((one) => one != null)
   )
     return null;

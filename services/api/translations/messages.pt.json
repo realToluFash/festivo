@@ -153,6 +153,8 @@
     "staff.job_name_too_long": "Use no máximo {max} caracteres no nome.",
     "staff.job_name_taken": "Este evento já tem uma função chamada {name}.",
     "staff.job_staffed": "Retire primeiro as pessoas dos seus turnos.",
+    "staff.job_worked": "Someone has worked a shift in this job, so it stays.",
+    "staff.shift_worked": "{name} has worked this shift, so they stay on it.",
     "staff.shift_job_required": "Escolha uma função.",
     "staff.shift_start_required": "Introduza a data e a hora de início do turno.",
     "staff.shift_end_required": "Introduza a data e a hora de fim do turno.",

@@ -107,7 +107,7 @@ final class OrganisationExportTest extends ApiTestCase
         'staff_jobs' => ['id', 'event_id', 'name', 'access', 'position', 'created_at'],
         'staff_shifts' => ['id', 'job_id', 'starts_at', 'ends_at', 'needed'],
         'staff_shift_people' => ['shift_id', 'staff_id'],
-        'staff_attendance' => ['shift_id', 'staff_id', 'clocked_in_at', 'clocked_out_at', 'corrected_in_at', 'in_corrected_by', 'corrected_out_at', 'out_corrected_by'],
+        'staff_attendance' => ['shift_id', 'staff_id', 'removed_name', 'clocked_in_at', 'clocked_out_at', 'corrected_in_at', 'in_corrected_by', 'corrected_out_at', 'out_corrected_by'],
         'staff_rates' => ['id', 'event_id', 'job_id', 'staff_id', 'pay', 'amount_minor', 'amount_currency', 'set_at'],
         'staff_stations' => ['id', 'event_id', 'kind', 'name', 'section_id', 'lead_id', 'position', 'walk_position'],
         'staff_item_stations' => ['course_id', 'item_key', 'station_id'],

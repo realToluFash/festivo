@@ -3431,7 +3431,7 @@ export class ApiClient {
     );
   }
 
-  /** Refused 409 `staff_job_staffed` while anyone is on its shifts. */
+  /** Refused 409 `staff_job_worked` once anyone has clocked in on one of its shifts, else `staff_job_staffed` while anyone is on them. */
   async removeStaffJob(eventId: string, jobId: string): Promise<StaffPlan> {
     return this.staffPlanOf(
       await this.delete<unknown>(`${this.staffPath(eventId)}/jobs/${encodeURIComponent(jobId)}`),
@@ -3465,6 +3465,7 @@ export class ApiClient {
     );
   }
 
+  /** Refused 409 `staff_shift_worked` once they have clocked in on it. */
   async unassignStaff(eventId: string, shiftId: string, staffId: string): Promise<StaffPlan> {
     return this.staffPlanOf(
       await this.delete<unknown>(

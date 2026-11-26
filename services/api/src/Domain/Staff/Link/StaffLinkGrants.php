@@ -78,7 +78,7 @@ final readonly class StaffLinkGrants
     public function clockOnly(User $user, ?Uuid $eventId = null): array
     {
         $entries = Vec\unique_by(
-            Vec\map($this->shiftAttendanceRepository->findOpenOfAccount($user, $eventId), static fn (ShiftAttendance $attendance): StaffMember => $attendance->getStaffMember()),
+            Vec\filter_nulls(Vec\map($this->shiftAttendanceRepository->findOpenOfAccount($user, $eventId), static fn (ShiftAttendance $attendance): ?StaffMember => $attendance->getStaffMember())),
             static fn (StaffMember $entry): string => $entry->getId()->toRfc4122(),
         );
         $open = [];

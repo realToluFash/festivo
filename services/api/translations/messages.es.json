@@ -153,6 +153,8 @@
     "staff.job_name_too_long": "Use como máximo {max} caracteres para el nombre.",
     "staff.job_name_taken": "Este evento ya tiene un puesto llamado {name}.",
     "staff.job_staffed": "Primero quite a las personas de sus turnos.",
+    "staff.job_worked": "Someone has worked a shift in this job, so it stays.",
+    "staff.shift_worked": "{name} has worked this shift, so they stay on it.",
     "staff.shift_job_required": "Elija un puesto.",
     "staff.shift_start_required": "Introduzca la fecha y la hora de inicio del turno.",
     "staff.shift_end_required": "Introduzca la fecha y la hora de fin del turno.",

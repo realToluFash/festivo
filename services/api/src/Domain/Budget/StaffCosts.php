@@ -57,10 +57,18 @@ final readonly class StaffCosts
         );
     }
 
-    /** Every assigned place, one row per person per shift; a place nobody took has none. */
+    /** Every assigned place, one row per person per shift; a place nobody took has none. Somebody removed from the roster after clocking in counts as if they had stayed, at their own rate if they had one. */
     public function workedOf(Event $event, DateTimeImmutable $now): WorkedCost
     {
         ['jobs' => $jobRates, 'own' => $ownRates] = $this->rates($event);
+
+        $kept = Vec\filter($this->shiftAttendanceRepository->findOnEvent($event), static fn (ShiftAttendance $one): bool => null === $one->getStaffMember());
+        $ownRates = Dict\merge($ownRates, Dict\filter_nulls(Dict\from_entries(Vec\map($kept, static function (ShiftAttendance $one): array {
+            $pay = $one->getRemovedPay();
+            $minor = $one->getRemovedAmountMinor();
+
+            return [$one->getPersonId()->toRfc4122(), null === $pay || null === $minor ? null : new PayRate($pay, $minor)];
+        }))));
 
         return self::pricedWorked(
             Vec\map($this->staffJobRepository->findOnEvent($event), static fn ($job): string => $job->getId()->toRfc4122()),
@@ -75,14 +83,21 @@ final readonly class StaffCosts
     {
         $attendances = Dict\from_entries(Vec\map(
             $this->shiftAttendanceRepository->findOnEvent($event),
-            static fn (ShiftAttendance $one): array => [HoursWorked::placeKey($one->getShift(), $one->getStaffMember()->getId()->toRfc4122()), $one],
+            static fn (ShiftAttendance $one): array => [HoursWorked::placeKey($one->getShift(), $one->getPersonId()->toRfc4122()), $one],
         ));
+        $of = static fn (StaffShift $shift, string $person, ?ShiftAttendance $attendance): WorkedShift => HoursWorked::of($shift->getJob()->getId()->toRfc4122(), $person, ClockWindow::endOf($shift), $attendance?->countedIn(), $attendance?->countedOut(), $now);
 
-        return Vec\flat_map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): array => Vec\map($shift->getPeople(), static function ($person) use ($shift, $attendances, $now): WorkedShift {
-            $attendance = $attendances[HoursWorked::placeKey($shift, $person->getId()->toRfc4122())] ?? null;
+        return [
+            ...Vec\flat_map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): array => Vec\map($shift->getPeople(), static function ($person) use ($shift, $attendances, $of): WorkedShift {
+                $id = $person->getId()->toRfc4122();
 
-            return HoursWorked::of($shift->getJob()->getId()->toRfc4122(), $person->getId()->toRfc4122(), ClockWindow::endOf($shift), $attendance?->countedIn(), $attendance?->countedOut(), $now);
-        }));
+                return $of($shift, $id, $attendances[HoursWorked::placeKey($shift, $id)] ?? null);
+            })),
+            ...Vec\map(
+                Vec\filter($attendances, static fn (ShiftAttendance $one): bool => null === $one->getStaffMember()),
+                static fn (ShiftAttendance $one): WorkedShift => $of($one->getShift(), $one->getPersonId()->toRfc4122(), $one),
+            ),
+        ];
     }
 
     /**

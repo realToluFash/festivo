@@ -19,6 +19,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\ShiftAttendanceRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use LogicException;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 
@@ -45,27 +46,41 @@ final readonly class AttendanceCorrector
             && ($this->membershipDirectory->grantsOnEvent($by, $organisationId, $event->getId())?->allows(Permission::StaffManage) ?? false);
     }
 
-    /** Both times as typed on the event's clock, `YYYY-MM-DDTHH:MM`; the clock-out blank only while the person is still clocked in. */
-    public function correct(StaffShift $shift, StaffMember $person, string $typedIn, ?string $typedOut, User $by): void
+    /** Both times as typed on the event's clock, `YYYY-MM-DDTHH:MM`; the clock-out blank only while the person can still clock out, which a person removed from the roster cannot. */
+    public function correct(StaffShift $shift, StaffMember|ShiftAttendance $who, string $typedIn, ?string $typedOut, User $by): void
     {
-        $event = $shift->getJob()->getEvent();
+        $this->refuseUnlessMay($shift, $by);
 
-        if (!$this->mayCorrect($by, $event)) {
-            throw ApiException::permissionRequired(Permission::StaffManage);
+        if ($who instanceof ShiftAttendance) {
+            $this->apply($shift, null, $who, $typedIn, $typedOut, $by);
+
+            return;
         }
 
-        if (true === $person->getAccount()?->getId()->equals($by->getId())) {
+        if (true === $who->getAccount()?->getId()->equals($by->getId())) {
             throw new ApiException(ErrorCode::Forbidden, 'staff.hours_own');
         }
 
-        $attendance = $this->shiftAttendanceRepository->findOneOn($shift, $person);
+        $this->apply($shift, $who, $this->shiftAttendanceRepository->findOneOn($shift, $who), $typedIn, $typedOut, $by);
+    }
+
+    private function refuseUnlessMay(StaffShift $shift, User $by): void
+    {
+        if (!$this->mayCorrect($by, $shift->getJob()->getEvent())) {
+            throw ApiException::permissionRequired(Permission::StaffManage);
+        }
+    }
+
+    private function apply(StaffShift $shift, ?StaffMember $person, ?ShiftAttendance $attendance, string $typedIn, ?string $typedOut, User $by): void
+    {
+        $event = $shift->getJob()->getEvent();
         $now = $this->clock->now();
         $inWall = ShiftClock::wall($typedIn) ?? throw self::refused('clockedInAt', 'staff.hours_in_blank');
         $in = ShiftClock::instant($inWall, $event);
         $out = null;
 
         if (null === $typedOut || '' === Str\trim($typedOut)) {
-            if (!ClockWindow::stillOn($shift, $attendance, $now)) {
+            if (null === $person || !ClockWindow::stillOn($shift, $attendance, $now)) {
                 throw self::refused('clockedOutAt', 'staff.hours_out_blank');
             }
         } else {
@@ -87,14 +102,14 @@ final readonly class AttendanceCorrector
 
         $this->entityManager->wrapInTransaction(function () use ($shift, $person, $attendance, $in, $out, $by, $now): void {
             if (null === $attendance) {
-                $attendance = new ShiftAttendance($shift, $person);
+                $attendance = new ShiftAttendance($shift, $person ?? throw new LogicException('A removed person always has their row.'));
                 $this->entityManager->persist($attendance);
             }
 
             $was = ['in' => self::written($attendance->countedIn()), 'out' => self::written($attendance->countedOut())];
             $attendance->correctIn(self::same($attendance->getClockedInAt(), $in) ? null : $in, $by->getName(), $now);
             $attendance->correctOut(self::same($attendance->getClockedOutAt(), $out) ? null : $out, $by->getName(), $now);
-            $this->auditor->record(self::CORRECTED, 'StaffMember', $person->getId(), Actor::User, $by->getId(), $by->getName(), [
+            $this->auditor->record(self::CORRECTED, 'StaffMember', $attendance->getPersonId(), Actor::User, $by->getId(), $by->getName(), [
                 'shift' => [$shift->getId()->toRfc4122(), $shift->getId()->toRfc4122()],
                 'clockedInAt' => [$was['in'], self::written($in)],
                 'clockedOutAt' => [$was['out'], self::written($out)],

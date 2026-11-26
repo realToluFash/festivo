@@ -17,6 +17,7 @@ use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\EventRepository;
+use App\Repository\ShiftAttendanceRepository;
 use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -32,6 +33,7 @@ final readonly class StaffHoursController
         private StaffHoursSerialiser $staffHoursSerialiser,
         private AttendanceCorrector $attendanceCorrector,
         private EventRepository $eventRepository,
+        private ShiftAttendanceRepository $shiftAttendanceRepository,
     ) {
     }
 
@@ -44,20 +46,19 @@ final readonly class StaffHoursController
         return new JsonResponse($this->staffHoursSerialiser->page($event, $this->canCorrect($event)));
     }
 
-    /** Refused `validation_failed` on `clockedInAt` or `clockedOutAt`, as the form checks them; 403 to a grant from outside and on the corrector's own shift. */
+    /** Refused `validation_failed` on `clockedInAt` or `clockedOutAt`, as the form checks them; 403 to a grant from outside and on the corrector's own shift. `staffId` is a row's, so it may be a person since removed from the roster. */
     #[Route('/api/events/{eventId}/staff/hours/{shiftId}/{staffId}', name: 'staff_hours_correct', methods: ['PUT'])]
     #[InEvent(Permission::StaffManage)]
-    public function correct(Request $request, #[InThisEvent('shiftId')] StaffShift $shift, #[InThisEvent('staffId')] StaffMember $person): JsonResponse
+    public function correct(Request $request, #[InThisEvent('shiftId')] StaffShift $shift, string $staffId): JsonResponse
     {
-        if (!Iter\contains($shift->getPeople(), $person)) {
-            throw ApiException::notFound('access.not_found');
-        }
-
+        $who = Iter\search($shift->getPeople(), static fn (StaffMember $one): bool => $one->getId()->toRfc4122() === $staffId)
+            ?? $this->shiftAttendanceRepository->findOneRemovedOn($shift, $staffId)
+            ?? throw ApiException::notFound('access.not_found');
         $body = Input::body($request, Type\shape([
             'clockedInAt' => Type\string(),
             'clockedOutAt' => Type\nullable(Type\string()),
         ]));
-        $this->attendanceCorrector->correct($shift, $person, $body['clockedInAt'], $body['clockedOutAt'], $this->user());
+        $this->attendanceCorrector->correct($shift, $who, $body['clockedInAt'], $body['clockedOutAt'], $this->user());
         $event = $shift->getJob()->getEvent();
 
         return new JsonResponse($this->staffHoursSerialiser->page($event, $this->canCorrect($event)));

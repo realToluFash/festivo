@@ -147,6 +147,6 @@ final readonly class Clocking
 
     private function audit(string $action, ShiftAttendance $attendance, ?User $by): void
     {
-        $this->auditor->record($action, 'StaffMember', $attendance->getStaffMember()->getId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName() ?? $attendance->getStaffMember()->getFullName());
+        $this->auditor->record($action, 'StaffMember', $attendance->getPersonId(), null === $by ? Actor::System : Actor::User, $by?->getId(), $by?->getName() ?? $attendance->name());
     }
 }

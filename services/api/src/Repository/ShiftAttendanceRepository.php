@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Event;
 use App\Entity\ShiftAttendance;
+use App\Entity\StaffJob;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\User;
@@ -26,14 +27,35 @@ final class ShiftAttendanceRepository extends ServiceEntityRepository
         return $this->findOneBy(['shift' => $shift, 'staffMember' => $person]);
     }
 
-    /** @return list<ShiftAttendance> */
+    /** A row whose person has left the roster, by the id their entry had. */
+    public function findOneRemovedOn(StaffShift $shift, string $personId): ?ShiftAttendance
+    {
+        return Uuid::isValid($personId) ? $this->findOneBy(['shift' => $shift, 'personId' => Uuid::fromString($personId), 'staffMember' => null]) : null;
+    }
+
+    /** Including the rows of people since removed from the roster. @return list<ShiftAttendance> */
     public function findOnEvent(Event $event): array
     {
         /** @var list<ShiftAttendance> */
         return $this->createQueryBuilder('a')
-            ->innerJoin('a.staffMember', 'p')
-            ->where('p.event = :event')
+            ->innerJoin('a.shift', 's')
+            ->innerJoin('s.job', 'j')
+            ->where('j.event = :event')
             ->setParameter('event', $event->getId(), 'uuid')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Whether anyone has a clock-in on any of the job's shifts, recorded or entered as a correction (Decided, 26 Nov). */
+    public function anyWorkedInJob(StaffJob $job): bool
+    {
+        return [] !== $this->createQueryBuilder('a')
+            ->select('a.id')
+            ->innerJoin('a.shift', 's')
+            ->where('s.job = :job')
+            ->andWhere('a.clockedInAt IS NOT NULL OR a.correctedInAt IS NOT NULL')
+            ->setParameter('job', $job->getId(), 'uuid')
+            ->setMaxResults(1)
             ->getQuery()
             ->getResult();
     }

@@ -86,6 +86,7 @@ function row(fields: Record<string, unknown> = {}) {
     shiftId: 'lead',
     staffId: 'ifeoma',
     name: 'Ifeoma Nduka',
+    removed: false,
     job: 'Floor lead',
     startsAt: '2030-11-14T16:00:00+01:00',
     endsAt: '2030-11-15T01:00:00+01:00',

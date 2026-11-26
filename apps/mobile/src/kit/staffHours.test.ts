@@ -31,6 +31,7 @@ const TOPE: HoursRow = {
   shiftId: 's1',
   staffId: 'tope',
   name: 'Tope Bello',
+  removed: false,
   job: 'Waiter',
   startsAt: '2026-10-17T17:00:00+01:00',
   endsAt: '2026-10-18T01:00:00+01:00',

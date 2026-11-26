@@ -345,6 +345,73 @@ final class ClockingTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPersonRemovedAfterClockingInKeepsTheirTimesUnderTheirNameAndIsCountedAsIfTheyHadStayed(): void
+    {
+        $kunle = $this->person('Kunle Bello', '0803 111 0011');
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $this->onShift($kunle, '2027-03-06T17:00', '2027-03-07T01:00');
+        $shift = $this->shiftOf($this->grace);
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/budget/staff-rates/jobs/' . $this->jobId, ['kind' => 'hourly', 'amount' => '1500', 'currency' => 'NGN']);
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/budget/staff-rates/people/' . $this->grace, ['kind' => 'hourly', 'amount' => '3000', 'currency' => 'NGN']);
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->attend($this->grace, '2027-03-06T16:04:00Z', null);
+        $this->attend($kunle, '2027-03-06T16:00:00Z', '2027-03-07T00:00:00Z');
+        self::mockTime(new DateTimeImmutable('2027-03-06T20:00:00Z'));
+
+        $this->as($this->owner, 'DELETE', $this->path($this->grace));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        self::em()->clear();
+        self::assertNull(self::em()->find(StaffMember::class, $this->grace), 'their entry, with its mobile number and email, is gone');
+        $shifts = Type\vec(Type\shape(['id' => Type\string(), 'people' => Type\vec(Type\string())], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['shifts'] ?? null);
+        self::assertSame([$kunle], (Iter\search($shifts, static fn (array $one): bool => $one['id'] === $shift) ?? self::fail('no shift'))['people'], 'their place opens');
+        $this->person('Grace Okon', '0803 111 0009');
+
+        self::mockTime(new DateTimeImmutable('2027-03-07T09:00:00Z'));
+        $row = $this->rows($this->as($this->owner, 'GET', $this->path('hours')))['Grace Okon'];
+        self::assertSame([$shift, $this->grace, true, 476, 476, 'not_clocked_out', false], [$row['shiftId'], $row['staffId'], $row['removed'], $row['workedMinutes'], $row['assumedMinutes'], $row['mark'], $row['stillOn']]);
+        $rates = $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/budget/staff-rates');
+        self::assertSame(200, $this->statusCode(), Json\encode($rates));
+        self::assertSame(['total' => '35800.00', 'minutes' => 956, 'assumedMinutes' => 476], [
+            'total' => Type\shape(['total' => Type\string()], true)->coerce($rates['worked'])['total'],
+            'minutes' => Type\shape(['minutes' => Type\int()], true)->coerce($rates['worked'])['minutes'],
+            'assumedMinutes' => Type\shape(['assumedMinutes' => Type\int()], true)->coerce($rates['worked'])['assumedMinutes'],
+        ], 'her 476 minutes at her own 3,000 an hour, beside Kunle at the job\'s 1,500');
+
+        $path = $this->path('hours/' . $shift . '/' . $this->grace);
+        $refused = $this->as($this->owner, 'PUT', $path, ['clockedInAt' => '2027-03-06T17:04', 'clockedOutAt' => null]);
+        self::assertSame(422, $this->statusCode(), Json\encode($refused));
+        self::assertStringContainsString('Enter the time they finished.', Json\encode($refused));
+
+        $hours = $this->as($this->owner, 'PUT', $path, ['clockedInAt' => '2027-03-06T17:04', 'clockedOutAt' => '2027-03-07T00:34']);
+        self::assertSame(200, $this->statusCode(), Json\encode($hours));
+        $row = $this->rows($hours)['Grace Okon'];
+        self::assertSame([true, 450, 0, null], [$row['removed'], $row['workedMinutes'], $row['assumedMinutes'], $row['mark']]);
+    }
+
+    #[Test]
+    public function aShiftSomebodyClockedInOnKeepsThemAndItsJob(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $shift = $this->shiftOf($this->grace);
+        $this->attend($this->grace, '2027-03-06T16:04:00Z', null);
+        self::mockTime(new DateTimeImmutable('2027-03-06T20:00:00Z'));
+
+        $unassigned = $this->as($this->owner, 'DELETE', $this->path('shifts/' . $shift . '/people/' . $this->grace));
+        self::assertSame([409, 'staff_shift_worked'], [$this->statusCode(), $this->errorCode()], Json\encode($unassigned));
+        self::assertStringContainsString('Grace Okon has worked this shift, so they stay on it.', Json\encode($unassigned));
+
+        $removed = $this->as($this->owner, 'DELETE', $this->path('jobs/' . $this->jobId));
+        self::assertSame([409, 'staff_job_worked'], [$this->statusCode(), $this->errorCode()], Json\encode($removed));
+        self::assertStringContainsString('Someone has worked a shift in this job, so it stays.', Json\encode($removed));
+
+        $this->as($this->owner, 'DELETE', $this->path($this->grace));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'DELETE', $this->path('jobs/' . $this->jobId));
+        self::assertSame([409, 'staff_job_worked'], [$this->statusCode(), $this->errorCode()], 'with nobody left on its shifts, its hours still keep the job');
+    }
+
+    #[Test]
     public function aJoinCodeNamingAShiftPutsItsRedeemerOnItAndClocksThemInWhileTheWindowIsOpen(): void
     {
         $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
@@ -651,6 +718,13 @@ final class ClockingTest extends ApiTestCase
         $raw = (string) $this->client->getResponse()->getContent();
 
         return '' === $raw ? [] : Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($raw));
+    }
+
+    private function errorCode(): ?string
+    {
+        $type = $this->last()['type'] ?? null;
+
+        return \is_string($type) ? Str\after_last($type, '/') : null;
     }
 
     private function statusCode(): int

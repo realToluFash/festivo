@@ -24,6 +24,7 @@ function row(fields: Partial<HoursRow> = {}): HoursRow {
     shiftId: 'lead',
     staffId: 'ifeoma',
     name: 'Ifeoma Nduka',
+    removed: false,
     job: 'Floor lead',
     startsAt: '2026-11-28T16:00:00+01:00',
     endsAt: '2026-11-29T01:00:00+01:00',
