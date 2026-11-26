@@ -1,5 +1,5 @@
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,16 +12,15 @@ import { Sheet, SheetActions } from '../../components/Sheet.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { ShapeMark } from '../../components/StatusMark.tsx';
 import { PageToast } from '../../components/Summary.tsx';
-import { HeadCount, Row, RowList, SectionHead } from '../../components/SummaryRows.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { SHOWN_WORDS, shownOf } from '../staffLink/StaffLinkModel.ts';
 import { StatusShape } from '../staffLink/StaffLinkScreen.tsx';
-import { rowLine } from '../staffLink/StaffRosterModel.ts';
+import type { OnRoster } from '../staffLink/StaffRosterModel.ts';
 import {
   type Brief,
+  type BriefingStart,
   type BriefingState,
   type Check,
   type Person,
@@ -37,6 +36,7 @@ import {
   dueAll,
   dueChanged,
   fitRules,
+  noMobileFor,
   noteOf,
   onShift,
   resultLines,
@@ -46,29 +46,79 @@ import {
 
 const BRIEFS: readonly Brief[] = ['read', 'sent', 'changed', 'none'];
 
-/** The briefing on the event's Staff page on a tablet (sc-3917): the card above the roster, its marks on each row, and its panels docked on a tablet on its side, centred upright. */
-export function StaffBriefing({ state }: { state: BriefingState }) {
-  const [first] = useState(() => briefingStart(state));
-  const [people, setPeople] = useState<Person[]>(first.people);
-  const [side, setSide] = useState<Side>(first.side);
-  const [rules, setRules] = useState(first.rules);
-  const [draft, setDraft] = useState<string>(first.draft ?? first.rules);
-  const [cut, setCut] = useState(first.cut);
-  const [saved, setSaved] = useState(first.saved);
-  const [busy, setBusy] = useState(first.busy);
-  const [missed, setMissed] = useState(first.missed);
-  const [handHeld, setHandHeld] = useState(first.handHeld);
-  const [checkAt, setCheckAt] = useState(first.checkAt);
-  const [stuck, setStuck] = useState(first.checkAt === 'loading');
+export interface BriefingParts {
+  card: ReactNode;
+  row: (one: OnRoster) => { words: string; below: ReactNode; after: ReactNode } | null;
+  panels: ReactNode;
+  demo: ReactNode;
+  restart: () => void;
+}
+
+const NO_BRIEF = { brief: 'none', heldText: false, channel: 'sms', briefCopy: null } as const;
+
+type Extra = Pick<Person, 'brief' | 'heldText' | 'channel' | 'briefCopy'>;
+
+function extrasOf(people: readonly Person[]): Record<string, Extra> {
+  return Object.fromEntries(
+    people.map((one) => [
+      one.id,
+      { brief: one.brief, heldText: one.heldText, channel: one.channel, briefCopy: one.briefCopy },
+    ]),
+  );
+}
+
+/** The briefing on the roster on a tablet (sc-3917): the card above it, its mark and buttons on each row, and its panels docked on a tablet on its side, centred upright. The roster keeps each row's link status; a briefing copy or send hands its change back through `hold`. */
+export function useBriefing(
+  state: BriefingState | null,
+  first: BriefingStart | null,
+  roster: readonly OnRoster[],
+  hold: (next: Person[]) => void,
+): BriefingParts | null {
+  const opening = first ?? briefingStart('populated');
+  const [extras, setExtras] = useState(() => extrasOf(opening.people));
+  const [side, setSide] = useState<Side>(opening.side);
+  const [rules, setRules] = useState(opening.rules);
+  const [draft, setDraft] = useState<string>(opening.draft ?? opening.rules);
+  const [cut, setCut] = useState(opening.cut);
+  const [saved, setSaved] = useState(opening.saved);
+  const [busy, setBusy] = useState(opening.busy);
+  const [missed, setMissed] = useState(opening.missed);
+  const [handHeld, setHandHeld] = useState(opening.handHeld);
+  const [checkAt, setCheckAt] = useState(opening.checkAt);
+  const [stuck, setStuck] = useState(opening.checkAt === 'loading');
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  const [result, setResult] = useState(first.result);
-  const [clipFails, setClipFails] = useState(first.copy === 'refused');
+  const [result, setResult] = useState(opening.result);
+  const [clipFails, setClipFails] = useState(opening.copy === 'refused');
   const [toast, setToast] = useState<string | null>(null);
   const opener = useRef<ViewInstance | null>(null);
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
-  const phone = kind === 'phone';
+
+  useEffect(() => {
+    if (side?.kind !== 'check' || checkAt !== 'loading' || stuck) return undefined;
+    const timer = setTimeout(() => setCheckAt('shown'), ISSUE_MS);
+    return () => clearTimeout(timer);
+  }, [side, checkAt, stuck]);
+
+  if (state == null || first == null) return null;
+
+  if (kind === 'phone')
+    return {
+      card: (
+        <DemoOnly title="Demo only: no phone frame">
+          <Text size={15}>
+            The briefing is drawn for the web and the tablets (sc-3917). Open this link on a tablet.
+          </Text>
+        </DemoOnly>
+      ),
+      row: () => null,
+      panels: null,
+      demo: null,
+      restart: () => undefined,
+    };
+
+  const people: Person[] = roster.map((one) => ({ ...one, ...(extras[one.id] ?? NO_BRIEF) }));
   const manage = first.access === 'manage';
   const acts = manage && !first.finished;
   const sends = acts && first.live;
@@ -77,11 +127,30 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
   const tally = tallyOf(people);
   const shown = (id: string) => people.find((one) => one.id === id) as Person;
 
-  useEffect(() => {
-    if (side?.kind !== 'check' || checkAt !== 'loading' || stuck) return undefined;
-    const timer = setTimeout(() => setCheckAt('shown'), ISSUE_MS);
-    return () => clearTimeout(timer);
-  }, [side, checkAt, stuck]);
+  function commit(next: Person[]) {
+    setExtras(extrasOf(next));
+    hold(next);
+  }
+
+  function restart() {
+    const fresh = briefingStart(state as BriefingState);
+    setExtras(extrasOf(fresh.people));
+    setSide(fresh.side);
+    setRules(fresh.rules);
+    setDraft(fresh.draft ?? fresh.rules);
+    setCut(fresh.cut);
+    setSaved(fresh.saved);
+    setBusy(fresh.busy);
+    setMissed(fresh.missed);
+    setHandHeld(fresh.handHeld);
+    setCheckAt(fresh.checkAt);
+    setStuck(fresh.checkAt === 'loading');
+    setSending(false);
+    setSendFailed(false);
+    setResult(fresh.result);
+    setClipFails(fresh.copy === 'refused');
+    setToast(null);
+  }
 
   function say(words: string, shownToo = false) {
     readOut(words);
@@ -100,7 +169,7 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
   }
 
   function change(id: string, to: (one: Person) => Person) {
-    setPeople((was) => was.map((one) => (one.id === id ? to(one) : one)));
+    commit(people.map((one) => (one.id === id ? to(one) : one)));
   }
 
   async function copy(id: string) {
@@ -108,9 +177,9 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
     setBusy(id);
     setMissed(null);
     if (handHeld?.id === id) setHandHeld(null);
-    if (first.copy === 'slow') return;
+    if (first?.copy === 'slow') return;
     await new Promise((resolve) => setTimeout(resolve, ISSUE_MS));
-    if (first.copy === 'notIssued') {
+    if (first?.copy === 'notIssued') {
       setBusy(null);
       setMissed(id);
       say(BW.notCopied);
@@ -147,7 +216,7 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
         : target === 'changed'
           ? changed
           : people.filter((one) => one.id === target);
-  const costs = target == null ? null : checkOf(due, people, first.balance);
+  const costs = target == null ? null : checkOf(due, noMobileFor(people, target), first.balance);
   const verb =
     target === 'all'
       ? BW.sendAll(costs?.people ?? 0)
@@ -160,15 +229,15 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
     setSending(true);
     setTimeout(() => {
       setSending(false);
-      if (first.sendFails) {
+      if (first?.sendFails === true) {
         setSendFailed(true);
         say(BW.sendFailed);
         return;
       }
       const sent = sendTo(people, due, costs);
-      setPeople(sent.people);
+      commit(sent.people);
       setSide(null);
-      const lines = resultLines(sent.sent, target === 'all' ? costs.noMobile : 0, sent.held.length);
+      const lines = resultLines(sent.sent, costs.noMobile, sent.held.length);
       setResult({ lines, held: sent.held });
       say(lines.join(' '));
     }, ISSUE_MS);
@@ -183,18 +252,9 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
     } else if (cut) setCut(false);
   }
 
-  if (phone)
-    return (
-      <DemoOnly title="Demo only: no phone frame">
-        <Text size={15}>
-          The briefing is drawn for the web and the tablets (sc-3917). Open this link on a tablet.
-        </Text>
-      </DemoOnly>
-    );
-
-  return (
-    <View style={styles.page} testID={`briefing.${state}`}>
-      <View style={styles.card} testID="briefing.card">
+  const card = (
+    <>
+      <View style={styles.card} testID={`briefing.${state}`}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {BW.card}
         </Text>
@@ -290,101 +350,71 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
           </Text>
         </View>
       )}
-      <View style={styles.head}>
-        <SectionHead title="Roster" right={<HeadCount text={BW.people(people.length)} />} />
-        <RowList
-          items={people.map((one) => {
-            const note = noteOf(one);
-            const link = SHOWN_WORDS[shownOf(one, false)];
-            const words = [BW.tally[one.brief], note].filter(Boolean).join(' · ');
-            const rowActs = acts && one.brief === 'changed' && one.mobile != null;
+    </>
+  );
 
-            return {
-              key: one.id,
-              row: (
-                <View>
-                  <Row
-                    title={one.name}
-                    line={rowLine(one)}
-                    below={
-                      <View style={styles.below}>
-                        <View style={styles.inline}>
-                          <BriefMark brief={one.brief} />
-                          <Text
-                            size={14}
-                            weight="semibold"
-                            accessible={false}
-                            style={styles.shrink}
-                          >
-                            {words}
-                          </Text>
-                        </View>
-                        <View style={styles.inline}>
-                          <StatusShape shape={shownOf(one, false)} side={14} />
-                          <Text
-                            size={14}
-                            accessible={false}
-                            style={[styles.secondary, styles.shrink]}
-                          >
-                            {link}
-                          </Text>
-                        </View>
-                        {one.briefCopy != null && one.brief === 'changed' && (
-                          <CopiedLine one={one} />
-                        )}
-                      </View>
-                    }
-                    accessibilityRole="text"
-                    accessibilityLabel={`${one.name}. ${rowLine(one)}. Briefing: ${words}. Link: ${link}`}
-                    testID={`briefing.row.${one.id}`}
-                  />
-                  {rowActs && (
-                    <View style={styles.rowActs}>
-                      {sends && !one.heldText && (
-                        <SecondaryButton
-                          label={BW.sendAgain}
-                          accessibilityLabel={`${BW.sendAgain}: ${one.name}`}
-                          onPress={() => open({ kind: 'check', target: one.id })}
-                          paired
-                          testID={`briefing.row.${one.id}.again`}
-                        />
-                      )}
-                      <SecondaryButton
-                        label={busy === one.id ? `${BW.copy}…` : BW.copy}
-                        accessibilityLabel={`${BW.copy}: ${one.name}`}
-                        off={busy === one.id}
-                        onPress={() => void copy(one.id)}
-                        paired
-                        testID={`briefing.row.${one.id}.copy`}
-                      />
-                      {one.briefCopy != null && !one.briefCopy.marked && (
-                        <QuietButton
-                          label={BW.markSent}
-                          onPress={() => mark(one.id)}
-                          testID={`briefing.row.${one.id}.mark`}
-                        />
-                      )}
-                    </View>
-                  )}
-                  {missed === one.id && one.brief === 'changed' && <Missed />}
-                  {handHeld?.id === one.id && side?.kind !== 'copy' && result == null && (
-                    <View style={styles.rowActs}>
-                      <HandHeld one={one} url={handHeld.url} />
-                    </View>
-                  )}
-                </View>
-              ),
-            };
-          })}
-        />
-      </View>
-      <DemoOnly title="Demo only: the board’s switches">
-        <SecondaryButton
-          label={clipFails ? 'The clipboard refuses · on' : 'The clipboard refuses'}
-          onPress={() => setClipFails(!clipFails)}
-          testID="briefing.demo.clipboard"
-        />
-      </DemoOnly>
+  function row(onRoster: OnRoster) {
+    const one = shown(onRoster.id);
+    const words = [BW.tally[one.brief], noteOf(one)].filter(Boolean).join(' · ');
+    const rowActs = acts && one.brief === 'changed' && one.mobile != null;
+    const after = (
+      <>
+        {rowActs && (
+          <View style={styles.rowActs}>
+            {sends && !one.heldText && (
+              <SecondaryButton
+                label={BW.sendAgain}
+                accessibilityLabel={BW.forBriefing(BW.sendAgain, one.name)}
+                onPress={() => open({ kind: 'check', target: one.id })}
+                paired
+                testID={`briefing.row.${one.id}.again`}
+              />
+            )}
+            <SecondaryButton
+              label={busy === one.id ? `${BW.copy}…` : BW.copy}
+              accessibilityLabel={BW.forBriefing(BW.copy, one.name)}
+              off={busy === one.id}
+              onPress={() => void copy(one.id)}
+              paired
+              testID={`briefing.row.${one.id}.copy`}
+            />
+            {one.briefCopy != null && !one.briefCopy.marked && (
+              <QuietButton
+                label={BW.markSent}
+                onPress={() => mark(one.id)}
+                testID={`briefing.row.${one.id}.mark`}
+              />
+            )}
+          </View>
+        )}
+        {missed === one.id && one.brief === 'changed' && <Missed />}
+        {handHeld?.id === one.id && side?.kind !== 'copy' && result == null && (
+          <View style={styles.rowActs}>
+            <HandHeld one={one} url={handHeld.url} />
+          </View>
+        )}
+      </>
+    );
+
+    return {
+      words,
+      below: (
+        <>
+          <View style={styles.inline} testID={`briefing.row.${one.id}`}>
+            <BriefMark brief={one.brief} />
+            <Text size={14} weight="semibold" accessible={false} style={styles.shrink}>
+              {words}
+            </Text>
+          </View>
+          {one.briefCopy != null && one.brief === 'changed' && <CopiedLine one={one} />}
+        </>
+      ),
+      after,
+    };
+  }
+
+  const panels = (
+    <>
       <Sheet
         open={side != null}
         onClose={() => setSide(null)}
@@ -467,8 +497,18 @@ export function StaffBriefing({ state }: { state: BriefingState }) {
           bottom={insets.bottom + tokens.spaceXl}
         />
       )}
-    </View>
+    </>
   );
+
+  const demo = (
+    <SecondaryButton
+      label={clipFails ? 'The clipboard refuses · on' : 'The clipboard refuses'}
+      onPress={() => setClipFails(!clipFails)}
+      testID="briefing.demo.clipboard"
+    />
+  );
+
+  return { card, row, panels, demo, restart };
 }
 
 function tallyWords(tally: Record<Brief, number>): string {
@@ -991,8 +1031,6 @@ function Waits({ words }: { words: string }) {
 }
 
 const styles = StyleSheet.create({
-  page: { gap: tokens.spaceXl },
-  head: { gap: tokens.spaceMd },
   card: {
     gap: tokens.spaceMd,
     padding: tokens.spaceXl,

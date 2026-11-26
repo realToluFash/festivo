@@ -16,6 +16,8 @@ import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { useBriefing } from '../briefing/StaffBriefing.tsx';
+import { type BriefingState, briefingStart } from '../briefing/briefingModel.ts';
 import { ISSUE_MS as SEND_MS, SHOWN_WORDS, shownOf } from './StaffLinkModel.ts';
 import { StatusShape } from './StaffLinkScreen.tsx';
 import {
@@ -49,9 +51,17 @@ const RETRY_MS = 1200;
 
 type Phase = 'loading' | 'failed' | 'ready';
 
-/** The event's Staff in the app (sc-77903): the roster to read, in sc-3906's order, each person opening their own link. */
-export function StaffRoster({ state }: { state: RosterState }) {
+/** The event's Staff in the app (sc-77903): the roster to read, in sc-3906's order, each person opening their own link, with sc-3917's briefing on it on a tablet. */
+export function StaffRoster({
+  state,
+  briefing = null,
+}: {
+  state: RosterState;
+  briefing?: BriefingState | null;
+}) {
   const texts = textRoster(state);
+  const [opening] = useState(() => (briefing == null ? null : briefingStart(briefing)));
+  const first = (): OnRoster[] => opening?.people ?? texts?.people ?? sampleRoster();
   const sms = texts != null;
   const [phase, setPhase] = useState<Phase>(
     state === 'loading' ? 'loading' : state === 'failed' ? 'failed' : 'ready',
@@ -60,7 +70,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
   const [people, setPeople] = useState<OnRoster[]>(() => {
     resetKept();
     setCredits(texts?.credits ?? BALANCE);
-    return state === 'empty' ? [] : rosterOrder(texts?.people ?? sampleRoster());
+    return state === 'empty' ? [] : rosterOrder(first());
   });
   const [credits, setLeft] = useState(texts?.credits ?? BALANCE);
   const [checking, setChecking] = useState(texts?.checking ?? false);
@@ -78,7 +88,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
   const opened = useRef<string | null>(null);
   const erased = state === 'erased';
   const manage = state !== 'readOnly' && state !== 'smsReadOnly';
-  const [base, setBase] = useState<OnRoster[]>(() => texts?.people ?? sampleRoster());
+  const [base, setBase] = useState<OnRoster[]>(first);
   const counted = phase === 'ready' && people.length > 0;
 
   const reread = useCallback(() => {
@@ -122,8 +132,10 @@ export function StaffRoster({ state }: { state: RosterState }) {
     router.push(`/demo/staff-link?person=${person.id}${view}${withSms}`);
   }
 
+  const brief = useBriefing(briefing, opening, people, (next) => hold(next));
   const check = bulkCheck(people, credits);
-  const bulkShown = sms && manage && !erased && phase === 'ready' && check.n > 0;
+  const bulkShown =
+    sms && manage && !erased && opening?.finished !== true && phase === 'ready' && check.n > 0;
   const allSent =
     sms && manage && !erased && phase === 'ready' && people.length > 0 && check.n === 0;
 
@@ -220,34 +232,45 @@ export function StaffRoster({ state }: { state: RosterState }) {
                           : null;
             const word = note == null ? SHOWN_WORDS[shown] : `${SHOWN_WORDS[shown]} · ${note}`;
             const line = rowLine(person);
+            const briefed = brief?.row(person) ?? null;
 
             return {
               key: person.id,
               row: (
-                <Row
-                  ref={(view) => {
-                    rows.current[person.id] = view;
-                  }}
-                  title={person.name}
-                  line={line}
-                  below={
-                    <View style={styles.status}>
-                      <StatusShape shape={shown} side={14} />
-                      <Text
-                        size={14}
-                        weight="semibold"
-                        accessible={false}
-                        style={[styles.shrink, shown === 'noMobile' && styles.attention]}
-                      >
-                        {word}
-                      </Text>
-                    </View>
-                  }
-                  opens
-                  onPress={() => open(person)}
-                  accessibilityLabel={`${person.name}. ${line}. ${word}`}
-                  testID={`staff.row.${person.id}`}
-                />
+                <View>
+                  <Row
+                    ref={(view) => {
+                      rows.current[person.id] = view;
+                    }}
+                    title={person.name}
+                    line={line}
+                    below={
+                      <View style={styles.stack}>
+                        <View style={styles.status}>
+                          <StatusShape shape={shown} side={14} />
+                          <Text
+                            size={14}
+                            weight="semibold"
+                            accessible={false}
+                            style={[styles.shrink, shown === 'noMobile' && styles.attention]}
+                          >
+                            {word}
+                          </Text>
+                        </View>
+                        {briefed?.below}
+                      </View>
+                    }
+                    opens
+                    onPress={() => open(person)}
+                    accessibilityLabel={
+                      briefed == null
+                        ? `${person.name}. ${line}. ${word}`
+                        : `${person.name}. ${line}. Link: ${word}. Briefing: ${briefed.words}`
+                    }
+                    testID={`staff.row.${person.id}`}
+                  />
+                  {briefed?.after}
+                </View>
               ),
             };
           })}
@@ -257,6 +280,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
 
   return (
     <View style={styles.page} testID={`staff.${state}`}>
+      {brief?.card}
       <View style={styles.head}>
         <View
           ref={head}
@@ -283,6 +307,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
         {body}
       </View>
       <DemoOnly title="Demo only: the board’s switches">
+        {brief?.demo}
         <SecondaryButton
           label="A change on the web: Amina Yusuf’s link sent"
           onPress={webChange}
@@ -317,8 +342,11 @@ export function StaffRoster({ state }: { state: RosterState }) {
             resetKept();
             const again = textRoster(state);
             setPhase(state === 'loading' ? 'loading' : state === 'failed' ? 'failed' : 'ready');
-            setBase(again?.people ?? sampleRoster());
-            setPeople(state === 'empty' ? [] : rosterOrder(again?.people ?? sampleRoster()));
+            const people =
+              briefing == null ? (again?.people ?? sampleRoster()) : briefingStart(briefing).people;
+            setBase(people);
+            setPeople(state === 'empty' ? [] : rosterOrder(people));
+            brief?.restart();
             setLeft(again?.credits ?? BALANCE);
             setCredits(again?.credits ?? BALANCE);
             setChecking(again?.checking ?? false);
@@ -348,6 +376,7 @@ export function StaffRoster({ state }: { state: RosterState }) {
           onAsk={() => setAsked(true)}
         />
       </Sheet>
+      {brief?.panels}
       {(toast != null || asked) && (
         <PageToast
           words={asked ? `${TW.askOwner} has its own design (sc-3963).` : (toast ?? []).join(' ')}
@@ -475,6 +504,7 @@ const styles = StyleSheet.create({
   page: { gap: tokens.spaceXl },
   head: { gap: tokens.spaceMd },
   bulkBeside: { alignSelf: 'flex-start' },
+  stack: { gap: tokens.spaceXs },
   check: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
   skips: { gap: tokens.spaceXs },
   credits: {

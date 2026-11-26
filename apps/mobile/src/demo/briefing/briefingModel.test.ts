@@ -14,6 +14,7 @@ import {
   dueAll,
   dueChanged,
   fitRules,
+  noMobileFor,
   noteOf,
   people,
   resultLines,
@@ -81,7 +82,7 @@ describe('a copy from the briefing', () => {
 describe('the check before sending and the send', () => {
   it('pays each text in roster order while the balance covers it, and the rest wait by channel', () => {
     const list = people();
-    const check = checkOf(dueAll(list), list, 70);
+    const check = checkOf(dueAll(list), noMobileFor(list, 'all'), 70);
     expect(check.paid).toEqual(['tolu']);
     expect(check.smsWaits).toBe(1);
     expect(check.whatsAppWaits).toBe(1);
@@ -92,7 +93,7 @@ describe('the check before sending and the send', () => {
   it('holds what it cannot pay, never fails it, and sets Link sent for a text that goes', () => {
     const list = people();
     const due = dueAll(list);
-    const sent = sendTo(list, due, checkOf(due, list, 70));
+    const sent = sendTo(list, due, checkOf(due, noMobileFor(list, 'all'), 70));
     expect(sent.sent).toBe(1);
     expect(sent.held).toEqual(['amina', 'emeka']);
     const tolu = sent.people.find((p) => p.id === 'tolu')!;
@@ -133,6 +134,16 @@ describe('house rules', () => {
     expect(pasted.cut).toBe(true);
     const full = 'a'.repeat(RULES_MAX);
     expect(fitRules(full, `${full}b`)).toEqual({ text: full, cut: false });
+    expect(fitRules(full, `b${full}`)).toEqual({ text: full, cut: false });
+  });
+});
+
+describe('the no-number line', () => {
+  it('counts only the people the send is for', () => {
+    const list = people();
+    expect(noMobileFor(list, 'all')).toBe(1);
+    expect(noMobileFor(list, 'changed')).toBe(0);
+    expect(noMobileFor(list, 'sade')).toBe(0);
   });
 });
 
@@ -145,7 +156,7 @@ describe('the demo’s states', () => {
 describe('the check’s lines', () => {
   it('count what is paid per channel, and add up to the total', () => {
     const list = people();
-    const check = checkOf(dueAll(list), list, 70);
+    const check = checkOf(dueAll(list), noMobileFor(list, 'all'), 70);
     expect(check.sms).toEqual({ n: 1, credits: 62 });
     expect(check.whatsApp).toEqual({ n: 0, credits: 0 });
     expect(check.credits).toBe(62);

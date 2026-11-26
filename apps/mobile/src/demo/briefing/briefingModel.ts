@@ -55,6 +55,7 @@ export const BW = {
   copiedBy: (trail: Trail) => `Copied by ${trail.by} · ${trail.at} · not marked as sent`,
   markedBy: (trail: Trail) => `Marked as sent by ${trail.by} · ${trail.at}`,
   markSent: 'Mark as sent',
+  forBriefing: (act: string, name: string) => `${act} for the briefing: ${name}`,
   marked: (name: string) => `[Marked as sent to ${name}.]`,
   nobody: '[Nobody has a shift yet.]',
   giveShift: '[Give someone a shift]',
@@ -114,13 +115,12 @@ export function codePoints(text: string): number {
   return Array.from(text).length;
 }
 
+/** A key typed at the limit, anywhere in the text, is not taken; a paste that would go over keeps its first part and says so. */
 export function fitRules(before: string, typed: string): { text: string; cut: boolean } {
   if (codePoints(typed) <= RULES_MAX) return { text: typed, cut: false };
+  if (codePoints(typed) - codePoints(before) <= 1) return { text: before, cut: false };
 
-  return {
-    text: Array.from(typed).slice(0, RULES_MAX).join(''),
-    cut: codePoints(typed) - codePoints(before) > 1,
-  };
+  return { text: Array.from(typed).slice(0, RULES_MAX).join(''), cut: true };
 }
 
 export function countLine(text: string): { words: string; limit: boolean } | null {
@@ -206,8 +206,21 @@ export interface Check {
 
 const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
 
+export type Target = 'all' | 'changed' | string;
+
+/** Who the send is for and has no number: Not sent people with a shift for Send the briefing to {n}, changed people for Send to {n} changed, and nobody for one row's Send again. */
+export function noMobileFor(people: readonly Person[], target: Target): number {
+  if (target === 'all')
+    return people.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
+      .length;
+  if (target === 'changed')
+    return people.filter((one) => one.brief === 'changed' && one.mobile == null).length;
+
+  return 0;
+}
+
 /** A text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
-export function checkOf(due: readonly Person[], all: readonly Person[], balance: number): Check {
+export function checkOf(due: readonly Person[], noMobile: number, balance: number): Check {
   let left = balance;
   const paid: Person[] = [];
   for (const one of due) {
@@ -221,8 +234,7 @@ export function checkOf(due: readonly Person[], all: readonly Person[], balance:
 
   return {
     people: due.length,
-    noMobile: all.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
-      .length,
+    noMobile,
     sms: { n: by('sms', paid).length, credits: by('sms', paid).length * SMS_CREDITS },
     whatsApp:
       by('whatsApp', due).length === 0
@@ -307,7 +319,7 @@ export type Side =
   | { kind: 'copy' }
   | { kind: 'rules'; editing: boolean }
   | { kind: 'preview'; id: string }
-  | { kind: 'check'; target: string }
+  | { kind: 'check'; target: Target }
   | null;
 
 export interface BriefingStart {
@@ -367,7 +379,7 @@ function afterShortSend(): Person[] {
   const list = people();
   const due = dueAll(list);
 
-  return sendTo(list, due, checkOf(due, list, 70)).people;
+  return sendTo(list, due, checkOf(due, noMobileFor(list, 'all'), 70)).people;
 }
 const allSms = () => people().map((one): Person => ({ ...one, channel: 'sms' }));
 
@@ -568,8 +580,11 @@ const STATES = {
     start({
       title: 'Sent',
       what: 'Sent to 3. 1 has no mobile number.',
-      people: sendTo(people(), dueAll(people()), checkOf(dueAll(people()), people(), BALANCE))
-        .people,
+      people: sendTo(
+        people(),
+        dueAll(people()),
+        checkOf(dueAll(people()), noMobileFor(people(), 'all'), BALANCE),
+      ).people,
       result: { lines: resultLines(3, 1, 0), held: [] },
     }),
   resultHeld: () =>
@@ -600,8 +615,15 @@ export function briefingStart(state: BriefingState): BriefingStart {
   return STATES[state]();
 }
 
+/** The roster under the briefing: no Text links before epic 36 ships, the roster read-only with staff.read only, and Text links to {n} otherwise. */
+export function rosterUnder(state: BriefingState): 'populated' | 'smsReadOnly' | 'smsOn' {
+  if (state === 'notLive') return 'populated';
+
+  return state === 'readOnly' ? 'smsReadOnly' : 'smsOn';
+}
+
 export const BRIEFING_BOARDS = BRIEFING_STATES.map((state) => ({
   title: `Briefing · ${STATES[state]().title}`,
   what: STATES[state]().what,
-  href: `/demo/events/evt-wed-4?area=staff&briefing=${state}`,
+  href: `/demo/events/evt-wed-4?area=staff&staff=${rosterUnder(state)}&briefing=${state}`,
 }));

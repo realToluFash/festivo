@@ -158,7 +158,6 @@ import {
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
-import { StaffBriefing } from '../briefing/StaffBriefing.tsx';
 import type { BriefingState } from '../briefing/briefingModel.ts';
 import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
@@ -884,11 +883,7 @@ export function EventScreen({
   if (at === 'staff' && messagesHere)
     page = (
       <AreaPage area={at} event={shown} locale={dateLocale()}>
-        {briefing != null ? (
-          <StaffBriefing state={briefing} />
-        ) : (
-          <StaffRoster state={staff ?? 'populated'} />
-        )}
+        <StaffRoster state={staff ?? 'populated'} briefing={briefing} />
       </AreaPage>
     );
   else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;
