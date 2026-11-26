@@ -1713,7 +1713,7 @@ export const EVENTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
       ),
       on(
         'liveOneDaySpeeches',
-        'At 21:15: Next up: Speeches on its card and in Coming up, as on main',
+        'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
       ),
       on('liveOneDayOver', 'At 23:45: every date has passed, with Duplicate, as on main'),
       list('liveOneDay', 'Events: Dîner en direct leads Upcoming, no step on its card'),

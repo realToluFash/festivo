@@ -1934,7 +1934,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'A one-day event · Speeches ahead',
-        what: 'At 21:15: Next up: Speeches on its card and in Coming up, as on main',
+        what: 'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
         href: '/demo/events/evt-diner-1?state=liveOneDaySpeeches',
       },
       {
