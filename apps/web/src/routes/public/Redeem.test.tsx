@@ -283,7 +283,12 @@ describe('the browser’s redeem pages (sc-72)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
     expect(screen.getByText('Enter your full name.')).toBeDefined();
-    expect(screen.getByText('Enter your mobile number.')).toBeDefined();
+    const numberLine = screen.getByText('Enter your mobile number.');
+    expect(numberLine.closest('.rd-phone')).toBeNull();
+    expect(numberLine.previousElementSibling?.classList.contains('rd-phone')).toBe(true);
+    expect(screen.getByLabelText('Mobile number').getAttribute('aria-describedby')).toBe(
+      numberLine.id,
+    );
     expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
     expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
 
