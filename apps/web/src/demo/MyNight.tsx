@@ -44,7 +44,7 @@ function MyNightAt({ first }: { first: Night }) {
         {night.inApp && (
           <Link className="myn-back" to="/demo">
             <Glyph name="back" size={20} weight={2.4} />
-            <span>{MN.events}</span>
+            <span>{MN.overview}</span>
           </Link>
         )}
         <span className="myn-brand">
