@@ -1,5 +1,6 @@
 import { ApiError, type MyNight, type MyNightTable } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
+import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -209,6 +210,15 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
             {t('myNight.clockOpensLine')}
           </Text>
         </View>
+      )}
+      {night.checksIn && (
+        <PrimaryButton
+          label={t('checkIn.title')}
+          onPress={() =>
+            router.push({ pathname: '/events/[id]/check-in', params: { id: night.event.id } })
+          }
+          testID="myNight.checkIn"
+        />
       )}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
