@@ -1,7 +1,7 @@
-import { type CodeChoice } from '../doorCode/DoorCodeModel.ts';
+import { type InsideLevel } from '../doorCode/RedeemModel.ts';
 
 /** sc-4002: who opens the kitchen stations, by a level (personal link, job or join code) or a role. */
-export type Access = CodeChoice | 'Can run the floor' | 'Owner' | 'Admin' | 'Lead';
+export type Access = InsideLevel | 'Owner' | 'Admin' | 'Lead';
 
 const OPENS: readonly Access[] = [
   'Can work the pass',
