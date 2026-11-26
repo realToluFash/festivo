@@ -689,12 +689,13 @@ describe('picking a station from the list (sc-4015)', () => {
   it('keeps the pick on this device for the event, and writes nothing else', async () => {
     const writes: [string, string][] = [];
     await rememberPick(
-      { setItem: async (key, value) => void writes.push([key, value]) },
+      { getItem: async () => null, setItem: async (key, value) => void writes.push([key, value]) },
+      'a1',
       'e1',
       GRILL,
     );
 
-    expect(writes).toEqual([[pickedKey('e1'), GRILL]]);
+    expect(writes).toEqual([[pickedKey('a1', 'e1'), GRILL]]);
   });
 
   it('changes no roster: the screen calls the API only to read and to send service taps', () => {
