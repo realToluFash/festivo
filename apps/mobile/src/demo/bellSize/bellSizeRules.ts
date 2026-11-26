@@ -1,4 +1,4 @@
-import { BELL_MARK_ALL } from '../../components/bellTop.ts';
+import { BELL_MARK_ALL, PHONE_TITLE } from '../../components/bellTop.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { wordsSize, wordsStart } from '../todaySize/todaySizeRules.ts';
@@ -26,16 +26,14 @@ export {
   BELL_UNDER_GAP as UNDER_GAP,
   markAllSize,
   markAllUnder,
+  PHONE_TITLE,
+  PHONE_TITLE_LINE,
+  PHONE_TITLE_TRACKING,
 } from '../../components/bellTop.ts';
 
 export function markAllStart(scale: number): number {
   return wordsStart(BELL_MARK_ALL, scale, Number.POSITIVE_INFINITY);
 }
-
-/** The phone's bell screen title on main (BellParts): 30 bold, lines at 1.12, tracked -0.6, which is -0.02 of its size. */
-export const PHONE_TITLE = 30;
-export const PHONE_TITLE_LINE = 1.12;
-export const PHONE_TITLE_TRACKING = -0.02;
 
 /** sc-92959: main's size below AX1; from AX1 the largest at which the word, measured at its start, fits `room`, never under 30 and with no cap. */
 export function phoneTitleSize(scale: number, width: number, room: number): number {
