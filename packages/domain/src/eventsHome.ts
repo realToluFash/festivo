@@ -144,7 +144,8 @@ export type NextStep =
   | { kind: 'makeLive' }
   | { kind: 'changeDates' }
   | { kind: 'resume' }
-  | { kind: 'nextUp'; milestone: Milestone };
+  | { kind: 'nextUp'; milestone: Milestone }
+  | { kind: 'over' };
 
 const STEP_WITHOUT_MILESTONES: ReadonlySet<EventPhase> = new Set(['draft', 'paused', 'finished']);
 
@@ -153,7 +154,7 @@ export function stepAwaitsMilestones(phase: EventPhase): boolean {
   return !STEP_WITHOUT_MILESTONES.has(phase);
 }
 
-/** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103). */
+/** An event's last line on Events Home: what its phase asks for next, else its next milestone (sc-22103); none while it is on with nothing ahead, which is not over (sc-93858). */
 export function nextStep(
   event: { status: EventState; endsAt: string; milestones: readonly Milestone[] },
   phase: EventPhase,
@@ -167,7 +168,7 @@ export function nextStep(
 
   if (phase === 'paused') return { kind: 'resume' };
 
-  if (phase === 'finished') return null;
+  if (phase === 'finished') return { kind: 'over' };
 
   const milestone = nextUp(event.milestones, now, event.status === 'ended');
 

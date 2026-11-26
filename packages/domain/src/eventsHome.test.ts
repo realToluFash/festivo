@@ -368,12 +368,18 @@ describe('nextStep', () => {
     expect(nextStep({ ...draft, status: 'paused' }, 'paused', NOW)).toEqual({ kind: 'resume' });
   });
 
-  it('names the next milestone of any other event, and nothing once none is next', () => {
+  it('names the next milestone of any other event, and nothing while it is on with none next', () => {
     const live = { ...draft, status: 'live' as const };
 
     expect(nextStep(live, 'live', NOW)).toEqual({ kind: 'nextUp', milestone: ends });
     expect(nextStep({ ...live, milestones: [] }, 'happening_now', NOW)).toBeNull();
-    expect(nextStep({ ...live, status: 'ended' }, 'finished', NOW)).toBeNull();
+  });
+
+  it('says a finished event is over, which an event on with nothing ahead is not', () => {
+    const live = { ...draft, status: 'live' as const };
+
+    expect(nextStep({ ...live, status: 'ended' }, 'finished', NOW)).toEqual({ kind: 'over' });
+    expect(nextStep({ ...live, milestones: [] }, 'finished', NOW)).toEqual({ kind: 'over' });
   });
 });
 

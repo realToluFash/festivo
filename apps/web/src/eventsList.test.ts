@@ -140,6 +140,26 @@ describe('cardStep', () => {
     ).toMatchObject({ kind: 'next', line: 'Fri 20 Nov, 17:00' });
   });
 
+  it('offers no step while it is on with nothing ahead, in the room its Duplicate takes', () => {
+    expect(cardStep(lasting(1, 'happening_now'), before, 'en-GB', withDate)).toEqual({
+      kind: 'none',
+      keeps: {
+        kind: 'button',
+        line: 'timeline.finished',
+        label: 'eventDuplicate.open',
+        action: 'duplicate',
+      },
+    });
+  });
+
+  it('offers Duplicate once it is over', () => {
+    expect(cardStep(lasting(1, 'finished'), before, 'en-GB', withDate)).toMatchObject({
+      kind: 'button',
+      line: 'timeline.finished',
+      action: 'duplicate',
+    });
+  });
+
   it('writes the called-off day with its year only when it is not this year', () => {
     const calledOffOn = (concludedAt: string) =>
       shownEvent({ ...lasting(1, 'finished'), status: 'ended', concludedAt }, 'finished');

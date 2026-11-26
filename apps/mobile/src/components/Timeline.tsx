@@ -1,5 +1,7 @@
 import {
   comingUp,
+  eventPhase,
+  formatEventClock,
   type EventTimeline,
   type MarkedMilestone,
   markedMilestones,
@@ -124,7 +126,7 @@ function readerZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** The event page's panel: the next four, or why there are none, in rows held at one height; the page reads the timeline, which its card needs too. */
+/** The event page's panel: the next four, or why there are none, in rows held at one height; while it is on with none, when it ends, as Today's live cover says it (sc-93858). The page reads the timeline, which its card needs too. */
 export function ComingUp({
   kind,
   timeline,
@@ -138,6 +140,10 @@ export function ComingUp({
   const { fontScale } = useWindowDimensions();
   const { load, now, ended, retried, retry } = timeline;
   const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, ended) : [];
+  const on =
+    load.kind === 'loaded' &&
+    !ended &&
+    eventPhase({ ...load.event, status: load.status }, now) === 'happening_now';
 
   return (
     <View style={cardFrame(kind)} testID="timeline.comingUp">
@@ -173,7 +179,16 @@ export function ComingUp({
             testID="timeline.comingUp.retry"
           />
         )}
-        {load.kind === 'loaded' && shown.length === 0 && (
+        {load.kind === 'loaded' && shown.length === 0 && on && (
+          <View style={styles.inset} testID="timeline.endsToday">
+            <Text size={tokens.typeBodyPhone.size} muted style={styles.insetWords}>
+              {t('todayScreen.endsToday', {
+                time: formatEventClock(load.event.endsAt, load.event.timeZone, dateLocale()),
+              })}
+            </Text>
+          </View>
+        )}
+        {load.kind === 'loaded' && shown.length === 0 && !on && (
           <View style={styles.inset} testID="timeline.finished">
             <Text size={tokens.typeBodyPhone.size} muted {...HIDDEN}>
               {tokens.marks.done.glyph}

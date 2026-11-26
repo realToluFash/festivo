@@ -5452,6 +5452,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
   });
 
+  it('says when a one-day event ends while it is on with nothing ahead, and its card offers no step (sc-93858)', async () => {
+    clockAt('2026-11-03T20:40:00Z');
+    signedIn();
+    const finished = 'Nothing coming up. Every date on this event has passed.';
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            status: 'live',
+            phase: 'happening_now',
+            startsAt: '2026-11-03T19:00:00+00:00',
+            endsAt: '2026-11-03T23:30:00+00:00',
+            timeZone: 'Europe/London',
+            dayCount: 1,
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/London',
+          milestones: [milestone('2026-11-03T19:00:00+00:00', 'Adaeze and Tunde starts')],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText('Ends today at 23:30')).toBeDefined();
+    expect(within(panel).queryByText(finished)).toBeNull();
+    expect(within(panel).queryByText('✓')).toBeNull();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    const card = document.querySelector<HTMLElement>('.ev-card')!;
+
+    expect(within(card).getByText('Happening now')).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Duplicate' })).toBeNull();
+    expect(within(card).getByText(finished).closest('.ev-card-foot.is-unseen')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate' }).className).toBe('ev-manage-do');
+  });
+
   it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
     clockAt('2026-10-11T08:00:00Z');
     signedIn();
