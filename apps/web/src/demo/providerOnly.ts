@@ -5,11 +5,11 @@ export const PROVIDER_ORG = 'Ìrè Events';
 
 const NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
 
-/** The accounts the three states draw: Google linked, Apple linked, both (the API lists them by provider, Google first). */
+/** The accounts the three states draw: Google linked, Apple linked, both (the API lists them by provider name, so Apple first, and the line reads them in that order as sign-in does). */
 export const LINKED = {
   google: ['google'],
   apple: ['apple'],
-  both: ['google', 'apple'],
+  both: ['apple', 'google'],
 } as const satisfies Record<string, readonly Provider[]>;
 
 /** The linked providers a provider-only state draws: `-apple` Apple, `-both` both, else Google. */

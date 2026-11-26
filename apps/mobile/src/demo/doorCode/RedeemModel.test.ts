@@ -227,8 +227,8 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     });
     expect(afterPhoneCode(flowAt('code-provider-only-apple')).providers).toEqual(['apple']);
     expect(afterPhoneCode(flowAt('code-provider-only-both')).providers).toEqual([
-      'google',
       'apple',
+      'google',
     ]);
     expect(afterPhoneCode({ ...flowAt('code'), name: 'Bisi', number: '915604117' })).toMatchObject({
       step: 'providerOnly',
@@ -248,8 +248,8 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
       'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
     );
-    expect(providerOnlyLine('Ìrè Events', ['google', 'apple'])).toBe(
-      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
+    expect(providerOnlyLine('Ìrè Events', ['apple', 'google'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple or Google.',
     );
   });
 
