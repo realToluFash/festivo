@@ -660,6 +660,8 @@
 
 .mg-to-label {
   width: var(--space3xl);
+  flex-shrink: 0;
+  white-space: nowrap;
   color: var(--colorInkSecondary);
   font: 600 14px/1 var(--fontFamily);
 }
