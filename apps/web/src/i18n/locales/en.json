@@ -3307,7 +3307,7 @@
     "make": "Make",
     "making": "Making…",
     "theirRole": "Their role",
-    "noEdit": "A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.",
+    "noEdit": "A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.",
     "howMany": "How many people",
     "howManyHelp": "From 1 to 500.",
     "capBlank": "Enter how many people can use this code.",
@@ -3352,7 +3352,7 @@
     "printLine": "Scan it with your phone’s camera, or open {{address}} and enter the code. It works until {{until}}.",
     "tag": "Door code",
     "joinedWith": "Joined with the door code {{code}} at {{time}}.",
-    "runRefused": "A join code can’t let people run the floor.",
+    "runRefused": "A join code cannot let people run the floor.",
     "runRefusedLine": "Give Can run the floor to one person, with their own link from the roster."
   },
   "redeem": {

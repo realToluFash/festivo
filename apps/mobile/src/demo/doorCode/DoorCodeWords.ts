@@ -32,9 +32,9 @@ export const W = {
   capRange: 'Use a whole number from 1 to 500.',
   past: 'Choose a time that has not passed yet.',
   noEdit:
-    'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+    'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
   runRefused:
-    'A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
+    'A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
   makeFailed: 'The door code was not made. Check your connection and try again.',
   made: 'Door code made.',
   newTitle: 'Make a new code?',
@@ -83,6 +83,7 @@ export const W = {
   guestsLine: 'Names and replies only, no contact details',
   people: 'People',
   overview: 'Overview',
+  yourNight: 'Your night',
   more: 'More',
   yourAccount: 'Your account',
   schedule: 'Schedule',
