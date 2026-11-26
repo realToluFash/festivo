@@ -186,12 +186,16 @@ export function providerOnlyTitle(organisation: string): string {
   return `${organisation} signs in with Google or Apple only`;
 }
 
-/** [en]'s line (#94892 on sc-94849): the linked providers, joined as the locale joins a choice; English joins two with "or". */
+const PROVIDER_ORDER = ['google', 'apple'] as const;
+
+/** [en]'s line (#94892 on sc-94849): the linked providers, Google first whatever order the API lists them in, as the heading names them (sc-96668), joined as the locale joins a choice; English joins two with "or". */
 export function providerOnlyLine(
   organisation: string,
   providers: readonly (keyof typeof PROVIDER_NAMES)[],
 ): string {
-  const names = providers.map((one) => PROVIDER_NAMES[one]).join(' or ');
+  const names = PROVIDER_ORDER.filter((one) => providers.includes(one))
+    .map((one) => PROVIDER_NAMES[one])
+    .join(' or ');
 
   return `A code sent to your phone cannot sign you in to this account. ${organisation} asks everyone in it to use ${names}.`;
 }
