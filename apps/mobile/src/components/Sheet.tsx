@@ -24,6 +24,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   type ScrollViewProps,
   StyleSheet,
   View,
@@ -565,7 +566,7 @@ export function SheetScrollView({
   const held = useContext(StripHeld);
   const scrolledAway = useContext(ScrolledAway);
   const [away, setAway] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const landed = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
