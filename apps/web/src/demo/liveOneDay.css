@@ -1,0 +1,8 @@
+/* sc-93858: the card with no step keeps the box its finished line and Duplicate take, so nothing below moves when the step comes back. */
+.lod-held {
+  display: contents;
+}
+
+.lod-held .ev-card-foot {
+  min-height: calc(14.5px * 1.4 + var(--spaceSm) + var(--sizeHit));
+}

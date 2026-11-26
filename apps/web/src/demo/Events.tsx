@@ -31,6 +31,7 @@ import {
   type SampleEvent,
   type Tab,
   CLOCKS,
+  DINER,
   DISTINCT_HOSTS,
   EVENT_WORDS as W,
   PAST_PAGE,
@@ -61,6 +62,8 @@ import {
 } from './guestCounts.ts';
 import { guestsAt } from './guests.ts';
 import { EventCard, EventRow, EventsShell } from './EventParts.tsx';
+import { DINER_ID, liveOneDayClock, seedRunOfShow } from './liveOneDay.ts';
+import { timelineOf } from './kitchen.ts';
 import { TextAction } from '../components/SettingsParts.tsx';
 import type { Tell } from '../components/SettingsParts.tsx';
 import { TodaySidebar } from './TodaySidebar.tsx';
@@ -139,9 +142,11 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const now = CLOCKS.rest;
+  const [now] = useState(() => (start.liveOneDay ? liveOneDayClock('liveOneDay') : CLOCKS.rest));
   const [events] = useState<SampleEvent[]>(() => {
     if (start.first) return [];
+    seedRunOfShow(null);
+    if (start.liveOneDay) return [...sampleEvents(), DINER];
 
     return start.emptied == null ? sampleEvents() : withoutTab(sampleEvents(), start.emptied, now);
   });
@@ -351,6 +356,10 @@ function EventsList({ start, tell }: { start: ReturnType<typeof listStart>; tell
                     now={now}
                     level={2}
                     reads={start.reads}
+                    {...(byTab[tab][0].id === DINER_ID && {
+                      dates: timelineOf(byTab[tab][0], now),
+                      to: `/demo/events/${DINER_ID}?state=liveOneDay`,
+                    })}
                     onStep={stepOn(byTab[tab][0])}
                   />
                   {figuresOf(byTab[tab][0])}
