@@ -263,7 +263,9 @@ describe('The bell in the B frame (sc-83081)', () => {
     expect(source).toMatch(
       /<Back label=\{where\.back\} onPress=\{where\.onBack\} \/>\s*<View style=\{styles\.grow\} \/>\s*\{markAll\}/u,
     );
-    expect(source.indexOf('{markAll}\n      </View>')).toBeLessThan(source.indexOf('<PageTitle heading'));
+    expect(source.indexOf('{markAll}\n      </View>')).toBeLessThan(
+      source.indexOf('<PageTitle heading'),
+    );
     expect(feed()).not.toMatch(/cardTop|cardFoot|radiusCardPhone/u);
   });
 
