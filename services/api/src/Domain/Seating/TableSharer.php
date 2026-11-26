@@ -92,7 +92,11 @@ final readonly class TableSharer
 
         $day = EventDay::before($event, $typed, $this->clock);
 
-        return $day instanceof EventDayRefusal ? throw $this->shareByRefusal('validation.share_by_' . $day->value) : $day;
+        return $day instanceof EventDayRefusal ? throw $this->shareByRefusal(match ($day) {
+            EventDayRefusal::Invalid => 'validation.share_by_invalid',
+            EventDayRefusal::Past => 'validation.share_by_past',
+            EventDayRefusal::NotBeforeEvent => 'validation.share_by_not_before_event',
+        }) : $day;
     }
 
     private function shareByRefusal(string $key): ApiException

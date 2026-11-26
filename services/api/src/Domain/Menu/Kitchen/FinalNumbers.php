@@ -173,7 +173,11 @@ final readonly class FinalNumbers
 
         $day = EventDay::before($event, $typed, $this->clock);
 
-        return $day instanceof EventDayRefusal ? throw $this->dueRefused('validation.final_numbers_' . $day->value) : $day;
+        return $day instanceof EventDayRefusal ? throw $this->dueRefused(match ($day) {
+            EventDayRefusal::Invalid => 'validation.final_numbers_invalid',
+            EventDayRefusal::Past => 'validation.final_numbers_past',
+            EventDayRefusal::NotBeforeEvent => 'validation.final_numbers_not_before_event',
+        }) : $day;
     }
 
     private function dueRefused(string $key): ApiException
