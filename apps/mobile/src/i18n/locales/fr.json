@@ -3764,6 +3764,7 @@
     "staleBody": "Voici votre soirée telle qu’elle était à {{time}}.",
     "tryAgain": "Réessayer",
     "loading": "Chargement de votre soirée…",
-    "otherNeed": "{{what}} (autre)"
+    "otherNeed": "{{what}} (autre)",
+    "beforeYouStart": "Before you start"
   }
 }
