@@ -481,6 +481,7 @@ final class OutsideAccessTest extends ApiTestCase
             ['POST', $event . '/messages/subscriptions'],
             ['GET', $event . '/menu'],
             ['GET', $event . '/menu/picks'],
+            ['GET', $event . '/menu/asked-again'],
             ['GET', $event . '/menu/preview'],
             ['GET', $event . '/menu/kitchen-sheet'],
             ['POST', $event . '/menu/kitchen-sheet/pdf'],
