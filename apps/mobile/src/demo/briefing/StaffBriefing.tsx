@@ -635,7 +635,7 @@ function CopyRow({
       <CopiedLine one={one} />
       {missed && <Missed />}
       {handHeld != null && <HandHeld one={one} url={handHeld} short />}
-      {acts && (
+      {acts && one.mobile != null && (
         <View style={styles.acts}>
           <SecondaryButton
             label={busy ? `${BW.copy}…` : BW.copy}

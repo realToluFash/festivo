@@ -75,9 +75,12 @@ export const BW = {
   atLimit: `[${n0(RULES_MAX)} of ${n0(RULES_MAX)} characters. That is the limit.]`,
   cut: `That was longer than ${n0(RULES_MAX)} characters, so the end was left out.`,
   saved: '[Saved. The rules are on everyone’s shift page now.]',
+  notSaved: 'The rules were not saved. Try again in a moment.',
   previewWho: 'Whose page',
   previewBanner: '[Preview only. Nothing is recorded: no read and no link open.]',
   previewNoShift: (day: string) => `[You are on the staff for ${day}, with no shift yet.]`,
+  previewLoading: 'Loading their page…',
+  didNotWork: 'That did not work. Try again in a moment.',
   checkTitle: 'Check it before it goes',
   people: (n: number) => plural(n, '{n} person', '{n} people'),
   smsLine: (n: number, credits: number) =>
@@ -338,6 +341,9 @@ export interface BriefingStart {
   draft: string | null;
   cut: boolean;
   saved: boolean;
+  /** Save changes was refused: the draft stays, with the line under the box. */
+  notSaved: boolean;
+  previewAt: 'loading' | 'shown' | 'failed';
   copy: 'works' | 'notIssued' | 'refused' | 'slow';
   busy: string | null;
   missed: string | null;
@@ -363,6 +369,8 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     draft: null,
     cut: false,
     saved: false,
+    notSaved: false,
+    previewAt: 'shown',
     copy: 'works',
     busy: null,
     missed: null,
@@ -495,6 +503,15 @@ const STATES = {
       saved: true,
       said: BW.saved,
     }),
+  rulesNotSaved: () =>
+    start({
+      name: 'The rules not saved',
+      note: 'Save changes was refused: the draft stays, with the line under the box. Press Save changes to try again.',
+      side: { kind: 'rules', editing: true },
+      draft: `${RULES}\nNo phones on the floor.`,
+      notSaved: true,
+      said: BW.notSaved,
+    }),
   previewAs: () =>
     start({
       name: 'Preview as Amina Yusuf',
@@ -507,10 +524,24 @@ const STATES = {
       note: 'Chinedu Eze: sc-3915’s page for someone on the staff with no shift yet.',
       side: { kind: 'preview', id: 'chinedu' },
     }),
+  previewLoading: () =>
+    start({
+      name: 'Preview as, loading',
+      note: 'The select and the banner stay; bones in the phone frame while Amina’s page loads.',
+      side: { kind: 'preview', id: 'amina' },
+      previewAt: 'loading',
+    }),
+  previewFailed: () =>
+    start({
+      name: 'Preview as, failed',
+      note: 'That did not work. Try again in a moment. Try again loads it; so does choosing someone.',
+      side: { kind: 'preview', id: 'amina' },
+      previewAt: 'failed',
+    }),
   copyList: () =>
     start({
       name: 'Copy a person’s link',
-      note: 'Everyone with a shift, in roster order, with their mark and a Copy link each.',
+      note: 'Everyone with a shift, in roster order, with their mark; Copy link on each row with a mobile number (sc-3912 issues no link without one).',
       side: { kind: 'copy' },
     }),
   copyBusy: () =>
@@ -565,7 +596,7 @@ const STATES = {
   copyNobody: () =>
     start({
       name: 'Nobody on a shift',
-      note: '[Nobody has a shift yet.] with [Give someone a shift], back to the roster.',
+      note: '[Nobody has a shift yet.] with [Give someone a shift], to the Jobs and shifts tab.',
       side: { kind: 'copy' },
       people: people().map((one) => ({ ...one, shift: null, more: [] })),
     }),
@@ -730,10 +761,14 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'rulesLimit',
         'rulesPasted',
         'rulesSaved',
+        'rulesNotSaved',
       ] as const
     ).map(link),
   },
-  { name: 'Preview as', states: (['previewAs', 'previewNoShift'] as const).map(link) },
+  {
+    name: 'Preview as',
+    states: (['previewAs', 'previewNoShift', 'previewLoading', 'previewFailed'] as const).map(link),
+  },
   {
     name: 'Copy a person’s link',
     states: (
