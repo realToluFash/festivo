@@ -7,17 +7,23 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\Staff\Link\StaffLinks;
+use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
 use App\Entity\RefreshToken;
+use App\Entity\Role;
 use App\Entity\StaffMember;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
+use App\Http\RefreshTokenCookies;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
@@ -305,12 +311,36 @@ final class StaffLinkSignInTest extends ApiTestCase
     {
         $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
         $token = $this->link($this->ada);
-        $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
-        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
 
         self::assertNull($this->outsideRole($this->owner));
         $this->as($this->owner, 'GET', '/api/events/' . $this->eventId);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/my-night');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->signsOutWithTheLink($token, $answer, $this->owner);
+    }
+
+    #[Test]
+    public function aMemberWithNoRoleOnTheEventGetsNothingFromTheLinkButTheirNight(): void
+    {
+        $member = $this->account('kemi@ade.ng', 'Kemi Ade');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Member]);
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        self::em()->persist(new Membership($organisation, $member, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+        $this->phone($member, self::NUMBER, primary: true, verified: true);
+        $token = $this->link($this->ada);
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+
+        self::assertNull($this->outsideRole($member));
+        $this->as($member, 'GET', '/api/events/' . $this->eventId);
+        self::assertSame(404, $this->statusCode(), Json\encode($this->last()));
+        $this->as($member, 'GET', '/api/events/' . $this->eventId . '/my-night');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->signsOutWithTheLink($token, $answer, $member);
     }
 
     #[Test]
@@ -478,6 +508,23 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         return $this->accountOn(self::NUMBER) ?? self::fail('no account');
+    }
+
+    /** @param array<string, mixed> $answer a cookie sign-in's answer */
+    private function signsOutWithTheLink(#[SensitiveParameter] string $token, array $answer, User $user): void
+    {
+        $plain = $this->client->getCookieJar()->get(RefreshTokenCookies::NAME, RefreshTokenCookies::PATH)?->getValue() ?? self::fail('no cookie');
+        $chain = self::em()->getRepository(RefreshToken::class)->findOneBy(['tokenHash' => TokenIssuer::hash($plain)]) ?? self::fail('no session');
+        self::assertTrue($chain->endsWithGrants());
+        self::assertTrue($chain->getUser()->getId()->equals($user->getId()));
+
+        $this->client->request('POST', '/api/staff-links/look', server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($answer['accessToken']),
+        ], content: Json\encode(['token' => $token]));
+
+        $ends = self::service(StaffLinkGrants::class)->lastEndFor(self::em()->find(User::class, $user->getId()) ?? self::fail('no user')) ?? self::fail('no grant');
+        self::assertSame($ends->setTimezone(new DateTimeZone('Africa/Lagos'))->format(\DATE_ATOM), $this->last()['signedOutAt'] ?? null, Json\encode($this->last()));
     }
 
     private function outsideRole(User $user): ?string
