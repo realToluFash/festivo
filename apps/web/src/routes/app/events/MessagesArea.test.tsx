@@ -268,6 +268,17 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(await screen.findByRole('button', { name: 'All guests · 2' })).toBeTruthy();
   });
 
+  it('counts nobody on the waiting composer’s To when the guests fail to load', async () => {
+    const sent = onMessages({
+      'GET /api/events/ev_1/messages/guests': () => new Response(null, { status: 500 }),
+    });
+
+    await waitFor(() =>
+      expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/messages/guests')).toBe(true),
+    );
+    expect(await screen.findByRole('button', { name: 'All guests' })).toBeTruthy();
+  });
+
   it('threads a follow-up under its message, and writes the next one into the same conversation', async () => {
     const FOLLOW = {
       ...SENT,

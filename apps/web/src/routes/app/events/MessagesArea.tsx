@@ -109,6 +109,7 @@ interface Desk {
   manage: boolean;
   addresses: boolean;
   guests: PickableGuest[] | null;
+  guestsFailed: boolean;
   whyOff: string | undefined;
   focus: (key: string) => void;
   say: (words: string) => void;
@@ -132,6 +133,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const [draftBook, setDraftBook] = useState<AudienceBook>(NO_BOOK);
   const [ask, setAsk] = useState(0);
   const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const [guestsFailed, setGuestsFailed] = useState(false);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(null);
@@ -159,8 +161,16 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     let current = true;
 
     api.guestMessageGuests(event.id).then(
-      (all) => current && setGuests(all),
-      () => current && setGuests((was) => was ?? []),
+      (all) => {
+        if (!current) return;
+        setGuests(all);
+        setGuestsFailed(false);
+      },
+      () => {
+        if (!current) return;
+        setGuests((was) => was ?? []);
+        setGuestsFailed(true);
+      },
     );
 
     return () => {
@@ -199,6 +209,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     manage,
     addresses,
     guests,
+    guestsFailed,
     whyOff: closed == null ? undefined : whyId,
     focus,
     say,
@@ -538,7 +549,7 @@ function Idle({
       {desk.manage && (
         <MiniComposer
           desk={desk}
-          chip={allGuestsChip(t, desk.guests)}
+          chip={allGuestsChip(t, desk.guestsFailed ? null : desk.guests)}
           placeholder={t('eventMessages.writeToGuests')}
           onWrite={onWrite}
         />
@@ -873,7 +884,7 @@ function ComposePane({
     who.kind === 'conditions'
       ? conditionsChip(who, book.audiences, counted, t)
       : who.kind === 'all'
-        ? allGuestsChip(t, guests)
+        ? allGuestsChip(t, desk.guestsFailed ? null : guests)
         : chosen.length === 0
           ? t('eventMessages.chooseGuests')
           : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
