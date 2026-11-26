@@ -208,14 +208,14 @@ export const WEEK_DAYS: readonly WeekDay[] = [
 export const STRIP_LABEL = 11;
 export const STRIP_TRACKING = STRIP_LABEL * 0.06;
 
-/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size. */
+/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size, and below it as main draws it. */
 export function stripLabelSize(
   start: number,
   width: number,
   letters: number,
   column: number,
 ): number {
-  if (width <= column) return start;
+  if (width <= column || start <= STRIP_LABEL) return start;
   const tracking = letters * STRIP_TRACKING;
 
   return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));

@@ -406,6 +406,10 @@ describe('This week’s strip, a day’s label (sc-94682)', () => {
     expect(stripLabelSize(STRIP_LABEL, 60, 5, 47)).toBe(STRIP_LABEL);
   });
 
+  it('draws a step below the default as main does, even where the label is over its column', () => {
+    expect(stripLabelSize(9, 50, 5, 47)).toBe(9);
+  });
+
   it('draws seven days from today, a dot only where an event has a row', () => {
     const days = stripDays('days');
 
