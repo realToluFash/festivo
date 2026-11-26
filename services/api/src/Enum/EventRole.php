@@ -18,7 +18,7 @@ enum EventRole: string
     case CanWorkPass = 'can_work_pass';
     case CanRunFloor = 'can_run_floor';
 
-    /** The levels that open the service and nothing else of the event, never offered for a member (sc-4002). */
+    /** The levels that open the service and the event's card and nothing else of the event, never offered for a member (sc-4002, sc-95382). */
     public const array SERVICE_LEVELS = [self::CanWorkFloor, self::CanWorkPass, self::CanRunFloor];
 
     /** @return list<Permission> guest contact details go with guests.manage, so neither read-only role reaches them; Can check guests in adds the door alone (sc-1454) */
@@ -35,18 +35,18 @@ enum EventRole: string
             self::CanEdit => [...Vec\filter($onTheEvent, static fn (Permission $permission): bool => PermissionArea::Budget !== $permission->area()), Permission::PeopleRead],
             self::CanView => [...$reads, Permission::PeopleRead],
             self::CanCheckIn => [...$reads, Permission::PeopleRead, Permission::GuestsCheckIn],
-            self::CanWorkFloor, self::CanWorkPass => [Permission::ServiceWork],
-            self::CanRunFloor => [Permission::ServiceWork, Permission::ServiceManage],
+            self::CanWorkFloor, self::CanWorkPass => [Permission::EventsRead, Permission::ServiceWork],
+            self::CanRunFloor => [Permission::EventsRead, Permission::ServiceWork, Permission::ServiceManage],
         };
     }
 
-    /** @return list<PermissionArea> what the level opens held from outside an organisation (sc-71): Can edit every area but Budget, the reading levels Overview, Guests, Schedule, Seating and People */
+    /** @return list<PermissionArea> what the level opens held from outside an organisation (sc-71): Can edit every area but Budget, the reading levels Overview, Guests, Schedule, Seating and People, the service levels the event's card and the service (sc-95382) */
     public function areasFromOutside(): array
     {
         return match ($this) {
             self::Lead, self::CanEdit => Vec\filter(PermissionArea::cases(), static fn (PermissionArea $area): bool => PermissionArea::Budget !== $area),
             self::CanView, self::CanCheckIn => [PermissionArea::Events, PermissionArea::Guests, PermissionArea::RunOfShow, PermissionArea::Seating, PermissionArea::People],
-            self::CanWorkFloor, self::CanWorkPass, self::CanRunFloor => [PermissionArea::Service],
+            self::CanWorkFloor, self::CanWorkPass, self::CanRunFloor => [PermissionArea::Events, PermissionArea::Service],
         };
     }
 

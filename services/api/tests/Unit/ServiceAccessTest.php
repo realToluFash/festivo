@@ -51,21 +51,21 @@ final class ServiceAccessTest extends TestCase
     /** @return iterable<string, array{0: EventRole, 1: list<Permission>}> */
     public static function serviceLevels(): iterable
     {
-        yield 'Can work the floor' => [EventRole::CanWorkFloor, [Permission::ServiceWork]];
-        yield 'Can work the pass' => [EventRole::CanWorkPass, [Permission::ServiceWork]];
-        yield 'Can run the floor' => [EventRole::CanRunFloor, [Permission::ServiceWork, Permission::ServiceManage]];
+        yield 'Can work the floor' => [EventRole::CanWorkFloor, [Permission::EventsRead, Permission::ServiceWork]];
+        yield 'Can work the pass' => [EventRole::CanWorkPass, [Permission::EventsRead, Permission::ServiceWork]];
+        yield 'Can run the floor' => [EventRole::CanRunFloor, [Permission::EventsRead, Permission::ServiceWork, Permission::ServiceManage]];
     }
 
     /** @param list<Permission> $permissions */
     #[Test]
     #[DataProvider('serviceLevels')]
-    public function aServiceLevelHoldsTheServiceAndNothingElseOfTheEvent(EventRole $level, array $permissions): void
+    public function aServiceLevelHoldsTheServiceAndTheEventsCardAndNothingElseOfTheEvent(EventRole $level, array $permissions): void
     {
         self::assertSame($permissions, $level->permissions());
         self::assertTrue($level->isServiceLevel());
 
         $grants = Grants::fromOutside($level);
-        self::assertSame([PermissionArea::Service], Vec\filter(PermissionArea::cases(), $grants->opens(...)));
+        self::assertSame([PermissionArea::Events, PermissionArea::Service], Vec\filter(PermissionArea::cases(), $grants->opens(...)));
     }
 
     #[Test]
