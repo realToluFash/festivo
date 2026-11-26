@@ -385,6 +385,13 @@ export function KitchenStationView({
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
+          accessibilityLabel={
+            from == null
+              ? t('station.back')
+              : from === 'overview'
+                ? t('eventNav.overview')
+                : t('myNight.title')
+          }
           style={[styles.back, { minHeight: z.side }]}
           testID="station.back"
         >
