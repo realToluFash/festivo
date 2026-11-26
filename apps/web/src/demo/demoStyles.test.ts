@@ -85,6 +85,7 @@ const SHARED: readonly Family[] = [
       'share.css',
       'shareTables.css',
       'singleSignOn.css',
+      'staffHours.css',
       'stations.css',
       'thankYou.css',
       WIDE,
