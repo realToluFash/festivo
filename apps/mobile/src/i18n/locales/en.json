@@ -3509,7 +3509,7 @@
     "staff": "Staff",
     "guests": "Guests",
     "yourTables": "Your tables",
-    "opensAt": "Opens at {{time}} when doors open",
+    "opensAt": "Shown when doors open, at {{time}}",
     "guestCount_one": "{{count, number}} guest",
     "guestCount_other": "{{count, number}} guests",
     "updated": "Updated: you’re now on {{station}}",
