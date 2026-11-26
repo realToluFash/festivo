@@ -141,3 +141,13 @@ describe('the demo’s states', () => {
     for (const state of BRIEFING_STATES) expect(briefingStart(state).name).not.toBe('');
   });
 });
+
+describe('the check’s lines', () => {
+  it('count what is paid per channel, and add up to the total', () => {
+    const list = people();
+    const check = checkOf(dueAll(list), list, 70);
+    expect(check.sms).toEqual({ n: 1, credits: 62 });
+    expect(check.whatsApp).toEqual({ n: 0, credits: 0 });
+    expect(check.credits).toBe(62);
+  });
+});

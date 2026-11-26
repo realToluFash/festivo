@@ -1139,7 +1139,7 @@ function CheckBody({
           )}
           <ul className="bf-check-lines">
             {costs.sms.n > 0 && <li>{BW.smsLine(costs.sms.n, costs.sms.credits)}</li>}
-            {costs.whatsApp != null && (
+            {costs.whatsApp != null && costs.whatsApp.n > 0 && (
               <li>{BW.whatsAppLine(costs.whatsApp.n, costs.whatsApp.credits)}</li>
             )}
             <li className="bf-check-total">{BW.totalLine(costs.credits)}</li>

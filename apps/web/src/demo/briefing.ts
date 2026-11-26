@@ -199,7 +199,7 @@ export interface Check {
 
 const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
 
-/** sc-3931 on sc-3929's reservation preview: each text in roster order is paid while the balance covers its whole cost, and the rest wait. */
+/** sc-3931 on sc-3929's reservation preview: a text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
 export function checkOf(due: readonly Person[], all: readonly Person[], balance: number): Check {
   let left = balance;
   const paid: Person[] = [];
@@ -217,11 +217,14 @@ export function checkOf(due: readonly Person[], all: readonly Person[], balance:
     people: due.length,
     noMobile: all.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
       .length,
-    sms: { n: by('sms', due).length, credits: by('sms', due).length * SMS_CREDITS },
+    sms: { n: by('sms', paid).length, credits: by('sms', paid).length * SMS_CREDITS },
     whatsApp:
       whatsApp.length === 0
         ? null
-        : { n: whatsApp.length, credits: whatsApp.length * WHATSAPP_CREDITS },
+        : {
+            n: by('whatsApp', paid).length,
+            credits: by('whatsApp', paid).length * WHATSAPP_CREDITS,
+          },
     credits,
     after: balance - credits,
     smsWaits: by('sms', due).length - by('sms', paid).length,
