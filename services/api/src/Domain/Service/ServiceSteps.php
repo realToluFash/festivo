@@ -69,14 +69,13 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function arrived(Guest $guest, User $by): void
+    public function arrival(Event $event, User $by, Closure $arrival): Guest
     {
-        if (!$guest->hasArrived() || !$this->orderMaker->isFiredFor($guest)) {
-            return;
-        }
-
-        $this->write($guest->getEvent(), [], function (DateTimeImmutable $now) use ($guest, $by): void {
+        return $this->write($event, [], function (DateTimeImmutable $now) use ($arrival, $by): Guest {
+            $guest = $arrival();
             $this->orderMaker->arrived($guest, $now, $by);
+
+            return $guest;
         });
     }
 

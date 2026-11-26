@@ -53,13 +53,6 @@ final readonly class OrderMaker
         return $this->ordersFor($course, $table, $at, $by, ...Vec\filter(Vec\map($table->guests, static fn (array $one): Guest => $one['guest']), static fn (Guest $guest): bool => $guest->hasArrived()));
     }
 
-    public function isFiredFor(Guest $guest): bool
-    {
-        $table = $this->servingTables->ofGuest($guest->getEvent(), $guest);
-
-        return null !== $table && [] !== $this->serviceFiringRepository->findAtTable($guest->getEvent(), $table->key);
-    }
-
     /** @return list<ServicePlate> an order for each course already fired for the guest's table */
     public function arrived(Guest $guest, DateTimeImmutable $at, User $by): array
     {

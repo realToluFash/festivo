@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Domain\Service\JsonPatch;
+use App\Tests\Fixtures\Service\AppliedPatch;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Psl\Iter;
-use Psl\Str;
-use Psl\Vec;
 
 final class JsonPatchTest extends TestCase
 {
@@ -33,53 +31,7 @@ final class JsonPatchTest extends TestCase
     {
         $patch = JsonPatch::diff($from, $to);
 
-        self::assertSame($to, self::apply($from, $patch));
+        self::assertSame($to, AppliedPatch::to($from, $patch));
         self::assertSame($from === $to, [] === $patch);
-    }
-
-    /** @param list<array{op: string, path: string, value?: mixed}> $patch */
-    private static function apply(mixed $doc, array $patch): mixed
-    {
-        foreach ($patch as $op) {
-            $doc = self::at($doc, '' === $op['path'] ? [] : Vec\map(Str\split(Str\slice($op['path'], 1), '/'), static fn (string $part): string => Str\replace_every($part, ['~1' => '/', '~0' => '~'])), $op);
-        }
-
-        return $doc;
-    }
-
-    /**
-     * @param list<string>                                   $parts
-     * @param array{op: string, path: string, value?: mixed} $op
-     */
-    private static function at(mixed $doc, array $parts, array $op): mixed
-    {
-        if ([] === $parts) {
-            return $op['value'] ?? null;
-        }
-
-        self::assertIsArray($doc);
-        $key = \array_is_list($doc) && \ctype_digit($parts[0]) ? (int) $parts[0] : $parts[0];
-
-        if (1 === Iter\count($parts)) {
-            if ('remove' === $op['op']) {
-                unset($doc[$key]);
-
-                return \array_is_list($doc) || \is_int($key) ? Vec\values($doc) : $doc;
-            }
-
-            if ('add' === $op['op'] && \is_int($key)) {
-                \array_splice($doc, $key, 0, [$op['value'] ?? null]);
-
-                return $doc;
-            }
-
-            $doc[$key] = $op['value'] ?? null;
-
-            return $doc;
-        }
-
-        $doc[$key] = self::at($doc[$key], Vec\values(Vec\drop($parts, 1)), $op);
-
-        return $doc;
     }
 }

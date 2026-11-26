@@ -108,9 +108,11 @@ abstract class ServiceTestCase extends ApiTestCase
         foreach ($names as $name) {
             $guest = self::em()->find(Guest::class, $this->guests[$name]->getId()) ?? self::fail('no guest');
             $by = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
-            $guest->arrive(new DateTimeImmutable('2027-03-06T18:30:00Z'), $by);
-            self::em()->flush();
-            self::service(ServiceSteps::class)->arrived($guest, $by);
+            self::service(ServiceSteps::class)->arrival($guest->getEvent(), $by, static function () use ($guest, $by): Guest {
+                $guest->arrive(new DateTimeImmutable('2027-03-06T18:30:00Z'), $by);
+
+                return $guest;
+            });
         }
     }
 
