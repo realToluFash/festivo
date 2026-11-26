@@ -111,7 +111,7 @@ final class GuestMessagesTest extends ApiTestCase
         self::assertSame('emeka@example.test', $sent[0]['recipient']->emailAddress);
         self::assertStringContainsString('/i/', $notice->body);
         self::assertSame('Ìrè Events via Soirely', $notice->senderName);
-        self::assertStringEndsWith('To answer Ìrè Events, reply on your page. This email cannot take replies.', $notice->body);
+        self::assertStringEndsWith('To answer Funmi Adeyemi, reply on your page. This email cannot take replies.', $notice->body);
         self::assertStringNotContainsString('Secret plans', $notice->subject . $notice->body);
         self::assertStringNotContainsString('cake', $notice->subject . $notice->body);
     }
