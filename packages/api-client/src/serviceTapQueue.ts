@@ -174,6 +174,8 @@ export interface ServiceTapRefused {
 
 export interface ServiceTapsSent {
   refused: ServiceTapRefused[];
+  /** Dropped unsent because a tap before them was refused or dropped, and they rested on what it acted on (sc-97571). They add no line of their own. */
+  dropped: KeptServiceTap[];
   /** Still kept: the send stopped with no answer. */
   left: KeptServiceTap[];
   /** Every kept tap was answered, so the view reads once now to replace what it shows. */
@@ -200,7 +202,7 @@ export async function sendServiceTaps(
   if (running != null) {
     await running.catch(() => undefined);
 
-    return { refused: [], left: await store.load(), refetch: false };
+    return { refused: [], dropped: [], left: await store.load(), refetch: false };
   }
 
   const run = sendInOrder(store, send, options);
@@ -220,6 +222,8 @@ async function sendInOrder(
 ): Promise<ServiceTapsSent> {
   const pause = options.wait ?? wait;
   const refused: ServiceTapRefused[] = [];
+  const dropped: KeptServiceTap[] = [];
+  const touched = new Set<string>();
   let sent = false;
 
   for (;;) {
@@ -254,13 +258,61 @@ async function sendInOrder(
       };
 
       refused.push({ tap, lines: tapRefusals(problem) });
+
+      for (const name of actedOn(tap)) touched.add(name);
     }
 
     sent = true;
-    await store.save((await store.load()).filter((one) => one.key !== tap.key));
+
+    const rest = (await store.load()).filter((one) => one.key !== tap.key);
+    const kept: KeptServiceTap[] = [];
+
+    for (const next of rest) {
+      if (touched.size > 0 && restsOn(next, touched)) {
+        dropped.push(next);
+
+        for (const name of actedOn(next)) touched.add(name);
+      } else {
+        kept.push(next);
+      }
+    }
+
+    await store.save(kept);
   }
 
   const left = await store.load();
 
-  return { refused, left, refetch: sent && left.length === 0 };
+  return { refused, dropped, left, refetch: sent && left.length === 0 };
+}
+
+const PLATE = /\/plates\/([^/]+)/;
+const TRAY = /^\/trays\/([^/]+)/;
+const COURSE = /^\/course\/([^/]+)\/items$/;
+
+/** The plates and the item a kept tap acted on, as names to compare; a tray's step acts on every plate it saw. An undo names the id it undoes. */
+function actedOn(tap: KeptServiceTap): string[] {
+  const names = Object.keys(tap.expected.plates ?? {}).map((plate) => `plate:${plate}`);
+  const plate = PLATE.exec(tap.path)?.[1];
+  const course = COURSE.exec(tap.path)?.[1];
+
+  if (plate != null) names.push(`plate:${decodeURIComponent(plate)}`);
+  if (typeof tap.body.plateId === 'string') names.push(`plate:${tap.body.plateId}`);
+  if (course != null && typeof tap.body.item === 'string') {
+    names.push(`item:${decodeURIComponent(course)}/${tap.body.item}`);
+  }
+  if (tap.kind === 'undo' && typeof tap.body.subject === 'string') {
+    names.push(`plate:${tap.body.subject}`, `tray:${tap.body.subject}`);
+  }
+
+  const tray = TRAY.exec(tap.path)?.[1];
+
+  if (tray != null) names.push(`tray:${decodeURIComponent(tray)}`);
+
+  return names;
+}
+
+function restsOn(tap: KeptServiceTap, touched: ReadonlySet<string>): boolean {
+  if (tap.kind === 'undo') return actedOn(tap).some((name) => touched.has(name));
+
+  return actedOn(tap).some((name) => !name.startsWith('tray:') && touched.has(name));
 }
