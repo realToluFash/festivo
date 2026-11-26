@@ -273,7 +273,18 @@ describe('A link opened signed out (sc-4235)', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Enter your code' }, THE_WAY_IN),
     ).toBeTruthy();
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '654 321' } });
+    expect(
+      screen.getByText(
+        'Open your authenticator app and enter the 6-digit code for +351 ••• ••• 4512.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Use a recovery code instead' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Back/u }), 'the link’s own step').toBeNull();
+    expect(screen.queryByText(/Lost your authenticator/u)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+    expect(screen.getByText('Enter the 6-digit code from your app.')).toBeTruthy();
+    expect(asked.some((line) => line.startsWith('POST /api/auth/two-factor/verify'))).toBe(false);
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '654 321' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
 
     expect(await screen.findByRole('button', { name: 'Sign out' }, THE_WAY_IN)).toBeTruthy();

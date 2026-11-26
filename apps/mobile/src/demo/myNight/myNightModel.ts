@@ -13,6 +13,7 @@ export const MY_NIGHT_STATES = [
   'stale',
   'loading',
   'app',
+  'app_event',
 ] as const;
 
 export type MyNightState = (typeof MY_NIGHT_STATES)[number];
@@ -78,7 +79,7 @@ export const MN = {
   signOutLands:
     'Sign out returns to Confirm it’s you with “Signed out.” (sc-4235). That page is in the web’s demo, /demo/staff-sign-in?state=signed-out.',
   backToDemo: 'Back to the demo list',
-  events: 'Events',
+  overview: 'Overview',
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
@@ -199,6 +200,7 @@ export function nightOf(state: MyNightState): Night {
     case 'loading':
       return { ...night, loading: true };
     case 'app':
+    case 'app_event':
       return { ...night, inApp: true };
     default:
       return night;
@@ -226,7 +228,11 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   sparse: ['Sparse', 'No rules, no timing, no dietary needs, a lead with no phone'],
   stale: ['Couldn’t reach Soirely', 'Your night as it was at 19:32, with Try again'],
   loading: ['Loading', 'Loading your night…'],
-  app: ['In the app', 'Back to Events; no link line, Sign out stays'],
+  app: ['In the app', 'Opened from the event’s Overview: ‹ Overview; no link line, Sign out stays'],
+  app_event: [
+    'In the app, from the event',
+    'A staff-link holder’s event: Your night heads Overview’s rows and opens the page',
+  ],
 };
 
 export const MY_NIGHT_BOARDS = MY_NIGHT_STATES.map((state) => ({
@@ -234,3 +240,8 @@ export const MY_NIGHT_BOARDS = MY_NIGHT_STATES.map((state) => ({
   what: LEAD[state][1],
   href: `/demo/my-night?state=${state}`,
 }));
+
+/** Your night's row on the event's Overview: where they are, then the shift's times. */
+export function rowLineOf(night: Night): string {
+  return `${headingOf(night)} · ${MN.times(night.starts, night.ends)}`;
+}

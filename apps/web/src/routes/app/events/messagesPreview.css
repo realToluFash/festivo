@@ -1,0 +1,471 @@
+/* Write it once at a desk (sc-3960), as the web demo draws it: the token, Insert, Preview as, and the preview of the guest's page and Soirely's notice. */
+
+.mg-insert-list.mg-pop {
+  width: 344px;
+}
+
+.mg-insert-list .mg-insert-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceSm) var(--spaceMd);
+  font: 500 13.5px/1.4 var(--fontFamily);
+}
+
+.mg-insert-line {
+  color: var(--colorInkSecondary);
+}
+
+.mg-preview-tool[data-off] {
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.mg-preview-tool[data-off]:hover {
+  text-decoration: none;
+}
+
+.mg-preview-top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mg-preview-heading {
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.mg-preview-pick {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  gap: var(--spaceXs);
+}
+
+.mg-preview-as-at {
+  position: relative;
+}
+
+.mg-preview-as-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  box-sizing: border-box;
+  min-width: 280px;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceMd) 0 var(--spaceLg);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1.5px var(--colorFieldBorder);
+  color: var(--colorInk);
+  font: 500 15px/1.2 var(--fontFamily);
+}
+
+.mg-preview-as-button[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.mg-preview-as-words {
+  flex: 1;
+  text-align: left;
+}
+
+.mg-preview-as-button > svg {
+  color: var(--colorInkSecondary);
+}
+
+.mg-preview-as-list {
+  position: absolute;
+  top: calc(100% + var(--spaceXs));
+  left: 0;
+  min-width: 100%;
+  padding: var(--spaceXs);
+  border-radius: var(--radiusInset);
+}
+
+.mg-preview-as-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border-radius: var(--radiusNav);
+  font: 500 15px/1.2 var(--fontFamily);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mg-preview-as-option:hover {
+  background: var(--colorNeutralFill);
+}
+
+.mg-insert-list .mg-insert-row:focus-visible,
+.mg-preview-as-option:focus-visible {
+  outline: none;
+  background: var(--colorNeutralFill);
+  box-shadow: inset 0 0 0 2px var(--colorAccent);
+}
+
+.mg-preview-as-option[aria-selected='true'] {
+  font-weight: 600;
+}
+
+.mg-preview-as-tick {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  color: var(--colorAccent);
+}
+
+.mg-notice-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mg-preview-bones {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mg-preview-failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceMd);
+  border: 1.5px solid var(--colorBrokenText);
+  border-radius: var(--radiusInset);
+  background: var(--colorBrokenTint);
+}
+
+.mg-preview-failed-words {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorInk);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.mg-preview-failed-words svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorBrokenText);
+}
+
+.mg-preview-gone {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-preview-gone svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.mg-preview-filling {
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.4 var(--fontFamily);
+}
+
+.mg-bone-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding-bottom: 18px;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+}
+
+.mg-bone-cover {
+  height: 112px;
+  background: var(--mgSunk);
+}
+
+.mg-bone-text {
+  display: block;
+  width: 70%;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--mgSunk);
+}
+
+.mg-bone-page .mg-bone-text {
+  margin-inline: var(--spaceXxl);
+}
+
+.mg-bone-text.is-long {
+  width: 86%;
+}
+
+.mg-bone-text.is-short {
+  width: 45%;
+}
+
+.mg-bone-sends {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mg-bone-notice {
+  display: block;
+  height: 132px;
+  border-radius: var(--spaceXl);
+  background: var(--mgSunk);
+}
+
+.mg-bone-notice.is-short {
+  height: 64px;
+}
+
+.mg-token {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 24px;
+  margin: 0 1px;
+  padding: 0 var(--spaceSm);
+  border-radius: 7px;
+  background: var(--colorAccentTint);
+  color: var(--colorAccent);
+  font: 600 14px/1 var(--fontFamily);
+  vertical-align: -2px;
+  white-space: nowrap;
+}
+
+.mg-insert-at {
+  position: relative;
+}
+
+.mg-insert-list {
+  position: absolute;
+  left: 0;
+  min-width: 200px;
+  padding: var(--spaceXs);
+  border-radius: var(--radiusInset);
+  bottom: calc(100% + var(--spaceXs));
+}
+
+.mg-insert-list button {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border-radius: var(--radiusNav);
+  font: 600 15px/1 var(--fontFamily);
+  text-align: left;
+}
+
+.mg-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mg-preview-as {
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mg-preview-cols {
+  display: grid;
+  grid-template-columns: 52% 1fr;
+  align-items: start;
+  gap: var(--spaceXxl);
+}
+
+.mg-page {
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+}
+
+.mg-page-cover {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  box-sizing: border-box;
+  min-height: 112px;
+  margin: 1px;
+  padding: var(--spaceXl) var(--spaceXl) 14px;
+  border-radius: 21px 21px 0 0;
+  color: var(--colorInkOnDark);
+}
+
+.mg-page-cover::before {
+  position: absolute;
+  inset: 0;
+  background: var(--mgScrim);
+  content: '';
+  opacity: 0.55;
+}
+
+.mg-page-name,
+.mg-page-when {
+  position: relative;
+}
+
+.mg-page-name {
+  max-width: calc(100% - 64px);
+  font: 700 20px/1.2 var(--fontFamily);
+  letter-spacing: -0.02em;
+}
+
+.mg-page-cover .desk-piece.p1 {
+  top: 10px;
+  right: 60px;
+}
+
+.mg-page-cover .desk-piece.p2 {
+  top: 24px;
+  right: 14px;
+}
+
+.mg-page-cover .desk-piece.p4 {
+  top: 84px;
+  right: 36px;
+}
+
+.mg-page-when {
+  font: 600 13.5px/1.35 var(--fontFamily);
+}
+
+.mg .mg-page-figure {
+  margin: 14px;
+  padding: 18px var(--spaceXxl);
+  border: 1px solid var(--mgSunk);
+  border-radius: 18px;
+  background: var(--colorInset);
+}
+
+.mg .mg-page-subject {
+  margin-bottom: var(--spaceXxs);
+  font: 700 17px/1.35 var(--fontFamily);
+}
+
+.mg-page-figure blockquote {
+  font: 500 16px/1.45 var(--fontFamily);
+}
+
+.mg-page-figure figcaption {
+  margin-top: var(--spaceSm);
+  color: var(--colorInkSecondary);
+  font: 600 15px/1.4 var(--fontFamily);
+}
+
+.mg-sends {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.mg-sends h3 {
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.mg-email {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--spaceXl);
+  background: var(--colorCard);
+  box-shadow: inset 0 0 0 1px var(--colorBorder);
+  font: 500 14px/1.45 var(--fontFamily);
+}
+
+.mg-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.mg-notice-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.mg-email-subject {
+  font: 700 15px/1.3 var(--fontFamily);
+}
+
+.mg-email-button {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  box-sizing: border-box;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  border-radius: var(--radiusRow);
+  box-shadow: inset 0 0 0 1.5px var(--colorInk);
+  font: 600 14.5px/1 var(--fontFamily);
+}
+
+.mg-email-stop {
+  color: var(--colorInkSecondary);
+  font: 500 13px/1.4 var(--fontFamily);
+  text-decoration: underline;
+}
+
+.mg-notice-bubble {
+  max-width: 320px;
+  padding: var(--spaceMd) 14px;
+  border-radius: 20px 20px 20px 6px;
+  background: var(--mgSunk);
+  font: 500 14.5px/1.45 var(--fontFamily);
+}
+
+.mg-notice-bubble.is-wa {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--spaceXl);
+}
+
+.mg-notice-bubble.is-wa p {
+  padding: var(--spaceMd) 14px;
+}
+
+.mg-notice-bubble.is-wa span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--sizeHit);
+  border-top: 1px solid var(--colorBorder);
+  color: var(--colorAccent);
+  font: 600 14.5px/1 var(--fontFamily);
+}
+
+.mg-preview-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-preview-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXl);
+  padding: var(--spaceXs) var(--spaceXs) var(--spaceXs) 14px;
+  border-radius: 22px;
+  background: var(--colorCard);
+  box-shadow: var(--mgFloat);
+}
+
+.mg-insert-list button:hover {
+  background: var(--colorNeutralFill);
+}

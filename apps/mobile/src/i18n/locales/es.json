@@ -2718,7 +2718,13 @@
       "flagged": "Puede que el enlace haya llegado a otra persona",
       "failed": "No se han podido cargar los cambios.",
       "retry": "Reintentar"
-    }
+    },
+    "greetAs": "Nombre en el saludo",
+    "greetAsHint": "Cómo le saludan los mensajes, por ejemplo Auntie Bisi o Dr. Okafor. Déjelo en blanco para usar su nombre completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Acorte el nombre en el saludo a {{count, number}} caracteres como máximo.",
+    "greetsThemAs": "Los mensajes le saludan como «{{greetAs}}».",
+    "greetsByFullName": "Los mensajes le saludan por su nombre completo."
   },
   "guestNumbers": {
     "title": "Invitados",

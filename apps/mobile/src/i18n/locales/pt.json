@@ -2718,7 +2718,13 @@
       "flagged": "A ligação pode ter chegado a outra pessoa",
       "failed": "Não foi possível carregar as alterações.",
       "retry": "Tentar novamente"
-    }
+    },
+    "greetAs": "Nome na saudação",
+    "greetAsHint": "Como as mensagens cumprimentam esta pessoa, por exemplo Auntie Bisi ou Dr. Okafor. Deixe em branco para usar o nome completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Encurte o nome na saudação para {{count, number}} caracteres, no máximo.",
+    "greetsThemAs": "As mensagens cumprimentam esta pessoa como «{{greetAs}}».",
+    "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo."
   },
   "guestNumbers": {
     "title": "Convidados",

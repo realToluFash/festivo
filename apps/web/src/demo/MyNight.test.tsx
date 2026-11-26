@@ -108,5 +108,6 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
     expect(screen.queryByText(/This link is yours alone/u)).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Sign out' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Signed in as Grace Okon').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeDefined();
   });
 });

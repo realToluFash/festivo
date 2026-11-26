@@ -220,6 +220,7 @@ export const MESSAGE_STATES = [
   { key: 'trySmsSent', name: 'Then Send by SMS' },
   { key: 'closedReached', name: 'Who it reached, the sends off' },
   { key: 'reachedQuiet', name: 'A text waiting for the morning' },
+  { key: 'unbrokenSubject', name: 'A subject of 150 with no spaces' },
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
@@ -2493,6 +2494,9 @@ export function inviteCheck(
   );
 }
 
+/** QA's edge case on sc-3942 (#93537): the longest Subject the API takes, with nowhere to break. */
+export const UNBROKEN_SUBJECT = 'ThursdayDinnerAtTheWren'.repeat(7).slice(0, 150);
+
 function outOf(stage: Stage, extra: Partial<Out> = {}): Out {
   return {
     thread: 'new',
@@ -2834,6 +2838,8 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, pane: open('new'), outs: [outOf(state)] };
     case 'noSubject':
       return { ...base, pane: open('new'), outs: [outOf('sent', { subject: '', seen: 12 })] };
+    case 'unbrokenSubject':
+      return { ...base, pane: open('new'), outs: [outOf('sent', { subject: UNBROKEN_SUBJECT })] };
     case 'followUp':
       return {
         ...base,

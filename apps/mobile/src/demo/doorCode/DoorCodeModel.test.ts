@@ -419,7 +419,7 @@ describe('a code’s service levels (sc-4002)', () => {
       'Can edit',
     ]);
     expect(W.noEdit).toBe(
-      'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+      'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
     );
   });
 

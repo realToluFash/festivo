@@ -54,8 +54,8 @@ export const W = {
   theirRole: 'Their role',
   canEdit: 'Can edit',
   noEdit:
-    'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
-  runRefused: 'A join code can’t let people run the floor.',
+    'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
+  runRefused: 'A join code cannot let people run the floor.',
   runRefusedLine: 'Give Can run the floor to one person, with their own link from the roster.',
   jobLabel: 'Job label (optional)',
   howMany: 'How many people',

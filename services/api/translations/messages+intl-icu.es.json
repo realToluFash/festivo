@@ -514,5 +514,7 @@
     "validation.guest_message_follows_unknown": "Esta conversación ya no está en el evento.",
     "validation.guest_message_no_guests": "Este evento aún no tiene invitados a los que escribir.",
     "guest_message.event_draft": "Este evento es un borrador. Publíquelo para escribir a sus invitados.",
-    "guest_message.event_ended": "Este evento terminó hace más de 30 días, así que ya no puede escribir a sus invitados."
+    "guest_message.event_ended": "Este evento terminó hace más de 30 días, así que ya no puede escribir a sus invitados.",
+    "validation.guest_greet_as_too_long": "Acorte el nombre en el saludo a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
+    "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar."
 }

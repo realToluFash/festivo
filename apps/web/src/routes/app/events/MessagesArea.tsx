@@ -23,7 +23,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { numberFormat } from '@soirely/domain';
+import { messageSegments, messageWire, numberFormat } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -49,6 +49,14 @@ import {
   shortTitle,
 } from './messagesArea.ts';
 import { useHubTopics } from './useHubTopics.ts';
+import {
+  type FieldHandle,
+  InsertMenu,
+  MessageField,
+  MessagePreview,
+  MessageWords,
+} from './MessagesWriteItOnce.tsx';
+import { plainWords } from './messageWords.ts';
 import './messages.css';
 
 const CHIPS_SHOWN = 6;
@@ -317,8 +325,13 @@ function audienceWords(message: Pick<GuestMessageSummary, 'audience'>, t: TFunct
   return message.audience === 'all' ? t('eventMessages.toAll') : t('eventMessages.toChosen');
 }
 
-function titleOf(message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>): string {
-  return message.subject?.trim() ? guestMessageTitle(message) : shortTitle(message.firstLine);
+function titleOf(
+  message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>,
+  t: TFunction,
+): string {
+  return message.subject?.trim()
+    ? guestMessageTitle(message)
+    : shortTitle(plainWords(t, message.firstLine));
 }
 
 type Conversation = { id: string; messages: GuestMessageRow[] };
@@ -351,7 +364,7 @@ function Rows({
         const message = latest(conversation);
         if (first == null || message == null) return null;
         const on = conversation.id === lit;
-        const title = titleOf(first);
+        const title = titleOf(first, t);
         const line = [
           ...(conversation.messages.length > 1 && message.sending
             ? [t('eventMessages.followUp')]
@@ -585,9 +598,14 @@ function ComposePane({
   const [refused, setRefused] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'write' });
   const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [gone, setGone] = useState<readonly string[]>([]);
+  const [nobodyLeft, setNobodyLeft] = useState<{ name: string; who: Who } | null>(null);
   const chip = useRef<HTMLButtonElement>(null);
+  const field = useRef<FieldHandle>(null);
   const ids = useId();
   const off = desk.whyOff != null;
+  const now = useServerNow();
 
   useEffect(() => {
     let current = true;
@@ -672,6 +690,73 @@ function ComposePane({
   }
 
   const chosen = who.kind === 'chosen' ? who.ids : [];
+  const people = (guests ?? [])
+    .filter((guest) => who.kind === 'all' || chosen.includes(guest.id))
+    .filter((guest) => !gone.includes(guest.id))
+    .sort((a, b) => a.name.localeCompare(b.name, currentLocale()));
+  const previewOff =
+    nobodyLeft?.who === who
+      ? t('eventMessages.nobodyLeft', { name: nobodyLeft.name })
+      : people.length === 0
+        ? t('eventMessages.nobodyToPreview')
+        : null;
+
+  function preview(on: boolean): void {
+    setPreviewing(on);
+    desk.focus(on ? 'preview-heading' : 'preview');
+  }
+
+  if (previewing)
+    return (
+      <div className="mg-in is-compose">
+        <h2 className="desk-unseen">{t('eventMessages.newMessage')}</h2>
+        <div className="mg-compose-body is-top">
+          <MessagePreview
+            event={desk.event}
+            people={people}
+            subject={subject}
+            wire={message}
+            now={now}
+            onGone={(person) => {
+              setGone((was) => [...was, person.id]);
+              if (people.every((one) => one.id === person.id)) {
+                setNobodyLeft({ name: person.name, who });
+                preview(false);
+              }
+            }}
+          />
+        </div>
+        <div className="mg-preview-bar">
+          <button type="button" className="desk-text" onClick={() => preview(false)}>
+            <Glyph name="pen" size={17} weight={2.2} />
+            {t('eventMessages.edit')}
+          </button>
+          <button
+            type="button"
+            className="desk-text"
+            aria-pressed="true"
+            data-focus="preview-on"
+            onClick={() => preview(false)}
+          >
+            <Glyph name="eye" size={17} weight={2.2} />
+            {t('eventMessages.previewOn')}
+          </button>
+          <span className="today-grow" />
+          <button
+            type="button"
+            className="mg-send"
+            aria-label={t('eventMessages.send')}
+            onClick={() => {
+              setPreviewing(false);
+              send();
+            }}
+          >
+            <Glyph name="send" size={20} weight={2.4} />
+          </button>
+        </div>
+      </div>
+    );
+
   const chipWords =
     who.kind === 'all'
       ? guests == null
@@ -805,18 +890,17 @@ function ComposePane({
             {wrong.subject}
           </p>
         )}
-        <textarea
-          className="mg-field"
-          value={message}
-          aria-label={t('eventMessages.message')}
-          aria-invalid={wrong.message == null ? undefined : true}
-          aria-describedby={wrong.message == null ? desk.whyOff : `${ids}-message`}
-          placeholder={t('eventMessages.writeToGuests')}
-          readOnly={step.kind !== 'write' || off}
-          data-focus="body"
-          onChange={(typed) => {
-            setMessage(typed.target.value);
-            fixed('message', { message: typed.target.value });
+        <MessageField
+          fieldRef={field}
+          first={messageSegments(message)}
+          editable={step.kind === 'write' && !off}
+          invalid={wrong.message != null}
+          describedBy={wrong.message == null ? desk.whyOff : `${ids}-message`}
+          onChange={(segments) => {
+            const wire = messageWire(segments);
+
+            setMessage(wire);
+            fixed('message', { message: wire });
           }}
           onKeyDown={(key) => commandEnter(key, send)}
         />
@@ -840,6 +924,20 @@ function ComposePane({
         )}
         {step.kind === 'write' && (
           <div className="mg-tools">
+            {!off && <InsertMenu onPick={(token) => field.current?.insert(token)} />}
+            {!off && (
+              <button
+                type="button"
+                className="desk-text mg-preview-tool"
+                aria-describedby={previewOff == null ? undefined : `${ids}-preview-off`}
+                data-focus="preview"
+                {...offButton(previewOff != null)}
+                onClick={() => previewOff == null && preview(true)}
+              >
+                <Glyph name="eye" size={17} weight={2.2} />
+                {t('eventMessages.preview')}
+              </button>
+            )}
             <span className="today-grow" />
             <span className="mg-goes-page">{t('eventMessages.goesOnTheirPage')}</span>
             <button
@@ -854,6 +952,12 @@ function ComposePane({
               <Glyph name="send" size={20} weight={2.4} />
             </button>
           </div>
+        )}
+        {step.kind === 'write' && !off && previewOff != null && guests != null && (
+          <p id={`${ids}-preview-off`} className="mg-why">
+            <Glyph name="info" size={16} weight={2.2} />
+            <span>{previewOff}</span>
+          </p>
         )}
         {first.follows != null && <FollowLine count={first.follows.count} />}
       </form>
@@ -1471,7 +1575,7 @@ function MessagePane({
       </div>
     );
 
-  const title = titleOf(message);
+  const title = titleOf(message, t);
 
   return (
     <div className="mg-in">
@@ -1559,7 +1663,9 @@ function Said({ message, onWho }: { message: GuestMessageDetails; onWho: () => v
         {message.subject != null && message.subject.trim() !== '' && (
           <p className="mg-subject-line">{message.subject}</p>
         )}
-        <p>{message.message}</p>
+        <p>
+          <MessageWords wire={message.message} />
+        </p>
       </div>
       <p className="mg-meta is-end">
         <span className="mg-bit">{t('eventMessages.onTheirPage')}</span>
@@ -1692,7 +1798,7 @@ function ReachedPane({
       <div className="mg-reached-top">
         <button type="button" className="desk-back" onClick={onBack}>
           <Glyph name="back" size={17} weight={2.4} />
-          {titleOf(message)}
+          {titleOf(message, t)}
         </button>
       </div>
       <div className="mg-reached-body">

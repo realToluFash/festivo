@@ -133,6 +133,15 @@
   text-decoration: none;
 }
 
+.mg-row .desk-row-name {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
 .mg-row:hover {
   background: var(--colorNeutralFill);
 }
@@ -403,6 +412,7 @@
 
 .mg-head h2 {
   font: 700 18px/1.25 var(--fontFamily);
+  overflow-wrap: anywhere;
 }
 
 .mg-head-words p {

@@ -9,6 +9,7 @@ function details(more: Partial<GuestDetails> = {}): GuestDetails {
   return {
     id: 'g1',
     fullName: 'Adaeze Okafor',
+    greetAs: null,
     group: null,
     email: null,
     mobile: null,

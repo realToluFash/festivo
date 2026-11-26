@@ -328,6 +328,36 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect((screen.getByLabelText('Mobile number') as HTMLInputElement).value).toBe('912 344 512');
   });
 
+  it('puts the API’s refusal of the number under the number, and clears it once it is retyped', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Validation failed',
+            status: 422,
+            violations: [
+              { propertyPath: 'number', message: 'That is not a mobile number for Portugal.' },
+            ],
+          },
+          422,
+        ),
+    });
+
+    await sendTo('Hugo Brandão');
+
+    expect(await screen.findByText('That is not a mobile number for Portugal.')).toBeDefined();
+    const number = screen.getByLabelText('Mobile number');
+    expect(number.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(number);
+    expect(screen.queryByText(/Something went wrong/u)).toBeNull();
+
+    fireEvent.change(number, { target: { value: '912 344 513' } });
+    expect(screen.queryByText('That is not a mobile number for Portugal.')).toBeNull();
+  });
+
   it('says an alternative number cannot sign in, back on the number', async () => {
     signedOut();
     at('/d/K7P2QX9M', {

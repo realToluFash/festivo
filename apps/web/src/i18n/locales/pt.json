@@ -3824,7 +3824,13 @@
       "needs": "Notas sobre alimentação atualizadas",
       "flagged": "A ligação pode ter chegado a outra pessoa",
       "failed": "Não foi possível carregar as alterações."
-    }
+    },
+    "greetAs": "Nome na saudação",
+    "greetAsHint": "Como as mensagens cumprimentam esta pessoa, por exemplo Auntie Bisi ou Dr. Okafor. Deixe em branco para usar o nome completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Encurte o nome na saudação para {{count, number}} caracteres, no máximo.",
+    "greetsThemAs": "As mensagens cumprimentam esta pessoa como «{{greetAs}}».",
+    "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -6843,6 +6849,44 @@
     "more": "Mais {{count, number}}",
     "remove": "Remover {{name}}",
     "chosenTo": "Convidados escolhidos",
-    "change": "Alterar"
+    "change": "Alterar",
+    "insert": "Inserir",
+    "token": {
+      "greeting": "Saudação",
+      "event": "Evento",
+      "date": "Data",
+      "hosts": "Anfitriões"
+    },
+    "tokenName": "{{token}}, que a Soirely preenche para cada convidado",
+    "tokenLine": {
+      "greeting": "O nome na saudação ou, se não tiver, o nome completo",
+      "event": "O nome do evento",
+      "date": "O dia do evento, ou os seus dias",
+      "hosts": "Os anfitriões do evento"
+    },
+    "preview": "Pré-visualizar",
+    "previewOn": "Pré-visualização ativada",
+    "edit": "Editar",
+    "previewHeading": "Tal como {{name}} a verá",
+    "previewAs": "Ver como",
+    "previewOption": "{{name}} · {{language}}",
+    "filling": "A preencher a mensagem para {{name}}…",
+    "previewFailed": "Não foi possível preencher a mensagem para {{name}}.",
+    "previewFailedLine": "Verifique a ligação e tente novamente.",
+    "noLongerGuest": "{{name}} já não está na lista de convidados, por isso a mensagem é preenchida para {{next}}.",
+    "nobodyLeft": "{{name}} já não está na lista de convidados, por isso não resta ninguém para a pré-visualização.",
+    "greetedAsGreetAs": "Esta pessoa é cumprimentada como «{{greetAs}}», o nome na saudação.",
+    "greetedAsName": "Esta pessoa é cumprimentada como {{name}}, o nome completo. Não tem nome na saudação.",
+    "languageFrom": {
+      "chose": "Em {{language}}, o idioma escolhido na própria página.",
+      "host": "Em {{language}}, o idioma que definiu para esta pessoa.",
+      "organisation": "Em {{language}}, o idioma da sua organização, porque não há um idioma definido para esta pessoa."
+    },
+    "onlyOurs": "Só as palavras da Soirely são traduzidas. As suas aparecem na página do convidado tal como as escreveu.",
+    "typedBraces": "Tudo o que escrever entre chavetas aparece tal como está. Para preencher algo para cada convidado, use Inserir.",
+    "nothingToFill": "Não há nada a preencher, por isso todos os convidados recebem exatamente este texto.",
+    "nobodyToPreview": "Ainda não escolheu convidados, por isso não há ninguém para a pré-visualização.",
+    "whatSoirelySends": "O que a Soirely envia",
+    "emailFrom": "E-mail · de {{organisation}} via Soirely"
   }
 }

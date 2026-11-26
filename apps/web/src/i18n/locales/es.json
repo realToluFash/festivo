@@ -3824,7 +3824,13 @@
       "needs": "Notas sobre alimentación actualizadas",
       "flagged": "Puede que el enlace haya llegado a otra persona",
       "failed": "No se han podido cargar los cambios."
-    }
+    },
+    "greetAs": "Nombre en el saludo",
+    "greetAsHint": "Cómo le saludan los mensajes, por ejemplo Auntie Bisi o Dr. Okafor. Déjelo en blanco para usar su nombre completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Acorte el nombre en el saludo a {{count, number}} caracteres como máximo.",
+    "greetsThemAs": "Los mensajes le saludan como «{{greetAs}}».",
+    "greetsByFullName": "Los mensajes le saludan por su nombre completo."
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -6843,6 +6849,44 @@
     "more": "{{count, number}} más",
     "remove": "Quitar a {{name}}",
     "chosenTo": "Invitados elegidos",
-    "change": "Cambiar"
+    "change": "Cambiar",
+    "insert": "Insertar",
+    "token": {
+      "greeting": "Saludo",
+      "event": "Evento",
+      "date": "Fecha",
+      "hosts": "Anfitriones"
+    },
+    "tokenName": "{{token}}, que Soirely rellena para cada invitado",
+    "tokenLine": {
+      "greeting": "Su nombre en el saludo o, si no lo tiene, su nombre completo",
+      "event": "El nombre del evento",
+      "date": "El día del evento, o sus días",
+      "hosts": "Los anfitriones del evento"
+    },
+    "preview": "Vista previa",
+    "previewOn": "Vista previa activada",
+    "edit": "Editar",
+    "previewHeading": "Como lo verá {{name}}",
+    "previewAs": "Ver como",
+    "previewOption": "{{name}} · {{language}}",
+    "filling": "Rellenando el mensaje para {{name}}…",
+    "previewFailed": "No se ha podido rellenar el mensaje para {{name}}.",
+    "previewFailedLine": "Compruebe la conexión y vuelva a intentarlo.",
+    "noLongerGuest": "{{name}} ya no está en la lista de invitados, así que el mensaje se rellena para {{next}}.",
+    "nobodyLeft": "{{name}} ya no está en la lista de invitados, así que no queda nadie para la vista previa.",
+    "greetedAsGreetAs": "Se le saluda como «{{greetAs}}», su nombre en el saludo.",
+    "greetedAsName": "Se le saluda como {{name}}, su nombre completo. No tiene nombre en el saludo.",
+    "languageFrom": {
+      "chose": "En {{language}}, el idioma que eligió en su propia página.",
+      "host": "En {{language}}, el idioma que usted le asignó.",
+      "organisation": "En {{language}}, el idioma de su organización, porque no tiene un idioma asignado."
+    },
+    "onlyOurs": "Solo se traducen las palabras de Soirely. Las suyas aparecen en la página del invitado tal como las escribió.",
+    "typedBraces": "Lo que escriba entre llaves aparece tal cual. Para rellenar algo para cada invitado, use Insertar.",
+    "nothingToFill": "No hay nada que rellenar, así que todos los invitados reciben exactamente este texto.",
+    "nobodyToPreview": "Aún no ha elegido invitados, así que no hay nadie para la vista previa.",
+    "whatSoirelySends": "Lo que envía Soirely",
+    "emailFrom": "Correo electrónico · de {{organisation}} vía Soirely"
   }
 }

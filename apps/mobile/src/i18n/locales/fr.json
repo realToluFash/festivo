@@ -2718,7 +2718,13 @@
       "flagged": "Lien peut-être reçu par erreur",
       "failed": "Impossible de charger les changements.",
       "retry": "Réessayer"
-    }
+    },
+    "greetAs": "Appellation",
+    "greetAsHint": "Le nom par lequel les messages saluent cette personne, par exemple Auntie Bisi ou Dr. Okafor. Laissez vide pour utiliser son nom complet.",
+    "greetAsCounter": "{{count, number}} sur {{max, number}}",
+    "greetAsTooLong": "Raccourcissez l’appellation à {{count, number}} caractères maximum.",
+    "greetsThemAs": "Les messages l’appellent « {{greetAs}} ».",
+    "greetsByFullName": "Les messages l’appellent par son nom complet."
   },
   "guestNumbers": {
     "title": "Invités",
