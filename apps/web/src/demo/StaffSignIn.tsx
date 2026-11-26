@@ -5,6 +5,8 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, HOLD_MS } from './doorCode.ts';
 import { CodeStep, Field, Primary, Says, SignOutLine, Title } from './Redeem.tsx';
+import { ProviderOnlyButtons } from './ProviderOnly.tsx';
+import { PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
 import { MESH, phoneCodeLine, rightPhoneCode } from './redeem.ts';
 import { TRIES } from './rules.ts';
 import {
@@ -23,6 +25,7 @@ import {
   freshTwoFactor,
   linkStart,
   linkStateOf,
+  refusedStep,
   rightAuthenticator,
   twoFactorFor,
 } from './staffSignIn.ts';
@@ -78,6 +81,7 @@ function LinkPage({ state }: { state: LinkState }) {
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
         if (start.alternative === true) go({ kind: 'alternative' });
+        else if (start.providers != null) go(refusedStep(start.providers));
         else if (start.twoFactor) go(freshTwoFactor(), 'field');
         else void navigate(SHIFT_HREF);
         return;
@@ -88,6 +92,11 @@ function LinkPage({ state }: { state: LinkState }) {
         return;
       }
       go({ ...step, problem: 'wrong', busy: 'no', wrongs }, 'select');
+      return;
+    }
+    // Google or Apple signs them in, and the link opens signed in: its shift, with no code asked (sc-94849).
+    if (step.kind === 'providerOnly') {
+      void navigate(SHIFT_HREF);
       return;
     }
     if (step.kind === 'twoFactor') {
@@ -180,6 +189,19 @@ function LinkPage({ state }: { state: LinkState }) {
             <Title titleRef={title}>{S.confirm}</Title>
             <LinkCard />
             <p className="ss-told">{S.alternative}</p>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Title titleRef={title}>{providerOnlyTitle(PROVIDER_ORG)}</Title>
+            <LinkCard />
+            <p className="ss-told">{providerOnlyLine(PROVIDER_ORG, step.providers)}</p>
+            <ProviderOnlyButtons
+              providers={step.providers}
+              busy={step.busy !== 'no'}
+              onChoose={() => setStep({ ...step, busy: 'busy' })}
+            />
           </>
         );
       case 'code':

@@ -14,6 +14,8 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, DOOR_EVENT, HOLD_MS } from './doorCode.ts';
 import { Glyph } from '../components/Glyph.tsx';
+import { ProviderOnlyButtons } from './ProviderOnly.tsx';
+import { PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
 import {
   type Busy,
   CALLING,
@@ -31,6 +33,7 @@ import {
   RESEND_FROM,
   type RedeemState,
   type Step,
+  BISI,
   TRIES_A_MINUTE,
   codeOpens,
   eventLines,
@@ -38,7 +41,9 @@ import {
   nameLine,
   redeemStart,
   redeemStateOf,
+  isProviderOnly,
   isSecondNumber,
+  linkedFor,
   rightPhoneCode,
   sendNewIn,
   shownNumber,
@@ -144,6 +149,11 @@ function RedeemPage({ state }: { state: RedeemState }) {
       return;
     }
     if (step.kind === 'joinAs') go({ kind: 'in', name, checks: true, held: false });
+    // Google or Apple signs her in, and the door code's page is back, signed in: Join as admits her (sc-72).
+    if (step.kind === 'providerOnly') {
+      setName(BISI.account);
+      go({ kind: 'joinAs', busy: 'no' });
+    }
     if (step.kind === 'code') {
       if (rightPhoneCode(step.digits)) {
         if (isSecondNumber(number))
@@ -159,7 +169,12 @@ function RedeemPage({ state }: { state: RedeemState }) {
             },
             'number',
           );
-        else go({ kind: 'in', name, checks: true, held: true });
+        else if (isProviderOnly(number)) {
+          // Refused as her password is: no session, no use of the code, and what she typed forgotten (sc-94849).
+          setName('');
+          setNumber('');
+          go({ kind: 'providerOnly', providers: linkedFor(state), busy: 'no' });
+        } else go({ kind: 'in', name, checks: true, held: true });
         return;
       }
       const wrongs = step.wrongs + 1;
@@ -281,6 +296,19 @@ function RedeemPage({ state }: { state: RedeemState }) {
                 {R.signOut}
               </button>
             </div>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Tile />
+            <Title titleRef={title}>{providerOnlyTitle(PROVIDER_ORG)}</Title>
+            <p className="rd-intro">{providerOnlyLine(PROVIDER_ORG, step.providers)}</p>
+            <ProviderOnlyButtons
+              providers={step.providers}
+              busy={step.busy !== 'no'}
+              onChoose={() => setStep({ ...step, busy: 'busy' })}
+            />
           </>
         );
       case 'member':

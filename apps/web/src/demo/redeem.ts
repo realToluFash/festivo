@@ -11,6 +11,7 @@ import {
   normalCode,
 } from './doorCode.ts';
 import { meshFor } from '../mesh.ts';
+import { LINKED, type Provider } from './providerOnly.ts';
 import { numberLine, SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -169,7 +170,9 @@ export type Step =
       busy: Busy;
       wrongs: number;
     }
-  | { kind: 'in'; name: string; checks: boolean; held: boolean };
+  | { kind: 'in'; name: string; checks: boolean; held: boolean }
+  /** After the right phone code, the number's account is a member of an organisation that signs in with Google or Apple only (sc-94849). */
+  | { kind: 'providerOnly'; providers: readonly Provider[]; busy: Busy };
 
 /** `held`: a deep-linked wait, long enough to look at. */
 export type Busy = 'no' | 'busy' | 'held';
@@ -205,6 +208,12 @@ export const REDEEM_STATES = [
   'used-up',
   'code-second-number',
   'second-number',
+  'code-provider-only',
+  'code-provider-only-apple',
+  'code-provider-only-both',
+  'provider-only',
+  'provider-only-apple',
+  'provider-only-both',
   'browser-in',
   'browser-in-view',
   'browser-in-account',
@@ -227,6 +236,19 @@ export const RITA = { name: 'Rita Sousa', number: '916 480 233' };
 
 export const isSecondNumber = (typed: string) =>
   typed.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
+
+/** A member of Ìrè Events, Google linked: what she types is hers until the right code, then forgotten (sc-94849). */
+export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 117' };
+
+export const isProviderOnly = (typed: string) =>
+  typed.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '');
+
+/** The providers a provider-only state draws, or Google alone for her number typed on the event. */
+export function linkedFor(state: RedeemState): readonly Provider[] {
+  if (state.endsWith('-apple')) return LINKED.apple;
+
+  return state.endsWith('-both') ? LINKED.both : LINKED.google;
+}
 
 export function redeemStateOf(name: string | null): RedeemState {
   return REDEEM_STATES.find((one) => one === name) ?? 'enter';
@@ -342,6 +364,18 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
       return { step: code({ digits: '71' }), ...RITA };
     case 'second-number':
       return { step: event({ ...RITA, checked: true, secondNumber: true }), ...RITA };
+    case 'code-provider-only':
+    case 'code-provider-only-apple':
+    case 'code-provider-only-both':
+      return { step: code({ digits: '71' }), name: BISI.typed, number: BISI.number };
+    case 'provider-only':
+    case 'provider-only-apple':
+    case 'provider-only-both':
+      return {
+        step: { kind: 'providerOnly', providers: linkedFor(state), busy: 'no' },
+        name: '',
+        number: '',
+      };
     case 'browser-in':
     case 'from-check-in':
       return { step: { kind: 'in', name: HUGO.name, checks: true, held: true }, ...hugo };
@@ -422,6 +456,17 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
         'second-number',
         'An alternative number, after the right code: back to the name (sc-4235)',
       ),
+    ],
+  },
+  {
+    name: 'Joining · a member of an organisation that signs in with Google or Apple only (sc-94849)',
+    states: [
+      redeem('code-provider-only', 'Google linked: the code, before the right one'),
+      redeem('provider-only', 'Google linked, after the right code: Continue with Google'),
+      redeem('code-provider-only-apple', 'Apple linked: the code, before the right one'),
+      redeem('provider-only-apple', 'Apple linked, after the right code: Continue with Apple'),
+      redeem('code-provider-only-both', 'Both linked: the code, before the right one'),
+      redeem('provider-only-both', 'Both linked, after the right code: Google, then Apple'),
     ],
   },
   {

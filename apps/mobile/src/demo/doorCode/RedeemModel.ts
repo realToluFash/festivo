@@ -1,3 +1,5 @@
+import type { Provider } from '@soirely/api-client';
+
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
 import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
@@ -30,6 +32,12 @@ export const REDEEM_STATES = [
   'used-up',
   'code-second-number',
   'second-number',
+  'code-provider-only',
+  'code-provider-only-apple',
+  'code-provider-only-both',
+  'provider-only',
+  'provider-only-apple',
+  'provider-only-both',
   'in',
   'event-in',
   'event-in-view',
@@ -48,6 +56,7 @@ export type RedeemStep =
   | 'joinAs'
   | 'member'
   | 'code'
+  | 'providerOnly'
   | 'in'
   | 'inside'
   | 'peopleIn';
@@ -76,6 +85,8 @@ export interface Flow {
   tries: number;
   /** Inside the event with More open: Your account and Sign out (`more-in`). */
   more: boolean;
+  /** The providers linked to the number's account, when its organisation signs in with Google or Apple only (sc-94849). */
+  providers: readonly Provider[] | null;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
@@ -84,6 +95,29 @@ export const RITA = { name: 'Rita Sousa', number: '916 480 233' } as const;
 
 export const isSecondNumber = (number: string) =>
   number.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
+
+/** A member of Ìrè Events, Google linked: what she types is hers until the right code, then forgotten (sc-94849). */
+export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 117' } as const;
+export const PROVIDER_ORG = 'Ìrè Events';
+
+const LINKED = {
+  google: ['google'],
+  apple: ['apple'],
+  both: ['google', 'apple'],
+} as const satisfies Record<string, readonly Provider[]>;
+
+function linkedIn(state: RedeemState): readonly Provider[] {
+  if (state.endsWith('-apple')) return LINKED.apple;
+
+  return state.endsWith('-both') ? LINKED.both : LINKED.google;
+}
+
+/** Her number typed on the event finds Google linked. */
+export function providersFor(flow: Flow): readonly Provider[] | null {
+  if (flow.providers != null) return flow.providers;
+
+  return flow.number.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '') ? LINKED.google : null;
+}
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {
   return {
@@ -105,6 +139,7 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     role: BAR.role,
     tries: 0,
     more: false,
+    providers: null,
   };
 }
 
@@ -184,6 +219,20 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, ...RITA, step: 'code' };
     case 'second-number':
       return { ...plain, ...RITA, step: 'event', numberSaid: W.secondNumber };
+    case 'code-provider-only':
+    case 'code-provider-only-apple':
+    case 'code-provider-only-both':
+      return {
+        ...plain,
+        step: 'code',
+        name: BISI.typed,
+        number: BISI.number,
+        providers: linkedIn(state),
+      };
+    case 'provider-only':
+    case 'provider-only-apple':
+    case 'provider-only-both':
+      return { ...plain, step: 'providerOnly', providers: linkedIn(state) };
     case 'in':
       return { ...joao, step: 'in' };
     case 'event-in':
@@ -197,8 +246,20 @@ export function flowAt(state: RedeemState): Flow {
   }
 }
 
-/** The step a phone code ends on: back to the number for a second number, the one refusal for a code that filled meanwhile, else You're in. */
+/** The step a phone code ends on: back to the number for a second number, Google or Apple only for a member whose organisation asks it (nothing typed kept), the one refusal for a code that filled meanwhile, else You're in. */
 export function afterPhoneCode(flow: Flow): Flow {
+  const providers = providersFor(flow);
+  if (providers != null)
+    return {
+      ...flow,
+      step: 'providerOnly',
+      providers,
+      name: '',
+      number: '',
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
   if (isSecondNumber(flow.number))
     return {
       ...flow,
