@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { Glyph } from '../components/Glyph.tsx';
 import { offButton } from '../offButton.ts';
 import { Switch } from '../components/GeneralParts.tsx';
+import { billingAt } from './billing.ts';
 import { type Card, type Mark, NW, REMINDER_AT, type rowLines } from './notices.ts';
 import './notices.css';
 
@@ -103,7 +104,7 @@ export function ReminderCard({
 type Ask = 'ready' | 'sent' | 'failed';
 
 /** sc-3963's Add credits, on the web only: Plan and billing with its packs open. */
-const ADD_CREDITS = '/demo/settings/plan-and-billing?state=packs';
+const ADD_CREDITS = billingAt('packs');
 const ASKING_MS = 600;
 
 /** Ask an owner, as sc-3931 has it: the owners are sent the link to Plan and billing, or Not sent and try again. */
