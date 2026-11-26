@@ -171,6 +171,6 @@
     "table_nothing_to_serve": "Ainda não há nada para pôr num tabuleiro para esta mesa.",
     "tray_check_incomplete": "Marque cada elemento como «Posto», ou como «Não posto» e «Levar depois», antes de verificar o tabuleiro.",
     "undo_expired": "Passaram mais de 2 minutos desde esse passo, por isso já não pode ser anulado.",
-    "service_changed": "This changed while you were offline. Nothing was changed.",
-    "expected_required": "Send what the tap saw with each service step."
+    "service_changed": "Isto mudou enquanto estava sem ligação. Nada foi alterado.",
+    "expected_required": "Envie o que o toque viu com cada passo do serviço."
 }
