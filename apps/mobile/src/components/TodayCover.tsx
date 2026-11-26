@@ -20,6 +20,8 @@ import {
   BAND_TITLE,
   type BandRow,
   bandLine,
+  bandLiveRoom,
+  bandLiveSize,
   bandRoom,
   bandStart,
   bandTitle,
@@ -32,7 +34,7 @@ import {
   wordsIn,
 } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
-import { CAPSULE_TOP } from '../layout/bandLive.ts';
+import { CAPSULE_TOP, LIVE_FOOT, liveLineHeight } from '../layout/bandLive.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
@@ -995,13 +997,17 @@ export function Band({
   const tall = capsule > CAPSULE_HEIGHT;
   const [tileEnd, setTileEnd] = useState<number>();
   const [searchStart, setSearchStart] = useState<number>();
+  const [rowMiddle, setRowMiddle] = useState<number>();
+  const height = top + bandBody(moment, layout);
+  const underTitle = phone && atAccessibilitySizes(fontScale);
+  const liveSize =
+    underTitle && rowMiddle != null
+      ? bandLiveSize(fontScale, bandLiveRoom(rowMiddle, height, LIVE_FOOT))
+      : undefined;
 
   return (
     <View
-      style={[
-        styles.band,
-        { [grown || tall ? 'minHeight' : 'height']: top + bandBody(moment, layout) },
-      ]}
+      style={[styles.band, { [grown || tall ? 'minHeight' : 'height']: height }]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {now == null ? (
@@ -1020,6 +1026,10 @@ export function Band({
           { marginTop: top },
           tall && { minHeight: CAPSULE_TOP + capsule },
         ]}
+        onLayout={({ nativeEvent: { layout } }) =>
+          // The middle under its top padding, where the tile and the title are centred.
+          setRowMiddle(layout.y + (layout.height + styles.topPhone.paddingTop) / 2)
+        }
       >
         {!phone && measure}
         <View onLayout={({ nativeEvent: { layout } }) => setTileEnd(layout.x + layout.width)}>
@@ -1056,7 +1066,19 @@ export function Band({
         now != null && (
           <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
             <View style={styles.liveDot} />
-            <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
+            <Text
+              key={liveSize}
+              size={liveSize ?? 13.5}
+              weight="semibold"
+              numberOfLines={1}
+              allowFontScaling={!underTitle}
+              // From AX1 hidden until the row is measured, so no frame draws it over the title.
+              style={[
+                styles.white,
+                liveSize != null && { lineHeight: liveLineHeight(liveSize) },
+                underTitle && liveSize == null && styles.waiting,
+              ]}
+            >
               {moment.run != null
                 ? moment.run.band
                 : (named ??

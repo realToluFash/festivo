@@ -231,3 +231,15 @@ describe('the phone band’s title at the largest sizes (sc-92248)', () => {
     expect(band).toMatch(/setSearchStart\(layout\.x\)/u);
   });
 });
+
+describe('the phone band’s live line under the title at the largest sizes (sc-92248)', () => {
+  it('draws from AX1 at the size its line fits under the title’s row, hidden until the row is measured', () => {
+    const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(band).toMatch(
+      /bandLiveSize\(fontScale, bandLiveRoom\(rowMiddle, height, LIVE_FOOT\)\)/u,
+    );
+    expect(band).toMatch(/allowFontScaling=\{!underTitle\}/u);
+    expect(band).toMatch(/lineHeight: liveLineHeight\(liveSize\)/u);
+    expect(band).toMatch(/underTitle && liveSize == null && styles\.waiting/u);
+  });
+});
