@@ -2430,7 +2430,7 @@
     "notYetNext": "Rouvrez ce lien à ce moment-là. Il reste le même.",
     "notYetFoot": "Ce lien n’est destiné qu’à vous. Rien n’est conservé sur cet appareil.",
     "endedTitle": "Ce lien n’est plus actif.",
-    "endedBody": "Il a cessé de fonctionner 2 heures après votre dernier service.",
+    "endedBody": "Les liens du personnel cessent de fonctionner 2 heures après votre dernier service, ou à la fin de l’événement.",
     "endedNext": "Si vous travaillez sur un autre événement, vous recevrez un nouveau lien pour celui-ci.",
     "foot": "Rien n’est conservé sur cet appareil.",
     "failed": "Cela n’a pas fonctionné. Réessayez dans un instant.",
