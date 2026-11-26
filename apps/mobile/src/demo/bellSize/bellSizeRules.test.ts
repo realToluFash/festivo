@@ -109,7 +109,7 @@ describe('the bell’s empty sentence at the accessibility sizes (sc-94028)', ()
     expect(emptySentenceSize(AX5, 5000, ROOM)).toBe(EMPTY_SENTENCE);
   });
 
-  it('never steps below AX1, where main draws it', () => {
+  it('below AX1 draws as on main, whatever its widest word', () => {
     expect(emptySentenceSize(SEVENTH, 5000, ROOM)).toBeCloseTo(EMPTY_SENTENCE * SEVENTH);
   });
 });
