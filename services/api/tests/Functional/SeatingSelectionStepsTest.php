@@ -25,6 +25,7 @@ use Psl\Iter;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Mercure\Update;
 
 final class SeatingSelectionStepsTest extends ApiTestCase
 {
@@ -58,7 +59,7 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         $first = $this->add('tables', ['shape' => 'round']);
         $second = $this->add('tables', ['shape' => 'round']);
         $third = $this->add('tables', ['shape' => 'round']);
-        $published = Iter\count(self::service(RecordingHub::class)->published);
+        $published = $this->seatingPublished();
 
         $this->step('PATCH', 'names', [
             ['id' => $first['id'], 'version' => $first['version'], 'name' => 'Table 3'],
@@ -68,7 +69,7 @@ final class SeatingSelectionStepsTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame(['Table 3', 'Table 1', 'Table 2'], $this->names());
-        self::assertSame($published + 1, Iter\count(self::service(RecordingHub::class)->published));
+        self::assertSame($published + 1, $this->seatingPublished());
     }
 
     #[Test]
@@ -248,6 +249,11 @@ final class SeatingSelectionStepsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
+    private function seatingPublished(): int
+    {
+        return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/seating']));
+    }
+
     private function step(string $method, string $path, array $items, ?User $by = null): array
     {
         return $this->as($by ?? $this->owner, $method, $this->furniture() . ('' === $path ? '' : '/' . $path), ['items' => $items]);
