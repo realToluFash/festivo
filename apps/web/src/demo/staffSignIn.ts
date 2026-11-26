@@ -3,7 +3,7 @@ import { callingCode } from '@soirely/domain';
 import { DOOR_EVENT } from './doorCode.ts';
 import { JOB, SHIFT_NAME } from './doorCheckIn.ts';
 import { type Step as RedeemStep, RESEND_FROM, DRAWN_RESEND } from './redeem.ts';
-import { LINKED, type Provider } from './providerOnly.ts';
+import { linkedIn, type Provider } from './providerOnly.ts';
 import { SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -156,13 +156,6 @@ export type LinkStart = {
   alternative?: boolean;
   providers?: readonly Provider[];
 };
-
-/** The linked providers a provider-only state draws: Google, Apple, or both. */
-export function linkedIn(state: LinkState): readonly Provider[] {
-  if (state.endsWith('-apple')) return LINKED.apple;
-
-  return state.endsWith('-both') ? LINKED.both : LINKED.google;
-}
 
 export const refusedStep = (providers: readonly Provider[]): LinkStep => ({
   kind: 'providerOnly',

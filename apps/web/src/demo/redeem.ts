@@ -11,7 +11,7 @@ import {
   normalCode,
 } from './doorCode.ts';
 import { meshFor } from '../mesh.ts';
-import { LINKED, type Provider } from './providerOnly.ts';
+import { linkedIn, type Provider } from './providerOnly.ts';
 import { numberLine, SAMPLE } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -243,13 +243,6 @@ export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 1
 export const isProviderOnly = (typed: string) =>
   typed.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '');
 
-/** The providers a provider-only state draws, or Google alone for her number typed on the event. */
-export function linkedFor(state: RedeemState): readonly Provider[] {
-  if (state.endsWith('-apple')) return LINKED.apple;
-
-  return state.endsWith('-both') ? LINKED.both : LINKED.google;
-}
-
 export function redeemStateOf(name: string | null): RedeemState {
   return REDEEM_STATES.find((one) => one === name) ?? 'enter';
 }
@@ -372,7 +365,7 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
     case 'provider-only-apple':
     case 'provider-only-both':
       return {
-        step: { kind: 'providerOnly', providers: linkedFor(state), busy: 'no' },
+        step: { kind: 'providerOnly', providers: linkedIn(state), busy: 'no' },
         name: '',
         number: '',
       };

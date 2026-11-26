@@ -6,6 +6,7 @@ import { LanguageMenu } from '../components/LanguageMenu.tsx';
 import { AppleMark, GoogleMark } from '../components/ProviderSignIn.tsx';
 import { offButton } from '../offButton.ts';
 import { type LegalLang, legalPath, legalWords } from './legal.ts';
+import { continueWith, LINKED, type Provider, providerNames } from './providerOnly.ts';
 import { SAMPLE } from './rules.ts';
 
 /** The board's page: the lockup and the header's right end, the form's column, the footer, and the way back under it. */
@@ -141,27 +142,48 @@ export function Tick({ size = 14 }: { size?: number }) {
   );
 }
 
-export function Providers({ busy, onChoose }: { busy: boolean; onChoose: (name: string) => void }) {
+/** Google, then Apple, `only` the ones an account has linked, as the product's `ProviderSignIn only` draws them. Apple is white with its outline beside Google, or black in a column of its own (sc-94849). */
+export function Providers({
+  busy,
+  onChoose,
+  only = LINKED.both,
+  apple = 'white',
+  className = 'demo-providers',
+  buttonClassName = 'demo-wide',
+}: {
+  busy: boolean;
+  onChoose: (name: string) => void;
+  only?: readonly Provider[];
+  apple?: 'white' | 'black';
+  className?: string;
+  buttonClassName?: string;
+}) {
   return (
-    <div className="demo-providers">
-      <button
-        className="button button-google demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Google')}
-      >
-        <GoogleMark />
-        <span>Continue with Google</span>
-      </button>
-      <button
-        className="button demo-apple demo-wide"
-        type="button"
-        {...offButton(busy, { dim: false })}
-        onClick={() => onChoose('Apple')}
-      >
-        <AppleMark onLight />
-        <span>Continue with Apple</span>
-      </button>
+    <div className={className}>
+      {only.includes('google') && (
+        <button
+          className={`button button-google ${buttonClassName}`}
+          type="button"
+          aria-busy={busy || undefined}
+          {...offButton(busy, { dim: false })}
+          onClick={() => onChoose(providerNames(['google']))}
+        >
+          <GoogleMark />
+          <span>{continueWith('google')}</span>
+        </button>
+      )}
+      {only.includes('apple') && (
+        <button
+          className={`button ${apple === 'white' ? 'demo-apple' : 'button-apple'} ${buttonClassName}`}
+          type="button"
+          aria-busy={busy || undefined}
+          {...offButton(busy, { dim: false })}
+          onClick={() => onChoose(providerNames(['apple']))}
+        >
+          <AppleMark onLight={apple === 'white'} />
+          <span>{continueWith('apple')}</span>
+        </button>
+      )}
     </div>
   );
 }

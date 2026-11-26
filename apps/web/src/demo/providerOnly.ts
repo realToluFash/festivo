@@ -12,6 +12,13 @@ export const LINKED = {
   both: ['google', 'apple'],
 } as const satisfies Record<string, readonly Provider[]>;
 
+/** The linked providers a provider-only state draws: `-apple` Apple, `-both` both, else Google. */
+export function linkedIn(state: string): readonly Provider[] {
+  if (state.endsWith('-apple')) return LINKED.apple;
+
+  return state.endsWith('-both') ? LINKED.both : LINKED.google;
+}
+
 export const providerOnlyTitle = (organisation: string) =>
   `${organisation} signs in with Google or Apple only`;
 

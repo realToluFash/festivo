@@ -112,11 +112,11 @@ function linkedIn(state: RedeemState): readonly Provider[] {
   return state.endsWith('-both') ? LINKED.both : LINKED.google;
 }
 
-/** Her number typed on the event finds Google linked. */
-export function providersFor(flow: Flow): readonly Provider[] | null {
-  if (flow.providers != null) return flow.providers;
+const isBisi = (number: string) => number.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '');
 
-  return flow.number.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '') ? LINKED.google : null;
+/** Only her number is refused: Google linked, or what her deep-linked state linked. Any other number signs in, whatever a state left behind. */
+export function providersFor(flow: Flow): readonly Provider[] | null {
+  return isBisi(flow.number) ? (flow.providers ?? LINKED.google) : null;
 }
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {

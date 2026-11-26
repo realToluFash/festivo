@@ -561,6 +561,10 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
   );
 }
 
+// Apple then Google on iPhone, Google then Apple on Android (sc-29076), whatever order the account lists them in.
+const IOS_ORDER: readonly Provider[] = ['apple', 'google'];
+const ANDROID_ORDER: readonly Provider[] = ['google', 'apple'];
+
 const PROVIDER_LABELS: Record<Provider, string> = {
   google: 'Continue with Google',
   apple: 'Continue with Apple',
@@ -570,7 +574,9 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 function ProviderOnlyStep({ flow, go }: { flow: Flow; go: Go }) {
   const [busy, setBusy] = useState(false);
   const providers = flow.providers ?? [];
-  const ordered = Platform.OS === 'android' ? providers : [...providers].reverse();
+  const ordered = (Platform.OS === 'android' ? ANDROID_ORDER : IOS_ORDER).filter((provider) =>
+    providers.includes(provider),
+  );
 
   useEffect(() => {
     if (!busy) return;

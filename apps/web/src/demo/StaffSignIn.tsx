@@ -5,7 +5,7 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, HOLD_MS } from './doorCode.ts';
 import { CodeStep, Field, Primary, Says, SignOutLine, Title } from './Redeem.tsx';
-import { ProviderOnlyButtons } from './ProviderOnly.tsx';
+import { Providers } from './BoardPage.tsx';
 import { PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
 import { MESH, phoneCodeLine, rightPhoneCode } from './redeem.ts';
 import { TRIES } from './rules.ts';
@@ -197,8 +197,11 @@ function LinkPage({ state }: { state: LinkState }) {
             <Title titleRef={title}>{providerOnlyTitle(PROVIDER_ORG)}</Title>
             <LinkCard />
             <p className="ss-told">{providerOnlyLine(PROVIDER_ORG, step.providers)}</p>
-            <ProviderOnlyButtons
-              providers={step.providers}
+            <Providers
+              only={step.providers}
+              apple="black"
+              className="rd-providers"
+              buttonClassName="rd-provider"
               busy={step.busy !== 'no'}
               onChoose={() => setStep({ ...step, busy: 'busy' })}
             />

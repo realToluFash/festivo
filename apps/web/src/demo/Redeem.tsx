@@ -14,8 +14,8 @@ import { Brand } from '../components/Brand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { BUSY_MS, DOOR_EVENT, HOLD_MS } from './doorCode.ts';
 import { Glyph } from '../components/Glyph.tsx';
-import { ProviderOnlyButtons } from './ProviderOnly.tsx';
-import { PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
+import { Providers } from './BoardPage.tsx';
+import { linkedIn, PROVIDER_ORG, providerOnlyLine, providerOnlyTitle } from './providerOnly.ts';
 import {
   type Busy,
   CALLING,
@@ -43,7 +43,6 @@ import {
   redeemStateOf,
   isProviderOnly,
   isSecondNumber,
-  linkedFor,
   rightPhoneCode,
   sendNewIn,
   shownNumber,
@@ -173,7 +172,7 @@ function RedeemPage({ state }: { state: RedeemState }) {
           // Refused as her password is: no session, no use of the code, and what she typed forgotten (sc-94849).
           setName('');
           setNumber('');
-          go({ kind: 'providerOnly', providers: linkedFor(state), busy: 'no' });
+          go({ kind: 'providerOnly', providers: linkedIn(state), busy: 'no' });
         } else go({ kind: 'in', name, checks: true, held: true });
         return;
       }
@@ -304,8 +303,11 @@ function RedeemPage({ state }: { state: RedeemState }) {
             <Tile />
             <Title titleRef={title}>{providerOnlyTitle(PROVIDER_ORG)}</Title>
             <p className="rd-intro">{providerOnlyLine(PROVIDER_ORG, step.providers)}</p>
-            <ProviderOnlyButtons
-              providers={step.providers}
+            <Providers
+              only={step.providers}
+              apple="black"
+              className="rd-providers"
+              buttonClassName="rd-provider"
               busy={step.busy !== 'no'}
               onChoose={() => setStep({ ...step, busy: 'busy' })}
             />

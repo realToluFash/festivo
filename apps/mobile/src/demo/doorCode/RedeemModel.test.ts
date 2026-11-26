@@ -26,6 +26,7 @@ import {
   afterPhoneCode,
   flowAt,
   freshFlow,
+  JOAO,
   phoneTitle,
   REDEEM_STATES,
   type RedeemStep,
@@ -234,6 +235,12 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
       providers: ['google'],
     });
     expect(flowAt('code-provider-only').name).toBe('Bisi');
+  });
+
+  it('signs in any other number typed after a provider-only state, its providers left behind (sc-94849)', () => {
+    const joao = { ...flowAt('code-provider-only-apple'), ...JOAO, step: 'code' as const };
+    expect(afterPhoneCode(joao)).toMatchObject({ step: 'in', who: JOAO.name });
+    expect(afterPhoneCode({ ...flowAt('code-provider-only-both'), ...JOAO }).step).toBe('in');
   });
 
   it('names the member’s organisation and the linked providers, and no password', () => {
