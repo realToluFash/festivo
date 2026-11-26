@@ -129,6 +129,10 @@ final readonly class StaffLinks
             return;
         }
 
+        if (StaffLinkStatus::Opened === $entry->getLinkStatus() && !$this->briefingTracker->anOpenMoves($entry)) {
+            return;
+        }
+
         $moved = $this->entityManager->wrapInTransaction(function () use ($entry): bool {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
             $opened = StaffLinkStatus::Opened !== $entry->getLinkStatus();

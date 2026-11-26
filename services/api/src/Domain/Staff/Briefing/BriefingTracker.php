@@ -35,18 +35,30 @@ final readonly class BriefingTracker
     /** An open reads Read once the briefing was handed out, by a text or by a copy, marked or not; a copy from the Link column alone leaves it Not sent. The caller holds the entry's lock and flushes. Answers whether anything moved. */
     public function opened(StaffMember $entry): bool
     {
-        if (StaffBriefStatus::None === $entry->getBriefStatus() && null === $entry->getBriefCopyAt()) {
-            return false;
-        }
+        $print = $this->printAnOpenReads($entry);
 
-        $print = $this->briefingPrinter->printOf($entry);
-
-        if (StaffBriefStatus::Read === $entry->getBriefStatus() && $print === $entry->getBriefPrint()) {
+        if (null === $print) {
             return false;
         }
 
         $entry->setBrief(StaffBriefStatus::Read, $print);
 
         return true;
+    }
+
+    public function anOpenMoves(StaffMember $entry): bool
+    {
+        return null !== $this->printAnOpenReads($entry);
+    }
+
+    private function printAnOpenReads(StaffMember $entry): ?string
+    {
+        if (StaffBriefStatus::None === $entry->getBriefStatus() && null === $entry->getBriefCopyAt()) {
+            return null;
+        }
+
+        $print = $this->briefingPrinter->printOf($entry);
+
+        return StaffBriefStatus::Read === $entry->getBriefStatus() && $print === $entry->getBriefPrint() ? null : $print;
     }
 }
