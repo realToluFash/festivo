@@ -54,11 +54,7 @@ final readonly class StaffLinkGrants
         return $live;
     }
 
-    /**
-     * A join code that put the account on its shift opens that entry's night (sc-234), over the entry's window, at the code's level: the job adds none, and no grant comes with it.
-     *
-     * @return list<array{entry: StaffMember, until: DateTimeImmutable, level: EventRole}>
-     */
+    /** @return list<array{entry: StaffMember, until: DateTimeImmutable, level: EventRole}> a join code's shift opens its night at the code's level, never the job's (sc-234) */
     public function byCode(User $user, Uuid $eventId): array
     {
         $person = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());

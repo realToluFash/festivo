@@ -340,7 +340,7 @@ final class ClockingTest extends ApiTestCase
         $shiftId = $this->shiftOf($this->grace);
         $made = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_check_in', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
         self::assertSame(422, $this->statusCode(), 'a level other than the shift job\'s');
-        self::assertSame(['role'], $this->fields($made));
+        self::assertSame(['role'], $this->fields($made['violations'] ?? null));
 
         $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'run']);
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
@@ -352,7 +352,7 @@ final class ClockingTest extends ApiTestCase
         self::mockTime(new DateTimeImmutable('2027-03-07T00:00:00Z'));
         $over = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_work_floor', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:30:00+00:00', 'shiftId' => $shiftId]);
         self::assertSame(422, $this->statusCode(), 'at its scheduled end');
-        self::assertSame(['shiftId'], $this->fields($over));
+        self::assertSame(['shiftId'], $this->fields($over['violations'] ?? null));
     }
 
     #[Test]
@@ -554,14 +554,10 @@ final class ClockingTest extends ApiTestCase
         return Type\shape(['code' => Type\string()], true)->coerce($made['doorCode'] ?? null)['code'];
     }
 
-    /**
-     * @param array<string, mixed> $refused
-     *
-     * @return list<string>
-     */
-    private function fields(array $refused): array
+    /** @return list<string> */
+    private function fields(mixed $violations): array
     {
-        return Vec\map(Type\vec(Type\shape(['propertyPath' => Type\string()], true))->coerce($refused['violations'] ?? null), static fn (array $one): string => $one['propertyPath']);
+        return Vec\map(Type\vec(Type\shape(['propertyPath' => Type\string()], true))->coerce($violations), static fn (array $one): string => $one['propertyPath']);
     }
 
     private function codes(): string
