@@ -216,6 +216,20 @@ function CardFoot({
 }) {
   const { t } = useTranslation();
 
+  if (step.kind === 'none')
+    return (
+      <View style={[styles.foot, styles.unseen]} pointerEvents="none" {...UNSEEN}>
+        <CardFoot
+          step={step.keeps}
+          takes={takes}
+          onStep={() => undefined}
+          stepRef={undefined}
+          sending={null}
+          testID={`${testID}.unseen`}
+        />
+      </View>
+    );
+
   if (step.kind === 'next')
     return (
       <View
@@ -371,8 +385,14 @@ export function EventCard({
   );
 }
 
+const UNSEEN = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
 const styles = StyleSheet.create({
   white: { color: tokens.colorInkOnDark },
+  unseen: { opacity: 0 },
   accent: { color: tokens.colorAccent },
   photoMark: { position: 'absolute', right: 22, top: 18, opacity: 0.5 },
   pieces: { position: 'absolute', top: 0, right: 0, height: 200 },

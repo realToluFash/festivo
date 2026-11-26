@@ -83,8 +83,22 @@ describe('cardStep', () => {
     expect(cardStep(unread('happening_now'), NOW, 'en', t)).toBeNull();
   });
 
-  it('offers Duplicate once a live event has no milestone left', () => {
-    expect(cardStep(shownEvent(listEventOf(EVENT), 'live'), NOW, 'en', t)).toMatchObject({
+  it('offers no step while an event is on with no milestone left, in the room its Duplicate takes', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'happening_now'), NOW, 'en', t)).toEqual({
+      kind: 'none',
+      keeps: {
+        kind: 'button',
+        line: 'timeline.finished',
+        label: 'eventDuplicate.open',
+        action: 'duplicate',
+      },
+    });
+  });
+
+  it('offers Duplicate once it is over', () => {
+    expect(cardStep(shownEvent(listEventOf(EVENT), 'finished'), NOW, 'en', t)).toMatchObject({
+      kind: 'button',
+      line: 'timeline.finished',
       action: 'duplicate',
     });
   });
