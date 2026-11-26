@@ -26,7 +26,6 @@ export type HoursMark = 'not_clocked_out' | 'no_attendance';
 
 export type HoursLive = 'in' | 'not_yet' | 'out' | 'later';
 
-/** One time that now differs from what was recorded: `was` is null when nothing was. */
 export interface HoursCorrection {
   field: 'in' | 'out';
   was: string | null;
@@ -38,7 +37,6 @@ export interface HoursRow {
   shiftId: string;
   staffId: string;
   name: string;
-  /** Removed from the roster after clocking in on this shift: their times stay, and a correction needs the clock-out. */
   removed: boolean;
   job: string;
   startsAt: string;
