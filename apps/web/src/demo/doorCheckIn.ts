@@ -164,7 +164,7 @@ export const CW = {
   },
   linkEnded: {
     title: 'This link has ended.',
-    body: 'It stopped working 2 hours after your last shift.',
+    body: 'Staff links stop working 2 hours after your last shift, or when the event ends.',
     next: 'If you are working another event, you will get a new link for it.',
     foot: 'Nothing stays on this device.',
   },
