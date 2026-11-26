@@ -51,6 +51,31 @@ export const BELL_SIZE_BOARDS: readonly BellSizeBoard[] = [
     what: 'As on main: the heading at the start, Mark all read at the end of one row',
     href: '/demo/bell-size?size=default&lang=en',
   },
+  {
+    title: 'Nothing yet · AX5, French',
+    what: 'The empty sentence whole: modifications, événements and s’afficheront never broken, stepped down only for its widest word, the bell tile on its own line above it; Marquer greyed. Turn the iPad on its side: the same',
+    href: '/demo/bell-size?size=ax5&lang=fr&read=none',
+  },
+  {
+    title: 'Nothing yet · AX5, Spanish',
+    what: 'The empty sentence whole, the tile above it, the panel scrolling to Notification settings at its foot. Turn the iPad on its side: the same',
+    href: '/demo/bell-size?size=ax5&lang=es&read=none',
+  },
+  {
+    title: 'Nothing yet · AX1, English',
+    what: 'The empty sentence grown and whole, the tile beside it while its widest word fits beside it',
+    href: '/demo/bell-size?size=ax1&lang=en&read=none',
+  },
+  {
+    title: 'Nothing yet · AX5, Portuguese',
+    what: 'The empty sentence whole at the largest size its widest word allows',
+    href: '/demo/bell-size?size=ax5&lang=pt&read=none',
+  },
+  {
+    title: 'Nothing yet · default size',
+    what: 'As on main: the tile beside the sentence, at 15',
+    href: '/demo/bell-size?size=default&lang=en&read=none',
+  },
 ];
 
 /** The phone's own bell screen at the accessibility sizes (sc-92959); open each on the iPhone 17 Pro, upright. */
@@ -84,5 +109,15 @@ export const PHONE_BELL_SIZE_BOARDS: readonly BellSizeBoard[] = [
     title: 'Notifications · default size',
     what: 'As on main: the title at 30, the refreshing mark beside it when shown',
     href: '/demo/bell-size?size=default&lang=en',
+  },
+  {
+    title: 'Nothing yet · AX5, French',
+    what: 'The empty sentence whole by the panel’s rule, the bell tile above it',
+    href: '/demo/bell-size?size=ax5&lang=fr&read=none',
+  },
+  {
+    title: 'Nothing yet · AX5, Spanish',
+    what: 'The empty sentence whole by the panel’s rule, the bell tile above it',
+    href: '/demo/bell-size?size=ax5&lang=es&read=none',
   },
 ];
