@@ -12,6 +12,7 @@ use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventPhase;
 use App\Enum\StaffBriefStatus;
 use App\Enum\StaffLinkStatus;
 use App\Http\Exception\ApiException;
@@ -53,11 +54,16 @@ final readonly class Briefings
         return $url;
     }
 
-    /** Refused 409 `conflict` with no briefing copy to mark. */
+    /** Refused 409 `conflict` with no briefing copy to mark, and 409 `event_concluded` once the event is Finished, when no briefing goes (sc-4333). */
     public function markSent(StaffMember $entry, User $by): void
     {
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
+            $event = $entry->getEvent();
+
+            if (EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now())) {
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans('staff.briefing_concluded'));
+            }
 
             if (null === $entry->getBriefCopyAt()) {
                 throw new ApiException(ErrorCode::Conflict, $this->translator->trans('staff.briefing_not_copied'));
