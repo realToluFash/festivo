@@ -1,5 +1,5 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, countLine, replyDate } from '@soirely/domain';
+import { REPLY_KEY, companionShown, countLine, doorSeatLine, replyDate } from '@soirely/domain';
 import { type BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -55,6 +55,8 @@ interface Person {
   id: string;
   name: string;
   companion: boolean;
+  /** Their seat or "No seat yet", under the name; null on an event nobody is seated on (sc-60684). */
+  seat: string | null;
   line: string;
   mark: 'arrived' | ReturnType<typeof markOf>;
   arrived: boolean;
@@ -196,9 +198,10 @@ function useDoorList(eventId: string, by: string | null) {
 function peopleOf(
   t: ReturnType<typeof useTranslation>['t'],
   read: Extract<ScanRead, { kind: 'guest' }>,
-  timeZone: string,
+  checkIn: CheckIn,
   twice: boolean,
 ): Person[] {
+  const { timeZone } = checkIn;
   const arrivedLine = (arrival: { at: string; by: string | null }) =>
     arrival.by == null
       ? t('checkIn.arrivedAt', { time: clockOf(arrival.at) })
@@ -223,6 +226,7 @@ function peopleOf(
       id: guest.id,
       name: guest.fullName,
       companion: false,
+      seat: doorSeatLine(t, checkIn, guest.seat),
       line: hostLine,
       mark: guest.arrival != null ? 'arrived' : markOf(guest.reply),
       arrived: guest.arrival != null,
@@ -231,6 +235,7 @@ function peopleOf(
       id: one.id,
       name: companionShown(t, guest.fullName, names, at),
       companion: true,
+      seat: doorSeatLine(t, checkIn, one.seat),
       line:
         one.arrival != null
           ? t('checkIn.scan.companionLine', { line: arrivedLine(one.arrival) })
@@ -245,7 +250,7 @@ function peopleOf(
 
 function saidOf(people: readonly Person[], twice: boolean, nothingNew: string): string {
   return people
-    .map((one) => `${one.name}, ${one.line}`)
+    .map((one) => [one.name, one.seat, one.line].filter((part) => part != null).join(', '))
     .concat(twice ? [nothingNew] : [])
     .join('. ');
 }
@@ -374,6 +379,16 @@ function Result({
                 <Text size={16} weight="semibold" style={styles.compName}>
                   {p.name}
                 </Text>
+                {p.seat != null && (
+                  <Text
+                    size={14}
+                    weight="semibold"
+                    style={styles.seat}
+                    testID={`scan.seat.${p.id}`}
+                  >
+                    {p.seat}
+                  </Text>
+                )}
                 <Text size={14} weight="medium" style={[styles.secondary, styles.figures]}>
                   {p.line}
                 </Text>
@@ -389,6 +404,16 @@ function Result({
                 <Text size={20} weight="bold" accessibilityRole="header" style={styles.name}>
                   {p.name}
                 </Text>
+                {p.seat != null && (
+                  <Text
+                    size={15}
+                    weight="semibold"
+                    style={styles.seat}
+                    testID={`scan.seat.${p.id}`}
+                  >
+                    {p.seat}
+                  </Text>
+                )}
                 <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
                   {p.line}
                 </Text>
@@ -561,7 +586,9 @@ export function ScannerView({
         : rescanned(checkIn, shownScan.guestId);
   const people =
     read?.kind === 'guest' && shownScan?.kind === 'guest'
-      ? peopleOf(t, read, checkIn?.timeZone ?? 'UTC', shownScan.twice)
+      ? checkIn == null
+        ? null
+        : peopleOf(t, read, checkIn, shownScan.twice)
       : null;
 
   const onScanned = ({ data }: BarcodeScanningResult) => {
@@ -577,7 +604,7 @@ export function ScannerView({
       }
       const twice = found.arrived != null;
       setShownScan({ kind: 'guest', guestId: found.guest.id, twice });
-      tell(saidOf(peopleOf(t, found, checkIn.timeZone, twice), twice, nothingNew));
+      tell(saidOf(peopleOf(t, found, checkIn, twice), twice, nothingNew));
     };
     if (!isCheckInCode(data)) {
       answer({ kind: 'notOnList' });
@@ -903,6 +930,7 @@ const styles = StyleSheet.create({
   hostLead: { width: 28, alignItems: 'center', alignSelf: 'flex-start', paddingTop: 2 },
   name: { lineHeight: 25, letterSpacing: 20 * -0.01, marginBottom: 4 },
   compName: { lineHeight: 16 * 1.3, marginBottom: 3 },
+  seat: { lineHeight: 15 * 1.35, marginBottom: 2 },
   indent: { paddingLeft: 40 },
   info: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
   strip: {

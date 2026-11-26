@@ -3208,6 +3208,9 @@
     "change": "Change your main email address"
   },
   "checkIn": {
+    "noSeat": "No seat yet",
+    "seatInRow": "Row {{row}}, seat {{seat}}",
+    "seatPlaced": "{{place}} · {{section}}",
     "title": "Check-in",
     "back": "Guests",
     "open": "Open check-in",

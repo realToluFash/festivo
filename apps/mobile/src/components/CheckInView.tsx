@@ -489,7 +489,25 @@ function DoorLine({
     <View style={row.companion && styles.indent}>
       <Row
         title={row.name}
-        line={line}
+        line={row.seat == null ? line : undefined}
+        below={
+          row.seat == null ? undefined : (
+            <>
+              <Text
+                size={14}
+                weight="semibold"
+                accessible={false}
+                style={styles.seat}
+                testID={`checkIn.seat.${row.id}`}
+              >
+                {row.seat}
+              </Text>
+              <Text size={14} weight="medium" accessible={false} style={styles.below}>
+                {line}
+              </Text>
+            </>
+          )
+        }
         lead={
           <MarkSlot
             kind={
@@ -499,7 +517,7 @@ function DoorLine({
         }
         trail={trail}
         pad={10}
-        accessibilityLabel={`${row.name}. ${line}`}
+        accessibilityLabel={[row.name, row.seat, line].filter((one) => one != null).join('. ')}
         testID={`checkIn.row.${row.id}`}
       />
       {failed && (
@@ -665,6 +683,8 @@ const styles = StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   figures: { fontVariant: ['tabular-nums'] },
   secondary: { color: tokens.colorInkSecondary },
+  seat: { lineHeight: 14 * 1.4 },
+  below: { color: tokens.colorInkSecondary, lineHeight: 14 * 1.4 },
   accent: { color: tokens.colorAccentText },
   pressed: { opacity: tokens.opacityPressed },
   tight: { gap: 10, alignItems: 'flex-start' },
