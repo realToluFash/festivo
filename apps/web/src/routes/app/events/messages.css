@@ -1666,3 +1666,20 @@ textarea.mg-field::placeholder {
 .mgt-ask-question {
   white-space: normal;
 }
+
+/* At a phone To's popovers hang from the whole To row rather than the chip, so they fit the 320 px reflow (WCAG 2.2 1.4.10). */
+@media (width <= 40rem) {
+  .mg-to-row {
+    position: relative;
+  }
+
+  .mg-to-at {
+    position: static;
+  }
+
+  .mg-to-row .mg-to-pop {
+    left: 0;
+    width: auto;
+    right: 0;
+  }
+}

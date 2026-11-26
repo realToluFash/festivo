@@ -262,6 +262,23 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(sent.some(({ line }) => line.startsWith('POST'))).toBe(false);
   });
 
+  it('counts every guest on the waiting composer’s To', async () => {
+    onMessages();
+
+    expect(await screen.findByRole('button', { name: 'All guests · 2' })).toBeTruthy();
+  });
+
+  it('counts nobody on the waiting composer’s To when the guests fail to load', async () => {
+    const sent = onMessages({
+      'GET /api/events/ev_1/messages/guests': () => new Response(null, { status: 500 }),
+    });
+
+    await waitFor(() =>
+      expect(sent.some(({ line }) => line === 'GET /api/events/ev_1/messages/guests')).toBe(true),
+    );
+    expect(await screen.findByRole('button', { name: 'All guests' })).toBeTruthy();
+  });
+
   it('threads a follow-up under its message, and writes the next one into the same conversation', async () => {
     const FOLLOW = {
       ...SENT,
@@ -269,6 +286,7 @@ describe('Messages at a desk (sc-3942)', () => {
       firstLine: 'Parking is behind the hall',
       message: 'Parking is behind the hall',
       sentAt: '2030-11-10T20:05:00+01:00',
+      audience: 'chosen',
       sending: true,
       deliveries: [{ ...SENT.deliveries[0], state: 'queued' }],
       follows: 'm_1' as string | null,
@@ -290,7 +308,9 @@ describe('Messages at a desk (sc-3942)', () => {
 
     const rows = await screen.findAllByRole('button', { name: /Dinner starts at seven/ });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.getAttribute('aria-label')).toMatch(/^Dinner starts at seven, Follow-up · /);
+    expect(rows[0]?.getAttribute('aria-label')).toMatch(
+      /^Dinner starts at seven, Follow-up · To all guests · /,
+    );
 
     fireEvent.click(rows[0] as HTMLElement);
     expect(await screen.findByText('Parking is behind the hall')).toBeTruthy();
@@ -476,6 +496,7 @@ describe('Who gets it (sc-3957)', () => {
 
     add('Is in group', 'Work');
     expect(screen.getByText('Counting…')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Guests who… · 1 guest/ })).toBeTruthy();
     expect(await screen.findByText('Nobody matches')).toBeTruthy();
     expect(screen.getByText('Changing a condition here changes this message only.')).toBeTruthy();
 

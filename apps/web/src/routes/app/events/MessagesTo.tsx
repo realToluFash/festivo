@@ -7,7 +7,15 @@ import type {
 } from '@soirely/api-client';
 import { numberFormat, sameGroup } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { type KeyboardEvent, type RefObject, useCallback, useEffect, useId, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -38,6 +46,8 @@ export type Groups = ReadonlyMap<string, { name: string; deleted: boolean }>;
 export interface Counted {
   match: AudienceMatch | null;
   counting: boolean;
+  /** The last count settled, kept on the To chip while the next one is counted. */
+  last: number | null;
 }
 
 /** The live count for a set of conditions, asked again a moment after they stop changing. */
@@ -65,9 +75,13 @@ export function useAudienceMatch(
     };
   }, [eventId, key]);
 
-  if (key == null) return { match: null, counting: false };
+  if (key == null) return { match: null, counting: false, last: null };
 
-  return got?.key === key ? { match: got.match, counting: false } : { match: null, counting: true };
+  const last = got?.match?.count ?? null;
+
+  return got?.key === key
+    ? { match: got.match, counting: false, last }
+    : { match: null, counting: true, last };
 }
 
 function conditionsKey(conditions: readonly GuestCondition[]): string {
@@ -168,7 +182,7 @@ export function conditionsChip(
   counted: Counted,
   t: TFunction,
 ): string {
-  const count = counted.counting ? null : (counted.match?.count ?? null);
+  const count = counted.counting ? counted.last : (counted.match?.count ?? null);
   const kept = !changedFrom(who, saved);
 
   if (kept && (who.pick === 'coming' || who.pick === 'notReplied')) {
@@ -454,7 +468,14 @@ export function WhoBlock({
   const [seeing, setSeeing] = useState(false);
   const [saveRefused, setSaveRefused] = useState(false);
   const [saving, setSaving] = useState<{ name: string; wrong: string | null } | null>(null);
+  const naming = saving == null ? null : (saving.wrong ?? '');
+  const block = useRef<HTMLDivElement>(null);
   const ids = useId();
+
+  useEffect(() => {
+    if (saveRefused || naming != null)
+      block.current?.lastElementChild?.scrollIntoView?.({ block: 'nearest' });
+  }, [saveRefused, naming]);
   const conditions = who.conditions;
   const keys = new Set(conditions.map(conditionKey));
   const from = savedOf(book.audiences, who.pick);
@@ -538,7 +559,7 @@ export function WhoBlock({
   }
 
   return (
-    <div className="mg-who-block">
+    <div ref={block} className="mg-who-block">
       {from != null && (
         <p className="mg-pop-line">{t('eventMessages.fromSaved', { name: from.name })}</p>
       )}

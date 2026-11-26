@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { clearOfWords, pieceBounds, piecesClearOf, type Piece } from '../kit/confettiClearance.ts';
+
 const cover = readFileSync(join('src', 'components', 'TodayCover.tsx'), 'utf8');
 const frame = readFileSync(join('src', 'components', 'AppFrame.tsx'), 'utf8');
 const tabLabel = readFileSync(join('src', 'layout', 'tabLabel.ts'), 'utf8');
@@ -229,5 +231,51 @@ describe('the phone band’s title at the largest sizes (sc-92248)', () => {
     const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
     expect(band).toMatch(/setTileEnd\(layout\.x \+ layout\.width\)/u);
     expect(band).toMatch(/setSearchStart\(layout\.x\)/u);
+  });
+});
+
+describe('the phone band’s live line under the title at the largest sizes (sc-92248)', () => {
+  it('draws from AX1 at the size its line fits under the title’s row, hidden until the row is measured', () => {
+    const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(band).toMatch(
+      /bandLiveSize\(fontScale, bandLiveRoom\(rowMiddle, height, LIVE_FOOT\)\)/u,
+    );
+    expect(band).toMatch(/allowFontScaling=\{!underTitle\}/u);
+    expect(band).toMatch(/lineHeight: liveLineHeight\(liveSize\)/u);
+    expect(band).toMatch(/underTitle && liveSize == null && styles\.waiting/u);
+  });
+});
+
+describe('the phone band’s confetti clear of the title at the largest sizes (sc-92248)', () => {
+  it('from AX1 draws only the pieces 8 clear of the title, and none until the title is measured at its fitted size', () => {
+    const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(band).toMatch(
+      /words=\{underTitle \? \(titleOnBand == null \? null : \[titleOnBand\]\) : undefined\}/u,
+    );
+    expect(band).toMatch(/y: rowAt\.y - top \+ titleBox\.y/u);
+    expect(band).toMatch(/onTitle=\{setTitleBox\}/u);
+
+    const text = /function BandTitleText\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(text).toMatch(/const ready = large && fitted != null && text\?\.size === drawn;/u);
+    expect(text).toMatch(/setText\(\{ size: drawn, box: layout \}\)/u);
+  });
+});
+
+describe('the phone band’s pieces against a French title at AX1 (sc-92248)', () => {
+  const literal =
+    /const BAND_PIECES: readonly Piece\[\] = (\[[\s\S]*?\]);\n/u.exec(cover)?.[1] ?? '[]';
+  const pieces = JSON.parse(literal.replaceAll("'", '"').replace(/,\s*\]$/u, ']')) as Piece[];
+  const band = { width: 402, height: 56 };
+  const aujourdhui = { x: 116, y: 2, width: 170, height: 44 };
+
+  it('leaves out the sun and white pieces within 8 of the title, and keeps the rose', () => {
+    expect(piecesClearOf(pieces, band, 1, [aujourdhui]).map((piece) => piece[5])).toEqual(['rose']);
+  });
+
+  it('draws no piece within 8 of the title', () => {
+    for (const [x, y, shape, size, turn] of piecesClearOf(pieces, band, 1, [aujourdhui]))
+      expect(clearOfWords(pieceBounds({ x, y, shape, size, turn }, band, 1), aujourdhui)).toBe(
+        true,
+      );
   });
 });

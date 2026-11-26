@@ -108,6 +108,8 @@ interface Desk {
   event: OrganisationEvent;
   manage: boolean;
   addresses: boolean;
+  guests: PickableGuest[] | null;
+  guestsFailed: boolean;
   whyOff: string | undefined;
   focus: (key: string) => void;
   say: (words: string) => void;
@@ -130,6 +132,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
   const [draftBook, setDraftBook] = useState<AudienceBook>(NO_BOOK);
   const [ask, setAsk] = useState(0);
+  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const [guestsFailed, setGuestsFailed] = useState(false);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(null);
@@ -151,6 +155,28 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, ask]);
+
+  useEffect(() => {
+    if (!manage) return;
+    let current = true;
+
+    api.guestMessageGuests(event.id).then(
+      (all) => {
+        if (!current) return;
+        setGuests(all);
+        setGuestsFailed(false);
+      },
+      () => {
+        if (!current) return;
+        setGuests((was) => was ?? []);
+        setGuestsFailed(true);
+      },
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [manage, event.id, ask]);
 
   const topics = useMemo(() => [realtimeTopic('EventMessages', event.id)], [event.id]);
   const again = useCallback(() => setAsk((n) => n + 1), []);
@@ -182,6 +208,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     event,
     manage,
     addresses,
+    guests,
+    guestsFailed,
     whyOff: closed == null ? undefined : whyId,
     focus,
     say,
@@ -427,7 +455,7 @@ function Rows({
           ...(conversation.messages.length > 1 && message.sending
             ? [t('eventMessages.followUp')]
             : []),
-          audienceWords(message, t),
+          audienceWords(first, t),
           message.sentBy,
           t('eventMessages.email'),
           message.sending
@@ -521,13 +549,19 @@ function Idle({
       {desk.manage && (
         <MiniComposer
           desk={desk}
-          chip={t('eventMessages.allGuests')}
+          chip={allGuestsChip(t, desk.guestsFailed ? null : desk.guests)}
           placeholder={t('eventMessages.writeToGuests')}
           onWrite={onWrite}
         />
       )}
     </div>
   );
+}
+
+function allGuestsChip(t: TFunction, guests: readonly PickableGuest[] | null): string {
+  return guests == null
+    ? t('eventMessages.allGuests')
+    : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`;
 }
 
 /** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
@@ -657,7 +691,7 @@ function ComposePane({
   const [wrong, setWrong] = useState<Partial<Record<Field, string>>>({});
   const [refused, setRefused] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'write' });
-  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const guests = desk.guests;
   const [book, setBook] = useState<AudienceBook>(NO_BOOK);
   useEffect(() => onBook(book), [book, onBook]);
   const counted = useAudienceMatch(
@@ -677,10 +711,6 @@ function ComposePane({
   useEffect(() => {
     let current = true;
 
-    api.guestMessageGuests(desk.event.id).then(
-      (all) => current && setGuests(all),
-      () => current && setGuests([]),
-    );
     api.audienceBook(desk.event.id).then(
       (found) => current && setBook(found),
       () => undefined,
@@ -854,9 +884,7 @@ function ComposePane({
     who.kind === 'conditions'
       ? conditionsChip(who, book.audiences, counted, t)
       : who.kind === 'all'
-        ? guests == null
-          ? t('eventMessages.allGuests')
-          : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`
+        ? allGuestsChip(t, desk.guestsFailed ? null : guests)
         : chosen.length === 0
           ? t('eventMessages.chooseGuests')
           : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
@@ -1040,7 +1068,6 @@ function ComposePane({
                 {t('eventMessages.preview')}
               </button>
             )}
-            <span className="today-grow" />
             <span className="mg-goes-page">{t('eventMessages.goesOnTheirPage')}</span>
             <button
               type="submit"
