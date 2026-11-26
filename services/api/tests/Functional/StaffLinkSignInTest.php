@@ -301,6 +301,19 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMemberSignedInByTheirLinkKeepsTheirOrganisationRoleAndIsNotListedAsOutside(): void
+    {
+        $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
+        $token = $this->link($this->ada);
+        $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        self::assertNull($this->outsideRole($this->owner));
+        $this->as($this->owner, 'GET', '/api/events/' . $this->eventId);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
     public function aJobAboveCheckingInStillHoldsNoMoreThanReading(): void
     {
         $this->jobAccess('run');

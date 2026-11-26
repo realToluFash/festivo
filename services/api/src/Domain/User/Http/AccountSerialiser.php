@@ -11,6 +11,7 @@ use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\User\Onboarding\AccountCompleteness;
 use App\Entity\EmailAddress;
 use App\Entity\EventPerson;
+use App\Entity\Membership;
 use App\Entity\PhoneNumber;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
@@ -40,8 +41,16 @@ final readonly class AccountSerialiser
     public function serialise(User $user): array
     {
         $memberships = $this->membershipRepository->findActiveFor($user);
-        $outside = $this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now());
-        $staffed = $this->staffLinkGrants->live($user);
+        $memberOf = Vec\map($memberships, static fn (Membership $membership): string => $membership->getOrganisation()->getId()->toRfc4122());
+        // A member's own organisation role wins over any grant from outside on its events (sc-94843).
+        $outside = Vec\filter(
+            $this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now()),
+            static fn (EventPerson $person): bool => !Iter\contains($memberOf, $person->getEvent()->getOrganisation()->getId()->toRfc4122()),
+        );
+        $staffed = Vec\filter(
+            $this->staffLinkGrants->live($user),
+            static fn (array $grant): bool => !Iter\contains($memberOf, $grant['entry']->getEvent()->getOrganisation()->getId()->toRfc4122()),
+        );
         $pending = [] === $memberships ? $this->joinOfferFinder->pendingRequestFor($user) : null;
         $emails = $user->getEmailAddresses();
         $suppressed = $this->emailSuppressions->suppressedAmong(Vec\map($emails, static fn (EmailAddress $address): string => $address->getAddress()));
