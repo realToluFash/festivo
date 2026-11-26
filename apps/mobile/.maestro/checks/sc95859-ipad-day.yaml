@@ -20,12 +20,17 @@ env:
       id: 'calendar.dayDialog'
     timeout: 15000
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.dayDialog'
+- assertNotVisible:
+    id: 'calendar.daySheet'
 - takeScreenshot: ipad-day-upright
 - swipe: { start: '50%,70%', end: '50%,40%', duration: 1200 }
 - waitForAnimationToEnd
+- assertVisible:
+    id: 'calendar.dayDialog'
 - takeScreenshot: ipad-day-upright-scrolled
 - setOrientation: LANDSCAPE_LEFT
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
 - openLink: ${METRO_URL}/--/calendar
 - extendedWaitUntil:
     visible:
@@ -33,6 +38,14 @@ env:
     timeout: 30000
 - tapOn:
     id: 'calendar.day.${DAY}'
-- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.dayPanel'
+    timeout: 15000
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: 'calendar.daySheet'
+- assertNotVisible:
+    id: 'calendar.dayDialog'
 - takeScreenshot: ipad-day-side
 - setOrientation: PORTRAIT
