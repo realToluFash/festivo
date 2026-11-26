@@ -3778,12 +3778,12 @@
   },
   "station": {
     "wayIn": {
-      "title": "Kitchen station",
+      "title": "Posto da cozinha",
       "line": "{{station}} · {{course}}",
-      "pick": "Pick a station",
-      "said": "Kitchen station, {{line}}",
-      "asOf": "{{line}} · as of {{time}}",
-      "open": "Open {{station}}"
+      "pick": "Escolher um posto",
+      "said": "Posto da cozinha, {{line}}",
+      "asOf": "{{line}} · atualizado: {{time}}",
+      "open": "Abrir o posto {{station}}"
     },
     "title": "Posto da cozinha · {{station}}",
     "titleSaid": "Posto da cozinha · {{station}}. Escolher outro posto",
