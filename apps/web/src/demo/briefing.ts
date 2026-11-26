@@ -58,7 +58,6 @@ export const BW = {
   copiedBy: (trail: Trail) => `Copied by ${trail.by} · ${trail.at} · not marked as sent`,
   markedBy: (trail: Trail) => `Marked as sent by ${trail.by} · ${trail.at}`,
   markSent: 'Mark as sent',
-  /** A briefing copy's button, named apart from the same row's Link-column Copy link and Mark as sent. */
   forBriefing: (act: string, name: string) => `${act} for the briefing: ${name}`,
   marked: (name: string) => `[Marked as sent to ${name}.]`,
   nobody: '[Nobody has a shift yet.]',
@@ -162,7 +161,6 @@ export function onShift(people: readonly Person[]): Person[] {
   return people.filter((one) => one.shift != null);
 }
 
-/** A roster entry added or edited on the page with the briefing: a new person is Not sent, and a station or shift changed after the briefing went reads Changed since sent. */
 export function asPerson(made: Entry, before: Entry | null): Person {
   const was = before as Partial<Person> | null;
   const brief = was?.brief ?? 'none';
@@ -217,7 +215,6 @@ const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : S
 
 export type Target = 'all' | 'changed' | string;
 
-/** Who the send is for and has no number: Not sent people with a shift for Send the briefing to {n}, changed people for Send to {n} changed, and nobody for one row's Send again. */
 export function noMobileFor(people: readonly Person[], target: Target): number {
   if (target === 'all')
     return people.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
@@ -676,12 +673,10 @@ export function briefingStart(raw: string | null): BriefingStart {
   return STATES[name]();
 }
 
-/** The briefing's states are the Roster's, with the Briefing card and column: ?state=briefing, ?state=briefingChangedRow… */
 export function rosterStateOf(state: BriefingStateName): string {
   return state === 'populated' ? 'briefing' : `briefing${state[0]?.toUpperCase()}${state.slice(1)}`;
 }
 
-/** The Roster on a briefing state: its people, its permissions, its clipboard, and Text links to {n} once the briefing can send (epic 36). */
 export function briefingRosterStart(raw: string | null): RosterStart | null {
   const name = BRIEFING_STATES.find((one) => rosterStateOf(one) === raw);
   if (name == null) return null;
