@@ -80,11 +80,19 @@ interface MobileSheet {
   tried: boolean;
   busy: boolean;
   refusal: string | null;
+  failed: boolean;
 }
 
 type Open =
   | DoorSheet
-  | { kind: 'cover'; absent: string; chosen: string | null; tried: boolean; busy: boolean }
+  | {
+      kind: 'cover';
+      absent: string;
+      chosen: string | null;
+      tried: boolean;
+      busy: boolean;
+      failed: boolean;
+    }
   | { kind: 'noLink'; id: string; name: string }
   | { kind: 'hasLink'; id: string; name: string; phone: string; url: string; again: boolean }
   | MobileSheet;
@@ -285,7 +293,14 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
         eventId={eventId}
         onCover={(row) =>
           open(
-            { kind: 'cover', absent: row.id, chosen: null, tried: false, busy: false },
+            {
+              kind: 'cover',
+              absent: row.id,
+              chosen: null,
+              tried: false,
+              busy: false,
+              failed: false,
+            },
             `cover|${row.id}`,
           )
         }
@@ -300,6 +315,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
               tried: false,
               busy: false,
               refusal: null,
+              failed: false,
             },
             `mobile|${row.id}`,
           )
@@ -389,6 +405,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
                 tried: false,
                 busy: false,
                 refusal: null,
+                failed: false,
               })
             }
           />
@@ -969,11 +986,11 @@ function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileS
   function send(): void {
     if (open.busy) return;
     if (problem != null) {
-      set({ ...open, tried: true, refusal: null });
+      set({ ...open, tried: true, refusal: null, failed: false });
       focusChecked(numberField);
       return;
     }
-    const pressed: MobileSheet = { ...open, tried: true, busy: true, refusal: null };
+    const pressed: MobileSheet = { ...open, tried: true, busy: true, refusal: null, failed: false };
     set(pressed);
     api
       .addWhosHereMobile(eventId, open.id, { countryCode: open.country, number: open.number })
@@ -993,12 +1010,9 @@ function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileS
         (error: unknown) => {
           const named =
             error instanceof ApiError && error.is('validation_failed') ? error.fieldErrors() : {};
-          set({
-            ...pressed,
-            busy: false,
-            refusal: named.mobile ?? named['mobile.number'] ?? t('whosHere.notChanged'),
-          });
-          focusChecked(numberField);
+          const refusal = named.mobile ?? named['mobile.number'] ?? null;
+          set({ ...pressed, busy: false, refusal, failed: refusal == null });
+          if (refusal != null) focusChecked(numberField);
         },
       );
   }
@@ -1020,7 +1034,7 @@ function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileS
         <TextField
           ref={numberField}
           value={open.number}
-          onChangeText={(number) => set({ ...open, number, refusal: null })}
+          onChangeText={(number) => set({ ...open, number, refusal: null, failed: false })}
           wrong={said != null}
           accessibilityLabel={t('whosHere.mobile')}
           keyboardType="phone-pad"
@@ -1029,6 +1043,7 @@ function MobileForm({ open, eventId, set, reread }: SheetProps & { open: MobileS
           testID="whosHere.mobile.number"
         />
       </Field>
+      {open.failed && <Notice tone="broken" mark="!" body={t('whosHere.notChanged')} announce />}
       <SheetActions>
         <PrimaryButton
           label={t('whosHere.copyLink')}
@@ -1072,7 +1087,7 @@ function CoverForm({
       return;
     }
     const from = chosen.station?.name ?? null;
-    set({ ...open, busy: true });
+    set({ ...open, busy: true, failed: false });
     api.coverStation(eventId, absent.id, chosen.id).then(
       (next) => {
         shown(next);
@@ -1080,7 +1095,7 @@ function CoverForm({
         onMoved(movedWords(t, next, chosen.id, from, locale));
       },
       () => {
-        set({ ...open, busy: false });
+        set({ ...open, busy: false, failed: true });
         reread();
       },
     );
@@ -1131,7 +1146,14 @@ function CoverForm({
                       : t('whosHere.choiceLabelWarn', { name: row.name, line, warn })
                   }
                   on={chosen?.id === row.id}
-                  onPress={() => set({ ...open, chosen: row.id, tried: false })}
+                  onPress={() =>
+                    set({
+                      ...open,
+                      chosen: row.id,
+                      tried: false,
+                      failed: open.failed && row.id === open.chosen,
+                    })
+                  }
                   ref={i === 0 ? firstRef : undefined}
                   testID={`whosHere.cover.who.${row.id}`}
                 />
@@ -1140,6 +1162,14 @@ function CoverForm({
           </View>
           {open.tried && chosen == null && (
             <Wrong words={t('whosHere.choose', { station: station.name })} />
+          )}
+          {open.failed && chosen != null && (
+            <Notice
+              tone="broken"
+              mark="!"
+              body={t('whosHere.coverFailed', { name: chosen.name })}
+              announce
+            />
           )}
           <SheetActions>
             <PrimaryButton

@@ -3826,6 +3826,7 @@
     "nobodyOn": "Nobody on {{station}}",
     "nobodyOnSaid": "Nobody on {{station}}.",
     "nobodyHereOn": "Nobody here on {{station}}",
+    "coverFailed": "Nothing was changed. {{name}} was not moved. Try again.",
     "coveredBy": "Covered by {{name}}",
     "cover": "Cover {{station}}",
     "call": "Call",
