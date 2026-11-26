@@ -6921,62 +6921,62 @@
   },
   "service": {
     "stage": {
-      "toServe": "To serve",
-      "dishing": "Dishing",
-      "checked": "Checked",
-      "onItsWay": "On its way",
-      "served": "Served"
+      "toServe": "Por servir",
+      "dishing": "A empratar",
+      "checked": "Verificado",
+      "onItsWay": "A caminho",
+      "served": "Servido"
     },
     "item": {
-      "ready": "Ready",
-      "preparing": "Preparing"
+      "ready": "Pronto",
+      "preparing": "Em preparação"
     },
     "mark": {
-      "on": "On",
-      "notOn": "Not on",
-      "bringAfter": "Bring after"
+      "on": "Posto",
+      "notOn": "Não posto",
+      "bringAfter": "Levar depois"
     },
     "owed": {
-      "bringAfter": "Bring after",
-      "toFollow": "To follow",
-      "sentBack": "Sent back"
+      "bringAfter": "Levar depois",
+      "toFollow": "A seguir",
+      "sentBack": "Devolvido"
     },
     "sentBack": {
-      "wrongDish": "Wrong dish",
-      "notRight": "Not right",
-      "dropped": "Dropped",
-      "allergyConcern": "Allergy concern"
+      "wrongDish": "Prato errado",
+      "notRight": "Não está bem",
+      "dropped": "Caiu",
+      "allergyConcern": "Possível alergia"
     },
     "choice": {
-      "whatsReadyNow": "What’s ready, now",
-      "waitForAll": "Wait for all"
+      "whatsReadyNow": "O que estiver pronto, já",
+      "waitForAll": "Esperar por tudo"
     },
     "noOrder": {
-      "notHereYet": "Not here yet",
-      "nothingForThisCourse": "Nothing for this course",
-      "left": "Left"
+      "notHereYet": "Ainda não chegou",
+      "nothingForThisCourse": "Nada para este serviço",
+      "left": "Já saiu"
     },
     "stageCount": {
-      "toServe_one": "{{count, number}} to serve",
-      "toServe_many": "{{count, number}} to serve",
-      "toServe_other": "{{count, number}} to serve",
-      "dishing_one": "{{count, number}} dishing",
-      "dishing_many": "{{count, number}} dishing",
-      "dishing_other": "{{count, number}} dishing",
-      "checked_one": "{{count, number}} checked",
-      "checked_many": "{{count, number}} checked",
-      "checked_other": "{{count, number}} checked",
-      "onItsWay_one": "{{count, number}} on its way",
-      "onItsWay_many": "{{count, number}} on its way",
-      "onItsWay_other": "{{count, number}} on its way",
-      "served_one": "{{count, number}} served",
-      "served_many": "{{count, number}} served",
-      "served_other": "{{count, number}} served"
+      "toServe_one": "{{count, number}} por servir",
+      "toServe_many": "{{count, number}} por servir",
+      "toServe_other": "{{count, number}} por servir",
+      "dishing_one": "{{count, number}} a empratar",
+      "dishing_many": "{{count, number}} a empratar",
+      "dishing_other": "{{count, number}} a empratar",
+      "checked_one": "{{count, number}} verificado",
+      "checked_many": "{{count, number}} verificados",
+      "checked_other": "{{count, number}} verificados",
+      "onItsWay_one": "{{count, number}} a caminho",
+      "onItsWay_many": "{{count, number}} a caminho",
+      "onItsWay_other": "{{count, number}} a caminho",
+      "served_one": "{{count, number}} servido",
+      "served_many": "{{count, number}} servidos",
+      "served_other": "{{count, number}} servidos"
     },
-    "readyIn": "Ready in about {{minutes, number}} min",
-    "held": "Waiting on the kitchen",
-    "heldCount_one": "{{count, number}} waiting on the kitchen",
-    "heldCount_many": "{{count, number}} waiting on the kitchen",
-    "heldCount_other": "{{count, number}} waiting on the kitchen"
+    "readyIn": "Pronto em cerca de {{minutes, number}} min",
+    "held": "À espera da cozinha",
+    "heldCount_one": "{{count, number}} à espera da cozinha",
+    "heldCount_many": "{{count, number}} à espera da cozinha",
+    "heldCount_other": "{{count, number}} à espera da cozinha"
   }
 }
