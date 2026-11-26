@@ -27,7 +27,7 @@ import {
 import { type Shown, dayCount, eventHref, shownEvent } from '../events/EventsModel.ts';
 import { CLOCKS, EVENTS, READER_ZONE, REUNION, type SampleEvent } from '../events/EventsSample.ts';
 import { say as eventSay } from '../events/EventsWords.ts';
-import { needOrder, isYours } from '../today/needsYou.ts';
+import { needOrder, isYours } from '../../kit/todayNeeds.ts';
 import { CW, say } from './CalendarWords.ts';
 
 export {
