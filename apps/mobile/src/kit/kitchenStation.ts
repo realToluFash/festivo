@@ -312,14 +312,30 @@ export function openingStation(
   return null;
 }
 
-export const pickedKey = (eventId: string) => `soirely.station.${eventId}`;
+/** The last pick is the account's, on this device, for the event (sc-95382, Decided 26 Nov): another account signing in here has picked none. */
+export const pickedKey = (accountId: string, eventId: string) =>
+  `soirely.station.${accountId}.${eventId}`;
 
 export interface PickStore {
+  getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
 }
 
-export function rememberPick(store: PickStore, eventId: string, station: string): Promise<void> {
-  return store.setItem(pickedKey(eventId), station);
+export function rememberPick(
+  store: PickStore,
+  accountId: string,
+  eventId: string,
+  station: string,
+): Promise<void> {
+  return store.setItem(pickedKey(accountId, eventId), station);
+}
+
+export function readPick(
+  store: PickStore,
+  accountId: string,
+  eventId: string,
+): Promise<string | null> {
+  return store.getItem(pickedKey(accountId, eventId)).catch(() => null);
 }
 
 /** A mark this device made, open to Undo: the tap it was kept as, and the item by its course and key, since an item has no id until its first mark reaches the server. */

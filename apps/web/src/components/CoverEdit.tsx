@@ -5,7 +5,7 @@ import {
   positionPart,
   visibleLength,
 } from '@soirely/domain';
-import { type RefObject, useEffect, useId, useRef, useState } from 'react';
+import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useCoverSending } from '../coverPick.ts';
@@ -76,6 +76,8 @@ export function CoverEdit<Saved>({
   const [tooLong, setTooLong] = useState(false);
   const [pickRefused, setPickRefused] = useState<string | null>(start.pickRefused ?? null);
   const [saveRefused, setSaveRefused] = useState<string | null>(start.saveRefused ?? null);
+  const [refusals, setRefusals] = useState(0);
+  const refusal = useRef<HTMLDivElement>(null);
   const [savedFailed, setSavedFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -105,6 +107,9 @@ export function CoverEdit<Saved>({
     focusPicker.current = false;
     picker.current?.focus();
   });
+  useLayoutEffect(() => {
+    if (refusals > 0) refusal.current?.scrollIntoView({ block: 'nearest' });
+  }, [refusals]);
   useEffect(() => {
     const first = start.uploading;
     if (first != null) follow(first);
@@ -188,6 +193,7 @@ export function CoverEdit<Saved>({
       if (!open.current) return;
       setBusy(false);
       setSaveRefused(wordsOf(error));
+      setRefusals((times) => times + 1);
       return;
     }
     held.current = null;
@@ -204,7 +210,7 @@ export function CoverEdit<Saved>({
       onCancel={onClose}
       onSave={() => void send()}
     >
-      {saveRefused != null && <Broken>{saveRefused}</Broken>}
+      {saveRefused != null && <Broken held={refusal}>{saveRefused}</Broken>}
       <input
         ref={fileInput}
         type="file"

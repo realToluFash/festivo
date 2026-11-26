@@ -158,7 +158,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     },
   );
 
-  it('reads only before check-in opens and once it has ended', SLOW, async () => {
+  it('reads only before check-in opens, and has no ended state in the browser', SLOW, async () => {
     await open('/demo/check-in?state=before_open');
     expect(screen.getByText('Check-in opens at 16:00')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Arrived/ })).toBeNull();
@@ -170,8 +170,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     cleanup();
 
     await open('/demo/check-in?state=ended');
-    expect(screen.getByText('This event has ended.')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /^Undo arrival/ })).toBeNull();
+    expect(screen.queryByText('This event has ended.')).toBeNull();
   });
 
   it('names nothing when not signed in, and offers a door code', SLOW, async () => {
@@ -188,7 +187,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     SLOW,
     async () => {
       const router = await open('/demo/check-in/shift');
-      fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+      fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]!);
 
       const title = await screen.findByRole('heading', { name: 'Sign in from your link or code' });
       expect(screen.getByRole('status').textContent).toBe('Signed out.');
@@ -217,7 +216,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
 
       await open('/demo/check-in?state=level_view');
       expect(
-        await screen.findByRole('heading', { name: 'Hi Bisi, you’re on tonight' }),
+        await screen.findByRole('heading', { level: 1, name: 'Tonight you’re on Door' }),
       ).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
     },
@@ -225,12 +224,18 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
 
   it('opens from the shift page and from You’re in at Can check guests in only', SLOW, async () => {
     await open('/demo/check-in/shift');
-    expect(screen.getByRole('link', { name: 'Check-in' })).toBeDefined();
+    const checkIn = screen.getByRole('link', { name: 'Check-in' });
+    const clock = screen.getByRole('button', { name: /Clock out/ });
+    const yourShift = screen.getByRole('heading', { name: 'Your shift' });
+    expect(clock.compareDocumentPosition(checkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
-      screen.getByText(
-        'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
-      ),
-    ).toBeDefined();
+      checkIn.compareDocumentPosition(yourShift) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    cleanup();
+
+    await open('/demo/check-in/shift?level=view');
+    expect(screen.getByRole('heading', { level: 1, name: 'Tonight you’re on Door' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
     cleanup();
 
     await open('/demo/redeem?state=browser-in');

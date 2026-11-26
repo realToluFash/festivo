@@ -38,7 +38,7 @@ import {
   type StationView,
   notSentLine,
   openingStation,
-  pickedKey,
+  readPick,
   refusedAccess,
   rememberPick,
   stationTime,
@@ -52,6 +52,7 @@ import {
 import { useServerNow } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
+import { useSignedIn } from '../../signedIn.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../NightCards.tsx';
 import { readOut } from '../ReadOut.tsx';
@@ -140,6 +141,7 @@ export function KitchenStationView({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const now = useServerNow();
+  const accountId = useSignedIn().account?.id;
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
   const [station, setStation] = useState<string | null>(null);
@@ -200,11 +202,9 @@ export function KitchenStationView({
   }, [store, read]);
 
   useEffect(() => {
-    void AsyncStorage.getItem(pickedKey(eventId))
-      .catch(() => null)
-      .then((one) => setPicked(one));
+    if (accountId != null) void readPick(AsyncStorage, accountId, eventId).then(setPicked);
     void store.load().then(setKept);
-  }, [eventId, store]);
+  }, [accountId, eventId, store]);
 
   useEffect(() => {
     const fresh = createServiceFreshness({ read });
@@ -296,7 +296,8 @@ export function KitchenStationView({
     setPicked(id);
     setListOpen(false);
     setChoosing(null);
-    void rememberPick(AsyncStorage, eventId, id).catch(() => undefined);
+    if (accountId != null)
+      void rememberPick(AsyncStorage, accountId, eventId, id).catch(() => undefined);
     const name =
       loaded.state === 'ok' ? loaded.list.stations.find((one) => one.id === id)?.name : '';
     setMoved(t('station.picked', { station: name ?? '' }));

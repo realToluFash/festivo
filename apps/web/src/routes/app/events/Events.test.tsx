@@ -4598,6 +4598,32 @@ describe('The cover (sc-3590)', () => {
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
     });
 
+    it('brings the refusal into view on every press of Use this photo (sc-75689)', async () => {
+      const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+      const { sent } = await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      const notice = await within(part()).findByRole('alert');
+
+      expect(scrolled.mock.contexts).toContain(notice);
+      const first = scrolled.mock.contexts.filter((shown) => shown === notice).length;
+
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PUT /api/events/ev_1/cover')).toHaveLength(2),
+      );
+      await waitFor(() =>
+        expect(scrolled.mock.contexts.filter((shown) => shown === notice).length).toBeGreaterThan(
+          first,
+        ),
+      );
+      expect(within(part()).getAllByRole('alert')).toHaveLength(1);
+    });
+
     it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
       const { sent } = await opened(null, {
         'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),

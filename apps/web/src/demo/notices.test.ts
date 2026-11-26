@@ -199,7 +199,7 @@ describe('the lines under Briefing', () => {
     expect(rowLines(lost, null)).toEqual([
       {
         mark: 'unreachable',
-        words: "Can't be reached: not signed in to the app, and no mobile number.",
+        words: "Can't be reached: no push notifications and no mobile number.",
       },
     ]);
   });

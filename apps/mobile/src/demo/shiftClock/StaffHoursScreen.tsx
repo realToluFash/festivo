@@ -345,6 +345,14 @@ function HoursRowView({
           <Text size={17} weight="semibold">
             {one.name}
           </Text>
+          {one.removed === true && (
+            <View style={styles.mark} testID={`hours.removed.${one.id}`}>
+              <Glyph name="user" size={14} ink={tokens.colorInkSecondary} />
+              <Text size={14} weight="semibold" style={[styles.secondary, styles.shrink]}>
+                {HW.removed}
+              </Text>
+            </View>
+          )}
           <Text size={15} style={styles.secondary}>
             {one.job}
           </Text>

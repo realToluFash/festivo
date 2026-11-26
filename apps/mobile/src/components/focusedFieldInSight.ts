@@ -7,17 +7,17 @@ import {
   watchFocusedFieldReshaped,
   watchFocusedFieldTyped,
 } from './focusedField.ts';
-import { SETTLED_MS, bringIntoView } from './intoView.ts';
+import { bringIntoView } from './intoView.ts';
 import { keyboardTopNow } from './keyboardWatch.ts';
 
 const WINDOW_TOP = { current: 0 };
 
-/** Keeps the focused field, its box and its error, above the keys while they are up: as they rise, as focus moves, as the field grows, moves or is given its error, and as it is typed in after the screen scrolled away from it (sc-48600). A screen in its own window measures from the window's top. The hold it returns lets a scroll the screen makes on purpose land, the field moving under it (sc-74540). */
+/** Keeps the focused field, its box and its error, above the keys while they are up: as they rise, as focus moves, as the field grows, moves or is given its error, and as it is typed in after the screen scrolled away from it (sc-48600). A screen in its own window measures from the window's top. The hold it returns keeps a scroll the screen makes on purpose, the field moving under it, until the person types, moves focus or drops the keys: a hold for a set time ran out before Android's last reshape (sc-74540, sc-75689). */
 export function useFocusedFieldInSight(
   scroll: RefObject<ScrollViewInstance | null>,
   offset: RefObject<number>,
 ): () => void {
-  const heldUntil = useRef(0);
+  const held = useRef(false);
 
   useEffect(() => {
     const sight = { ref: scroll, offset, origin: WINDOW_TOP };
@@ -25,15 +25,24 @@ export function useFocusedFieldInSight(
       if (keyboardTopNow(0) == null) return;
       bringIntoView(sight, focusedField(), true, { aboveKeys: true, foot: true });
     };
-    const shown = Keyboard.addListener('keyboardDidShow', bring);
-    const unwatchFocus = watchFocusedField(bring);
-    const unwatchReshaped = watchFocusedFieldReshaped(() => {
-      if (Date.now() >= heldUntil.current) bring();
+    const unheld = () => {
+      held.current = false;
+      bring();
+    };
+    const unlessHeld = () => {
+      if (!held.current) bring();
+    };
+    const shown = Keyboard.addListener('keyboardDidShow', unlessHeld);
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      held.current = false;
     });
-    const unwatchTyped = watchFocusedFieldTyped(bring);
+    const unwatchFocus = watchFocusedField(unheld);
+    const unwatchReshaped = watchFocusedFieldReshaped(unlessHeld);
+    const unwatchTyped = watchFocusedFieldTyped(unheld);
 
     return () => {
       shown.remove();
+      hidden.remove();
       unwatchFocus();
       unwatchReshaped();
       unwatchTyped();
@@ -41,6 +50,6 @@ export function useFocusedFieldInSight(
   }, [scroll, offset]);
 
   return useCallback(() => {
-    heldUntil.current = Date.now() + SETTLED_MS;
+    held.current = true;
   }, []);
 }

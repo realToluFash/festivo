@@ -1,5 +1,6 @@
-import { BAR, DOOR_EVENT, DOOR_ZONE, clockOf, readerLocale } from './doorCode.ts';
+import { BAR, DOOR_EVENT } from './doorCode.ts';
 import type { Reply } from './guests.ts';
+import { type Night, nightOf } from './myNight.ts';
 import { HUGO } from './redeem.ts';
 import type { DemoLink } from './settings.ts';
 
@@ -18,7 +19,7 @@ export interface DoorPerson {
 }
 
 export type Holder = 'shift' | 'code';
-export type Phase = 'open' | 'before' | 'ended';
+export type Phase = 'open' | 'before';
 export type Gone = 'link_gone' | 'outside_window' | 'outside_window_ended' | 'level_view';
 
 export const CHECK_IN_STATES = [
@@ -35,7 +36,6 @@ export const CHECK_IN_STATES = [
   'not_recorded',
   'live',
   'before_open',
-  'ended',
   'loading',
   'empty',
   'empty_closed',
@@ -76,9 +76,6 @@ export const OFFLINE_SINCE = (() => {
 })();
 export const OPENS_AT = '16:00';
 export const SHIFT_NAME = 'Bisi Adeyemi';
-/** The shift page's now, Saturday at 18:05 in Lisbon, and the end of the link's last live grant after midnight (sc-4235). */
-export const SHIFT_NOW = '2026-11-14T18:05:00Z';
-export const SHIFT_SIGNED_IN_UNTIL = '2026-11-15T02:00:00Z';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
 /** Sign out on the shift page opened from the staff link lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). From check-in's Your shift it stays put (ShiftPage). */
@@ -86,15 +83,9 @@ export const SIGNED_OUT_HREF = '/demo/staff-sign-in?state=signed-out';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
 
-const LISBON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
-
-/** The locale's clock, with the weekday when the end falls on a later day than now, so an end after midnight never reads as tonight. */
-export function signedOutTime(until: string, now: string): string {
-  if (LISBON_DAY.format(new Date(until)) === LISBON_DAY.format(new Date(now)))
-    return clockOf(until);
-  const weekday = new Intl.DateTimeFormat(readerLocale(), { weekday: 'long', timeZone: DOOR_ZONE });
-
-  return `${weekday.format(new Date(until))} ${clockOf(until)}`;
+/** The shift page check-in leads back to: sc-3915's Your night, for a door job with no station, so it is headed "Tonight you're on Door". */
+export function doorNight(): Night {
+  return { ...nightOf('no_station'), event: DOOR_EVENT, name: SHIFT_NAME, job: JOB };
 }
 
 /** The job beside the event's name: the shift's, or the label of the code a door-code holder came in on, as "You're in for…" shows it. */
@@ -144,8 +135,6 @@ export const CW = {
   opensAt: (time: string) => `Check-in opens at ${time}`,
   opensBody: (time: string) =>
     `Search works now. Arrivals and walk-ins can be recorded from ${time}.`,
-  ended: 'This event has ended.',
-  endedBody: 'The list stays readable. Arrivals can no longer be marked or undone.',
   emptyTitle: 'Nobody is on the list yet',
   emptyLine: 'Anyone who arrives can be added as a walk-in.',
   loading: 'Loading the list',
@@ -172,17 +161,6 @@ export const CW = {
     title: 'Sign in from your link or code',
     body: 'To check guests in, open the link we sent you, or enter your door code again.',
     cta: 'Enter a door code',
-  },
-  shift: {
-    only: 'Tonight only · ends 02:00',
-    hello: 'Hi Bisi, you’re on tonight',
-    yourShift: 'Your shift',
-    times: '16:00 to 23:00',
-    clocked: 'Clocked in at 17:52',
-    signedInAs: (name: string) => `Signed in as ${name}`,
-    signedOutAt: (time: string) =>
-      `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this device.`,
-    signOut: 'Sign out',
   },
   connectionBack: 'Demo: the connection is back',
   noSeat: 'No seat yet',
@@ -423,25 +401,6 @@ export function checkInStart(state: CheckInState, holder: Holder): CheckInStart 
       return { ...start, live: true };
     case 'before_open':
       return { ...start, phase: 'before', people: [...PEOPLE] };
-    case 'ended':
-      return {
-        ...start,
-        phase: 'ended',
-        people: seeded(
-          {
-            ...ARRIVED_BEFORE,
-            adaeze: ['19:42', '@me'],
-            a1: ['19:42', '@me'],
-            a2: ['19:43', '@me'],
-            emeka: ['20:05', OTHER],
-            folasade: ['19:50', '@me'],
-            ngozi: ['19:44', OTHER],
-            zainab: ['20:12', OTHER],
-            marie: ['19:58', '@me'],
-          },
-          me,
-        ),
-      };
     case 'loading':
       return { ...start, loading: true };
     case 'empty':
@@ -531,7 +490,6 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       at('before_open', 'Before check-in opens: search works'),
       at('empty_closed', 'Before check-in opens, nobody on the list'),
-      at('ended', 'The event has ended: read only'),
       at('offline', 'Offline: nothing queued'),
       at('offline_back', 'Back online: what landed meanwhile'),
     ],
@@ -539,7 +497,7 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'When access ends',
     states: [
-      at('link_gone', 'The link was replaced or removed'),
+      at('link_gone', 'The link was replaced or removed, or the event ended'),
       at('outside_window', 'Outside the link’s window, before'),
       at('outside_window_ended', 'Outside the link’s window, after'),
       at('level_view', 'The job changed to Can view: back on the shift page'),

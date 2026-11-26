@@ -12,6 +12,7 @@ import { TabBar } from '../../components/TodayCover.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { areaTrack } from '../events/EventFrame.tsx';
 import { Face } from '../people/PeopleRole.tsx';
 import {
   listed,
@@ -691,7 +692,7 @@ function MoreSheet({
   );
 }
 
-/** Upright, the event's tabs as a capsule at the top, each area with its glyph, as the product's sc-71 shell draws them: More only when it holds the account's groups, the account itself being at Overview's foot. */
+/** Upright, the event's tabs as the product's shell draws them inside an event, `EventFrame`'s track across the page with the chosen tab raised on white (sc-30413): More only when it holds the account's groups, the account itself being at Overview's foot. */
 function Capsule({
   areas,
   at,
@@ -712,8 +713,8 @@ function Capsule({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.capsuleBar}
-        contentContainerStyle={styles.capsule}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
       >
         {tabs.map((tab) => {
@@ -725,19 +726,14 @@ function Capsule({
             <Pressable
               key={tab}
               onPress={() => (tab === 'more' ? onMore?.() : onArea(tab))}
-              style={[styles.capsuleTab, on && styles.capsuleOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={label}
               testID={`inside.tab.${tab}`}
             >
-              <Glyph name={tab === 'more' ? 'dots' : AREA_GLYPH[tab]} ink={ink} />
-              <Text
-                size={15}
-                weight={on ? 'semibold' : 'medium'}
-                accessible={false}
-                style={{ color: ink }}
-              >
+              <Glyph name={tab === 'more' ? 'dots' : AREA_GLYPH[tab]} size={18} ink={ink} />
+              <Text size={15} weight="semibold" accessible={false} style={{ color: ink }}>
                 {label}
               </Text>
             </Pressable>
@@ -816,19 +812,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: tokens.space5xl,
     right: tokens.space5xl,
-    alignItems: 'center',
     zIndex: 2,
   },
-  capsuleBar: { flexGrow: 0, borderRadius: 25, backgroundColor: tokens.colorInset },
-  capsule: { flexDirection: 'row', gap: tokens.spaceHair, padding: 3 },
-  capsuleTab: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 13,
-    paddingRight: tokens.spaceXl,
-    borderRadius: tokens.sizeHit / 2,
-  },
-  capsuleOn: { backgroundColor: tokens.colorAccentTint },
 });
