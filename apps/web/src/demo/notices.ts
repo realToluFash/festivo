@@ -3,10 +3,32 @@ import { WW } from './messagesWaitsWords.ts';
 
 export type Channel = 'push' | 'text' | 'whatsApp';
 
-export interface Change {
-  field: 'start' | 'end' | 'job' | 'date' | 'venue';
-  now: string;
-  was: string;
+export type Change =
+  | { field: 'start' | 'end' | 'job' | 'date' | 'venue'; now: string; was: string }
+  | { field: 'shiftAdded' | 'shiftOff'; shift: string }
+  | { field: 'shiftRetimed'; now: string; was: string }
+  | { field: 'noShift' };
+
+/** Bracketed until [en] writes them (#96276). */
+const SHIFT_WORDS = {
+  shiftAdded: (shift: string) => `[Added: ${shift}]`,
+  shiftOff: (shift: string) => `[Off: ${shift}]`,
+  shiftRetimed: (now: string, was: string) => `[${now} (was ${was})]`,
+  noShift: '[No shift for now]',
+};
+
+function changeWords(change: Change): string {
+  switch (change.field) {
+    case 'shiftAdded':
+    case 'shiftOff':
+      return SHIFT_WORDS[change.field](change.shift);
+    case 'shiftRetimed':
+      return SHIFT_WORDS.shiftRetimed(change.now, change.was);
+    case 'noShift':
+      return SHIFT_WORDS.noShift;
+    default:
+      return `${CHANGE_WORD[change.field]} ${change.now} (was ${change.was})`;
+  }
 }
 
 export type Notice =
@@ -80,7 +102,7 @@ export const NW = {
   unreachable: "Can't be reached",
   unreachableLine: "Can't be reached: not signed in to the app, and no mobile number.",
   goesAt: (time: string) => `Goes at ${time}`,
-  change: (change: Change) => `${CHANGE_WORD[change.field]} ${change.now} (was ${change.was})`,
+  change: changeWords,
   sameMessage: 'Edits before then go in the same message.',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: (on: string, time: string, by: Channel) => `Told on ${on} at ${time}, by ${BY[by]}.`,
@@ -90,6 +112,8 @@ export const NW = {
   removal: (name: string) =>
     `${name} gets one last message within 15 minutes to say so, and nothing after that.`,
   alreadyOver: 'This event is already over.',
+  footnote:
+    "Once a person's briefing has gone, changes to their shifts are sent to them automatically.",
 };
 
 export function reachable(one: Reachable): boolean {

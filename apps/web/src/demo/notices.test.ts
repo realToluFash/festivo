@@ -202,6 +202,23 @@ describe('the lines under Briefing', () => {
   });
 });
 
+describe('several shifts', () => {
+  const lines = (id: string) => {
+    const found = briefingStart('noticesSeveralShifts').people.find((p) => p.id === id);
+    if (found == null) throw new Error(id);
+
+    return rowLines(found, null)
+      .slice(1, -1)
+      .map((line) => line.words);
+  };
+
+  it('reads a shift retimed, added, and the last taken off, one line per shift', () => {
+    expect(lines('grace')).toEqual(['[Saturday 15:00 to 23:00 (was 17:00 to 23:00)]']);
+    expect(lines('tope')).toEqual(['[Added: Sunday 12:00 to 18:00]']);
+    expect(lines('yusuf')).toEqual(['[Off: Saturday 18:00 to 00:00]', '[No shift for now]']);
+  });
+});
+
 describe('removing someone', () => {
   it('names the person whose briefing went, and only while they can be reached', () => {
     expect(removalLine({ ...one(), name: 'Tope Balogun' }, null)).toBe(

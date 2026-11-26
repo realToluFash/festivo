@@ -1,5 +1,5 @@
 import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
-import { type Concluded, type Notice, NO_CREDITS, NW } from './notices.ts';
+import { type Change, type Concluded, type Notice, NO_CREDITS, NW } from './notices.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
 import { QUIET_ENDS, TW, texting } from './staffText.ts';
@@ -575,6 +575,26 @@ const reshaped =
   (list: Person[] = noticePeople()): Person[] =>
     list.map((one) => (by[one.id] == null ? one : { ...one, ...by[one.id] }));
 
+const waiting = (changes: readonly Change[]) => ({
+  brief: 'changed' as const,
+  notice: { kind: 'waiting' as const, at: '19:55', changes },
+});
+
+const severalShifts = reshaped({
+  grace: {
+    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00 to 23:00', was: '17:00 to 23:00' }]),
+  },
+  tope: {
+    shift: 'Saturday 17:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00 to 18:00' }]),
+  },
+  yusuf: {
+    shift: null,
+    ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00 to 00:00' }, { field: 'noShift' }]),
+  },
+});
+
 const eve = reshaped({
   grace: { brief: 'sent', notice: { kind: 'told', on: THU, at: '19:55', by: 'push' } },
   kelechi: { brief: 'sent', notice: { kind: 'told', on: FRI, at: '09:00', by: 'whatsApp' } },
@@ -966,6 +986,12 @@ const STATES = {
       name: 'The reminder card, and the lines under Briefing',
       note: 'Next on Friday, Oct 16, to 5 people, the credits line, who is left out. Grace waits, Kelechi is held for quiet hours, Tope was told by push, Yusuf was not delivered, Amina can’t be reached. Turn the switch off and on.',
     }),
+  noticesSeveralShifts: () =>
+    noticed({
+      name: 'Several shifts, waiting',
+      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, Yusuf his last taken off. Each reads Goes at with its short line, bracketed until [en] writes it.',
+      people: severalShifts(),
+    }),
   noticesEve: () =>
     noticed(
       {
@@ -1293,7 +1319,9 @@ export const NOTICE_PAGES: readonly { name: string; states: readonly DemoLink[] 
   },
   {
     name: 'The lines under Briefing, and removing someone',
-    states: (['noticesList', 'noticesNoCredits', 'noticesRemoved'] as const).map(link),
+    states: (
+      ['noticesList', 'noticesSeveralShifts', 'noticesNoCredits', 'noticesRemoved'] as const
+    ).map(link),
   },
   {
     name: 'Once the event is Finished',

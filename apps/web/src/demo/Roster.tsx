@@ -610,6 +610,7 @@ function RosterView({
                       ))}
                     </tbody>
                   </table>
+                  {bf.footnote != null && <p className="sv-footnote">{bf.footnote}</p>}
                 </div>
               )}
             </section>

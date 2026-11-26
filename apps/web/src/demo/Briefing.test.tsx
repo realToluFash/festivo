@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -174,6 +174,14 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(document.getElementById('sv-over')?.textContent).toContain(NW.alreadyOver);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
+  });
+
+  it('says under the roster that changes reach the briefed, until the event is Finished (sc-4333)', async () => {
+    await open('noticesList');
+    expect(screen.getByText(NW.footnote)).toBeTruthy();
+    cleanup();
+    await open('noticesCalledOff');
+    expect(screen.queryByText(NW.footnote)).toBeNull();
   });
 
   it('offers Add credits to billing.manage when the reminder’s credits fall short, opening Plan and billing (sc-4333)', async () => {

@@ -110,6 +110,12 @@
   outline-offset: 2px;
 }
 
+.sv-footnote {
+  margin: var(--spaceSm) 0 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeSmall);
+}
+
 /* The lines under the Briefing column's state word: each mark is a shape of its own, so none relies on colour. */
 .sv-row-lines {
   display: flex;

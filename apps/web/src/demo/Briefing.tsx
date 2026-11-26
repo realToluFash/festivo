@@ -68,6 +68,7 @@ export interface Briefing {
   /** A person added or edited on the Roster, with their briefing kept. */
   adopt: (made: Entry, before: Entry | null) => Entry;
   removal: (one: Entry) => string | null;
+  footnote: string | null;
 }
 
 const OFF: Briefing = {
@@ -81,6 +82,7 @@ const OFF: Briefing = {
   dismiss: () => undefined,
   adopt: (made) => made,
   removal: () => null,
+  footnote: null,
 };
 
 /** The briefing's state and actions on the Roster's own rows: a briefing copy turns the Link column to Copied, and a Link-column copy leaves Briefing alone. */
@@ -628,6 +630,7 @@ export function useBriefing({
     dismiss,
     adopt: asPerson,
     removal: (one) => (notices == null ? null : removalLine(one as Person, concluded)),
+    footnote: notices == null || concluded != null ? null : NW.footnote,
   };
 }
 
