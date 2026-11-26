@@ -60,6 +60,7 @@ final class WriteItOnceTest extends ApiTestCase
     {
         self::assertSame('Auntie Bisi', $this->guest($this->add('Bisi Adewale', ['greetAs' => '  Auntie Bisi  ']))['greetAs']);
         self::assertNull($this->guest($this->add('Kemi Bello', ['greetAs' => '    ']))['greetAs']);
+        self::assertNull($this->guest($this->add('Ama Owusu', ['greetAs' => "\u{3000}\u{3000}"]))['greetAs']);
         self::assertNull($this->guest($this->add('Emeka Nwosu'))['greetAs']);
     }
 

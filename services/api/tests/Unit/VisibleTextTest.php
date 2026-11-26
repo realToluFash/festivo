@@ -49,4 +49,12 @@ final class VisibleTextTest extends TestCase
         self::assertTrue(VisibleText::tooLong('a' . Str\repeat("\u{0301}", 40), 10));
         self::assertSame(40, VisibleText::codePoints(10));
     }
+
+    #[Test]
+    public function aTextIsTrimmedOfEverySpaceABrowserTrims(): void
+    {
+        self::assertSame('', VisibleText::trim("\u{3000}\u{3000}"));
+        self::assertSame('Auntie Bisi', VisibleText::trim("\u{2003} Auntie Bisi\u{205F}\u{00A0}\n"));
+        self::assertSame("Auntie\u{3000}Bisi", VisibleText::trim("Auntie\u{3000}Bisi"));
+    }
 }
