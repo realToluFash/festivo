@@ -360,6 +360,16 @@ export function undoPlan(
     : { kind: 'send', subject: id, expected: { item: mark.to } };
 }
 
+/** The marks still open to Undo once these taps were refused as Not sent: a refused mark never landed, so there is nothing to undo. */
+export function withoutRefused<K>(
+  marks: ReadonlyMap<K, StationMark>,
+  refused: readonly { tap: { key: string } }[],
+): Map<K, StationMark> {
+  const keys = new Set(refused.map((one) => one.tap.key));
+
+  return new Map([...marks].filter(([, mark]) => !keys.has(mark.tapKey)));
+}
+
 /** What the undo line says was marked: the state the mark left, so a new time while Preparing reads Preparing. */
 export function undoWords(mark: StationMark): 'station.undoPreparing' | 'station.undoReady' {
   return mark.to === 'preparing' ? 'station.undoPreparing' : 'station.undoReady';

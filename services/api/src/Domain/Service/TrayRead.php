@@ -7,8 +7,10 @@ namespace App\Domain\Service;
 use App\Entity\MenuCourse;
 use App\Entity\ServicePlate;
 use App\Entity\ServiceTray;
+use App\Entity\User;
 use App\Enum\PlateStage;
 use App\Repository\ServiceTrayRepository;
+use Closure;
 use Psl\Iter;
 use Psl\Vec;
 
@@ -51,8 +53,9 @@ final readonly class TrayRead
      * @param list<ServicePlate>                              $onTrays
      * @param non-empty-list<array{id: string, name: string}> $stops
      * @param array<string, string>                           $stopOf
+     * @param Closure(User): string                           $nameOf
      */
-    public function tray(ServiceTray $tray, array $onTrays, array $stops, array $stopOf, string $passId): array
+    public function tray(ServiceTray $tray, array $onTrays, array $stops, array $stopOf, string $passId, Closure $nameOf): array
     {
         $plates = Vec\filter($onTrays, static fn (ServicePlate $plate): bool => $plate->getTray() === $tray);
         $marks = [];
@@ -68,7 +71,7 @@ final readonly class TrayRead
             'id' => $tray->getId()->toRfc4122(),
             'courseId' => $tray->getCourse()->getId()->toRfc4122(),
             'table' => $tray->getTableKey(),
-            'waiter' => ['id' => $tray->getWaiter()->getId()->toRfc4122(), 'name' => $tray->getWaiter()->getName()],
+            'waiter' => ['id' => $tray->getWaiter()->getId()->toRfc4122(), 'name' => $nameOf($tray->getWaiter())],
             'plates' => Vec\map($plates, static fn (ServicePlate $plate): string => $plate->getId()->toRfc4122()),
             'stops' => Vec\map(
                 Vec\filter($stops, static fn (array $stop): bool => $stop['id'] === $passId || isset($marks[$stop['id']])),

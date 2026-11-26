@@ -47,6 +47,7 @@ import {
   undoOpen,
   undoPlan,
   undoWords,
+  withoutRefused,
 } from '../../kit/kitchenStation.ts';
 import { useServerNow } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
@@ -193,6 +194,7 @@ export function KitchenStationView({
     setKept(sent.left);
     if (sent.refused.length > 0) {
       setNotSent((was) => [...was, ...sent.refused.flatMap((one) => one.lines)]);
+      setUndoable((was) => withoutRefused(was, sent.refused));
     }
     if (sent.refetch) await read().catch(() => undefined);
   }, [store, read]);
@@ -827,94 +829,112 @@ function Left({
       ) : view.left.length === 0 ? (
         <Empty words={t('station.empty.noItem', { station })} />
       ) : (
-        <View style={compact ? styles.leftStrip : styles.leftList}>
-          {view.left.map((line) => {
-            const id = slot(line.courseId, line.key);
-            const name = itemName(t, line.name, line.course);
-            const prep = line.item.state === 'preparing';
-            const held = line.heldUp != null;
-            const status = held ? 'heldUp' : prep ? 'preparing' : 'ready';
-            const lineWords = [
-              held
-                ? t('station.heldUpFor', { count: line.heldUp ?? 0 })
-                : prep && line.item.readyIn != null
-                  ? t('station.readyInLine', { count: line.item.readyIn })
-                  : '',
-              prep && line.waiting > 0 ? t('station.waiting', { count: line.waiting }) : '',
-            ].filter((words) => words !== '');
-            const one = undoable(line);
-            const chosen = prep ? ((line.item.readyIn ?? null) as Eta) : undefined;
-            return (
-              <View
-                key={id}
-                style={[styles.itemCard, compact && styles.itemCardStrip]}
-                testID={`station.left.${line.key}`}
-              >
-                <View style={styles.itemHead}>
-                  <View style={styles.grow}>
-                    <Text size={z.line + 1} weight="bold">
-                      {name}
-                    </Text>
-                    <Text size={z.line} weight="semibold" style={styles.tabular}>
-                      {t('station.toDish', { count: line.toDish })}
-                    </Text>
-                  </View>
-                  <Chip status={status} big />
+        <View style={styles.leftList}>
+          {compact
+            ? pairs(view.left).map((row) => (
+                <View
+                  key={row.map((line) => slot(line.courseId, line.key)).join('|')}
+                  style={styles.leftStrip}
+                >
+                  {row.map(card)}
+                  {row.length === 1 && <View style={styles.itemCardStrip} />}
                 </View>
-                {lineWords.length > 0 && (
-                  <Text
-                    size={z.line - 2 < 15 ? 15 : z.line - 2}
-                    weight="semibold"
-                    style={held ? styles.broken : styles.attention}
-                  >
-                    {lineWords.join(' · ')}
-                  </Text>
-                )}
-                {isKept(line) && <Chip status="kept" />}
-                <View style={styles.lineActions}>
-                  <View style={styles.segments}>
-                    <Segments
-                      item={name}
-                      id={line.key}
-                      preparing={prep || choosing === id}
-                      side={z.side}
-                      onReady={() => (prep ? onMark(line, 'ready', null) : onChoose(null))}
-                      onPreparing={() => onChoose(id)}
-                    />
-                  </View>
-                </View>
-                {(choosing === id || prep) && (
-                  <Times
-                    item={name}
-                    id={line.key}
-                    chosen={chosen}
-                    side={z.side}
-                    onPick={(eta) => onMark(line, 'preparing', eta)}
-                  />
-                )}
-                {one != null && (
-                  <View style={styles.undo}>
-                    <Text size={14} style={[styles.secondary, styles.grow]}>
-                      {t(undoWords(one), {
-                        time: time(one.at),
-                        count: UNDO_MINUTES,
-                      })}
-                    </Text>
-                    <Quiet
-                      label={t('station.undo')}
-                      side={z.side}
-                      onPress={() => onUndo(line)}
-                      testID={`station.undo.${line.key}`}
-                    />
-                  </View>
-                )}
-              </View>
-            );
-          })}
+              ))
+            : view.left.map(card)}
         </View>
       )}
     </Section>
   );
+
+  function card(line: StationItemLine) {
+    const id = slot(line.courseId, line.key);
+    const name = itemName(t, line.name, line.course);
+    const prep = line.item.state === 'preparing';
+    const held = line.heldUp != null;
+    const status = held ? 'heldUp' : prep ? 'preparing' : 'ready';
+    const lineWords = [
+      held
+        ? t('station.heldUpFor', { count: line.heldUp ?? 0 })
+        : prep && line.item.readyIn != null
+          ? t('station.readyInLine', { count: line.item.readyIn })
+          : '',
+      prep && line.waiting > 0 ? t('station.waiting', { count: line.waiting }) : '',
+    ].filter((words) => words !== '');
+    const one = undoable(line);
+    const chosen = prep ? ((line.item.readyIn ?? null) as Eta) : undefined;
+    return (
+      <View
+        key={id}
+        style={[styles.itemCard, compact && styles.itemCardStrip]}
+        testID={`station.left.${line.key}`}
+      >
+        <View style={styles.itemHead}>
+          <View style={styles.grow}>
+            <Text size={z.line + 1} weight="bold">
+              {name}
+            </Text>
+            <Text size={z.line} weight="semibold" style={styles.tabular}>
+              {t('station.toDish', { count: line.toDish })}
+            </Text>
+          </View>
+          <Chip status={status} big />
+        </View>
+        {lineWords.length > 0 && (
+          <Text
+            size={z.line - 2 < 15 ? 15 : z.line - 2}
+            weight="semibold"
+            style={held ? styles.broken : styles.attention}
+          >
+            {lineWords.join(' · ')}
+          </Text>
+        )}
+        {isKept(line) && <Chip status="kept" />}
+        <View style={styles.lineActions}>
+          <View style={styles.segments}>
+            <Segments
+              item={name}
+              id={line.key}
+              preparing={prep || choosing === id}
+              side={z.side}
+              onReady={() => (prep ? onMark(line, 'ready', null) : onChoose(null))}
+              onPreparing={() => onChoose(id)}
+            />
+          </View>
+        </View>
+        {(choosing === id || prep) && (
+          <Times
+            item={name}
+            id={line.key}
+            chosen={chosen}
+            side={z.side}
+            onPick={(eta) => onMark(line, 'preparing', eta)}
+          />
+        )}
+        {one != null && (
+          <View style={styles.undo}>
+            <Text size={14} style={[styles.secondary, styles.grow]}>
+              {t(undoWords(one), {
+                time: time(one.at),
+                count: UNDO_MINUTES,
+              })}
+            </Text>
+            <Quiet
+              label={t('station.undo')}
+              side={z.side}
+              onPress={() => onUndo(line)}
+              testID={`station.undo.${line.key}`}
+            />
+          </View>
+        )}
+      </View>
+    );
+  }
+}
+
+function pairs<T>(all: readonly T[]): T[][] {
+  const rows: T[][] = [];
+  for (let at = 0; at < all.length; at += 2) rows.push(all.slice(at, at + 2));
+  return rows;
 }
 
 function Heading({ view, z }: { view: StationView; z: Sizes }) {
