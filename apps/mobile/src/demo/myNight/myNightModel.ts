@@ -22,6 +22,10 @@ export const MY_NIGHT_STATES = [
   'kitchen_floor',
   'kitchen_dishes_none',
   'kitchen_browser',
+  'floor_lead',
+  'station_lead',
+  'station_lead_pass',
+  'floor_lead_browser',
 ] as const;
 
 export type MyNightState = (typeof MY_NIGHT_STATES)[number];
@@ -61,6 +65,8 @@ export type Night = {
   opens: string | null;
   /** The job's level opens check-in at the door (sc-28230). */
   checksIn: boolean;
+  /** Who's here (sc-3918) reads for this person: the floor lead, a station's lead, or staff.read. Where it opens, else null. */
+  whosHere: string | null;
 };
 
 export const MN = {
@@ -100,6 +106,7 @@ export const MN = {
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
   demoKitchenMoveButton: 'Move Gbenga to the Grill',
   checkIn: 'Check-in',
+  whosHere: 'Who’s here',
 } as const;
 
 export function guestCount(table: Table): string {
@@ -175,6 +182,7 @@ const NIGHT: Night = {
   access: 'Can work the floor',
   opens: null,
   checksIn: false,
+  whosHere: null,
 };
 
 const RONKE: Lead = { name: 'Ronke Alade', phone: '+2348034567890', floor: false };
@@ -278,6 +286,38 @@ export function nightOf(state: MyNightState): Night {
       };
     case 'kitchen_browser':
       return { ...KITCHEN, state, inApp: false };
+    case 'floor_lead':
+    case 'floor_lead_browser':
+      return {
+        ...night,
+        name: 'Dayo Okafor',
+        station: null,
+        job: 'Floor lead',
+        starts: '14:00',
+        ends: '02:00',
+        lead: null,
+        tables: null,
+        kind: null,
+        access: 'Lead',
+        inApp: state === 'floor_lead',
+        whosHere: '/demo/whos-here?state=populated',
+      };
+    case 'station_lead':
+      return {
+        ...night,
+        station: 'Section A · T1–T6',
+        kind: { kind: 'section', name: 'Section A · T1–T6' },
+        lead: { name: 'Dayo Okafor', phone: '+2348035550101', floor: true },
+        access: 'Lead',
+        inApp: true,
+        whosHere: '/demo/whos-here?state=station_lead',
+      };
+    case 'station_lead_pass':
+      return {
+        ...nightOf('kitchen_checkin'),
+        state,
+        whosHere: '/demo/whos-here?state=station_lead',
+      };
     default:
       return night;
   }
@@ -297,6 +337,17 @@ export function movedToGrill(night: Night): Night {
     opens: '/demo/kitchen-station?from=night&on=grill',
     updated: 'Grill',
   };
+}
+
+/** Who's here above Your shift, in the app only as the screen is (sc-3918): primary when no button comes before it. */
+export function whosHereOf(night: Night): { label: string; href: string; primary: boolean } | null {
+  return night.whosHere == null || !night.inApp
+    ? null
+    : {
+        label: MN.whosHere,
+        href: night.whosHere,
+        primary: checkInOf(night) == null && openOf(night) == null,
+      };
 }
 
 /** Check-in above Your shift for a job that checks in, as sc-28230 draws it; null shows no button. */
@@ -350,6 +401,19 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   kitchen_browser: [
     'On a kitchen station, in a browser',
     'No button: the station is in the app only',
+  ],
+  floor_lead: ['The floor lead', 'Who’s here above Your shift opens the whole floor, with Cover'],
+  station_lead: [
+    'A station lead',
+    'Who’s here above Your shift opens their own station’s people, without Cover',
+  ],
+  station_lead_pass: [
+    'A station lead with Check-in and Open Pass',
+    'Who’s here comes last, a secondary button under the other two; it opens Who’s here’s station-lead sample',
+  ],
+  floor_lead_browser: [
+    'The floor lead, in a browser',
+    'No Who’s here: the screen is in the app only',
   ],
 };
 

@@ -29,6 +29,7 @@ import {
   myNightStateOf,
   nightOf,
   openOf,
+  whosHereOf,
   rowLineOf,
   signedInUntil,
 } from './myNightModel.ts';
@@ -98,6 +99,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   );
   const checkIn = checkInOf(night);
   const open = openOf(night);
+  const whosHere = whosHereOf(night);
 
   const left = (
     <>
@@ -135,6 +137,20 @@ export function MyNightScreen({ first }: { first: Night }) {
             label={open.label}
             onPress={() => router.push(open.href as Href)}
             testID="myNight.openStation"
+          />
+        ))}
+      {whosHere != null &&
+        (whosHere.primary ? (
+          <PrimaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
+          />
+        ) : (
+          <SecondaryButton
+            label={whosHere.label}
+            onPress={() => router.push(whosHere.href as Href)}
+            testID="myNight.whosHere"
           />
         ))}
       <Card title={MN.yourShift}>
