@@ -25,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
  * @phpstan-type Item array{key: string, name: ?string}
  * @phpstan-type Step array{stage: string, at: string, by: string}
  * @phpstan-type SentBack array{reason: string, at: string, by: string, stage: string, steps: list<Step>}
- * @phpstan-type Snapshot array{stage: string, tray: ?string, marks: array<string, string>, choice: ?string, toFollow: list<string>, steps: list<Step>, owedReason: ?string, owedAt: ?string, sentBack: list<SentBack>}
+ * @phpstan-type Snapshot array{stage: string, tray: ?string, marks: array<string, string>, markedAt?: array<string, string>, choice: ?string, toFollow: list<string>, steps: list<Step>, owedReason: ?string, owedAt: ?string, sentBack: list<SentBack>}
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'service_plates')]
@@ -71,6 +71,10 @@ class ServicePlate
     #[ORM\Column(type: Types::JSON)]
     private array $marks = [];
 
+    /** @var array<string, string> when each mark was made, by item key (sc-4015) */
+    #[ORM\Column(type: Types::JSON)]
+    private array $markedAt = [];
+
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: HeldChoice::class)]
     private ?HeldChoice $choice = null;
 
@@ -97,9 +101,14 @@ class ServicePlate
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?self $order;
 
+    /** The dish's variant when it is not one of the plate's items, as a child's portion (sc-34230), so a station can say it (sc-4015). */
+    #[ORM\Column(type: Types::STRING, length: 240, nullable: true)]
+    private ?string $variant;
+
     /** @param list<Item> $items */
-    private function __construct(MenuCourse $course, Guest $guest, string $tableKey, bool $isOrder, array $items, ?OwedReason $owedReason, ?self $order, DateTimeImmutable $at, User $by)
+    private function __construct(MenuCourse $course, Guest $guest, string $tableKey, bool $isOrder, array $items, ?string $variant, ?OwedReason $owedReason, ?self $order, DateTimeImmutable $at, User $by)
     {
+        $this->variant = $variant;
         $this->id = Uuid::v7();
         $this->event = $course->getEvent();
         $this->course = $course;
@@ -114,15 +123,15 @@ class ServicePlate
     }
 
     /** @param list<Item> $items */
-    public static function order(MenuCourse $course, Guest $guest, string $tableKey, array $items, DateTimeImmutable $at, User $by): self
+    public static function order(MenuCourse $course, Guest $guest, string $tableKey, array $items, ?string $variant, DateTimeImmutable $at, User $by): self
     {
-        return new self($course, $guest, $tableKey, true, $items, null, null, $at, $by);
+        return new self($course, $guest, $tableKey, true, $items, $variant, null, null, $at, $by);
     }
 
     /** @param list<Item> $items */
     public static function owed(self $from, array $items, OwedReason $reason, DateTimeImmutable $at, User $by): self
     {
-        return new self($from->course, $from->guest, $from->tableKey, false, $items, $reason, $from->order ?? $from, $at, $by);
+        return new self($from->course, $from->guest, $from->tableKey, false, $items, $from->variant, $reason, $from->order ?? $from, $at, $by);
     }
 
     public function getId(): Uuid
@@ -160,6 +169,11 @@ class ServicePlate
         return null !== $this->owedReason;
     }
 
+    public function getVariant(): ?string
+    {
+        return $this->variant;
+    }
+
     /** @return list<Item> */
     public function getItems(): array
     {
@@ -186,6 +200,12 @@ class ServicePlate
     public function getMarks(): array
     {
         return Dict\map($this->marks, ItemMark::from(...));
+    }
+
+    /** @return array<string, string> */
+    public function getMarkedAt(): array
+    {
+        return $this->markedAt;
     }
 
     public function getChoice(): ?HeldChoice
@@ -239,12 +259,13 @@ class ServicePlate
         $this->moved(PlateStep::Start, $at, $by);
     }
 
-    public function mark(string $itemKey, ?ItemMark $mark): void
+    public function mark(string $itemKey, ?ItemMark $mark, DateTimeImmutable $at): void
     {
         if (null === $mark) {
-            unset($this->marks[$itemKey]);
+            unset($this->marks[$itemKey], $this->markedAt[$itemKey]);
         } else {
             $this->marks[$itemKey] = $mark->value;
+            $this->markedAt[$itemKey] = $at->format(\DATE_RFC3339_EXTENDED);
         }
     }
 
@@ -259,6 +280,7 @@ class ServicePlate
     {
         $this->tray = null;
         $this->marks = [];
+        $this->markedAt = [];
         $this->toFollow = [];
         $this->moved(PlateStep::TakeOff, $at, $by);
     }
@@ -268,6 +290,7 @@ class ServicePlate
         $this->sentBack[] = ['reason' => $reason->value, 'at' => $at->format(\DATE_RFC3339_EXTENDED), 'by' => $by->getId()->toRfc4122(), 'stage' => $this->stage->value, 'steps' => $this->steps];
         $this->tray = null;
         $this->marks = [];
+        $this->markedAt = [];
         $this->toFollow = [];
         $this->choice = null;
         $this->owedReason = OwedReason::SentBack;
@@ -282,6 +305,7 @@ class ServicePlate
             'stage' => $this->stage->value,
             'tray' => $this->tray?->getId()->toRfc4122(),
             'marks' => $this->marks,
+            'markedAt' => $this->markedAt,
             'choice' => $this->choice?->value,
             'toFollow' => $this->toFollow,
             'steps' => $this->steps,
@@ -297,6 +321,7 @@ class ServicePlate
         $this->stage = PlateStage::from($snapshot['stage']);
         $this->tray = $tray;
         $this->marks = $snapshot['marks'];
+        $this->markedAt = $snapshot['markedAt'] ?? [];
         $this->choice = null === $snapshot['choice'] ? null : HeldChoice::from($snapshot['choice']);
         $this->toFollow = $snapshot['toFollow'];
         $this->steps = $snapshot['steps'];

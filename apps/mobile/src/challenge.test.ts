@@ -2,7 +2,9 @@ import { type Account } from '@soirely/api-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  carryOnAfter,
   challengeBeganAlone,
+  challengeCarryOn,
   challengeTypedEmail,
   dropChallenge,
   heldChallenge,
@@ -275,5 +277,44 @@ describe('the address the held sign-in was typed with (sc-67828)', () => {
 
     await nextAfterSignIn(CHALLENGE);
     expect(challengeTypedEmail()).toBeNull();
+  });
+});
+
+describe('a provider sign-in from a screen that carries on as the account (sc-94849)', () => {
+  const signedIn = {
+    tokens: { accessToken: 'a', refreshExpiresAt: '2026-11-29T09:00:00+00:00', sessionId: 's' },
+    account: ACCOUNT,
+    linked: false,
+  };
+
+  it('stays there, as the account, when nothing comes first', () => {
+    expect(carryOnAfter(signedIn, '/')).toEqual({ kind: 'here', account: ACCOUNT });
+  });
+
+  it('asks two-factor over the screen, which stays under it', () => {
+    expect(carryOnAfter(CHALLENGE, '/sign-in-code')).toEqual({ kind: 'over', to: '/sign-in-code' });
+  });
+
+  it('goes over it to whatever else comes first', () => {
+    expect(carryOnAfter(signedIn, '/two-factor-again')).toEqual({
+      kind: 'over',
+      to: '/two-factor-again',
+    });
+  });
+
+  it('holds the screen to carry on as the account through two-factor, and drops it with the challenge', async () => {
+    const carryOn = async () => {};
+
+    await nextAfterSignIn(CHALLENGE, { carryOn });
+    expect(challengeCarryOn()).toBe(carryOn);
+
+    dropChallenge();
+    expect(challengeCarryOn()).toBeNull();
+  });
+
+  it('holds none for a sign-in that goes where the account belongs', async () => {
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeCarryOn()).toBeNull();
+    dropChallenge();
   });
 });

@@ -736,6 +736,7 @@
     "timedOutBody_many": "{{organisation}} cierra la sesión tras {{count, number}} de días sin uso. Vuelva a iniciar sesión para seguir.",
     "providerOnlyTitle": "En {{organisation}} solo se inicia sesión con Google o Apple",
     "providerOnlyBody": "En {{organisation}} no se puede iniciar sesión con contraseña. Use {{providers}}.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "anotherAccount": "Iniciar sesión con otra cuenta",
     "providerOnlyFootnote": "Una norma de {{organisation}}: nadie en ella puede iniciar sesión con contraseña."
   },
@@ -6830,7 +6831,7 @@
     "noneLine": "Lo que escriba aparece en la página de cada invitado. Cada invitado que responda tendrá aquí su conversación.",
     "pickOne": "Elija una conversación o escriba a sus invitados aquí abajo.",
     "pickOneClosed": "Elija una conversación.",
-    "onlyManage": "Solo alguien que pueda modificar Mensajes puede escribir aquí.",
+    "onlyManage": "Solo alguien que pueda modificar {{area}} puede escribir aquí.",
     "writeToGuests": "Escribir a sus invitados",
     "followUp": "Seguimiento",
     "writeFollowUp": "Escriba un seguimiento",

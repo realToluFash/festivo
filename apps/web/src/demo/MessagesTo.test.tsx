@@ -686,7 +686,7 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Inês Duarte' })).toBeDefined();
     expect(screen.queryByRole('textbox', { name: 'Your answer' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Send' })).toBeNull();
-    expect(screen.getByText('Only someone who can change Messages can send.')).toBeDefined();
+    expect(screen.getByText('Only someone who can change Messages can write here.')).toBeDefined();
     expect(document.querySelector('.mg-keys-list')?.textContent).toBe('JKMove');
     press('c');
     expect(screen.queryByRole('dialog', { name: 'To' })).toBeNull();
@@ -712,7 +712,9 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       expect(screen.queryByRole('heading', { name: 'Guests have not been told yet' })).toBeNull();
       press('e');
       expect(within(list).getByRole('heading', { name: 'Needs you · 5' })).toBeDefined();
-      expect(screen.getAllByText('Only someone who can change Messages can send.')).toHaveLength(1);
+      expect(
+        screen.getAllByText('Only someone who can change Messages can write here.'),
+      ).toHaveLength(1);
 
       await open(/^Marta Silva/, 'Marta Silva');
       none(['Mark as done', 'Mark as waiting']);

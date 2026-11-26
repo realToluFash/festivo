@@ -16,12 +16,14 @@ use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
+use App\Entity\ProviderIdentity;
 use App\Entity\Role;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\IdentityProvider;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
@@ -414,6 +416,33 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), 'the signed-in redeem takes the use with the token two-factor issued: ' . Json\encode($this->last()));
         $this->client->request('POST', '/api/auth/refresh', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['refreshTokenIn' => 'cookie']));
         self::assertSame(200, $this->statusCode(), 'and the session lasts with the grant: ' . Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aLinkedMemberOfAGoogleOrAppleOnlyOrganisationIsRefusedAfterTheRightCodeWithNoSessionGrantOrUse(): void
+    {
+        $code = $this->code('can_view');
+        $founder = $this->account('owner@lumen.pt', 'Lumen Owner');
+        $lumen = self::service(OrganisationFounder::class)->found($founder, 'Lumen Feiras', 'PT', 'Europe/Lisbon');
+        $lumen->setProviderSignInOnly(true);
+        self::em()->flush();
+        $bisi = $this->account('bisi@lumen.pt', 'Bisi Adeyemi');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $lumen, 'seededAs' => SeededRole::Member]) ?? self::fail('no role');
+        self::em()->persist(new Membership($lumen, self::em()->find(User::class, $bisi->getId()) ?? self::fail('no user'), $role, MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->persist(new ProviderIdentity(self::em()->find(User::class, $bisi->getId()) ?? self::fail('no user'), IdentityProvider::Apple, 'a-bisi', null));
+        self::em()->flush();
+        $this->phoneOn($bisi, '+2348031110006');
+
+        $answer = $this->redeem($code, 'Bisi', '+2348031110006');
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertSame('Lumen Feiras', $answer['organisation'] ?? null);
+        self::assertSame(['apple'], $answer['providers'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]), 'no use taken');
+        self::assertSame(0, self::em()->getRepository(EventPerson::class)->count(['user' => $bisi->getId()]), 'no grant');
+        self::assertSame(0, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']), 'no session');
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM phone_sign_ins WHERE typed_name IS NOT NULL'), 'the name typed is stored nowhere');
     }
 
     #[Test]

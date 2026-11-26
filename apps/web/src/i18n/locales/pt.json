@@ -736,6 +736,7 @@
     "timedOutBody_many": "{{organisation}} encerra a sessão após {{count, number}} de dias sem utilização. Inicie sessão novamente para prosseguir.",
     "providerOnlyTitle": "{{organisation}}: início de sessão só com Google ou Apple",
     "providerOnlyBody": "O início de sessão com palavra-passe está desativado em {{organisation}}. Em vez disso, utilize {{providers}}.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "anotherAccount": "Iniciar sessão com outra conta",
     "providerOnlyFootnote": "Uma regra definida por {{organisation}}: o início de sessão com palavra-passe está desativado para todos os membros."
   },
@@ -6830,7 +6831,7 @@
     "noneLine": "O que escrever aparece na página de cada convidado. Cada convidado que responder abre aqui uma conversa.",
     "pickOne": "Escolha uma conversa ou escreva aos seus convidados aqui em baixo.",
     "pickOneClosed": "Escolha uma conversa.",
-    "onlyManage": "Só alguém que possa alterar Mensagens pode escrever aqui.",
+    "onlyManage": "Só alguém que possa alterar {{area}} pode escrever aqui.",
     "writeToGuests": "Escrever aos seus convidados",
     "followUp": "Seguimento",
     "writeFollowUp": "Escreva uma mensagem de seguimento",

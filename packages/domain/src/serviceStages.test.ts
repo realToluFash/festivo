@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  heldUpMinutes,
   isHeld,
   PLATE_STAGES,
   plateStep,
@@ -78,5 +79,39 @@ describe('SERVICE_WORD_KEYS', () => {
       expect(SERVICE_WORD_KEYS.stage[stage]).toBe(`service.stage.${stage}`);
       expect(SERVICE_WORD_KEYS.stageCount[stage]).toBe(`service.stageCount.${stage}`);
     }
+  });
+});
+
+describe('heldUpMinutes', () => {
+  const at = (minutes: number) => new Date(Date.UTC(2027, 2, 6, 19, minutes));
+  const preparing = (readyIn: number | null, changed = 0, since = 0) => ({
+    state: 'preparing' as const,
+    readyIn,
+    changedAt: at(changed).toISOString(),
+    preparingSince: at(since).toISOString(),
+  });
+
+  it('keeps the time its disher gave until it passes, then counts from the first Preparing', () => {
+    expect(heldUpMinutes(preparing(10), at(9))).toBeNull();
+    expect(heldUpMinutes(preparing(10), at(10))).toBe(10);
+  });
+
+  it('is Held up 15 minutes on with no time given', () => {
+    expect(heldUpMinutes(preparing(null), at(14))).toBeNull();
+    expect(heldUpMinutes(preparing(null), at(22))).toBe(22);
+  });
+
+  it('runs a new time from when it was given, and still counts from the first Preparing', () => {
+    expect(heldUpMinutes(preparing(5, 4, 0), at(8))).toBeNull();
+    expect(heldUpMinutes(preparing(5, 4, 0), at(9))).toBe(9);
+  });
+
+  it('is never Held up while Ready', () => {
+    expect(
+      heldUpMinutes(
+        { state: 'ready', readyIn: null, changedAt: null, preparingSince: null },
+        at(59),
+      ),
+    ).toBeNull();
   });
 });

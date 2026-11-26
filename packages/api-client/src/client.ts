@@ -165,6 +165,12 @@ import {
   asSchedule,
 } from './schedule.ts';
 import type { KeptServiceTap } from './serviceTapQueue.ts';
+import {
+  type KitchenStationsRead,
+  type ServiceRead,
+  asKitchenStationsRead,
+  asServiceRead,
+} from './serviceRead.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
@@ -4092,6 +4098,50 @@ export class ApiClient {
         { headers: { 'Idempotency-Key': sent.key } },
       ),
     );
+  }
+
+  /** sc-4005's read of one course's service: 403 without service.work. */
+  async serviceRead(eventId: string, courseId: string): Promise<ServiceRead> {
+    const body = await this.get<{ service?: unknown }>(
+      `${this.servicePath(eventId)}/course/${encodeURIComponent(courseId)}`,
+    );
+    const read = asServiceRead(body?.service);
+
+    if (read == null)
+      throw new Error(
+        'The API answered a service read in a shape this client does not know. Check ServiceRead in services/api.',
+      );
+
+    return read;
+  }
+
+  /** The event's kitchen stations, the reader's own and the courses fired (sc-4015): 403 without service.work, or to whoever works only the floor. */
+  async kitchenStations(eventId: string): Promise<KitchenStationsRead> {
+    const body = await this.get<unknown>(`${this.servicePath(eventId)}/stations`);
+    const read = asKitchenStationsRead(body);
+
+    if (read == null)
+      throw new Error(
+        'The API answered the kitchen stations in a shape this client does not know. Check KitchenStationList in services/api.',
+      );
+
+    return read;
+  }
+
+  /** A hub token for this event's service topic alone (sc-4005). */
+  async serviceSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.servicePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private servicePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/service`;
   }
 
   /** A kept service tap (sc-4028); the same key again answers as the first time, 409 `service_changed` names each plate or item that moved since. */

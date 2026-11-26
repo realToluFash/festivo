@@ -31,24 +31,25 @@ export function liveOneDayClock(state: LiveOneDayState): Date {
 
 let speeches = false;
 
-/** Whether the opened state puts Speeches in Dîner's run of show. */
+/** Whether the opened state puts Speeches, Dîner's only run of show item, in its run of show. */
 export function seedRunOfShow(state: string | null): void {
   speeches = state === 'liveOneDaySpeeches';
 }
 
-/** Dîner's run of show, as the server adds it to the event's dates. */
+/** Dîner's run of show as the server adds it to the event's dates: the day's first item as Run of show begins, read first, then Speeches as a fixed-time item (sc-3893). */
 export function runOfShowOf(eventId: string): Milestone[] {
   if (eventId !== DINER_ID || !speeches) return [];
+  const item = {
+    at: '2026-11-03T22:00:00Z',
+    note: null,
+    owner: 'event',
+    area: 'runOfShow',
+    action: null,
+  } as const;
 
   return [
-    {
-      at: '2026-11-03T22:00:00Z',
-      title: 'Speeches',
-      note: null,
-      owner: 'event',
-      area: 'runOfShow',
-      action: null,
-    },
+    { ...item, title: 'Run of show begins' },
+    { ...item, title: 'Speeches' },
   ];
 }
 

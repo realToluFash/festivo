@@ -60,7 +60,7 @@ final readonly class TrayRead
         foreach ($plates as $plate) {
             foreach ($plate->onThePlate() as $item) {
                 $stop = $stopOf[$plate->getCourse()->getId()->toRfc4122() . '|' . $item['key']] ?? $passId;
-                $marks[$stop][] = ['plateId' => $plate->getId()->toRfc4122(), 'item' => $item['key'], 'mark' => ($plate->getMarks()[$item['key']] ?? null)?->value];
+                $marks[$stop][] = ['plateId' => $plate->getId()->toRfc4122(), 'item' => $item['key'], 'mark' => ($plate->getMarks()[$item['key']] ?? null)?->value, 'at' => $plate->getMarkedAt()[$item['key']] ?? null];
             }
         }
 

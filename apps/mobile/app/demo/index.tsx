@@ -70,6 +70,7 @@ import { LOCK_CARD_BOARDS } from '../../src/demo/night/lockCard.ts';
 import { MY_NIGHT_BOARDS } from '../../src/demo/myNight/myNightModel.ts';
 import { NIGHT_BOARDS } from '../../src/demo/night/nightModel.ts';
 import { STATION_BOARDS } from '../../src/demo/station/StationBoards.ts';
+import { KITCHEN_WAY_IN_BOARDS } from '../../src/demo/station/wayInBoards.ts';
 import { MENU_PICKS_BOARDS } from '../../src/demo/menuPicks/MenuPicksBoards.ts';
 import { MOVED_BOARDS, TEAM_BOARDS } from '../../src/demo/team/TeamBoards.ts';
 import {
@@ -1933,7 +1934,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
       },
       {
         title: 'A one-day event · Speeches ahead',
-        what: 'At 21:15: Next up: Speeches on its card and in Coming up, as on main',
+        what: 'At 21:15: Next up: Run of show begins on its card, Coming up lists it and Speeches, as on main',
         href: '/demo/events/evt-diner-1?state=liveOneDaySpeeches',
       },
       {
@@ -2781,6 +2782,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Service · Kitchen station, the tray model (sc-4015) · tablet landscape, tablet portrait and phone',
     boards: STATION_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
+  },
+  {
+    page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382) · phone, tablet portrait and landscape',
+    boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
   },
   {
     page: 'Service · the whole room as a plan or a list (sc-4026) · tablet landscape',

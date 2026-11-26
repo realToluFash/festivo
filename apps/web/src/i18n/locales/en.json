@@ -708,6 +708,7 @@
     "timedOutBody_other": "{{organisation}} signs people out after {{count, number}} days without use. Sign in again to carry on.",
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "anotherAccount": "Sign in with another account",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },
@@ -6477,7 +6478,7 @@
     "noneLine": "What you write appears on each guest’s own page. Each guest who answers gets a conversation here.",
     "pickOne": "Pick a conversation, or write to your guests below.",
     "pickOneClosed": "Pick a conversation.",
-    "onlyManage": "Only someone who can change Messages can send.",
+    "onlyManage": "Only someone who can change {{area}} can write here.",
     "writeToGuests": "Write to your guests",
     "followUp": "Follow-up",
     "writeFollowUp": "Write a follow-up",

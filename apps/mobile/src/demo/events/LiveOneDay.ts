@@ -27,13 +27,15 @@ export function liveOneDayClock(state: LiveOneDayState): Date {
   return new Date(CLOCKS[state]);
 }
 
-export const SPEECHES: Omit<Milestone, 'at'> = {
-  title: 'Speeches',
+/** Speeches, Dîner's only run of show item, at 22:00 and fixed-time: the server dates it as the day's first item and under its own title (sc-3893). */
+const RUN_OF_SHOW: Milestone[] = ['Run of show begins', 'Speeches'].map((title) => ({
+  at: '2026-11-03T22:00:00Z',
+  title,
   note: null,
   owner: 'event',
   area: 'runOfShow',
   action: null,
-};
+}));
 
 let speeches = false;
 
@@ -42,14 +44,11 @@ export function seedRunOfShow(state: string | null): void {
   speeches = state === 'liveOneDaySpeeches';
 }
 
-/** Dîner's dates as the server returns them: its start, and Speeches when its run of show has it; a one-day event's end is never one (sc-3594). */
+/** Dîner's dates as the server returns them: its start, and Run of show begins then Speeches when its run of show has Speeches; a one-day event's end is never one (sc-3594). */
 export function dinerDates(event: Pick<SampleEvent, 'startsAt'>, starts: string): Milestone[] {
   const own = { note: null, owner: 'event', area: 'events', action: null } as const;
 
-  return [
-    { ...own, at: event.startsAt, title: starts },
-    ...(speeches ? [{ ...SPEECHES, at: '2026-11-03T22:00:00Z' }] : []),
-  ];
+  return [{ ...own, at: event.startsAt, title: starts }, ...(speeches ? RUN_OF_SHOW : [])];
 }
 
 /** While it is happening now with nothing ahead, the card has no step at all: not the finished line, and no Duplicate. */
