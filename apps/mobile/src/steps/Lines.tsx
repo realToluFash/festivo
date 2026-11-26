@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { StatusMark, type MarkTone } from '../components/StatusMark.tsx';
@@ -11,6 +11,9 @@ import { useFocusOnAnswer } from '../components/Screen.tsx';
 import type { TextHandle } from '../components/Text.tsx';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { stepTitle } from './stepTitle.ts';
+
+export { stepTitle };
 
 /** A step's title and the one line under it that says what to do. */
 export function Heading({
@@ -52,11 +55,6 @@ const CONTROL = 16;
 /** A sign-in step's title, a size larger in a tablet's sheet. */
 export function useStepTitleSize() {
   return useLayout().kind === 'phone' ? tokens.typeTitleStep.size : tokens.typeTitleFrame.size;
-}
-
-/** Tracked in by 2% of its size; not on Android, which measures tracked text a line short and drops the last word. */
-export function stepTitle(size: number) {
-  return Platform.OS === 'android' ? {} : { letterSpacing: size * -0.02 };
 }
 
 export function Plain({
