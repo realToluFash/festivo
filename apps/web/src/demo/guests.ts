@@ -161,7 +161,7 @@ export interface Guest {
   /** sc-3775: the one group they are in, by id; their companions follow them. Absent is No group. */
   group?: string;
   /** sc-1291: the answer link the reply was confirmed from; absent is the page itself, which shows no source. */
-  via?: 'emailLink' | 'smsLink';
+  via?: 'emailLink';
 }
 
 /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
@@ -1701,11 +1701,10 @@ function everyoneReplied(list: readonly Guest[]): Guest[] {
   );
 }
 
-/** sc-1291: two replies confirmed from an answer link, one by email and one by SMS; the rest from the page itself. */
+/** sc-1291: a reply confirmed from an email answer link; the rest, the text's link among them, from the page itself. */
 function fromLinks(list: readonly Guest[]): Guest[] {
-  const via: Partial<Record<string, 'emailLink' | 'smsLink'>> = {
+  const via: Partial<Record<string, 'emailLink'>> = {
     sophie: 'emailLink',
-    camille: 'smsLink',
   };
 
   return list.map((one) => {
@@ -1764,7 +1763,10 @@ export const GUESTS_STATES = [
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
-  { key: 'replyFromLink', name: 'Where a reply came from: the email link, the SMS link (sc-1291)' },
+  {
+    key: 'replyFromLink',
+    name: 'Where a reply came from: the email link, or the page itself (sc-1291)',
+  },
   { key: 'closesToday', name: 'Replies close today' },
   { key: 'closesLater', name: 'Replies close on a later date' },
   { key: 'repliesClosedLive', name: 'Replies have closed, the event still to come' },

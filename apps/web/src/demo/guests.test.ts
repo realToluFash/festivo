@@ -704,7 +704,7 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
 });
 
 describe('where a reply came from (sc-1291)', () => {
-  it('names the answer link a reply was confirmed from, and nothing for the page itself', () => {
+  it('names the email answer link a reply was confirmed from, and nothing for the page itself', () => {
     const { list } = guestsStart('replyFromLink', new URLSearchParams());
     const line = (id: string) => {
       const one = list.find((guest) => guest.id === id);
@@ -714,7 +714,7 @@ describe('where a reply came from (sc-1291)', () => {
     };
 
     expect(line('sophie')).toBe('Coming · replied Oct 12 · from the email link');
-    expect(line('camille')).toBe('Not coming · replied Oct 20 · from the SMS link');
+    expect(line('camille')).toBe('Not coming · replied Oct 20');
     expect(line('kwame')).toBe('Coming · replied Oct 2');
   });
 });

@@ -65,7 +65,6 @@ export const GW = {
 
   repliedOn: (date: string) => `replied ${date}`,
   emailLink: 'from the email link',
-  smsLink: 'from the SMS link',
   askedOn: (date: string) => `asked to decide by ${date}`,
   willBeAskedAgain: (date: string) => `will be asked again ${date}`,
   askedAgain: (date: string) => `asked again ${date}`,

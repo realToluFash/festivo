@@ -132,6 +132,7 @@ const SHARED: readonly Family[] = [
       'guestCompanions.css',
       'guestDay.css',
       'guestKitchen.css',
+      'guestLink.css',
       'guestProgramme.css',
       'guestTable.css',
       'share.css',
