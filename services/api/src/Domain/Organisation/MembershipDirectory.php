@@ -95,6 +95,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
 
     /**
      * The account's live grants from outside, less those on an organisation it is an active member of: there its role wins (sc-94843).
+     * An event held both ways is listed once, at the grant from outside's level, as grantsOnEvent reads it.
      *
      * @return list<OutsideEvent>
      */
@@ -103,7 +104,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         $memberOf = Vec\map($this->membershipRepository->findActiveFor($user), static fn (Membership $membership): Uuid => $membership->getOrganisation()->getId());
 
         return Vec\filter(
-            $this->staffLinkGrants->liveOutsideEvents($user),
+            Vec\unique_by($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): string => $outside->event->getId()->toRfc4122()),
             static fn (OutsideEvent $outside): bool => !Iter\any($memberOf, static fn (Uuid $id): bool => $id->equals($outside->event->getOrganisation()->getId())),
         );
     }
