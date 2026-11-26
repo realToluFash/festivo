@@ -16,6 +16,7 @@ const WEDDING: OutsideEvent = {
   jobLabel: 'Cloakroom',
   startsAt: '2030-11-14T16:00:00+01:00',
   endsAt: '2030-11-15T02:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const LAUNCH: OutsideEvent = {
@@ -26,6 +27,7 @@ const LAUNCH: OutsideEvent = {
   jobLabel: null,
   startsAt: '2030-12-05T16:00:00+01:00',
   endsAt: '2030-12-05T23:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const READS = ['events.read', 'guests.read', 'schedule.read', 'seating.read', 'people.read'];

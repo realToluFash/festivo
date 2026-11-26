@@ -149,7 +149,9 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
           way={way ?? null}
           fresh={fresh}
           offline={stale != null}
-          band={<StaleBand stale={stale} className="offline-band ci-band" />}
+          band={
+            <StaleBand stale={stale} className="offline-band ci-band" timeZone={shown.timeZone} />
+          }
           titleRef={title}
           onRead={(checkIn) => {
             setFresh([]);

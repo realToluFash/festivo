@@ -66,6 +66,7 @@ final readonly class AccountSerialiser
                 'jobLabel' => $reach->jobLabel,
                 'startsAt' => $reach->event->getStartsAt()->format(\DATE_ATOM),
                 'endsAt' => $reach->until?->format(\DATE_ATOM),
+                'timeZone' => $reach->event->getTimeZone(),
             ]),
             // In no organisation and asked to join one (sc-561): the details screen says whom it is waiting for.
             'waitingFor' => null === $pending ? null : $this->joinRequestSerialiser->request($pending),

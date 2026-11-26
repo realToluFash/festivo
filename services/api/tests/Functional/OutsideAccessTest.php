@@ -337,6 +337,7 @@ final class OutsideAccessTest extends ApiTestCase
             'role' => 'can_check_in',
             'jobLabel' => 'Kitchen',
             'startsAt' => '2030-11-14T16:00:00+01:00',
+            'timeZone' => 'Africa/Lagos',
         ]], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($me['outsideEvents']), static fn (array $event): array => [
             'id' => $event['id'],
             'name' => $event['name'],
@@ -344,6 +345,7 @@ final class OutsideAccessTest extends ApiTestCase
             'role' => $event['role'],
             'jobLabel' => $event['jobLabel'],
             'startsAt' => $event['startsAt'],
+            'timeZone' => $event['timeZone'],
         ]));
     }
 
