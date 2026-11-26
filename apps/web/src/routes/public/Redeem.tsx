@@ -8,14 +8,16 @@ import { formatDay, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { type FormEvent, type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
+import { doorAddress } from './doorCheckIn.ts';
 import {
+  outsideOn,
   refreshAccount,
   rereadOutsideEvents,
   restoreSession,
@@ -60,7 +62,36 @@ type Step =
       handle: string;
     }
   | { kind: 'member'; organisation: string; eventId: string }
-  | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event']; held: boolean };
+  | { kind: 'in'; you: YoureIn };
+
+/** "You're in for…": after redeeming, or again from check-in's way back, which redeems nothing (sc-28230). */
+interface YoureIn {
+  eventId: string;
+  event: string;
+  timeZone: string | null;
+  jobLabel: string | null;
+  role: string;
+  name: string;
+  endsAt: string | null;
+  held: boolean;
+}
+
+function youreIn(
+  redeemed: RedeemedDoorCode,
+  event: OpenedDoorCode['event'],
+  held: boolean,
+): YoureIn {
+  return {
+    eventId: redeemed.eventId,
+    event: event.name,
+    timeZone: event.timeZone,
+    jobLabel: redeemed.jobLabel,
+    role: redeemed.role,
+    name: redeemed.name,
+    endsAt: redeemed.endsAt,
+    held,
+  };
+}
 
 /** A door code as typed: any case, spaces and hyphens ignored (sc-72). */
 function normalCode(typed: string): string {
@@ -69,12 +100,12 @@ function normalCode(typed: string): string {
 
 /** /d and /d/:code (sc-72): the browser's redeem pages, 390 first and one centred column wider, as the web demo's redeem draws them. */
 export function RedeemPage() {
-  const { code = '' } = useParams();
+  const { code = '', eventId } = useParams();
 
-  return <Redeem key={code} code={code} />;
+  return <Redeem key={eventId ?? code} code={eventId == null ? code : ''} again={eventId} />;
 }
 
-function Redeem({ code }: { code: string }) {
+function Redeem({ code, again }: { code: string; again: string | undefined }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const state = useSessionState();
@@ -125,12 +156,34 @@ function Redeem({ code }: { code: string }) {
     };
   }, [code]);
 
+  // From check-in's way back (/d/in/:eventId): the grant the account already holds, redeeming nothing again.
+  const held =
+    again == null || state.status !== 'signedIn' ? null : outsideOn(state.session, again);
+  const back: YoureIn | null =
+    held == null || step.kind !== 'enter' || step.signedOut
+      ? null
+      : {
+          eventId: held.id,
+          event: held.name,
+          timeZone: null,
+          jobLabel: held.jobLabel,
+          role: held.role,
+          name,
+          endsAt: held.endsAt,
+          held: false,
+        };
+  const backShown = back != null;
+
+  useEffect(() => {
+    if (backShown) title.current?.focus();
+  }, [backShown]);
+
   async function join(event: Extract<Step, { kind: 'event' }>): Promise<void> {
     setStep({ ...event, busy: true, trouble: null });
     try {
       const redeemed = await api.redeemDoorCode(event.code);
       await rereadOutsideEvents().catch(() => undefined);
-      go({ kind: 'in', redeemed, event: event.opened.event, held: false });
+      go({ kind: 'in', you: youreIn(redeemed, event.opened.event, false) });
     } catch (error) {
       refused(event, error);
     }
@@ -218,7 +271,7 @@ function Redeem({ code }: { code: string }) {
       return;
     }
     await refreshAccount();
-    if (redeemed != null) go({ kind: 'in', redeemed, event: at.opened.event, held: true });
+    if (redeemed != null) go({ kind: 'in', you: youreIn(redeemed, at.opened.event, true) });
   }
 
   const { signOut } = useSignOut(() =>
@@ -226,7 +279,59 @@ function Redeem({ code }: { code: string }) {
   );
   const leave = signOut;
 
+  function youreInBody(you: YoureIn): ReactNode {
+    const toEvent = () => void navigate(`/app/events/${you.eventId}`);
+
+    return (
+      <>
+        <Tile id={you.eventId} />
+        <Title titleRef={title}>
+          {you.jobLabel == null
+            ? t('redeem.inTitleNoJob', { event: you.event })
+            : t('redeem.inTitle', { event: you.event, job: you.jobLabel })}
+        </Title>
+        <p className="rd-intro">{t('redeem.endsLine')}</p>
+        {you.role === 'can_check_in' ? (
+          <div className="rd-pair">
+            <Link className="rd-primary" to={doorAddress(you.eventId)}>
+              {t('checkIn.title')}
+            </Link>
+            <button type="button" className="rd-secondary" onClick={toEvent}>
+              {t('redeem.openEvent')}
+            </button>
+          </div>
+        ) : (
+          <Primary onClick={toEvent}>{t('redeem.openEvent')}</Primary>
+        )}
+        <div className="rd-you">
+          <p className="rd-you-name">{t('redeem.signedInAs', { name: you.name })}</p>
+          {you.held && you.endsAt != null && you.timeZone != null && (
+            <p className="rd-you-line">
+              {t('redeem.signedOutAt', {
+                time: atWords(
+                  you.endsAt,
+                  {
+                    endsAt: you.endsAt,
+                    timeZone: you.timeZone,
+                    locale: dateLocale(),
+                    now: new Date(),
+                  },
+                  t,
+                ),
+              })}
+            </p>
+          )}
+          <button type="button" className="rd-out" onClick={() => void leave()}>
+            <SignOutLine />
+            {t('redeem.signOut')}
+          </button>
+        </div>
+      </>
+    );
+  }
+
   function body(): ReactNode {
+    if (back != null) return youreInBody(back);
     switch (step.kind) {
       case 'enter':
         return (
@@ -315,43 +420,7 @@ function Redeem({ code }: { code: string }) {
           </>
         );
       case 'in':
-        return (
-          <>
-            <Tile id={step.event.id} />
-            <Title titleRef={title}>
-              {step.redeemed.jobLabel == null
-                ? t('redeem.inTitleNoJob', { event: step.event.name })
-                : t('redeem.inTitle', { event: step.event.name, job: step.redeemed.jobLabel })}
-            </Title>
-            <p className="rd-intro">{t('redeem.endsLine')}</p>
-            <Primary onClick={() => void navigate(`/app/events/${step.redeemed.eventId}`)}>
-              {t('redeem.openEvent')}
-            </Primary>
-            <div className="rd-you">
-              <p className="rd-you-name">{t('redeem.signedInAs', { name: step.redeemed.name })}</p>
-              {step.held && step.redeemed.endsAt != null && (
-                <p className="rd-you-line">
-                  {t('redeem.signedOutAt', {
-                    time: atWords(
-                      step.redeemed.endsAt,
-                      {
-                        endsAt: step.redeemed.endsAt,
-                        timeZone: step.event.timeZone,
-                        locale: dateLocale(),
-                        now: new Date(),
-                      },
-                      t,
-                    ),
-                  })}
-                </p>
-              )}
-              <button type="button" className="rd-out" onClick={() => void leave()}>
-                <SignOutLine />
-                {t('redeem.signOut')}
-              </button>
-            </div>
-          </>
-        );
+        return youreInBody(step.you);
     }
   }
 

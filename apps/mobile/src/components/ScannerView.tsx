@@ -1,5 +1,5 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, replyDate } from '@soirely/domain';
+import { REPLY_KEY, companionShown, countLine, replyDate } from '@soirely/domain';
 import { type BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -11,7 +11,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { currentLocale } from '../i18n/index.ts';
-import { clockOf, countLine } from '../kit/checkIn.ts';
+import { clockOf } from '../kit/checkIn.ts';
 import {
   type ScanRead,
   type WaitingArrival,

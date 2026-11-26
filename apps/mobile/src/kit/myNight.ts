@@ -74,3 +74,12 @@ export function rowLineOf(t: TFunction, night: MyNight, locale: string): string 
     end: clockAt(night.shift.endsAt, locale),
   })}`;
 }
+
+/** Where My night's Check-in leads, for a job whose level opens check-in at the door (sc-28230); null shows no button. */
+export function checkInOf(
+  night: MyNight,
+): { pathname: '/events/[id]/check-in'; params: { id: string } } | null {
+  return night.checksIn
+    ? { pathname: '/events/[id]/check-in', params: { id: night.event.id } }
+    : null;
+}

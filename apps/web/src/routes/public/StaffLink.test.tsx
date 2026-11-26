@@ -121,7 +121,7 @@ const YOURS = {
 };
 
 const NIGHT = {
-  event: { name: 'Joana & Rui’s wedding', timeZone: 'Europe/Lisbon' },
+  event: { id: 'ev-1', name: 'Joana & Rui’s wedding', timeZone: 'Europe/Lisbon' },
   endsAt: '2027-03-07T02:00:00+00:00',
   station: 'Section B',
   job: 'Waiter',
@@ -148,6 +148,7 @@ const NIGHT = {
       ],
     },
   ],
+  checksIn: false,
 };
 
 const SIGNED_IN = {
