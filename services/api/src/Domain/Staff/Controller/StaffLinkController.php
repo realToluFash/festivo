@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Controller;
 
 use App\Domain\Staff\Http\StaffSerialiser;
+use App\Domain\Staff\Link\MyNight;
+use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\Staff\Link\StaffLinks;
 use App\Domain\Staff\Link\StaffLinkSignIn;
 use App\Domain\Staff\Link\StaffLinkWindow;
@@ -19,6 +21,7 @@ use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\InThisEvent;
+use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\CodeField;
@@ -26,12 +29,14 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\RefreshTokenRepository;
 use DateTimeZone;
+use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
 
 /** Each person's own link (sc-3912): given out from the roster, and opened by its token on any device with no sign-in. The token travels in the body, never the URL, where request logs would keep it. */
 final readonly class StaffLinkController
@@ -47,6 +52,8 @@ final readonly class StaffLinkController
         private CallerSession $callerSession,
         private RefreshTokenRepository $refreshTokenRepository,
         private TokenIssuer $tokenIssuer,
+        private StaffLinkGrants $staffLinkGrants,
+        private MyNight $myNight,
     ) {
     }
 
@@ -114,6 +121,32 @@ final readonly class StaffLinkController
         $signedIn = $this->staffLinkSignIn->signIn($entry, $body['handle'], $this->codeField->required($body, 'code', CodeField::FROM_TEXT), $request, RefreshTokenDelivery::Cookie === $delivery);
 
         return $this->signInResponse->for($signedIn['admission'], $signedIn['user'], $delivery, $request);
+    }
+
+    /** The person's own night (sc-3915), to the entry's own account inside the link's window; every other caller is answered 404, as for a link that does not exist. */
+    #[Route('/api/staff-links/night', name: 'staff_links_night', methods: ['POST'])]
+    #[PublicAccess]
+    public function night(Request $request): JsonResponse
+    {
+        $entry = $this->entry($request);
+        $reader = $this->security->getUser();
+        $window = $this->staffLinks->window($entry);
+
+        if (!$reader instanceof User || true !== $entry->getAccount()?->getId()->equals($reader->getId()) || !$window->open || null === $window->until) {
+            throw ApiException::notFound('access.not_found');
+        }
+
+        return new JsonResponse($this->myNight->of($entry, $window->until));
+    }
+
+    /** The same night in the app, for an account on the event's roster through its link (sc-3906); 404 for anybody else, organisers included. */
+    #[Route('/api/events/{eventId}/my-night', name: 'staff_my_night', methods: ['GET'])]
+    #[Authenticated]
+    public function mine(string $eventId): JsonResponse
+    {
+        $grant = Uuid::isValid($eventId) ? Iter\first($this->staffLinkGrants->live($this->user(), Uuid::fromString($eventId))) : null;
+
+        return null === $grant ? throw ApiException::notFound('access.not_found') : new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
     }
 
     /** Sent by the page once it is visible, so a preview fetch records nothing; answers as `look` does. */
