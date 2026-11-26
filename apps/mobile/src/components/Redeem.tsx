@@ -39,7 +39,7 @@ import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { focusChecked } from './Field.tsx';
 import { deviceNow } from './CreateWalkWindow.tsx';
-import { ProviderButtons } from './ProviderSignIn.tsx';
+import { ProviderButtons, failedOver } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type CodeLeave, NumberFields, PhoneCodeScreen, shownNumber } from './RedeemPhone.tsx';
 import { TextAction } from './SummaryRows.tsx';
@@ -577,7 +577,7 @@ function ProviderOnlyStep({
   return (
     <StepScreen
       nav={<NavBar left="close" onLeft={onClose} testID="redeem.nav" />}
-      foot={<ProviderButtons only={step.providers} onSignedIn={onSignedIn} />}
+      foot={<ProviderButtons only={step.providers} onSignedIn={onSignedIn} onFailed={failedOver} />}
     >
       <EventTile id={step.opened.event.id} />
       <Heading

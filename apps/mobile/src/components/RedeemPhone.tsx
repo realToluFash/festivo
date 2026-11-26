@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { type CodeStatus, codeRefusal, retryAfter } from '../kit/code.ts';
-import { ruleRefusal } from '../kit/signInRules.ts';
+import { providerOnlyRefusal } from '../kit/redeem.ts';
 import { CodeStep, type CodeStepStatus } from '../steps/CodeStep.tsx';
 import { InsideField } from '../steps/InsideField.tsx';
 import { Says } from '../steps/Lines.tsx';
@@ -139,15 +139,10 @@ export function PhoneCodeScreen({
       setStatus({ kind: 'verified' });
       onLeave({ kind: 'signedIn', signedIn });
     } catch (error) {
-      const rule = error instanceof ApiError ? ruleRefusal(error.problem) : null;
+      const providerOnly = providerOnlyRefusal(error);
       if (error instanceof ApiError && error.is('phone_alternative'))
         onLeave({ kind: 'alternative' });
-      else if (rule?.kind === 'providerOnly')
-        onLeave({
-          kind: 'providerOnly',
-          organisation: rule.organisation,
-          providers: rule.providers,
-        });
+      else if (providerOnly != null) onLeave(providerOnly);
       else if (
         error instanceof ApiError &&
         (error.status === 429 || error.status === 404 || error.is('door_code_invalid'))

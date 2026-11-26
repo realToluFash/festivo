@@ -67,6 +67,16 @@ export async function nextAfterSignIn(
   return link == null ? landing : `/join/${link}`;
 }
 
+/** A provider sign-in from a screen that carries on as the account (sc-94849): there when nothing comes first, else over it, so the screen stays under whatever is asked first. */
+export function carryOnAfter<To extends string>(
+  outcome: SignInOutcome,
+  next: To,
+): { kind: 'here'; account: Account } | { kind: 'over'; to: To } {
+  return 'challenge' in outcome || next !== '/'
+    ? { kind: 'over', to: next }
+    : { kind: 'here', account: outcome.account };
+}
+
 /** Where a registration goes once its code is accepted: back to a request link it started from (sc-562), else where the account belongs. */
 export async function nextAfterRegistration(
   account: Account,

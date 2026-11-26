@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { PROVIDER_NAMES, signInWithProvider } from '../providerSignIn.ts';
-import { nextAfterSignIn } from '../challenge.ts';
+import { carryOnAfter, nextAfterSignIn } from '../challenge.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { drawnSize } from '../layout/textSize.ts';
@@ -31,6 +31,11 @@ const APPLE_IOS_LOGO_BAND = 40.8;
 /** Away from welcome, a failure is said there; on it, the screen says it itself. */
 function failedElsewhere(provider: string): void {
   router.replace(`/welcome?providerFailed=${provider}`);
+}
+
+/** Said on welcome over the screen, which Back returns to, as a door code's refusal is (sc-94849). */
+export function failedOver(provider: string): void {
+  router.push(`/welcome?providerFailed=${provider}`);
 }
 
 /** Built to each owner's published specification; the marks are copied, not redrawn. */
@@ -60,9 +65,13 @@ export function ProviderButtons({
       await before?.();
       const outcome = await signInWithProvider(provider);
       const next = await nextAfterSignIn(outcome, { alone });
-      if (onSignedIn != null && next === '/' && !('challenge' in outcome))
-        await onSignedIn(outcome.account);
-      else router.replace(next);
+      if (onSignedIn == null) {
+        router.replace(next);
+        return;
+      }
+      const after = carryOnAfter(outcome, next);
+      if (after.kind === 'here') await onSignedIn(after.account);
+      else router.push(after.to);
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);
