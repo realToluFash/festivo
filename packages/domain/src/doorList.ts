@@ -1,4 +1,4 @@
-import type { Arrival, CheckIn, CheckInGuest } from '@soirely/api-client';
+import type { Arrival, CheckIn, CheckInGuest, GuestSeat } from '@soirely/api-client';
 
 import { type Translate } from './eventWords.ts';
 import { type ReplyWord } from './guestForm.ts';
@@ -13,6 +13,27 @@ export interface DoorRow {
   companion: boolean;
   reply: ReplyWord;
   arrival: Arrival | null;
+  /** The line under the name: their seat, or "No seat yet"; null on an event nobody is seated on yet, where no row has one (sc-60684). */
+  seat: string | null;
+}
+
+/** "Table 4 · Main hall", "Row C, seat 14 · Balcony", "Seat 12": the host's own names, never translated, in sc-4022's words; a place in no section drops it. */
+export function seatWords(t: Translate, seat: GuestSeat): string {
+  const place =
+    seat.kind === 'row' ? t('checkIn.seatInRow', { row: seat.name, seat: seat.seat }) : seat.name;
+
+  return seat.section == null ? place : t('checkIn.seatPlaced', { place, section: seat.section });
+}
+
+/** The line under a name at the door: null on a list nobody is seated on yet, otherwise the seat or "No seat yet". */
+export function doorSeatLine(
+  t: Translate,
+  checkIn: Pick<CheckIn, 'seated'>,
+  seat: GuestSeat | null,
+): string | null {
+  if (!checkIn.seated) return null;
+
+  return seat == null ? t('checkIn.noSeat') : seatWords(t, seat);
 }
 
 const words = (name: string) =>
@@ -40,7 +61,7 @@ export function doorMatch(name: string, typed: string): DoorMatch | null {
     : null;
 }
 
-function rowsOf(t: Translate, guest: CheckInGuest): DoorRow[] {
+function rowsOf(t: Translate, checkIn: CheckIn, guest: CheckInGuest): DoorRow[] {
   const names = guest.companions.map((one) => one.fullName);
 
   return [
@@ -51,6 +72,7 @@ function rowsOf(t: Translate, guest: CheckInGuest): DoorRow[] {
       companion: false,
       reply: guest.walkIn ? 'walkIn' : guest.reply,
       arrival: guest.arrival,
+      seat: doorSeatLine(t, checkIn, guest.seat),
     },
     ...guest.companions.map((one, at) => ({
       id: one.id,
@@ -59,6 +81,7 @@ function rowsOf(t: Translate, guest: CheckInGuest): DoorRow[] {
       companion: true,
       reply: one.state,
       arrival: one.arrival,
+      seat: doorSeatLine(t, checkIn, one.seat),
     })),
   ];
 }
@@ -70,8 +93,13 @@ interface DoorBlock {
   found: DoorRow;
 }
 
-function blockOf(t: Translate, guest: CheckInGuest, typed: string): DoorBlock | null {
-  const [host, ...companions] = rowsOf(t, guest);
+function blockOf(
+  t: Translate,
+  checkIn: CheckIn,
+  guest: CheckInGuest,
+  typed: string,
+): DoorBlock | null {
+  const [host, ...companions] = rowsOf(t, checkIn, guest);
   if (host == null) return null;
   const own = doorMatch(guest.fullName, typed);
   const hits = companions.flatMap((row, at) => {
@@ -99,7 +127,7 @@ function doorBlocks(t: Translate, checkIn: CheckIn, typed: string, locale: strin
   const order = new Intl.Collator(locale, { sensitivity: 'base' });
   const blocks = [...checkIn.guests]
     .sort((a, b) => order.compare(a.fullName, b.fullName))
-    .flatMap((guest) => blockOf(t, guest, typed) ?? []);
+    .flatMap((guest) => blockOf(t, checkIn, guest, typed) ?? []);
 
   return [
     ...blocks.filter((block) => block.match === 'start'),
@@ -136,10 +164,10 @@ export function listedAs(
 ): DoorRow | null {
   if (words(name).length === 0) return null;
 
-  return sameName(checkIn, name) ?? doorBlocks(t, checkIn, name, locale)[0]?.found ?? null;
+  return sameName(t, checkIn, name) ?? doorBlocks(t, checkIn, name, locale)[0]?.found ?? null;
 }
 
-export function sameName(checkIn: CheckIn, name: string): DoorRow | null {
+export function sameName(t: Translate, checkIn: CheckIn, name: string): DoorRow | null {
   const wanted = nameKey(name);
   for (const guest of checkIn.guests) {
     if (nameKey(guest.fullName) === wanted)
@@ -150,6 +178,7 @@ export function sameName(checkIn: CheckIn, name: string): DoorRow | null {
         companion: false,
         reply: guest.walkIn ? 'walkIn' : guest.reply,
         arrival: guest.arrival,
+        seat: doorSeatLine(t, checkIn, guest.seat),
       };
     for (const one of guest.companions)
       if (one.fullName != null && nameKey(one.fullName) === wanted)
@@ -160,6 +189,7 @@ export function sameName(checkIn: CheckIn, name: string): DoorRow | null {
           companion: true,
           reply: one.state,
           arrival: one.arrival,
+          seat: doorSeatLine(t, checkIn, one.seat),
         };
   }
 
