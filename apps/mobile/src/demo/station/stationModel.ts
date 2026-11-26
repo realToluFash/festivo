@@ -439,8 +439,8 @@ export function goOnline(s: StationState, online: boolean): StationState {
 
 export function notSentLine(s: StationState, r: Refusal): string {
   const st = s.items[r.item] ?? { kind: 'ready' };
-  const now = st.kind === 'ready' ? 'ready' : st.kind === 'runOut' ? 'run out' : 'preparing';
-  return `${r.item} is ${now} now, by ${r.by}.`;
+  const now = st.kind === 'ready' ? 'Ready' : st.kind === 'runOut' ? 'Run out' : 'Preparing';
+  return `${r.item} is now ${now}, marked by ${r.by}.`;
 }
 
 export function dismissNotSent(s: StationState): StationState {
@@ -452,7 +452,7 @@ export function wait(s: StationState, minutes: number): StationState {
 }
 
 export function strip(s: StationState): string {
-  if (s.online) return `Connected · up to date ${hm(s.asOf)}`;
+  if (s.online) return `Connected · up to date at ${hm(s.asOf)}`;
   const n = s.kept.length;
   return `No connection · as of ${hm(s.asOf)}${n > 0 ? ` · ${plural(n, 'tap', 'taps')} waiting` : ''}`;
 }
@@ -978,7 +978,7 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   ],
   offline: ['No connection', 'sc-4028’s strip: No connection · as of 19:40'],
   waitingToSend: ['A mark waiting to send', 'Plantain Preparing kept offline, 1 tap waiting'],
-  notSent: ['Not sent', 'Plantain is preparing now, by Kemi Adebayo.'],
+  notSent: ['Not sent', 'Plantain is now Preparing, marked by Kemi Adebayo.'],
   moved: ['Moved by Team', 'You’re on Grill now.'],
   given: ['A tray given', 'Table 9’s tray given to Funmi Bakare'],
   refusedFloor: ['Refused · Can work the floor', 'sc-4002’s 403: no station drawn'],
