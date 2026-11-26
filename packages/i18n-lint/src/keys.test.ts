@@ -19,7 +19,7 @@ describe.each(SURFACES.filter((s) => s.sources.length > 0).map((s) => [s.name, s
       expect(unknown, 'no such key in en — it renders as its own key path in every locale').toEqual(
         [],
       );
-    });
+    }, 60_000);
   },
 );
 

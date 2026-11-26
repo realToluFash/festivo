@@ -102,7 +102,7 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
-import { BRIEFING_PAGES } from './briefing.ts';
+import { BRIEFING_PAGES, NOTICE_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -579,6 +579,11 @@ function DemoHome({ from }: { from: string }) {
           narrow web
         </h3>
         <BoardPages pages={BRIEFING_PAGES} />
+        <h3>
+          A person on the staff is told when their shift changes, and reminded the day before
+          (sc-4333) · desktop
+        </h3>
+        <BoardPages pages={NOTICE_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
