@@ -88,6 +88,7 @@
     "timedOutBody_many": "{{organisation}} cierra la sesión tras {{count, number}} de días sin uso. Vuelva a iniciar sesión para seguir.",
     "providerOnlyTitle": "En {{organisation}} solo se inicia sesión con Google o Apple",
     "providerOnlyBody": "En {{organisation}} no se puede iniciar sesión con contraseña. Use {{providers}}.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "providerOnlyFootnote": "Una norma de {{organisation}}: nadie en ella puede iniciar sesión con contraseña.",
     "anotherAccount": "Iniciar sesión con otra cuenta"
   },

@@ -14,6 +14,7 @@ use App\Entity\EmailAddress;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
+use App\Entity\ProviderIdentity;
 use App\Entity\RefreshToken;
 use App\Entity\Role;
 use App\Entity\StaffMember;
@@ -21,6 +22,7 @@ use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Http\RefreshTokenCookies;
@@ -499,6 +501,139 @@ final class StaffLinkSignInTest extends ApiTestCase
         $entry = $this->entry($this->ada);
         self::assertNull($entry->getAccount());
         self::assertSame('Ada Obi', $entry->getFullName());
+    }
+
+    #[Test]
+    public function aLinkedMemberOfAGoogleOrAppleOnlyOrganisationIsRefusedAfterTheRightCodeAndTheEntryIsLinked(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $token = $this->link($this->ada);
+        $sessions = self::em()->getRepository(RefreshToken::class)->count(['user' => $tope->getId()]);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+
+        self::assertSame(403, $this->statusCode(), Json\encode($answer));
+        self::assertSame(ErrorCode::OAuthOnly->type(), $answer['type'] ?? null);
+        self::assertSame('Lumen Feiras', $answer['organisation'] ?? null);
+        self::assertSame('tope@lumen.pt', $answer['email'] ?? null);
+        self::assertSame(['google'], $answer['providers'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertNull($this->client->getCookieJar()->get(RefreshTokenCookies::NAME, RefreshTokenCookies::PATH), 'no session');
+        self::assertSame($sessions, self::em()->getRepository(RefreshToken::class)->count(['user' => $tope->getId()]));
+        self::assertSame($tope->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122(), 'the link ties the entry to the account');
+        self::assertTrue($this->audited('staff.account_linked'));
+        self::assertFalse($this->audited('phone.signed_in'));
+    }
+
+    #[Test]
+    public function aLinkedMemberIsRefusedTheirOwnOrganisationsLinkAsWell(): void
+    {
+        $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
+        $this->linkProvider($this->owner, 'g-owner');
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $organisation->setProviderSignInOnly(true);
+        self::em()->flush();
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertSame('Ìrè Events', $answer['organisation'] ?? null);
+    }
+
+    #[Test]
+    public function withTwoFactorOnALinkedMemberIsRefusedBeforeTheTwoFactorStep(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $this->twoFactorOn($tope);
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertArrayNotHasKey('twoFactorChallenge', $answer);
+    }
+
+    #[Test]
+    public function sendCodeAnswersAlikeForARefusedMembersNumberAndAnyOther(): void
+    {
+        $gate = $this->newJob('Gate', 'check_in');
+        $other = $this->person('Femi Ola', '0803 111 0010', $gate);
+        $this->onShift($other, $gate);
+        $this->providerOnlyMember();
+
+        foreach ([$this->ada, $other] as $staffId) {
+            $this->post('/api/staff-links/sign-in/send', ['token' => $this->link($staffId)]);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame(['handle', 'cooldownSeconds'], Vec\keys($this->last()));
+        }
+    }
+
+    #[Test]
+    public function anUnlinkedMemberOfAGoogleOrAppleOnlyOrganisationIsStillSignedInByCodeAndReadsButCannotChange(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $this->unlinkProviders($tope);
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        $this->as($tope, 'PATCH', '/api/orgs/' . $this->lumenOf($tope)->getId()->toRfc4122(), ['name' => 'Renamed']);
+        self::assertSame([403, ErrorCode::OAuthOnlyUnlinked->type()], [$this->statusCode(), $this->last()['type'] ?? null], Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aMemberOfAnOrganisationRequiringOnlyTwoFactorIsSignedInByCodeAsBefore(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $lumen = $this->lumenOf($tope);
+        $lumen->setProviderSignInOnly(false);
+        $lumen->setAdministratorsNeedTwoFactor(true);
+        self::em()->flush();
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        self::assertTrue($this->audited('phone.signed_in'));
+    }
+
+    /** Tope, an Admin of Lumen Feiras, which signs in with Google or Apple only, with Google linked; Ada's entry's mobile is their verified primary. */
+    private function providerOnlyMember(): User
+    {
+        $founder = $this->account('owner@lumen.pt', 'Lumen Owner');
+        $lumen = self::service(OrganisationFounder::class)->found($founder, 'Lumen Feiras', 'PT', 'Europe/Lisbon');
+        $lumen->setProviderSignInOnly(true);
+        self::em()->flush();
+        $tope = $this->account('tope@lumen.pt', 'Tope Bello');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $lumen, 'seededAs' => SeededRole::Admin]) ?? self::fail('no role');
+        self::em()->persist(new Membership($lumen, self::em()->find(User::class, $tope->getId()) ?? self::fail('no user'), $role, MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+        $this->linkProvider($tope, 'g-tope');
+        $this->phone($tope, self::NUMBER, primary: true, verified: true);
+
+        return $tope;
+    }
+
+    private function lumenOf(User $user): Organisation
+    {
+        return self::em()->getRepository(Membership::class)->findOneBy(['user' => $user->getId()])?->getOrganisation() ?? self::fail('no organisation');
+    }
+
+    private function linkProvider(User $user, string $subject): void
+    {
+        self::em()->persist(new ProviderIdentity(self::em()->find(User::class, $user->getId()) ?? self::fail('no user'), IdentityProvider::Google, $subject, null));
+        self::em()->flush();
+    }
+
+    private function unlinkProviders(User $user): void
+    {
+        foreach (self::em()->getRepository(ProviderIdentity::class)->findBy(['user' => $user->getId()]) as $identity) {
+            self::em()->remove($identity);
+        }
+
+        self::em()->flush();
     }
 
     private function signedIn(): User

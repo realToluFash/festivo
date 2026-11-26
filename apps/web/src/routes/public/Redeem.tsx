@@ -13,10 +13,13 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
+import { providerList } from '../../providerList.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { doorAddress } from './doorCheckIn.ts';
 import {
+  type ProviderOnly,
   outsideOn,
   refreshAccount,
   rereadOutsideEvents,
@@ -62,6 +65,7 @@ type Step =
       handle: string;
     }
   | { kind: 'member'; organisation: string; eventId: string }
+  | { kind: 'providerOnly'; code: string; eventId: string; refusal: ProviderOnly }
   | { kind: 'in'; you: YoureIn };
 
 /** "You're in for…": after redeeming, or again from check-in's way back, which redeems nothing (sc-28230). */
@@ -263,6 +267,15 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
       refused(back, leave.error);
       return;
     }
+    if (leave.kind === 'providerOnly') {
+      go({
+        kind: 'providerOnly',
+        code: at.code,
+        eventId: at.opened.event.id,
+        refusal: leave.refusal,
+      });
+      return;
+    }
     const { outcome, redeemed } = leave.signedIn;
     if ('challenge' in outcome) {
       // Two-factor is asked before the grant: its code screen, then back here to join as the account.
@@ -417,6 +430,22 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
             </Title>
             <p className="rd-intro">{t('redeem.memberLine')}</p>
             <Primary onClick={() => void navigate('/app/events')}>{t('redeem.openEvents')}</Primary>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Tile id={step.eventId} />
+            <Title titleRef={title}>
+              {t('signIn.providerOnlyTitle', { organisation: step.refusal.organisation })}
+            </Title>
+            <p className="rd-intro">
+              {t('signIn.providerOnlyCode', {
+                organisation: step.refusal.organisation,
+                providers: providerList(step.refusal.providers),
+              })}
+            </p>
+            <ProviderSignIn only={step.refusal.providers} returnTo={`/d/${step.code}`} />
           </>
         );
       case 'in':

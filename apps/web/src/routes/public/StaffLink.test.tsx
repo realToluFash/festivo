@@ -354,6 +354,50 @@ describe('A link opened signed out (sc-4235)', () => {
       await screen.findByText(/^This is an alternative number on a Soirely account/u),
     ).toBeTruthy();
   });
+
+  it('refuses a Google-or-Apple-only member after the right code and offers only their providers (sc-94849)', async () => {
+    routed({
+      'POST /api/staff-links/opened': () => answer(OPEN),
+      'POST /api/staff-links/sign-in/send': () => answer({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () =>
+        answer({ cooldownSeconds: 60, codeState: 'live', route: 'sms_only' }),
+      'POST /api/staff-links/sign-in': () =>
+        answer(
+          {
+            type: 'https://soirely.com/errors/oauth_only',
+            title: 'No',
+            status: 403,
+            organisation: 'Ìrè Events',
+            email: 'tope@ire.events',
+            providers: ['apple'],
+          },
+          403,
+        ),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Send code' }));
+    fireEvent.change(await screen.findByLabelText('Code from the text'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Ìrè Events signs in with Google or Apple only',
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Staff link')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+    expect(screen.queryByLabelText('Code from the text')).toBeNull();
+  });
 });
 
 describe('A link signed in as its own account (sc-4235)', () => {
