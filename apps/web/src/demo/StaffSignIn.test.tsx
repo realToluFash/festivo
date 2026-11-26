@@ -176,7 +176,7 @@ describe('signed in as someone else, and signed out (sc-4235)', () => {
 
     expect(
       screen.getAllByText(
-        'This link is yours alone. You are signed in until Sunday, 02:00. Nothing stays on this device.',
+        'This link is yours alone. You are signed in until Sun, Nov 15, 02:00. Nothing stays on this device.',
       ).length,
     ).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]!);

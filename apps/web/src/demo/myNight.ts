@@ -1,5 +1,5 @@
 import { type Card, cardOf } from './shiftClock.ts';
-import { signedOutTime } from './doorCheckIn.ts';
+import { DOOR_ZONE, clockOf, readerLocale } from './doorCode.ts';
 
 export const MY_NIGHT_STATES = [
   'night',
@@ -90,8 +90,24 @@ export function headingOf(night: Night): string {
   return night.station ?? night.job;
 }
 
+const LISBON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
+
+/** As the product's `atWords` writes it: the clock alone on today's date, else "Sun, Nov 15, 02:00" in the reader's locale. */
+export function untilWords(until: string, now: string): string {
+  if (LISBON_DAY.format(new Date(until)) === LISBON_DAY.format(new Date(now)))
+    return clockOf(until);
+  const day = new Intl.DateTimeFormat(readerLocale(), {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: DOOR_ZONE,
+  });
+
+  return `${day.format(new Date(until))}, ${clockOf(until)}`;
+}
+
 export function yoursAlone(night: Night): string {
-  return MN.yoursAlone(signedOutTime(night.linkEndsAt, night.now, ', '));
+  return MN.yoursAlone(untilWords(night.linkEndsAt, night.now));
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });

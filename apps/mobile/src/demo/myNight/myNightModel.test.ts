@@ -32,7 +32,7 @@ describe('a staff member’s night (sc-3915)', () => {
 
     expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
     expect(MN.yoursAlone(signedInUntil(night))).toBe(
-      'This link is yours alone. You are signed in until Sunday, 02:00. Nothing stays on this device.',
+      'This link is yours alone. You are signed in until Sun, Nov 29, 02:00. Nothing stays on this device.',
     );
   });
 

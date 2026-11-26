@@ -135,7 +135,7 @@ const NIGHT: Night = {
   state: 'night',
   event: 'Adébáyọ̀ at 60',
   linkEnds: '02:00',
-  linkEndsDay: 'Sunday',
+  linkEndsDay: 'Sun, Nov 29',
   name: 'Grace Okon',
   station: 'Section B',
   job: 'Waiter',
