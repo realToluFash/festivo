@@ -19,7 +19,7 @@ const t = ((key: string, values?: Record<string, unknown>) =>
       : key) as unknown as TFunction;
 
 const NIGHT: MyNight = {
-  event: { name: 'Adébáyọ̀ at 60', timeZone: 'Africa/Lagos' },
+  event: { id: 'ev-1', name: 'Adébáyọ̀ at 60', timeZone: 'Africa/Lagos' },
   endsAt: '2026-11-29T02:00:00+01:00',
   station: 'Section B',
   job: 'Waiter',
@@ -33,6 +33,7 @@ const NIGHT: MyNight = {
   timing: [],
   doorsAt: '2026-11-28T19:00:00+01:00',
   tables: null,
+  checksIn: false,
 };
 
 describe('a staff member’s night in the app (sc-3915)', () => {
