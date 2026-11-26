@@ -2364,18 +2364,18 @@
       "can_edit": "Puede editar",
       "can_view": "Puede ver",
       "can_check_in": "Puede registrar llegadas",
-      "can_work_floor": "Can work the floor",
-      "can_work_pass": "Can work the pass",
-      "can_run_floor": "Can run the floor"
+      "can_work_floor": "Puede atender en sala",
+      "can_work_pass": "Puede llevar el pase",
+      "can_run_floor": "Puede dirigir la sala"
     },
     "roleMeans": {
       "lead": "Todo en este evento, incluidos el presupuesto y quién participa en él.",
       "can_edit": "Todo menos el presupuesto y quién participa en el evento.",
       "can_view": "Ve el evento sin cambiar nada. Sin datos de contacto.",
       "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto.",
-      "can_work_floor": "Marks plates and requests at their own tables.",
-      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
-      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
+      "can_work_floor": "Marca los platos y las peticiones de sus propias mesas.",
+      "can_work_pass": "Marca los platos en el pase y en las zonas de cocina.",
+      "can_run_floor": "Inicia el servicio, marcha los platos y actúa en cualquier mesa. No accede a nada más del evento."
     },
     "memberOf": "Miembro de {{organisation}}",
     "fromOutside": "De fuera de {{organisation}}",
@@ -2424,9 +2424,9 @@
       "can_edit": "Ahora {{name}} puede editar el evento.",
       "can_view": "Ahora {{name}} puede ver el evento.",
       "can_check_in": "Ahora {{name}} puede registrar llegadas.",
-      "can_work_floor": "{{name}} can work the floor now.",
-      "can_work_pass": "{{name}} can work the pass now.",
-      "can_run_floor": "{{name}} can run the floor now."
+      "can_work_floor": "Ahora {{name}} puede atender en sala.",
+      "can_work_pass": "Ahora {{name}} puede llevar el pase.",
+      "can_run_floor": "Ahora {{name}} puede dirigir la sala."
     },
     "nowMany": {
       "lead_one": "Ahora {{count, number}} persona es responsable de este evento.",
@@ -2441,15 +2441,15 @@
       "can_check_in_one": "Ahora {{count, number}} persona puede registrar llegadas.",
       "can_check_in_many": "Ahora {{count, number}} de personas pueden registrar llegadas.",
       "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas.",
-      "can_work_floor_one": "{{count, number}} person can work the floor now.",
-      "can_work_floor_many": "{{count, number}} people can work the floor now.",
-      "can_work_floor_other": "{{count, number}} people can work the floor now.",
-      "can_work_pass_one": "{{count, number}} person can work the pass now.",
-      "can_work_pass_many": "{{count, number}} people can work the pass now.",
-      "can_work_pass_other": "{{count, number}} people can work the pass now.",
-      "can_run_floor_one": "{{count, number}} person can run the floor now.",
-      "can_run_floor_many": "{{count, number}} people can run the floor now.",
-      "can_run_floor_other": "{{count, number}} people can run the floor now."
+      "can_work_floor_one": "Ahora {{count, number}} persona puede atender en sala.",
+      "can_work_floor_many": "Ahora {{count, number}} de personas pueden atender en sala.",
+      "can_work_floor_other": "Ahora {{count, number}} personas pueden atender en sala.",
+      "can_work_pass_one": "Ahora {{count, number}} persona puede llevar el pase.",
+      "can_work_pass_many": "Ahora {{count, number}} de personas pueden llevar el pase.",
+      "can_work_pass_other": "Ahora {{count, number}} personas pueden llevar el pase.",
+      "can_run_floor_one": "Ahora {{count, number}} persona puede dirigir la sala.",
+      "can_run_floor_many": "Ahora {{count, number}} de personas pueden dirigir la sala.",
+      "can_run_floor_other": "Ahora {{count, number}} personas pueden dirigir la sala."
     },
     "failedTitle": "No se han podido cargar las personas de este evento.",
     "failedLine": "Compruebe la conexión y vuelva a intentarlo.",
@@ -2467,7 +2467,7 @@
       "opens": "Abre Personas.",
       "leadSaid": "Responsable, {{name}}."
     },
-    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget."
+    "serviceClosing": "Los permisos de servicio solo dan acceso al servicio. Con ninguno se ven los datos de contacto ni el presupuesto."
   },
   "recoveryRequests": {
     "cardTitle": "Solicitudes para volver a entrar",
@@ -3579,7 +3579,7 @@
     "make": "Crear",
     "making": "Creando…",
     "theirRole": "Rol en el evento",
-    "noEdit": "Un código no puede dar permiso para editar. Ese permiso se da a una persona concreta.",
+    "noEdit": "Un código no puede dar permiso para editar ni para dirigir la sala. Esos permisos se dan a una persona concreta.",
     "howMany": "Número de personas",
     "howManyHelp": "De 1 a 500.",
     "capBlank": "Indique cuántas personas pueden usar este código.",
@@ -3623,6 +3623,6 @@
     "close": "Cerrar",
     "tag": "Código de acceso",
     "joinedWith": "Se unió al evento con el código de acceso {{code}} ({{time}}).",
-    "runRefused": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster."
+    "runRefused": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal."
   }
 }
