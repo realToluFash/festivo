@@ -81,6 +81,18 @@ describe('People on an event', () => {
     ]);
   });
 
+  it('lists the service levels after the event roles, and names them (sc-4002)', () => {
+    const waiter = { ...person('kemi', 'Kemi Okafor', 'can_work_floor'), outside: true };
+    const runner = { ...person('ade', 'Ade Bello', 'can_run_floor'), outside: true };
+
+    expect(inListOrder([runner, waiter, TOM], 'en').map((one) => one.id)).toEqual([
+      'tom',
+      'kemi',
+      'ade',
+    ]);
+    expect(rowLine(t, waiter, 'u_priya')).toBe('Can work the floor');
+  });
+
   it('is changed by whoever the event gives people.manage', () => {
     expect(managesPeople({ permissions: ['events.read', 'people.manage'] })).toBe(true);
     expect(managesPeople({ permissions: ['events.read'] })).toBe(false);

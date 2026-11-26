@@ -3352,13 +3352,19 @@
       "lead": "Responsável",
       "can_edit": "Pode editar",
       "can_view": "Pode ver",
-      "can_check_in": "Pode registar entradas"
+      "can_check_in": "Pode registar entradas",
+      "can_work_floor": "Can work the floor",
+      "can_work_pass": "Can work the pass",
+      "can_run_floor": "Can run the floor"
     },
     "roleMeans": {
       "lead": "Tudo neste evento, incluindo o orçamento e quem participa nele.",
       "can_edit": "Tudo exceto o orçamento e quem participa no evento.",
       "can_view": "Vê o evento sem alterar nada. Sem dados de contacto.",
-      "can_check_in": "Regista as entradas dos convidados no dia do evento. Só os nomes, sem dados de contacto."
+      "can_check_in": "Regista as entradas dos convidados no dia do evento. Só os nomes, sem dados de contacto.",
+      "can_work_floor": "Marks plates and requests at their own tables.",
+      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
+      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
     },
     "memberOf": "Membro de {{organisation}}",
     "roleFor": "Função de {{name}} neste evento",
@@ -3393,7 +3399,10 @@
       "lead": "{{name}} é agora responsável por este evento.",
       "can_edit": "{{name}} pode agora editar o evento.",
       "can_view": "{{name}} pode agora ver o evento.",
-      "can_check_in": "{{name}} pode agora registar entradas."
+      "can_check_in": "{{name}} pode agora registar entradas.",
+      "can_work_floor": "{{name}} can work the floor now.",
+      "can_work_pass": "{{name}} can work the pass now.",
+      "can_run_floor": "{{name}} can run the floor now."
     },
     "nowMany": {
       "lead_one": "{{count, number}} pessoa é agora responsável por este evento.",
@@ -3407,7 +3416,16 @@
       "can_view_other": "{{count, number}} pessoas podem agora ver o evento.",
       "can_check_in_one": "{{count, number}} pessoa pode agora registar entradas.",
       "can_check_in_many": "{{count, number}} de pessoas podem agora registar entradas.",
-      "can_check_in_other": "{{count, number}} pessoas podem agora registar entradas."
+      "can_check_in_other": "{{count, number}} pessoas podem agora registar entradas.",
+      "can_work_floor_one": "{{count, number}} person can work the floor now.",
+      "can_work_floor_many": "{{count, number}} people can work the floor now.",
+      "can_work_floor_other": "{{count, number}} people can work the floor now.",
+      "can_work_pass_one": "{{count, number}} person can work the pass now.",
+      "can_work_pass_many": "{{count, number}} people can work the pass now.",
+      "can_work_pass_other": "{{count, number}} people can work the pass now.",
+      "can_run_floor_one": "{{count, number}} person can run the floor now.",
+      "can_run_floor_many": "{{count, number}} people can run the floor now.",
+      "can_run_floor_other": "{{count, number}} people can run the floor now."
     },
     "notJoined": "Ainda não aderiu",
     "outsideTag": "Fora de {{organisation}}",
@@ -3424,7 +3442,11 @@
     "staffLink": "Ligação da equipa · {{name}} · {{job}} · termina: {{time}}",
     "staffLinkNoJob": "Ligação da equipa · {{name}} · termina: {{time}}",
     "endsOn": "{{date}}, {{time}}",
-    "notSignedIn": "Ainda não iniciou sessão"
+    "notSignedIn": "Ainda não iniciou sessão",
+    "serviceHead": "For the service",
+    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget.",
+    "serviceNotMembers": "For someone from outside only. Untick the members to give it.",
+    "membersNotService": "Members take one of the four roles above. Pick one to add them as well."
   },
   "doorCodes": {
     "doorCode": "Código de acesso",
@@ -3491,7 +3513,9 @@
     "printWhenNoVenue": "{{day}} · das {{start}} às {{end}}",
     "printLine": "Leia-o com a câmara do telemóvel, ou abra {{address}} e introduza o código. Funciona até {{until}}.",
     "tag": "Código de acesso",
-    "joinedWith": "Juntou-se ao evento com o código de acesso {{code}} ({{time}})."
+    "joinedWith": "Juntou-se ao evento com o código de acesso {{code}} ({{time}}).",
+    "runRefused": "A join code can’t let people run the floor.",
+    "runRefusedLine": "Give Can run the floor to one person, with their own link from the roster."
   },
   "redeem": {
     "enterTitle": "Introduza um código de acesso",

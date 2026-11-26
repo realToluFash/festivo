@@ -8,6 +8,7 @@ use App\Enum\EventRole;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use App\Enum\PlanFeature;
+use App\Enum\ServicePlace;
 use App\Http\Exception\ApiException;
 use Psl\Iter;
 use Psl\Vec;
@@ -97,6 +98,16 @@ final readonly class Grants
 
         if (!$this->holds($permission)) {
             throw ApiException::permissionRequired($permission);
+        }
+    }
+
+    /** 403 `permission_required` without the service, or at the half of it the level does not work: the floor's level never the pass, the pass's never the floor (sc-4002). */
+    public function requireServiceAt(ServicePlace $place): void
+    {
+        $this->require(Permission::ServiceWork);
+
+        if (null !== $this->eventRole && !$this->eventRole->worksAt($place)) {
+            throw ApiException::permissionRequired(Permission::ServiceWork);
         }
     }
 

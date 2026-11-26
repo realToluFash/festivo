@@ -524,5 +524,8 @@
     "invitations.needs_email": "Ajoutez cette adresse à votre compte et vérifiez-la, puis acceptez l’invitation.",
     "billing.plan_sold_by_contract": "Ce forfait est vendu sur contrat, et non par paiement en ligne. Contactez Soirely pour y souscrire.",
     "billing.plan_not_priced": "Ce forfait n’a pas de prix dans votre devise de facturation.",
-    "billing.nothing_paid_through_provider": "Il n’y a aucun moyen de paiement à mettre à jour avant le paiement d’un forfait."
+    "billing.nothing_paid_through_provider": "Il n’y a aucun moyen de paiement à mettre à jour avant le paiement d’un forfait.",
+    "service.table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
+    "door_codes.run_floor": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.",
+    "people.service_level_outside_only": "The service levels are for people working a shift. Give a member one of the event roles."
 }

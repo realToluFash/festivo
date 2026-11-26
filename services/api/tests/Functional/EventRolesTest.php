@@ -259,6 +259,23 @@ final class EventRolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMemberIsNeverGivenAServiceLevel(): void
+    {
+        $tunde = $this->member('tunde@ire.events', SeededRole::Member, 'Tunde Bello');
+
+        foreach (['can_work_floor', 'can_work_pass', 'can_run_floor'] as $level) {
+            $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => $level]);
+            self::assertSame(422, $this->statusCode(), $level);
+        }
+
+        $added = $this->as($this->owner, 'POST', '/api/events/' . $this->owambe . '/people', ['membershipId' => $this->membershipOf($tunde), 'role' => 'can_view']);
+        $id = Type\shape(['id' => Type\string()], true)->coerce($added['person'])['id'];
+        $this->as($this->owner, 'PATCH', '/api/events/' . $this->owambe . '/people/' . $id, ['role' => 'can_run_floor']);
+        self::assertSame(422, $this->statusCode(), 'nor changed to one');
+        self::assertSame(EventRole::CanView, $this->personOf($tunde, $this->owambe)?->getRole());
+    }
+
+    #[Test]
     public function aLeadAddsChangesAndRemovesAMember(): void
     {
         $lead = $this->member('lead@ire.events', SeededRole::Member);

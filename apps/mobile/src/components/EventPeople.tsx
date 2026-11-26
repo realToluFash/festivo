@@ -1,6 +1,7 @@
 import {
   type AddableMember,
   type DoorCodeCard,
+  EVENT_LEVELS,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
@@ -100,9 +101,9 @@ function nameOf(t: TFunction, person: EventPerson): string {
   return shown.kind === 'notJoined' ? t('eventPeople.notJoined') : shown.name;
 }
 
-function roleWords(t: TFunction): RoleWords<EventRole> {
+function roleWords(t: TFunction, roles: readonly EventRole[] = EVENT_ROLES): RoleWords<EventRole> {
   return {
-    roles: EVENT_ROLES,
+    roles,
     name: (role) => t(`eventPeople.role.${role}`),
     means: (role) => t(`eventPeople.roleMeans.${role}`),
     saving: t('eventPeople.saving'),
@@ -118,7 +119,7 @@ function sheetWords(
   const name = nameOf(t, person);
 
   return {
-    ...roleWords(t),
+    ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
     title: t('eventPeople.roleTitle'),
     done: t('eventPeople.done'),
     remove: t('eventPeople.remove'),
@@ -477,9 +478,15 @@ export function EventPeople({
                   size={14}
                 />
                 <Line text={t('eventPeople.outsideEnds')} size={14} />
+                <Line text={t('eventPeople.serviceClosing')} size={14} />
               </>
             ) : (
-              person.outside && <Line text={t('eventPeople.outsideEnds')} size={14} />
+              person.outside && (
+                <>
+                  <Line text={t('eventPeople.outsideEnds')} size={14} />
+                  <Line text={t('eventPeople.serviceClosing')} size={14} />
+                </>
+              )
             )
           }
           start={person.role}
