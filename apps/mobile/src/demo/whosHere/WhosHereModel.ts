@@ -769,3 +769,13 @@ export function showsDoor(s: WhState): boolean {
     return false;
   return !s.ended || (s.sheet?.kind === 'door' && s.sheet.form.refused);
 }
+
+export function clockIn(s: WhState): WhState {
+  const next = notHere(s)[0]?.p;
+  if (next == null) return s;
+  return {
+    ...s,
+    list: s.list.map((p) => (p.id === next.id ? { ...p, here: true, inAt: s.clock } : p)),
+    toast: { kind: 'in', id: next.id },
+  };
+}
