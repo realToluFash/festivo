@@ -1,3 +1,4 @@
+import { BRIEFING_BOARDS } from '../../src/demo/briefing/briefingModel.ts';
 import { type Href, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -2683,6 +2684,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Staffing · the event’s Staff, its roster in the app (sc-77903) · phone, tablet portrait and landscape',
     boards: STAFF_ROSTER_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the briefing above the roster, house rules and everyone’s shift (sc-3917) · tablet portrait and landscape',
+    boards: BRIEFING_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
