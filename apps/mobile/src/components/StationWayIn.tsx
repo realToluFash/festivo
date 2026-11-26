@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
-import { formatEventClock } from '@soirely/domain';
+import { NO_ANSWER_MS, answeredWithin, formatEventClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,10 +35,14 @@ export function useStationRowItem(event: OrganisationEvent) {
     if (!shows) return;
     let current = true;
     const load = () =>
-      Promise.all([
-        api.kitchenStations(event.id),
-        AsyncStorage.getItem(pickedKey(event.id)).catch(() => null),
-      ]).then(
+      answeredWithin(
+        Promise.all([
+          api.kitchenStations(event.id),
+          AsyncStorage.getItem(pickedKey(event.id)).catch(() => null),
+        ]),
+        () => new Error('The kitchen stations read went unanswered.'),
+        NO_ANSWER_MS,
+      ).then(
         ([stations, picked]) =>
           current &&
           setRead({
