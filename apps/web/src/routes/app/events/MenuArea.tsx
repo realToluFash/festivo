@@ -77,7 +77,7 @@ import { useDeskTop } from '../../../deskTop.ts';
 import { keepsWhatLoaded, useOffline } from '../../../offline.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { canOn, useSession } from '../../../session.ts';
+import { canOn, outsideOn, useSession } from '../../../session.ts';
 import {
   type CourseForm,
   canAddCourse,
@@ -387,6 +387,7 @@ function Courses({
   const organisation = session.organisation;
   const language = moneyLanguage(i18n.language);
   const manage = canOn(event, 'menu.manage');
+  const outside = outsideOn(session, event.id) != null;
   const courses = menu.courses;
   const [open, setOpen] = useState<Open | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
@@ -458,7 +459,7 @@ function Courses({
   }, [backFromPreview, navigate]);
 
   useEffect(() => {
-    if (!manage || organisation == null) return undefined;
+    if (!manage || outside || organisation == null) return undefined;
     let current = true;
 
     api.dishes(organisation.id).then(
@@ -469,7 +470,7 @@ function Courses({
     return () => {
       current = false;
     };
-  }, [manage, organisation, libraryTries]);
+  }, [manage, outside, organisation, libraryTries]);
 
   useEffect(() => {
     if (open != null && open.courseId != null && openCourse == null) setOpen(null);
@@ -759,10 +760,10 @@ function Courses({
     setOpen({
       kind: 'addDish',
       courseId: course.id,
-      tab: 'library',
+      tab: outside ? 'new' : 'library',
       query: '',
       form: blankDishForm(currency),
-      onlyEvent: false,
+      onlyEvent: outside,
       pressed: false,
       failed: null,
       asking: null,
@@ -2087,6 +2088,7 @@ function Courses({
                     setOpen({ ...open, form: { ...open.form, ...next }, asking: null })
                   }
                   onOnlyEvent={(onlyEvent) => setOpen({ ...open, onlyEvent, asking: null })}
+                  outside={outside}
                 />
               )}
               {open.kind === 'variant' && openCourse != null && (
