@@ -2,18 +2,14 @@
 
 export type ClockPhase = 'before' | 'ready' | 'on' | 'off' | 'closed';
 
-/** The clock card on a person's own night: one shift's window and what was recorded on it. */
 export interface ShiftClockCard {
   phase: ClockPhase;
-  /** An hour before the scheduled start, when Clock in opens. */
   opensAt: string;
-  /** The scheduled end, when Clock in closes. */
   closesAt: string;
   clockedInAt: string | null;
   clockedOutAt: string | null;
   /** Until when Clock out is taken: the earlier of the scheduled end + 6 h and the clock-in + 24 h; null before a clock-in. */
   outUntil: string | null;
-  /** Clocked in to clocked out, once both are recorded. */
   workedMinutes: number | null;
 }
 
@@ -38,7 +34,6 @@ export interface HoursCorrection {
   at: string;
 }
 
-/** One person on one shift. `clockedInAt` and `clockedOutAt` are the times that count, corrected or recorded. */
 export interface HoursRow {
   shiftId: string;
   staffId: string;
@@ -52,7 +47,6 @@ export interface HoursRow {
   recordedInAt: string | null;
   recordedOutAt: string | null;
   workedMinutes: number;
-  /** Counted to the scheduled end because nobody clocked out. */
   assumedMinutes: number;
   /** Null while the shift has not ended, and for a row with both times. */
   mark: HoursMark | null;

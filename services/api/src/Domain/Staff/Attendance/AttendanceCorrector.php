@@ -19,11 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psr\Clock\ClockInterface;
 
-/**
- * Correcting a person's times on a shift (sc-234), as sc-63's form checks have them, by a member who manages staff and never on their own shift.
- *
- * What was recorded is kept; a time that matches it again withdraws its correction, and a save that changes nothing writes nothing.
- */
+/** Correcting a person's times on a shift (sc-234), by a member who manages staff and never on their own shift; what was recorded is kept. */
 final readonly class AttendanceCorrector
 {
     public const string CORRECTED = 'staff.hours_corrected';

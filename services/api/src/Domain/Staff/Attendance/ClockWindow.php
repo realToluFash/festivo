@@ -10,11 +10,7 @@ use App\Entity\StaffShift;
 use App\Enum\ClockPhase;
 use DateTimeImmutable;
 
-/**
- * When a shift takes a clock-in and a clock-out (sc-234), as instants.
- *
- * Clock in from an hour before the scheduled start until the scheduled end; clock out from the clock-in until 6 hours after the scheduled end, and never more than 24 hours after the clock-in.
- */
+/** Clock in from an hour before the scheduled start until its end; clock out until the earlier of the end + 6 h and the clock-in + 24 h (sc-234). */
 final readonly class ClockWindow
 {
     private const string OPENS_BEFORE = '-60 minutes';

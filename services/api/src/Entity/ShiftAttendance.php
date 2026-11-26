@@ -9,11 +9,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * When one person on one shift actually started and stopped (sc-234), as instants at the server's clock.
- *
- * What was recorded is never overwritten: a correction is kept beside it, with who made it and when, and the corrected time is the one that counts.
- */
+/** When one person on one shift actually started and stopped (sc-234); a correction is kept beside what was recorded, never over it. */
 #[ORM\Entity]
 #[ORM\Table(name: 'shift_attendances')]
 #[ORM\UniqueConstraint(name: 'uniq_shift_attendance', columns: ['shift_id', 'staff_member_id'])]

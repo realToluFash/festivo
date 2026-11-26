@@ -3743,7 +3743,7 @@
     "hours_other": "{{count, number}} h",
     "minutes_one": "{{count, number}} min",
     "minutes_other": "{{count, number}} min",
-    "hoursMinutes": "{{hours}} {{minutes}}"
+    "hoursMinutes": "{{hoursPart}} {{minutesPart}}"
   },
   "staffHours": {
     "open": "Hours",

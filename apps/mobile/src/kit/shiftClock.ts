@@ -37,7 +37,7 @@ export function hoursWords(t: TFunction, minutes: number): string {
   const min = t('shiftClock.minutes', { count: rest });
   if (hours === 0 && rest > 0) return min;
 
-  return rest === 0 ? h : t('shiftClock.hoursMinutes', { hours: h, minutes: min });
+  return rest === 0 ? h : t('shiftClock.hoursMinutes', { hoursPart: h, minutesPart: min });
 }
 
 /** What a tap on the card sends: Clock in while the window is open, Clock out while on; nothing otherwise. */

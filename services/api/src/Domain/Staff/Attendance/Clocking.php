@@ -23,11 +23,7 @@ use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Clocking in and out (sc-234): the server's time when the request arrives, never a time the device supplies.
- *
- * A second clock-in or clock-out changes nothing and says so; one outside its window is refused.
- */
+/** Clocking in and out (sc-234) at the server's time when the request arrives, never a time the device supplies. */
 final readonly class Clocking
 {
     public const string CLOCKED_IN = 'staff.clocked_in';

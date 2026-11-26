@@ -10,11 +10,7 @@ use App\Enum\HoursMark;
 use DateTimeImmutable;
 use Psl\Math;
 
-/**
- * Hours actually worked (sc-234), the one place they are worked out, read by Staff rates beside sc-101's scheduled hours: what was clocked, a missing clock-out counted to the scheduled end with its mark, and a missing clock-in counted as nothing with its own.
- *
- * Before the scheduled end nothing is marked and an open clock-in counts nothing yet: the shift is still under way.
- */
+/** Hours actually worked (sc-234), the one place they are worked out: a missing clock-out counts to the scheduled end, a missing clock-in counts nothing. */
 final readonly class HoursWorked
 {
     public static function of(string $job, string $person, DateTimeImmutable $scheduledEnd, ?DateTimeImmutable $in, ?DateTimeImmutable $out, DateTimeImmutable $now): WorkedShift
