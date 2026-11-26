@@ -66,8 +66,9 @@ final readonly class Briefings
             }
 
             $now = $this->clock->now();
-            $status = StaffBriefStatus::Read === $entry->getBriefStatus() ? StaffBriefStatus::Read : StaffBriefStatus::Sent;
-            $entry->setBrief($status, $this->briefingPrinter->printOf($entry));
+            $print = $this->briefingPrinter->printOf($entry);
+            $read = StaffBriefStatus::Read === $entry->getBriefStatus() && $print === $entry->getBriefPrint();
+            $entry->setBrief($read ? StaffBriefStatus::Read : StaffBriefStatus::Sent, $print);
             $entry->setBriefCopy($by, $now, true);
 
             if (!$entry->getLinkStatus()->delivered()) {

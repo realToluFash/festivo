@@ -189,6 +189,23 @@ final class BriefingTest extends ApiTestCase
     }
 
     #[Test]
+    public function aReadPersonWhoseShiftChangedReadsSentOnceMarkedAsSentAgain(): void
+    {
+        $token = self::token($this->copy($this->ada));
+        $this->as($this->owner, 'POST', $this->briefingPath($this->ada, 'sent'));
+        $this->at('2027-03-06T17:00:00Z');
+        $this->open($token);
+        self::assertSame('read', $this->row($this->ada)['briefing']);
+
+        $this->as($this->owner, 'PUT', $this->path('shifts/' . $this->shiftId), ['startsAt' => '2027-03-06T19:00', 'endsAt' => '2027-03-06T23:00', 'needed' => 1]);
+        self::assertSame('changed', $this->row($this->ada)['briefing']);
+        $this->copy($this->ada);
+        $this->as($this->owner, 'POST', $this->briefingPath($this->ada, 'sent'));
+
+        self::assertSame('sent', $this->row($this->ada)['briefing']);
+    }
+
+    #[Test]
     public function theRulesAreSavedTrimmedOnTheRosterAndOnTheShiftPage(): void
     {
         $this->as($this->owner, 'PUT', $this->rulesPath(), ['rules' => "  Black shirts.\nPhones stay in the staff room.\n"]);
