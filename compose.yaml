@@ -219,6 +219,39 @@ services:
     stop_grace_period: 10s
     restart: unless-stopped
 
+  # Beats on each service topic while service is on (sc-4028), so a station's strip knows it is connected.
+  service-heartbeat:
+    build: *api-build
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        until php bin/console doctrine:migrations:up-to-date --quiet; do sleep 2; done;
+        exec php bin/console app:service:heartbeat --time-limit=3600 --memory-limit=128
+    labels:
+      soirely.after-migrations: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      # Healthy once the worker has replaced the shell that waits for migrations.
+      test:
+        [
+          'CMD-SHELL',
+          "tr '\\0' ' ' < /proc/1/cmdline | grep -q '^php bin/console app:service:heartbeat'",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    restart: unless-stopped
+
   # S3, locally.
   #
   # LocalStack rather than MinIO: MinIO's images are no longer pullable from
