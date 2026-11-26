@@ -1683,3 +1683,18 @@ textarea.mg-field::placeholder {
     right: 0;
   }
 }
+
+.mg-manage {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-top: 1px solid var(--colorBorder);
+  color: var(--colorInkSecondary);
+  font: 500 13.5px/1.45 var(--fontFamily);
+}
+
+.mg-manage svg {
+  flex: none;
+  margin-top: var(--spaceHair);
+}
