@@ -44,10 +44,10 @@ final class ServicePlateRepository extends ServiceEntityRepository
         return $this->findBy(['tray' => $tray], ['id' => 'ASC']);
     }
 
-    /** @return list<ServicePlate> every plate on any of the trays */
+    /** @return list<ServicePlate> every plate on any of the trays, owed plates first */
     public function findOnTrays(array $trays): array
     {
-        return [] === $trays ? [] : $this->findBy(['tray' => $trays], ['id' => 'ASC']);
+        return [] === $trays ? [] : $this->findBy(['tray' => $trays], ['isOrder' => 'ASC', 'owedAt' => 'ASC', 'id' => 'ASC']);
     }
 
     /** @return list<ServicePlate> the guest's orders */
