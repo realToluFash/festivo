@@ -173,6 +173,20 @@ final class ServiceTapsTest extends ServiceTestCase
     }
 
     #[Test]
+    public function theTraysWaiterAndWhoChangedAnItemAreNamedAsTheRosterHasThem(): void
+    {
+        $this->ownerOnTheRosterAs('Ifeoma Adaobi Nduka');
+        $tray = $this->trayAtDishing();
+        $this->itemState('plantain', 'preparing', 10);
+
+        self::assertSame('Ifeoma Adaobi Nduka', Type\mixed_dict()->coerce(self::trayOf($this->read(), self::id($tray))['waiter'])['name']);
+
+        $this->put('/course/' . $this->courseId() . '/items', ['item' => 'plantain', 'state' => 'ready', 'readyIn' => null, 'expected' => ['item' => 'ready']]);
+        $this->assertRefused(409, ErrorCode::ServiceChanged->type());
+        self::assertSame([['item' => 'plantain', 'state' => 'preparing', 'by' => 'Ifeoma Adaobi Nduka']], $this->last()['changed']);
+    }
+
+    #[Test]
     public function aKeptTapOnATrayThatIsSomebodyElsesIsTrayNotYoursNamingThem(): void
     {
         $tray = $this->trayAtDishing();
@@ -228,6 +242,19 @@ final class ServiceTapsTest extends ServiceTestCase
     {
         $this->put('/trays/' . self::id($tray) . '/marks', ['plateId' => $plateId, 'item' => $item, 'mark' => $mark]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    private function ownerOnTheRosterAs(string $name): void
+    {
+        foreach (self::service(EmailAddressRepository::class)->findBy(['user' => $this->owner->getId()]) as $email) {
+            $email->setVerifiedAt(new DateTimeImmutable('2027-03-01T00:00:00Z'));
+        }
+
+        self::em()->flush();
+        $event = self::em()->find(Event::class, $this->event->getId()) ?? self::fail('no event');
+        $owner = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
+        self::service(StaffRoster::class)->add($event, new StaffDetails($name, null, 'owner@ire.events'), null, null, $owner, allowShared: true);
+        self::em()->flush();
     }
 
     private function waiterOnTheSection(): User

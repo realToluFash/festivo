@@ -56,6 +56,7 @@ final readonly class ServiceRead
         $states = $this->states($course);
         $plates = $this->servicePlateRepository->findOfCourse($course);
         $trays = $this->trayRead->trays($plates);
+        $nameOf = $this->serviceTables->rosterNames($event);
         $onTrays = $this->servicePlateRepository->findOnTrays($trays);
         $firings = Dict\from_entries(Vec\map($this->serviceFiringRepository->findOfCourse($course), static fn (ServiceFiring $one): array => [$one->getTableKey(), $one]));
         $tables = $this->servingTables->of($event);
@@ -108,7 +109,7 @@ final readonly class ServiceRead
             'course' => ['id' => $course->getId()->toRfc4122(), 'name' => $course->getName()],
             'items' => $this->items($course, $stations['courses'], $stops, $passId, $states, $plates),
             'tables' => $tableReads,
-            'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId)),
+            'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId, $nameOf)),
             'sections' => ServiceCounts::bySection($tableReads),
             'counts' => ServiceCounts::of(Vec\filter($plates, static fn (ServicePlate $plate): bool => $plate->isOrder()), $states),
             // Not in a patch: it moves with the clock and the event, and a device learns it from the heartbeat and its reads (sc-4028).

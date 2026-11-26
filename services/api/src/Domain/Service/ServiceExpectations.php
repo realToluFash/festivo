@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Service\Model\Expected;
+use App\Domain\Staff\Station\ServiceTables;
 use App\Entity\Event;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePlate;
@@ -16,6 +17,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\ServicePlateRepository;
 use App\Repository\ServiceTrayRepository;
 use App\Repository\UserRepository;
+use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -30,6 +32,7 @@ final readonly class ServiceExpectations
         private ServicePlateRepository $servicePlateRepository,
         private ServiceTrayRepository $serviceTrayRepository,
         private UserRepository $userRepository,
+        private ServiceTables $serviceTables,
     ) {
     }
 
@@ -46,6 +49,7 @@ final readonly class ServiceExpectations
         }
 
         $changed = [];
+        $nameOf = $this->serviceTables->rosterNames($event);
 
         foreach ($now as $id => $plate) {
             $stage = $saw[$id] ?? null;
@@ -58,7 +62,7 @@ final readonly class ServiceExpectations
                     'table' => $plate->getTableKey(),
                     'stage' => $plate->getStage()->value,
                     'onTray' => $onTray,
-                    'by' => $this->lastBy($plate),
+                    'by' => $this->lastBy($plate, $nameOf),
                 ];
             }
         }
@@ -74,7 +78,9 @@ final readonly class ServiceExpectations
         $state = $item?->getState() ?? ItemState::Ready;
 
         if ($saw !== $state) {
-            throw self::changed([['item' => $itemKey, 'state' => $state->value, 'by' => $item?->getChangedBy()?->getName()]]);
+            $by = $item?->getChangedBy();
+
+            throw self::changed([['item' => $itemKey, 'state' => $state->value, 'by' => null === $by ? null : $this->serviceTables->rosterNames($item->getCourse()->getEvent())($by)]]);
         }
     }
 
@@ -101,7 +107,8 @@ final readonly class ServiceExpectations
         $this->plates($event, $expected, null === $plate ? [] : [$plate]);
     }
 
-    private function lastBy(ServicePlate $plate): ?string
+    /** @param Closure(User): string $nameOf */
+    private function lastBy(ServicePlate $plate, Closure $nameOf): ?string
     {
         $steps = $plate->getSteps();
         $last = Iter\last($steps);
@@ -112,7 +119,7 @@ final readonly class ServiceExpectations
 
         $user = $this->userRepository->find($last['by']);
 
-        return $user instanceof User ? $user->getName() : null;
+        return $user instanceof User ? $nameOf($user) : null;
     }
 
     /** @param list<array<string, mixed>> $changed */

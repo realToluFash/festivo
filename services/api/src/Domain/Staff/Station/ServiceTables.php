@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Station;
 
 use App\Domain\Staff\VerifiedContactOwner;
+use App\Entity\Event;
 use App\Entity\SeatingSection;
 use App\Entity\StaffMember;
 use App\Entity\User;
@@ -15,6 +16,7 @@ use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
 use App\Repository\StaffMemberRepository;
 use App\Repository\StaffStationRepository;
+use Closure;
 use Psl\Iter;
 
 /** Whose table a service write may touch (sc-4002): running the service reaches any table, working it only the tables of a section nobody else is on. */
@@ -59,6 +61,17 @@ final readonly class ServiceTables
         $station = null === $section ? null : $this->staffStationRepository->findOneOfSection($section);
 
         return null === $station ? [] : $this->staffMemberRepository->findOnStation($station);
+    }
+
+    /** @return Closure(User): string the name each person goes by on the event's roster, their account's where they are not on it (sc-4015) */
+    public function rosterNames(Event $event): Closure
+    {
+        $roster = $this->staffMemberRepository->findOnEvent($event);
+        $known = [];
+
+        return function (User $user) use ($roster, &$known): string {
+            return $known[$user->getId()->toRfc4122()] ??= Iter\search($roster, fn (StaffMember $entry): bool => $this->isTheirs($entry, $user))?->getFullName() ?? $user->getName();
+        };
     }
 
     public function isOn(?SeatingSection $section, User $user): bool
