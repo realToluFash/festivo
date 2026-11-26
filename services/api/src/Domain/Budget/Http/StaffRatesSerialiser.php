@@ -74,7 +74,8 @@ final readonly class StaffRatesSerialiser
         $named = static fn (string $id, string $label): array => ['id' => $id, 'name' => $label];
         $onShifts = Vec\unique(Vec\flat_map($staff->jobs, static fn (JobCost $job): array => $job->people));
         $now = $this->clock->now();
-        $worked = EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now) ? $this->staffCosts->workedOf($event, $now) : null;
+        $ended = EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now) || $now >= $event->getEndsAt();
+        $worked = $ended ? $this->staffCosts->workedOf($event, $now) : null;
         $jobWorked = null === $worked ? [] : Dict\from_entries(Vec\map($worked->jobs, static fn (JobWorked $job): array => [$job->job, $job]));
         $ownWorked = null === $worked ? [] : Dict\from_entries(Vec\map($worked->own, static fn (OwnWorked $own): array => [$own->person . ':' . $own->job, $own]));
 
