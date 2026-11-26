@@ -451,16 +451,19 @@ export function Broken({
   children,
   action,
   landing,
+  held,
 }: {
   children: ReactNode;
   action?: ReactNode;
   landing?: Ref<HTMLDivElement> | undefined;
+  /** A ref that, unlike `landing`, leaves the notice an alert that focus does not land on. */
+  held?: Ref<HTMLDivElement>;
 }) {
   return (
     <div
       className="notice notice-broken ev-notice"
       role={landing == null ? 'alert' : undefined}
-      ref={landing}
+      ref={landing ?? held}
       tabIndex={landing == null ? undefined : -1}
     >
       <span className="mark mark-broken" aria-hidden="true">
