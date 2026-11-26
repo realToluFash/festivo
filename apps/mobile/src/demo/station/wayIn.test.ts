@@ -177,6 +177,12 @@ describe('Open {station} on Your night (sc-95382)', () => {
     ]);
   });
 
+  it('opens Check-in with its way back to Your night (qa3, #97368)', () => {
+    expect(checkInOf(nightOf('kitchen_checkin'))?.href).toBe(
+      '/demo/guests/check-in?state=door&from=night',
+    );
+  });
+
   it('leaves Your night as it is for a section, no station, the floor, nothing dished, and a browser', () => {
     for (const state of [
       'app',

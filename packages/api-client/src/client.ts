@@ -756,6 +756,8 @@ export interface OpenedDoorCode {
     endsAt: string;
     timeZone: string;
     organisation: string;
+    /** The organisation's country, where a number typed at the door code starts. */
+    country: string;
   };
   standing: 'member' | 'in' | null;
 }
@@ -6728,6 +6730,7 @@ function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
       endsAt: opened.endsAt,
       timeZone: opened.timeZone,
       organisation: opened.organisation,
+      country: isString(opened.country) ? opened.country : '',
     },
     standing: standing === 'member' || standing === 'in' ? standing : null,
   };

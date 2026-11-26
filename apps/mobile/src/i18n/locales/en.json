@@ -3417,6 +3417,7 @@
     "join": "Join",
     "joining": "Joining…",
     "signOut": "Sign out",
+    "signedOut": "Signed out.",
     "memberTitle": "You’re already a member of {{organisation}}",
     "memberLine": "Members open an event from its People page. Ask its lead or an admin to add you.",
     "openEvents": "Open Events",

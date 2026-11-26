@@ -32,11 +32,12 @@ import { nextAfterSignIn } from '../challenge.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
 import { reloadSignedIn, signOutThen } from '../signedIn.ts';
 import { InsideField } from '../steps/InsideField.tsx';
-import { Heading, Says } from '../steps/Lines.tsx';
+import { Heading, Says, stepTitle, useStepTitleSize } from '../steps/Lines.tsx';
 import { NavBar, StepScreen } from '../steps/StepScreen.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
+import { Glyph } from './Glyph.tsx';
 import { focusChecked } from './Field.tsx';
 import { deviceNow } from './CreateWalkWindow.tsx';
 import { ProviderButtons, failedOver } from './ProviderSignIn.tsx';
@@ -46,9 +47,23 @@ import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
-  | { kind: 'enter'; typed: string; line: CodeLine | null; busy: boolean }
+  | {
+      kind: 'enter';
+      typed: string;
+      line: CodeLine | null;
+      busy: boolean;
+      /** Just signed out: "Signed out." above the heading, until the next step (sc-4235). */
+      signedOut?: boolean;
+    }
   | TooMany
-  | { kind: 'event'; code: string; opened: OpenedDoorCode; alternative?: boolean }
+  | {
+      kind: 'event';
+      code: string;
+      opened: OpenedDoorCode;
+      typed?: Typed;
+      /** Back from the phone code: an alternative number's line, or sc-72's one refusal. */
+      back?: 'alternative' | 'refused' | 'failed';
+    }
   | { kind: 'member'; organisation: string; eventId: string }
   | {
       kind: 'providerOnly';
@@ -62,9 +77,16 @@ type Step =
       code: string;
       opened: OpenedDoorCode;
       handle: string;
-      number: string;
+      typed: Typed;
     }
   | { kind: 'in'; redeemed: RedeemedDoorCode; event: OpenedDoorCode['event'] };
+
+/** The name, the country and the number signed out, kept for the way back from the phone code. */
+interface Typed {
+  name: string;
+  country: string;
+  number: string;
+}
 
 interface Opened {
   account: Account | null;
@@ -89,18 +111,24 @@ async function opening(typed: string): Promise<Opened> {
   return { account, to };
 }
 
+/** Where the number starts: the event's country, or the device's when the opening names none. */
+function startCountry(opened: OpenedDoorCode): string {
+  return opened.event.country === '' ? (deviceNow().country ?? '') : opened.event.country;
+}
+
 function close(): void {
   if (router.canGoBack()) router.back();
   else router.replace('/');
 }
 
 /** Joining with a door code (sc-72), as the app demo's redeem draws it: the code, the event and a name, then You're in. */
-export function Redeem({ code }: { code: string }) {
+export function Redeem({ code, signedOut = false }: { code: string; signedOut?: boolean }) {
   const [step, setStep] = useState<Step>({
     kind: 'enter',
     typed: code,
     line: null,
     busy: code !== '',
+    signedOut,
   });
   const [visit, setVisit] = useState(0);
   const [account, setAccount] = useState<Account | null>(null);
@@ -135,9 +163,9 @@ export function Redeem({ code }: { code: string }) {
   }, [code]);
 
   async function left(at: Extract<Step, { kind: 'code' }>, leave: CodeLeave): Promise<void> {
-    const back = { kind: 'event' as const, code: at.code, opened: at.opened };
+    const back = { kind: 'event' as const, code: at.code, opened: at.opened, typed: at.typed };
     if (leave.kind === 'alternative') {
-      go({ ...back, alternative: true });
+      go({ ...back, back: 'alternative' });
       return;
     }
     if (leave.kind === 'providerOnly') {
@@ -152,7 +180,14 @@ export function Redeem({ code }: { code: string }) {
     }
     if (leave.kind === 'refused') {
       const refusal = joinRefusal(leave.error);
-      go(refusal.kind === 'tooMany' ? refusal : back);
+      if (refusal.kind === 'tooMany') go(refusal);
+      else if (refusal.kind === 'member')
+        go({
+          kind: 'member',
+          organisation: at.opened.event.organisation,
+          eventId: at.opened.event.id,
+        });
+      else go({ ...back, back: refusal.trouble });
       return;
     }
     const { outcome, redeemed } = leave.signedIn;
@@ -185,7 +220,7 @@ export function Redeem({ code }: { code: string }) {
           key={key}
           step={step}
           onContinue={(typed) => {
-            setStep({ ...step, typed, line: null, busy: true });
+            setStep({ ...step, typed, line: null, busy: true, signedOut: false });
             void opening(typed).then((answer) => opened(typed, answer));
           }}
         />
@@ -199,8 +234,8 @@ export function Redeem({ code }: { code: string }) {
           step={step}
           account={account}
           onJoined={(redeemed) => joined(redeemed, step.opened.event)}
-          onSent={(handle, number) =>
-            go({ kind: 'code', code: step.code, opened: step.opened, handle, number })
+          onSent={(handle, typed) =>
+            go({ kind: 'code', code: step.code, opened: step.opened, handle, typed })
           }
           onMember={() =>
             go({
@@ -236,7 +271,9 @@ export function Redeem({ code }: { code: string }) {
         <StepScreen
           nav={
             <NavBar
-              onLeft={() => go({ kind: 'event', code: step.code, opened: step.opened })}
+              onLeft={() =>
+                go({ kind: 'event', code: step.code, opened: step.opened, typed: step.typed })
+              }
               testID="redeem.code.nav"
             />
           }
@@ -244,7 +281,7 @@ export function Redeem({ code }: { code: string }) {
           <PhoneCodeScreen
             code={step.code}
             handle={step.handle}
-            number={step.number}
+            number={shownNumber(step.typed.country, step.typed.number)}
             onLeave={(leave) => void left(step, leave)}
           />
         </StepScreen>
@@ -255,7 +292,7 @@ export function Redeem({ code }: { code: string }) {
           step={step}
           onSignedOut={() => {
             setAccount(null);
-            go({ kind: 'enter', typed: '', line: null, busy: false });
+            go({ kind: 'enter', typed: '', line: null, busy: false, signedOut: true });
           }}
         />
       );
@@ -278,6 +315,23 @@ function Refused({ words }: { words: string }) {
     <Text size={tokens.typeBody.size} style={styles.refused}>
       {words}
     </Text>
+  );
+}
+
+/** "Signed out." as a status above the page's own heading, said without focus moving (sc-4235, Decided 12 Nov). */
+function SignedOutLine() {
+  const { t } = useTranslation();
+  const size = useStepTitleSize();
+  const words = t('redeem.signedOut');
+  useReadOut(words);
+
+  return (
+    <View style={styles.signedOut} testID="redeem.signedOut">
+      <Glyph name="signOut" size={26} ink={tokens.colorInkSecondary} weight={2.2} />
+      <Text size={size} weight="bold" style={[styles.grow, stepTitle(size)]}>
+        {words}
+      </Text>
+    </View>
   );
 }
 
@@ -317,6 +371,7 @@ function EnterStep({
         />
       }
     >
+      {step.signedOut === true && <SignedOutLine />}
       <Heading title={t('redeem.enterTitle')} />
       <View style={styles.fields}>
         <InsideField
@@ -378,24 +433,28 @@ function EventStep({
   step: Extract<Step, { kind: 'event' }>;
   account: Account | null;
   onJoined: (redeemed: RedeemedDoorCode) => void;
-  onSent: (handle: string, number: string) => void;
+  onSent: (handle: string, typed: Typed) => void;
   onMember: () => void;
   onTooMany: (tooMany: TooMany) => void;
   onSignedOut: () => void;
 }) {
   const { t } = useTranslation();
   const field = useRef<TextInputInstance>(null);
-  const name = useRef('');
-  const number = useRef('');
+  const name = useRef(step.typed?.name ?? '');
+  const number = useRef(step.typed?.number ?? '');
   const numberField = useRef<TextInputInstance>(null);
-  const [country, setCountry] = useState(() => deviceNow().country ?? '');
+  const [country, setCountry] = useState(() => step.typed?.country ?? startCountry(step.opened));
   const [nameSaid, setNameSaid] = useState<string | null>(null);
   const [numberSaid, setNumberSaid] = useState<string | null>(
-    step.alternative === true ? t('redeem.phone.alternative') : null,
+    step.back === 'alternative' ? t('redeem.phone.alternative') : null,
   );
   const [checked, setChecked] = useState(false);
   const [joining, setJoining] = useState(false);
-  const [trouble, setTrouble] = useState<{ words: string; n: number } | null>(null);
+  const [trouble, setTrouble] = useState<{ words: string; n: number } | null>(() =>
+    step.back === 'refused' || step.back === 'failed'
+      ? { words: t(step.back === 'refused' ? 'redeem.refused' : 'redeem.line.failed'), n: 1 }
+      : null,
+  );
   const signedIn = account != null;
   const { event } = step.opened;
 
@@ -452,7 +511,7 @@ function EventStep({
         country,
         number.current,
       );
-      onSent(handle, shownNumber(country, number.current));
+      onSent(handle, { name: name.current, country, number: number.current });
     } catch (error) {
       const said = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
       if (said.name == null && said.number == null) {
@@ -504,6 +563,7 @@ function EventStep({
             <InsideField
               ref={field}
               label={t('redeem.yourName')}
+              defaultValue={step.typed?.name ?? ''}
               onChangeText={(text) => {
                 name.current = text;
                 if (nameSaid != null) setNameSaid(null);
@@ -520,7 +580,7 @@ function EventStep({
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => numberField.current?.focus()}
-              autoFocus={step.alternative !== true}
+              autoFocus={step.typed == null}
               testID="redeem.name.field"
             />
             {nameSaid != null && <Says words={nameSaid} />}
@@ -529,6 +589,7 @@ function EventStep({
         {!signedIn && (
           <NumberFields
             country={country}
+            number={step.typed?.number}
             numberRef={numberField}
             said={numberSaid}
             sending={joining}
@@ -654,6 +715,13 @@ function InStep({
 }
 
 const styles = StyleSheet.create({
+  grow: { flex: 1, minWidth: 0 },
+  signedOut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    marginBottom: tokens.spaceLg,
+  },
   tile: { marginTop: tokens.spaceLg },
   fields: { marginTop: tokens.space3xl, gap: tokens.spaceLg },
   refused: { color: tokens.colorBrokenText },

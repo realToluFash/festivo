@@ -122,6 +122,7 @@ final readonly class RedeemController
                 'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),
                 'timeZone' => $event->getTimeZone(),
                 'organisation' => $event->getOrganisation()->getName(),
+                'country' => $event->getOrganisation()->getCountryCode(),
             ],
         ];
     }

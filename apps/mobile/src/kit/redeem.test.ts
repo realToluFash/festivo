@@ -42,6 +42,7 @@ const OPENED: OpenedDoorCode = {
     endsAt: '2026-11-14T23:30:00+00:00',
     timeZone: 'Europe/Lisbon',
     organisation: 'Ìrè Events',
+    country: 'NG',
   },
   standing: null,
 };

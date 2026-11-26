@@ -1,0 +1,29 @@
+# sc-4235 subflow: on the door code's event step, type NAME, choose Nigeria, type NUMBER, Send code.
+appId: host.exp.Exponent
+---
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: ${NAME}
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: 'Nigeria'
+- tapOn:
+    id: 'redeem.event.country.NG'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- hideKeyboard
+- tapOn:
+    id: 'redeem.event.send'

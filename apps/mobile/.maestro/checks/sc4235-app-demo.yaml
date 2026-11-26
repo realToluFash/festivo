@@ -1,0 +1,39 @@
+# sc-4235: the app demo's redeem, one screenshot per state the join code by phone draws; then the demo's Sign out from You're in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/redeem?state=event
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-event
+- openLink: ${METRO_URL}/--/demo/redeem?state=event-blank
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-event-blank
+- openLink: ${METRO_URL}/--/demo/redeem?state=event-short
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-event-short
+- openLink: ${METRO_URL}/--/demo/redeem?state=code
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-code
+- openLink: ${METRO_URL}/--/demo/redeem?state=in
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-in
+- openLink: ${METRO_URL}/--/demo/redeem?state=second-number
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-second-number
+- openLink: ${METRO_URL}/--/demo/redeem?state=in
+- waitForAnimationToEnd:
+    timeout: 4000
+- scrollUntilVisible:
+    element:
+      id: 'inside.signOut'
+    optional: true
+- tapOn:
+    id: 'inside.signOut'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: demo-signed-out

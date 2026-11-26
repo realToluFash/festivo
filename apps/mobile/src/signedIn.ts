@@ -251,12 +251,20 @@ export function replaceOrganisation(saved: Membership): void {
   });
 }
 
-/** Every "Sign out": no confirmation of its own, straight to welcome, though a form holding a change asks first (sc-82245). */
+/** Only a phone code signs it in: no password, Apple or Google (sc-4235). */
+export function onlyAPhoneCode(account: Account): boolean {
+  return !account.hasPassword && account.providers.length === 0;
+}
+
+/** Every "Sign out": no confirmation of its own, though a form holding a change asks first (sc-82245). It lands where this account signs back in: welcome, or an empty door code for an account only a phone code signs in (sc-4235). */
 export function signOutHere(): void {
   leaveThen(() => {
+    const account = state.account;
     void api.signOut().finally(() => {
       forget();
-      router.replace('/welcome');
+      if (account != null && onlyAPhoneCode(account))
+        router.replace({ pathname: '/d', params: { signedOut: '1' } });
+      else router.replace('/welcome');
     });
   });
 }

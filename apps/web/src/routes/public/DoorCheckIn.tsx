@@ -23,7 +23,7 @@ import { useStaleWatch } from '../../offline.ts';
 import { restoreSession, useSessionState } from '../../session.ts';
 import { ReplyMark } from '../app/events/GuestColumn.tsx';
 import { useHubTopics } from '../app/events/useHubTopics.ts';
-import { type DoorWay, doorWayOf, freshRows } from './doorCheckIn.ts';
+import { type DoorWay, doorWayOf, freshRows, youreInAddress } from './doorCheckIn.ts';
 import { SignOutLine } from './RedeemPhone.tsx';
 import '../app/events/guests.css';
 import './doorCheckIn.css';
@@ -51,6 +51,7 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
   const [way, setWay] = useState<DoorWay | null | undefined>(undefined);
   const [fresh, setFresh] = useState<readonly string[]>([]);
   const [refused, setRefused] = useState(false);
+  const [byCode, setByCode] = useState(false);
   const title = useRef<HTMLHeadingElement>(null);
   const shown = load.kind === 'shown' ? load.checkIn : null;
   const latest = useRef(shown);
@@ -106,7 +107,11 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
     let again: number | undefined;
     const find = (): void =>
       void doorWayOf(eventId, outside, t).then(
-        (found) => current && setWay(found),
+        (found) => {
+          if (!current) return;
+          setWay(found);
+          if (found?.to === youreInAddress(eventId)) setByCode(true);
+        },
         () => {
           if (current) again = window.setTimeout(find, EVERY_MS);
         },
@@ -136,7 +141,11 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
 
   if (session.status === 'signedOut') return <NotSignedIn />;
   if (refused) return way === undefined ? <Asking /> : <Navigate to={way?.to ?? '/app'} replace />;
-  if (load.kind === 'gone') return <LinkGone />;
+  // Every route to an ended grant answers the same 404, so the page follows how this browser got in, not why it ended.
+  if (load.kind === 'gone') {
+    if (byCode || (signedIn && session.session.heldByDevice === true)) return <NotSignedIn />;
+    return way === undefined ? <Asking /> : <LinkGone />;
+  }
 
   return (
     <Page back={way ?? null}>
