@@ -12,15 +12,24 @@ import { type Landing, landingFor } from './landing.ts';
 let held: TwoFactorChallenge | null = null;
 let heldAlone = false;
 let heldTyped: string | null = null;
+let heldCarryOn: CarryOn | null = null;
+
+/** The screen a provider sign-in began on, carrying on as the account (sc-94849). */
+export type CarryOn = (account: Account) => Promise<void>;
 
 /** In memory only: a route parameter would put a credential where logs and history keep it. */
 export function holdChallenge(
   challenge: TwoFactorChallenge,
-  { alone = false, typed = null }: { alone?: boolean; typed?: string | null } = {},
+  {
+    alone = false,
+    typed = null,
+    carryOn = null,
+  }: { alone?: boolean; typed?: string | null; carryOn?: CarryOn | null } = {},
 ): void {
   held = challenge;
   heldAlone = alone;
   heldTyped = typed;
+  heldCarryOn = carryOn;
 }
 
 export function heldChallenge(): TwoFactorChallenge | null {
@@ -37,19 +46,29 @@ export function challengeTypedEmail(): string | null {
   return heldTyped;
 }
 
+/** The screen under the code screen that carries on as the account once the code passes, or null when the account goes where it belongs (sc-94849). */
+export function challengeCarryOn(): CarryOn | null {
+  return heldCarryOn;
+}
+
 export function dropChallenge(): void {
   held = null;
   heldAlone = false;
   heldTyped = null;
+  heldCarryOn = null;
 }
 
 /** Where any sign-in goes next: the code screen when two-factor asks for one, else where the account belongs. */
 export async function nextAfterSignIn(
   outcome: SignInOutcome,
-  { alone = false, typed = null }: { alone?: boolean; typed?: string | null } = {},
+  {
+    alone = false,
+    typed = null,
+    carryOn = null,
+  }: { alone?: boolean; typed?: string | null; carryOn?: CarryOn | null } = {},
 ): Promise<Landing | '/sign-in-code' | '/two-factor-again' | `/join/${string}`> {
   if ('challenge' in outcome) {
-    holdChallenge(outcome, { alone, typed });
+    holdChallenge(outcome, { alone, typed, carryOn });
     return '/sign-in-code';
   }
 

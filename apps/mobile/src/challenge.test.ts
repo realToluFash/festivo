@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   carryOnAfter,
   challengeBeganAlone,
+  challengeCarryOn,
   challengeTypedEmail,
   dropChallenge,
   heldChallenge,
@@ -299,5 +300,21 @@ describe('a provider sign-in from a screen that carries on as the account (sc-94
       kind: 'over',
       to: '/two-factor-again',
     });
+  });
+
+  it('holds the screen to carry on as the account through two-factor, and drops it with the challenge', async () => {
+    const carryOn = async () => {};
+
+    await nextAfterSignIn(CHALLENGE, { carryOn });
+    expect(challengeCarryOn()).toBe(carryOn);
+
+    dropChallenge();
+    expect(challengeCarryOn()).toBeNull();
+  });
+
+  it('holds none for a sign-in that goes where the account belongs', async () => {
+    await nextAfterSignIn(CHALLENGE);
+    expect(challengeCarryOn()).toBeNull();
+    dropChallenge();
   });
 });

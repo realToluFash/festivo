@@ -64,7 +64,7 @@ export function ProviderButtons({
     try {
       await before?.();
       const outcome = await signInWithProvider(provider);
-      const next = await nextAfterSignIn(outcome, { alone });
+      const next = await nextAfterSignIn(outcome, { alone, carryOn: onSignedIn ?? null });
       if (onSignedIn == null) {
         router.replace(next);
         return;
