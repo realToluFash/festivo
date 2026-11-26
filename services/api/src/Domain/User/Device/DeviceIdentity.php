@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Device;
 
+use App\Enum\ClientKind;
 use App\Http\RefreshTokenCookies;
 use DateTimeImmutable;
 use Psl\Regex;
@@ -41,6 +42,11 @@ final class DeviceIdentity
         $request->attributes->set(self::ATTRIBUTE, $id);
 
         return $id;
+    }
+
+    public static function clientOf(Request $request): ClientKind
+    {
+        return null === self::wellFormed($request->headers->get(self::HEADER)) ? ClientKind::Browser : ClientKind::App;
     }
 
     /** Only a request that asked for its identifier gets the cookie. */
