@@ -312,9 +312,10 @@ export function audienceWords(audience: Audience, groups: readonly Group[]): str
 }
 
 export function toLine(audience: Audience, groups: readonly Group[]): string {
-  return audience.kind === 'all'
-    ? MW.toAll
-    : mw.filled(MW.toAudience, { audience: audienceWords(audience, groups) });
+  if (audience.kind === 'all') return MW.toAll;
+  if (audience.kind === 'who' && audience.pick === 'chosen') return MW.toChosen;
+
+  return mw.filled(MW.toAudience, { audience: audienceWords(audience, groups) });
 }
 
 /** The To chip: a quick pick as "Coming · 96", a saved audience by its name, one guest by theirs, else Guests who… with its count. */
