@@ -3545,8 +3545,8 @@
     "fresh": {
       "connected": "Connected · up to date {{time}}",
       "noConnection": "No connection · as of {{time}}",
-      "noConnectionWaiting_one": "No connection · as of {{time}} · {{count}} tap waiting",
-      "noConnectionWaiting_other": "No connection · as of {{time}} · {{count}} taps waiting",
+      "noConnectionWaiting_one": "No connection · as of {{time}} · {{count, number}} tap waiting",
+      "noConnectionWaiting_other": "No connection · as of {{time}} · {{count, number}} taps waiting",
       "notStarted": "Not started yet"
     },
     "waitingToSend": "Waiting to send",
@@ -3577,8 +3577,8 @@
         "preparing": "{{item}} is preparing now."
       },
       "trayNotYours": "This tray is {{name}}'s now.",
-      "undoExpired_one": "Too late to undo: {{count}} minute had passed.",
-      "undoExpired_other": "Too late to undo: {{count}} minutes had passed."
+      "undoExpired_one": "Too late to undo: {{count, number}} minute had passed.",
+      "undoExpired_other": "Too late to undo: {{count, number}} minutes had passed."
     },
     "needsConnection": {
       "startTray": "Starting a tray needs a connection.",
