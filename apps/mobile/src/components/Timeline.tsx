@@ -181,7 +181,7 @@ export function ComingUp({
             testID="timeline.comingUp.retry"
           />
         )}
-        {panel?.kind === 'endsToday' && (
+        {load.kind === 'loaded' && panel?.kind === 'endsToday' && (
           <View style={styles.inset} testID="timeline.endsToday">
             <Text size={tokens.typeBodyPhone.size} muted style={styles.insetWords}>
               {t('todayScreen.endsToday', {
@@ -190,7 +190,7 @@ export function ComingUp({
             </Text>
           </View>
         )}
-        {panel?.kind === 'finished' && (
+        {load.kind === 'loaded' && panel?.kind === 'finished' && (
           <View style={styles.inset} testID="timeline.finished">
             <Text size={tokens.typeBodyPhone.size} muted {...HIDDEN}>
               {tokens.marks.done.glyph}
@@ -200,7 +200,7 @@ export function ComingUp({
             </Text>
           </View>
         )}
-        {panel?.kind === 'rows' && (
+        {load.kind === 'loaded' && panel?.kind === 'rows' && (
           <Arrived>
             {panel.rows.map((marked, index) => (
               <MilestoneRow

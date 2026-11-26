@@ -116,14 +116,14 @@ export function ComingUp({
       <div className="coming-up-rows">
         {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
-        {panel?.kind === 'endsToday' && (
+        {load.kind === 'loaded' && panel?.kind === 'endsToday' && (
           <p className="timeline-inset arrives">
             {t('today.endsToday', {
               time: formatEventClock(event.endsAt, event.timeZone, dateLocale()),
             })}
           </p>
         )}
-        {panel?.kind === 'finished' && (
+        {load.kind === 'loaded' && panel?.kind === 'finished' && (
           <p className="timeline-inset timeline-finished arrives">
             <span className="timeline-finished-mark" aria-hidden="true">
               ✓
@@ -131,7 +131,7 @@ export function ComingUp({
             {t('timeline.finished')}
           </p>
         )}
-        {panel?.kind === 'rows' && (
+        {load.kind === 'loaded' && panel?.kind === 'rows' && (
           <ol className="timeline-list arrives">
             {panel.rows.map((marked, index) => (
               <MilestoneRow
