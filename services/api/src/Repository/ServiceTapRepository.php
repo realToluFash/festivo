@@ -24,16 +24,4 @@ final class ServiceTapRepository extends ServiceEntityRepository
 
         return null !== $tap && $tap->getMadeAt() >= $since ? $tap : null;
     }
-
-    public function forget(User $by, DateTimeImmutable $before): void
-    {
-        $this->getEntityManager()->createQueryBuilder()
-            ->delete(ServiceTap::class, 'tap')
-            ->where('tap.by = :by')
-            ->andWhere('tap.madeAt < :before')
-            ->setParameter('by', $by)
-            ->setParameter('before', $before)
-            ->getQuery()
-            ->execute();
-    }
 }

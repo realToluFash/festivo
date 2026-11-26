@@ -226,26 +226,8 @@ final readonly class ServiceController
     {
         $user = $this->user();
         $sent = $this->serviceTaps->sent($request, $user);
-        $earlier = $this->serviceTaps->earlier($user, $sent);
 
-        if (null !== $earlier) {
-            return $earlier;
-        }
-
-        try {
-            $response = $write();
-        } catch (ApiException $refusal) {
-            // A request the device got wrong is not kept, so it can be sent again put right; a refusal of the step itself is the first answer.
-            if (Response::HTTP_FORBIDDEN === $refusal->errorCode->status() || Response::HTTP_CONFLICT === $refusal->errorCode->status()) {
-                $this->serviceTaps->refused($event, $user, $sent, $refusal);
-            }
-
-            throw $refusal;
-        }
-
-        $this->serviceTaps->answered($event, $user, $sent, $response);
-
-        return $response;
+        return $this->serviceTaps->once($event, $user, $sent, $write);
     }
 
     /** @return Type\TypeInterface<array{plates?: array<string, PlateStage>, item?: ItemState}|null> */

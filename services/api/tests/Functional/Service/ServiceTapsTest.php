@@ -15,10 +15,13 @@ use App\Enum\StationKind;
 use App\Locale\NameNormaliser;
 use App\Repository\EmailAddressRepository;
 use DateTimeImmutable;
+use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 use Symfony\Component\Uid\Uuid;
@@ -70,6 +73,24 @@ final class ServiceTapsTest extends ServiceTestCase
 
         $this->raw('POST', $check, ['expected' => ['plates' => [$plate => 'checked']]], $key);
         $this->assertRefused(422, ErrorCode::IdempotencyKeyReused->type());
+    }
+
+    #[Test]
+    public function thePruneDeletesKeysOlderThanTwentyFourHoursAndKeepsTheRest(): void
+    {
+        $tray = $this->trayAtDishing();
+        $plate = Type\string()->coerce($tray['plates'][0]);
+        $this->mark($tray, $plate, 'plantain', 'on');
+        self::em()->getConnection()->executeStatement("UPDATE service_taps SET made_at = NOW() - INTERVAL '25 hours'");
+        $this->mark($tray, $plate, 'plantain', 'notOn');
+
+        $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find('app:prune-service-taps'));
+        $tester->execute(['--dry-run' => true]);
+        self::assertStringContainsString('Would delete 1 service tap keys.', $tester->getDisplay());
+        $tester->execute([]);
+        $tester->assertCommandIsSuccessful();
+
+        self::assertSame([true], self::em()->getConnection()->fetchFirstColumn("SELECT made_at > NOW() - INTERVAL '1 hour' FROM service_taps"), 'the 25-hour-old key is gone, the fresh one kept');
     }
 
     #[Test]

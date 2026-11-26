@@ -7,6 +7,7 @@
 25 3 * * * php /app/bin/console app:prune-phone-sign-ins --no-interaction
 30 3 * * * php /app/bin/console app:prune-deleted --no-interaction
 40 3 * * * php /app/bin/console app:prune-notification-items --no-interaction
+35 * * * * php /app/bin/console app:prune-service-taps --no-interaction
 50 3 * * * php /app/bin/console app:erase-staff-contacts --no-interaction
 */5 * * * * php /app/bin/console app:erase-removed-guests --no-interaction
 */5 * * * * php /app/bin/console app:erase-removed-budget-lines --no-interaction
