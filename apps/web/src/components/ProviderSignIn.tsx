@@ -9,10 +9,7 @@ import { OrLine } from './OrLine.tsx';
 
 type Provider = 'google' | 'apple';
 
-/**
- * Both are built to their owners' published specification; the marks are copied, not redrawn.
- * `returnTo` draws them as a redeem column's (sc-94849): full width, both faded while the provider opens, and that page is where signing in lands.
- */
+/** Both are built to their owners' published specification; the marks are copied, not redrawn. */
 export function ProviderSignIn({
   only,
   pair = false,
