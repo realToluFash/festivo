@@ -99,13 +99,13 @@ final readonly class Grants
         }
     }
 
-    /** 403 `permission_required` without the service, or at the half of it the level does not work: the floor's level never the pass, the pass's never the floor (sc-4002). */
+    /** 403 `permission_required` without the service, or at the half of it the level does not work: the floor's level never the pass, the pass's never the floor (sc-4002). That second refusal names the half it does work as `worksAt` (sc-4015). */
     public function requireServiceAt(ServicePlace $place): void
     {
         $this->require(Permission::ServiceWork);
 
         if (!$this->servesAt($place)) {
-            throw ApiException::permissionRequired(Permission::ServiceWork);
+            throw ApiException::permissionRequired(Permission::ServiceWork, ['worksAt' => (ServicePlace::Pass === $place ? ServicePlace::Floor : ServicePlace::Pass)->value]);
         }
     }
 

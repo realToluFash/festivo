@@ -53,6 +53,8 @@ describe('Kitchen station on Overview shows on the event’s day (sc-95382)', ()
 });
 
 const STATIONS: KitchenStationsRead = {
+  event: 'Adaeze & Tunde’s wedding',
+  you: 'Gbenga Salami',
   stations: [
     { id: 'pass', name: 'Pass', people: [] },
     { id: 'grill', name: 'Grill', people: [] },
