@@ -3936,7 +3936,7 @@
     "of": "{{worked}} de {{scheduled}} programadas",
     "assumed": "de las que {{time}} son supuestas (salida sin fichar)",
     "noneShifts_one": "{{count, number}} turno sin fichajes",
-    "noneShifts_many": "{{count, number}} turnos sin fichajes",
+    "noneShifts_many": "{{count, number}} de turnos sin fichajes",
     "noneShifts_other": "{{count, number}} turnos sin fichajes",
     "liveSummary": "Entrada fichada: {{on, number}} de {{all, number}}",
     "liveAt": "Actualizado: {{time}}",
