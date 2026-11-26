@@ -115,6 +115,19 @@ export function sheetStripHas(from: number): boolean {
   return from >= 0 && from <= SHEET_DRAG_STRIP;
 }
 
+/** One finger landing in the strip holds the sheet's drag, unless the sheet is scrolled away from its top: it goes back to the top before it closes (sc-95217). */
+export function sheetTouchHolds({
+  from,
+  touches,
+  scrolled,
+}: {
+  from: number;
+  touches: number;
+  scrolled: boolean;
+}): boolean {
+  return touches === 1 && !scrolled && sheetStripHas(from);
+}
+
 /** A drag that lands in the strip and moves more down or up than across moves the sheet; `from` is where the finger landed, measured from the sheet's top. */
 export function sheetDragStarts({
   from,
