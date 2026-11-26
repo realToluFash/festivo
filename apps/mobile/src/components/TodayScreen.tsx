@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { WORDS_GO, foldAt as foldOf, restingPlaces, wordsGoFrom } from '../layout/todayFold.ts';
+import { WORDS_GO, restingPlaces, wordsGoFrom } from '../layout/todayFold.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import type { Moment } from '../kit/today.ts';
@@ -118,8 +118,10 @@ function Scrolled({
     bandFoot: insets.top + bandHeight,
     screen: height,
   };
-  const foldAt = foldOf(fold);
+  const foldAt = body - bandHeight - SHEET_RISE;
   const bandFrom = foldAt - tokens.space3xl;
+  const places = phone ? restingPlaces(fold) : [0, foldAt];
+  const wordsFrom = phone ? wordsGoFrom(fold) : Math.max(0, bandFrom - WORDS_GO);
   const band = offset.interpolate({
     inputRange: [bandFrom, foldAt],
     outputRange: [0, 1],
@@ -127,7 +129,7 @@ function Scrolled({
   });
   // The words are gone before the band comes, so the two never show through each other.
   const words = offset.interpolate({
-    inputRange: [phone ? wordsGoFrom(fold) : Math.max(0, bandFrom - WORDS_GO), bandFrom],
+    inputRange: [wordsFrom, bandFrom],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
@@ -159,7 +161,7 @@ function Scrolled({
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        snapToOffsets={phone ? restingPlaces(fold) : [0, foldAt]}
+        snapToOffsets={places}
         snapToEnd={false}
         contentContainerStyle={{
           minHeight: height + foldAt,
