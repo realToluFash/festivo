@@ -1,4 +1,4 @@
-# sc-92959: the app's Design demo, the iPhone bell's screen (/demo/bell-size), at each phone route the Design section links, upright, with the foot line that gives the title's size. Vars: METRO_URL.
+# sc-92959: the app's Design demo, the iPhone bell's screen (/demo/bell-size), at each phone route the Design section links, upright, with the foot line that gives the title's size. Vars: METRO_URL, SIZE, LANG, EXTRA.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
