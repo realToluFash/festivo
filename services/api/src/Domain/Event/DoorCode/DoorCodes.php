@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Event\DoorCode;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\ShiftClock;
 use App\Entity\DoorCode;
 use App\Entity\Event;
 use App\Entity\EventPerson;
@@ -59,6 +60,7 @@ final readonly class DoorCodes
     {
         $violations = [
             ...$this->roleViolations($role),
+            ...$this->shiftViolations($shift, $role),
             ...$this->labelViolations($jobLabel),
             ...$this->capViolations($useCap),
             ...$this->expiryViolations($expiresAt),
@@ -145,6 +147,29 @@ final readonly class DoorCodes
         }
 
         return Iter\contains(DoorCode::ROLES, $role) ? [] : [$this->violation('role', 'door_codes.role')];
+    }
+
+    /**
+     * A named shift sets the code's level to its job's (sc-234), so the issuer sees the one level everyone on that shift holds; room is checked at redemption.
+     *
+     * @return list<array{propertyPath: string, message: string, code: string}>
+     */
+    private function shiftViolations(?StaffShift $shift, EventRole $role): array
+    {
+        if (null === $shift) {
+            return [];
+        }
+
+        $level = $shift->getJob()->getAccess()->eventRole();
+
+        if (EventRole::CanRunFloor === $level) {
+            throw new ApiException(ErrorCode::LevelNotAllowedForCode, 'door_codes.run_floor');
+        }
+
+        return [
+            ...($level === $role ? [] : [$this->violation('role', 'door_codes.shift_level')]),
+            ...(ShiftClock::instant($shift->getEndsAt(), $shift->getJob()->getEvent()) > $this->clock->now() ? [] : [$this->violation('shiftId', 'door_codes.shift_over')]),
+        ];
     }
 
     /** @return list<array{propertyPath: string, message: string, code: string}> */

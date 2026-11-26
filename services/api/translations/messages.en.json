@@ -544,6 +544,8 @@
     "saved_audience.name_taken": "There is already a saved audience called {name}.",
     "service.table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
     "door_codes.run_floor": "A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.",
+    "door_codes.shift_level": "A code that puts people on a shift gives that shift job’s level. Pick the level the job has, or no shift.",
+    "door_codes.shift_over": "That shift has ended. Pick a shift that has not, or no shift.",
     "people.service_level_outside_only": "The service levels are for people working a shift. Give a member one of the event roles.",
     "service.tray_not_yours": "This tray is {name}’s. Ask them or the floor lead.",
     "service.plate_stage_invalid": "This plate cannot take that step from where it is now.",

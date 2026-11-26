@@ -544,6 +544,8 @@
     "saved_audience.name_taken": "Ya hay un público guardado llamado {name}.",
     "service.table_not_yours": "Esta mesa está en la zona de otra persona. Pregunte a esa persona o al responsable de sala.",
     "door_codes.run_floor": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal.",
+    "door_codes.shift_level": "A code that puts people on a shift gives that shift job’s level. Pick the level the job has, or no shift.",
+    "door_codes.shift_over": "That shift has ended. Pick a shift that has not, or no shift.",
     "people.service_level_outside_only": "Los permisos de servicio son para quien trabaja en un turno. Dé a un miembro uno de los roles del evento.",
     "service.tray_not_yours": "Esta bandeja es de {name}. Pregunte a esa persona o al responsable de sala.",
     "service.plate_stage_invalid": "Este plato no puede dar ese paso desde donde está ahora.",

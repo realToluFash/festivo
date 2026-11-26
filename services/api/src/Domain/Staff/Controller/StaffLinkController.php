@@ -139,7 +139,7 @@ final readonly class StaffLinkController
         };
     }
 
-    /** The same night in the app, for an account on the event's roster through its link (sc-3906), and its clock card alone past access (sc-234); 404 for anybody else, organisers included. */
+    /** The same night in the app, for an account on the event's roster through its link (sc-3906) or a join code's shift (sc-234), and its clock card alone past access (sc-234); 404 for anybody else, organisers included. */
     #[Route('/api/events/{eventId}/my-night', name: 'staff_my_night', methods: ['GET'])]
     #[Authenticated]
     public function mine(string $eventId): JsonResponse
@@ -149,6 +149,12 @@ final readonly class StaffLinkController
 
         if (null !== $grant) {
             return new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
+        }
+
+        $byCode = null === $event ? null : Iter\first($this->staffLinkGrants->byCode($this->user(), $event));
+
+        if (null !== $byCode) {
+            return new JsonResponse($this->myNight->of($byCode['entry'], $byCode['until'], $byCode['level']));
         }
 
         $clockOnly = null === $event ? null : Iter\first($this->staffLinkGrants->clockOnly($this->user(), $event));

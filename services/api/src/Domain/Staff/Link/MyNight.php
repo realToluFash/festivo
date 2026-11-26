@@ -19,6 +19,7 @@ use App\Entity\SeatingTable;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\StaffStation;
+use App\Enum\EventRole;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\ServicePlace;
@@ -89,8 +90,8 @@ final readonly class MyNight
         return null === $card ? null : ClockCardSerialiser::card($card['shift'], $card['attendance'], $this->clock->now());
     }
 
-    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their job's level opens the door (sc-28230); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
-    public function of(StaffMember $entry, DateTimeImmutable $until): array
+    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their level opens the door (sc-28230): their job's, or a join code's for the night it opened (sc-234); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
+    public function of(StaffMember $entry, DateTimeImmutable $until, ?EventRole $level = null): array
     {
         $event = $entry->getEvent();
         $zone = new DateTimeZone($event->getTimeZone());
@@ -118,7 +119,7 @@ final readonly class MyNight
             'timing' => $this->timing($event, $zone),
             'doorsAt' => $doorsAt->format(\DATE_ATOM),
             'tables' => $this->tables($station, $now >= $doorsAt),
-            'checksIn' => Iter\contains(StaffLinkGrants::levelOf($entry)->permissions(), Permission::GuestsCheckIn),
+            'checksIn' => Iter\contains(($level ?? StaffLinkGrants::levelOf($entry))->permissions(), Permission::GuestsCheckIn),
             'dishes' => $this->dishes($entry),
             'rules' => $event->getStaffRules(),
         ];

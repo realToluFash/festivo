@@ -45,7 +45,7 @@ final class ShiftAttendanceRepository extends ServiceEntityRepository
     }
 
     /**
-     * Clocked in and not yet out, on the roster entries the account signed in through by their link; whether a clock-out is still taken is the caller's to work out.
+     * Clocked in and not yet out, on the roster entries the account signed in through by their link, or holds on a join code's shift (sc-234); whether a clock-out is still taken is the caller's to work out.
      *
      * @return list<ShiftAttendance>
      */
@@ -58,7 +58,7 @@ final class ShiftAttendanceRepository extends ServiceEntityRepository
             ->where('p.account = :account')
             ->andWhere('a.clockedInAt IS NOT NULL OR a.correctedInAt IS NOT NULL')
             ->andWhere('a.clockedOutAt IS NULL AND a.correctedOutAt IS NULL')
-            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = p)')
+            ->andWhere('EXISTS (SELECT 1 FROM App\Entity\StaffLinkToken t WHERE t.staffMember = p) OR EXISTS (SELECT 1 FROM App\Entity\EventPerson ep INNER JOIN ep.doorCode dc WHERE ep.user = p.account AND ep.event = p.event AND dc.shift = s)')
             ->setParameter('account', $account->getId(), 'uuid')
             ->orderBy('a.clockedInAt', 'ASC');
 

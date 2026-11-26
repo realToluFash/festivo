@@ -310,7 +310,7 @@ final class ClockingTest extends ApiTestCase
     {
         $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
         $shiftId = $this->shiftOf($this->grace);
-        $made = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/door-codes', ['role' => 'can_view', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
+        $made = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/door-codes', ['role' => 'can_work_floor', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
         self::assertSame(201, $this->statusCode(), Json\encode($made));
         $code = Type\shape(['code' => Type\string(), 'shiftId' => Type\string()], true)->coerce($made['doorCode'] ?? null);
         self::assertSame($shiftId, $code['shiftId']);
@@ -331,6 +331,80 @@ final class ClockingTest extends ApiTestCase
         $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
         self::assertArrayHasKey('Ada Obi', $rows, 'put on the shift');
         self::assertNull($rows['Ada Obi']['clockedInAt'], 'but not clocked in before the window opens');
+    }
+
+    #[Test]
+    public function aJoinCodesShiftSetsItsLevelAndIsNeverOneThatRunsTheFloorOrHasEnded(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $shiftId = $this->shiftOf($this->grace);
+        $made = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_check_in', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
+        self::assertSame(422, $this->statusCode(), 'a level other than the shift job\'s');
+        self::assertSame(['role'], $this->fields($made));
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'run']);
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $refused = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_work_floor', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('https://soirely.com/errors/level_not_allowed_for_code', $refused['type'] ?? null, Json\encode($refused));
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'floor']);
+        self::mockTime(new DateTimeImmutable('2027-03-07T00:00:00Z'));
+        $over = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_work_floor', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:30:00+00:00', 'shiftId' => $shiftId]);
+        self::assertSame(422, $this->statusCode(), 'at its scheduled end');
+        self::assertSame(['shiftId'], $this->fields($over));
+    }
+
+    #[Test]
+    public function aFullShiftAndAnEndedOneRedeemAsACodeNamingNoShiftAndSayWhich(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $code = $this->shiftCode('2027-03-07T00:50:00+00:00');
+        $joined = [];
+
+        foreach (['tunde@example.com' => 'Tunde Bakare', 'ada@example.com' => 'Ada Obi'] as $address => $name) {
+            $joined[] = $this->as($this->account($address, $name), 'POST', '/api/door-codes/' . $code . '/redeem', [])['shift'] ?? null;
+        }
+
+        self::assertSame([['landsOn' => 'night'], ['landsOn' => 'night']], $joined);
+        $full = $this->as($this->account('bola@example.com', 'Bola Ade'), 'POST', '/api/door-codes/' . $code . '/redeem', []);
+        self::assertSame(201, $this->statusCode(), Json\encode($full));
+        self::assertSame(['landsOn' => 'in', 'notJoined' => 'full', 'job' => 'Waiter'], $full['shift'] ?? null);
+        self::assertSame('can_work_floor', $full['role'] ?? null, 'still in, at the code\'s level');
+
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $this->shiftOf($this->grace) . '/people/' . $this->grace));
+        self::mockTime(new DateTimeImmutable('2027-03-07T00:10:00Z'));
+        $ended = $this->as($this->account('chidi@example.com', 'Chidi Eze'), 'POST', '/api/door-codes/' . $code . '/redeem', []);
+        self::assertSame(['landsOn' => 'in', 'notJoined' => 'ended', 'job' => 'Waiter'], $ended['shift'] ?? null, 'a free place, but past its end');
+        $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
+        self::assertArrayNotHasKey('Bola Ade', $rows);
+        self::assertArrayNotHasKey('Chidi Eze', $rows);
+    }
+
+    #[Test]
+    public function aRedeemerOnTheShiftHasMyNightAtTheCodesLevelAndClocksOutTherePastAccess(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $code = $this->shiftCode('2027-03-07T00:00:00+00:00');
+        self::mockTime(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        $ada = $this->account('ada@example.com', 'Ada Obi');
+        $this->as($ada, 'POST', '/api/door-codes/' . $code . '/redeem', []);
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'check_in']);
+
+        $night = $this->as($ada, 'GET', $this->mine());
+        self::assertSame(200, $this->statusCode(), Json\encode($night));
+        self::assertFalse($night['checksIn'] ?? null, 'the job\'s later level adds none to the code\'s');
+        self::assertSame('before', Type\shape(['phase' => Type\string()], true)->coerce($night['clock'] ?? null)['phase']);
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T15:30:00Z'));
+        self::assertSame('recorded', $this->as($ada, 'POST', $this->mine() . '/clock', ['action' => 'in'])['outcome'] ?? null);
+        $again = $this->as($ada, 'POST', '/api/door-codes/' . $code . '/redeem', []);
+        self::assertSame([true, ['landsOn' => 'night']], [$again['again'] ?? null, $again['shift'] ?? null]);
+        self::assertSame('2027-03-06T16:30:00+01:00', $this->rows($this->as($this->owner, 'GET', $this->path('hours')))['Ada Obi']['clockedInAt'] ?? null, 'signing back in clocks nobody in again');
+
+        self::mockTime(new DateTimeImmutable('2027-03-07T02:30:00Z'));
+        $out = $this->as($ada, 'POST', $this->mine() . '/clock', ['action' => 'out']);
+        self::assertSame('recorded', $out['outcome'] ?? null, Json\encode($out));
     }
 
     #[Test]
@@ -470,6 +544,34 @@ final class ClockingTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), Json\encode($body));
 
         return Type\shape(['id' => Type\string()], true)->coerce($body['event'] ?? null)['id'];
+    }
+
+    private function shiftCode(string $expiresAt): string
+    {
+        $made = $this->as($this->owner, 'POST', $this->codes(), ['role' => 'can_work_floor', 'useCap' => 10, 'expiresAt' => $expiresAt, 'shiftId' => $this->shiftOf($this->grace)]);
+        self::assertSame(201, $this->statusCode(), Json\encode($made));
+
+        return Type\shape(['code' => Type\string()], true)->coerce($made['doorCode'] ?? null)['code'];
+    }
+
+    /**
+     * @param array<string, mixed> $refused
+     *
+     * @return list<string>
+     */
+    private function fields(array $refused): array
+    {
+        return Vec\map(Type\vec(Type\shape(['propertyPath' => Type\string()], true))->coerce($refused['violations'] ?? null), static fn (array $one): string => $one['propertyPath']);
+    }
+
+    private function codes(): string
+    {
+        return '/api/events/' . $this->eventId . '/door-codes';
+    }
+
+    private function mine(): string
+    {
+        return '/api/events/' . $this->eventId . '/my-night';
     }
 
     private function path(string $rest): string

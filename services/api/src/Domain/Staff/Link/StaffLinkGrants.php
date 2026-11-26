@@ -55,6 +55,26 @@ final readonly class StaffLinkGrants
     }
 
     /**
+     * A join code that put the account on its shift opens that entry's night (sc-234), over the entry's window, at the code's level: the job adds none, and no grant comes with it.
+     *
+     * @return list<array{entry: StaffMember, until: DateTimeImmutable, level: EventRole}>
+     */
+    public function byCode(User $user, Uuid $eventId): array
+    {
+        $person = $this->eventPersonRepository->findLiveOutside($eventId, $user, $this->clock->now());
+        $shift = $person?->getDoorCode()?->getShift();
+        $entry = null === $shift ? null : Iter\first(Vec\filter($shift->getPeople(), static fn (StaffMember $one): bool => true === $one->getAccount()?->getId()->equals($user->getId())));
+
+        if (null === $person || null === $entry) {
+            return [];
+        }
+
+        $window = $this->staffLinks->window($entry);
+
+        return $window->open && null !== $window->until ? [['entry' => $entry, 'until' => $window->until, 'level' => $person->getRole()]] : [];
+    }
+
+    /**
      * Past their access, still clocked in (sc-234): the entries whose link opens the clock card alone, and until when. No grant comes with it.
      *
      * @return list<array{entry: StaffMember, until: DateTimeImmutable}>

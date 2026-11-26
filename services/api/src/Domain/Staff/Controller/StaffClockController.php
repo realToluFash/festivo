@@ -76,7 +76,7 @@ final readonly class StaffClockController
         $body = Input::body($request, Type\shape(['action' => Type\union(Type\literal_scalar('in'), Type\literal_scalar('out'))]));
         $user = $this->user();
         $event = Uuid::isValid($eventId) ? Uuid::fromString($eventId) : null;
-        $grant = null === $event ? null : Iter\first([...$this->staffLinkGrants->live($user, $event), ...$this->staffLinkGrants->clockOnly($user, $event)]);
+        $grant = null === $event ? null : Iter\first([...$this->staffLinkGrants->live($user, $event), ...$this->staffLinkGrants->byCode($user, $event), ...$this->staffLinkGrants->clockOnly($user, $event)]);
 
         if (null === $grant) {
             throw ApiException::notFound('access.not_found');

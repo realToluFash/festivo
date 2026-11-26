@@ -762,6 +762,8 @@ export interface RedeemedDoorCode {
   jobLabel: string | null;
   endsAt: string | null;
   again: boolean;
+  /** For a code that names a shift (sc-234): on it, the redeem ends on My night; not joined, You're in says why. */
+  shift: { landsOn: 'night' } | { landsOn: 'in'; notJoined: 'full' | 'ended'; job: string } | null;
 }
 
 /** An event someone in no organisation of its own reaches from outside (sc-71). */
@@ -6695,7 +6697,7 @@ function asOpenedDoorCode(raw: unknown): OpenedDoorCode | null {
 function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { eventId, name, role, jobLabel, endsAt, again } = raw as Record<string, unknown>;
+  const { eventId, name, role, jobLabel, endsAt, again, shift } = raw as Record<string, unknown>;
 
   if (
     !isString(eventId) ||
@@ -6711,7 +6713,20 @@ function asRedeemedDoorCode(raw: unknown): RedeemedDoorCode | null {
     jobLabel: isString(jobLabel) ? jobLabel : null,
     endsAt: isString(endsAt) ? endsAt : null,
     again: again === true,
+    shift: asRedeemedShift(shift),
   };
+}
+
+function asRedeemedShift(raw: unknown): RedeemedDoorCode['shift'] {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { landsOn, notJoined, job } = raw as Record<string, unknown>;
+
+  if (landsOn === 'night') return { landsOn };
+
+  return landsOn === 'in' && (notJoined === 'full' || notJoined === 'ended') && isString(job)
+    ? { landsOn, notJoined, job }
+    : null;
 }
 
 function asRequestLink(raw: unknown): RequestLink {
