@@ -227,6 +227,13 @@ describe('stationView', () => {
 
     expect([line?.waiting, line?.heldUp]).toEqual([1, null]);
     expect(stationView(GRILL, [main], new Date(at(5))).left[0]?.heldUp).toBe(5);
+
+    const nobodyHeld = read(
+      MAIN,
+      [{ key: 'jollof', at: GRILL, state: 'preparing', readyIn: 5 }],
+      [{ id: 'a', seat: '1', order: plate('p1', 'a', 'main', ['jollof']) }],
+    );
+    expect(stationView(GRILL, [nobodyHeld], new Date(at(9))).left[0]?.heldUp).toBeNull();
   });
 
   it('lists started trays heading here oldest first, with each item’s count and the flagged plates', () => {

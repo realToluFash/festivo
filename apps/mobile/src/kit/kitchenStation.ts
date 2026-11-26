@@ -201,7 +201,7 @@ export function stationView(
         toDish,
         waiting,
         item,
-        heldUp: heldUpMinutes(item, now),
+        heldUp: waiting > 0 ? heldUpMinutes(item, now) : null,
       });
     }
   }
