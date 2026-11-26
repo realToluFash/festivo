@@ -7239,6 +7239,7 @@
     "opensAt": "Clock-in opens at {{time}}",
     "notOut": "Not clocked out · Counted to {{end}}, the scheduled end",
     "noAttendance": "No attendance recorded · 0 h counted",
+    "removed": "Removed from the roster",
     "worked": "Hours worked",
     "of": "{{worked}} of {{scheduled}} scheduled",
     "assumed": "of which {{hours}} assumed (not clocked out)",

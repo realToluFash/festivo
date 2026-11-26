@@ -399,6 +399,12 @@ function HoursTable({
               <tr key={key} className={lit === key ? 'is-lit' : undefined}>
                 <th scope="row">
                   <span className="hw-name">{row.name}</span>
+                  {row.removed && (
+                    <span className="hw-mark hw-removed">
+                      <Glyph name="user" size={14} weight={2.4} />
+                      {t('hours.removed')}
+                    </span>
+                  )}
                   <span className="hw-sub">{row.job}</span>
                 </th>
                 <td>

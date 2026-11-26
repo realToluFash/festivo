@@ -248,6 +248,25 @@ describe('Hours worked on the Staff page (sc-234)', () => {
     expect(await screen.findByText('9 h 8 min of 17 h scheduled')).toBeDefined();
   });
 
+  it('keeps someone removed from the roster, whose clock-out a correction needs', async () => {
+    signedIn();
+    const femi = row({ shiftId: 'run', staffId: 'femi', name: 'Femi Adeyemi', removed: true });
+    await onHours({
+      'GET /api/events/ev_1/staff/hours': () => json({ ...HOURS, rows: [EMEKA, femi] }),
+    });
+
+    const name = await screen.findByText('Femi Adeyemi');
+    expect(name.closest('th')?.textContent).toBe('Femi AdeyemiRemoved from the rosterFloor lead');
+    expect(screen.getAllByText('Removed from the roster')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Correct times, Femi Adeyemi' }));
+    const outTime = screen.getByLabelText('Clocked out, Time');
+    expect((outTime as HTMLInputElement).value).toBe('01:00');
+    fireEvent.change(outTime, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save times' }));
+    expect(await screen.findByText('Enter the time they finished.')).toBeDefined();
+  });
+
   it('corrects a time, checks it first, and keeps the recorded one beside it', async () => {
     signedIn();
     const fixed = {

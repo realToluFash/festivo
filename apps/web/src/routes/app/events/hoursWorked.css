@@ -109,6 +109,11 @@
   font: 600 14px/1.35 var(--fontFamily);
 }
 
+.hw-mark.hw-removed {
+  margin-top: 2px;
+  color: var(--colorInkSecondary);
+}
+
 .hw-mark.is-attention {
   color: var(--colorAttentionText);
 }
