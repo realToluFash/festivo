@@ -34,6 +34,7 @@ export interface TextWords {
   result: (r: Result) => string[];
   noMobile: (m: number) => string;
   stoppedCount: (k: number) => string;
+  waitCount: (w: number, time: string) => string;
 }
 
 export interface Result {
@@ -156,6 +157,7 @@ function textWordsOf(words: StaffTextWords, locale: string): TextWords {
     allSent: words.allSent,
     noMobile: (m) => many('noMobile', m),
     stoppedCount: (k) => many('stoppedTexts', k),
+    waitCount: (w, time) => many('waitCount', w, { time }),
     result: (r) => [
       ...(r.sending > 0 ? [many('sendingTo', r.sending)] : []),
       ...(r.m > 0 ? [many('noMobile', r.m)] : []),

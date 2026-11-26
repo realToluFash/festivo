@@ -108,11 +108,7 @@ export const BW = {
   sentTo: (n: number) => `Sent to ${n0(n)}.`,
   heldCount: (h: number) => plural(h, '{n} held: no credits.', '{n} held: no credits.'),
   stoppedCount: TW.stoppedCount,
-  waitCount: (w: number, time: string) =>
-    plural(w, '{n} waits until TIME, their time.', '{n} wait until TIME, their time.').replace(
-      'TIME',
-      time,
-    ),
+  waitCount: TW.waitCount,
   quiet: TW.quiet,
   sendFailed: '[Not sent. Nothing went, and no credits were used. Try again in a moment.]',
   refusedPage: '[You cannot see this event’s staff.]',
