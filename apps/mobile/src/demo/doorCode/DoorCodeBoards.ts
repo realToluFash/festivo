@@ -46,6 +46,7 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   welcome: ['Joining · the welcome', 'Enter a door code under its choices'],
   camera: ['Joining · the camera', 'Its chip opens the app on the event'],
   enter: ['Joining · enter a door code', 'Q7KM 4XP2, any case, spaces ignored'],
+  'signed-out': ['Joining · signed out', 'Signed out. above Enter a door code, empty'],
   'enter-blank': ['Joining · left blank', 'Enter the door code.'],
   'enter-short': ['Joining · too short', 'A door code is 8 letters and numbers.'],
   checking: ['Joining · checking', 'Continue turns, held, then the event'],
