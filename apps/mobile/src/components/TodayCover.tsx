@@ -578,8 +578,8 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on its side from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312). */
-function WholeNowBlock({ now }: { now: Now }) {
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211). */
+function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
   const [column, setColumn] = useState(0);
@@ -598,7 +598,7 @@ function WholeNowBlock({ now }: { now: Now }) {
       style={[styles.grow, styles.gapMd]}
       onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
     >
-      <WholeChips now={now} column={column} under={under} />
+      {upright ? <Chips now={now} grows /> : <WholeChips now={now} column={column} under={under} />}
       <CoverLine
         size={48}
         line={1.06}
@@ -644,7 +644,7 @@ export function NowBlock({
 }: {
   moment: Moment;
   wide: boolean;
-  /** On the iPad's side banner, where from AX1 the live cover keeps every word whole (sc-92312). */
+  /** On the iPad's side banner rather than upright (sc-92312). */
   side?: boolean;
 }) {
   const { t } = useTranslation();
@@ -654,7 +654,8 @@ export function NowBlock({
 
   if (now == null) return null;
 
-  if (side && whole && run == null && !moment.full) return <WholeNowBlock now={now} />;
+  if (wide && whole && run == null && !moment.full)
+    return <WholeNowBlock now={now} upright={!side} />;
 
   if (run != null)
     return (
@@ -673,7 +674,7 @@ export function NowBlock({
   if (!moment.full) {
     const words = (
       <>
-        <Chips now={now} grows={wide && whole} />
+        <Chips now={now} />
         <Text
           size={wide ? 48 : 36}
           weight="bold"
