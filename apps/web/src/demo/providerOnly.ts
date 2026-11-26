@@ -19,8 +19,8 @@ export const providerOnlyTitle = (organisation: string) =>
 export const providerNames = (providers: readonly Provider[]) =>
   providers.map((one) => NAMES[one]).join(' or ');
 
-/** [en]'s draft (#94888 on sc-94849): no password in it, which they never typed. */
+/** [en]'s line (#94892 on sc-94849): no password in it, which they never typed. */
 export const providerOnlyLine = (organisation: string, providers: readonly Provider[]) =>
-  `A code can’t sign you in to this account. ${organisation} asks everyone in it to use ${providerNames(providers)}.`;
+  `A code sent to your phone cannot sign you in to this account. ${organisation} asks everyone in it to use ${providerNames(providers)}.`;
 
 export const continueWith = (provider: Provider) => `Continue with ${NAMES[provider]}`;

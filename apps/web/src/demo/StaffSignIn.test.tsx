@@ -161,7 +161,7 @@ describe('a second number on an account, after the right code (sc-4235)', () => 
 describe('a member of an organisation that signs in with Google or Apple only (sc-94849)', () => {
   const title = 'Ìrè Events signs in with Google or Apple only';
   const line = (providers: string) =>
-    `A code can’t sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
+    `A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
 
   it('names nothing before the right code, then refuses it in place of the code step', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -289,7 +289,7 @@ describe('a name, a number and the phone code (sc-4235)', () => {
 
 describe('a member of an organisation that signs in with Google or Apple only (sc-94849)', () => {
   const line = (providers: string) =>
-    `A code can’t sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
+    `A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
 
   it('refuses the right phone code in place of the code step, the typed name forgotten', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

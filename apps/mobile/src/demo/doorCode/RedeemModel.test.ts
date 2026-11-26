@@ -239,10 +239,10 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
   it('names the member’s organisation and the linked providers, and no password', () => {
     expect(providerOnlyTitle('Ìrè Events')).toBe('Ìrè Events signs in with Google or Apple only');
     expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
-      'A code can’t sign you in to this account. Ìrè Events asks everyone in it to use Google.',
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
     );
     expect(providerOnlyLine('Ìrè Events', ['google', 'apple'])).toBe(
-      'A code can’t sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
     );
   });
 

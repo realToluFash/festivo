@@ -186,14 +186,14 @@ export function providerOnlyTitle(organisation: string): string {
   return `${organisation} signs in with Google or Apple only`;
 }
 
-/** [en]'s draft (#94888 on sc-94849): the linked providers, joined as the locale joins a choice; English joins two with "or". */
+/** [en]'s line (#94892 on sc-94849): the linked providers, joined as the locale joins a choice; English joins two with "or". */
 export function providerOnlyLine(
   organisation: string,
   providers: readonly (keyof typeof PROVIDER_NAMES)[],
 ): string {
   const names = providers.map((one) => PROVIDER_NAMES[one]).join(' or ');
 
-  return `A code can’t sign you in to this account. ${organisation} asks everyone in it to use ${names}.`;
+  return `A code sent to your phone cannot sign you in to this account. ${organisation} asks everyone in it to use ${names}.`;
 }
 
 export function joinAs(name: string): string {
