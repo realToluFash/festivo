@@ -34,6 +34,7 @@ import {
 import { COUNT_SIZE_BOARDS } from '../../src/demo/countSize/CountSizeBoards.ts';
 import { SHOW_SIZE_BOARDS } from '../../src/demo/showSize/ShowSizeBoards.ts';
 import { TODAY_SIZE_BOARDS } from '../../src/demo/todaySize/TodaySizeBoards.ts';
+import { TODAY_FOLD_BOARDS } from '../../src/demo/todayFold/TodayFoldBoards.ts';
 import { BAND_TITLE_BOARDS } from '../../src/demo/bandTitle/BandTitleBoards.ts';
 import { TOP_SIZE_BOARDS } from '../../src/demo/topSize/TopSizeBoards.ts';
 import {
@@ -194,6 +195,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Today · the greeting and headings whole at the largest text sizes (sc-91291)',
     boards: TODAY_SIZE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Today · Open the event in reach on the iPhone at the largest text sizes (sc-95084)',
+    boards: TODAY_FOLD_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
