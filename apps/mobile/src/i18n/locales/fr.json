@@ -3556,6 +3556,7 @@
     "join": "Rejoindre",
     "joining": "En cours…",
     "signOut": "Se déconnecter",
+    "signedOut": "Session fermée.",
     "memberTitle": "Vous êtes déjà membre de {{organisation}}",
     "memberLine": "Les membres accèdent à un événement depuis la page Personnes de l’événement. Demandez à la personne responsable de l’événement ou à un administrateur d’ajouter votre compte.",
     "openEvents": "Ouvrir Événements",

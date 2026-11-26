@@ -195,9 +195,9 @@ final class DoorCodesTest extends ApiTestCase
 
         $opened = $this->open($code);
         self::assertSame(200, $this->statusCode(), Json\encode($opened));
-        self::assertSame(['can_check_in', 'Bar and drinks', 'Owambe', 'Ìrè Events', null], [
-            $opened['role'], $opened['jobLabel'], Type\shape(['name' => Type\string()], true)->coerce($opened['event'])['name'],
-            Type\shape(['organisation' => Type\string()], true)->coerce($opened['event'])['organisation'], $opened['standing'],
+        $event = Type\shape(['name' => Type\string(), 'organisation' => Type\string(), 'country' => Type\string()], true)->coerce($opened['event']);
+        self::assertSame(['can_check_in', 'Bar and drinks', 'Owambe', 'Ìrè Events', 'NG', null], [
+            $opened['role'], $opened['jobLabel'], $event['name'], $event['organisation'], $event['country'], $opened['standing'],
         ]);
 
         $this->redeem($code, '   ');
