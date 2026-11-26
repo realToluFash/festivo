@@ -60,7 +60,6 @@ export interface ServiceTrayRead {
   waiter: { id: string; name: string };
   plates: string[];
   done: boolean;
-  paused?: boolean;
 }
 
 export interface ServiceCourseRead {

@@ -6751,7 +6751,6 @@
       "flaggedGuests": "Flagged guests",
       "trays": "Trays",
       "tray": "{{waiter}} · {{plates}} · {{stage}}",
-      "paused": "Paused",
       "seats": "Seats",
       "seat": "Seat {{seat}}",
       "onIt": "On it · Section {{section}} · {{people}}",

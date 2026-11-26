@@ -688,11 +688,6 @@ function TableView({
                     stage: stage == null ? '' : t(`service.stage.${stage}`),
                   })}
                 </Text>
-                {tray.paused === true && (
-                  <Text size={13} weight="semibold" style={styles.chip}>
-                    {t('service.floor.paused')}
-                  </Text>
-                )}
               </View>
             );
           })}
