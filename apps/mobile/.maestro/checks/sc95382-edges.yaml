@@ -1,4 +1,4 @@
-# sc-95382: the Kitchen station row on six events' Overviews (EV_A..EV_F, prefixed A..F), then a pick of PICK on EV_A's station and the row's line after it.
+# sc-95382: the Kitchen station row on six events' Overviews (EV_A..EV_F, prefixed A..F), then a pick of PICK on EV_A's station and the row's line after it. Needs ${METRO_URL}, ${EV_A}..${EV_F}, ${PICK}. EV_A: you have no station and none is remembered (fresh Expo Go data), so it opens on the station landing.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/events/${EV_B}
