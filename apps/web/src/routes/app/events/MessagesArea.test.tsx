@@ -431,6 +431,14 @@ describe('Messages at a desk (sc-3942)', () => {
     );
   });
 
+  it('says why nobody can write without messages.manage, where the composer would be', async () => {
+    onMessages({}, { permissions: OWNER_PERMISSIONS.filter((one) => one !== 'messages.manage') });
+
+    expect(await screen.findByText('Only someone who can change Messages can send.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'New' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^All guests/ })).toBeNull();
+  });
+
   it('is refused without messages.read, and hidden from the nav', async () => {
     onMessages(
       {},

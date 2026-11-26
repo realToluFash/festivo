@@ -6793,6 +6793,7 @@
     "noneLine": "Ce que vous écrivez s’affiche sur la page de chaque invité. Chaque invité qui répond ouvre ici une conversation.",
     "pickOne": "Choisissez une conversation, ou écrivez à vos invités ci-dessous.",
     "pickOneClosed": "Choisissez une conversation.",
+    "onlyManage": "Only someone who can change Messages can send.",
     "writeToGuests": "Écrire à vos invités",
     "followUp": "Suivi",
     "writeFollowUp": "Écrire un message de suivi",
