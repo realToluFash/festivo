@@ -808,7 +808,6 @@ const AREA_TITLE = {
   landscape: {},
 };
 
-/** The upright event track, shared with the service level's tabs in `doorCode/Inside.tsx` so the two cannot drift (sc-96279). */
 export const areaTrack = StyleSheet.create({
   bar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
   row: {
