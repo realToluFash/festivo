@@ -1,6 +1,5 @@
 import {
-  comingUp,
-  eventPhase,
+  comingUpPanel,
   formatEventClock,
   type EventTimeline,
   type MarkedMilestone,
@@ -139,11 +138,14 @@ export function ComingUp({
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const { load, now, ended, retried, retry } = timeline;
-  const shown = load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, ended) : [];
-  const on =
-    load.kind === 'loaded' &&
-    !ended &&
-    eventPhase({ ...load.event, status: load.status }, now) === 'happening_now';
+  const panel =
+    load.kind === 'loaded'
+      ? comingUpPanel(
+          { ...load.event, status: ended ? 'ended' : load.status },
+          load.timeline.milestones,
+          now,
+        )
+      : null;
 
   return (
     <View style={cardFrame(kind)} testID="timeline.comingUp">
@@ -179,7 +181,7 @@ export function ComingUp({
             testID="timeline.comingUp.retry"
           />
         )}
-        {load.kind === 'loaded' && shown.length === 0 && on && (
+        {panel?.kind === 'endsToday' && (
           <View style={styles.inset} testID="timeline.endsToday">
             <Text size={tokens.typeBodyPhone.size} muted style={styles.insetWords}>
               {t('todayScreen.endsToday', {
@@ -188,7 +190,7 @@ export function ComingUp({
             </Text>
           </View>
         )}
-        {load.kind === 'loaded' && shown.length === 0 && !on && (
+        {panel?.kind === 'finished' && (
           <View style={styles.inset} testID="timeline.finished">
             <Text size={tokens.typeBodyPhone.size} muted {...HIDDEN}>
               {tokens.marks.done.glyph}
@@ -198,9 +200,9 @@ export function ComingUp({
             </Text>
           </View>
         )}
-        {load.kind === 'loaded' && shown.length > 0 && (
+        {panel?.kind === 'rows' && (
           <Arrived>
-            {shown.map((marked, index) => (
+            {panel.rows.map((marked, index) => (
               <MilestoneRow
                 key={index}
                 marked={marked}

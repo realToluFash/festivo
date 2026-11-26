@@ -6,9 +6,21 @@ import {
   formatEventWeekday,
   formatWallDay,
 } from './datetime.ts';
-import { type EventPhase, type EventState, calledOff, shownPhase } from './eventStates.ts';
+import {
+  type EventPhase,
+  type EventState,
+  calledOff,
+  eventPhase,
+  shownPhase,
+} from './eventStates.ts';
 import { type LocaleCode, pluralLocale } from './locales.ts';
-import { type Milestone, milestoneDistance, nextUp } from './timeline.ts';
+import {
+  type MarkedMilestone,
+  type Milestone,
+  comingUp,
+  milestoneDistance,
+  nextUp,
+} from './timeline.ts';
 
 export interface HomeEvent {
   id: string;
@@ -173,6 +185,22 @@ export function nextStep(
   const milestone = nextUp(event.milestones, now, event.status === 'ended');
 
   return milestone == null ? null : { kind: 'nextUp', milestone };
+}
+
+export type ComingUpPanel =
+  { kind: 'rows'; rows: MarkedMilestone[] } | { kind: 'endsToday' } | { kind: 'finished' };
+
+/** Event View's Coming up on the web and the app: its next four, else when it ends while it is on, else finished; never finished while it is on (sc-93858). */
+export function comingUpPanel(
+  event: { status: EventState; startsAt: string; endsAt: string },
+  milestones: readonly Milestone[],
+  now: Date,
+): ComingUpPanel {
+  const rows = comingUp(milestones, now, event.status === 'ended');
+
+  if (rows.length > 0) return { kind: 'rows', rows };
+
+  return eventPhase(event, now) === 'happening_now' ? { kind: 'endsToday' } : { kind: 'finished' };
 }
 
 export type EventDays =
