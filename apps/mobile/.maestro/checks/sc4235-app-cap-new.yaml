@@ -14,6 +14,10 @@ appId: host.exp.Exponent
 - runFlow:
     file: sc4235/code.yaml
     env: { DIGITS: '4440742' }
-- waitForAnimationToEnd:
-    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      text: '.*That code does not work.*'
+    timeout: 20000
+- assertNotVisible:
+    id: 'redeem.in.open'
 - takeScreenshot: 02-refused
