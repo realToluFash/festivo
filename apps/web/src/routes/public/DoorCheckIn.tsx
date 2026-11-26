@@ -24,8 +24,10 @@ import { restoreSession, useSessionState } from '../../session.ts';
 import { ReplyMark } from '../app/events/GuestColumn.tsx';
 import { useHubTopics } from '../app/events/useHubTopics.ts';
 import { type DoorWay, doorWayOf, freshRows } from './doorCheckIn.ts';
+import { SignOutLine } from './RedeemPhone.tsx';
 import '../app/events/guests.css';
 import './doorCheckIn.css';
+import './redeem.css';
 
 /** Read again this often whatever the hub says, so an ended grant empties the screen within 10 seconds (sc-28230). */
 const EVERY_MS = 5_000;
@@ -689,13 +691,19 @@ export function LinkGone() {
 }
 
 /** Check-in's address in a browser that is not signed in: it names no guest, event or person. */
-export function NotSignedIn() {
+export function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
   const { t } = useTranslation();
 
   return (
     <Page back={null}>
       <div className="ci-column">
         <div className="ci-card">
+          {signedOut && (
+            <p className="rd-signed-out" role="status">
+              <SignOutLine size={26} />
+              {t('redeem.signedOut')}
+            </p>
+          )}
           <h1 className="ci-title">{t('checkIn.notSignedIn.title')}</h1>
           <p>{t('checkIn.notSignedIn.body')}</p>
           <Link className="ci-primary" to="/d">

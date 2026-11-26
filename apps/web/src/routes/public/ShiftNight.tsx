@@ -17,13 +17,14 @@ export function ShiftNightPage() {
 function ShiftNight({ eventId }: { eventId: string }) {
   const session = useSessionState();
   const [lost, setLost] = useState(false);
-  const { signOut } = useSignOut(() => {});
+  const [signedOut, setSignedOut] = useState(false);
+  const { signOut, unreached } = useSignOut(() => setSignedOut(true));
 
   useEffect(() => {
     void restoreSession();
   }, []);
 
-  if (session.status === 'signedOut') return <NotSignedIn />;
+  if (session.status === 'signedOut') return <NotSignedIn signedOut={signedOut} />;
   if (session.status !== 'signedIn') return null;
   if (lost) return <LinkGone />;
 
@@ -33,6 +34,7 @@ function ShiftNight({ eventId }: { eventId: string }) {
       read={() => api.myNight(eventId)}
       name={session.session.name}
       onSignOut={() => void signOut()}
+      stillSignedIn={unreached}
       onLost={() => setLost(true)}
     />
   );

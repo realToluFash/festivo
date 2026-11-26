@@ -257,6 +257,55 @@ describe('check-in in the browser (sc-28230)', () => {
   }, 10_000);
 });
 
+describe('Sign out on the shift page check-in leads back to (sc-28230)', () => {
+  it('stays at its address and shows the not-signed-in page with Signed out. as a status', async () => {
+    signedIn();
+    at('/night/ev_1', {
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+      'POST /api/auth/logout': () => json({}),
+    });
+
+    const [signOut] = await screen.findAllByRole('button', { name: 'Sign out' });
+    fireEvent.click(signOut ?? document.body);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in from your link or code' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('Signed out.');
+    expect(screen.getByRole('link', { name: 'Enter a door code' })).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/night/ev_1');
+  });
+
+  it('reads no Signed out. when opened signed out', async () => {
+    tokens.clear();
+    __setSessionState({ status: 'signedOut', ended: false });
+    at('/night/ev_1', {});
+
+    expect(
+      await screen.findByRole('heading', { name: 'Sign in from your link or code' }),
+    ).toBeTruthy();
+    expect(screen.queryByText('Signed out.')).toBeNull();
+  });
+
+  it('stays signed in and says so when the sign-out does not reach Soirely', async () => {
+    signedIn();
+    at('/night/ev_1', {
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    const [signOut] = await screen.findAllByRole('button', { name: 'Sign out' });
+    fireEvent.click(signOut ?? document.body);
+
+    const [alert] = await screen.findAllByRole('alert');
+    expect(alert?.textContent).toMatch(/You are still signed in/);
+    expect(screen.getAllByText('Signed in as Kemi Okafor')).not.toHaveLength(0);
+    expect(screen.queryByText('Signed out.')).toBeNull();
+  });
+});
+
 describe('the web shift page leads to check-in (sc-28230)', () => {
   it('shows Check-in to a job that checks guests in', async () => {
     signedIn();

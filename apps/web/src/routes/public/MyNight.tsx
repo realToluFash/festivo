@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { dateLocale } from '../../i18n/index.ts';
 import {
   clockAt,
@@ -40,6 +41,7 @@ export function MyNightPage({
   read: readNight,
   name,
   onSignOut,
+  stillSignedIn = false,
   onLost,
 }: {
   /** Names what `read` reads, so a change of it starts again. */
@@ -47,6 +49,7 @@ export function MyNightPage({
   read: () => Promise<MyNight>;
   name: string;
   onSignOut: () => void;
+  stillSignedIn?: boolean;
   /** The link no longer answers this account: read it again for what it says now. */
   onLost: () => void;
 }) {
@@ -90,7 +93,14 @@ export function MyNightPage({
         <span className="myn-brand">
           <Brand />
         </span>
-        <You name={name} night={night} now={now} place="bar" onSignOut={onSignOut} />
+        <You
+          name={name}
+          night={night}
+          now={now}
+          place="bar"
+          onSignOut={onSignOut}
+          stillSignedIn={stillSignedIn}
+        />
       </header>
       <div className="myn-live" role="status" aria-live="polite">
         {seen.kind === 'shown' && seen.updated != null && (
@@ -118,7 +128,14 @@ export function MyNightPage({
       )}
       <div className="myn-page">
         {night == null ? <Loading /> : <Night night={night} now={now} />}
-        <You name={name} night={night} now={now} place="foot" onSignOut={onSignOut} />
+        <You
+          name={name}
+          night={night}
+          now={now}
+          place="foot"
+          onSignOut={onSignOut}
+          stillSignedIn={stillSignedIn}
+        />
       </div>
     </main>
   );
@@ -386,12 +403,14 @@ function You({
   now,
   place,
   onSignOut,
+  stillSignedIn,
 }: {
   name: string;
   night: MyNight | null;
   now: number;
   place: 'bar' | 'foot';
   onSignOut: () => void;
+  stillSignedIn: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -406,6 +425,7 @@ function You({
       <button type="button" className="myn-secondary" onClick={onSignOut}>
         {t('redeem.signOut')}
       </button>
+      {stillSignedIn && <StillSignedIn />}
     </div>
   );
 }

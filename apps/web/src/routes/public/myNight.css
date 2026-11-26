@@ -449,6 +449,10 @@
   .myn-you-bar .myn-alone {
     flex: 1 1 18rem;
   }
+
+  .myn-you-bar .notice {
+    flex-basis: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
