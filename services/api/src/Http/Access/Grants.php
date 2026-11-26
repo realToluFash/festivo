@@ -104,12 +104,12 @@ final readonly class Grants
     {
         $this->require(Permission::ServiceWork);
 
-        if (null !== $this->eventRole && !$this->eventRole->worksAt($place)) {
+        if (!$this->servesAt($place)) {
             throw ApiException::permissionRequired(Permission::ServiceWork);
         }
     }
 
-    /** Whether requireServiceAt would let this reader work the place. */
+    /** Whether this reader works the place: the service held, at a half its level works. */
     public function servesAt(ServicePlace $place): bool
     {
         return $this->holds(Permission::ServiceWork) && (null === $this->eventRole || $this->eventRole->worksAt($place));
