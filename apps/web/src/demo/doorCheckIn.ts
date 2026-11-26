@@ -181,7 +181,7 @@ export const CW = {
     clocked: 'Clocked in at 17:52',
     signedInAs: (name: string) => `Signed in as ${name}`,
     signedOutAt: (time: string) =>
-      `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this phone.`,
+      `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this device.`,
     signOut: 'Sign out',
   },
   connectionBack: 'Demo: the connection is back',
