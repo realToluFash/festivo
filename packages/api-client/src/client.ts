@@ -129,6 +129,7 @@ import {
   asStaffRoster,
 } from './staff.ts';
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
+import { type MyNight, asMyNight } from './myNight.ts';
 import {
   type Dish,
   type DishDetails,
@@ -4048,6 +4049,28 @@ export class ApiClient {
   }
 
   /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
+  /** The person's own night at their link (sc-3915), signed in as the roster entry's account; 404 for anybody else. */
+  async staffLinkNight(token: string): Promise<MyNight> {
+    return this.myNightOf(await this.post<unknown>('/api/staff-links/night', { token }));
+  }
+
+  /** The same night in the app, for an account on the event's roster; 404 for anybody else. */
+  async myNight(eventId: string): Promise<MyNight> {
+    return this.myNightOf(await this.get<unknown>(`/api/events/${eventId}/my-night`));
+  }
+
+  private myNightOf(raw: unknown): MyNight {
+    const night = asMyNight(raw);
+
+    if (night == null) {
+      throw new Error(
+        'The API answered a night in a shape this client does not know. Check MyNight in services/api.',
+      );
+    }
+
+    return night;
+  }
+
   async staffLinkWindow(token: string, seen: boolean): Promise<StaffLinkWindow> {
     const window = asStaffLinkWindow(
       await this.post<unknown>(seen ? '/api/staff-links/opened' : '/api/staff-links/look', {

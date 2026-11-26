@@ -120,6 +120,36 @@ const YOURS = {
   timeZone: 'Europe/Lisbon',
 };
 
+const NIGHT = {
+  event: { name: 'Joana & Rui’s wedding', timeZone: 'Europe/Lisbon' },
+  endsAt: '2027-03-07T02:00:00+00:00',
+  station: 'Section B',
+  job: 'Waiter',
+  shift: {
+    job: 'Waiter',
+    startsAt: '2027-03-06T17:00:00+00:00',
+    endsAt: '2027-03-07T01:00:00+00:00',
+  },
+  later: null,
+  lead: { name: 'Dayo Okafor', phone: '+351912345678', floor: false },
+  timing: [{ at: '2027-03-06T18:30:00+00:00', title: 'Staff briefing', for: 'staff' }],
+  doorsAt: '2020-03-06T16:00:00+00:00',
+  tables: [
+    {
+      name: 'Table 7',
+      guests: [
+        {
+          name: 'Folake Adeyemi',
+          allergens: ['peanuts'],
+          diets: ['vegetarian'],
+          otherAllergy: null,
+          otherDiet: null,
+        },
+      ],
+    },
+  ],
+};
+
 const SIGNED_IN = {
   accessToken: 'a',
   refreshExpiresAt: '2027-03-07T02:00:00+00:00',
@@ -226,6 +256,7 @@ describe('A link opened signed out (sc-4235)', () => {
         answer({ cooldownSeconds: 60, codeState: 'live', route: 'sms_only' }),
       'POST /api/staff-links/sign-in': () => answer(SIGNED_IN),
       'POST /api/staff-links/look': () => answer(YOURS),
+      'POST /api/staff-links/night': () => answer(NIGHT),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Send code' }));
@@ -234,8 +265,10 @@ describe('A link opened signed out (sc-4235)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Tonight you’re on Section B' }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Sign out' })).not.toHaveLength(0);
     expect(asked).toContain('POST /api/staff-links/look {"token":"tok_ada"}');
   });
 
@@ -263,6 +296,7 @@ describe('A link opened signed out (sc-4235)', () => {
         return answer({ ...SIGNED_IN, account: { ...SIGNED_IN.account, complete: true } });
       },
       'GET /api/orgs': () => answer({ organisations: [] }),
+      'POST /api/staff-links/night': () => answer(NIGHT),
     });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Send code' }));
@@ -276,8 +310,10 @@ describe('A link opened signed out (sc-4235)', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '654 321' } });
     fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
 
-    expect(await screen.findByRole('button', { name: 'Sign out' }, THE_WAY_IN)).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: 'Tonight you’re on Section B' }, THE_WAY_IN),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Sign out' })).not.toHaveLength(0);
     expect(asked.find((line) => line.startsWith('POST /api/auth/two-factor/verify'))).toContain(
       '"challenge":"c1","code":"654321"',
     );
@@ -315,21 +351,86 @@ describe('A link signed in as its own account (sc-4235)', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('shows the event, the card, who is signed in, when, and Sign out, and nothing of the shift', async () => {
-    routed({ 'POST /api/staff-links/opened': () => answer(YOURS) });
+  it('opens their whole night: where, when, who to ask, the timing and their tables', async () => {
+    const asked = routed({
+      'POST /api/staff-links/opened': () => answer(YOURS),
+      'POST /api/staff-links/night': () => answer(NIGHT),
+    });
 
-    expect(await screen.findByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
-    expect(screen.getByText('Staff link')).toBeTruthy();
-    expect(screen.getByText('Bar and drinks')).toBeTruthy();
-    expect(screen.getByText('Signed in as Ana Sousa')).toBeTruthy();
-    expect(screen.getByText(/^You’ll be signed out at .*02:00\.$/u)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+    expect(
+      await screen.findByRole('heading', { name: 'Tonight you’re on Section B' }),
+    ).toBeTruthy();
+    expect(asked).toContain('POST /api/staff-links/night {"token":"tok_ada"}');
+    expect(screen.getByText('Joana & Rui’s wedding')).toBeTruthy();
+    expect(screen.getByText(/^Tonight only · ends .*02:00$/u)).toBeTruthy();
+    expect(screen.getByText('17:00 to 01:00')).toBeTruthy();
+    expect(screen.getByText('Ends on Sunday at 01:00')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Call Dayo Okafor' }).getAttribute('href')).toBe(
+      'tel:+351912345678',
+    );
+    expect(screen.getByText('Staff briefing')).toBeTruthy();
+    expect(screen.getByText('1 guest')).toBeTruthy();
+    expect(screen.getByText('Folake Adeyemi')).toBeTruthy();
+    expect(screen.getByText('Vegetarian, Peanuts')).toBeTruthy();
+    expect(screen.getAllByText('Signed in as Ana Sousa').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        /^This link is yours alone\. You’ll be signed out at .*02:00, and nothing stays on this device\.$/u,
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('before doors says when the tables open, and names no guest', async () => {
+    routed({
+      'POST /api/staff-links/opened': () => answer(YOURS),
+      'POST /api/staff-links/night': () =>
+        answer({ ...NIGHT, doorsAt: '2099-03-06T19:00:00+00:00', tables: [] }),
+    });
+
+    expect(await screen.findByText('Opens at 19:00 when doors open')).toBeTruthy();
+    expect(screen.queryByText('Folake Adeyemi')).toBeNull();
+  });
+
+  it('marks the floor lead when they stand in, and says when there is no lead at all', async () => {
+    routed({
+      'POST /api/staff-links/opened': () => answer(YOURS),
+      'POST /api/staff-links/night': () =>
+        answer({ ...NIGHT, station: null, tables: null, lead: { ...NIGHT.lead, floor: true } }),
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Tonight you’re on Waiter' })).toBeTruthy();
+    expect(screen.getByText('Floor lead')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Call Dayo Okafor, floor lead' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Your tables' })).toBeNull();
+  });
+
+  it('shows when clocking in opens before its window, and the shift after this one', async () => {
+    routed({
+      'POST /api/staff-links/opened': () => answer(YOURS),
+      'POST /api/staff-links/night': () =>
+        answer({
+          ...NIGHT,
+          shift: {
+            job: 'Waiter',
+            startsAt: '2099-03-06T17:00:00+00:00',
+            endsAt: '2099-03-06T22:00:00+00:00',
+          },
+          later: { job: 'Waiter', startsAt: '2099-03-06T23:00:00+00:00' },
+        }),
+    });
+
+    expect(await screen.findByRole('button', { name: 'Clock in opens at 16:00' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByText('Later: Waiter from 23:00')).toBeTruthy();
   });
 
   it('signs out back to Confirm it’s you, with Signed out. as a status', async () => {
     routed({ 'POST /api/staff-links/opened': () => answer(YOURS) });
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    const [signOut] = await screen.findAllByRole('button', { name: 'Sign out' });
+    fireEvent.click(signOut ?? document.body);
 
     expect(await screen.findByRole('heading', { name: 'Confirm it’s you' })).toBeTruthy();
     expect(screen.getAllByRole('status').map((line) => line.textContent)).toContain('Signed out.');
