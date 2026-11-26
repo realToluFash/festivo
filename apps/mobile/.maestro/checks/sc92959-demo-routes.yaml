@@ -1,0 +1,11 @@
+# sc-92959: the app's Design demo, the iPhone bell's screen (/demo/bell-size), at each phone route the Design section links, upright, with the foot line that gives the title's size. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/bell-size?size=${SIZE}&lang=${LANG}${EXTRA}
+- extendedWaitUntil: { visible: { id: 'demo.bellSize.phone' }, timeout: 20000 }
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- takeScreenshot: demo
+- scrollUntilVisible: { element: { text: 'Text size' }, direction: DOWN, timeout: 30000 }
+- takeScreenshot: foot
