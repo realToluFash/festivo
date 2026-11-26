@@ -19,6 +19,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PhoneSignInRepository;
 use DateTimeImmutable;
+use Psl\Iter;
 use Psl\Str;
 use SensitiveParameter;
 use Symfony\Component\Clock\ClockInterface;
@@ -62,7 +63,7 @@ final readonly class DoorCodeSignIn
         }
 
         $sent = $this->phoneSignInRepository->sentForDoorCodeSince($doorCode, new DateTimeImmutable('-1 hour'));
-        $over = \count($sent) - self::SENDS_PER_USE_AN_HOUR * $doorCode->getUseCap();
+        $over = Iter\count($sent) - self::SENDS_PER_USE_AN_HOUR * $doorCode->getUseCap();
 
         if ($over >= 0) {
             throw $this->doorCodeRedeemer->tooMany($sent[$over]->modify('+1 hour'));
