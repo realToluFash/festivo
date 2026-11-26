@@ -6,6 +6,7 @@ import {
   type TaggedGuest,
 } from '@soirely/api-client';
 import {
+  GREET_AS_MAXIMUM,
   GUEST_NAME_MAXIMUM,
   MOST_COMPANIONS,
   NO_NEEDS,
@@ -15,6 +16,7 @@ import {
   type Problem,
   type Problems,
   firstProblem,
+  greetAsLength,
   needsFailingCount,
   needsProblemsOf,
   needsViolations,
@@ -107,6 +109,7 @@ export function GuestForm({
   const needsRefs = useNeedsRefs();
   const wide = useShellLayout() === 'landscape';
   const nameField = useRef<TextInputInstance>(null);
+  const greetAsField = useRef<TextInputInstance>(null);
   const emailField = useRef<TextInputInstance>(null);
   const numberField = useRef<TextInputInstance>(null);
   const picker = useRef<ViewInstance>(null);
@@ -185,7 +188,7 @@ export function GuestForm({
       return field == null ? null : `needs:${who}:${field}`;
     };
     const order = [
-      ...['fullName', 'email', 'mobile'].map((key) => (found[key] == null ? null : key)),
+      ...['fullName', 'greetAs', 'email', 'mobile'].map((key) => (found[key] == null ? null : key)),
       needsAt('guest'),
       ...values.companions.flatMap((_, at) => [
         found[`companion-${at}`] == null ? null : `companion-${at}`,
@@ -214,6 +217,7 @@ export function GuestForm({
 
   function focus(key: string) {
     if (key === 'fullName') focusRefused(nameField);
+    else if (key === 'greetAs') focusRefused(greetAsField);
     else if (key === 'email') focusRefused(emailField);
     else if (key === 'mobile') focusRefused(numberField);
     else {
@@ -230,6 +234,8 @@ export function GuestForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -463,6 +469,32 @@ export function GuestForm({
           testID="guest.form.fullName"
         />
       </Field>
+      <View style={styles.greetAs}>
+        <Field
+          label={t('guestList.greetAs')}
+          pill={t('eventForm.optional')}
+          error={words('greetAs')}
+          help={t('guestList.greetAsHint')}
+        >
+          <TextField
+            ref={greetAsField}
+            accessibilityLabel={t('guestList.greetAs')}
+            value={values.greetAs}
+            onChangeText={(greetAs) => set({ greetAs })}
+            wrong={problems.greetAs != null}
+            submitting={sending}
+            autoCapitalize="words"
+            autoCorrect={false}
+            testID="guest.form.greetAs"
+          />
+        </Field>
+        <Text size={13.5} weight="medium" style={styles.greetAsCount}>
+          {t('guestList.greetAsCounter', {
+            count: greetAsLength(values.greetAs),
+            max: GREET_AS_MAXIMUM,
+          })}
+        </Text>
+      </View>
       <GroupField
         value={pickName(groups, values.group)}
         isNew={values.group != null && 'name' in values.group}
@@ -636,6 +668,12 @@ export function GuestForm({
 
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  greetAs: { gap: 6 },
+  greetAsCount: {
+    color: tokens.colorInkSecondary,
+    lineHeight: 13.5 * 1.4,
+    fontVariant: ['tabular-nums'],
+  },
   secondary: { color: tokens.colorInkSecondary },
   figures: { fontVariant: ['tabular-nums'] },
   refusal: { gap: tokens.spaceXs },

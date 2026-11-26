@@ -3824,7 +3824,13 @@
       "needs": "Notas sobre alimentação atualizadas",
       "flagged": "A ligação pode ter chegado a outra pessoa",
       "failed": "Não foi possível carregar as alterações."
-    }
+    },
+    "greetAs": "Greet as",
+    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
+    "greetAsCounter": "{{count, number}} of {{max, number}}",
+    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
+    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
+    "greetsByFullName": "Messages greet them by their full name."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -6751,6 +6757,7 @@
     "new": "Nova",
     "newMessage": "Nova mensagem",
     "done": "Concluído",
+    "doneHeading": "Concluídas",
     "noneYet": "Ainda não há conversas",
     "noneLine": "O que escrever aparece na página de cada convidado. Cada convidado que responder abre aqui uma conversa.",
     "pickOne": "Escolha uma conversa ou escreva aos seus convidados aqui em baixo.",
@@ -6767,7 +6774,7 @@
     "onTheirPage": "Na página de cada um",
     "email": "E-mail",
     "toAll": "Para todos os convidados",
-    "toChosen": "Para: {{audience}}",
+    "toChosen": "Para os convidados escolhidos",
     "sending": "A enviar…",
     "reached": "Chegou a {{count, number}} de {{total, number}}",
     "queued_one": "Mensagem em fila. A enviar agora a {{count, number}} pessoa.",
@@ -6793,7 +6800,9 @@
     "goesOnPage": "A sua mensagem aparece na página de cada convidado.",
     "toldThere": "A Soirely avisa-os por {{channels}}.",
     "byEmail": "e-mail",
-    "cantBeTold": "Não é possível avisar {{count, number}} · a mensagem fica na página de cada um, se a abrirem",
+    "cantBeTold_one": "Não é possível avisar {{count, number}} convidado · a mensagem fica na página desse convidado, se a abrir",
+    "cantBeTold_other": "Não é possível avisar {{count, number}} convidados · a mensagem fica na página de cada um, se a abrirem",
+    "cantBeTold_many": "Não é possível avisar {{count, number}} de convidados · a mensagem fica na página de cada um, se a abrirem",
     "seeAll": "Ver os {{count, number}}",
     "backToCheck": "Voltar à revisão",
     "sendTo_one": "Enviar a {{count, number}} pessoa",
@@ -6832,12 +6841,52 @@
     "noMatch": "Nenhum convidado corresponde",
     "clear": "Limpar",
     "clearSearch": "Limpar a pesquisa",
-    "chosen": "Escolhidos: {{count, number}}",
+    "chosen_one": "{{count, number}} escolhido",
+    "chosen_other": "{{count, number}} escolhidos",
+    "chosen_many": "{{count, number}} escolhidos",
     "loadingGuests": "A carregar convidados…",
     "more": "Mais {{count, number}}",
     "remove": "Remover {{name}}",
     "chosenTo": "Convidados escolhidos",
-    "change": "Alterar"
+    "change": "Alterar",
+    "insert": "Insert",
+    "token": {
+      "greeting": "Greeting",
+      "event": "Event",
+      "date": "Date",
+      "hosts": "Hosts"
+    },
+    "tokenName": "{{token}}, filled in for each guest",
+    "tokenLine": {
+      "greeting": "Their Greet as, or their full name if they have none",
+      "event": "The event’s name",
+      "date": "The event’s day, or its days",
+      "hosts": "The event’s hosts"
+    },
+    "preview": "Preview",
+    "previewOn": "Preview on",
+    "edit": "Edit",
+    "previewHeading": "As {{name}} will see it",
+    "previewAs": "Preview as",
+    "previewOption": "{{name}} · {{language}}",
+    "filling": "Filling it in for {{name}}…",
+    "previewFailed": "We could not fill it in for {{name}}.",
+    "previewFailedLine": "Check your connection and try again.",
+    "noLongerGuest": "{{name}} is no longer a guest, so it is filled in for {{next}} instead.",
+    "nobodyLeft": "{{name}} is no longer a guest, so there is nobody to preview it as.",
+    "greetedAsGreetAs": "Greeted as “{{greetAs}}”, their Greet as.",
+    "greetedAsName": "Greeted as {{name}}, their full name. They have no Greet as.",
+    "languageFrom": {
+      "chose": "In {{language}}, the language they chose on their page.",
+      "host": "In {{language}}, the language you set for them.",
+      "organisation": "In {{language}}, your organisation’s language, as no language is set for them."
+    },
+    "onlyOurs": "Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.",
+    "typedBraces": "Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.",
+    "nothingToFill": "Nothing to fill in, so every guest gets exactly these words.",
+    "nobodyToPreview": "No guests chosen yet, so there is nobody to preview it as.",
+    "whatSoirelySends": "What Soirely sends",
+    "emailFrom": "Email · from {{organisation}} via Soirely"
   },
   "service": {
     "stage": {

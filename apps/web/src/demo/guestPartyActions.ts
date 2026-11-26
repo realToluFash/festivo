@@ -1,4 +1,4 @@
-import { OPEN, type Visit } from './guest.ts';
+import { type Visit, stepBack } from './guest.ts';
 import { type Party, comingWith, hasStep, placeOf } from './guestCompanions.ts';
 import { partyPeople } from './guestKitchen.ts';
 import { type GuestKitchenActions, freshKitchen } from './useGuestKitchen.ts';
@@ -43,10 +43,7 @@ export function partyActions(go: Go, kitchen: GuestKitchenActions, visit: Visit)
     back: () =>
       go(
         (was) => ({
-          view:
-            was.view.kind === 'withYou' && was.view.from === 'changing'
-              ? { kind: 'changing', busy: null }
-              : OPEN,
+          view: stepBack(was.view.kind === 'withYou' ? was.view.from : 'answer'),
         }),
         'row-coming',
       ),
@@ -55,7 +52,8 @@ export function partyActions(go: Go, kitchen: GuestKitchenActions, visit: Visit)
         (was) => ({
           view: {
             kind: 'withYou',
-            from: was.kitchen?.from === 'changing' ? 'changing' : 'answer',
+            from:
+              was.kitchen == null || was.kitchen.from === 'closed' ? 'answer' : was.kitchen.from,
           },
         }),
         'withYouHead',

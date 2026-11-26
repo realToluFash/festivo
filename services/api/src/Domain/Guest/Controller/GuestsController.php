@@ -86,6 +86,7 @@ final readonly class GuestsController
             ]))),
             'needs' => Type\optional(Type\nullable(self::needsShape())),
             'language' => Type\optional(Type\nullable(Type\string())),
+            'greetAs' => Type\optional(Type\nullable(Type\string())),
             'group' => Type\optional(Type\nullable(self::groupShape())),
             'allowDuplicate' => Type\optional(Type\bool()),
         ]));
@@ -99,6 +100,7 @@ final readonly class GuestsController
             $body['needs'] ?? null,
             Vec\map($body['companions'] ?? [], static fn (array $companion): ?array => $companion['needs'] ?? null),
             self::groupChoice($body['group'] ?? null),
+            $body['greetAs'] ?? null,
         );
         $guest = $this->guestAdder->add($event, $new, $this->user(), $body['allowDuplicate'] ?? false);
         $added = Iter\search($this->guestSerialiser->list($event, contacts: true)['guests'], static fn (array $row): bool => $row['id'] === $guest->getId()->toRfc4122());
@@ -115,7 +117,7 @@ final readonly class GuestsController
         return $this->tagged($this->guest($event, $guestId), $this->seesContacts($event));
     }
 
-    /** The whole guest: a companion without an `id` is added and one left out removed; a body without `language`, `needs` or `group`, or a companion without `needs`, keeps them, since a form that does not show a field never changes it. Needs If-Match (sc-3587). */
+    /** The whole guest: a companion without an `id` is added and one left out removed; a body without `language`, `greetAs`, `needs` or `group`, or a companion without `needs`, keeps them, since a form that does not show a field never changes it. Needs If-Match (sc-3587). */
     #[Route('/api/events/{eventId}/guests/{guestId}', name: 'guests_update', methods: ['PUT'])]
     #[InEvent(Permission::GuestsManage)]
     public function update(Request $request, string $eventId, string $guestId): JsonResponse
@@ -135,6 +137,7 @@ final readonly class GuestsController
             ]))),
             'needs' => Type\optional(Type\nullable(self::needsShape())),
             'language' => Type\optional(Type\nullable(Type\string())),
+            'greetAs' => Type\optional(Type\nullable(Type\string())),
             'group' => Type\optional(Type\nullable(self::groupShape())),
             'allowDuplicate' => Type\optional(Type\bool()),
         ]));
@@ -149,6 +152,7 @@ final readonly class GuestsController
             $body['needs'] ?? null,
             Vec\map($companions, static fn (array $companion): ?array => $companion['needs'] ?? null),
             Iter\contains_key($body, 'group') ? self::groupChoice($body['group']) : null,
+            Iter\contains_key($body, 'greetAs') ? $body['greetAs'] : $guest->getGreetAs(),
         );
         $ids = Vec\map($companions, static fn (array $companion): ?string => $companion['id'] ?? null);
 

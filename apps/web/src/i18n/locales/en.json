@@ -3651,7 +3651,13 @@
       "needs": "Updated dietary needs",
       "flagged": "Link may have reached the wrong person",
       "failed": "We could not load what changed."
-    }
+    },
+    "greetAs": "Greet as",
+    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
+    "greetAsCounter": "{{count, number}} of {{max, number}}",
+    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
+    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
+    "greetsByFullName": "Messages greet them by their full name."
   },
   "guestNumbers": {
     "title": "Guests",
@@ -6399,6 +6405,7 @@
     "new": "New",
     "newMessage": "New message",
     "done": "Done",
+    "doneHeading": "Done",
     "noneYet": "No conversations yet",
     "noneLine": "What you write appears on each guest’s own page. Each guest who answers gets a conversation here.",
     "pickOne": "Pick a conversation, or write to your guests below.",
@@ -6414,7 +6421,7 @@
     "onTheirPage": "On their page",
     "email": "Email",
     "toAll": "To all guests",
-    "toChosen": "To {{audience}}",
+    "toChosen": "To chosen guests",
     "sending": "Sending…",
     "reached": "Reached {{count, number}} of {{total, number}}",
     "queued_one": "Message queued. Sending to {{count, number}} person now.",
@@ -6438,7 +6445,8 @@
     "goesOnPage": "Your message goes on their page.",
     "toldThere": "Soirely tells them it is there by {{channels}}.",
     "byEmail": "email",
-    "cantBeTold": "{{count, number}} can’t be told · it is on their page if they open it",
+    "cantBeTold_one": "{{count, number}} can’t be told · it is on their page if they open it",
+    "cantBeTold_other": "{{count, number}} can’t be told · it is on their page if they open it",
     "seeAll": "See all {{count, number}}",
     "backToCheck": "Back to the check",
     "sendTo_one": "Send to {{count, number}} person",
@@ -6475,12 +6483,51 @@
     "noMatch": "No guests match",
     "clear": "Clear",
     "clearSearch": "Clear the search",
-    "chosen": "{{count, number}} chosen",
+    "chosen_one": "{{count, number}} chosen",
+    "chosen_other": "{{count, number}} chosen",
     "loadingGuests": "Loading guests…",
     "more": "{{count, number}} more",
     "remove": "Remove {{name}}",
     "chosenTo": "Chosen guests",
-    "change": "Change"
+    "change": "Change",
+    "insert": "Insert",
+    "token": {
+      "greeting": "Greeting",
+      "event": "Event",
+      "date": "Date",
+      "hosts": "Hosts"
+    },
+    "tokenName": "{{token}}, filled in for each guest",
+    "tokenLine": {
+      "greeting": "Their Greet as, or their full name if they have none",
+      "event": "The event’s name",
+      "date": "The event’s day, or its days",
+      "hosts": "The event’s hosts"
+    },
+    "preview": "Preview",
+    "previewOn": "Preview on",
+    "edit": "Edit",
+    "previewHeading": "As {{name}} will see it",
+    "previewAs": "Preview as",
+    "previewOption": "{{name}} · {{language}}",
+    "filling": "Filling it in for {{name}}…",
+    "previewFailed": "We could not fill it in for {{name}}.",
+    "previewFailedLine": "Check your connection and try again.",
+    "noLongerGuest": "{{name}} is no longer a guest, so it is filled in for {{next}} instead.",
+    "nobodyLeft": "{{name}} is no longer a guest, so there is nobody to preview it as.",
+    "greetedAsGreetAs": "Greeted as “{{greetAs}}”, their Greet as.",
+    "greetedAsName": "Greeted as {{name}}, their full name. They have no Greet as.",
+    "languageFrom": {
+      "chose": "In {{language}}, the language they chose on their page.",
+      "host": "In {{language}}, the language you set for them.",
+      "organisation": "In {{language}}, your organisation’s language, as no language is set for them."
+    },
+    "onlyOurs": "Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.",
+    "typedBraces": "Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.",
+    "nothingToFill": "Nothing to fill in, so every guest gets exactly these words.",
+    "nobodyToPreview": "No guests chosen yet, so there is nobody to preview it as.",
+    "whatSoirelySends": "What Soirely sends",
+    "emailFrom": "Email · from {{organisation}} via Soirely"
   },
   "service": {
     "stage": {

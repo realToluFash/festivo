@@ -27,6 +27,16 @@ final class GuestLanguage
         return self::pageLanguage($chosen, [], $host, $organisation);
     }
 
+    /** Which of the three steps gave the guest's message language (sc-3960): `chose` on their page, `host` from the host's Language, or `organisation`. */
+    public static function messageLanguageFrom(Guest $guest): string
+    {
+        return match (true) {
+            SupportedLocales::supports($guest->getChosenLanguage()) => 'chose',
+            SupportedLocales::supports($guest->getLanguage()) => 'host',
+            default => 'organisation',
+        };
+    }
+
     public static function forMessage(Guest $guest): string
     {
         return self::messageLanguage($guest->getChosenLanguage(), $guest->getLanguage(), $guest->getEvent()->getOrganisation()->getLocale());

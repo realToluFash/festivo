@@ -65,6 +65,7 @@ import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
 import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_LINK_PAGES } from './guestLink.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
@@ -468,6 +469,10 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={GUEST_CHANGE_PAGES} />
         <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PARTY_PAGES} />
+        <h3>
+          An answer link from the invitation, on the guest’s page · sc-1291 · phone, tablet and desk
+        </h3>
+        <BoardPages pages={GUEST_LINK_PAGES} />
         <h3>
           Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
         </h3>
