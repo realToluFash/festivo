@@ -1,5 +1,5 @@
-import type { GuestPage, GuestSeat } from '@soirely/api-client';
-import type { TFunction } from 'i18next';
+import type { GuestPage } from '@soirely/api-client';
+import { seatWords } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
 import { Glyph } from '../../components/Glyph.tsx';
@@ -25,13 +25,13 @@ export function YourTable({ page, onTheDay = false }: { page: GuestPage; onTheDa
             <h2 className="gp-h2">{heading}</h2>
             <p className="gp-table-line">
               <Glyph name="seating" size={20} weight={2} />
-              <span>{placeOf(t, seating.seat)}</span>
+              <span>{seatWords(t, seating.seat)}</span>
             </p>
           </>
         ) : (
           <p className="gp-table-line is-lead">
             <Glyph name="seating" size={20} weight={2} />
-            <span>{t('guest.table.lead', { heading, place: placeOf(t, seating.seat) })}</span>
+            <span>{t('guest.table.lead', { heading, place: seatWords(t, seating.seat) })}</span>
           </p>
         )}
         {seating.elsewhere.length > 0 && (
@@ -40,7 +40,7 @@ export function YourTable({ page, onTheDay = false }: { page: GuestPage; onTheDa
               <li key={index}>
                 {t('guest.table.companion', {
                   name: one.name ?? t('guest.table.yourGuest'),
-                  place: placeOf(t, one.seat, false),
+                  place: seatWords(t, one.seat, false),
                 })}
               </li>
             ))}
@@ -49,14 +49,4 @@ export function YourTable({ page, onTheDay = false }: { page: GuestPage; onTheDa
       </div>
     </section>
   );
-}
-
-/** "Table 4 · Main hall", "Row C, seat 4 · Balcony"; a companion's line leaves the section out, as the demo's does. */
-function placeOf(t: TFunction, seat: GuestSeat, withSection = true): string {
-  const place =
-    seat.kind === 'row' ? t('guest.table.row', { row: seat.name, seat: seat.seat }) : seat.name;
-
-  return !withSection || seat.section == null
-    ? place
-    : t('guest.table.placed', { place, section: seat.section });
 }

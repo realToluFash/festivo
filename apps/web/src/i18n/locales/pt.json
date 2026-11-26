@@ -7092,8 +7092,6 @@
   },
   "checkIn": {
     "noSeat": "No seat yet",
-    "seatInRow": "Row {{row}}, seat {{seat}}",
-    "seatPlaced": "{{place}} · {{section}}",
     "title": "Entradas",
     "count_one": "Chegadas: {{count, number}} de {{expected, number}}",
     "count_other": "Chegadas: {{count, number}} de {{expected, number}}",

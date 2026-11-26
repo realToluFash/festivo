@@ -3207,10 +3207,14 @@
     "single": "Access to a single event still works.",
     "change": "Change your main email address"
   },
+  "guest": {
+    "table": {
+      "row": "Row {{row}}, seat {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
     "noSeat": "No seat yet",
-    "seatInRow": "Row {{row}}, seat {{seat}}",
-    "seatPlaced": "{{place}} · {{section}}",
     "title": "Check-in",
     "back": "Guests",
     "open": "Open check-in",

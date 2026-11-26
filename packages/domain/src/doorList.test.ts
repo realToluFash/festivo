@@ -191,8 +191,8 @@ describe('a walk-in', () => {
 
 const words = ((key: string, values?: Record<string, string | number>) => {
   const said: Record<string, string> = {
-    'checkIn.seatInRow': `Row ${values?.row}, seat ${values?.seat}`,
-    'checkIn.seatPlaced': `${values?.place} · ${values?.section}`,
+    'guest.table.row': `Row ${values?.row}, seat ${values?.seat}`,
+    'guest.table.placed': `${values?.place} · ${values?.section}`,
     'checkIn.noSeat': 'No seat yet',
   };
 
@@ -215,6 +215,9 @@ describe('the seat under each name at the door (sc-60684)', () => {
       'Seat 12 · By the bar',
     );
     expect(seatWords(words, { kind: 'seat', name: 'Seat 12', section: null })).toBe('Seat 12');
+    expect(seatWords(words, { kind: 'row', name: 'C', seat: 4, section: 'Balcony' }, false)).toBe(
+      'Row C, seat 4',
+    );
   });
 
   it('gives each person their own line, and No seat yet to anyone without one', () => {

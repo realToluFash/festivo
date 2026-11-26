@@ -3334,10 +3334,14 @@
     "single": "L’accès à un événement précis reste possible.",
     "change": "Modifier votre adresse e-mail principale"
   },
+  "guest": {
+    "table": {
+      "row": "Rangée {{row}}, place {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
     "noSeat": "No seat yet",
-    "seatInRow": "Row {{row}}, seat {{seat}}",
-    "seatPlaced": "{{place}} · {{section}}",
     "title": "Arrivées",
     "back": "Invités",
     "open": "Ouvrir l’accueil des invités",

@@ -17,12 +17,14 @@ export interface DoorRow {
   seat: string | null;
 }
 
-/** "Table 4 · Main hall", "Row C, seat 14 · Balcony", "Seat 12": the host's own names, never translated, in sc-4022's words; a place in no section drops it. */
-export function seatWords(t: Translate, seat: GuestSeat): string {
+/** "Table 4 · Main hall", "Row C, seat 14 · Balcony", "Seat 12": the host's own names, never translated, in sc-4022's words, so the door and the guest's page word one seat one way; a place in no section, or a companion's line on the guest's page, drops it. */
+export function seatWords(t: Translate, seat: GuestSeat, withSection = true): string {
   const place =
-    seat.kind === 'row' ? t('checkIn.seatInRow', { row: seat.name, seat: seat.seat }) : seat.name;
+    seat.kind === 'row' ? t('guest.table.row', { row: seat.name, seat: seat.seat }) : seat.name;
 
-  return seat.section == null ? place : t('checkIn.seatPlaced', { place, section: seat.section });
+  return !withSection || seat.section == null
+    ? place
+    : t('guest.table.placed', { place, section: seat.section });
 }
 
 /** The line under a name at the door: null on a list nobody is seated on yet, otherwise the seat or "No seat yet". */

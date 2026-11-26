@@ -3334,10 +3334,14 @@
     "single": "El acceso a eventos concretos se mantiene.",
     "change": "Cambiar su dirección de correo principal"
   },
+  "guest": {
+    "table": {
+      "row": "Fila {{row}}, asiento {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
     "noSeat": "No seat yet",
-    "seatInRow": "Row {{row}}, seat {{seat}}",
-    "seatPlaced": "{{place}} · {{section}}",
     "title": "Registro de llegada",
     "back": "Invitados",
     "open": "Abrir registro de llegada",
