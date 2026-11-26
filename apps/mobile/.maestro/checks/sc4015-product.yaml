@@ -6,10 +6,9 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd:
     timeout: 8000
 - extendedWaitUntil:
-    notVisible:
-      id: station.loading
-    timeout: 8000
-    optional: true
+    visible:
+      id: "station\\.(title|landing|failed|refused\\..+)"
+    timeout: 15000
 - takeScreenshot: top
 - scroll
 - waitForAnimationToEnd
