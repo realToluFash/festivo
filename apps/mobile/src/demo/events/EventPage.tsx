@@ -72,8 +72,11 @@ import {
   shownEvent,
 } from './EventsModel.ts';
 import { seedFinalNumbers } from './FinalNumbers.ts';
+import { comingUpShows, seedRunOfShow, stepless } from './LiveOneDay.ts';
+import { ComingUpPart, KeepsHeight } from './LiveOneDayParts.tsx';
 import {
   type AreaKey,
+  DINER,
   type SampleEvent,
   TYPE_WORDS,
   currencyWords,
@@ -197,6 +200,7 @@ function startEvent(
   const event = sampleEvent(id) ?? sampleEvent('evt-wed-4');
   if (event == null) throw new Error('The sample has the wedding.');
   seedFinalNumbers(state);
+  seedRunOfShow(state);
   if (isTellKind(messages))
     return eventBehind(messages, fieldEvents(messages, event)?.now ?? event, now);
   const live = makeLiveStateOf(state);
@@ -513,17 +517,26 @@ export function EventScreen({
   const member = { permissions: thanks.canEnd ? HOST : VIEWER };
   const creates = takesCardStep(member, 'duplicate');
   const manages = takesCardStep(member, 'resume');
-  const card = (
+  const ended = shown.status === 'ended';
+  const drawCard = (one: Shown, height?: number, unseen = false) => (
     <EventCard
-      event={shown}
+      event={one}
       now={now}
       locale={dateLocale()}
       wide={shell.layout !== 'phone'}
+      {...(height != null && { height })}
       takes={(action) => takesCardStep(member, action)}
       onStep={onStep}
-      stepRef={cardStep}
-      testID="event.card"
+      stepRef={unseen ? undefined : cardStep}
+      testID={unseen ? 'event.card.unseen' : 'event.card'}
     />
+  );
+  const card = stepless(shown.phase, shown.milestones ?? [], now, ended) ? (
+    <KeepsHeight footed={drawCard({ ...shown, phase: 'finished' }, undefined, true)}>
+      {(height) => drawCard({ ...shown, milestones: null }, height)}
+    </KeepsHeight>
+  ) : (
+    drawCard(shown)
   );
   const details = (
     <Details
@@ -535,6 +548,14 @@ export function EventScreen({
       onEdit={openEdit}
       onMaps={() => shell.tell(W.mapsHandOff)}
       last={origin === 'from-enquiry' ? <FromEnquiryLine /> : null}
+    />
+  );
+  const comingUp = event.id === DINER.id && (
+    <ComingUpPart
+      shows={comingUpShows(event, shown.phase, shown.milestones ?? [], now, ended, locale)}
+      timeZone={event.timeZone}
+      now={now}
+      onAllDates={() => shell.tell(say.ownDesign(W.allDates))}
     />
   );
   const needsYou = (
@@ -887,6 +908,7 @@ export function EventScreen({
             {thankYou}
             {details}
             {needsYou}
+            {comingUp}
             {nameCover}
           </>
         }
@@ -909,6 +931,7 @@ export function EventScreen({
             {peopleCard}
             {details}
             {needsYou}
+            {comingUp}
             {nameCover}
             {guestsPage}
             {forYou}

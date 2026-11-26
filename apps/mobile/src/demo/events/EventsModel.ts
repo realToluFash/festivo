@@ -38,6 +38,7 @@ import { REFUSED_STATES, refusedStartOf } from './DeleteRefusal.ts';
 import { DUPLICATE_STATES } from './Duplicate.ts';
 import {
   CLOCKS,
+  DINER,
   READER_ZONE,
   SUGGESTIONS,
   type SampleEvent,
@@ -48,6 +49,7 @@ import { CHANGES_STATES, FINAL_NUMBERS_STATES, kitchenOwed, othersOwed } from '.
 import { NEW_STATES } from './NewEventModel.ts';
 import { WRITE_STATES } from './GuestsCanWrite.ts';
 import { MAKE_LIVE_STATES } from './MakeLive.ts';
+import { LIVE_ONE_DAY_STATES, dinerDates, liveOneDayClock, liveOneDayOf } from './LiveOneDay.ts';
 import { CARD_STATES, END_STATES, isCardState, isEndState } from './ThankYou.ts';
 
 export type {
@@ -176,6 +178,7 @@ export function finalNumbersOf(event: Omit<SampleEvent, 'photo'>, now: Date): Mi
 
 /** The event's dates as the server returns them, which Next up, the card's step and the Overview's Needs you all read (sc-32801). */
 export function datesOf(event: Omit<SampleEvent, 'photo'>, now: Date): Milestone[] {
+  if (event.id === DINER.id) return dinerDates(event, say.starts(event.name));
   const before = event.status !== 'ended' && now.getTime() < Date.parse(event.startsAt);
 
   return [
@@ -346,6 +349,7 @@ export const LIST_STATES = [
   'eventsFirst',
   'eventsZero',
   'eventsOffline',
+  'liveOneDay',
   ...NEW_STATES,
 ] as const;
 export type ListState = (typeof LIST_STATES)[number];
@@ -509,6 +513,7 @@ export const EVENT_STATES = [
   ...FINAL_NUMBERS_STATES,
   ...CHANGES_STATES,
   ...MAKE_LIVE_STATES,
+  ...LIVE_ONE_DAY_STATES,
 ] as const;
 export type EventDemoState = (typeof EVENT_STATES)[number];
 
@@ -526,6 +531,8 @@ export function eventStateBeside(
 
 /** Happening now, and a refusal from the start, is the wedding's second day; Finished the week after it; every other state reads the reader's clock. */
 export function clockOf(state: EventDemoState | null): Date {
+  const liveOneDay = liveOneDayOf(state);
+  if (liveOneDay != null) return liveOneDayClock(liveOneDay);
   if (
     state === 'now' ||
     state === 'endNow' ||

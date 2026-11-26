@@ -22,6 +22,8 @@ import {
 } from './events.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import { type CardMilestone, KW } from './kitchen.ts';
+import { stepless } from './liveOneDay.ts';
+import './liveOneDay.css';
 import { LayersContext } from '../layers.ts';
 import { DeskSearch } from './Search.tsx';
 import { Chevron, RowWords, Tag } from '../components/SettingsParts.tsx';
@@ -92,15 +94,19 @@ const milestoneAt = (at: string, title: string): Milestone => ({
   action: null,
 });
 
-/** A sample event as the product's list draws one: its place with its city, its start and end as its milestones. */
-export function shownSample(event: SampleEvent, now: Date): Shown {
+/** A sample event as the product's list draws one: its place with its city, its start and end as its milestones unless its `dates` are given. */
+export function shownSample(
+  event: SampleEvent,
+  now: Date,
+  dates: readonly Milestone[] | null = null,
+): Shown {
   return {
     ...shownEvent(
       {
         ...event,
         place: event.venue == null ? null : venueLine(event.venue),
         photo: event.photo ? 'standIn' : null,
-        milestones: [
+        milestones: dates ?? [
           milestoneAt(event.startsAt, `${event.name} starts`),
           milestoneAt(event.endsAt, `${event.name} ends`),
         ],
@@ -142,11 +148,17 @@ export function EventCard({
   level,
   milestone = null,
   reads = false,
+  dates = null,
+  to = `/demo/events/${event.id}`,
   onStep,
 }: {
   event: SampleEvent;
   now: Date;
   level: 1 | 2;
+  /** Its dates as the server serves them, where they are not the start and end (sc-93858). */
+  dates?: readonly Milestone[] | null;
+  /** On a list, where its name leads. */
+  to?: string;
   /** Next up when it is a You milestone with an action, which becomes the card's one step (sc-30812). */
   milestone?: CardMilestone | null;
   reads?: boolean;
@@ -155,17 +167,37 @@ export function EventCard({
   const { i18n } = useTranslation();
   const language = i18n.language;
   const words = useMemo(() => (reads ? readerWords(language) : null), [reads, language]);
-  const card = (
+  const shown = shownSample(event, now, dates);
+  const held = stepless(shown.phase, shown.milestones, now, event.status === 'ended');
+  const product = (
     <ProductCard
-      event={shownSample(event, now)}
+      event={shown}
       now={now}
       locale={dateLocale()}
       level={level}
-      {...(level === 2 && { to: `/demo/events/${event.id}` })}
+      {...(level === 2 && { to })}
       nextUp={milestone == null ? null : <MilestoneStep milestone={milestone} />}
       takes={() => !reads}
+      held={held}
       onStep={(step) => onStep(step.action)}
     />
+  );
+  const card = held ? (
+    <div className="lod-held">
+      <div className="lod-unseen">
+        <ProductCard
+          event={{ ...shown, phase: 'finished' }}
+          now={now}
+          locale={dateLocale()}
+          level={level}
+          takes={() => !reads}
+          onStep={() => undefined}
+        />
+      </div>
+      {product}
+    </div>
+  ) : (
+    product
   );
 
   return words == null ? card : <I18nextProvider i18n={words}>{card}</I18nextProvider>;
