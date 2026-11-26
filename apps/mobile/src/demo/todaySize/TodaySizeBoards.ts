@@ -28,7 +28,7 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   },
   {
     title: 'Live now · default size, iPhone',
-    what: 'As on main: the chips 28 tall on one line, Day 1 of 1 on one line',
+    what: 'The chips as on main, 28 tall on one line, Day 1 of 1 on one line, and Open the event under the hair as on main; the cover’s height and foot are the demo’s, so compare the chips and the button, not the cover, with main',
     href: '/demo/today-size?size=default&lang=en&live=dinner',
   },
   {

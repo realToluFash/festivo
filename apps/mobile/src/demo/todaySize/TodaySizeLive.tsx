@@ -166,7 +166,7 @@ export function LiveBanner({
         style={styles.white}
       />
       {phone && <View style={styles.hair} />}
-      {under && <View style={styles.openUnder}>{open}</View>}
+      {under && <View style={phone ? styles.openFlush : styles.openUnder}>{open}</View>}
     </View>
   );
 
@@ -321,5 +321,6 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
+  openFlush: { alignItems: 'flex-start' },
   pressed: { opacity: 0.8 },
 });
