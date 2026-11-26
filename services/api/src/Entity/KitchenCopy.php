@@ -10,7 +10,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/** A kitchen sheet given to the kitchen (sc-30812): the whole sheet as it was, names included; who reads them is decided on every read, and an erased guest's row leaves `sheet`. */
+/** A kitchen sheet given to the kitchen (sc-30812): the sheet as its recorder could read it, so with no names without guests.manage; who reads names is decided on every read, and an erased guest's row leaves `sheet`. */
 #[ORM\Entity(readOnly: true)]
 #[ORM\Table(name: 'kitchen_copies')]
 #[ORM\Index(name: 'idx_kitchen_copy_event', columns: ['event_id', 'recorded_at'])]

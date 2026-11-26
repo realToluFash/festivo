@@ -346,6 +346,7 @@ final class FinalNumbersTest extends ApiTestCase
         $this->give();
         $directory->restore();
         [$with, $without] = $this->copyIds();
+        self::assertSame('null', self::service(Connection::class)->fetchOne("SELECT jsonb_typeof(sheet -> 'allergic') FROM kitchen_copies WHERE id = :id", ['id' => $without]), 'a recorder without guests.manage stores no names');
 
         foreach ([[$with, true, true], [$with, false, false], [$without, true, false], [$without, false, false]] as [$copy, $reader, $named]) {
             $directory->restore();

@@ -74,7 +74,7 @@ final readonly class KitchenSheetController
         return new JsonResponse(['finalNumbers' => $this->finalNumbers->of($event)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
     }
 
-    /** Give final numbers… (sc-30812): the PDF exactly as Download PDF makes it now, and the whole sheet kept as the numbers given. A PDF that cannot be made records nothing. */
+    /** Give final numbers… (sc-30812): the PDF exactly as Download PDF makes it now, and that sheet kept as the numbers given. A PDF that cannot be made records nothing. */
     #[Route('/api/events/{eventId}/menu/kitchen-sheet/copies', name: 'menu_kitchen_sheet_give', methods: ['POST'])]
     #[InEvent(Permission::MenuManage)]
     public function give(Request $request, string $eventId): Response
@@ -84,7 +84,7 @@ final readonly class KitchenSheetController
         $sheet = $this->kitchenSheet->of($event, $names);
         $locale = self::locale($request);
         $pdf = $this->made($event, $sheet, $locale);
-        $this->finalNumbers->record($event, $names ? $sheet : $this->kitchenSheet->of($event, true), $this->user(), $names);
+        $this->finalNumbers->record($event, $sheet, $this->user(), $names);
 
         return $this->download($pdf, $this->fileName($event, $sheet['asOf'], $locale));
     }
