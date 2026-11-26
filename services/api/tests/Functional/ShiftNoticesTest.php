@@ -267,7 +267,7 @@ final class ShiftNoticesTest extends ApiTestCase
 
         self::assertSame(
             [['Ada Obi', true], ['Ada Obi', false], ['Bisi Ola', false]],
-            Vec\map($this->sent(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
+            Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
         );
     }
 
@@ -440,7 +440,7 @@ final class ShiftNoticesTest extends ApiTestCase
 
         self::assertSame(
             [['Bisi Ola', 'The event has ended · Owambe', ['It ended before your shift, so you do not need to come.']]],
-            Vec\map($this->sent(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->subject, $sent['notification']->lines]),
+            Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->subject, $sent['notification']->lines]),
         );
     }
 
@@ -557,21 +557,17 @@ final class ShiftNoticesTest extends ApiTestCase
     /** @return list<array{0: string, 1: list<string>, 2: ?string}> */
     private function pushes(): array
     {
-        return Vec\map($this->sent(), static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
+        return Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
     }
 
     /** @return list<bool> */
     private function notYetUrgent(): array
     {
-        return Vec\map($this->sent(), static fn (array $sent): bool => $sent['notification']->notYetUrgent);
+        return Vec\map($this->sentApartFromReminders(), static fn (array $sent): bool => $sent['notification']->notYetUrgent);
     }
 
-    /**
-     * The pushes sent, but for the day-before reminders, which ShiftRemindersTest covers.
-     *
-     * @return list<array{delivery: string, recipient: Recipient, category: NotificationCategory, notification: RenderedNotification, collapseKey: ?string}>
-     */
-    private function sent(): array
+    /** @return list<array{delivery: string, recipient: Recipient, category: NotificationCategory, notification: RenderedNotification, collapseKey: ?string}> */
+    private function sentApartFromReminders(): array
     {
         return Vec\filter(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => !Str\starts_with($sent['notification']->subject, 'Your shift starts'));
     }

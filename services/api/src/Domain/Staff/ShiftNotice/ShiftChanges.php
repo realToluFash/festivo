@@ -24,8 +24,8 @@ final readonly class ShiftChanges
     public static function between(ShiftTold $told, ShiftTold $now, ?int $shown = self::SHIFT_LINES_SHOWN): array
     {
         $lines = 1 === Iter\count($told->shifts) && 1 === Iter\count($now->shifts)
-            ? self::oneShift(Vec\values($told->shifts)[0], Vec\values($now->shifts)[0])
-            : self::shifts($told->shifts, $now->shifts, $shown);
+            ? self::oneShift($told, $now)
+            : self::shifts($told, $now, $shown);
 
         if (null !== $now->job && null !== $told->job && $now->job[0] !== $told->job[0] && [] !== $now->shifts) {
             $lines[] = ShiftChange::value(ShiftChangeKind::Job, $now->job[1], $told->job[1]);
@@ -42,14 +42,11 @@ final readonly class ShiftChanges
         return $lines;
     }
 
-    /**
-     * @param array{0: string, 1: string} $told
-     * @param array{0: string, 1: string} $now
-     *
-     * @return list<ShiftChange>
-     */
-    private static function oneShift(array $told, array $now): array
+    /** @return list<ShiftChange> */
+    private static function oneShift(ShiftTold $toldOf, ShiftTold $nowOf): array
     {
+        $told = Vec\values($toldOf->shifts)[0];
+        $now = Vec\values($nowOf->shifts)[0];
         $on = ShiftTold::wall($now[0]);
         $lines = [];
 
@@ -65,14 +62,14 @@ final readonly class ShiftChanges
     }
 
     /**
-     * @param array<string, array{0: string, 1: string}> $told
-     * @param array<string, array{0: string, 1: string}> $now
-     * @param ?non-negative-int                          $shown
+     * @param ?non-negative-int $shown
      *
      * @return list<ShiftChange>
      */
-    private static function shifts(array $told, array $now, ?int $shown): array
+    private static function shifts(ShiftTold $toldOf, ShiftTold $nowOf, ?int $shown): array
     {
+        $told = $toldOf->shifts;
+        $now = $nowOf->shifts;
         $removed = Vec\map(
             Dict\diff_by_key($told, $now),
             static fn (array $times): ShiftChange => ShiftChange::shift(ShiftChangeKind::ShiftRemoved, ShiftTold::wall($times[0]), ShiftTold::wall($times[1])),
