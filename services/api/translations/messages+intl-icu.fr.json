@@ -513,6 +513,7 @@
     "validation.guest_message_choose_guests": "Choisissez au moins un invité.",
     "validation.guest_message_follows_unknown": "Cette conversation ne fait plus partie de l’événement.",
     "validation.guest_message_no_guests": "Cet événement n’a encore aucun invité à qui écrire.",
+    "guest_message.idempotency_key_invalid": "Send an Idempotency-Key of 1 to 100 characters, or none.",
     "guest_message.event_draft": "Cet événement est un brouillon. Publiez-le pour écrire à vos invités.",
     "guest_message.event_ended": "Cet événement s’est terminé il y a plus de 30 jours : vous ne pouvez plus écrire à ses invités.",
     "saved_audience.full": "Cet événement a {most, number, ::group-auto} publics enregistrés, le maximum. Supprimez-en un pour en enregistrer un autre.",

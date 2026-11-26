@@ -513,6 +513,7 @@
     "validation.guest_message_choose_guests": "Escolha pelo menos um convidado.",
     "validation.guest_message_follows_unknown": "Esta conversa já não faz parte do evento.",
     "validation.guest_message_no_guests": "Este evento ainda não tem convidados a quem escrever.",
+    "guest_message.idempotency_key_invalid": "Send an Idempotency-Key of 1 to 100 characters, or none.",
     "guest_message.event_draft": "Este evento é um rascunho. Publique-o para escrever aos seus convidados.",
     "guest_message.event_ended": "Este evento terminou há mais de 30 dias, por isso já não pode escrever aos seus convidados.",
     "saved_audience.full": "Este evento tem {most, number, ::group-auto} públicos guardados, o máximo possível. Elimine um para guardar outro.",

@@ -3872,9 +3872,17 @@ export class ApiClient {
     );
   }
 
-  /** 202 even when no email can announce it: the message is on their pages all the same. */
-  sendGuestMessage(eventId: string, input: GuestMessageInput): Promise<GuestMessageSent> {
-    return this.post<GuestMessageSent>(this.messagesPath(eventId), input);
+  /** 202 even when no email can announce it: the message is on their pages all the same. The same `key` again answers as the send it first made, so a retry after a lost answer sends nothing twice (sc-32077). */
+  sendGuestMessage(
+    eventId: string,
+    input: GuestMessageInput,
+    key?: string,
+  ): Promise<GuestMessageSent> {
+    return this.post<GuestMessageSent>(
+      this.messagesPath(eventId),
+      input,
+      key == null ? undefined : { headers: { 'Idempotency-Key': key } },
+    );
   }
 
   async guestMessagesSubscription(eventId: string): Promise<RealtimeSubscription> {

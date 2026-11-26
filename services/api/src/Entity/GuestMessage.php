@@ -14,11 +14,14 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'guest_messages')]
 #[ORM\Index(name: 'idx_guest_message_event', columns: ['event_id', 'created_at'])]
 #[ORM\UniqueConstraint(name: 'uniq_guest_message_scheduled', columns: ['scheduled_notification_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_guest_message_request', columns: ['event_id', 'created_by_id', 'request_key'])]
 class GuestMessage
 {
     public const int SUBJECT_MAXIMUM = 150;
 
     public const int BODY_MAXIMUM = 10000;
+
+    public const int REQUEST_KEY_MAXIMUM = 100;
 
     public const string ALL = 'all';
 
@@ -69,6 +72,10 @@ class GuestMessage
     #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?GuestMessage $follows = null;
+
+    /** The sender's Idempotency-Key, so a retried Send answers as the send that reached Soirely. */
+    #[ORM\Column(type: Types::STRING, length: self::REQUEST_KEY_MAXIMUM, nullable: true)]
+    private ?string $requestKey = null;
 
     public function getId(): Uuid
     {
@@ -130,6 +137,11 @@ class GuestMessage
     public function getFollows(): ?self
     {
         return $this->follows;
+    }
+
+    public function getRequestKey(): ?string
+    {
+        return $this->requestKey;
     }
 
     /** The conversation's first message, which names it. */
