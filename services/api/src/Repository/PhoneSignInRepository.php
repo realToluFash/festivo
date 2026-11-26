@@ -41,4 +41,13 @@ final class PhoneSignInRepository extends ServiceEntityRepository
 
         return Vec\map($rows, static fn (array $row): DateTimeImmutable => $row['createdAt']);
     }
+
+    /** @return int how many were deleted, their codes with them */
+    public function deleteExpired(DateTimeImmutable $now): int
+    {
+        return (int) $this->getEntityManager()
+            ->createQuery('DELETE FROM ' . PhoneSignIn::class . ' s WHERE s.openUntil <= :now')
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->execute();
+    }
 }

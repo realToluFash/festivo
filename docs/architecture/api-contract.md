@@ -215,6 +215,9 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
 - Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
   an hour per code, on top of the number's cooldown: `429` with `Retry-After`, the code's
   `Retry-After` being when its oldest send in the hour leaves it.
+- The name typed at a door code is forgotten once the code is right, whether it signs in
+  or is refused. A `PhoneSignIn` lives 24 hours: `app:prune-phone-sign-ins` then deletes
+  it, with its number and its codes.
 - In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
   account's last live grant, checked on each refresh; with none live yet (a door code
   behind two-factor) the access token keeps its usual life for the signed-in redeem. In the

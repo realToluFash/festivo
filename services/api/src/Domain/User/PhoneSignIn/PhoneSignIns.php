@@ -151,19 +151,14 @@ final readonly class PhoneSignIns
                 throw new ApiException(ErrorCode::PhoneAlternative, 'phone_sign_in.alternative');
             }
 
-            if (null !== $admits) {
-                $admits($held->getUser());
-            }
-
+            $this->admitOrForget($signIn, $admits, $held->getUser());
             $signIn->forgetTypedName();
             $this->entityManager->flush();
 
             return ['user' => $held->getUser(), 'made' => false];
         }
 
-        if (null !== $admits) {
-            $admits(null);
-        }
+        $this->admitOrForget($signIn, $admits, null);
 
         return $this->entityManager->wrapInTransaction(function () use ($signIn, $held, $name, $request): array {
             if (null !== $held) {
@@ -201,6 +196,27 @@ final readonly class PhoneSignIns
 
         $this->auditor->record(self::SIGNED_IN, 'User', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['through' => [null, null === $entry ? 'door_code' : 'staff_link']]);
         $this->entityManager->flush();
+    }
+
+    /**
+     * A refusal after the right code makes no account, so the name typed to name one is forgotten with it (Decided, 26 Nov).
+     *
+     * @param (Closure(?User): void)|null $admits
+     */
+    private function admitOrForget(PhoneSignIn $signIn, ?Closure $admits, ?User $account): void
+    {
+        if (null === $admits) {
+            return;
+        }
+
+        try {
+            $admits($account);
+        } catch (ApiException $refusal) {
+            $signIn->forgetTypedName();
+            $this->entityManager->flush();
+
+            throw $refusal;
+        }
     }
 
     private function secondsLeftForNumber(string $number): int

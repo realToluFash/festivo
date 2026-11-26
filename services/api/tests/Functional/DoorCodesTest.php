@@ -41,8 +41,10 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Request;
 
 /** sc-72: a door code onto one event, made and stopped on People, redeemed with no membership; signed out, by a code to a mobile number (sc-4235). */
@@ -267,6 +269,7 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame([404, ErrorCode::DoorCodeInvalid->type()], [$this->statusCode(), $this->last()['type'] ?? null], 'the one refusal, after the code');
         self::assertArrayNotHasKey('accessToken', $this->last());
         self::assertSame($accounts, self::em()->getRepository(User::class)->count([]), 'no account made');
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM phone_sign_ins WHERE typed_name IS NOT NULL'), 'the name typed for the refused number is stored nowhere');
 
         $this->sendFor($full, 'Ade', '+2348031110001');
         self::assertSame(429, $this->statusCode(), 'a code of one takes two sends an hour');
@@ -311,6 +314,26 @@ final class DoorCodesTest extends ApiTestCase
         $wait = (int) $this->client->getResponse()->headers->get('Retry-After');
         self::assertGreaterThan(39 * 60, $wait, 'forty minutes, not a second');
         self::assertLessThanOrEqual(40 * 60 + 1, $wait);
+    }
+
+    #[Test]
+    public function aSignInWhoseCodeIsNeverEnteredIsDeletedWithItsNumberNameAndCodesAfterTwentyFourHours(): void
+    {
+        $code = $this->code('can_view');
+        $this->sendFor($code, 'Never Came', '+2348031150001');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $connection = self::em()->getConnection();
+
+        self::mockTime('+23 hours');
+        $this->prunePhoneSignIns();
+        self::assertSame(1, $connection->fetchOne("SELECT COUNT(*) FROM phone_sign_ins WHERE number = '+2348031150001'"), 'kept inside its 24 hours');
+
+        self::mockTime('+1 hour +1 minute');
+        $this->prunePhoneSignIns();
+
+        self::assertSame(0, $connection->fetchOne("SELECT COUNT(*) FROM phone_sign_ins WHERE number = '+2348031150001' OR typed_name = 'Never Came'"));
+        self::assertSame(0, $connection->fetchOne('SELECT COUNT(*) FROM verification_challenges WHERE phone_sign_in_id IS NOT NULL'), 'its codes go with it');
+        self::assertSame(0, self::em()->getRepository(User::class)->count(['origin' => AccountOrigin::Staff]), 'and no account was ever made');
     }
 
     #[Test]
@@ -684,6 +707,13 @@ final class DoorCodesTest extends ApiTestCase
         $this->client->request('POST', '/api/door-codes/' . \rawurlencode($code) . '/sign-in', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['handle' => $handle, 'code' => $phoneCode, 'refreshTokenIn' => $delivery]));
 
         return $this->last();
+    }
+
+    private function prunePhoneSignIns(): void
+    {
+        $tester = new CommandTester(new Application(self::$kernel ?? self::fail('no kernel'))->find('app:prune-phone-sign-ins'));
+        $tester->execute([]);
+        $tester->assertCommandIsSuccessful();
     }
 
     /** @return non-empty-string the authenticator's secret */
