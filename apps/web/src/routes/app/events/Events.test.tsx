@@ -5443,6 +5443,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     );
   });
 
+  it('puts a You milestone that is Next up on the card, marked You and Overdue once passed, with its action as the step (sc-30812)', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            startsAt: '2026-10-24T18:00:00+02:00',
+            endsAt: '2026-10-25T02:00:00+02:00',
+            status: 'live',
+            phase: 'live',
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/Madrid',
+          milestones: [
+            {
+              ...milestone('2026-10-20T23:59:00+02:00', 'Give final numbers to the kitchen', 'you'),
+              area: 'menu',
+              action: { label: 'Open the kitchen sheet', link: '/app/events/ev_1/menu/kitchen' },
+            },
+            milestone('2026-10-24T18:00:00+02:00', 'Boda starts'),
+          ],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const steps = await screen.findAllByRole('link', { name: 'Open the kitchen sheet' });
+    const step = steps.find((link) => link.closest('.ev-card-foot') != null) as HTMLElement;
+    const foot = step.closest('.ev-card-foot') as HTMLElement;
+    expect(within(foot).getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+    expect(within(foot).getByText('You')).toBeDefined();
+    expect(within(foot).getByText('Overdue')).toBeDefined();
+    expect(step.getAttribute('href')).toBe('/app/events/ev_1/menu/kitchen');
+  });
+
   it('names the year on a row whose date is not in the current year (sc-30413)', async () => {
     clockAt('2025-12-31T22:30:00Z');
     signedIn();

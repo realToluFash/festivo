@@ -57,3 +57,55 @@ export function saveSheet(bytes: Uint8Array<ArrayBuffer>, name: string): void {
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
+
+export type DueError = 'start' | 'past';
+
+/** Before submit, both in the event's zone: on or after the start's day, or a newly typed day before today. A day left as it was is never refused. */
+export function dueError(
+  typed: string,
+  was: string | null,
+  startsAt: string,
+  timeZone: string,
+  now: Date,
+): DueError | null {
+  if (typed === '' || typed === was) return null;
+  if (typed >= dayIn(new Date(startsAt), timeZone)) return 'start';
+  if (typed < dayIn(now, timeZone)) return 'past';
+
+  return null;
+}
+
+/** "Tue, Nov 3": a stored day, as the Final numbers row writes it. */
+export function shortDay(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
+/** "Given to the kitchen on Friday 7 Aug at 17:00 by Ada Obi": the reader's locale, the event's zone, the 24-hour clock. */
+export function copyLine(
+  t: TFunction,
+  recordedAt: string,
+  by: string,
+  timeZone: string,
+  locale: string,
+): string {
+  const at = new Date(recordedAt);
+  const date = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    timeZone,
+  }).format(at);
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(at);
+
+  return t('kitchenSheet.copy', { date, time, name: by });
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -7,6 +7,7 @@ import {
   bareNumbers,
   emptyMessages,
   keyParity,
+  load,
   pluralFamilies,
   slotParity,
   wordDrift,
@@ -51,6 +52,23 @@ describe.each(SURFACES.map((s) => [s.name, s] as const))('%s', (_name, surface) 
       extra.map((m) => `${m.locale}: ${m.key}`),
       'here and not in en — either a typo or a key English forgot',
     ).toEqual([]);
+  });
+
+  it('writes each key once', () => {
+    const lines = (text: string) =>
+      text
+        .trim()
+        .split('\n')
+        .map((line) => line.trim());
+
+    for (const locale of LOCALES) {
+      const written = readFileSync(join(ROOT, surface.catalogues, surface.file(locale)), 'utf8');
+
+      // JSON.parse keeps a repeated key's last value, so the file then differs from what it parses to.
+      expect(lines(written), `${locale}: a key written twice`).toEqual(
+        lines(JSON.stringify(load(surface, locale), null, 2)),
+      );
+    }
   });
 
   it('has no empty messages', () => {

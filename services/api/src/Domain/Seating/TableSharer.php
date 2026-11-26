@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Seating;
 
 use App\Audit\Auditor;
+use App\Domain\Event\EventDay;
 use App\Domain\Seating\Http\SeatingSerialiser;
 use App\Entity\Event;
 use App\Entity\SeatingPlan;
@@ -12,15 +13,14 @@ use App\Entity\TableSharing;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\EventDayRefusal;
 use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
 use App\Realtime\RealtimePublisher;
 use App\Repository\TableSharingRepository;
 use DateTimeImmutable;
-use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
-use Psl\Str;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -90,22 +90,13 @@ final readonly class TableSharer
             return null;
         }
 
-        $zone = new DateTimeZone($event->getTimeZone());
-        $day = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
+        $day = EventDay::before($event, $typed, $this->clock);
 
-        if (false === $day || $day->format('Y-m-d') !== Str\trim($typed)) {
-            throw $this->shareByRefusal('validation.share_by_invalid');
-        }
-
-        if ($day->format('Y-m-d') < $this->clock->now()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->shareByRefusal('validation.share_by_past');
-        }
-
-        if ($day->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->shareByRefusal('validation.share_by_not_before_event');
-        }
-
-        return $day;
+        return $day instanceof EventDayRefusal ? throw $this->shareByRefusal(match ($day) {
+            EventDayRefusal::Invalid => 'validation.share_by_invalid',
+            EventDayRefusal::Past => 'validation.share_by_past',
+            EventDayRefusal::NotBeforeEvent => 'validation.share_by_not_before_event',
+        }) : $day;
     }
 
     private function shareByRefusal(string $key): ApiException

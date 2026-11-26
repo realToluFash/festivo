@@ -11,36 +11,52 @@ final class Version20261127110000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Who\'s here (sc-3918): the lead who added someone at the door, and whom a person was moved to cover, from which station and when.';
+        return 'Final numbers due and the copies given to the kitchen (sc-30812).';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            ALTER TABLE staff_members
-                ADD walk_on_by_id UUID DEFAULT NULL,
-                ADD covering_id   UUID DEFAULT NULL,
-                ADD moved_from    VARCHAR(240) DEFAULT NULL,
-                ADD moved_at      TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL
+            CREATE TABLE kitchen_final_numbers (
+                id       UUID    NOT NULL,
+                event_id UUID    NOT NULL,
+                due_on   DATE    DEFAULT NULL,
+                revision INT     DEFAULT 0 NOT NULL,
+                PRIMARY KEY (id)
+            )
             SQL);
-        $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C549E6798172 FOREIGN KEY (walk_on_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE staff_members ADD CONSTRAINT FK_1916C549D4108F8C FOREIGN KEY (covering_id) REFERENCES staff_members (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('CREATE INDEX IDX_1916C549E6798172 ON staff_members (walk_on_by_id)');
-        $this->addSql('CREATE INDEX IDX_1916C549D4108F8C ON staff_members (covering_id)');
+        $this->addSql('CREATE UNIQUE INDEX UNIQ_KITCHEN_FINAL_NUMBERS_EVENT ON kitchen_final_numbers (event_id)');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE kitchen_final_numbers
+                ADD CONSTRAINT FK_KITCHEN_FINAL_NUMBERS_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE
+            SQL);
+        $this->addSql(<<<'SQL'
+            CREATE TABLE kitchen_copies (
+                id               UUID                           NOT NULL,
+                event_id         UUID                           NOT NULL,
+                recorded_by_id   UUID                           DEFAULT NULL,
+                recorded_at      TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+                recorded_by_name VARCHAR(720)                   NOT NULL,
+                names            BOOLEAN                        NOT NULL,
+                sheet            JSONB                          NOT NULL,
+                PRIMARY KEY (id)
+            )
+            SQL);
+        $this->addSql('CREATE INDEX idx_kitchen_copy_event ON kitchen_copies (event_id, recorded_at)');
+        $this->addSql('CREATE INDEX IDX_KITCHEN_COPIES_RECORDED_BY ON kitchen_copies (recorded_by_id)');
+        $this->addSql(<<<'SQL'
+            ALTER TABLE kitchen_copies
+                ADD CONSTRAINT FK_KITCHEN_COPIES_EVENT FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE NOT DEFERRABLE
+            SQL);
+        $this->addSql(<<<'SQL'
+            ALTER TABLE kitchen_copies
+                ADD CONSTRAINT FK_KITCHEN_COPIES_RECORDED_BY FOREIGN KEY (recorded_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE
+            SQL);
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C549E6798172');
-        $this->addSql('ALTER TABLE staff_members DROP CONSTRAINT FK_1916C549D4108F8C');
-        $this->addSql('DROP INDEX IDX_1916C549E6798172');
-        $this->addSql('DROP INDEX IDX_1916C549D4108F8C');
-        $this->addSql(<<<'SQL'
-            ALTER TABLE staff_members
-                DROP walk_on_by_id,
-                DROP covering_id,
-                DROP moved_from,
-                DROP moved_at
-            SQL);
+        $this->addSql('DROP TABLE kitchen_copies');
+        $this->addSql('DROP TABLE kitchen_final_numbers');
     }
 }
