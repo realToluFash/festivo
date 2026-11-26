@@ -66,14 +66,14 @@ export function PhoneEntryStep({
           id="rd-name"
           label={t('redeem.yourName')}
           value={entry.named}
-          said={nameSaid}
+          told={nameSaid == null ? undefined : 'rd-name-line'}
           inputRef={fieldRef}
           autoComplete="name"
           onChange={(named) =>
             onChange({ ...entry, named, refused: { ...entry.refused, name: null } })
           }
         />
-        <Says id="rd-name">{nameSaid}</Says>
+        <Says id="rd-name-line">{nameSaid}</Says>
       </div>
       <div className="rd-group">
         <div className="rd-phone">
@@ -92,7 +92,7 @@ export function PhoneEntryStep({
             id="rd-number"
             label={t('redeem.phone.mobile')}
             value={entry.number}
-            said={numberSaid}
+            told={numberSaid == null ? undefined : 'rd-number-line'}
             autoComplete="tel-national"
             inputMode="tel"
             onChange={(number) =>
@@ -105,7 +105,7 @@ export function PhoneEntryStep({
             }
           />
         </div>
-        <Says id="rd-number">{numberSaid}</Says>
+        <Says id="rd-number-line">{numberSaid}</Says>
       </div>
       <Primary submit busy={busy}>
         {t('redeem.phone.sendCode')}
@@ -264,7 +264,7 @@ export function PhoneCodeStep<Signed>({
                 id="rd-phone-code"
                 label={texted ? t('redeem.phone.codeFromText') : t('redeem.phone.codeFromWhatsApp')}
                 value={digits}
-                said={said}
+                told={said == null ? undefined : 'rd-phone-code-line'}
                 inputRef={fieldRef}
                 code
                 autoComplete="one-time-code"
@@ -275,7 +275,7 @@ export function PhoneCodeStep<Signed>({
                   setLine(null);
                 }}
               />
-              <Says id="rd-phone-code" alert={status === 'wrong'}>
+              <Says id="rd-phone-code-line" alert={status === 'wrong'}>
                 {said}
               </Says>
             </div>
@@ -341,7 +341,7 @@ export function Field({
   id,
   label,
   value,
-  said,
+  told,
   inputRef,
   code = false,
   autoComplete,
@@ -352,7 +352,7 @@ export function Field({
   id: string;
   label: string;
   value: string;
-  said: string | null;
+  told?: string | undefined;
   inputRef?: RefObject<HTMLInputElement | null>;
   code?: boolean;
   autoComplete: string;
@@ -360,7 +360,7 @@ export function Field({
   maxLength?: number;
   onChange: (typed: string) => void;
 }) {
-  const wrong = said != null;
+  const wrong = told != null;
 
   return (
     <div
@@ -381,7 +381,7 @@ export function Field({
         maxLength={maxLength}
         spellCheck={false}
         aria-invalid={wrong}
-        aria-describedby={wrong ? `${id}-line` : undefined}
+        aria-describedby={told}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>
@@ -401,7 +401,7 @@ export function Says({
   if (children == null) return null;
 
   return (
-    <p id={`${id}-line`} className="rd-says" role={alert ? 'alert' : undefined}>
+    <p id={id} className="rd-says" role={alert ? 'alert' : undefined}>
       {children}
     </p>
   );

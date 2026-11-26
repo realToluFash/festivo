@@ -78,7 +78,7 @@ export function StaffTwoFactor({
             id="ss-authenticator"
             label={t('twoFactor.code')}
             value={digits}
-            said={said?.words ?? null}
+            told={said == null ? undefined : 'ss-authenticator-line'}
             inputRef={fieldRef}
             code
             autoComplete="one-time-code"
@@ -89,7 +89,7 @@ export function StaffTwoFactor({
               setSaid(null);
             }}
           />
-          <Says id="ss-authenticator" alert={said?.alert ?? false}>
+          <Says id="ss-authenticator-line" alert={said?.alert ?? false}>
             {said?.words ?? null}
           </Says>
         </div>
