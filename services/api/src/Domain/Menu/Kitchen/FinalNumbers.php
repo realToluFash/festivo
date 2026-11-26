@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Menu\Kitchen;
 
+use App\Domain\Event\EventDay;
 use App\Domain\Menu\Http\MenuSerialiser;
 use App\Entity\Event;
 use App\Entity\KitchenCopy;
 use App\Entity\KitchenFinalNumbers;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\EventDayRefusal;
 use App\Enum\Paper;
 use App\Http\Exception\ApiException;
 use App\Repository\KitchenCopyRepository;
@@ -74,7 +76,7 @@ final readonly class FinalNumbers
         });
     }
 
-    /** @param Sheet $sheet the full sheet, names included; its "As of" becomes the moment it was given */
+    /** @param Sheet $sheet the sheet as its recorder may read it; its "As of" becomes the moment it was given */
     public function record(Event $event, array $sheet, User $by, bool $names): KitchenCopy
     {
         $now = $this->clock->now();
@@ -165,26 +167,13 @@ final readonly class FinalNumbers
             return null;
         }
 
-        $zone = new DateTimeZone($event->getTimeZone());
-        $day = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
-
-        if (false === $day || $day->format('Y-m-d') !== Str\trim($typed)) {
-            throw $this->dueRefused('validation.final_numbers_invalid');
+        if (Str\trim($typed) === $was) {
+            return new DateTimeImmutable($was, new DateTimeZone('UTC'));
         }
 
-        if ($day->format('Y-m-d') === $was) {
-            return $day;
-        }
+        $day = EventDay::before($event, $typed, $this->clock);
 
-        if ($day->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->dueRefused('validation.final_numbers_not_before_event');
-        }
-
-        if ($day->format('Y-m-d') < $this->clock->now()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->dueRefused('validation.final_numbers_past');
-        }
-
-        return $day;
+        return $day instanceof EventDayRefusal ? throw $this->dueRefused('validation.final_numbers_' . $day->value) : $day;
     }
 
     private function dueRefused(string $key): ApiException
