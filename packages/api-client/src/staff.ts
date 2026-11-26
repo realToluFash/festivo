@@ -47,6 +47,8 @@ export interface StaffChange {
   end: string | null;
   oldStart: string | null;
   oldEnd: string | null;
+  /** The start of the shift a start or end time line belongs to, which a time on another day names. */
+  on: string | null;
   new: string | null;
   old: string | null;
   count: number;
@@ -55,7 +57,10 @@ export interface StaffChange {
 /** Where a person's change notice stands (sc-4333), for the roster's Briefing column; null before their briefing went and whenever push has not reached them, so the row stays sc-3917's. */
 export type StaffNotice =
   | { state: 'waiting'; goesAt: string; changes: StaffChange[] }
-  | { state: 'told'; at: string; channel: string };
+  | { state: 'told'; at: string; channel: string; ending: StaffNoticeEnding | null };
+
+/** The call-off's or End now's notice, when that is what told them. */
+export type StaffNoticeEnding = 'called_off' | 'ended';
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -220,6 +225,7 @@ function asBriefingCopy(raw: unknown): StaffBriefingCopy | null | undefined {
 function asChange(raw: unknown): StaffChange | null {
   if (!isRecord(raw)) return null;
   const { kind, start, end, oldStart, oldEnd, count } = raw;
+  const on = raw.on ?? null;
 
   return CHANGE_KINDS.includes(kind as StaffChangeKind) &&
     text(start) &&
@@ -228,6 +234,7 @@ function asChange(raw: unknown): StaffChange | null {
     text(oldEnd) &&
     text(raw.new) &&
     text(raw.old) &&
+    text(on) &&
     typeof count === 'number'
     ? {
         kind: kind as StaffChangeKind,
@@ -238,6 +245,7 @@ function asChange(raw: unknown): StaffChange | null {
         new: raw.new,
         old: raw.old,
         count,
+        on,
       }
     : null;
 }
@@ -254,10 +262,15 @@ function asNotice(raw: unknown): StaffNotice | null | undefined {
         ? { state: 'waiting', goesAt: raw.goesAt, changes }
         : undefined;
     }
-    case 'told':
-      return typeof raw.at === 'string' && typeof raw.channel === 'string'
-        ? { state: 'told', at: raw.at, channel: raw.channel }
+    case 'told': {
+      const ending = raw.ending ?? null;
+
+      return typeof raw.at === 'string' &&
+        typeof raw.channel === 'string' &&
+        (ending === null || ending === 'called_off' || ending === 'ended')
+        ? { state: 'told', at: raw.at, channel: raw.channel, ending }
         : undefined;
+    }
     default:
       return undefined;
   }
@@ -543,4 +556,44 @@ function asOpenStaffLink(raw: Record<string, unknown>): OpenStaffLink | null {
     timeZone: reader === 'yours' && typeof raw.timeZone === 'string' ? raw.timeZone : null,
     pastAccess: raw.pastAccess === true,
   };
+}
+
+/** The staffing page's Reminder the day before card (sc-4333): days are the event's calendar days, `next.date` the day the reminder goes, and `sent` only once the last day's reminder has gone. */
+export interface StaffReminder {
+  on: boolean;
+  time: string;
+  next: { date: string; count: number } | null;
+  notBriefed: number;
+  unreachable: number;
+  sent: { date: string; count: number } | null;
+  concluded: 'called_off' | 'ended' | null;
+}
+
+function asDayCount(raw: unknown): { date: string; count: number } | null | undefined {
+  if (raw === null) return null;
+  if (!isRecord(raw)) return undefined;
+
+  return typeof raw.date === 'string' && typeof raw.count === 'number'
+    ? { date: raw.date, count: raw.count }
+    : undefined;
+}
+
+export function asStaffReminder(raw: unknown): StaffReminder | null {
+  if (!isRecord(raw)) return null;
+  const { on, time, notBriefed, unreachable, concluded } = raw;
+  const next = asDayCount(raw.next);
+  const sent = asDayCount(raw.sent);
+
+  if (
+    typeof on !== 'boolean' ||
+    typeof time !== 'string' ||
+    next === undefined ||
+    sent === undefined ||
+    typeof notBriefed !== 'number' ||
+    typeof unreachable !== 'number' ||
+    !(concluded === null || concluded === 'called_off' || concluded === 'ended')
+  )
+    return null;
+
+  return { on, time, next, notBriefed, unreachable, sent, concluded };
 }

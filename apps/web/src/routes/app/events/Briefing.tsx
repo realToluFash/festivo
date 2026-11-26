@@ -18,7 +18,9 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { NightLead, NightShift } from '../../public/MyNight.tsx';
 import { headingOf, weekdayOf } from '../../public/myNight.ts';
 import { StationSelect } from './StationsArea.tsx';
+import { NoticeLines, ReminderCard } from './Notices.tsx';
 import { countLine, fitRules, noteOf, tallyOf } from './briefing.ts';
+import { type NoticeClock, noticeClock, noticeLines } from './notices.ts';
 import { type StaffTimes, clockWords, rangeWords } from './staffTimes.ts';
 import '../../public/myNight.css';
 import './briefing.css';
@@ -190,66 +192,71 @@ export function useBriefing({
     now.kind === 'copy' ? 'bf-copy' : now.kind === 'preview' ? 'bf-preview' : 'bf-rules';
   const firstOnShift = people.find((one) => one.shifts.length > 0) ?? people[0];
 
+  const clock = noticeClock(event, dateLocale());
+
   const card = (
-    <section className="sn-card bf-card" aria-labelledby="bf-title">
-      <div className="sn-card-top">
-        <div className="sn-card-names">
-          <h2 id="bf-title">{t('briefing.card')}</h2>
-          <p className="mn-sub">{t('briefing.cardSub')}</p>
+    <>
+      <section className="sn-card bf-card" aria-labelledby="bf-title">
+        <div className="sn-card-top">
+          <div className="sn-card-names">
+            <h2 id="bf-title">{t('briefing.card')}</h2>
+            <p className="mn-sub">{t('briefing.cardSub')}</p>
+          </div>
         </div>
-      </div>
-      {!manage && (
-        <p className="mn-lock">
-          <Glyph name="lock" size={16} weight={2.2} />
-          {t('briefing.lock')}
-        </p>
-      )}
-      <ul className="bf-tally" aria-label={t('briefing.tally')}>
-        {BRIEFINGS.map((briefing) => (
-          <li key={briefing}>
-            <BriefWord briefing={briefing} />
-            <span className="bf-tally-n">{tally[briefing]}</span>
-          </li>
-        ))}
-      </ul>
-      {acts && (
-        <div className="bf-acts">
+        {!manage && (
+          <p className="mn-lock">
+            <Glyph name="lock" size={16} weight={2.2} />
+            {t('briefing.lock')}
+          </p>
+        )}
+        <ul className="bf-tally" aria-label={t('briefing.tally')}>
+          {BRIEFINGS.map((briefing) => (
+            <li key={briefing}>
+              <BriefWord briefing={briefing} />
+              <span className="bf-tally-n">{tally[briefing]}</span>
+            </li>
+          ))}
+        </ul>
+        {acts && (
+          <div className="bf-acts">
+            <button
+              id="bf-copy"
+              type="button"
+              className="gs-pill is-secondary"
+              aria-expanded={side?.kind === 'copy'}
+              onClick={() => open({ kind: 'copy' })}
+            >
+              {t('roster.copyLink')}
+            </button>
+          </div>
+        )}
+        <div className="bf-more">
           <button
-            id="bf-copy"
-            type="button"
-            className="gs-pill is-secondary"
-            aria-expanded={side?.kind === 'copy'}
-            onClick={() => open({ kind: 'copy' })}
-          >
-            {t('roster.copyLink')}
-          </button>
-        </div>
-      )}
-      <div className="bf-more">
-        <button
-          id="bf-rules"
-          type="button"
-          className="desk-text"
-          aria-expanded={side?.kind === 'rules'}
-          onClick={() => open({ kind: 'rules', editing: false })}
-        >
-          <Glyph name="pen" size={16} weight={2.3} />
-          {acts ? t('briefing.editRules') : t('briefing.rules')}
-        </button>
-        {firstOnShift != null && (
-          <button
-            id="bf-preview"
+            id="bf-rules"
             type="button"
             className="desk-text"
-            aria-expanded={side?.kind === 'preview'}
-            onClick={() => open({ kind: 'preview', id: firstOnShift.id })}
+            aria-expanded={side?.kind === 'rules'}
+            onClick={() => open({ kind: 'rules', editing: false })}
           >
-            <Glyph name="eye" size={16} weight={2.3} />
-            {t('briefing.previewAs')}
+            <Glyph name="pen" size={16} weight={2.3} />
+            {acts ? t('briefing.editRules') : t('briefing.rules')}
           </button>
-        )}
-      </div>
-    </section>
+          {firstOnShift != null && (
+            <button
+              id="bf-preview"
+              type="button"
+              className="desk-text"
+              aria-expanded={side?.kind === 'preview'}
+              onClick={() => open({ kind: 'preview', id: firstOnShift.id })}
+            >
+              <Glyph name="eye" size={16} weight={2.3} />
+              {t('briefing.previewAs')}
+            </button>
+          )}
+        </div>
+      </section>
+      <ReminderCard event={event} manage={acts} roster={people} announce={announce} />
+    </>
   );
 
   const previewed = side?.kind === 'preview' ? here(side.id) : null;
@@ -321,6 +328,8 @@ export function useBriefing({
       <BriefCell
         one={one}
         times={times}
+        clock={clock}
+        finished={finished}
         acts={acts}
         busy={busy === one.id}
         missed={missed === one.id}
@@ -359,6 +368,8 @@ function BriefWord({ briefing }: { briefing: StaffBriefing }) {
 function BriefCell({
   one,
   times,
+  clock,
+  finished,
   acts,
   busy,
   missed,
@@ -367,6 +378,8 @@ function BriefCell({
 }: {
   one: StaffEntry;
   times: StaffTimes;
+  clock: NoticeClock;
+  finished: boolean;
   acts: boolean;
   busy: boolean;
   missed: boolean;
@@ -374,7 +387,8 @@ function BriefCell({
   onMark: () => void;
 }) {
   const { t } = useTranslation();
-  const note = noteOf(one, t);
+  const lines = noticeLines(one, finished, clock, t);
+  const note = lines.length > 0 ? null : noteOf(one, t);
   const changed = one.briefing === 'changed';
   const changedActs = acts && changed && one.mobile != null && !one.contactsErased;
 
@@ -382,6 +396,7 @@ function BriefCell({
     <span className="rs-link-cell">
       <BriefWord briefing={one.briefing} />
       {note != null && <span className="rs-trail">{note}</span>}
+      <NoticeLines lines={lines} />
       {changed && <CopiedLine one={one} times={times} />}
       {missed && changed && <Missed />}
       {changedActs && (
