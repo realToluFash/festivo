@@ -476,6 +476,7 @@ describe('Who gets it (sc-3957)', () => {
 
     add('Is in group', 'Work');
     expect(screen.getByText('Counting…')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Guests who… · 1 guest/ })).toBeTruthy();
     expect(await screen.findByText('Nobody matches')).toBeTruthy();
     expect(screen.getByText('Changing a condition here changes this message only.')).toBeTruthy();
 
