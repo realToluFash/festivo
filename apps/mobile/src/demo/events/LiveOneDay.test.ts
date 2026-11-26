@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { nextUp } from '@soirely/domain';
 
 import { DINER } from './EventsSample.ts';
 import { cardStep, clockOf, datesOf, shownEvent } from './EventsModel.ts';
@@ -37,12 +38,14 @@ describe('a one-day event happening now (sc-93858)', () => {
     expect(shows).toEqual({ kind: 'ends', time: '23:30' });
   });
 
-  it('with Speeches still ahead, the card leads with it and Coming up lists it', () => {
+  it('with Speeches still ahead, the card leads with Run of show begins and Coming up lists both', () => {
     const { shown, now, stepless: none, shows } = at('liveOneDaySpeeches');
 
     expect(none).toBe(false);
     expect(cardStep(shown, now, 'en-GB')).toMatchObject({ kind: 'next' });
+    expect(nextUp(shown.milestones ?? [], now, false)?.title).toBe('Run of show begins');
     expect(shows.kind === 'rows' && shows.rows.map((row) => row.milestone.title)).toEqual([
+      'Run of show begins',
       'Speeches',
     ]);
   });
