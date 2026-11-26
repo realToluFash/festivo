@@ -49,6 +49,12 @@
   vertical-align: top;
 }
 
+/* A cell breaks only between words, as the Roster's do (sc-70540): the global overflow-wrap: anywhere on span would let the Clocked column shrink to one letter. Below 40rem the card scrolls instead. */
+.hw-table :is(th, td),
+.hw-table :is(th, td) * {
+  overflow-wrap: normal;
+}
+
 .hw-table thead th {
   padding-block: 10px;
   color: var(--colorInkSecondary);
