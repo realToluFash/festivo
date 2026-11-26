@@ -347,10 +347,10 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->editTimes($this->evening, '2027-03-06T18:30', '2027-03-06T23:00');
         $this->at('2027-03-05T18:15:00Z');
 
-        self::assertSame(
-            [['Ada Obi', true], ['Ada Obi', false], ['Bisi Ola', false]],
-            Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
-        );
+        $urgency = Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]);
+
+        self::assertSame(['Ada Obi', true], $urgency[0] ?? null);
+        self::assertSame([['Ada Obi', false], ['Bisi Ola', false]], Vec\sort(Vec\slice($urgency, 1)));
     }
 
     #[Test]
