@@ -69,21 +69,24 @@ final class WhoGetsItTest extends ApiTestCase
         $this->guest('Chidi', invited: true, reply: 'notComing', email: false, mobile: true);
         $this->guest('Dami', invited: true, reply: 'maybe', email: true, mobile: false);
         $this->guest('Ebun', invited: false, reply: null, email: true, mobile: false);
+        $this->guest('Funmi', invited: false, reply: 'coming', email: false, mobile: false);
+        $this->guest('Gbenga', invited: false, reply: null, email: false, mobile: false);
+        $this->db()->executeStatement('UPDATE guests SET walk_in = TRUE, link_token = NULL, check_in_code = NULL, arrived_at = NOW() WHERE id = :id', ['id' => $this->guests['Gbenga']]);
     }
 
     /** @return iterable<string, array{array<string, mixed>, list<string>}> */
     public static function eachCondition(): iterable
     {
-        yield 'Has replied: any reply' => [['type' => 'replied'], ['Ada', 'Chidi', 'Dami']];
+        yield 'Has replied: any reply' => [['type' => 'replied'], ['Ada', 'Chidi', 'Dami', 'Funmi']];
         yield 'Hasn’t replied: invited with no reply, never Not yet invited' => [['type' => 'notReplied'], ['Bayo']];
-        yield 'Is coming' => [['type' => 'coming'], ['Ada']];
+        yield 'Is coming' => [['type' => 'coming'], ['Ada', 'Funmi']];
         yield 'Isn’t coming' => [['type' => 'notComing'], ['Chidi']];
         yield 'Not sure yet' => [['type' => 'notSure'], ['Dami']];
-        yield 'Invited' => [['type' => 'invited'], ['Ada', 'Bayo', 'Chidi', 'Dami']];
-        yield 'Not yet invited' => [['type' => 'notInvited'], ['Ebun']];
+        yield 'Invited: any reply, recorded by hand too, never a walk-in' => [['type' => 'invited'], ['Ada', 'Bayo', 'Chidi', 'Dami', 'Funmi']];
+        yield 'Not yet invited: no invitation, no reply, never a walk-in' => [['type' => 'notInvited'], ['Ebun']];
         yield 'Has an email address' => [['type' => 'hasEmail'], ['Ada', 'Bayo', 'Dami', 'Ebun']];
         yield 'Has a mobile number' => [['type' => 'hasMobile'], ['Ada', 'Chidi']];
-        yield 'No group' => [['type' => 'inGroup', 'groupId' => null], ['Chidi', 'Dami', 'Ebun']];
+        yield 'No group' => [['type' => 'inGroup', 'groupId' => null], ['Chidi', 'Dami', 'Ebun', 'Funmi', 'Gbenga']];
     }
 
     /** @param list<string> $names */

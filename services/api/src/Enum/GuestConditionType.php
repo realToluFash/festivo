@@ -18,10 +18,11 @@ enum GuestConditionType: string
     case HasMobile = 'hasMobile';
     case InGroup = 'inGroup';
 
-    /** On `guests g`; `:group` only for InGroup with a group, No group being null. */
+    /** On `guests g`; `:group` only for InGroup with a group, No group being null. Invited and Not yet invited split as GuestStanding does, a walk-in being neither. */
     public function sql(bool $withGroup): string
     {
         $noReply = "(g.reply IS NULL OR g.reply = 'noReply')";
+        $notYetInvited = 'g.invited_at IS NULL AND ' . $noReply;
 
         return match ($this) {
             self::Replied => "g.reply IN ('coming', 'maybe', 'notComing')",
@@ -29,8 +30,8 @@ enum GuestConditionType: string
             self::Coming => "g.reply = 'coming'",
             self::NotComing => "g.reply = 'notComing'",
             self::NotSure => "g.reply = 'maybe'",
-            self::Invited => 'g.invited_at IS NOT NULL',
-            self::NotInvited => 'g.invited_at IS NULL AND ' . $noReply,
+            self::Invited => 'NOT g.walk_in AND NOT (' . $notYetInvited . ')',
+            self::NotInvited => 'NOT g.walk_in AND ' . $notYetInvited,
             self::HasEmail => "COALESCE(g.email, '') <> ''",
             self::HasMobile => "COALESCE(g.mobile, '') <> ''",
             self::InGroup => $withGroup ? 'g.group_id = CAST(:group AS UUID)' : 'g.group_id IS NULL',

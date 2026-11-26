@@ -11,6 +11,7 @@ use App\Enum\GuestConditionType;
 use App\Http\Exception\ApiException;
 use App\Repository\GuestGroupRepository;
 use Psl\Dict;
+use Psl\Iter;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -94,12 +95,22 @@ final readonly class GuestConditions
      */
     public function shown(Event $event, array $conditions): array
     {
+        return Iter\first($this->shownEach($event, [$conditions])) ?? [];
+    }
+
+    /**
+     * @param list<list<Condition>> $lists
+     *
+     * @return list<list<array<string, mixed>>> as shown, with one lookup for every group the lists name
+     */
+    public function shownEach(Event $event, array $lists): array
+    {
         $groups = Dict\from_entries(Vec\map(
-            $this->guestGroupRepository->findEverIn($event, Vec\filter_nulls(Vec\map($conditions, static fn (array $condition): ?string => $condition['groupId'] ?? null))),
+            $this->guestGroupRepository->findEverIn($event, Vec\unique(Vec\filter_nulls(Vec\map(Vec\flatten($lists), static fn (array $condition): ?string => $condition['groupId'] ?? null)))),
             static fn (GuestGroup $group): array => [$group->getId()->toRfc4122(), $group],
         ));
 
-        return Vec\map($conditions, static function (array $condition) use ($groups): array {
+        return Vec\map($lists, static fn (array $conditions): array => Vec\map($conditions, static function (array $condition) use ($groups): array {
             if (GuestConditionType::InGroup->value !== $condition['type']) {
                 return ['type' => $condition['type']];
             }
@@ -111,7 +122,7 @@ final readonly class GuestConditions
                 'groupId' => $condition['groupId'] ?? null,
                 'group' => null === $group ? null : ['name' => $group->getName(), 'deleted' => $group->isDeleted()],
             ];
-        });
+        }));
     }
 
     /** @return array{propertyPath: string, message: string, code: string, parameters: array<string, string>} */

@@ -69,11 +69,14 @@ final readonly class GuestMessageSerialiser
             static fn (array $row): array => [Type\string()->coerce($row['source_id']), $row],
         ));
 
-        return Vec\map($messages, function (GuestMessage $message) use ($counts): array {
+        $shown = $this->guestConditions->shownEach($messages[0]->getEvent(), Vec\map($messages, static fn (GuestMessage $message): array => $message->getConditions() ?? []));
+
+        return Vec\map(Vec\zip($messages, $shown), function (array $pair) use ($counts): array {
+            [$message, $conditions] = $pair;
             $row = $counts[$message->getId()->toRfc4122()] ?? [];
 
             return [
-                ...$this->summary($message),
+                ...$this->summary($message, $conditions),
                 'reached' => Type\int()->coerce($row['reached'] ?? 0),
                 'deliveries' => Type\int()->coerce($row['total'] ?? 0),
                 'sending' => 0 < Type\int()->coerce($row['queued'] ?? 0),
@@ -112,7 +115,7 @@ final readonly class GuestMessageSerialiser
         $reached = Iter\count(Vec\filter($deliveries, static fn (array $delivery): bool => Iter\contains([self::SENT, self::DELIVERED, self::REPORTED_AS_SPAM], $delivery['state'])));
 
         return [
-            ...$this->summary($message),
+            ...$this->summary($message, $this->guestConditions->shown($message->getEvent(), $message->getConditions() ?? [])),
             'message' => $message->getBody(),
             'reached' => $reached,
             'deliveries' => $deliveries,
@@ -120,15 +123,19 @@ final readonly class GuestMessageSerialiser
         ];
     }
 
-    /** @return array<string, mixed> */
-    private function summary(GuestMessage $message): array
+    /**
+     * @param list<array<string, mixed>> $conditions as shown
+     *
+     * @return array<string, mixed>
+     */
+    private function summary(GuestMessage $message, array $conditions): array
     {
         return [
             'id' => $message->getId()->toRfc4122(),
             'subject' => $message->getSubject(),
             'firstLine' => Iter\first(Vec\filter(Vec\map(Str\split($message->getBody(), "\n"), Str\trim(...)), static fn (string $line): bool => '' !== $line)) ?? '',
             'audience' => $message->getAudience(),
-            'conditions' => null === ($conditions = $message->getConditions()) ? null : $this->guestConditions->shown($message->getEvent(), $conditions),
+            'conditions' => null === $message->getConditions() ? null : $conditions,
             'channels' => ['email'],
             'sentBy' => $message->getCreatedByName(),
             'sentAt' => $message->getCreatedAt()->format(DateTimeInterface::ATOM),
