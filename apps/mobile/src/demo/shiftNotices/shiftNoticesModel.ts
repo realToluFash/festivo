@@ -401,7 +401,6 @@ const SAMPLE: readonly Sample[] = [
   },
 ];
 
-/** Seven on the staff of a one-day event on Saturday, Oct 17, as the ShiftNotices boards draw them: five briefed, Chidi not, Amina out of reach; one by SMS and one by WhatsApp. */
 export function shiftPeople(): Person[] {
   return SAMPLE.map((one) => ({
     ...one,
@@ -486,7 +485,6 @@ export interface ShiftStart {
   finished: Finished | null;
   lastSent: { date: string; count: number } | null;
   balance: number;
-  /** Ask an owner's start, and how many owners its sent line names. */
   ask: Ask;
   owners: number;
   overNotice: boolean;
