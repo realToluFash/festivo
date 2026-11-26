@@ -198,7 +198,13 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const draft =
     pane.kind === 'compose' && pane.follows == null
       ? {
-          line: `${audienceWords({ audience: draftTo.kind }, t)} · ${t('eventMessages.notSentYet')}`,
+          line: `${
+            draftTo.kind === 'conditions'
+              ? t('eventMessages.toAudience', {
+                  audience: `${t('eventMessages.guestsWho')} ${conditionsWords(draftTo.conditions, groupsOf(null, []), t)}`,
+                })
+              : audienceWords({ audience: draftTo.kind, conditions: null }, t)
+          } · ${t('eventMessages.notSentYet')}`,
           when: whenWords(now.toISOString()),
         }
       : null;
