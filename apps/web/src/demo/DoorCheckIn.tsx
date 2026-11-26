@@ -7,6 +7,7 @@ import { StaleBand } from '../components/OfflineBand.tsx';
 import { Toast } from '../components/Toast.tsx';
 import { useDialogKeys } from '../dialogFocus.ts';
 import { DOOR_EVENT } from './doorCode.ts';
+import { MyNightAt } from './MyNight.tsx';
 import {
   type CheckInStart,
   type DoorPerson,
@@ -14,20 +15,17 @@ import {
   type Holder,
   type Seating,
   CW,
-  JOB,
   NOW,
   OFFLINE_SINCE,
   OPENS_AT,
   OTHER,
-  SHIFT_NAME,
-  SHIFT_NOW,
-  SHIFT_SIGNED_IN_UNTIL,
   addWalkIn,
   arrive,
   backOf,
   checkInStart,
   checkInStateOf,
   countOf,
+  doorNight,
   holderOf,
   jobOf,
   meOf,
@@ -37,7 +35,6 @@ import {
   seatingOf,
   shownName,
   shownPeople,
-  signedOutTime,
   undo,
 } from './doorCheckIn.ts';
 import { ReplyMark } from './GuestsParts.tsx';
@@ -614,7 +611,7 @@ function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
   );
 }
 
-/** The shift page as far as sc-28230 draws it (CheckIn.dc.html, Reaching it): Check-in under the clock card at Can check guests in, none at Can view. */
+/** The shift page as sc-3915's Your night, with Check-in under the clock card at Can check guests in and none at Can view (sc-28230). Its Sign out stays on this address (pm, 26 Nov, #95183). */
 export function ShiftPage() {
   const [params, setParams] = useSearchParams();
   const view = params.get('level') === 'view';
@@ -629,31 +626,5 @@ export function ShiftPage() {
     setParams({ state: 'not_signed_in' }, { replace: true });
   }
 
-  return (
-    <Page back={null}>
-      <p className="ci-only">{CW.shift.only}</p>
-      <h1 className="ci-title">{CW.shift.hello}</h1>
-      <p className="ci-event">{`${DOOR_EVENT} · ${JOB}`}</p>
-      <div className="ci-card">
-        <p className="ci-label">{CW.shift.yourShift}</p>
-        <p className="ci-name">{CW.shift.times}</p>
-        <p className="ci-here">
-          <Glyph name="tick" size={16} weight={3} />
-          {CW.shift.clocked}
-        </p>
-      </div>
-      {!view && (
-        <Link className="ci-primary" to="/demo/check-in?state=list">
-          {CW.title}
-        </Link>
-      )}
-      <div className="ci-you">
-        <p>{CW.shift.signedInAs(SHIFT_NAME)}</p>
-        <p>{CW.shift.signedOutAt(signedOutTime(SHIFT_SIGNED_IN_UNTIL, SHIFT_NOW))}</p>
-        <button type="button" className="ci-secondary" onClick={signOut}>
-          {CW.shift.signOut}
-        </button>
-      </div>
-    </Page>
-  );
+  return <MyNightAt first={doorNight()} checkIn={!view} onSignOut={signOut} />;
 }

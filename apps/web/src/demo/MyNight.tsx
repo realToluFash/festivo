@@ -19,7 +19,7 @@ import {
   yoursAlone,
 } from './myNight.ts';
 import { useClockCard } from './shiftClock.ts';
-import { SIGNED_OUT_HREF } from './doorCheckIn.ts';
+import { CW, SIGNED_OUT_HREF } from './doorCheckIn.ts';
 import { clockOf } from './doorCode.ts';
 import './doorCheckIn.css';
 import './myNight.css';
@@ -33,10 +33,19 @@ export function MyNight() {
   return <MyNightAt key={state} first={nightOf(state)} />;
 }
 
-function MyNightAt({ first }: { first: Night }) {
+/** The page itself; sc-28230's shift page at /demo/check-in/shift is this page with Check-in, and its own Sign out. */
+export function MyNightAt({
+  first,
+  checkIn = false,
+  onSignOut,
+}: {
+  first: Night;
+  checkIn?: boolean;
+  onSignOut?: () => void;
+}) {
   const [night, setNight] = useState(first);
   const navigate = useNavigate();
-  const signOut = () => void navigate(SIGNED_OUT_HREF);
+  const signOut = onSignOut ?? (() => void navigate(SIGNED_OUT_HREF));
 
   return (
     <main id="content" className="myn">
@@ -94,6 +103,11 @@ function MyNightAt({ first }: { first: Night }) {
                   </h1>
                 </div>
                 <Clock night={night} />
+                {checkIn && (
+                  <Link className="ci-primary myn-check-in" to="/demo/check-in?state=list">
+                    {CW.title}
+                  </Link>
+                )}
                 <Shift night={night} />
                 <YourLead lead={night.lead} />
                 {night.rules != null && (
