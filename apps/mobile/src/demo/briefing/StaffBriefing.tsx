@@ -40,8 +40,10 @@ import {
   noMobileFor,
   noteOf,
   onShift,
+  QUIET_ENDS,
   resultLines,
   sendTo,
+  stoppedFor,
   tallyOf,
 } from './briefingModel.ts';
 
@@ -55,15 +57,27 @@ export interface BriefingParts {
   restart: () => void;
 }
 
-const NO_BRIEF = { brief: 'none', heldText: false, channel: 'sms', briefCopy: null } as const;
+const NO_BRIEF = {
+  brief: 'none',
+  heldText: false,
+  waitText: false,
+  channel: 'sms',
+  briefCopy: null,
+} as const;
 
-type Extra = Pick<Person, 'brief' | 'heldText' | 'channel' | 'briefCopy'>;
+type Extra = Pick<Person, 'brief' | 'heldText' | 'waitText' | 'channel' | 'briefCopy'>;
 
 function extrasOf(people: readonly Person[]): Record<string, Extra> {
   return Object.fromEntries(
     people.map((one) => [
       one.id,
-      { brief: one.brief, heldText: one.heldText, channel: one.channel, briefCopy: one.briefCopy },
+      {
+        brief: one.brief,
+        heldText: one.heldText,
+        waitText: one.waitText,
+        channel: one.channel,
+        briefCopy: one.briefCopy,
+      },
     ]),
   );
 }
@@ -217,7 +231,13 @@ export function useBriefing(
         : target === 'changed'
           ? changed
           : people.filter((one) => one.id === target);
-  const costs = target == null ? null : checkOf(due, noMobileFor(people, target), first.balance);
+  const costs =
+    target == null
+      ? null
+      : checkOf(due, noMobileFor(people, target), first.balance, {
+          stopped: stoppedFor(people, target),
+          quiet: first.quiet,
+        });
   const verb =
     target === 'all'
       ? BW.sendAll(costs?.people ?? 0)
@@ -238,7 +258,13 @@ export function useBriefing(
       const sent = sendTo(people, due, costs);
       commit(sent.people);
       setSide(null);
-      const lines = resultLines(sent.sent, costs.noMobile, sent.held.length);
+      const lines = resultLines(
+        sent.sent,
+        costs.noMobile,
+        sent.held.length,
+        costs.stopped,
+        sent.waits.length,
+      );
       setResult({ lines, held: sent.held });
       say(lines.join(' '));
     }, ISSUE_MS);
@@ -362,7 +388,7 @@ export function useBriefing(
       <>
         {rowActs && (
           <View style={styles.rowActs}>
-            {sends && !one.heldText && (
+            {sends && !one.heldText && !one.waitText && one.stopped !== true && (
               <SecondaryButton
                 label={BW.sendAgain}
                 accessibilityLabel={BW.forBriefing(BW.sendAgain, one.name)}
@@ -977,6 +1003,11 @@ function CheckPanel({
                 <QuietButton label={BW.askOwner} onPress={onAsk} testID="briefing.check.ask" />
               ))}
           </View>
+          {costs.quiet > 0 && (
+            <Text size={15} style={styles.secondary} testID="briefing.check.quiet">
+              {BW.quiet(costs.quiet, QUIET_ENDS)}
+            </Text>
+          )}
           <Text size={14} style={styles.secondary}>
             {BW.usage}
           </Text>

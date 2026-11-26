@@ -1,5 +1,6 @@
 import type { LinkStatus, Trail } from '../staffLink/StaffLinkModel.ts';
 import { type OnRoster, rosterOrder, sampleRoster } from '../staffLink/StaffRosterModel.ts';
+import { TW } from '../staffLink/StaffTextModel.ts';
 
 /** The briefing on the event's Staff page on a tablet (sc-3917, Staffing.dc.html › Tweaks › Briefing, rows two and four), the web's demo rules on the app's roster sample. */
 export type Brief = 'read' | 'sent' | 'none' | 'changed';
@@ -7,6 +8,8 @@ export type Brief = 'read' | 'sent' | 'none' | 'changed';
 export interface Person extends OnRoster {
   brief: Brief;
   heldText: boolean;
+  /** A briefing text waiting for 09:00 in their time (sc-3946's quiet hours): it goes by itself then. */
+  waitText: boolean;
   channel: 'sms' | 'whatsApp';
   briefCopy: { trail: Trail; marked: boolean } | null;
 }
@@ -20,6 +23,7 @@ export const ISSUE_MS = 600;
 export const SAMPLE_LINK = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
 const YOU = 'Amara Nwosu';
 const NOW_AT = '19:12';
+export const QUIET_ENDS = '09:00';
 
 const number = new Intl.NumberFormat('en-GB');
 const n0 = (n: number) => number.format(n);
@@ -45,6 +49,8 @@ export const BW = {
   noMobile: 'No mobile number',
   noShift: 'No shift, so nothing to send',
   held: 'Held: no credits',
+  stopped: TW.stopped,
+  waits: TW.waits,
   copyTitle: 'Copy a person’s link',
   copyLine: 'Everyone with a shift. Copy a link to send it yourself, by any app.',
   copied: 'Link copied.',
@@ -105,6 +111,9 @@ export const BW = {
   tryAgain: 'Try again',
   sentTo: (n: number) => `Sent to ${n0(n)}.`,
   heldCount: (h: number) => `${n0(h)} held: no credits.`,
+  stoppedCount: TW.stoppedCount,
+  waitCount: TW.waitCount,
+  quiet: TW.quiet,
   sendFailed: '[Not sent. Nothing went, and no credits were used. Try again in a moment.]',
   refusedPage: '[You cannot see this event’s staff.]',
   lock: '[You can see the briefing. Sending it needs permission to manage staff.]',
@@ -135,20 +144,23 @@ export function countLine(text: string): { words: string; limit: boolean } | nul
 export function noteOf(one: Person): string | null {
   if (one.shift == null) return BW.noShift;
   if (one.mobile == null) return BW.noMobile;
+  if (one.stopped === true) return BW.stopped;
   if (one.heldText) return BW.held;
+  if (one.waitText) return BW.waits(QUIET_ENDS);
 
   return null;
 }
 
+/** A text is owed nobody whose number stopped texts (sc-3946), and nobody with a text already held (sc-3932) or waiting: that one goes by itself. */
+const textable = (one: Person) =>
+  one.mobile != null && one.stopped !== true && !one.heldText && !one.waitText;
+
 export function dueAll(people: readonly Person[]): Person[] {
-  return people.filter(
-    (one) => one.mobile != null && one.shift != null && one.brief === 'none' && !one.heldText,
-  );
+  return people.filter((one) => textable(one) && one.shift != null && one.brief === 'none');
 }
 
-/** Held people are left out: their text goes by itself once there are credits (sc-3932). */
 export function dueChanged(people: readonly Person[]): Person[] {
-  return people.filter((one) => one.brief === 'changed' && one.mobile != null && !one.heldText);
+  return people.filter((one) => textable(one) && one.brief === 'changed');
 }
 
 export function tallyOf(people: readonly Person[]): Record<Brief, number> {
@@ -183,6 +195,7 @@ export function afterBriefMark(one: Person): Person {
     ...one,
     brief: one.brief === 'read' ? 'read' : 'sent',
     heldText: false,
+    waitText: false,
     status,
     trail: status === 'opened' ? one.trail : trail,
     briefCopy: { trail, marked: true },
@@ -202,6 +215,10 @@ export interface Check {
   after: number;
   smsWaits: number;
   whatsAppWaits: number;
+  /** The paid texts that wait for 09:00, their time; at 0 the wait line is left out. */
+  quiet: number;
+  /** Whose number stopped texts: never texted, and counted in the result only. */
+  stopped: number;
   paid: readonly string[];
 }
 
@@ -220,8 +237,24 @@ export function noMobileFor(people: readonly Person[], target: Target): number {
   return 0;
 }
 
+export function stoppedFor(people: readonly Person[], target: Target): number {
+  const stopped = people.filter(
+    (one) => one.mobile != null && one.stopped === true && !one.heldText && !one.waitText,
+  );
+  if (target === 'all')
+    return stopped.filter((one) => one.shift != null && one.brief === 'none').length;
+  if (target === 'changed') return stopped.filter((one) => one.brief === 'changed').length;
+
+  return 0;
+}
+
 /** A text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
-export function checkOf(due: readonly Person[], noMobile: number, balance: number): Check {
+export function checkOf(
+  due: readonly Person[],
+  noMobile: number,
+  balance: number,
+  at: { stopped?: number; quiet?: boolean } = {},
+): Check {
   let left = balance;
   const paid: Person[] = [];
   for (const one of due) {
@@ -248,6 +281,8 @@ export function checkOf(due: readonly Person[], noMobile: number, balance: numbe
     after: balance - credits,
     smsWaits: by('sms', due).length - by('sms', paid).length,
     whatsAppWaits: by('whatsApp', due).length - by('whatsApp', paid).length,
+    quiet: at.quiet === true ? paid.length : 0,
+    stopped: at.stopped ?? 0,
     paid: paid.map((one) => one.id),
   };
 }
@@ -256,15 +291,20 @@ export function sendTo(
   people: readonly Person[],
   due: readonly Person[],
   check: Check,
-): { people: Person[]; sent: number; held: string[] } {
+): { people: Person[]; sent: number; held: string[]; waits: string[] } {
   const ids = new Set(due.map((one) => one.id));
   const paid = new Set(check.paid);
   const held: string[] = [];
+  const waits: string[] = [];
   const next = people.map((one): Person => {
     if (!ids.has(one.id)) return one;
     if (!paid.has(one.id)) {
       held.push(one.id);
       return { ...one, heldText: true };
+    }
+    if (check.quiet > 0) {
+      waits.push(one.id);
+      return { ...one, waitText: true };
     }
     const opened = one.status === 'opened';
 
@@ -276,14 +316,23 @@ export function sendTo(
     };
   });
 
-  return { people: next, sent: paid.size, held };
+  return { people: next, sent: paid.size - waits.length, held, waits };
 }
 
-export function resultLines(sent: number, noMobile: number, held: number): string[] {
+/** Sent to {n} counts only who was reached, and is left out at 0; a held or waiting person is counted in their own line alone. */
+export function resultLines(
+  sent: number,
+  noMobile: number,
+  held: number,
+  stopped = 0,
+  waits = 0,
+): string[] {
   return [
-    BW.sentTo(sent),
+    ...(sent > 0 ? [BW.sentTo(sent)] : []),
     ...(noMobile > 0 ? [BW.noMobileCount(noMobile)] : []),
+    ...(stopped > 0 ? [BW.stoppedCount(stopped)] : []),
     ...(held > 0 ? [BW.heldCount(held)] : []),
+    ...(waits > 0 ? [BW.waitCount(waits, QUIET_ENDS)] : []),
   ];
 }
 
@@ -304,6 +353,7 @@ export function people(): Person[] {
     brief: BRIEFS[one.id]?.brief ?? 'none',
     channel: BRIEFS[one.id]?.channel ?? 'sms',
     heldText: false,
+    waitText: false,
     briefCopy: null,
   }));
 }
@@ -344,6 +394,8 @@ export interface BriefingStart {
   balance: number;
   billing: boolean;
   sendFails: boolean;
+  /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
+  quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
 }
 
@@ -367,6 +419,7 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'title' | 'what'>
     balance: BALANCE,
     billing: true,
     sendFails: false,
+    quiet: false,
     result: null,
     ...o,
   };
@@ -381,6 +434,17 @@ function afterShortSend(): Person[] {
   const due = dueAll(list);
 
   return sendTo(list, due, checkOf(due, noMobileFor(list, 'all'), 70)).people;
+}
+const stoppedOn = (ids: readonly string[]) => (list: Person[]) =>
+  list.map((one): Person => (ids.includes(one.id) ? { ...one, stopped: true } : one));
+function afterSendAt(list: Person[], quiet: boolean): Person[] {
+  const due = dueAll(list);
+  const check = checkOf(due, noMobileFor(list, 'all'), BALANCE, {
+    stopped: stoppedFor(list, 'all'),
+    quiet,
+  });
+
+  return sendTo(list, due, check).people;
 }
 const allSms = () => people().map((one): Person => ({ ...one, channel: 'sms' }));
 
@@ -594,6 +658,40 @@ const STATES = {
       what: '2 held, each with Copy link, then Mark as sent',
       people: afterShortSend(),
       result: { lines: resultLines(1, 1, 2), held: HELD },
+    }),
+  stoppedRow: () =>
+    start({
+      title: 'Stopped texts',
+      what: 'Tolu and Sade replied STOP: Stopped texts under their state; Sade keeps Copy link, not Send again. Send the briefing to 2',
+      people: stoppedOn(['tolu', 'sade'])(people()),
+    }),
+  waitingRow: () =>
+    start({
+      title: 'A text waits until 09:00',
+      what: 'Amina reads Not sent · Text waits until 09:00, their time; out of Send the briefing to 2',
+      people: people().map((one) => (one.id === 'amina' ? { ...one, waitText: true } : one)),
+    }),
+  checkQuiet: () =>
+    start({
+      title: 'The check at 22:40',
+      what: 'Texts to 3 people wait until 09:00, their time.',
+      side: { kind: 'check', target: 'all' },
+      quiet: true,
+    }),
+  resultStopped: () =>
+    start({
+      title: 'Sent, with stopped texts',
+      what: 'Sent to 2. 1 has no mobile number. 1 has stopped texts.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), false),
+      result: { lines: resultLines(2, 1, 0, 1, 0), held: [] },
+    }),
+  resultWaiting: () =>
+    start({
+      title: 'Sent at 22:40, waiting',
+      what: '1 has no mobile number. 1 has stopped texts. 2 wait until 09:00, their time.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), true),
+      quiet: true,
+      result: { lines: resultLines(0, 1, 0, 1, 2), held: [] },
     }),
   sendFailed: () =>
     start({
