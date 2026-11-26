@@ -17,7 +17,7 @@ import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { daysWords } from '../../../eventsList.ts';
 import { canOn } from '../../../session.ts';
-import { FinalNumbersBlock } from './FinalNumbersBlock.tsx';
+import { DownloadMark, FinalNumbersBlock } from './FinalNumbersBlock.tsx';
 import {
   allergenName,
   allergensOf,
@@ -758,14 +758,6 @@ function StateMark({ kind }: { kind: State }) {
     );
 
   return null;
-}
-
-function DownloadMark() {
-  return (
-    <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-    </svg>
-  );
 }
 
 function PrintMark() {

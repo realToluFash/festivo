@@ -10,6 +10,14 @@ import { dateLocale } from '../../../i18n/index.ts';
 import { dayIn, dayWords } from './courseDefault.ts';
 import { copyLine, dueError, saveSheet, shortDay } from './kitchenSheet.ts';
 
+export function DownloadMark() {
+  return (
+    <svg className="ks-mark is-act" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+    </svg>
+  );
+}
+
 type Giving = 'rest' | 'making' | 'failed';
 
 /** Final numbers beside the kitchen sheet (sc-30812): the due day edited in place, Give final numbers…, then the copies given, newest first. */
@@ -90,6 +98,7 @@ export function FinalNumbersBlock({
               <RowWords title={copyLine(t, copy.recordedAt, copy.by, event.timeZone, locale)} />
             </div>
             <button type="button" className="desk-text ev-maps" onClick={() => download(copy.id)}>
+              <DownloadMark />
               {t('kitchenSheet.copyDownload')}
             </button>
           </li>
