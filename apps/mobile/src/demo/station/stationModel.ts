@@ -108,6 +108,7 @@ export const COURSES: readonly CourseName[] = ['Starter', 'Mains'];
 
 export const ITEMS: readonly Item[] = [
   { name: 'Small chops', course: 'Starter', at: 'fryer' },
+  { name: 'Pepper soup', course: 'Starter', at: null },
   { name: 'Jollof rice', course: 'Mains', at: 'jollof' },
   { name: 'Chicken', course: 'Mains', at: 'grill' },
   { name: 'Moin moin', course: 'Mains', at: null },
@@ -119,6 +120,7 @@ export const ITEMS: readonly Item[] = [
 
 export const DISHES: Readonly<Record<string, readonly string[]>> = {
   'Small chops': ['Small chops'],
+  'Pepper soup': ['Pepper soup'],
   'Jollof rice with chicken': ['Jollof rice', 'Chicken', 'Moin moin', 'Plantain'],
   'Fried rice with grilled fish': ['Fried rice', 'Grilled fish', 'Plantain'],
   'Chef’s choice': ['Chef’s choice'],
@@ -934,6 +936,7 @@ export const STATION_STATES = [
   'undo',
   'marks',
   'pass',
+  'passThree',
   'noCourse',
   'nothingHeading',
   'noItem',
@@ -970,6 +973,10 @@ export const STATION_STATE_WHAT: Record<StationStateName, readonly [string, stri
   undo: ['Undo after a mark', 'Undo for 2 minutes, then gone'],
   marks: ['The waiter’s marks', 'On and Not on on Table 7’s plates, as Funmi marks them'],
   pass: ['The Pass as a station', 'Moin moin and Chef’s choice; every tray here as it starts'],
+  passThree: [
+    'Three left to dish',
+    'The Pass owes Starter · Pepper soup beside Moin moin and Chef’s choice: two to a row on tablet portrait',
+  ],
   noCourse: ['No course fired', 'Each part says so in words'],
   nothingHeading: ['No tray heading here', 'Heading here says so in words'],
   noItem: [
@@ -1045,6 +1052,13 @@ export function seed(name: StationStateName): StationState {
       return waiterMarks(s, 'on');
     case 'pass':
       return { ...s, station: 'pass', you: 'Ronke Alade' };
+    case 'passThree':
+      return {
+        ...s,
+        station: 'pass',
+        you: 'Ronke Alade',
+        waiting: [...s.waiting, plate('Seat 2', 'Pepper soup', {}, { owed: true })],
+      };
     case 'noCourse':
       return { ...s, fired: null, trays: [], held: {} };
     case 'nothingHeading':
