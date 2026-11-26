@@ -73,6 +73,7 @@ export function PhoneEntryStep({
             onChange({ ...entry, named, refused: { ...entry.refused, name: null } })
           }
         />
+        <Says id="rd-name">{nameSaid}</Says>
       </div>
       <div className="rd-group">
         <div className="rd-phone">
@@ -104,6 +105,7 @@ export function PhoneEntryStep({
             }
           />
         </div>
+        <Says id="rd-number">{numberSaid}</Says>
       </div>
       <Primary submit busy={busy}>
         {t('redeem.phone.sendCode')}
@@ -263,7 +265,6 @@ export function PhoneCodeStep<Signed>({
                 label={texted ? t('redeem.phone.codeFromText') : t('redeem.phone.codeFromWhatsApp')}
                 value={digits}
                 said={said}
-                alert={status === 'wrong'}
                 inputRef={fieldRef}
                 code
                 autoComplete="one-time-code"
@@ -274,6 +275,9 @@ export function PhoneCodeStep<Signed>({
                   setLine(null);
                 }}
               />
+              <Says id="rd-phone-code" alert={status === 'wrong'}>
+                {said}
+              </Says>
             </div>
             <Primary submit busy={busy}>
               {busy
@@ -338,7 +342,6 @@ export function Field({
   label,
   value,
   said,
-  alert = false,
   inputRef,
   code = false,
   autoComplete,
@@ -350,7 +353,6 @@ export function Field({
   label: string;
   value: string;
   said: string | null;
-  alert?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   code?: boolean;
   autoComplete: string;
@@ -361,35 +363,47 @@ export function Field({
   const wrong = said != null;
 
   return (
-    <>
-      <div
-        className={['rd-field', wrong && 'is-wrong', value !== '' && 'is-filled']
-          .filter(Boolean)
-          .join(' ')}
-      >
-        <label htmlFor={id} className="rd-label">
-          {label}
-        </label>
-        <input
-          ref={inputRef}
-          id={id}
-          className={code ? 'rd-input is-code' : 'rd-input'}
-          value={value}
-          autoComplete={autoComplete}
-          inputMode={inputMode}
-          maxLength={maxLength}
-          spellCheck={false}
-          aria-invalid={wrong}
-          aria-describedby={wrong ? `${id}-line` : undefined}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-      {said != null && (
-        <p id={`${id}-line`} className="rd-says" role={alert ? 'alert' : undefined}>
-          {said}
-        </p>
-      )}
-    </>
+    <div
+      className={['rd-field', wrong && 'is-wrong', value !== '' && 'is-filled']
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <label htmlFor={id} className="rd-label">
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={id}
+        className={code ? 'rd-input is-code' : 'rd-input'}
+        value={value}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        spellCheck={false}
+        aria-invalid={wrong}
+        aria-describedby={wrong ? `${id}-line` : undefined}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
+/** A field's line, under its group, so a number's sits under the code and the number together. */
+export function Says({
+  id,
+  alert = false,
+  children,
+}: {
+  id: string;
+  alert?: boolean;
+  children: string | null;
+}) {
+  if (children == null) return null;
+
+  return (
+    <p id={`${id}-line`} className="rd-says" role={alert ? 'alert' : undefined}>
+      {children}
+    </p>
   );
 }
 
