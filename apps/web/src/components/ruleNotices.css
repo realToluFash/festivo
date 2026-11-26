@@ -1,0 +1,92 @@
+/* The sign-in rules' notices: the amber box's frame, with a dot, a title, its line and its actions (sc-39471, #87355, #87594). */
+
+.rn-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-radius: var(--radiusInset);
+  overflow-wrap: anywhere;
+}
+
+.rn-box.is-attention {
+  background: var(--colorAttentionTint);
+}
+
+.rn-box.is-quiet {
+  background: var(--colorNeutralFill);
+}
+
+.rn-mark {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin: 5px 3px 0;
+}
+
+.is-attention > .rn-mark {
+  background: var(--colorAttention);
+  transform: rotate(45deg);
+}
+
+.is-quiet > .rn-mark {
+  border-radius: 50%;
+  background: var(--colorInkSecondary);
+}
+
+.rn-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.rn-words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  max-width: 47.5rem;
+}
+
+.rn-words p {
+  margin: 0;
+}
+
+.rn-title {
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.is-attention .rn-title {
+  color: var(--colorAttentionText);
+}
+
+.rn-body {
+  color: var(--colorInk);
+  font: 500 14.5px/1.4 var(--fontFamily);
+}
+
+.rn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXxs) var(--space3xl);
+}
+
+.rn-actions .desk-step {
+  margin-top: 0;
+  text-decoration: none;
+}
+
+/* The Calendar's page has no gap of its own: this stack gives the 18 the Events and Settings columns do (#87445). */
+.rn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+/* The product's offline box keeps its live region while online, so the stack is never empty. */
+.rn-stack:not(:has(.rn-box, .ev-offline, .notice)) {
+  margin-bottom: 0;
+}

@@ -1,0 +1,697 @@
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type AccessibilityRole,
+  type AccessibilityState,
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  StyleSheet,
+  type StyleProp,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+  type ViewInstance,
+} from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
+
+import { addressRuns, atWithItsLastCharacter, isLoneAt } from '../kit/addressBreaks.ts';
+import { Text, type TextProps } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
+import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
+import { TAG_END, TAG_GAP, tagChrome } from '../layout/tagLine.ts';
+import { titleAtWidth, titleWithInkRoom, UNMEASURED_TITLE } from './titleWidth.ts';
+import { useReducedMotion } from '../reducedMotion.ts';
+import { tokens } from '../theme/tokens.ts';
+import { Glyph, type GlyphName } from './Glyph.tsx';
+import { type MarkKind, ShapeMark } from './StatusMark.tsx';
+
+const hidden = {
+  accessibilityElementsHidden: true,
+  importantForAccessibility: 'no-hide-descendants',
+} as const;
+
+export type TagKind = MarkKind | 'now';
+export interface RowTag {
+  kind: TagKind;
+  word: string;
+  turning?: boolean;
+  wraps?: boolean;
+}
+
+const TAGS: Record<TagKind, { fill: string; ink: string; ring?: string }> = {
+  yes: { fill: tokens.colorCard, ink: tokens.colorInk, ring: tokens.colorBorder },
+  notyet: { fill: tokens.colorNeutralFill, ink: tokens.colorInkSecondary },
+  waiting: { fill: tokens.colorAttentionTint, ink: tokens.colorAttentionText },
+  paused: { fill: tokens.colorNeutralFill, ink: tokens.colorInkSecondary },
+  ended: { fill: tokens.colorNeutralFill, ink: tokens.colorInkSecondary },
+  now: { fill: tokens.colorAccentTint, ink: tokens.colorAccentText },
+};
+
+/** A selected row's look: Tint at the row's radius, with no ring. */
+export const SELECTED_ROW = {
+  borderRadius: tokens.radiusRow,
+  backgroundColor: tokens.colorAccentTint,
+} as const;
+
+/** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it and the title wraps at the row's full width (sc-30302). */
+export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
+
+/** A row's line under its title: 1.4 of its size, in whole points, so its last line is never drawn cut on iOS (sc-94081). */
+const ROW_LINE = 1.4;
+
+/** The width of the line a tag sits on: its title row's, the words column of a row (sc-90472). */
+const TagLine = createContext<number | null>(null);
+
+/** A title with its tag beside it, going under it when there is no room. Android keeps the width a title measured before the row narrowed, on a rotation, and drops its last word, so the title is measured afresh whenever the row's width changes (sc-40664). */
+export function TitleBesideTag({
+  title,
+  tag,
+  style,
+}: {
+  title: ReactNode;
+  tag?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const measured = useRef(UNMEASURED_TITLE);
+  const [key, setKey] = useState(UNMEASURED_TITLE.key);
+  const [line, setLine] = useState<number | null>(null);
+  return (
+    <View
+      style={[styles.titleRow, style]}
+      onLayout={(event) => {
+        const { width } = event.nativeEvent.layout;
+        measured.current = titleAtWidth(measured.current, width);
+        setKey(measured.current.key);
+        setLine(width);
+      }}
+    >
+      <Fragment key={key}>{title}</Fragment>
+      <TagLine.Provider value={line}>{tag}</TagLine.Provider>
+    </View>
+  );
+}
+
+/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). `shown` reaches only what ends the name, so nothing it adds sits between the @ and the domain. */
+export function NameText({
+  name,
+  box,
+  shown = (run) => run,
+  accessible,
+  accessibilityRole,
+  ...text
+}: Omit<TextProps, 'children'> & {
+  name: string;
+  box?: StyleProp<ViewStyle>;
+  shown?: (run: string) => string;
+}) {
+  const runs = addressRuns(name);
+  const [atAlone, setAtAlone] = useState(false);
+  if (runs == null)
+    return (
+      <Text {...text} accessible={accessible} accessibilityRole={accessibilityRole}>
+        {shown(name)}
+      </Text>
+    );
+
+  return (
+    <View
+      style={[styles.address, box]}
+      accessible={accessible ?? true}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={name}
+    >
+      <Text
+        {...text}
+        accessible={false}
+        onTextLayout={(event) => {
+          if (isLoneAt(event.nativeEvent.lines.at(-1)?.text ?? '')) setAtAlone(true);
+        }}
+      >
+        {atAlone ? atWithItsLastCharacter(runs[0]) : runs[0]}
+      </Text>
+      <Text {...text} accessible={false}>
+        {shown(runs[1])}
+      </Text>
+    </View>
+  );
+}
+
+const TURN_MS = 900;
+
+/** Something being sent: a 12 pt ring with a quarter turning, still where motion is reduced. */
+export function TurningMark({ side = 12 }: { side?: number }) {
+  const reduced = useReducedMotion();
+  const [turn] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.timing(turn, {
+        toValue: 1,
+        duration: TURN_MS,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+
+    return () => loop.stop();
+  }, [reduced, turn]);
+
+  const rotate = turn.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  return (
+    <Animated.View {...hidden} style={{ width: side, height: side, transform: [{ rotate }] }}>
+      <Svg width={side} height={side} viewBox="0 0 24 24">
+        <Circle cx={12} cy={12} r={9} fill="none" stroke={tokens.colorBorder} strokeWidth={3.4} />
+        <Path
+          d="M12 3a9 9 0 0 1 9 9"
+          fill="none"
+          stroke={tokens.colorInkSecondary}
+          strokeWidth={3.4}
+          strokeLinecap="round"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+const TAG_SIZE = 12.5;
+
+/** Beside a title, only when the state is not the rule: a 12 pt shape and its word on a tint. On a row at the accessibility sizes its words stay whole, stepping down to fit its line, never under 12.5 (sc-90472). */
+export function Tag({
+  kind,
+  word,
+  turning = false,
+  wraps: wrapsAlways = false,
+}: {
+  kind: TagKind;
+  word: string;
+  turning?: boolean | undefined;
+  /** Wraps at every text size, not only at the accessibility sizes, where a tag always wraps rather than be cut (sc-67338). */
+  wraps?: boolean | undefined;
+}) {
+  const look = TAGS[kind];
+  const { fontScale } = useWindowDimensions();
+  const grown = atAccessibilitySizes(fontScale);
+  const wraps = wrapsAlways || grown;
+  const line = useContext(TagLine);
+  const room =
+    line == null
+      ? 0
+      : Math.max(
+          0,
+          line -
+            tagChrome({
+              marks: (turning ? 1 : 0) + (kind === 'now' ? 0 : 1),
+              turning,
+              ringed: look.ring != null,
+            }),
+        );
+
+  return (
+    <View
+      style={[
+        styles.tag,
+        { backgroundColor: look.fill, paddingLeft: kind === 'now' && !turning ? TAG_END : 7 },
+        turning && styles.tagTurning,
+        look.ring != null && { borderWidth: 1, borderColor: look.ring },
+        wraps && styles.tagWraps,
+      ]}
+    >
+      {turning && <TurningMark />}
+      {kind !== 'now' && <ShapeMark kind={kind} ink={look.ink} />}
+      {grown && line != null ? (
+        <CappedWholeWords
+          size={TAG_SIZE}
+          weight="semibold"
+          room={room}
+          breakAfterHyphens
+          style={[styles.tagWords, { color: look.ink }]}
+        >
+          {word}
+        </CappedWholeWords>
+      ) : (
+        <Text
+          size={TAG_SIZE}
+          weight="semibold"
+          numberOfLines={wraps ? undefined : 1}
+          style={{ color: look.ink }}
+        >
+          {word}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const HEAD_SIZE = 18;
+
+export function HeadCount({ text }: { text: string }) {
+  return (
+    <Text size={14.5} weight="medium" style={[styles.secondary, styles.count]}>
+      {text}
+    </Text>
+  );
+}
+
+/** At the accessibility sizes the heading takes its own line, stepping down rather than break a word, never under 18, and what ends its row goes under it (sc-37693). */
+export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
+  const { fontScale } = useWindowDimensions();
+
+  if (atAccessibilitySizes(fontScale)) {
+    return (
+      <View style={[styles.head, styles.headStacked]}>
+        <CappedWholeWords
+          size={HEAD_SIZE}
+          weight="bold"
+          accessibilityRole="header"
+          style={[styles.headTitle, styles.headTitleStacked]}
+        >
+          {title}
+        </CappedWholeWords>
+        {right}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.head}>
+      <Text size={HEAD_SIZE} weight="bold" accessibilityRole="header" style={styles.headTitle}>
+        {title}
+      </Text>
+      {right}
+    </View>
+  );
+}
+
+/** A header, its rows flat on white, and the one line the rows need under them. */
+export function Section({
+  title,
+  right,
+  foot,
+  children,
+}: {
+  title: string;
+  right?: ReactNode;
+  foot?: string | undefined;
+  children: ReactNode;
+}) {
+  return (
+    <View>
+      <SectionHead title={title} right={right} />
+      {children}
+      {foot != null && <SectionFoot foot={foot} />}
+    </View>
+  );
+}
+
+export function SectionFoot({ foot }: { foot: string }) {
+  return (
+    <Text size={14} weight="medium" wholeLines style={[styles.secondary, styles.foot]}>
+      {foot}
+    </Text>
+  );
+}
+
+export interface RowProps {
+  title: string;
+  /** The title may be an address, which breaks after its @ first (sc-70353). */
+  titleMayBeAddress?: boolean;
+  titleLines?: number | undefined;
+  line?: string | undefined;
+  /** Under the title in place of a plain line: a line with its own mark. */
+  below?: ReactNode;
+  lead?: ReactNode;
+  tag?: RowTag | null | undefined;
+  opens?: boolean;
+  value?: string | undefined;
+  trail?: ReactNode;
+  accent?: boolean;
+  off?: boolean;
+  weight?: 'semibold' | 'medium';
+  selected?: boolean;
+  gutter?: number;
+  pad?: number;
+  selectable?: boolean;
+  /** A line under it refuses it: said as a refused field is (sc-30447). */
+  invalid?: boolean;
+  onPress?: (() => void) | undefined;
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
+  accessibilityState?: AccessibilityState;
+  testID?: string | undefined;
+  ref?: Ref<ViewInstance> | undefined;
+}
+
+/** B's one row: a face or an icon, the title with its tag, a line under it, and a chevron when it opens something. */
+export function Row({
+  title,
+  titleMayBeAddress = false,
+  titleLines,
+  line,
+  below,
+  lead,
+  tag,
+  opens = false,
+  value,
+  trail,
+  accent = false,
+  off = false,
+  weight = 'semibold',
+  selected = false,
+  gutter = 0,
+  pad = 11,
+  selectable = false,
+  invalid = false,
+  onPress,
+  accessibilityLabel,
+  accessibilityRole = 'button',
+  accessibilityState,
+  testID,
+  ref,
+}: RowProps) {
+  const pressed = onPress != null;
+  const grouped = pressed || accessibilityLabel != null;
+  const box = [
+    styles.row,
+    {
+      minHeight: line == null && below == null ? 52 : 64,
+      paddingVertical: pad,
+      paddingHorizontal: gutter,
+    },
+    selected && styles.rowSelected,
+  ];
+  const words = (
+    <>
+      {lead}
+      <View style={styles.words}>
+        <TitleBesideTag
+          title={
+            titleMayBeAddress ? (
+              <NameText
+                name={title}
+                box={TITLE_BESIDE_TAG}
+                shown={(run) => titleWithInkRoom(run, Platform.OS, selectable)}
+                size={16}
+                weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              />
+            ) : (
+              <Text
+                size={16}
+                weight={weight}
+                numberOfLines={titleLines}
+                selectable={selectable}
+                accessible={grouped ? false : undefined}
+                style={[styles.title, (accent || selected) && styles.accent, off && styles.off]}
+              >
+                {titleWithInkRoom(title, Platform.OS, selectable)}
+              </Text>
+            )
+          }
+          tag={
+            tag != null && (
+              <Tag kind={tag.kind} word={tag.word} turning={tag.turning} wraps={tag.wraps} />
+            )
+          }
+        />
+        {line != null && (
+          <Text
+            size={14}
+            weight="medium"
+            wholeLines={ROW_LINE}
+            accessible={grouped ? false : undefined}
+            style={styles.secondary}
+          >
+            {line}
+          </Text>
+        )}
+        {below}
+      </View>
+      {value != null && (
+        <Text
+          size={15}
+          weight="medium"
+          accessible={grouped ? false : undefined}
+          style={styles.secondary}
+        >
+          {value}
+        </Text>
+      )}
+      {trail}
+      {opens && (
+        <Glyph
+          name="chevron"
+          size={17}
+          ink={selected ? tokens.colorAccent : tokens.colorInkTertiary}
+          weight={2.3}
+        />
+      )}
+    </>
+  );
+
+  if (!pressed)
+    return (
+      <View
+        ref={ref}
+        style={box}
+        accessible={grouped}
+        accessibilityLabel={accessibilityLabel}
+        testID={testID}
+      >
+        {words}
+      </View>
+    );
+
+  return (
+    <Pressable
+      ref={ref}
+      onPress={onPress}
+      disabled={off}
+      style={({ pressed: down }) => [...box, down && !selected && styles.rowPressed]}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={
+        off
+          ? { ...accessibilityState, disabled: true }
+          : (accessibilityState ?? (selected ? { selected } : undefined))
+      }
+      accessibilityLabel={
+        accessibilityLabel ?? [title, tag?.word, line, value].filter(Boolean).join('. ')
+      }
+      aria-invalid={invalid}
+      testID={testID}
+    >
+      {words}
+    </Pressable>
+  );
+}
+
+export interface ListItem {
+  key: string;
+  row: ReactNode;
+  inset?: number;
+  selected?: boolean;
+}
+
+/** Rows with a hairline between them that starts where the text starts, and none beside a selected row. */
+export function RowList({ items, gutter = 0 }: { items: readonly ListItem[]; gutter?: number }) {
+  return (
+    <View>
+      {items.map((item, index) => {
+        const before = items[index - 1];
+        const rule = before != null && before.selected !== true && item.selected !== true;
+
+        return (
+          <View key={item.key}>
+            {rule && <RowRule inset={(item.inset ?? 0) + gutter} />}
+            {item.row}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** The hairline between two rows, starting where the text starts. */
+export function RowRule({ inset }: { inset: number }) {
+  return <View style={[styles.hairline, { marginLeft: inset }]} />;
+}
+
+/** B's action: Violet text, or red for anything that removes, with what it does on the line under it; `plain` is Ink, as Manage's Duplicate and Pause; `wraps` shows a long label whole, on as many lines as it needs. */
+export function TextAction({
+  label,
+  onPress,
+  removes = false,
+  plain = false,
+  off = false,
+  figures = false,
+  onFill = false,
+  glyph,
+  renderMark,
+  after,
+  wraps = false,
+  drawnAt,
+  consequence,
+  accessibilityLabel,
+  maxFontSizeMultiplier,
+  testID,
+  ref,
+}: {
+  label: string;
+  onPress: () => void;
+  removes?: boolean;
+  plain?: boolean;
+  off?: boolean;
+  figures?: boolean;
+  onFill?: boolean;
+  glyph?: GlyphName;
+  renderMark?: (ink: string) => ReactNode;
+  after?: GlyphName;
+  wraps?: boolean;
+  /** The label's size already grown to the text size by the caller, drawn as it is (sc-75214). */
+  drawnAt?: number | undefined;
+  consequence?: string;
+  accessibilityLabel?: string;
+  /** Set by a caller that steps its labels down to keep each word whole (sc-13496). */
+  maxFontSizeMultiplier?: number | undefined;
+  testID?: string | undefined;
+  ref?: Ref<ViewInstance> | undefined;
+}) {
+  const ink = off
+    ? tokens.colorInkTertiary
+    : onFill
+      ? tokens.colorInkOnDark
+      : removes
+        ? tokens.colorBroken
+        : plain
+          ? tokens.colorInk
+          : tokens.colorAccentText;
+  const action = (
+    <Pressable
+      ref={ref}
+      onPress={off ? undefined : onPress}
+      disabled={off}
+      style={({ pressed }) => [styles.action, wraps && styles.wraps, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityState={off ? { disabled: true } : undefined}
+      accessibilityLabel={accessibilityLabel ?? label}
+      testID={testID}
+    >
+      {glyph != null && <Glyph name={glyph} size={17} ink={ink} weight={2.3} />}
+      {renderMark?.(ink)}
+      <Text
+        size={drawnAt ?? 15}
+        weight="semibold"
+        accessible={false}
+        allowFontScaling={drawnAt == null}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
+        style={[
+          { color: ink },
+          figures && styles.figures,
+          onFill && styles.onFill,
+          wraps && styles.wrapsLabel,
+          drawnAt != null && { lineHeight: Math.ceil(drawnAt * LABEL_LINE) },
+        ]}
+      >
+        {label}
+      </Text>
+      {after != null && <Glyph name={after} size={16} ink={ink} weight={2.4} />}
+    </Pressable>
+  );
+
+  if (consequence == null) return action;
+
+  return (
+    <View>
+      {action}
+      <Text size={14} weight="medium" style={[styles.secondary, styles.consequence]}>
+        {consequence}
+      </Text>
+    </View>
+  );
+}
+
+/** A line of words between the blocks, in Ink 2 unless it is the page's own say. */
+export function Line({
+  text,
+  quiet = true,
+  size = 15,
+}: {
+  text: string;
+  quiet?: boolean;
+  size?: number;
+}) {
+  return (
+    <Text size={size} weight="medium" style={quiet ? styles.secondary : undefined}>
+      {text}
+    </Text>
+  );
+}
+
+const styles = StyleSheet.create({
+  secondary: { color: tokens.colorInkSecondary },
+  accent: { color: tokens.colorAccentText },
+  off: { color: tokens.colorInkTertiary },
+  pressed: { opacity: tokens.opacityPressed },
+  onFill: { textDecorationLine: 'underline' },
+  tag: {
+    minHeight: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexShrink: 0,
+    gap: TAG_GAP,
+    paddingRight: TAG_END,
+    borderRadius: 12,
+  },
+  tagWords: { flexShrink: 1 },
+  tagTurning: { gap: tokens.spaceXs },
+  tagWraps: { flexShrink: 1 },
+  head: { minHeight: tokens.sizeHit, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headTitle: { flex: 1, minWidth: 0, letterSpacing: -0.18, lineHeight: HEAD_SIZE * 1.25 },
+  headStacked: { flexDirection: 'column', alignItems: 'flex-start' },
+  headTitleStacked: { flex: 0, alignSelf: 'stretch' },
+  foot: { paddingTop: tokens.spaceXs },
+  row: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  // Lit like People's row, with no ring: the owner found the ring weird (6 Nov 2026).
+  rowSelected: SELECTED_ROW,
+  rowPressed: { opacity: tokens.opacityPressed },
+  words: { flex: 1, minWidth: 0, gap: 3 },
+  titleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 8,
+    rowGap: 4,
+  },
+  title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
+  address: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
+  consequence: { lineHeight: 14 * 1.45 },
+  count: { fontVariant: ['tabular-nums'] },
+  hairline: { height: 1, backgroundColor: tokens.colorBorder },
+  figures: { fontVariant: ['tabular-nums'] },
+  action: {
+    minHeight: tokens.sizeHit,
+    minWidth: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+  },
+  wraps: { maxWidth: '100%', paddingVertical: 11 },
+  wrapsLabel: { flexShrink: 1, lineHeight: 22 },
+});

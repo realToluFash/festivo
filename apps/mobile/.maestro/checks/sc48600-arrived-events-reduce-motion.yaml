@@ -1,0 +1,25 @@
+# sc-48600 (PR #2629): Events after arriving, then 10 s later and after a scroll, and again by its tab. Run with Reduce Motion on (Settings > Accessibility > Motion), which showed Events blank in #59167. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: events-4s
+- swipe:
+    direction: DOWN
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'never.there'
+    timeout: 8000
+    optional: true
+- takeScreenshot: events-later
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn:
+    id: 'tab-events|frame.events'
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: events-by-tab

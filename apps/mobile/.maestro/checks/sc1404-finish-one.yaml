@@ -1,0 +1,10 @@
+# sc-1404: with two items under way on a phone, finish the first from the one Now card; the other stays on Now.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/run
+- extendedWaitUntil: { visible: { text: 'Finish' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn: { text: 'Finish', index: 0 }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 4000, optional: true }
+- takeScreenshot: after

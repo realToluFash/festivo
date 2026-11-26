@@ -1,0 +1,260 @@
+# A deployed environment: one server, one compose project, TLS at the proxy.
+#
+# Run only through deploy/deploy.sh, which reads deploy/.env (never committed),
+# runs the pre-flight and the migrations first, and names the commit it deploys.
+# The images are built on the server from the checked-out commit, so what runs is
+# exactly that commit.
+
+name: soirely
+
+x-api-environment: &api-environment
+  APP_ENV: prod
+  LOCALES_FILE: /locales.json
+  EVENT_STATES_FILE: /event-states.json
+  QUIET_HOURS_FILE: /quiet-hours.json
+  GUEST_LANGUAGE_FILE: /guest-language.json
+  REDIS_HOST: redis
+  REDIS_PORT_INTERNAL: 6379
+  DEFAULT_URI: https://${API_HOST}
+  MERCURE_PUBLISH_URL: http://mercure/.well-known/mercure
+  MERCURE_PUBLIC_URL: https://${API_HOST}/.well-known/mercure
+  CORS_WEB_ORIGIN: https://${APP_HOST}
+  WEBAUTHN_RP_ID: ${RP_HOST:-${APP_HOST}}
+  # The proxy's own address, so the client address it forwards is believed from it
+  # alone: the mail webhook's IP ranges are checked against it (sc-4332).
+  SYMFONY_TRUSTED_PROXIES: 172.30.0.2
+  SERVER_NAME: ':80'
+
+x-api-volumes: &api-volumes
+  - ../locales.json:/locales.json:ro
+  - ../event-states.json:/event-states.json:ro
+  - ../quiet-hours.json:/quiet-hours.json:ro
+  - ../guest-language.json:/guest-language.json:ro
+  - ./secrets/jwt:/app/config/jwt:ro
+
+# The JSON lines on stderr are what the log shipper reads; capped so they cannot fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 50m
+    max-file: '5'
+
+services:
+  proxy:
+    image: caddy:2.10.2-alpine
+    environment:
+      APP_HOST: ${APP_HOST:?}
+      API_HOST: ${API_HOST:?}
+      RP_HOST: ${RP_HOST:-}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        ipv4_address: 172.30.0.2
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17.11-alpine3.24
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    logging: *logging
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.11-alpine3.21
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?}
+    command: ['sh', '-c', 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+    restart: unless-stopped
+
+  mercure:
+    image: dunglas/mercure:v0.16.3
+    environment:
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:?}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:?}
+      # History capped as on the local stack: the service heartbeat (sc-4028) adds six updates a minute per live event.
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db?size=1000
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins https://${APP_HOST}
+        subscriptions
+        heartbeat 15s
+      SERVER_NAME: ':80'
+    volumes:
+      - mercure-data:/data
+      - mercure-config:/config
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/healthz']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    logging: *logging
+    restart: unless-stopped
+
+  api:
+    build: &api-build
+      context: ../services/api
+      target: prod
+    image: soirely-api:${DEPLOY_SHA:?}
+    env_file: ${DEPLOY_ENV_FILE:-.env}
+    environment: *api-environment
+    volumes: *api-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', '-o', '/dev/null', 'http://localhost/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    logging: *logging
+    restart: unless-stopped
+
+  notification-worker:
+    image: soirely-api:${DEPLOY_SHA:?}
+    env_file: ${DEPLOY_ENV_FILE:-.env}
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        rm -f /app/var/notifications-worker.heartbeat;
+        exec php bin/console app:notifications:work --time-limit=3600 --memory-limit=128
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          test $$(( $$(date +%s) - $$(stat -c %Y /app/var/notifications-worker.heartbeat) )) -lt 30
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    logging: *logging
+    restart: unless-stopped
+
+  # Every line of services/api/config/crontab, the alerting checks among them.
+  scheduler:
+    image: soirely-api:${DEPLOY_SHA:?}
+    env_file: ${DEPLOY_ENV_FILE:-.env}
+    environment: *api-environment
+    volumes: *api-volumes
+    command: ['supercronic', '-json', '/app/config/crontab']
+    # The FrankenPHP image's own check probes :2019, which supercronic never opens.
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+
+  # The nightly backup and its 06:00 check (deploy/backup/crontab). Its own env file
+  # holds the bucket's write-only credentials, which no other container is given.
+  backup:
+    build:
+      context: ./backup
+    image: soirely-backup:${DEPLOY_SHA:?}
+    env_file: ${BACKUP_ENV_FILE:-backup.env}
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: ${POSTGRES_DB:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      target: serve
+    image: soirely-web:${DEPLOY_SHA:?}
+    environment:
+      SOIRELY_API_URL: https://${API_HOST}
+      SOIRELY_MERCURE_URL: https://${API_HOST}/.well-known/mercure
+      SOIRELY_STORAGE_URL: ${STORAGE_PUBLIC_ENDPOINT:?}
+      SOIRELY_ENVIRONMENT: prod
+      SOIRELY_GOOGLE_AUTHORIZE_URL: https://accounts.google.com/o/oauth2/v2/auth
+      SOIRELY_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_WEB_CLIENT_ID:?}
+      SOIRELY_APPLE_AUTHORIZE_URL: https://appleid.apple.com/auth/authorize
+      SOIRELY_APPLE_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:?}
+      SOIRELY_SCHEME: ${SOIRELY_SCHEME:-}
+      SOIRELY_SUPPORT_EMAIL: ${SUPPORT_EMAIL:?}
+      SOIRELY_ANDROID_CERT_SHA256: ${SOIRELY_ANDROID_CERT_SHA256:-}
+      SOIRELY_ANDROID_PACKAGE: ${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}
+      SOIRELY_APPLE_APP_ID: ${SOIRELY_APPLE_APP_ID:-}
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/config.json | grep -q apiBaseUrl']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging: *logging
+    restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          # Containers given no address draw from here, so none can take the proxy's.
+          ip_range: 172.30.0.128/25
+
+volumes:
+  postgres-data:
+  redis-data:
+  mercure-data:
+  mercure-config:
+  caddy-data:
+  caddy-config:

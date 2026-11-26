@@ -1,0 +1,41 @@
+# sc-34213: after saving Oluwafolakemi Bello on Your account, an incoming deep link to /demo/settings/account while still on that page starts again from Folake Adeyemi and FA on the page's card, the Name row, the list's card and the sidebar's foot. Needs ${METRO_URL} and ${ORIENT} (PORTRAIT on a phone).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+- extendedWaitUntil:
+    visible:
+      id: 'account.name.field'
+    timeout: 10000
+- eraseText: 120
+- inputText: 'Oluwafolakemi Bello'
+- tapOn:
+    id: 'account.name.save'
+- extendedWaitUntil:
+    notVisible:
+      id: 'account.name.screen'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: 'OB'
+- takeScreenshot: saved-ob
+- openLink: ${METRO_URL}/--/demo/settings/account
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 10000
+- takeScreenshot: after-deep-link-same
+- assertVisible: 'FA'
+- assertNotVisible: 'OB'
+- assertNotVisible: 'Oluwafolakemi Bello'
+- assertNotVisible: '.*Oluwafolakemi.*'

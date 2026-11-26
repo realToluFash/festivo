@@ -1,0 +1,45 @@
+# sc-80863: the app's Design demo for an event link, five states.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?link=moved
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: moved
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?link=loading
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: loading
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?link=failed
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: failed
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?link=unavailable
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: unavailable
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?link=same
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      id: 'sc80863.never'
+    timeout: 5000
+    optional: true
+- takeScreenshot: same

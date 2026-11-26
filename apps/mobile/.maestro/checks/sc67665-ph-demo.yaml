@@ -1,0 +1,10 @@
+# sc-67665: on the phone, the People demo is unchanged: ‹ Overview with the bell over the title from the event, its own page at /demo/people.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4
+- extendedWaitUntil: { visible: '.*Overview.*', timeout: 30000 }
+- scrollUntilVisible:
+    { element: { id: 'overview.people.open' }, centerElement: true, timeout: 20000 }
+- tapOn: { id: 'overview.people.open' }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: ph-card-people

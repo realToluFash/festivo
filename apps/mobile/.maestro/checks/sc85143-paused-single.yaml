@@ -1,0 +1,28 @@
+# sc-85143: suspended from their only organisation, the paused card reads the single-events line, not the other-organisations one, on Today, Events, Calendar and Settings. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:accessPaused.badge}}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:accessPaused.untouchedSingleEvents}}'
+- assertNotVisible: '{{t:accessPaused.untouched}}'
+- takeScreenshot: paused-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:accessPaused.untouchedSingleEvents}}'
+- takeScreenshot: paused-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:accessPaused.untouchedSingleEvents}}'
+- takeScreenshot: paused-calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:accessPaused.untouchedSingleEvents}}'
+- takeScreenshot: paused-settings

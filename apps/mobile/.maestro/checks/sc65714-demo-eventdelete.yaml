@@ -1,0 +1,16 @@
+# sc-65714: the app demo's event Delete sheet with the restore window, for the side-by-side pair beside the product. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/events/evt-wed-4?state=delete
+- extendedWaitUntil:
+    {
+      visible: '.*(Members|Settings|Sign-in rules|Organisation|Delete|Paused|paused).*',
+      timeout: 30000,
+    }
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: demo-eventdelete-top
+- swipe:
+    start: 50%, 80%
+    end: 50%, 30%
+- waitForAnimationToEnd
+- takeScreenshot: demo-eventdelete-foot

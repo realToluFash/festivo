@@ -1,0 +1,22 @@
+# The bell's feed left open, for a live rewrite to be watched from outside (sc-21643).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible:
+      id: frame.bell
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- openLink: ${METRO_URL}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: notifications.markAllRead
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: notifications.pushAsk.notNow
+    commands:
+      - tapOn:
+          id: notifications.pushAsk.notNow
+- takeScreenshot: bell-open

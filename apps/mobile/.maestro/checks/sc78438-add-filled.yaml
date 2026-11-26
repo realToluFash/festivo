@@ -1,0 +1,67 @@
+# Settings > Account > Add a phone number at the current text size, left open with Royaume-Uni and a number, for the accessibility order. sc-78438.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: 'account.phone.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add.country'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: add-open
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country'
+- waitForAnimationToEnd
+- takeScreenshot: add-list-open
+- tapOn:
+    id: 'account.phone.add.country.search'
+- inputText: '+44'
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.country.GB'
+    timeout: 15000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.country.GB'
+- waitForAnimationToEnd
+- takeScreenshot: add-gb
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.number'
+    direction: DOWN
+    centerElement: true
+    timeout: 25000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add.number'
+    direction: UP
+    centerElement: true
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: 'account.phone.add.number'
+- eraseText: 60
+- inputText: '7400123456'
+- waitForAnimationToEnd
+- takeScreenshot: add-filled

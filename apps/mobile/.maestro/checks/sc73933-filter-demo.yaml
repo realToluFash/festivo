@@ -1,0 +1,27 @@
+# sc-73933: the demo's Filter menu at the device's text size, in English and French, with nothing, two types and the long host chosen.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=none
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-en-none
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=twoTypes
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-en-twoTypes
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=en&picks=longHost
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-en-longHost
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=none
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-fr-none
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=twoTypes
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-fr-twoTypes
+- openLink: ${METRO_URL}/--/demo/filter-size?lang=fr&picks=longHost
+- extendedWaitUntil: { visible: { id: 'demo.filterSize.menu' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: d-fr-longHost

@@ -1,0 +1,39 @@
+# sc-23267: Create an organisation in its states, on an account already at its limit: opened, the keyboard up, a name over 100, and Too many new organisations for now. with its time.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-create-organisation.yaml
+- takeScreenshot: create-open
+- tapOn:
+    id: 'createWalk.name'
+- takeScreenshot: create-keyboard-up
+- inputText: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: '(?:That name is 114 characters|Ese nombre tiene 114 caracteres|Ce nom compte 114 caractères|Este nome tem 114 caracteres).*'
+- takeScreenshot: create-over-100
+- eraseText: 150
+- inputText: 'Limit Org'
+- tapOn:
+    id: 'createWalk.primary'
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'Portugal'
+- tapOn:
+    id: 'createWalk.country.PT'
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.readyTitle}}'
+    timeout: 10000
+- tapOn:
+    id: 'createWalk.primary'
+- extendedWaitUntil:
+    visible: '{{t:createOrganisation.limitedTitle}}'
+    timeout: 20000
+- takeScreenshot: create-limited

@@ -1,0 +1,739 @@
+/* The organisation's Menu library at a desk (sc-3901), as the web demo's Menu library draws it (apps/web/src/demo/menuLibrary.css and the panel rules of demo/menu.css). */
+
+.mn-quiet {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mn-lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mn-lock svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.mn-split {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceXl);
+  min-height: 0;
+}
+
+.mn-eyebrow {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 12px/1.4 var(--fontFamily);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mn-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.mn-ask p {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.mn-ask-acts,
+.mn-panel-acts {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin-left: auto;
+}
+
+.mn-icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.mn-hint {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 6;
+  display: none;
+  padding: var(--spaceXxs) var(--spaceSm);
+  border: 1px solid var(--colorControlBorder);
+  border-radius: var(--radiusSmall);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 13px/1.3 var(--fontFamily);
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgb(20 22 28 / 14%);
+  transform: translateX(-50%);
+}
+
+.mn-icon:last-child > .mn-hint {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+.mn-hint::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 8px;
+  content: '';
+}
+
+.mn-icon:hover > .mn-hint,
+.mn-icon.is-held > .mn-hint,
+.mn-icon-button:focus-visible + .mn-hint {
+  display: block;
+}
+
+.mn-icon.is-held > .mn-icon-button {
+  background: var(--colorInset);
+}
+
+.mn-icon.is-dismissed > .mn-hint {
+  display: none;
+}
+
+.mn-panel {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 400px;
+  max-height: calc(100vh - 140px);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+}
+
+.mn-panel-top {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-bottom: 1px solid var(--colorInsetBorder);
+}
+
+.mn-panel-names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.mn-panel h2 {
+  margin: 0;
+  font: 700 20px/1.3 var(--fontFamily);
+}
+
+.mn-panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-height: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  overflow-y: auto;
+}
+
+.mn-panel-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.mn-failed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.mn-failed > svg {
+  flex: none;
+}
+
+.lib-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-height: 0;
+}
+
+.lib-top-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  margin-left: auto;
+}
+
+.lib-add {
+  gap: var(--spaceXs);
+}
+
+.lib-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.lib-sub {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.lib-said {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorAccentText);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.lib-said.is-failed {
+  color: var(--colorBrokenText);
+}
+
+.lib-said:focus {
+  outline: none;
+}
+
+.lib-said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.lib-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+.lib-tabs {
+  display: flex;
+  gap: var(--spaceXs);
+  border-bottom: 1px solid var(--colorInsetBorder);
+}
+
+.lib-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border-bottom: 2px solid transparent;
+  color: var(--colorInkSecondary);
+  font: 600 15px/1 var(--fontFamily);
+}
+
+.lib-tab.is-on {
+  border-bottom-color: var(--colorAccent);
+  color: var(--colorInk);
+}
+
+.lib-tab-count {
+  padding: 2px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  font: 600 12px/1.3 var(--fontFamily);
+}
+
+.lib-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.lib-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.lib-search {
+  flex: none;
+  max-width: 420px;
+}
+
+.lib-diets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+.lib-diets-label {
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.lib-count-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+}
+
+.lib-count {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.lib-none,
+.lib-nomatch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+  margin: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.lib-nomatch p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.lib-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardDesktop);
+  background: var(--colorCard);
+  list-style: none;
+}
+
+.lib-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.lib-row:first-child {
+  border-top: 0;
+}
+
+.lib-row.is-lit {
+  background: var(--colorAccentTint);
+}
+
+.lib-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceLg);
+}
+
+.lib-cols {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spaceSm) var(--spaceLg);
+  min-width: 0;
+}
+
+.lib-split.is-docked .lib-cols {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lib-col-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.lib-col-name h3 {
+  margin: 0;
+  font: 700 16px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.lib-used {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.3 var(--fontFamily);
+}
+
+.lib-contains {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 14px/1.45 var(--fontFamily);
+}
+
+.lib-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--colorBroken);
+  border-radius: 50%;
+  color: var(--colorBroken);
+  font: 800 12px/1 var(--fontFamily);
+}
+
+.lib-contains.is-none .lib-mark {
+  border-color: var(--colorInkTertiary);
+  color: var(--colorInkSecondary);
+}
+
+.lib-contains.is-none {
+  color: var(--colorInkSecondary);
+}
+
+.lib-contains.is-unknown {
+  color: var(--colorAttentionText);
+}
+
+.lib-contains.is-unknown .lib-mark {
+  border-style: dashed;
+  border-color: var(--colorAttention);
+  color: var(--colorAttentionText);
+}
+
+.lib-not-stated {
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 1px dashed var(--colorAttentionBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorAttentionTint);
+  font-weight: 400;
+}
+
+.lib-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-tag {
+  padding: 3px var(--spaceSm);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 600 12.5px/1.3 var(--fontFamily);
+}
+
+.lib-acts {
+  display: flex;
+  flex: none;
+  gap: var(--spaceXs);
+}
+
+.lib-act {
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+}
+
+.lib-panel {
+  width: 420px;
+}
+
+.lib-panel .mn-panel-body {
+  overflow-y: auto;
+}
+
+.lib-counter {
+  margin: var(--spaceXxs) 0 0;
+  color: var(--colorInkSecondary);
+  font: 400 13px/1.3 var(--fontFamily);
+  text-align: right;
+}
+
+.lib-counter.is-over {
+  color: var(--colorBrokenText);
+  font-weight: 600;
+}
+
+.lib-area textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 0;
+  background: transparent;
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+.lib-area textarea:focus {
+  outline: none;
+}
+
+.lib-set {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lib-set legend {
+  margin-bottom: var(--spaceXs);
+  padding: 0;
+}
+
+.lib-ticks {
+  display: flex;
+  flex-direction: column;
+}
+
+.lib-tick {
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  font: 400 15px/1.3 var(--fontFamily);
+}
+
+.lib-none-tick {
+  margin-top: var(--spaceXs);
+  padding-top: var(--spaceXs);
+  border-top: 1px solid var(--colorInsetBorder);
+  font-weight: 600;
+}
+
+.lib-tick input[aria-invalid='true'] {
+  outline: 2px solid var(--colorBroken);
+  outline-offset: 2px;
+}
+
+.lib-clashes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.lib-price {
+  display: flex;
+  gap: var(--spaceSm);
+}
+
+.lib-currency {
+  flex: none;
+  min-width: 112px;
+}
+
+.lib-currency select {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+.lib-amount {
+  flex: 1;
+  min-width: 0;
+}
+
+.lib-own-copy {
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceMd);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 400 14px/1.45 var(--fontFamily);
+}
+
+.lib-ask {
+  margin: 0;
+}
+
+.lib-ask p {
+  font-weight: 600;
+}
+
+.lib-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.lib-loading-words {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 600 14px/1.3 var(--fontFamily);
+}
+
+.lib-bone {
+  height: 72px;
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.lib-empty {
+  min-height: 0;
+  gap: var(--spaceMd);
+  align-items: flex-start;
+  padding: var(--spaceXl);
+}
+
+.lib-empty h2,
+.lib-empty p {
+  margin: 0;
+}
+
+.lib-empty h2 {
+  font: 700 20px/1.3 var(--fontFamily);
+}
+
+.lib-empty p {
+  color: var(--colorInkOnDark);
+  font: 400 15px/1.45 var(--fontFamily);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lib-panel {
+    animation: lib-fade 160ms ease-out;
+  }
+}
+
+@keyframes lib-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* At 400% zoom (320 CSS px) the desk reflows into one column, and an open form comes before the list (WCAG 2.2 1.4.10, sc-3901 Decided 15 Nov). From 641 px the sidebar stays beside the page, as on every desk page (sc-60699). */
+@media (width <= 40rem) {
+  .today.desk:has(.lib-page) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .today.desk:has(.lib-page) .today-side {
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .today.desk:has(.lib-page) .desk-main {
+    margin: 0 var(--spaceMd) var(--spaceMd);
+    overflow: visible;
+  }
+
+  .lib-page.desk-page {
+    padding: var(--spaceXl) var(--spaceLg) var(--space3xl);
+    overflow: visible;
+  }
+
+  .lib-page .desk-row,
+  .lib-top-acts,
+  .lib-price {
+    flex-wrap: wrap;
+  }
+
+  .lib-split.is-docked {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lib-split.is-docked .lib-panel {
+    position: static;
+    order: -1;
+    width: auto;
+    max-height: none;
+  }
+
+  .lib-split.is-docked .lib-panel .mn-panel-body {
+    overflow: visible;
+  }
+
+  .lib-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lib-search {
+    max-width: none;
+  }
+
+  .lib-amount {
+    flex: 1 1 8rem;
+  }
+
+  .lib-page .desk-top {
+    flex-wrap: wrap;
+    row-gap: var(--spaceMd);
+  }
+
+  .lib-page .desk-title {
+    flex: 1 0 100%;
+    overflow-wrap: normal;
+  }
+
+  .lib-top-acts {
+    margin-left: 0;
+  }
+}
+
+@media (width <= 30rem) {
+  .lib-acts {
+    flex-direction: column;
+  }
+}
+
+.mn-ask p:focus {
+  outline: none;
+}
+
+.mn-panel h2:focus {
+  outline: none;
+}
+
+.mn-failed:focus {
+  outline: none;
+}

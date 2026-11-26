@@ -1,0 +1,43 @@
+# Android only. sc-25667: while Create is held, Android back does nothing; once the API is back the walk closes into the new organisation with Now working in it.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- runFlow: ../open-create-organisation.yaml
+- runFlow:
+    file: ../walk-to-ready.yaml
+    env:
+      NAME: 'Held Back'
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=paused
+- tapOn:
+    id: 'createWalk.primary'
+- tapOn:
+    id: 'createWalk.primary'
+- takeScreenshot: held-creating
+- assertVisible: '{{t:createOrganisation.creating}}'
+- assertNotVisible:
+    id: 'createWalk.cancel'
+- back
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: 'createWalk'
+- takeScreenshot: held-after-back
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- extendedWaitUntil:
+    notVisible:
+      id: 'createWalk'
+    timeout: 30000
+- extendedWaitUntil:
+    visible: '{{t:switcher.switched}}'
+    timeout: 20000
+- takeScreenshot: held-created-home

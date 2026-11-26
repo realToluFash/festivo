@@ -1,0 +1,33 @@
+# sc-83008: on a phone, an event opened from an audit log entry's own screen: ‹ Entry, back to the entry, whose ‹ reads Audit log.
+# Needs: a phone, and an entry for Lagos Night in Adire Studio's audit log.
+appId: host.exp.Exponent
+---
+- runFlow: sc83008-to-adire.yaml
+- openLink: ${METRO_URL}/--/settings/data-and-control/audit-log
+- extendedWaitUntil:
+    visible: '.*Lagos Night.*'
+    timeout: 30000
+- takeScreenshot: log
+- tapOn: '.*Lagos Night.*'
+- waitForAnimationToEnd
+- takeScreenshot: entry
+- tapOn:
+    id: 'audit.detail.on'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: event
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Entry.*'
+- tapOn:
+    id: 'frame.back'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'audit.detail.on'
+- takeScreenshot: back-entry
+- assertVisible:
+    id: 'frame.back'
+    text: '.*Audit log.*'

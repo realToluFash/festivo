@@ -1,0 +1,19 @@
+# sc-89879: the suspended ${MEMBER}'s screen carries membersScreen.suspendedBody.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.card'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'members.row.${MEMBER}'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'members.row.${MEMBER}'
+- waitForAnimationToEnd
+- assertVisible:
+    id: 'members.restore'
+- takeScreenshot: member-suspended

@@ -1,0 +1,54 @@
+/* A person's own link (sc-3912), with the guest page's rules: 390 px first, 17 px text, one centred column on wider screens. */
+.wl {
+  min-height: 100vh;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 500 17px/1.45 var(--fontFamily);
+}
+
+:where(.wl) :is(h1, p) {
+  margin: 0;
+}
+
+.wl-bar {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 var(--spaceXl);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.wl-brand {
+  margin-left: auto;
+}
+
+.wl-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spaceXxl) var(--spaceXl) 48px;
+}
+
+.wl-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.wl-title {
+  font: 700 28px/1.2 var(--fontFamily);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.wl-foot {
+  color: var(--colorInkSecondary);
+}

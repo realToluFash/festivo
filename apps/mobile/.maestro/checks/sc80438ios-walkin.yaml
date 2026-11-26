@@ -1,0 +1,15 @@
+# sc-80438: the walk-in sheet's title, field and long button, with and without the keyboard.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV_OPEN}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: door
+- tapOn: { id: 'checkIn.search' }
+- inputText: 'Zzqx Walker'
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn' }, timeout: 10000 }
+- takeScreenshot: no-match
+- tapOn: { id: 'checkIn.walkIn' }
+- extendedWaitUntil: { visible: { id: 'checkIn.walkIn.sheet' }, timeout: 10000 }
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: sheet-keyboard

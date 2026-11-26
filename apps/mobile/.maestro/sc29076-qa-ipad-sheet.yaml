@@ -1,0 +1,73 @@
+# iPad: welcome, its three notices in the tagline's place, the email sheet with keys, wrong pair, Cancel. sc-29076.
+appId: host.exp.Exponent
+---
+- runFlow: welcome-signed-out.yaml
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/welcome
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.email'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-welcome
+- openLink: ${METRO_URL}/--/welcome?signedOut=1
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-signed-out
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- openLink: ${METRO_URL}/--/welcome?providerFailed=Apple
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-provider-failed
+- openLink: ${METRO_URL}/--/unreachable
+- extendedWaitUntil:
+    visible:
+      id: 'unreachable.retry'
+    timeout: 30000
+- openLink: ${METRO_URL}/--/welcome?rule=timedOut&organisation=Ọ̀ṣun%20Events&days=3
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.notice'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-rule-timed-out
+- tapOn:
+    id: 'welcome.email'
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-sheet-keys
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- inputText: 'wrong-password-123'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'That email and password do not match.*'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-sheet-refused
+- tapOn:
+    id: 'signIn.password'
+- waitForAnimationToEnd
+- takeScreenshot: ${OUT}-sheet-refused-keys
+- tapOn:
+    id: 'signIn.left'
+- extendedWaitUntil:
+    visible:
+      id: 'welcome.brand'
+    timeout: 10000
+- takeScreenshot: ${OUT}-cancel-back
+- setOrientation: PORTRAIT

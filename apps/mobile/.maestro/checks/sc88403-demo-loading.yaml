@@ -1,0 +1,10 @@
+# sc-88403: the app demo's Notification settings loading line, held 8 s by the demo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/settings/notifications?state=loading
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible: 'Loading your notification settings…'
+    timeout: 7000
+- assertNotVisible: 'notificationSettings.loading'
+- takeScreenshot: demo-loading
