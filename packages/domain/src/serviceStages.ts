@@ -120,3 +120,30 @@ export const SERVICE_WORD_KEYS = {
   held: 'service.held',
   heldCount: 'service.heldCount',
 } as const;
+
+/** With no time given, an item Preparing this long is Held up (sc-34107). */
+export const HELD_UP_WITHOUT_TIME_MINUTES = 15;
+
+export interface PreparingItem {
+  state: ItemState;
+  readyIn: number | null;
+  /** When it was last marked: a new time runs from here. */
+  changedAt: string | null;
+  /** When it went Preparing from Ready: Held up counts from here. */
+  preparingSince: string | null;
+}
+
+/** sc-34107's Held up, the one rule a kitchen station (sc-4015) and How it's going both read: the minutes since it went Preparing, once the time its disher last gave has passed, or 15 minutes on with none; null while it is not Held up. */
+export function heldUpMinutes(item: PreparingItem, now: Date): number | null {
+  if (item.state !== 'preparing') return null;
+  const since = Date.parse(item.preparingSince ?? item.changedAt ?? '');
+  const given = Date.parse(item.changedAt ?? item.preparingSince ?? '');
+
+  if (Number.isNaN(since) || Number.isNaN(given)) return null;
+  const due =
+    item.readyIn == null
+      ? since + HELD_UP_WITHOUT_TIME_MINUTES * 60_000
+      : given + item.readyIn * 60_000;
+
+  return now.getTime() >= due ? Math.floor((now.getTime() - since) / 60_000) : null;
+}
