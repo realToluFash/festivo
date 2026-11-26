@@ -1,4 +1,9 @@
-import { ApiError, type OpenStaffLink, type SignInOutcome } from '@soirely/api-client';
+import {
+  ApiError,
+  type OpenStaffLink,
+  type SignInOutcome,
+  type TwoFactorChallenge,
+} from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt, maskedPhone } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +18,9 @@ import { meshFor } from '../../mesh.ts';
 import { adoptAccount, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { atWords } from '../app/events/doorCodes.ts';
+import { codePassed } from '../../providerSignIn.ts';
 import { PhoneCodeStep, Primary, SignOutLine, Title } from './RedeemPhone.tsx';
+import { StaffTwoFactor } from './StaffTwoFactor.tsx';
 import '../../components/desk.css';
 import './redeem.css';
 import './staffSignIn.css';
@@ -21,6 +28,7 @@ import './staffSignIn.css';
 type Step =
   | { kind: 'confirm'; busy: boolean; told: boolean; signedOut: boolean; failed: boolean }
   | { kind: 'code'; handle: string }
+  | { kind: 'twoFactor'; challenge: TwoFactorChallenge }
   | { kind: 'alternative' }
   | { kind: 'tooMany'; when: string | null; words: string };
 
@@ -72,7 +80,11 @@ export function StaffLinkSignIn({
 
   async function signedIn(outcome: SignInOutcome): Promise<void> {
     if ('challenge' in outcome) {
-      // Two-factor next: its code screen, then back to this link signed in.
+      // An authenticator alone is asked here; a passkey is sign-in's, then back to this link signed in.
+      if (outcome.factors.app && !outcome.factors.passkeys) {
+        go({ kind: 'twoFactor', challenge: outcome }, 'field');
+        return;
+      }
       holdReturn(`/w/${token}`);
       void navigate('/sign-in/code', { replace: true, state: outcome });
       return;
@@ -200,6 +212,23 @@ export function StaffLinkSignIn({
               if (leave.kind === 'alternative') go({ kind: 'alternative' });
               else if (leave.kind === 'refused') refused(leave.error);
               else void signedIn(leave.signedIn);
+            }}
+          />
+        );
+      case 'twoFactor':
+        return (
+          <StaffTwoFactor
+            challenge={step.challenge}
+            titleRef={title}
+            fieldRef={field}
+            onPassed={(passed) => signedIn(codePassed(passed))}
+            onExpired={() => go(CONFIRM)}
+            onRecovery={() => {
+              holdReturn(`/w/${token}`);
+              void navigate('/sign-in/code', {
+                replace: true,
+                state: { ...step.challenge, opensOn: 'recovery' },
+              });
             }}
           />
         );
