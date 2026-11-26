@@ -301,3 +301,15 @@ describe('Open the event on the phone’s live cover from AX1 (sc-95084)', () =>
     expect(today).toMatch(/inputRange: \[wordsFrom, bandFrom\]/u);
   });
 });
+
+describe('the end line on the phone’s live cover from AX1 (sc-96187)', () => {
+  it('wraps whole across the column, stepping down only for a word too wide, and is main’s below AX1', () => {
+    const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
+    expect(below).toMatch(
+      /!wide && whole \? \(\n\s*<CoverLine size=\{16\} line=\{1\.3\} weight="semibold" room=\{column\} style=\{styles\.white\}>\n\s*\{now\.ends\}/u,
+    );
+    expect(below).toMatch(
+      /<Text size=\{16\} weight="semibold" style=\{styles\.white\}>\n\s*\{now\.ends\}/u,
+    );
+  });
+});
