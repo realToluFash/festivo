@@ -158,6 +158,7 @@ domain_seating = ["App\\Domain\\Seating\\**"]
 domain_guest = ["App\\Domain\\Guest\\**"]
 domain_staff = ["App\\Domain\\Staff\\**"]
 domain_menu = ["App\\Domain\\Menu\\**"]
+domain_service = ["App\\Domain\\Service\\**"]
 domain_run_of_show = ["App\\Domain\\RunOfShow\\**"]
 domain_budget = [
     "App\\Domain\\Budget\\*",
@@ -420,6 +421,25 @@ permit = [
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
+    "@layer:realtime",
+    "@layer:locale",
+]
+
+# Service floor: every guest's plate on its way to them (sc-4005). Orders are made from the
+# guests' picks and needs, items are dished where Stations put them, a table is reached
+# through Staff's ServiceTables (sc-4002), and every change is a patch on its topic. A late
+# arrival reaches it through Guest's port.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Service\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_guest",
+    "@layer:domain_menu",
+    "@layer:domain_service",
+    "@layer:domain_staff",
+    "@layer:repository",
     "@layer:realtime",
     "@layer:locale",
 ]

@@ -9,6 +9,7 @@ export const REALTIME_TOPICS = {
   EventStaff: 'events/{id}/staff',
   EventSchedule: 'events/{id}/schedule',
   EventMenu: 'events/{id}/menu',
+  EventService: 'events/{id}/service',
   EventScreens: 'events/{id}/screens',
   EventGuestPages: 'events/{id}/guest-pages',
   EventMessages: 'events/{id}/messages',

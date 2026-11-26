@@ -90,6 +90,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventMenu->for($eventId->toRfc4122())]);
     }
 
+    /** One event's service, for someone the route has already found works it (sc-4005). */
+    public function issueForEventService(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventService->for($eventId->toRfc4122())]);
+    }
+
     /** One event's budget lines and its headcount, which moves the range, for someone the route has already found holds budget.read on it (sc-83, sc-85). */
     public function issueForEventBudget(Uuid $eventId): IssuedSubscriberToken
     {

@@ -527,5 +527,15 @@
     "billing.nothing_paid_through_provider": "Il n’y a aucun moyen de paiement à mettre à jour avant le paiement d’un forfait.",
     "service.table_not_yours": "Cette table est dans la zone de quelqu’un d’autre. Adressez-vous à cette personne ou au maître d’hôtel.",
     "door_codes.run_floor": "Un code d’accès ne peut pas donner le droit de diriger la salle. Accordez « Peut diriger la salle » à une seule personne, avec son propre lien depuis la liste du personnel.",
-    "people.service_level_outside_only": "Les droits pour le service sont réservés aux personnes externes qui travaillent pendant l’événement. Donnez à un membre l’un des rôles de l’événement."
+    "people.service_level_outside_only": "Les droits pour le service sont réservés aux personnes externes qui travaillent pendant l’événement. Donnez à un membre l’un des rôles de l’événement.",
+    "service.tray_not_yours": "This tray is {name}’s. Ask them or the floor lead.",
+    "service.plate_stage_invalid": "This plate cannot take that step from where it is now.",
+    "service.plate_empty": "A plate with nothing on it is not taken to a guest. Take it off the tray instead.",
+    "service.table_nothing_to_serve": "There is nothing to put on a tray for this table yet.",
+    "service.tray_check_incomplete": "Mark every item On, or Not on and Bring after, before checking the tray.",
+    "service.undo_expired": "It is more than 2 minutes since that step, so it cannot be undone.",
+    "service.undo_not_last": "Something else has changed since that step. Undo that first.",
+    "service.ready_in_invalid": "Ready in about can be 5, 10 or 15 minutes, and only while Preparing.",
+    "service.item_not_on_course": "That item is not on this course.",
+    "service.item_not_on_plate": "That item is not on this plate."
 }

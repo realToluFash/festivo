@@ -162,5 +162,11 @@
     "plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
     "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan.",
     "table_not_yours": "Esta mesa está en la zona de otra persona. Pregunte a esa persona o al responsable de sala.",
-    "level_not_allowed_for_code": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal."
+    "level_not_allowed_for_code": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal.",
+    "tray_not_yours": "Esta bandeja es de {name}. Pregunte a esa persona o al responsable de sala.",
+    "plate_stage_invalid": "Este plato no puede dar ese paso desde donde está ahora.",
+    "plate_empty": "Un plato sin nada encima no se lleva a un invitado. Retírelo de la bandeja.",
+    "table_nothing_to_serve": "Todavía no hay nada que poner en una bandeja para esta mesa.",
+    "tray_check_incomplete": "Marque cada elemento como puesto, o como no puesto y para llevar después, antes de revisar la bandeja.",
+    "undo_expired": "Han pasado más de 2 minutos desde ese paso, así que ya no se puede deshacer."
 }
