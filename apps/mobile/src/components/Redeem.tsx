@@ -6,8 +6,8 @@ import {
 } from '@soirely/api-client';
 import { listFormat, phoneLengthProblem } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../api.ts';
@@ -37,6 +37,7 @@ import { NavBar, StepScreen } from '../steps/StepScreen.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
+import { FieldsAboveSend } from './FieldsAboveSend.tsx';
 import { Glyph } from './Glyph.tsx';
 import { focusChecked } from './Field.tsx';
 import { deviceNow } from './CreateWalkWindow.tsx';
@@ -420,7 +421,7 @@ function TooManyStep({ step }: { step: TooMany }) {
   );
 }
 
-/** The event before anything is asked; signed out, a name and nothing else (sc-72, until sc-4235); signed in, Join as the account. */
+/** The event before anything is asked; signed out, a name and a number (sc-72, sc-4235), both kept above Send code with the keys up whenever they fit (sc-97734); signed in, Join as the account. */
 function EventStep({
   step,
   account,
@@ -443,6 +444,13 @@ function EventStep({
   const name = useRef(step.typed?.name ?? '');
   const number = useRef(step.typed?.number ?? '');
   const numberField = useRef<TextInputInstance>(null);
+  const refusalBlock = useRef<ViewInstance>(null);
+  const nameBlock = useRef<ViewInstance>(null);
+  const numberBlock = useRef<ViewInstance>(null);
+  const blocks = useMemo(
+    () => ({ refusal: refusalBlock, name: nameBlock, number: numberBlock }),
+    [],
+  );
   const [country, setCountry] = useState(() => step.typed?.country ?? startCountry(step.opened));
   const [nameSaid, setNameSaid] = useState<string | null>(null);
   const [numberSaid, setNumberSaid] = useState<string | null>(
@@ -556,10 +564,14 @@ function EventStep({
     >
       <EventTile id={event.id} />
       <Heading title={event.name} intro={eventLine(t, step.opened, dateLocale())} answer={step} />
-      <View style={styles.fields}>
-        {trouble != null && <Refused key={trouble.n} words={trouble.words} />}
+      <FieldsAboveSend refs={blocks} style={styles.fields}>
+        {trouble != null && (
+          <View ref={refusalBlock}>
+            <Refused key={trouble.n} words={trouble.words} />
+          </View>
+        )}
         {!signedIn && (
-          <View>
+          <View ref={nameBlock}>
             <InsideField
               ref={field}
               label={t('redeem.yourName')}
@@ -587,24 +599,26 @@ function EventStep({
           </View>
         )}
         {!signedIn && (
-          <NumberFields
-            country={country}
-            number={step.typed?.number}
-            numberRef={numberField}
-            said={numberSaid}
-            sending={joining}
-            onCountry={(code) => {
-              setCountry(code);
-              if (numberSaid != null) setNumberSaid(null);
-            }}
-            onNumber={(typed) => {
-              number.current = typed;
-              if (numberSaid != null) setNumberSaid(null);
-            }}
-            onSubmit={() => void send()}
-          />
+          <View ref={numberBlock}>
+            <NumberFields
+              country={country}
+              number={step.typed?.number}
+              numberRef={numberField}
+              said={numberSaid}
+              sending={joining}
+              onCountry={(code) => {
+                setCountry(code);
+                if (numberSaid != null) setNumberSaid(null);
+              }}
+              onNumber={(typed) => {
+                number.current = typed;
+                if (numberSaid != null) setNumberSaid(null);
+              }}
+              onSubmit={() => void send()}
+            />
+          </View>
         )}
-      </View>
+      </FieldsAboveSend>
     </StepScreen>
   );
 }
