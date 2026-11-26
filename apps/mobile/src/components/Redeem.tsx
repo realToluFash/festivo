@@ -4,14 +4,14 @@ import {
   type OpenedDoorCode,
   type RedeemedDoorCode,
 } from '@soirely/api-client';
-import { phoneLengthProblem } from '@soirely/domain';
+import { listFormat, phoneLengthProblem } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInputInstance, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../api.ts';
-import { dateLocale } from '../i18n/index.ts';
+import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { eventHref } from '../kit/eventNav.ts';
 import {
   type CodeLine,
@@ -26,6 +26,7 @@ import {
   type TooMany,
   tryAgainWords,
 } from '../kit/redeem.ts';
+import { providerNames } from '../kit/signInRules.ts';
 import { meshFor } from '../kit/today.ts';
 import { nextAfterSignIn } from '../challenge.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
@@ -38,6 +39,7 @@ import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { focusChecked } from './Field.tsx';
 import { deviceNow } from './CreateWalkWindow.tsx';
+import { ProviderButtons } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type CodeLeave, NumberFields, PhoneCodeScreen, shownNumber } from './RedeemPhone.tsx';
 import { TextAction } from './SummaryRows.tsx';
@@ -48,6 +50,13 @@ type Step =
   | TooMany
   | { kind: 'event'; code: string; opened: OpenedDoorCode; alternative?: boolean }
   | { kind: 'member'; organisation: string; eventId: string }
+  | {
+      kind: 'providerOnly';
+      code: string;
+      opened: OpenedDoorCode;
+      organisation: string;
+      providers: string[];
+    }
   | {
       kind: 'code';
       code: string;
@@ -131,6 +140,16 @@ export function Redeem({ code }: { code: string }) {
       go({ ...back, alternative: true });
       return;
     }
+    if (leave.kind === 'providerOnly') {
+      go({
+        kind: 'providerOnly',
+        code: at.code,
+        opened: at.opened,
+        organisation: leave.organisation,
+        providers: leave.providers,
+      });
+      return;
+    }
     if (leave.kind === 'refused') {
       const refusal = joinRefusal(leave.error);
       go(refusal.kind === 'tooMany' ? refusal : back);
@@ -189,6 +208,19 @@ export function Redeem({ code }: { code: string }) {
       );
     case 'member':
       return <MemberStep step={step} />;
+    case 'providerOnly':
+      return (
+        <ProviderOnlyStep
+          key={key}
+          step={step}
+          onClose={() => go({ kind: 'enter', typed: '', line: null, busy: false })}
+          onSignedIn={async (who) => {
+            await reloadSignedIn().catch(() => undefined);
+            setAccount(who);
+            go({ kind: 'event', code: step.code, opened: step.opened });
+          }}
+        />
+      );
     case 'code':
       return (
         <StepScreen
@@ -524,6 +556,38 @@ function MemberStep({ step }: { step: Extract<Step, { kind: 'member' }> }) {
       <Heading
         title={t('redeem.memberTitle', { organisation: step.organisation })}
         intro={t('redeem.memberLine')}
+        answer={step}
+      />
+    </StepScreen>
+  );
+}
+
+/** The right phone code refused, as sc-69 refuses a password (sc-94849): each linked provider in the platform's order, and signed in, the door code again as the account. */
+function ProviderOnlyStep({
+  step,
+  onClose,
+  onSignedIn,
+}: {
+  step: Extract<Step, { kind: 'providerOnly' }>;
+  onClose: () => void;
+  onSignedIn: (account: Account) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <StepScreen
+      nav={<NavBar left="close" onLeft={onClose} testID="redeem.nav" />}
+      foot={<ProviderButtons only={step.providers} onSignedIn={onSignedIn} />}
+    >
+      <EventTile id={step.opened.event.id} />
+      <Heading
+        title={t('signIn.providerOnlyTitle', { organisation: step.organisation })}
+        intro={t('signIn.providerOnlyCode', {
+          organisation: step.organisation,
+          providers: listFormat(currentLocale(), { type: 'disjunction' }).format(
+            providerNames(step.providers),
+          ),
+        })}
         answer={step}
       />
     </StepScreen>

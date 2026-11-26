@@ -1,4 +1,4 @@
-import { type Provider, ProviderCancelled } from '@soirely/api-client';
+import { type Account, type Provider, ProviderCancelled } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
@@ -39,6 +39,7 @@ export function ProviderButtons({
   only,
   alone = false,
   before,
+  onSignedIn,
 }: {
   onFailed?: ((provider: string) => void) | undefined;
   only?: readonly string[] | undefined;
@@ -46,6 +47,8 @@ export function ProviderButtons({
   alone?: boolean | undefined;
   /** Done before the provider opens, as a join link holds itself to come back to. */
   before?: (() => Promise<void>) | undefined;
+  /** Signed in and bound for the app, the screen that offered the buttons carries on as the account instead, as a door code's refusal does (sc-94849). */
+  onSignedIn?: ((account: Account) => Promise<void>) | undefined;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -55,7 +58,11 @@ export function ProviderButtons({
 
     try {
       await before?.();
-      router.replace(await nextAfterSignIn(await signInWithProvider(provider), { alone }));
+      const outcome = await signInWithProvider(provider);
+      const next = await nextAfterSignIn(outcome, { alone });
+      if (onSignedIn != null && next === '/' && !('challenge' in outcome))
+        await onSignedIn(outcome.account);
+      else router.replace(next);
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);
