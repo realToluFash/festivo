@@ -1,0 +1,20 @@
+# sc-95859: Calendar, Month, then one tap on ${DAY} (YYYY-MM-DD), until its day sheet is open.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible: '{{t:calendar.month}}'
+    timeout: 30000
+- tapOn: '{{t:calendar.month}}'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.day.${DAY}'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.day.${DAY}'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.daySheet'
+    timeout: 15000
+- waitForAnimationToEnd

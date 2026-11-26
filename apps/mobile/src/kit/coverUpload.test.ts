@@ -64,6 +64,7 @@ describe('a photo picked for the cover (sc-3590)', () => {
     const t = (key: string) => key;
 
     expect(coverSaveRefusalOf(refusal(403, 'permission_required'), t)).toBe('eventEdit.forbidden');
+    expect(coverSaveRefusalOf(refusal(404, 'not_found'), t)).toBe('eventEdit.eventGone');
     expect(coverSaveRefusalOf(refusal(403, 'two_factor_required'), t)).toBe(
       'eventCover.uploadFailed',
     );

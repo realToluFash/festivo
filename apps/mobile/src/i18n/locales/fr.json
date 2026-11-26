@@ -1738,6 +1738,7 @@
     "noCurrency": "Aucune devise ne correspond à « {{typed}} ».",
     "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
     "forbidden": "Rien n’a été modifié. Votre rôle n’inclut pas l’autorisation nécessaire.",
+    "eventGone": "Rien n’a été modifié. Cet événement n’est plus disponible.",
     "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
     "showLatest": "Afficher la dernière version",
     "showLatestTitle": "Afficher la dernière version ?",
@@ -3778,12 +3779,12 @@
   },
   "station": {
     "wayIn": {
-      "title": "Kitchen station",
+      "title": "Poste de cuisine",
       "line": "{{station}} · {{course}}",
-      "pick": "Pick a station",
-      "said": "Kitchen station, {{line}}",
-      "asOf": "{{line}} · as of {{time}}",
-      "open": "Open {{station}}"
+      "pick": "Choisir un poste",
+      "said": "Poste de cuisine, {{line}}",
+      "asOf": "{{line}} · mis à jour à {{time}}",
+      "open": "Ouvrir le poste {{station}}"
     },
     "title": "Poste de cuisine · {{station}}",
     "titleSaid": "Poste de cuisine · {{station}}. Choisir un autre poste",

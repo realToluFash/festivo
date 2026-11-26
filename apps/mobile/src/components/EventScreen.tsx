@@ -44,7 +44,7 @@ import {
   eventHref,
 } from '../kit/eventNav.ts';
 import { markDeleted, takeCoverRefused } from '../kit/eventSaved.ts';
-import { outsideOn, outsidePlaces, readsOverview, wayBack } from '../kit/outsideEvent.ts';
+import { outsideArea, outsideOn, readsOverview, wayBack } from '../kit/outsideEvent.ts';
 import {
   type LinkFrom,
   linkFromIn,
@@ -215,8 +215,7 @@ export function EventScreen({
   const title = useRef<TextHandle>(null);
   const cardName = useRef<TextHandle>(null);
   const outside = outsideOn(signedIn, eventId);
-  const outsideAt = outside == null ? null : outsidePlaces(outside.role);
-  const area = outsideAt == null || outsideAt.includes(asked) ? asked : 'overview';
+  const area = outside == null ? asked : outsideArea(outside.role, asked);
   // An event's link from another of the account's organisations moves it there once the event has loaded, said at the head of Overview until the person leaves it (sc-80863).
   const [moved, setMoved] = useState<{ into: string; words: string } | null>(null);
   const opened = useOpened(

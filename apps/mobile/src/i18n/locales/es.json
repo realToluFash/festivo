@@ -1738,6 +1738,7 @@
     "noCurrency": "Ninguna moneda coincide con «{{typed}}».",
     "notSaved": "No se ha guardado. Sus cambios siguen aquí. Vuelva a intentarlo.",
     "forbidden": "No se ha cambiado nada. Su rol no incluye el permiso necesario.",
+    "eventGone": "No se ha cambiado nada. Este evento ya no está disponible.",
     "changedElsewhere": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió. Lo que escribió sigue aquí.",
     "showLatest": "Ver la última versión",
     "showLatestTitle": "¿Ver la última versión?",
@@ -3778,12 +3779,12 @@
   },
   "station": {
     "wayIn": {
-      "title": "Kitchen station",
+      "title": "Zona de cocina",
       "line": "{{station}} · {{course}}",
-      "pick": "Pick a station",
-      "said": "Kitchen station, {{line}}",
-      "asOf": "{{line}} · as of {{time}}",
-      "open": "Open {{station}}"
+      "pick": "Elegir una zona",
+      "said": "Zona de cocina, {{line}}",
+      "asOf": "{{line}} · actualizado: {{time}}",
+      "open": "Abrir {{station}}"
     },
     "title": "Zona de cocina · {{station}}",
     "titleSaid": "Zona de cocina · {{station}}. Elegir otra zona",

@@ -8,6 +8,7 @@ import { Ask, TextAction } from './SettingsParts.tsx';
 const SAID = {
   notSaved: 'eventEdit.notSaved',
   forbidden: 'eventEdit.forbidden',
+  eventGone: 'eventEdit.eventGone',
   changedElsewhere: 'eventEdit.changedElsewhere',
 } as const satisfies Record<SaveAnswer, string>;
 

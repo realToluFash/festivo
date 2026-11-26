@@ -1,0 +1,38 @@
+# sc-95859: on the iPad, the long day upright (its dialog) and on its side (its side panel): neither has a grabber's strip.
+appId: host.exp.Exponent
+env:
+  DAY: '2026-11-25'
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible: '{{t:calendar.month}}'
+    timeout: 30000
+- tapOn: '{{t:calendar.month}}'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.day.${DAY}'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.day.${DAY}'
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.dayDialog'
+    timeout: 15000
+- waitForAnimationToEnd
+- takeScreenshot: ipad-day-upright
+- swipe: { start: '50%,70%', end: '50%,40%', duration: 1200 }
+- waitForAnimationToEnd
+- takeScreenshot: ipad-day-upright-scrolled
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: 'calendar.day.${DAY}'
+    timeout: 30000
+- tapOn:
+    id: 'calendar.day.${DAY}'
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: ipad-day-side
+- setOrientation: PORTRAIT

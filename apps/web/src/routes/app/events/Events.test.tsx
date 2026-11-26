@@ -2359,6 +2359,26 @@ describe("An event's venue (sc-3589)", () => {
       expect(within(details).queryByText(/Try again/u)).toBeNull();
     });
 
+    it('says an event no longer available where Not saved sits, keeps the note typed and the edit open, and offers no retry (sc-75689)', async () => {
+      const GONE = 'Nothing was changed. This event is no longer available.';
+      const { sent, details } = await typedNote({
+        'PATCH /api/events/ev_1': () => problem(404, 'not_found'),
+      });
+
+      expect((await within(details).findByRole('alert')).textContent).toContain(GONE);
+      expect(within(details).queryByText(/Not saved|Try again/u)).toBeNull();
+      expect(within(details).getByLabelText<HTMLTextAreaElement>(/Arrival note/u).value).toBe(
+        'Doors close at 23:00.',
+      );
+
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      expect(within(details).getAllByText(GONE)).toHaveLength(1);
+      expect(screen.getByRole('group', { name: 'Venue' })).toBeDefined();
+    });
+
     it('keeps Not saved for a save that failed for another reason', async () => {
       const { details } = await typedNote({
         'PATCH /api/events/ev_1': () => problem(500, 'internal_error'),
@@ -4562,6 +4582,22 @@ describe('The cover (sc-3590)', () => {
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
     });
 
+    it('a save to an event no longer available says so, with no Try again (sc-75689)', async () => {
+      await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'Nothing was changed. This event is no longer available.',
+      );
+      expect(within(part()).queryByText(/Try again/u)).toBeNull();
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+    });
+
     it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
       const { sent } = await opened(null, {
         'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
@@ -6011,6 +6047,11 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       () => problem(412, 'precondition_failed'),
       'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
     ],
+    [
+      'an event no longer available',
+      () => problem(404, 'not_found'),
+      'Nothing was changed. This event is no longer available.',
+    ],
   ] as const;
 
   async function pickedLastCurrency(saving: () => Response) {
@@ -6213,6 +6254,34 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       directlyAboveSave(part, ROLE);
       expect(field.value).toBe(day);
     });
+
+    it.each([
+      ['Save', '2026-11-12'],
+      ['Close replies sooner', '2026-11-05'],
+      ['Close replies now', '2026-10-30'],
+    ])(
+      'says the event is no longer available after %s, keeps the date, and offers no retry (sc-75689)',
+      async (go, day) => {
+        const GONE = ANSWERS[3][2];
+        const { sent, part, field, save } = await pickedReplyBy(day, ANSWERS[3][1]);
+
+        save.focus();
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+
+        expect((await within(part).findByRole('alert')).textContent).toContain(GONE);
+        directlyAboveSave(part, GONE);
+        expect(within(part).queryByText(/Not saved|Try again/u)).toBeNull();
+        expect(field.value).toBe(day);
+
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+        await waitFor(() =>
+          expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+        );
+        expect(within(part).getAllByText(GONE)).toHaveLength(1);
+      },
+    );
 
     it('keeps Not saved for a save that failed for another reason', async () => {
       const { part } = await pickedReplyBy('2026-11-12', ANSWERS[0][1]);

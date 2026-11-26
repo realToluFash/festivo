@@ -62,7 +62,14 @@ import {
 import { pickedBytes } from '../kit/pickedBytes.ts';
 import { changesOf, typedOf } from '../kit/eventForm.ts';
 import type { EditPart } from '../kit/eventNav.ts';
-import { type SavedPart, answeredWithNotice, heldRead, sendPart } from '../kit/partSave.ts';
+import {
+  PART_NOTICE,
+  type PartNotice,
+  type SavedPart,
+  answeredWithNotice,
+  heldRead,
+  sendPart,
+} from '../kit/partSave.ts';
 import {
   CLOSES_AT,
   replyByAskWords,
@@ -121,7 +128,7 @@ function cleared(was: Errors, field: EventFormField): Errors {
   return Object.fromEntries(Object.entries(was).filter(([key]) => key !== field));
 }
 
-type Outcome = 'changed' | 'failed' | 'forbidden' | null;
+type Outcome = PartNotice | 'changed' | null;
 
 /** An event's part on its own screen (sc-48600), opened from its row, Change dates or the photo notice. */
 export function EventEditScreen({ part, ...props }: PartEditProps & { part: EditPart }) {
@@ -203,12 +210,7 @@ function usePartSave(
         }
       : null;
 
-  const failed =
-    outcome === 'failed'
-      ? t('eventEdit.notSaved')
-      : outcome === 'forbidden'
-        ? t('eventEdit.forbidden')
-        : null;
+  const failed = outcome == null || outcome === 'changed' ? null : t(PART_NOTICE[outcome]);
 
   return { busy, save, elsewhere, failed, noticed, setOutcome };
 }

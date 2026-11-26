@@ -182,6 +182,11 @@ Then `change=pause` (through the domain, written in the database), `suspend`, `r
 with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
 Access paused never outlives its check. sc-28178's checks are the example.
 
+sc-95859's day sheet checks need an account no fresh `qa-account.mjs` gives: a QA Organisation
+with 12 or more events on 25 Nov (the long day) and one on 27 Nov, made through
+`POST /api/orgs/{org}/events`. On a fresh account the long day's sheet has one row and never
+scrolls, so `sc95859-day-foot` and `sc95859-day-scroll` fail without saying why.
+
 A check that must prove what reached the server, not what the screen draws, asks
 `ASK: /schedule?event=<id>&place=<place>&done=<n>`. The harness reads the event's schedule as the
 batch's account, waiting while fewer than `n` items of that place are done, and answers
