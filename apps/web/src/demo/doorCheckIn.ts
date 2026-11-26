@@ -19,7 +19,7 @@ export interface DoorPerson {
 }
 
 export type Holder = 'shift' | 'code';
-export type Phase = 'open' | 'before' | 'ended';
+export type Phase = 'open' | 'before';
 export type Gone = 'link_gone' | 'outside_window' | 'outside_window_ended' | 'level_view';
 
 export const CHECK_IN_STATES = [
@@ -36,7 +36,6 @@ export const CHECK_IN_STATES = [
   'not_recorded',
   'live',
   'before_open',
-  'ended',
   'loading',
   'empty',
   'empty_closed',
@@ -136,8 +135,6 @@ export const CW = {
   opensAt: (time: string) => `Check-in opens at ${time}`,
   opensBody: (time: string) =>
     `Search works now. Arrivals and walk-ins can be recorded from ${time}.`,
-  ended: 'This event has ended.',
-  endedBody: 'The list stays readable. Arrivals can no longer be marked or undone.',
   emptyTitle: 'Nobody is on the list yet',
   emptyLine: 'Anyone who arrives can be added as a walk-in.',
   loading: 'Loading the list',
@@ -404,25 +401,6 @@ export function checkInStart(state: CheckInState, holder: Holder): CheckInStart 
       return { ...start, live: true };
     case 'before_open':
       return { ...start, phase: 'before', people: [...PEOPLE] };
-    case 'ended':
-      return {
-        ...start,
-        phase: 'ended',
-        people: seeded(
-          {
-            ...ARRIVED_BEFORE,
-            adaeze: ['19:42', '@me'],
-            a1: ['19:42', '@me'],
-            a2: ['19:43', '@me'],
-            emeka: ['20:05', OTHER],
-            folasade: ['19:50', '@me'],
-            ngozi: ['19:44', OTHER],
-            zainab: ['20:12', OTHER],
-            marie: ['19:58', '@me'],
-          },
-          me,
-        ),
-      };
     case 'loading':
       return { ...start, loading: true };
     case 'empty':
@@ -512,7 +490,6 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       at('before_open', 'Before check-in opens: search works'),
       at('empty_closed', 'Before check-in opens, nobody on the list'),
-      at('ended', 'The event has ended: read only'),
       at('offline', 'Offline: nothing queued'),
       at('offline_back', 'Back online: what landed meanwhile'),
     ],
@@ -520,7 +497,7 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
   {
     name: 'When access ends',
     states: [
-      at('link_gone', 'The link was replaced or removed'),
+      at('link_gone', 'The link was replaced or removed, or the event ended'),
       at('outside_window', 'Outside the link’s window, before'),
       at('outside_window_ended', 'Outside the link’s window, after'),
       at('level_view', 'The job changed to Can view: back on the shift page'),

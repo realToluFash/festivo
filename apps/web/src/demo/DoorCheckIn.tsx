@@ -229,12 +229,8 @@ function CheckInPage({
       </div>
       {start.phase !== 'open' && (
         <div className="ci-notice">
-          <p className="ci-notice-title">
-            {start.phase === 'before' ? CW.opensAt(OPENS_AT) : CW.ended}
-          </p>
-          {people.length > 0 && (
-            <p>{start.phase === 'before' ? CW.opensBody(OPENS_AT) : CW.endedBody}</p>
-          )}
+          <p className="ci-notice-title">{CW.opensAt(OPENS_AT)}</p>
+          {people.length > 0 && <p>{CW.opensBody(OPENS_AT)}</p>}
         </div>
       )}
       {people.length === 0 ? (

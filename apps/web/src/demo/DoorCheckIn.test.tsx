@@ -158,7 +158,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     },
   );
 
-  it('reads only before check-in opens and once it has ended', SLOW, async () => {
+  it('reads only before check-in opens, and has no ended state in the browser', SLOW, async () => {
     await open('/demo/check-in?state=before_open');
     expect(screen.getByText('Check-in opens at 16:00')).toBeDefined();
     expect(screen.queryByRole('button', { name: /^Arrived/ })).toBeNull();
@@ -170,8 +170,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     cleanup();
 
     await open('/demo/check-in?state=ended');
-    expect(screen.getByText('This event has ended.')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /^Undo arrival/ })).toBeNull();
+    expect(screen.queryByText('This event has ended.')).toBeNull();
   });
 
   it('names nothing when not signed in, and offers a door code', SLOW, async () => {
@@ -188,7 +187,7 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     SLOW,
     async () => {
       const router = await open('/demo/check-in/shift');
-      fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Sign out' })[0]!);
 
       const title = await screen.findByRole('heading', { name: 'Sign in from your link or code' });
       expect(screen.getByRole('status').textContent).toBe('Signed out.');
