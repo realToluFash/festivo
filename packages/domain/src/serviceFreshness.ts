@@ -171,7 +171,6 @@ export function createServiceFreshness(deps: ServiceFreshnessDeps): ServiceFresh
       learnt();
       attempt = 0;
       clearRefetch();
-      if (phase === null && answered === 'on') heard = true;
       enter(answered);
       if (answered === 'on') listen();
       else schedule(SERVICE_OFF_READ_MS);
@@ -201,7 +200,6 @@ export function createServiceFreshness(deps: ServiceFreshnessDeps): ServiceFresh
       }
 
       learnt();
-      heard = first === 'on';
       enter(first);
       tell();
     },

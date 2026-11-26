@@ -39,9 +39,31 @@ afterEach(() => {
 });
 
 describe('while service is on', () => {
+  it('is No connection when opened during service, until the first message arrives', async () => {
+    const { freshness } = device();
+    freshness.start('on');
+    expect(freshness.state()).toEqual({ state: 'noConnection', asOf: START, waiting: 0 });
+
+    await after(5_000);
+    freshness.message('heartbeat');
+    expect(freshness.state()).toEqual({
+      state: 'connected',
+      asOf: new Date(START.getTime() + 5_000),
+    });
+  });
+
+  it('is No connection after a first read answering on, until the first message arrives', async () => {
+    const { freshness } = device(['on']);
+    freshness.start();
+    await after(0);
+
+    expect(freshness.state().state).toBe('noConnection');
+  });
+
   it('is Connected while a message came in the last 20 seconds, and No connection once 20 pass with none', async () => {
     const { freshness } = device();
     freshness.start('on');
+    freshness.message('heartbeat');
 
     await after(SERVICE_SILENCE_MS - 1);
     expect(freshness.state()).toEqual({ state: 'connected', asOf: START });
@@ -239,10 +261,12 @@ describe('the strip', () => {
     const heard: string[] = [];
     freshness.subscribe((next) => heard.push(next.state));
     freshness.start('on');
+    freshness.message('heartbeat');
+    freshness.message('heartbeat');
 
     freshness.deviceOffline();
     freshness.deviceOffline();
 
-    expect(heard).toEqual(['connected', 'noConnection']);
+    expect(heard).toEqual(['noConnection', 'connected', 'noConnection']);
   });
 });
