@@ -434,7 +434,9 @@ describe('Messages at a desk (sc-3942)', () => {
   it('says why nobody can write without messages.manage, where the composer would be', async () => {
     onMessages({}, { permissions: OWNER_PERMISSIONS.filter((one) => one !== 'messages.manage') });
 
-    expect(await screen.findByText('Only someone who can change Messages can send.')).toBeTruthy();
+    expect(
+      await screen.findByText('Only someone who can change Messages can write here.'),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'New' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^All guests/ })).toBeNull();
   });
@@ -453,7 +455,7 @@ describe('Messages at a desk (sc-3942)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Dinner starts at seven/ }));
 
     expect(await screen.findByRole('log', { name: /Dinner starts at seven/ })).toBeTruthy();
-    expect(screen.getByText('Only someone who can change Messages can send.')).toBeTruthy();
+    expect(screen.getByText('Only someone who can change Messages can write here.')).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: 'Write a follow-up' })).toBeNull();
   });
 
