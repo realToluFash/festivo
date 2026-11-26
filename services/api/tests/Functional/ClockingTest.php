@@ -305,6 +305,41 @@ final class ClockingTest extends ApiTestCase
         self::assertSame('36000.00', Type\shape(['total' => Type\string()], true)->coerce($rates['headline'])['total'], 'the headline stays the scheduled cost');
     }
 
+    #[Test]
+    public function aJoinCodeNamingAShiftPutsItsRedeemerOnItAndClocksThemInWhileTheWindowIsOpen(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $shiftId = $this->shiftOf($this->grace);
+        $made = $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/door-codes', ['role' => 'can_view', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => $shiftId]);
+        self::assertSame(201, $this->statusCode(), Json\encode($made));
+        $code = Type\shape(['code' => Type\string(), 'shiftId' => Type\string()], true)->coerce($made['doorCode'] ?? null);
+        self::assertSame($shiftId, $code['shiftId']);
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T15:10:00Z'));
+        $tunde = $this->account('tunde@example.com', 'Tunde Bakare');
+        $this->as($tunde, 'POST', '/api/door-codes/' . $code['code'] . '/redeem', []);
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+
+        $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
+        self::assertSame('Waiter', $rows['Tunde Bakare']['job'] ?? null, Json\encode($rows));
+        self::assertSame('2027-03-06T16:10:00+01:00', $rows['Tunde Bakare']['clockedInAt'] ?? null, 'clocked in at the moment they redeemed');
+
+        $early = $this->account('ada@example.com', 'Ada Obi');
+        self::mockTime(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        $this->as($early, 'POST', '/api/door-codes/' . $code['code'] . '/redeem', []);
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
+        self::assertArrayHasKey('Ada Obi', $rows, 'put on the shift');
+        self::assertNull($rows['Ada Obi']['clockedInAt'], 'but not clocked in before the window opens');
+    }
+
+    #[Test]
+    public function aJoinCodeCannotNameAShiftOnAnotherEvent(): void
+    {
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/door-codes', ['role' => 'can_view', 'useCap' => 5, 'expiresAt' => '2027-03-07T00:00:00+00:00', 'shiftId' => '0190a0a0-0000-7000-8000-000000000000']);
+        self::assertSame(404, $this->statusCode());
+    }
+
     /** @return array<string, mixed> */
     private function card(User $user): array
     {

@@ -8,6 +8,7 @@ use App\Audit\Auditor;
 use App\Entity\DoorCode;
 use App\Entity\Event;
 use App\Entity\EventPerson;
+use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -40,9 +41,9 @@ final readonly class DoorCodes
     }
 
     /** A code never lives past its event: an end later than the event's is the event's. The code it replaces stops, in the same write. */
-    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?DoorCode $replaces = null): DoorCode
+    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?DoorCode $replaces = null, ?StaffShift $shift = null): DoorCode
     {
-        $code = $this->built($event, $role, $jobLabel, $useCap, $expiresAt, $by);
+        $code = $this->built($event, $role, $jobLabel, $useCap, $expiresAt, $by, $shift);
 
         if (null !== $replaces) {
             $this->stopping($replaces, $by);
@@ -54,7 +55,7 @@ final readonly class DoorCodes
         return $code;
     }
 
-    private function built(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by): DoorCode
+    private function built(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?StaffShift $shift): DoorCode
     {
         $violations = [
             ...$this->roleViolations($role),
@@ -79,13 +80,14 @@ final readonly class DoorCodes
         }
 
         $label = Str\trim($jobLabel ?? '');
-        $code = new DoorCode($event, $this->unusedCode(), $role, '' === $label ? null : $label, $useCap, $expires, $by);
+        $code = new DoorCode($event, $this->unusedCode(), $role, '' === $label ? null : $label, $useCap, $expires, $by, $shift);
         $this->entityManager->persist($code);
         $this->record('door_code.made', $code, $by, [
             'role' => [null, $role->value],
             'jobLabel' => [null, $code->getJobLabel()],
             'useCap' => [null, $useCap],
             'expiresAt' => [null, $expires->format(\DATE_ATOM)],
+            'shift' => [null, $shift?->getId()->toRfc4122()],
         ]);
 
         return $code;
