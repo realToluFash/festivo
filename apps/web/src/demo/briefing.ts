@@ -1,4 +1,5 @@
 import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
+import { type Change, type Concluded, type Notice, NO_CREDITS, NW } from './notices.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
 import { QUIET_ENDS, TW, texting } from './staffText.ts';
@@ -17,6 +18,10 @@ export interface Person extends Entry {
   channel: 'sms' | 'whatsApp';
   /** A copy from the briefing (the copy list, a changed row or the held result), and whether it was then marked as sent. */
   briefCopy: { trail: Trail; marked: boolean } | null;
+  /** Signed in to the app with notifications allowed: told by push, which is never counted. */
+  app?: boolean;
+  notice?: Notice | null;
+  ending?: Concluded | null;
 }
 
 export const RULES_MAX = 2000;
@@ -229,7 +234,7 @@ export interface Check {
   paid: readonly string[];
 }
 
-const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
+export const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
 
 export type Target = 'all' | 'changed' | string;
 
@@ -318,6 +323,7 @@ export function sendTo(
     return {
       ...one,
       brief: 'sent',
+      notice: null,
       link: opened ? 'opened' : 'sent',
       trail: opened ? (one.trail ?? null) : { by: YOU, at: NOW_AT, via: 'text' },
     };
@@ -405,6 +411,25 @@ export interface BriefingStart {
   quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
   said: string | null;
+  notices: NoticesStart | null;
+}
+
+/** The reminder card and the S2 lines (sc-4333), on its own states only. */
+export interface NoticesStart {
+  on: boolean;
+  /** The switch's save is refused, every time. */
+  saves: boolean;
+  notSaved: boolean;
+  next: string;
+  sent: { date: string; count: number } | null;
+  concluded: Concluded | null;
+  /** Ask an owner, for a person without billing.manage (sc-3931): ready, its sent line, or Not sent. */
+  ask: 'ready' | 'sent' | 'failed';
+  owners: number;
+  removing: string | null;
+  /** A page opened before End now: its sends are refused, and it reloads Finished. */
+  stale: boolean;
+  alreadyOver: boolean;
 }
 
 function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>): BriefingStart {
@@ -432,6 +457,7 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     quiet: false,
     result: null,
     said: null,
+    notices: null,
     ...o,
   };
 }
@@ -462,6 +488,171 @@ const afterSendAt = (list: Person[], quiet: boolean) => {
   ).people;
 };
 const SAMPLE_URL = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
+
+const THU = 'Thursday, Oct 15';
+const FRI = 'Friday, Oct 16';
+const SAT = 'Saturday, Oct 17';
+const REFUSED = 'the carrier refused the number';
+
+function onTheShift(
+  id: string,
+  name: string,
+  job: string,
+  station: string,
+  shift: string,
+  o: Partial<Person>,
+): Person {
+  return {
+    id,
+    name,
+    job,
+    station,
+    shift,
+    more: [],
+    mobile: `+447946000${String(name.length).padStart(3, '0')}`,
+    email: null,
+    link: 'sent',
+    trail: null,
+    brief: 'sent',
+    channel: 'sms',
+    heldText: false,
+    waitText: false,
+    briefCopy: null,
+    app: false,
+    notice: null,
+    ending: null,
+    ...o,
+  };
+}
+
+/** ShiftNotices' sample, one day on Saturday, Oct 17: Kelechi goes by WhatsApp, Yusuf by text, the others briefed by push. */
+export function noticePeople(): Person[] {
+  return [
+    onTheShift('dayo', 'Dayo Adeyemi', 'Floor lead', 'Floor', '14:00 to 23:00', {
+      brief: 'read',
+      link: 'opened',
+      app: true,
+    }),
+    onTheShift('grace', 'Grace Okafor', 'Waiter', 'Section A', '15:00 to 23:00', {
+      brief: 'changed',
+      app: true,
+      notice: {
+        kind: 'waiting',
+        at: '19:55',
+        changes: [{ field: 'start', now: '15:00', was: '17:00' }],
+      },
+    }),
+    onTheShift('kelechi', 'Kelechi Eze', 'Runner', 'Pass', '16:00 to 23:00', {
+      brief: 'changed',
+      channel: 'whatsApp',
+      notice: { kind: 'quiet', day: 'Friday', at: '09:00' },
+    }),
+    onTheShift('tope', 'Tope Balogun', 'Waiter', 'Section B', '17:00 to 23:00', {
+      app: true,
+      notice: { kind: 'told', on: THU, at: '15:42', by: 'push' },
+    }),
+    onTheShift('chidi', 'Chidi Nwankwo', 'Waiter', 'Section B', '17:00 to 23:00', {
+      brief: 'none',
+      link: 'none',
+    }),
+    onTheShift('yusuf', 'Yusuf Bello', 'Bar', 'Bar', '18:00 to 00:00', {
+      brief: 'changed',
+      notice: { kind: 'failed', reason: REFUSED },
+    }),
+    onTheShift('amina', 'Amina Lawal', 'Waiter', 'Section A', '18:00 to 00:00', {
+      brief: 'none',
+      link: 'none',
+      mobile: null,
+    }),
+  ];
+}
+
+const reshaped =
+  (by: Record<string, Partial<Person>>) =>
+  (list: Person[] = noticePeople()): Person[] =>
+    list.map((one) => (by[one.id] == null ? one : { ...one, ...by[one.id] }));
+
+const waiting = (changes: readonly Change[]) => ({
+  brief: 'changed' as const,
+  notice: { kind: 'waiting' as const, at: '19:55', changes },
+});
+
+const severalShifts = reshaped({
+  grace: {
+    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' }]),
+  },
+  tope: {
+    shift: 'Saturday 17:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
+  },
+  yusuf: {
+    shift: null,
+    ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00–Sunday 00:00' }, { field: 'noShift' }]),
+  },
+});
+
+const eve = reshaped({
+  grace: { brief: 'sent', notice: { kind: 'told', on: THU, at: '19:55', by: 'push' } },
+  kelechi: { brief: 'sent', notice: { kind: 'told', on: FRI, at: '09:00', by: 'whatsApp' } },
+});
+
+const calledOff = reshaped({
+  dayo: { notice: { kind: 'told', on: THU, at: '19:40', by: 'push' }, ending: 'calledOff' },
+  grace: {
+    brief: 'sent',
+    notice: { kind: 'told', on: THU, at: '19:40', by: 'push' },
+    ending: 'calledOff',
+  },
+  tope: { notice: { kind: 'told', on: THU, at: '19:40', by: 'push' }, ending: 'calledOff' },
+  kelechi: { ending: 'calledOff' },
+  yusuf: { ending: 'calledOff' },
+});
+
+export const endedPeople = reshaped({
+  grace: {
+    brief: 'read',
+    link: 'opened',
+    notice: { kind: 'told', on: FRI, at: '21:25', by: 'push' },
+  },
+  kelechi: {
+    brief: 'read',
+    link: 'opened',
+    notice: { kind: 'told', on: FRI, at: '09:00', by: 'whatsApp' },
+  },
+  tope: { notice: { kind: 'told', on: SAT, at: '16:30', by: 'push' }, ending: 'ended' },
+  yusuf: {
+    brief: 'sent',
+    notice: { kind: 'told', on: SAT, at: '16:30', by: 'text' },
+    ending: 'ended',
+  },
+});
+
+export const SENT_FRIDAY = { date: FRI, count: 5 };
+
+function notices(o: Partial<NoticesStart> = {}): NoticesStart {
+  return {
+    on: true,
+    saves: true,
+    notSaved: false,
+    next: FRI,
+    sent: null,
+    concluded: null,
+    ask: 'ready',
+    owners: 2,
+    removing: null,
+    stale: false,
+    alreadyOver: false,
+    ...o,
+  };
+}
+
+function noticed(
+  o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>,
+  n: Partial<NoticesStart> = {},
+): BriefingStart {
+  return start({ people: noticePeople(), ...o, notices: notices(n) });
+}
 
 const STATES = {
   populated: () =>
@@ -780,6 +971,182 @@ const STATES = {
       check: 'all',
       sendFails: true,
     }),
+  noticesList: () =>
+    noticed({
+      name: 'The reminder card, and the lines under Briefing',
+      note: 'Next on Friday, Oct 16, to 5 people, the credits line, who is left out. Grace waits, Kelechi is held for quiet hours, Tope was told by push, Yusuf was not delivered, Amina can’t be reached. Turn the switch off and on.',
+    }),
+  noticesSeveralShifts: () =>
+    noticed({
+      name: 'Several shifts, waiting',
+      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, and Yusuf’s last is taken off. Each reads Goes at with its short line; a shift’s start carries its weekday, its end only when on another day.',
+      people: severalShifts(),
+    }),
+  noticesEve: () =>
+    noticed(
+      {
+        name: 'The reminder has gone (the eve)',
+        note: 'Sent on Friday, Oct 16, to 5 people, and nothing else: no cost line and no left-out lines. The roster still names who was not sent. Kelechi was told by WhatsApp.',
+        people: eve(),
+      },
+      { sent: SENT_FRIDAY },
+    ),
+  noticesReminderOff: () =>
+    noticed(
+      {
+        name: 'The reminder switched off',
+        note: 'Nothing under what it does while it is off. Turn it on.',
+      },
+      { on: false },
+    ),
+  noticesSwitchFailed: () =>
+    noticed(
+      {
+        name: 'The switch could not save',
+        note: 'Couldn’t save. The reminder is still on. Every press is refused here.',
+        said: NW.notSaved(true),
+      },
+      { saves: false, notSaved: true },
+    ),
+  noticesRemoved: () =>
+    noticed(
+      {
+        name: 'Removing someone briefed: the question',
+        note: 'Tope Balogun’s details, Remove from the event: one line more, as Tope gets one last message. Remove from the event, or Keep them.',
+      },
+      { removing: 'tope' },
+    ),
+  noticesNoneBriefed: () =>
+    noticed({
+      name: 'Nobody briefed yet',
+      note: 'Nobody to remind yet, with 6 not briefed and 1 who can’t be reached.',
+      people: noticePeople().map((one) => ({ ...one, brief: 'none', link: 'none', notice: null })),
+    }),
+  noticesReadOnly: () =>
+    noticed({
+      name: 'staff.read: On as a word',
+      note: 'No switch, and the Next, cost and left-out lines as for staff.manage.',
+      access: 'read',
+    }),
+  noticesEmpty: () =>
+    noticed({
+      name: 'Nobody on the staff',
+      note: 'Nobody to remind yet.',
+      people: [],
+    }),
+  noticesCostCredits: () =>
+    noticed({
+      name: 'Cost: using credits',
+      note: 'Kelechi’s WhatsApp (31 credits) and Yusuf’s text (62). Credits only: texts have nothing included.',
+    }),
+  noticesNoCredits: () =>
+    noticed({
+      name: 'Not delivered: no credits left',
+      note: 'Yusuf’s row, with Copy link, and Send again as on any changed row.',
+      people: reshaped({ yusuf: { notice: { kind: 'failed', reason: NO_CREDITS } } })(),
+    }),
+  noticesCostShort: () =>
+    noticed({
+      name: 'Credits short, with Add credits',
+      note: 'billing.manage. 40 credits cover Kelechi’s WhatsApp, not Yusuf’s text. Add credits opens Plan and billing.',
+      balance: 40,
+    }),
+  noticesCostShortReadOnly: () =>
+    noticed({
+      name: 'Credits short, with Ask an owner',
+      note: 'staff.read, 20 credits: neither is covered. Press Ask an owner.',
+      access: 'read',
+      balance: 20,
+      billing: false,
+    }),
+  noticesCostShortAsked: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the owners',
+        note: 'The owners have been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent' },
+    ),
+  noticesCostShortAskedOne: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the one owner',
+        note: 'The owner has been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent', owners: 1 },
+    ),
+  noticesCostShortAskFailed: () =>
+    noticed(
+      {
+        name: 'Ask an owner: not sent',
+        note: 'Not sent. Try again in a moment. Press Ask an owner again.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'failed' },
+    ),
+  noticesCalledOff: () =>
+    noticed(
+      {
+        name: 'Called off',
+        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again or Send to {n} changed; Copy link stays.',
+        people: calledOff(),
+      },
+      { concluded: 'calledOff' },
+    ),
+  noticesEventEnded: () =>
+    noticed(
+      {
+        name: 'Ended with End now',
+        note: 'End now on Saturday, Oct 17 at 16:30: Tope and Yusuf had not started. Friday’s reminder had gone.',
+        people: endedPeople(),
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY },
+    ),
+  noticesFinishedSent: () =>
+    noticed(
+      {
+        name: 'Past its end, the reminder sent',
+        note: 'Sunday, with no End now. The rows as on the eve.',
+        people: eve(),
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY },
+    ),
+  noticesFinishedSwitchOff: () =>
+    noticed(
+      {
+        name: 'Ended, with the switch off beforehand',
+        note: 'No reminder ever went.',
+        people: endedPeople(),
+      },
+      { concluded: 'ended', on: false },
+    ),
+  noticesFinishedRefused: () =>
+    noticed(
+      {
+        name: 'A send refused: the event is already over',
+        note: 'The page was opened before End now; it reloaded Finished beneath the notice.',
+        people: endedPeople(),
+        said: NW.alreadyOver,
+      },
+      { concluded: 'ended', sent: SENT_FRIDAY, alreadyOver: true },
+    ),
+  noticesFinishedRefusedBefore: () =>
+    noticed(
+      {
+        name: 'A page opened before End now',
+        note: 'End now was pressed elsewhere at 16:30. Press any send: it is refused, and the page reloads Finished.',
+        people: eve(),
+      },
+      { sent: SENT_FRIDAY, stale: true },
+    ),
 } satisfies Record<string, () => BriefingStart>;
 
 export type BriefingStateName = keyof typeof STATES;
@@ -805,6 +1172,7 @@ export function briefingRosterStart(raw: string | null): RosterStart | null {
     name: b.name,
     note: b.note,
     entries: b.people,
+    panel: b.notices?.removing == null ? null : { kind: 'remove', id: b.notices.removing },
     manage: b.access === 'manage',
     finished: b.finished,
     copy: b.copy === 'slow' ? 'works' : b.copy,
@@ -905,6 +1273,55 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'resultHeld',
         'resultHeldRefused',
         'sendFailed',
+      ] as const
+    ).map(link),
+  },
+];
+
+export const NOTICE_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
+  {
+    name: 'The reminder card',
+    states: (
+      [
+        'noticesList',
+        'noticesEve',
+        'noticesReminderOff',
+        'noticesSwitchFailed',
+        'noticesNoneBriefed',
+        'noticesReadOnly',
+        'noticesEmpty',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'What the next reminder costs (sc-3931)',
+    states: (
+      [
+        'noticesCostCredits',
+        'noticesCostShort',
+        'noticesCostShortReadOnly',
+        'noticesCostShortAsked',
+        'noticesCostShortAskedOne',
+        'noticesCostShortAskFailed',
+      ] as const
+    ).map(link),
+  },
+  {
+    name: 'The lines under Briefing, and removing someone',
+    states: (
+      ['noticesList', 'noticesSeveralShifts', 'noticesNoCredits', 'noticesRemoved'] as const
+    ).map(link),
+  },
+  {
+    name: 'Once the event is Finished',
+    states: (
+      [
+        'noticesCalledOff',
+        'noticesEventEnded',
+        'noticesFinishedSent',
+        'noticesFinishedSwitchOff',
+        'noticesFinishedRefused',
+        'noticesFinishedRefusedBefore',
       ] as const
     ).map(link),
   },

@@ -194,6 +194,14 @@ describe('when a tray is here', () => {
     expect(hereLine(second, 'fryer')).toBe('Funmi Bakare · 3 plates · here since 19:40');
   });
 
+  it('owes the Pass three items in passThree, an earlier course last', () => {
+    expect(leftToDish(seed('passThree')).map((l) => l.label)).toEqual([
+      'Moin moin',
+      'Chef’s choice',
+      'Starter · Pepper soup',
+    ]);
+  });
+
   it('is here at the Pass as it starts', () => {
     const s = { ...fresh(), station: 'pass' as const };
     expect(labels(hereTrays(s))).toEqual(['Row B', 'Table 2']);

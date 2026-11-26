@@ -1,0 +1,49 @@
+# sc-95675: the right phone code on the door code screen, for a member of a Google-or-Apple-only organisation, is refused under its heading. Pass CODE (a working door code), NUMBER (the member's national number), COUNTRY (its country, as NG) and COUNTRY_NAME (that country's name in the batch language) and DIGITS (its last digits, for Smocker). It signs the batch's session out: run it alone with --cold.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.number'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: 01-event
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: 'Ada Member'
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: ${COUNTRY_NAME}
+- tapOn:
+    id: 'redeem.event.country.${COUNTRY}'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- hideKeyboard
+- takeScreenshot: 02-number
+- tapOn:
+    id: 'redeem.event.send'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.text'
+    timeout: 20000
+- runScript: ../scripts/latest-sms-code.js
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible: '.*{{t:any:signIn.providerOnlyTitle}}.*'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 03-refused

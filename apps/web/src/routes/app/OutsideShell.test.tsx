@@ -225,6 +225,16 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
     expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
   });
 
+  it('refuses Staff, the Roster’s address, at a level without the staff, in place of sending it to Overview', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_1/staff');
+
+    expect(await screen.findByText('You cannot see this event’s staff.')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Back to the event' })).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
+  });
+
   it('reaches Your account and Sign out from the person at the sidebar’s foot', async () => {
     outside([WEDDING]);
     answering([WEDDING]);

@@ -275,7 +275,7 @@ export function InsideEvent({
           at={at}
           top={insets.top + tokens.spaceSm}
           onArea={go}
-          onMore={() => setMore(true)}
+          onMore={groups.length > 0 ? () => setMore(true) : null}
         />
       )}
       {phone && (
@@ -691,7 +691,7 @@ function MoreSheet({
   );
 }
 
-/** Upright, the event's tabs as a capsule at the top, each area with its glyph, as the product's sc-71 shell draws them. */
+/** Upright, the event's tabs as a capsule at the top, each area with its glyph, as the product's sc-71 shell draws them: More only when it holds the account's groups, the account itself being at Overview's foot. */
 function Capsule({
   areas,
   at,
@@ -703,9 +703,9 @@ function Capsule({
   at: 'overview' | 'people';
   top: number;
   onArea: (area: InsideArea) => void;
-  onMore: () => void;
+  onMore: (() => void) | null;
 }) {
-  const tabs: readonly (InsideArea | 'more')[] = [...areas, 'more'];
+  const tabs: readonly (InsideArea | 'more')[] = onMore == null ? areas : [...areas, 'more'];
 
   return (
     <View style={[styles.capsuleAt, { top }]} pointerEvents="box-none">
@@ -724,7 +724,7 @@ function Capsule({
           return (
             <Pressable
               key={tab}
-              onPress={() => (tab === 'more' ? onMore() : onArea(tab))}
+              onPress={() => (tab === 'more' ? onMore?.() : onArea(tab))}
               style={[styles.capsuleTab, on && styles.capsuleOn]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
