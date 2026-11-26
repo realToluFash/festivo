@@ -1,0 +1,18 @@
+# sc-51754: ${EVENT_ID}'s Open in maps tapped: what opens, then back to the event's page. Needs ${METRO_URL}, ${EVENT_ID}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: 'events.maps'
+    centerElement: true
+    timeout: 20000
+- tapOn:
+    id: 'events.maps'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: opened

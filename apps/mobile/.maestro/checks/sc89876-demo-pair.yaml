@@ -1,0 +1,31 @@
+# sc-89876: the demo beside the product, for the side-by-side pairs: an upcoming live event's Manage list (/demo/events/evt-ireti-2) and the Calendar demo's subscribe sheet (/demo/calendar) scrolled to What’s in it. Needs ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/events/evt-ireti-2
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: 'Call off…'
+    direction: DOWN
+    timeout: 25000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: demo-manage
+- openLink: ${METRO_URL}/--/demo/calendar
+- waitForAnimationToEnd: { timeout: 8000 }
+- extendedWaitUntil:
+    visible:
+      id: 'calendarFeed.open'
+    timeout: 30000
+- takeScreenshot: demo-calendar
+- tapOn:
+    id: 'calendarFeed.open'
+- waitForAnimationToEnd: { timeout: 4000 }
+- scrollUntilVisible:
+    element: 'What.s in it'
+    direction: DOWN
+    timeout: 15000
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: demo-sheet

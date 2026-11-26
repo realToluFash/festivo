@@ -1,0 +1,102 @@
+# sc-50095: ${EVENT_ID}'s page, then its Dates edit (title and Save), its name edit with a change and Cancel (Discard your change?, its line, Discard), and its cover edit with a saved photo (Remove photo and its line), then Remove photo (the default cover's line) and Cancel, Discard. The event needs a saved cover photo.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- takeScreenshot: n50095-01-page
+- scrollUntilVisible:
+    element:
+      id: 'events.details.dates'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: n50095-02-page-details
+- tapOn:
+    id: 'events.details.dates'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.dates.save'
+    timeout: 20000
+- takeScreenshot: n50095-03-dates-edit
+- tapOn:
+    id: 'event.edit.dates.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.name'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.name'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.field'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.name.field'
+- inputText: ' Two'
+- hideKeyboard
+- takeScreenshot: n50095-04-name-changed
+- tapOn:
+    id: 'event.edit.name.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.name.discard'
+    timeout: 10000
+- takeScreenshot: n50095-05-discard-ask
+- tapOn:
+    id: 'event.edit.name.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.cover'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.cover'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.save'
+    timeout: 20000
+- takeScreenshot: n50095-06-cover-photo
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: n50095-07-cover-remove
+- tapOn:
+    id: 'event.edit.cover.remove'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.upload'
+    timeout: 10000
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 800, optional: true }
+- takeScreenshot: n50095-08-cover-removed
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.save'
+    direction: DOWN
+    centerElement: true
+- takeScreenshot: n50095-09-cover-removed-foot
+- tapOn:
+    id: 'event.edit.cover.cancel'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.cover.discard'
+    timeout: 10000
+- takeScreenshot: n50095-10-cover-discard-ask
+- tapOn:
+    id: 'event.edit.cover.discard'
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 10000

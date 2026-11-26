@@ -1,0 +1,20 @@
+# sc-70819: Email domains by its card, locked or not, top, middle and foot.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      text: '.+'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc70819-domains
+- scroll
+- takeScreenshot: sc70819-domains-mid
+- scroll
+- scroll
+- takeScreenshot: sc70819-domains-foot

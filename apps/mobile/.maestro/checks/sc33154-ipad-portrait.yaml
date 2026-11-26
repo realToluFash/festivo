@@ -1,0 +1,14 @@
+# sc-33154: Today on the iPad (portrait): Now, the arrived figure, the folded band and the Your events card, from the top down.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 7000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: today-top
+- swipe: { start: '50%, 75%', end: '50%, 35%' }
+- waitForAnimationToEnd
+- takeScreenshot: today-2
+- swipe: { start: '50%, 75%', end: '50%, 35%' }
+- waitForAnimationToEnd
+- takeScreenshot: today-3

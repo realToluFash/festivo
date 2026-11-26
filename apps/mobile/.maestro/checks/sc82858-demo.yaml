@@ -1,0 +1,8 @@
+# sc-82858: the app demo's paused page (/demo/settings?held=paused), for the side-by-side pair. ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/demo/settings?held=paused
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: demo-paused

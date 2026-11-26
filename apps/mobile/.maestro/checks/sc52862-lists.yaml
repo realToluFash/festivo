@@ -1,0 +1,17 @@
+# sc-52862 regression: Today, Events and the Calendar keep their own margins, upright. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: calendar

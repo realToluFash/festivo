@@ -1,0 +1,26 @@
+# sc-90472: the other row tags at the device's text size: an event's tag on Events' Drafts, and New on Sign-in rules' changes.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil: { visible: { id: 'events.tab.drafts' }, timeout: 30000 }
+- tapOn: { id: 'events.tab.drafts' }
+- waitForAnimationToEnd: { timeout: 5000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'events.row.${EVENT_ID}' },
+      direction: DOWN,
+      timeout: 20000,
+      centerElement: true,
+    }
+- takeScreenshot: events
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- waitForAnimationToEnd: { timeout: 8000 }
+- scrollUntilVisible:
+    {
+      element: { id: 'signInRules.change.*' },
+      direction: DOWN,
+      timeout: 30000,
+      centerElement: true,
+    }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: rules

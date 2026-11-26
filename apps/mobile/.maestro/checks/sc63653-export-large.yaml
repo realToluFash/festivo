@@ -1,0 +1,19 @@
+# sc-63653: the Export sheet's counts on ${BIG}, a list of 1,234.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${BIG}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: before
+- tapOn:
+    id: 'guests.export'
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: 'guests.export.share'
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: large

@@ -1,0 +1,11 @@
+# sc-46032: /demo/today?create=created on a tablet on its side, the pair for sc46032-landscape-create-from-none.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 4000
+- runFlow: sc46032-demo-created.yaml
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: land-created-demo

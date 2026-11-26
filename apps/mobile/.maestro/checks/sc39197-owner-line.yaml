@@ -1,0 +1,27 @@
+# sc-39197: the role sheet for member ${MEMBER_ID}, its Owner choice (${OWNER_ROLE_ID}) and membersScreen.roleMeans.owner in full. Needs an owner signed in.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible: '{{t:membersScreen.title}}'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: members.row.${MEMBER_ID}
+    timeout: 20000
+- tapOn:
+    id: members.row.${MEMBER_ID}
+- scrollUntilVisible:
+    element:
+      id: members.changeRole
+    timeout: 20000
+- tapOn:
+    id: members.changeRole
+- scrollUntilVisible:
+    element:
+      id: members.role.${OWNER_ROLE_ID}
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: owner-line
+- assertVisible: '{{t:membersScreen.roleMeans.owner}}'

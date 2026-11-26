@@ -1,0 +1,48 @@
+# sc-80917: Events loaded, the API stopped, then an event opened: the event page's own failed words; Try again opens it once the API is back.
+appId: host.exp.Exponent
+onFlowComplete:
+  - runScript:
+      file: ../batch/helper.js
+      env:
+        ASK: /api?to=up
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events
+- extendedWaitUntil:
+    visible: '.*Adunni Garden Party.*'
+    timeout: 30000
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: loaded
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=stopped
+- runFlow:
+    when:
+      visible: '.*Adunni Garden Party.*'
+    commands:
+      - tapOn: '.*Adunni Garden Party.*'
+- runFlow:
+    when:
+      notVisible: { id: 'events.page.retry' }
+    commands:
+      - openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page.retry'
+    timeout: 60000
+- waitForAnimationToEnd
+- assertVisible: '{{t:eventsScreen.failedLoadEvent}}'
+- takeScreenshot: failed
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /api?to=up
+- tapOn:
+    id: 'events.page.retry'
+- extendedWaitUntil:
+    visible: '.*Adunni Garden Party.*'
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: retried

@@ -1,0 +1,21 @@
+# Android phone. sc-91027: Back pressed in the first half-second of opening name puts the keys down, and they stay down. Needs ${METRO_URL}.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    id: 'account.name'
+    waitToSettleTimeoutMs: 100
+- back
+- takeScreenshot: just-after-back
+- extendedWaitUntil:
+    visible:
+      id: 'sc91027.never'
+    timeout: 2500
+    optional: true
+- takeScreenshot: two-seconds-later

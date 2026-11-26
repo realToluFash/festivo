@@ -1,0 +1,12 @@
+# Today on a landscape-native Android tablet at rotation 0 (Maestro's PORTRAIT), for the sidebar's organisation pill. sc-40298.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible:
+      id: 'frame.organisation|home.switchOrganisation'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: landscape

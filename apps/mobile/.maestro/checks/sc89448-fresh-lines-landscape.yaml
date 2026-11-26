@@ -1,0 +1,20 @@
+# sc-89448: the tablet turned landscape, opens ${EVENT_ID}'s Menu, screenshots the live line, then waits (up to 4 minutes) for the stale line once the API is stopped from outside, and screenshots the band and the stale line together. Needs ${METRO_URL}, ${EVENT_ID}, ${HELPER_URL}.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=menu
+- extendedWaitUntil:
+    visible:
+      id: 'menu.live'
+    timeout: 30000
+- takeScreenshot: land-live
+- extendedWaitUntil:
+    visible:
+      id: 'menu.stale'
+    timeout: 240000
+- waitForAnimationToEnd
+- takeScreenshot: land-stale

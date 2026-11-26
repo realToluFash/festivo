@@ -1,0 +1,191 @@
+/* Choose guests, one by one, inside To (Messaging-B-Web-Choose, page 36; sc-3942). */
+
+.mg-to-pop.mgc-pop {
+  width: 420px;
+  height: min(640px, calc(100vh - 140px));
+}
+
+.mgc {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-height: 0;
+}
+
+.mgc .mg-pop-head {
+  gap: var(--spaceSm);
+}
+
+.mgc-title {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The field's own ring shows focus; the input inside it needs no second one. */
+.desk .mgc .ev-field input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.mgc-status {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.3 var(--fontFamily);
+}
+
+.mgc-scroll {
+  flex: 1;
+  min-height: 0;
+  margin: 0 calc(-1 * var(--spaceXl));
+  padding: 0 var(--spaceXl);
+  overflow-y: auto;
+  border-top: 1px solid var(--colorBorder);
+  border-bottom: 1px solid var(--colorBorder);
+}
+
+.mgc-list,
+.mgc-skeleton {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mgc-list li + li {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.mgc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  min-height: 52px;
+  padding: var(--spaceSm) 0;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.mgc-box {
+  margin-top: 1px;
+}
+
+.mgc-words {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mgc-name {
+  color: var(--colorInk);
+  font: 600 16px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.mgc-address {
+  color: var(--colorInkSecondary);
+  font: 500 14px/1.35 var(--fontFamily);
+  overflow-wrap: anywhere;
+}
+
+.mgc-flag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  color: var(--colorInkSecondary);
+  font: 600 13px/1.35 var(--fontFamily);
+}
+
+.mgc-flag.is-stopped {
+  color: var(--colorBrokenText);
+}
+
+.mgc-none {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding: var(--spaceLg) 0;
+}
+
+.mgc-none-head {
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 16px/1.3 var(--fontFamily);
+}
+
+.mgc-none .desk-text {
+  margin-inline: calc(-1 * var(--spaceSm));
+}
+
+.mgc-skeleton-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceMd) 0;
+}
+
+.mgc-skeleton-row + .mgc-skeleton-row {
+  border-top: 1px solid var(--colorBorder);
+}
+
+.mgc-skeleton-box {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radiusSmall);
+  background: var(--colorInset);
+}
+
+.mgc-skeleton-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.mgc-skeleton-bar {
+  width: 60%;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--colorInset);
+}
+
+.mgc-skeleton-bar.is-short {
+  width: 80%;
+  height: 12px;
+}
+
+.mgc-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
+.mgc-chosen {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.3 var(--fontFamily);
+}
+
+/* The chosen guests back in To, under the To chip. */
+.mgc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0 0 0 calc(var(--space3xl) + var(--spaceMd));
+  list-style: none;
+}
+
+.mgc-chip {
+  max-width: 100%;
+}
+
+.mgc-more {
+  margin-inline: 0;
+}
