@@ -3614,7 +3614,8 @@
     "staleBody": "This is your night as it was at {{time}}.",
     "tryAgain": "Try again",
     "loading": "Loading your night…",
-    "otherNeed": "{{what}} (other)"
+    "otherNeed": "{{what}} (other)",
+    "beforeYouStart": "Before you start"
   },
   "station": {
     "title": "Kitchen station · {{station}}",

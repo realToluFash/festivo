@@ -106,6 +106,8 @@ function person(id: string, fullName: string, job: string | null, shifts: string
     link: 'no_mobile',
     linkBy: null,
     linkAt: null,
+    briefing: 'none',
+    briefingCopy: null,
     contactsErased: false,
   };
 }
@@ -122,6 +124,7 @@ const PLAN = {
   ],
   jobs: JOBS,
   stations: NO_STATIONS,
+  rules: null,
   shifts: [
     {
       id: 'sh_bar',

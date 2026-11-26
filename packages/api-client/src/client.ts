@@ -3355,6 +3355,45 @@ export class ApiClient {
     ).staff;
   }
 
+  /** A new link for the person from the briefing (sc-3917): as deliverStaffLink, and recorded as the briefing's copy, which leaves the briefing where it was. */
+  async copyBriefingLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/link`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** After a briefing copy: Sent, not read, and Link sent; refused 409 `conflict` before one. */
+  async markBriefingSent(eventId: string, staffId: string): Promise<StaffEntry> {
+    return this.staffAnswerOf(
+      await this.post<unknown>(
+        `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/sent`,
+      ),
+    ).staff;
+  }
+
+  /** Blank clears them; refused `validation_failed` on `rules` past STAFF_RULES_MAXIMUM code points. */
+  async saveHouseRules(eventId: string, rules: string): Promise<string | null> {
+    const body = await this.put<{ rules?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/briefing/rules`,
+      { rules },
+    );
+
+    return typeof body.rules === 'string' ? body.rules : null;
+  }
+
+  /** The person's shift page as they would see it (sc-3917), recording nothing; staff.read. */
+  async previewStaffNight(eventId: string, staffId: string): Promise<MyNight> {
+    return this.myNightOf(
+      await this.get<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/preview`),
+    );
+  }
+
   /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
   async staffPlan(eventId: string): Promise<StaffPlan> {
     return this.staffPlanOf(await this.get<unknown>(this.staffPath(eventId)));

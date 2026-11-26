@@ -36,6 +36,7 @@ class Event implements SoftDeletableInterface
 
     public const int ARRIVAL_NOTE_MAXIMUM = 500;
     public const int THANK_YOU_MAXIMUM = 280;
+    public const int STAFF_RULES_MAXIMUM = 2000;
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -139,6 +140,10 @@ class Event implements SoftDeletableInterface
 
     #[ORM\Column(type: Types::STRING, length: self::THANK_YOU_MAXIMUM, nullable: true)]
     private ?string $thankYou = null;
+
+    /** The staff's house rules (sc-3917), shown as Before you start on everyone's shift page; plain text, at most STAFF_RULES_MAXIMUM code points. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $staffRules = null;
 
     /** Moved by CalendarChangeListener only when what a guest's calendar shows changes, so a pause leaves a subscribed calendar as it was (sc-3627). */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
@@ -327,6 +332,16 @@ class Event implements SoftDeletableInterface
     public function setThankYou(?string $thankYou): void
     {
         $this->thankYou = $thankYou;
+    }
+
+    public function getStaffRules(): ?string
+    {
+        return $this->staffRules;
+    }
+
+    public function setStaffRules(?string $staffRules): void
+    {
+        $this->staffRules = $staffRules;
     }
 
     public function getCalendarSequence(): int

@@ -91,7 +91,7 @@ final class MyNightTest extends ApiTestCase
         $night = $this->night($this->signedIn());
 
         self::assertSame(200, $this->statusCode(), Json\encode($night));
-        self::assertSame(['event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn'], Vec\keys($night));
+        self::assertSame(['event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'rules'], Vec\keys($night));
         self::assertSame(['id' => $this->eventId, 'name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $night['event']);
         self::assertFalse($night['checksIn']);
         self::assertSame('2027-03-07T03:00:00+01:00', $night['endsAt']);

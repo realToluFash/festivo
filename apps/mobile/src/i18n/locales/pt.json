@@ -3765,7 +3765,8 @@
     "staleBody": "A sua noite, tal como estava a esta hora: {{time}}.",
     "tryAgain": "Tentar novamente",
     "loading": "A carregar a sua noite…",
-    "otherNeed": "{{what}} (outra)"
+    "otherNeed": "{{what}} (outra)",
+    "beforeYouStart": "Before you start"
   },
   "station": {
     "title": "Posto da cozinha · {{station}}",

@@ -15,6 +15,8 @@ export interface MyNight {
   tables: MyNightTable[] | null;
   /** Their job's level opens check-in at the door (sc-28230). */
   checksIn: boolean;
+  /** The house rules, shown as Before you start (sc-3917). */
+  rules: string | null;
 }
 
 export interface MyNightMoment {
@@ -137,7 +139,8 @@ export function asMyNight(raw: unknown): MyNight | null {
     lead === undefined ||
     timing == null ||
     (raw.tables !== null && tables == null) ||
-    typeof raw.checksIn !== 'boolean'
+    typeof raw.checksIn !== 'boolean' ||
+    !text(raw.rules)
   )
     return null;
 
@@ -153,5 +156,6 @@ export function asMyNight(raw: unknown): MyNight | null {
     doorsAt,
     tables,
     checksIn: raw.checksIn,
+    rules: raw.rules,
   };
 }

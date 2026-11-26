@@ -121,6 +121,8 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     link: 'no_mobile',
     linkBy: null,
     linkAt: null,
+    briefing: 'none',
+    briefingCopy: null,
     contactsErased: false,
     ...more,
   };
@@ -211,7 +213,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     );
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] });
     render(<RouterProvider router={router} />);
@@ -231,7 +233,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     );
     render(
       <RouterProvider
@@ -250,7 +252,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     });
 
     const add = await screen.findByRole('button', { name: 'Add a person' });
@@ -261,7 +263,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
       'POST /api/events/ev_1/staff': () =>
         json({ staff: entry('st_1', 'Chidi Okafor'), member: null }, 201),
     });
@@ -296,6 +298,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
       'POST /api/events/ev_1/staff': (body) =>
         (body as { allowShared: boolean }).allowShared
@@ -356,6 +359,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -385,6 +389,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -448,6 +453,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
               jobs: [],
               shifts: [],
               stations: NO_STATIONS,
+              rules: null,
             }),
         },
         permissions,
@@ -495,7 +501,13 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({
+          staff: [entry('st_1', 'Amaka Eze')],
+          jobs: [],
+          shifts: [],
+          stations: NO_STATIONS,
+          rules: null,
+        }),
       'DELETE /api/events/ev_1/staff/st_1': () => new Response(null, { status: 204 }),
     });
 
@@ -520,6 +532,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS,
@@ -541,6 +554,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
@@ -588,6 +602,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -610,6 +625,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -635,7 +651,13 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     };
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [entry('st_1', 'Funmi Bakare')], jobs: [], shifts: [], stations }),
+        json({
+          staff: [entry('st_1', 'Funmi Bakare')],
+          jobs: [],
+          shifts: [],
+          stations,
+          rules: null,
+        }),
       'PUT /api/events/ev_1/stations/people/st_1': () =>
         json({
           staff: [entry('st_1', 'Funmi Bakare', { station: sectionB, stations: [sectionB] })],
@@ -645,6 +667,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             ...stations,
             sections: [{ ...stations.sections[0], people: ['st_1'] }],
           },
+          rules: null,
         }),
     });
 
@@ -684,6 +707,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
@@ -728,6 +752,7 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
         jobs: [],
         shifts: [],
         stations: NO_STATIONS,
+        rules: null,
       });
   }
 
@@ -899,5 +924,182 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(sent.some((one) => one.line.endsWith('/link/replace'))).toBe(false);
     await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+});
+
+describe('The briefing on the Roster (sc-3917)', () => {
+  const URL_ISSUED = 'https://soirely.com/w/7Gk2pQ9xVb4mT1sR8nLw3c';
+  const SHIFT = {
+    id: 'sh_1',
+    startsAt: '2030-11-14T16:30:00+01:00',
+    endsAt: '2030-11-14T21:00:00+01:00',
+  };
+  const ON = { mobile: '+2348031234567', link: 'none', shifts: [SHIFT] };
+  const NIGHT = {
+    event: { id: 'ev_1', name: 'Adaeze and Tunde', timeZone: 'Africa/Lagos' },
+    endsAt: '2030-11-15T02:00:00+01:00',
+    station: 'Bar',
+    job: 'Bartender',
+    shift: { job: 'Bartender', startsAt: SHIFT.startsAt, endsAt: SHIFT.endsAt },
+    later: null,
+    lead: null,
+    timing: [],
+    doorsAt: '2030-11-14T18:00:00+01:00',
+    tables: null,
+    checksIn: false,
+    rules: 'Black shirts. Phones away on the floor.',
+  };
+
+  function plan(staff: unknown[], rules: string | null = null) {
+    return () => json({ staff, jobs: [], shifts: [], stations: NO_STATIONS, rules });
+  }
+
+  function rowOf(name: string): HTMLElement {
+    const tr = screen.getByRole('button', { name }).closest('tr');
+    if (tr == null) throw new Error(`No row for ${name}`);
+
+    return tr;
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('counts where everyone is, says who has nothing to send, and offers no send while texts cannot go', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan([
+        entry('st_1', 'Amaka Eze', { ...ON, briefing: 'read' }),
+        entry('st_2', 'Bayo Ojo', { ...ON, briefing: 'changed' }),
+        entry('st_3', 'Chidi Obi', { shifts: [SHIFT] }),
+        entry('st_4', 'Dayo Ade'),
+      ]),
+    });
+
+    const tally = await screen.findByRole('list', { name: 'Where the briefing is' });
+
+    expect(
+      within(tally)
+        .getAllByRole('listitem')
+        .map((one) => one.textContent),
+    ).toEqual(['Read1', 'Sent, not read0', 'Changed since sent1', 'Not sent2']);
+    expect(within(rowOf('Chidi Obi')).getByText('No mobile number')).toBeDefined();
+    expect(within(rowOf('Dayo Ade')).getByText('No shift, so nothing to send')).toBeDefined();
+    expect(
+      within(rowOf('Bayo Ojo')).getByRole('button', {
+        name: 'Copy link for the briefing: Bayo Ojo',
+      }),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
+  });
+
+  it('copies a person’s link from the briefing, then marks it as sent', async () => {
+    signedIn();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const copy = { by: 'Folake Adeyemi', at: '2030-11-14T19:12:00+01:00', marked: false };
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan([
+        entry('st_1', 'Amaka Eze', ON),
+        entry('st_2', 'Bayo Ojo'),
+      ]),
+      'POST /api/events/ev_1/staff/st_1/briefing/link': () =>
+        json({
+          url: URL_ISSUED,
+          staff: entry('st_1', 'Amaka Eze', { ...ON, link: 'copied', briefingCopy: copy }),
+        }),
+      'POST /api/events/ev_1/staff/st_1/briefing/sent': () =>
+        json({
+          staff: entry('st_1', 'Amaka Eze', {
+            ...ON,
+            link: 'sent',
+            briefing: 'sent',
+            briefingCopy: { ...copy, marked: true },
+          }),
+        }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy link' }));
+    const panel = await screen.findByRole('complementary', { name: 'Copy a person’s link' });
+
+    expect(within(panel).queryByText('Bayo Ojo')).toBeNull();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Copy link for the briefing: Amaka Eze' }),
+    );
+
+    expect(
+      await within(panel).findByText('Copied by Folake Adeyemi · 19:12 · not marked as sent'),
+    ).toBeDefined();
+    expect(writeText).toHaveBeenCalledWith(URL_ISSUED);
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Mark as sent for the briefing: Amaka Eze' }),
+    );
+
+    expect(await within(rowOf('Amaka Eze')).findByText('Sent, not read')).toBeDefined();
+    expect(within(panel).getByText('Marked as sent by Folake Adeyemi · 19:12')).toBeDefined();
+    expect(sent.map((one) => one.line)).toContain('POST /api/events/ev_1/staff/st_1/briefing/sent');
+  });
+
+  it('saves the house rules, counting from 1,800 characters and cutting a paste at 2,000', async () => {
+    signedIn();
+    const sent = await onRoster({
+      'GET /api/events/ev_1/staff': plan([entry('st_1', 'Amaka Eze', ON)]),
+      'PUT /api/events/ev_1/briefing/rules': (body) =>
+        json({ rules: (body as { rules: string }).rules.trim() }),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit the rules' }));
+    const panel = await screen.findByRole('complementary', { name: 'House rules' });
+
+    expect(within(panel).getByText('No house rules yet.')).toBeDefined();
+    fireEvent.click(within(panel).getByRole('button', { name: 'Edit the rules' }));
+    const box = screen.getByRole('textbox', { name: 'House rules' });
+
+    fireEvent.change(box, { target: { value: 'Ọ̀'.repeat(900) } });
+    expect(screen.getByText('1,800 of 2,000 characters')).toBeDefined();
+    fireEvent.change(box, { target: { value: 'Ọ̀'.repeat(1200) } });
+    expect(screen.getByText('2,000 of 2,000 characters. That is the limit.')).toBeDefined();
+    expect(box.getAttribute('aria-describedby')).toContain('bf-rules-cut');
+    expect(document.getElementById('bf-rules-cut')?.textContent).toBe(
+      'That was longer than 2,000 characters, so the end was left out.',
+    );
+    fireEvent.change(box, { target: { value: ' Black shirts. ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await within(panel).findByText('Saved. The rules are on everyone’s shift page now.'),
+    ).toBeDefined();
+    expect(screen.getByText('Black shirts.')).toBeDefined();
+    expect(sent.find((one) => one.line.endsWith('/briefing/rules'))?.body).toEqual({
+      rules: ' Black shirts. ',
+    });
+  });
+
+  it('previews a person’s page with the rules, and lets anyone who can see the staff read but not edit them', async () => {
+    signedIn();
+    const sent = await onRoster(
+      {
+        'GET /api/events/ev_1/staff': plan(
+          [entry('st_1', 'Amaka Eze', ON)],
+          'Black shirts. Phones away on the floor.',
+        ),
+        'GET /api/events/ev_1/staff/st_1/preview': () => json(NIGHT),
+      },
+      ['events.read', 'staff.read'],
+    );
+
+    expect(
+      await screen.findByText(
+        'You can see the briefing. Sending it needs permission to manage staff.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Edit the rules' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview as' }));
+    const page = await screen.findByRole('group', { name: 'Amaka Eze’s page' });
+
+    expect(within(page).getByText('Before you start')).toBeDefined();
+    expect(within(page).getByText('Black shirts. Phones away on the floor.')).toBeDefined();
+    expect(sent.map((one) => one.line)).toContain('GET /api/events/ev_1/staff/st_1/preview');
   });
 });
