@@ -285,21 +285,13 @@ final class ServiceStepsTest extends ApiTestCase
         return Iter\search($guests, static fn (array $guest): bool => $guest['name'] === $name) ?? self::fail('no guest ' . $name);
     }
 
-    /**
-     * @param array<string, mixed>|null $body
-     *
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed>|null $body */
     private function post(string $path, ?array $body = null): array
     {
         return $this->as('POST', '/api/events/' . $this->event->getId()->toRfc4122() . '/service' . $path, $body ?? []);
     }
 
-    /**
-     * @param array<string, mixed> $body
-     *
-     * @return array<string, mixed>
-     */
+    /** @param array<string, mixed> $body */
     private function put(string $path, array $body): array
     {
         return $this->as('PUT', '/api/events/' . $this->event->getId()->toRfc4122() . '/service' . $path, $body);

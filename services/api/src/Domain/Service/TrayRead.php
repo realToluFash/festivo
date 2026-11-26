@@ -51,8 +51,6 @@ final readonly class TrayRead
      * @param list<ServicePlate>                              $onTrays
      * @param non-empty-list<array{id: string, name: string}> $stops
      * @param array<string, string>                           $stopOf
-     *
-     * @return array<string, mixed>
      */
     public function tray(ServiceTray $tray, array $onTrays, array $stops, array $stopOf, string $passId): array
     {
