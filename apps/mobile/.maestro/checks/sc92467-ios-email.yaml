@@ -1,4 +1,4 @@
-# sc-92467 regression: email opens with keys up and takes typing with no tap.
+# sc-92467, iPhone and iPad: Add email opens with the keys up and takes typing with no tap, first opening only. The short form of sc91027-email.yaml for the iOS pass of this story; that check holds the Cancel and Discard openings. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/account
@@ -13,8 +13,15 @@ appId: host.exp.Exponent
     centerElement: true
 - tapOn:
     id: 'account.email.add'
+- extendedWaitUntil:
+    visible:
+      id: 'account.email.add.field'
+    timeout: 15000
 - waitForAnimationToEnd:
-    timeout: 1500
+    timeout: 4000
 - takeScreenshot: opened
 - inputText: 'qa3x@soirely.test'
+- assertVisible:
+    id: 'account.email.add.field'
+    text: '.*qa3x@soirely\.test.*'
 - takeScreenshot: typed

@@ -1,4 +1,4 @@
-# sc-92467 regression: pw opens with keys up and takes typing with no tap.
+# sc-92467, iPhone and iPad: Change password opens with the keys up and takes typing with no tap, first opening only. The short form of sc91027-password.yaml for the iOS pass of this story; that check holds the Cancel and Discard openings. Needs ${METRO_URL}.
 appId: host.exp.Exponent
 ---
 - openLink: ${METRO_URL}/--/settings/security
@@ -13,8 +13,17 @@ appId: host.exp.Exponent
     centerElement: true
 - tapOn:
     id: 'security.password'
+- extendedWaitUntil:
+    visible:
+      id: 'security.change.current'
+    timeout: 15000
 - waitForAnimationToEnd:
-    timeout: 1500
+    timeout: 4000
 - takeScreenshot: opened
 - inputText: 'abcdef'
+- tapOn:
+    id: 'security.change.current.reveal'
+- assertVisible:
+    id: 'security.change.current'
+    text: '.*abcdef.*'
 - takeScreenshot: typed
