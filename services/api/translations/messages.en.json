@@ -505,7 +505,7 @@
     "staff.hours_in_blank": "Enter the time they started.",
     "staff.hours_out_blank": "Enter the time they finished.",
     "staff.hours_order": "The end must be after the start.",
-    "staff.hours_long": "A shift can't be longer than 24 hours. Check the dates.",
+    "staff.hours_long": "A shift cannot be longer than 24 hours. Check the dates.",
     "staff.hours_own": "Somebody else who manages staff for this event has to correct your times.",
     "door_codes.role": "A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.",
     "door_codes.use_cap_required": "Enter how many people can use this code.",

@@ -268,7 +268,7 @@ final class ClockingTest extends ApiTestCase
             [['clockedInAt' => '', 'clockedOutAt' => '2027-03-07T01:15'], 'clockedInAt', 'Enter the time they started.'],
             [['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => null], 'clockedOutAt', 'Enter the time they finished.'],
             [['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => '2027-03-06T01:15'], 'clockedOutAt', 'The end must be after the start.'],
-            [['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => '2027-03-08T01:15'], 'clockedOutAt', "A shift can't be longer than 24 hours. Check the dates."],
+            [['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => '2027-03-08T01:15'], 'clockedOutAt', 'A shift cannot be longer than 24 hours. Check the dates.'],
         ] as [$body, $field, $message]) {
             $refused = $this->as($this->owner, 'PUT', $path, $body);
             self::assertSame(422, $this->statusCode(), Json\encode($refused));

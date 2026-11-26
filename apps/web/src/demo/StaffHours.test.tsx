@@ -53,7 +53,7 @@ describe('Hours worked at a desk (sc-234)', () => {
     await open('correct_long');
 
     expect(
-      screen.getByText('A shift can’t be longer than 24 hours. Check the dates.'),
+      screen.getByText('A shift cannot be longer than 24 hours. Check the dates.'),
     ).toBeTruthy();
   });
 

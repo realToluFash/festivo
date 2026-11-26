@@ -129,7 +129,7 @@ export const HW = {
   inBlank: 'Enter the time they started.',
   outBlank: 'Enter the time they finished.',
   order: 'The end must be after the start.',
-  long: 'A shift can’t be longer than 24 hours. Check the dates.',
+  long: 'A shift cannot be longer than 24 hours. Check the dates.',
   readOnly: 'You can see the hours. Correcting a time needs permission to manage staff.',
   loading: 'Loading hours worked',
   failed: 'The hours could not load. Check your connection and try again.',
@@ -348,7 +348,7 @@ export const HOURS_BOARD_TITLES: Record<HoursState, [string, string]> = {
   correct_in: ['Correct times, a missing clock-in', 'Yusuf Bello, no attendance recorded'],
   correct_blank: ['Correct times, no clock-in', 'Enter the time they started.'],
   correct_order: ['Correct times, the end before the start', 'The end must be after the start.'],
-  correct_long: ['Correct times, over 24 hours', 'A shift can’t be longer than 24 hours'],
+  correct_long: ['Correct times, over 24 hours', 'A shift cannot be longer than 24 hours'],
   corrected: ['Corrected', 'Out 01:15 · corrected from no clock-out'],
   read_only: ['Without staff.manage', 'No Correct times'],
   removed: [

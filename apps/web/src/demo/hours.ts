@@ -200,7 +200,7 @@ export const HW = {
   inBlank: 'Enter the time they started.',
   outBlank: 'Enter the time they finished.',
   order: 'The end must be after the start.',
-  long: 'A shift can’t be longer than 24 hours. Check the dates.',
+  long: 'A shift cannot be longer than 24 hours. Check the dates.',
   readOnly: 'You can see the hours. Correcting a time needs permission to manage staff.',
   loading: 'Loading hours worked',
   failed: 'The hours could not load. Check your connection and try again.',
