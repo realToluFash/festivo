@@ -136,4 +136,32 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.queryByRole('heading', { name: BW.card })).toBeNull();
     expect(button('Add a person')).toBeTruthy();
   });
+  it('offers no Copy link in the copy list to a person with no mobile number (sc-3912)', async () => {
+    await open('copyList');
+    expect(button('Copy link for the briefing: Ada Nnaji')).toBeNull();
+    expect(button('Copy link for the briefing: Amina Yusuf')).toBeTruthy();
+  });
+
+  it('sends Give someone a shift to the Jobs and shifts tab', async () => {
+    await open('copyNobody');
+    const link = screen.getByRole('link', { name: BW.giveShift });
+    expect(link.getAttribute('href')).toBe('/demo/events/evt-wed-4/staff/jobs');
+  });
+
+  it('keeps the draft when the rules are not saved, and saves on the next press', async () => {
+    await open('rulesNotSaved');
+    expect(screen.getByRole('alert').textContent).toContain(BW.notSaved);
+    press(BW.save);
+    expect(screen.queryByText(BW.notSaved)).toBeNull();
+    expect(screen.getByText(/No phones on the floor\./)).toBeTruthy();
+  });
+
+  it('loads Preview as again after it failed', async () => {
+    await open('previewFailed');
+    expect(screen.getByText(BW.didNotWork)).toBeTruthy();
+    press(BW.tryAgain);
+    expect(screen.getByText(BW.previewLoading)).toBeTruthy();
+    await wait(ISSUE_MS);
+    expect(screen.getByRole('group', { name: 'Amina Yusuf’s page' })).toBeTruthy();
+  });
 });
