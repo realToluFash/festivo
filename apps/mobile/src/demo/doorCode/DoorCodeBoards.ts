@@ -73,6 +73,27 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
     'Rita’s number is an alternative number',
   ],
   'second-number': ['Joining · an alternative number', 'Back to the name and number, both kept'],
+  'code-provider-only': [
+    'Joining · Google or Apple only, the code',
+    'Bisi is in Ìrè Events, Google linked (sc-94849)',
+  ],
+  'code-provider-only-apple': [
+    'Joining · Google or Apple only, the code, Apple',
+    'Bisi has Apple linked',
+  ],
+  'code-provider-only-both': [
+    'Joining · Google or Apple only, the code, both',
+    'Bisi has both linked',
+  ],
+  'provider-only': ['Joining · Google or Apple only', 'After the right code: Continue with Google'],
+  'provider-only-apple': [
+    'Joining · Google or Apple only, Apple',
+    'After the right code: Continue with Apple',
+  ],
+  'provider-only-both': [
+    'Joining · Google or Apple only, both',
+    'Each linked provider, in the app’s order',
+  ],
   in: ['Joining · you’re in', 'Open the event'],
   'event-in': ['Inside the event · can check guests in', 'Check guests in on its card'],
   'event-in-view': ['Inside the event · can view', 'The same card with no step'],
