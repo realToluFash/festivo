@@ -97,7 +97,7 @@ describe('the shift page says when a browser is signed out (sc-4235)', () => {
     expect(
       CW.shift.signedOutAt(signedOutTime('2026-11-15T02:00:00Z', '2026-11-14T18:05:00Z')),
     ).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this phone.',
+      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
     );
   });
 
