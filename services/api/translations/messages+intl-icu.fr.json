@@ -316,6 +316,7 @@
     "audit.field.addressKind": "Moyen de contact",
     "audit.field.jobLabel": "Fonction",
     "audit.field.useCap": "Personnes pouvant l’utiliser",
+    "audit.field.shift": "Service",
     "audit.field.expiresAt": "Valable jusqu’à",
     "audit.field.stoppedAt": "Désactivé",
     "audit.field.signedIn": "Session ouverte",

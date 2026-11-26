@@ -268,6 +268,22 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
   });
 
+  it('ends on My night when the code put them on its shift (sc-234)', async () => {
+    signedIn();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () =>
+        json({ ...IN, shift: { landsOn: 'night' } }, 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'GET /api/events/ev_1/my-night')).toBe(true),
+    );
+    expect(screen.queryByRole('heading', { name: /You’re in for/ })).toBeNull();
+  });
+
   it('signed out, asks a name and a mobile, sends a code to it, and joins on the right one', async () => {
     signedOut();
     const sent = at('/d/K7P2QX9M', {

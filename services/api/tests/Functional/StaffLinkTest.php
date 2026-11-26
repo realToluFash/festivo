@@ -279,6 +279,7 @@ final class StaffLinkTest extends ApiTestCase
         foreach (['look', 'opened'] as $what) {
             self::assertSame([
                 'state' => 'open',
+                'pastAccess' => false,
                 'event' => ['name' => 'Owambe'],
                 'job' => 'Bartender',
                 'mobile' => ['countryCode' => 'NG', 'lastDigits' => '0009'],

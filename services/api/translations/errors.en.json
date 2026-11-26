@@ -42,6 +42,8 @@
     "check_in_closed": "Arrivals can’t be recorded now.",
     "staff_number_shared": "That number is already on the roster.",
     "staff_job_staffed": "People are on this job’s shifts.",
+    "staff_job_worked": "Someone has worked a shift in this job.",
+    "staff_shift_worked": "They have worked this shift.",
     "staff_shift_full": "Every place on this shift is filled.",
     "staff_works_as": "This person works another job on this event.",
     "staff_shift_overlap": "This person is on another shift at that time.",

@@ -32,6 +32,7 @@ function ShiftNight({ eventId }: { eventId: string }) {
     <MyNightPage
       source={eventId}
       read={() => api.myNight(eventId)}
+      clockTap={(action) => api.myNightClock(eventId, action)}
       name={session.session.name}
       onSignOut={() => void signOut()}
       stillSignedIn={unreached}

@@ -59,7 +59,9 @@ final readonly class StaffLinkSignIn
 
     private function refuseOutsideWindow(StaffMember $entry): void
     {
-        if (!$this->staffLinks->window($entry)->open) {
+        $window = $this->staffLinks->window($entry);
+
+        if (!$window->open && null === $window->clockUntil) {
             throw ApiException::notFound('access.not_found');
         }
     }

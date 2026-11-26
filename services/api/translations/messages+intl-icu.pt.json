@@ -316,6 +316,7 @@
     "audit.field.addressKind": "Meio de contacto",
     "audit.field.jobLabel": "Cargo",
     "audit.field.useCap": "Pessoas que o podem usar",
+    "audit.field.shift": "Turno",
     "audit.field.expiresAt": "Válido até",
     "audit.field.stoppedAt": "Desativado",
     "audit.field.signedIn": "Com sessão iniciada",

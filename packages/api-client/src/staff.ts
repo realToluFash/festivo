@@ -507,6 +507,8 @@ export interface OpenStaffLink {
   signedOutAt: string | null;
   /** The event's zone, for the entry's own account alone. */
   timeZone: string | null;
+  /** Past the person's access while still clocked in (sc-234): the link opens their clock card alone. */
+  pastAccess: boolean;
 }
 
 /** Where a person's own link stands (sc-3912). Nothing about the person or the event reaches a caller before sign-in (sc-4235) beyond what an open link shows, and when one opens, in the event's offset; `from` is null while they have no shift. */
@@ -539,5 +541,6 @@ function asOpenStaffLink(raw: Record<string, unknown>): OpenStaffLink | null {
     name: reader === 'other' && typeof raw.name === 'string' ? raw.name : null,
     signedOutAt: reader === 'yours' && typeof raw.signedOutAt === 'string' ? raw.signedOutAt : null,
     timeZone: reader === 'yours' && typeof raw.timeZone === 'string' ? raw.timeZone : null,
+    pastAccess: raw.pastAccess === true,
   };
 }

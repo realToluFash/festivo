@@ -182,10 +182,18 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
     if (backShown) title.current?.focus();
   }, [backShown]);
 
+  // A code that put them on its shift ends on My night, where they clock in and out (sc-234).
+  function onItsShift(redeemed: RedeemedDoorCode): boolean {
+    if (redeemed.shift?.landsOn !== 'night') return false;
+    void navigate(`/night/${redeemed.eventId}`, { replace: true });
+    return true;
+  }
+
   async function join(event: Extract<Step, { kind: 'event' }>): Promise<void> {
     setStep({ ...event, busy: true, trouble: null });
     try {
       const redeemed = await api.redeemDoorCode(event.code);
+      if (onItsShift(redeemed)) return;
       const signedOutAt = await rereadOutsideEvents().catch(() => null);
       go({ kind: 'in', you: youreIn(redeemed, event.opened.event, signedOutAt) });
     } catch (error) {
@@ -284,7 +292,7 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
       return;
     }
     await refreshAccount();
-    if (redeemed != null)
+    if (redeemed != null && !onItsShift(redeemed))
       go({ kind: 'in', you: youreIn(redeemed, at.opened.event, redeemed.endsAt) });
   }
 
