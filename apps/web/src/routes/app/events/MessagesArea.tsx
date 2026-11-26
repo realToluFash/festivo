@@ -82,6 +82,7 @@ interface Desk {
   event: OrganisationEvent;
   manage: boolean;
   addresses: boolean;
+  guests: PickableGuest[] | null;
   whyOff: string | undefined;
   focus: (key: string) => void;
   say: (words: string) => void;
@@ -98,6 +99,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const [pane, setPane] = useState<Pane>({ kind: 'idle' });
   const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
   const [ask, setAsk] = useState(0);
+  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const pending = useRef<string | null>(null);
@@ -119,6 +121,20 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
       current = false;
     };
   }, [event.id, ask]);
+
+  useEffect(() => {
+    if (!manage) return;
+    let current = true;
+
+    api.guestMessageGuests(event.id).then(
+      (all) => current && setGuests(all),
+      () => current && setGuests((was) => was ?? []),
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [manage, event.id, ask]);
 
   const topics = useMemo(() => [realtimeTopic('EventMessages', event.id)], [event.id]);
   const again = useCallback(() => setAsk((n) => n + 1), []);
@@ -150,6 +166,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
     event,
     manage,
     addresses,
+    guests,
     whyOff: closed == null ? undefined : whyId,
     focus,
     say,
@@ -450,22 +467,6 @@ function Idle({
   onWrite: (openTo: boolean, body: string) => void;
 }) {
   const { t } = useTranslation();
-  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
-
-  useEffect(() => {
-    if (!desk.manage) return;
-    let current = true;
-
-    api.guestMessageGuests(desk.event.id).then(
-      (all) => current && setGuests(all),
-      () => undefined,
-    );
-
-    return () => {
-      current = false;
-    };
-  }, [desk.manage, desk.event.id]);
-
   const line = empty
     ? t('eventMessages.noneLine')
     : desk.whyOff == null
@@ -479,7 +480,7 @@ function Idle({
       {desk.manage && (
         <MiniComposer
           desk={desk}
-          chip={allGuestsChip(t, guests)}
+          chip={allGuestsChip(t, desk.guests)}
           placeholder={t('eventMessages.writeToGuests')}
           onWrite={onWrite}
         />
@@ -488,13 +489,13 @@ function Idle({
   );
 }
 
-/** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
 function allGuestsChip(t: TFunction, guests: readonly PickableGuest[] | null): string {
   return guests == null
     ? t('eventMessages.allGuests')
     : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`;
 }
 
+/** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
 function MiniComposer({
   desk,
   chip,
@@ -619,7 +620,7 @@ function ComposePane({
   const [wrong, setWrong] = useState<Partial<Record<Field, string>>>({});
   const [refused, setRefused] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'write' });
-  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+  const guests = desk.guests;
   const [previewing, setPreviewing] = useState(false);
   const [gone, setGone] = useState<readonly string[]>([]);
   const [nobodyLeft, setNobodyLeft] = useState<{ name: string; who: Who } | null>(null);
@@ -628,19 +629,6 @@ function ComposePane({
   const ids = useId();
   const off = desk.whyOff != null;
   const now = useServerNow();
-
-  useEffect(() => {
-    let current = true;
-
-    api.guestMessageGuests(desk.event.id).then(
-      (all) => current && setGuests(all),
-      () => current && setGuests([]),
-    );
-
-    return () => {
-      current = false;
-    };
-  }, [desk.event.id]);
 
   function refuse(words: Partial<Record<Field, string>>): void {
     setWrong(words);
