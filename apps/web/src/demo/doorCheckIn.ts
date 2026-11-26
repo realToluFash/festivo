@@ -81,7 +81,7 @@ export const SHIFT_NOW = '2026-11-14T18:05:00Z';
 export const SHIFT_SIGNED_IN_UNTIL = '2026-11-15T02:00:00Z';
 export const OTHER = 'Samuel Okafor';
 export const JOB = 'Door';
-/** Sign out on the shift page lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). */
+/** Sign out on the shift page opened from the staff link lands on Confirm it's you, with "Signed out." as a status above it (sc-4235). From check-in's Your shift it stays put (ShiftPage). */
 export const SIGNED_OUT_HREF = '/demo/staff-sign-in?state=signed-out';
 export const LONG_NAME =
   'Kunle Adeyemi with his driver and the two security men from the Lagos office, who were not on the list, but the host said on the phone at six to let all of them in at the side gate by the car park on Ozumba Mbadiwe Avenue';
@@ -486,6 +486,14 @@ export const CHECK_IN_PAGES: readonly { name: string; states: readonly DemoLink[
     states: [
       { to: '/demo/check-in/shift', name: 'The shift page, Check-in under the clock card' },
       { to: '/demo/check-in/shift?level=view', name: 'The shift page at Can view: no Check-in' },
+      {
+        to: '/demo/check-in/shift?state=signed_out',
+        name: 'The shift page after Sign out: Signed out. above the not-signed-in page',
+      },
+      {
+        to: '/demo/check-in/shift?state=not_signed_in',
+        name: 'The shift page not signed in, or reloaded after Sign out',
+      },
       { to: '/demo/redeem?state=browser-in', name: 'You’re in, from a door code: Check-in first' },
       { to: '/demo/redeem?state=browser-in-view', name: 'You’re in at Can view: no Check-in' },
       { to: '/demo/redeem?state=from-check-in', name: 'You’re in, back from check-in' },
