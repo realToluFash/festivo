@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { tokens } from '../../theme/tokens.ts';
-import { arrivedUnder, nameRoomBeside } from './DoorRow.ts';
+import { tokens } from '../theme/tokens.ts';
+import { arrivedUnder, nameRoomBeside } from './doorRow.ts';
 
 describe("Check-in's Arrived beside the name or under it (sc-95416)", () => {
   it('stays beside until the row, the button and the widest word are all measured', () => {

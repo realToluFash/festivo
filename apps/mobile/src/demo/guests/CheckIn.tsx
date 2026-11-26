@@ -35,7 +35,7 @@ import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
 import { navSide, titleBeside } from './DoorNav.ts';
-import { arrivedUnder } from './DoorRow.ts';
+import { arrivedUnder } from '../../kit/doorRow.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 
 type Phase = 'open' | 'before' | 'ended';
