@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\ServiceFiring;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -38,5 +39,20 @@ final class ServiceFiringRepository extends ServiceEntityRepository
     public function findOneAt(MenuCourse $course, string $tableKey): ?ServiceFiring
     {
         return $this->findOneBy(['course' => $course, 'tableKey' => $tableKey]);
+    }
+
+    /** @return list<Event> the events with a course fired that have started and not yet ended by `now` */
+    public function findEventsFiredBy(DateTimeImmutable $now): array
+    {
+        /** @var list<Event> */
+        return $this->getEntityManager()->createQueryBuilder()
+            ->select('event')
+            ->from(Event::class, 'event')
+            ->where('event.startsAt <= :now')
+            ->andWhere('event.endsAt > :now')
+            ->andWhere('EXISTS (SELECT firing.id FROM ' . ServiceFiring::class . ' firing WHERE firing.event = event)')
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
     }
 }
