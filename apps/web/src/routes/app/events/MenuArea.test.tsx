@@ -584,6 +584,7 @@ describe('The event’s Menu (sc-3902)', () => {
       );
 
       fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+      expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
       const panel = await screen.findByRole('complementary', { name: 'Add dish' });
 
       expect(within(panel).queryByRole('tab')).toBeNull();
