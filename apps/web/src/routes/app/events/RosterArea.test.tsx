@@ -947,6 +947,7 @@ describe('The briefing on the Roster (sc-3917)', () => {
     doorsAt: '2030-11-14T18:00:00+01:00',
     tables: null,
     checksIn: false,
+    dishes: false,
     rules: 'Black shirts. Phones away on the floor.',
   };
 
