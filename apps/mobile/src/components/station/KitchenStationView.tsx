@@ -47,6 +47,7 @@ import {
   undoOpen,
   undoPlan,
   undoWords,
+  withoutRefused,
 } from '../../kit/kitchenStation.ts';
 import { useServerNow } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
@@ -193,6 +194,7 @@ export function KitchenStationView({
     setKept(sent.left);
     if (sent.refused.length > 0) {
       setNotSent((was) => [...was, ...sent.refused.flatMap((one) => one.lines)]);
+      setUndoable((was) => withoutRefused(was, sent.refused));
     }
     if (sent.refetch) await read().catch(() => undefined);
   }, [store, read]);
