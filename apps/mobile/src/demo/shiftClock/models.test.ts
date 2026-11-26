@@ -128,6 +128,26 @@ describe('the staff list’s hours', () => {
     expect(stillOnOf(on, false)).toBe(false);
   });
 
+  it('keeps a removed person on the shift they worked, beside whoever took their place', () => {
+    const rows = hoursStart('removed').rows;
+    const ids = rows.map((one) => one.id);
+    const femi = rows.find((one) => one.id === 'femi') as HoursRow;
+    expect(ids.indexOf('ngozi')).toBe(ids.indexOf('femi') + 1);
+    expect(femi).toMatchObject({ removed: true, job: 'Runner' });
+    expect(clockedWords(femi)).toBe('In 17:48 · No clock-out');
+    expect(markWords(femi)).toBe('Not clocked out · Counted to 01:00, the scheduled end');
+    expect(hoursStart('removed').manage).toBe(true);
+  });
+
+  it('never leaves a removed person’s clock-out empty: they can no longer clock out', () => {
+    const femi = {
+      ...(hoursStart('removed').rows.find((one) => one.id === 'femi') as HoursRow),
+      end: 22 * 60,
+    };
+    expect(stillOnOf({ ...femi, removed: false }, true, 21 * 60)).toBe(true);
+    expect(stillOnOf(femi, true, 21 * 60)).toBe(false);
+  });
+
   it('shows during service who has clocked in and who has not yet', () => {
     const rows = hoursStart('list_live').rows;
     expect(rows.map(liveWords)).toContain(HW.notYet);
@@ -139,6 +159,6 @@ describe('the staff list’s hours', () => {
   });
 
   it('has a demo link for every state', () => {
-    expect(STAFF_HOURS_BOARDS).toHaveLength(12);
+    expect(STAFF_HOURS_BOARDS).toHaveLength(13);
   });
 });

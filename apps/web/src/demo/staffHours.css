@@ -199,3 +199,8 @@
   color: var(--colorInkSecondary);
   font: 500 15px/1.45 var(--fontFamily);
 }
+
+.hw-mark.hw-removed {
+  margin-top: 2px;
+  color: var(--colorInkSecondary);
+}

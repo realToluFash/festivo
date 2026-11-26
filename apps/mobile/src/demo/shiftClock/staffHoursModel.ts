@@ -23,6 +23,7 @@ export interface HoursRow extends Scheduled, Recorded {
   id: string;
   name: string;
   job: string;
+  removed?: boolean;
   corrected?: { changes: Change[]; by: string; at: number };
 }
 
@@ -55,6 +56,22 @@ export function sampleRows(): HoursRow[] {
   ];
 }
 
+/** Femi was taken off the roster while clocked in, so his place opened and Ngozi took it; his times stay under his name. */
+export function removedRows(): HoursRow[] {
+  return sampleRows().flatMap((one) =>
+    one.id === 'kelechi'
+      ? [
+          one,
+          {
+            ...row('femi', 'Femi Adeyemi', 'Runner', h(18), h(25), h(17, 48), null),
+            removed: true,
+          },
+          row('ngozi', 'Ngozi Eze', 'Runner', h(18), h(25), h(20, 40), h(25, 12)),
+        ]
+      : [one],
+  );
+}
+
 /** During service only what has happened by `now` is shown: a clock-out still to come is not there yet. */
 export function liveRows(now = LIVE_NOW): HoursRow[] {
   return sampleRows().map((one) => ({
@@ -80,6 +97,7 @@ export const HW = {
   opensAt: (time: string) => `Clock-in opened at ${time}`,
   notOut: (end: string) => `Not clocked out · Counted to ${end}, the scheduled end`,
   noAttendance: 'No attendance recorded · 0 h counted',
+  removed: 'Removed from the roster',
   worked: 'Hours worked',
   of: (worked: string, scheduled: string) => `${worked} of ${scheduled} scheduled`,
   assumed: (time: string) => `of which ${time} assumed (not clocked out)`,
@@ -181,7 +199,7 @@ export function trailWords(one: HoursRow): string[] {
 
 /** Clocked in, not clocked out, and still able to clock out under Recording's limit. */
 export const stillOnOf = (one: HoursRow, live: boolean, now = LIVE_NOW) =>
-  live && one.clockOut == null && canClockOut(one, one.clockIn, now);
+  live && one.removed !== true && one.clockOut == null && canClockOut(one, one.clockIn, now);
 
 export function markWords(one: HoursRow): string | null {
   const { mark } = workedOf(one, one);
@@ -263,6 +281,7 @@ export const HOURS_STATES = [
   'correct_long',
   'corrected',
   'read_only',
+  'removed',
   'loading',
   'failed',
   'empty',
@@ -307,13 +326,15 @@ export function hoursStart(state: HoursState): HoursStart {
         ? []
         : state === 'list_live'
           ? liveRows()
-          : state === 'corrected'
-            ? rows.map((one) =>
-                one.id === 'tope'
-                  ? corrected(one, { ...topeDraft, outTime: '01:15' }, YOU, CORRECTED_AT)
-                  : one,
-              )
-            : rows,
+          : state === 'removed'
+            ? removedRows()
+            : state === 'corrected'
+              ? rows.map((one) =>
+                  one.id === 'tope'
+                    ? corrected(one, { ...topeDraft, outTime: '01:15' }, YOU, CORRECTED_AT)
+                    : one,
+                )
+              : rows,
     live: state === 'list_live',
     manage: state !== 'read_only',
     open: opened[state] ?? null,
@@ -330,6 +351,10 @@ export const HOURS_BOARD_TITLES: Record<HoursState, [string, string]> = {
   correct_long: ['Correct times, over 24 hours', 'A shift can’t be longer than 24 hours'],
   corrected: ['Corrected', 'Out 01:15 · corrected from no clock-out'],
   read_only: ['Without staff.manage', 'No Correct times'],
+  removed: [
+    'Removed from the roster',
+    'Femi Adeyemi, not clocked out, beside Ngozi Eze in his place',
+  ],
   loading: ['Loading', 'Rows drawn as they will sit'],
   failed: ['Cannot load', 'Try again'],
   empty: ['Nobody on a shift', 'Empty'],
