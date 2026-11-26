@@ -369,7 +369,7 @@ function Rows({
           ...(conversation.messages.length > 1 && message.sending
             ? [t('eventMessages.followUp')]
             : []),
-          audienceWords(message, t),
+          audienceWords(first, t),
           message.sentBy,
           t('eventMessages.email'),
           message.sending
@@ -450,6 +450,22 @@ function Idle({
   onWrite: (openTo: boolean, body: string) => void;
 }) {
   const { t } = useTranslation();
+  const [guests, setGuests] = useState<PickableGuest[] | null>(null);
+
+  useEffect(() => {
+    if (!desk.manage) return;
+    let current = true;
+
+    api.guestMessageGuests(desk.event.id).then(
+      (all) => current && setGuests(all),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [desk.manage, desk.event.id]);
+
   const line = empty
     ? t('eventMessages.noneLine')
     : desk.whyOff == null
@@ -463,7 +479,7 @@ function Idle({
       {desk.manage && (
         <MiniComposer
           desk={desk}
-          chip={t('eventMessages.allGuests')}
+          chip={allGuestsChip(t, guests)}
           placeholder={t('eventMessages.writeToGuests')}
           onWrite={onWrite}
         />
@@ -473,6 +489,12 @@ function Idle({
 }
 
 /** The composer waiting at the foot: its To, or for a follow-up the line saying who it goes to (ux, #93147), and a field that opens the full composer on the first key and keeps it. */
+function allGuestsChip(t: TFunction, guests: readonly PickableGuest[] | null): string {
+  return guests == null
+    ? t('eventMessages.allGuests')
+    : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`;
+}
+
 function MiniComposer({
   desk,
   chip,
@@ -759,9 +781,7 @@ function ComposePane({
 
   const chipWords =
     who.kind === 'all'
-      ? guests == null
-        ? t('eventMessages.allGuests')
-        : `${t('eventMessages.allGuests')} · ${numberFormat(currentLocale()).format(guests.length)}`
+      ? allGuestsChip(t, guests)
       : chosen.length === 0
         ? t('eventMessages.chooseGuests')
         : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
@@ -938,7 +958,6 @@ function ComposePane({
                 {t('eventMessages.preview')}
               </button>
             )}
-            <span className="today-grow" />
             <span className="mg-goes-page">{t('eventMessages.goesOnTheirPage')}</span>
             <button
               type="submit"
