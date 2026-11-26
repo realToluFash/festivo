@@ -10,7 +10,7 @@ import { CheckInView } from '../../../src/components/CheckInView.tsx';
 import { Back } from '../../../src/components/SettingsParts.tsx';
 import { useSidebarCard } from '../../../src/components/sidebarCard.ts';
 import { Text, type TextHandle } from '../../../src/components/Text.tsx';
-import { CHECK_IN_FROM } from '../../../src/kit/myNight.ts';
+import { CHECK_IN_FROM, checkInBackOf, scanHrefOf } from '../../../src/kit/myNight.ts';
 import { goToArea, goUpToEvent } from '../../../src/kit/upToEvent.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 import { tokens } from '../../../src/theme/tokens.ts';
@@ -33,12 +33,10 @@ export default function EventCheckIn() {
   const navigation = useNavigation();
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
-  const fromNight = from === 'night';
+  const way = checkInBackOf(id, from);
   const back = () =>
-    fromNight
-      ? router.dismissTo({ pathname: '/events/[id]/my-night', params: { id } })
-      : goToArea(navigation, router, id, 'guests');
-  const backLabel = fromNight ? t('myNight.title') : t('checkIn.back');
+    way.href ? router.dismissTo(way.href) : goToArea(navigation, router, id, 'guests');
+  const backLabel = t(way.label);
   const title = useRef<TextHandle>(null);
   const [event, setEvent] = useState<OrganisationEvent | null>(null);
   const card = useSidebarCard(event?.id === id ? event : null);
@@ -99,7 +97,7 @@ export default function EventCheckIn() {
           )
         }
         onEvent={setEvent}
-        onScan={() => router.push({ pathname: '/events/[id]/scan', params: { id } })}
+        onScan={() => router.push(scanHrefOf(id, from))}
         searchAsk={focus === 'search' ? (tap ?? '0') : null}
       />
     </AppFrame>

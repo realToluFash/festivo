@@ -1,12 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ScannerView } from '../../../src/components/ScannerView.tsx';
+import { CHECK_IN_FROM, checkInHrefOf } from '../../../src/kit/myNight.ts';
 import { useLayout } from '../../../src/layout/useLayout.ts';
 
 /** /events/<id>/scan (sc-1301): Scan a code, opened from Check-in's card; the camera fills the screen, with no frame around it. */
 export default function EventScan() {
   const { kind } = useLayout();
-  const { id = '' } = useLocalSearchParams<{ id?: string }>();
+  const { id = '', [CHECK_IN_FROM]: from } = useLocalSearchParams<{
+    id?: string;
+    [CHECK_IN_FROM]?: string;
+  }>();
 
   return (
     <ScannerView
@@ -14,13 +18,10 @@ export default function EventScan() {
       kind={kind}
       onBack={() => {
         if (router.canGoBack()) router.back();
-        else router.replace({ pathname: '/events/[id]/check-in', params: { id } });
+        else router.replace(checkInHrefOf(id, from));
       }}
       onSearch={() =>
-        router.dismissTo({
-          pathname: '/events/[id]/check-in',
-          params: { id, focus: 'search', tap: String(Date.now()) },
-        })
+        router.dismissTo(checkInHrefOf(id, from, { focus: 'search', tap: String(Date.now()) }))
       }
     />
   );

@@ -3,11 +3,14 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkInBackOf,
+  checkInHrefOf,
   checkInOf,
   crossesMidnight,
   dietaryOf,
   headingOf,
   rowLineOf,
+  scanHrefOf,
   updatedAfter,
 } from './myNight.ts';
 
@@ -50,6 +53,41 @@ describe('My night leads to check-in (sc-28230)', () => {
 
   it('nowhere for a job that cannot', () => {
     expect(checkInOf(NIGHT)).toBeNull();
+  });
+
+  it('back to Your night when check-in was opened from it, else to the event’s Guests', () => {
+    expect(checkInBackOf('ev-1', 'night')).toEqual({
+      label: 'myNight.title',
+      href: { pathname: '/events/[id]/my-night', params: { id: 'ev-1' } },
+    });
+    expect(checkInBackOf('ev-1', undefined)).toEqual({ label: 'checkIn.back', href: null });
+  });
+
+  it('keeps Your night across the scanner and on both of its ways back to check-in', () => {
+    expect(scanHrefOf('ev-1', 'night')).toEqual({
+      pathname: '/events/[id]/scan',
+      params: { id: 'ev-1', from: 'night' },
+    });
+    expect(checkInHrefOf('ev-1', 'night', { focus: 'search', tap: '1' })).toEqual({
+      pathname: '/events/[id]/check-in',
+      params: { id: 'ev-1', focus: 'search', tap: '1', from: 'night' },
+    });
+    expect(checkInHrefOf('ev-1', 'night')).toEqual({
+      pathname: '/events/[id]/check-in',
+      params: { id: 'ev-1', from: 'night' },
+    });
+  });
+
+  it('carries nothing when check-in was opened from the event’s Guests', () => {
+    expect(scanHrefOf('ev-1', undefined)).toEqual({
+      pathname: '/events/[id]/scan',
+      params: { id: 'ev-1' },
+    });
+    expect(checkInHrefOf('ev-1', undefined, { focus: 'search', tap: '1' }).params).toEqual({
+      id: 'ev-1',
+      focus: 'search',
+      tap: '1',
+    });
   });
 });
 
