@@ -103,7 +103,7 @@ export const SW = {
   } satisfies Record<Exclude<Reach, 'none'>, (date: string, time: string) => string>,
   notDelivered: (reason: string) => `Not delivered: ${reason}.`,
   cantWord: "Can't be reached",
-  cantLine: "Can't be reached: not signed in to the app, and no mobile number.",
+  cantLine: "Can't be reached: no push notifications and no mobile number.",
   calledOffLine: 'Called off',
   endedLine: 'Event ended',
   footnote:

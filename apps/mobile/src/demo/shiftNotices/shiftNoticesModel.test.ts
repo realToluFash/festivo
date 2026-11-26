@@ -110,7 +110,7 @@ describe('the roster’s Briefing lines', () => {
     expect(stateWordOf(person('list', 'amina'))).toBe("Can't be reached");
     expect(stateWordOf(person('list', 'chidi'))).toBeNull();
     expect(words('list', 'amina')).toEqual([
-      "Can't be reached: not signed in to the app, and no mobile number.",
+      "Can't be reached: no push notifications and no mobile number.",
     ]);
   });
 
