@@ -56,7 +56,7 @@ final readonly class CalendarFeedWriter
             $entries = [...$entries, ...$this->event($event, $zone, $status, $now)];
 
             foreach ($milestones as $milestone) {
-                $entries = [...$entries, ...$this->milestone($event, $zone, $milestone->key, $milestone->at, $milestone->title, $milestone->note, $milestone->action?->link)];
+                $entries = [...$entries, ...$this->milestone($event, $zone, $milestone)];
             }
 
             $instants[$zone->getName()] = [
@@ -131,8 +131,9 @@ final readonly class CalendarFeedWriter
     }
 
     /** @return list<string> */
-    private function milestone(Event $event, DateTimeZone $zone, string $key, DateTimeImmutable $at, string $title, ?string $note, ?string $path): array
+    private function milestone(Event $event, DateTimeZone $zone, Milestone $milestone): array
     {
+        [$key, $at, $title, $note, $path] = [$milestone->key, $milestone->at, $milestone->title, $milestone->note, $milestone->action?->link];
         $link = $this->link($path ?? '/app/events/' . $event->getId()->toRfc4122() . '/dates');
         $description = (null === $note ? '' : $note . "\n") . $this->translator->trans('calendar_feed.open_line', ['{link}' => $link]);
 
@@ -140,7 +141,7 @@ final readonly class CalendarFeedWriter
             'BEGIN:VEVENT',
             'UID:milestone-' . $event->getId()->toRfc4122() . '-' . Str\lowercase(\rawurlencode($key)) . '@soirely',
             'DTSTAMP:' . ICalendarLines::utc($event->getUpdatedAt()),
-            'SEQUENCE:' . $event->getVersion(),
+            'SEQUENCE:' . ($event->getVersion() + $milestone->revision),
             'DTSTART;TZID=' . $zone->getName() . ':' . ICalendarLines::local($at, $zone),
             'SUMMARY:' . ICalendarLines::text($title),
             'DESCRIPTION:' . ICalendarLines::text($description),

@@ -32,6 +32,11 @@ final class ScriptedPdfMaker implements PdfMakerInterface
         $this->bytes = $bytes;
     }
 
+    public function real(): void
+    {
+        $this->bytes = null;
+    }
+
     public function make(string $html): string
     {
         $this->html = $html;

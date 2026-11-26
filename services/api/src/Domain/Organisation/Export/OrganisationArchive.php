@@ -257,6 +257,22 @@ final readonly class OrganisationArchive
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND g.removed_at IS NULL
              ORDER BY ev.starts_at_utc, c.event_id, c.position, g.position, a.id
             SQL,
+        'kitchen_final_numbers' => <<<'SQL'
+            SELECT f.event_id, f.due_on
+              FROM kitchen_final_numbers f
+              JOIN events ev ON ev.id = f.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND f.due_on IS NOT NULL
+             ORDER BY ev.starts_at_utc, f.event_id
+            SQL,
+        'kitchen_copies' => <<<'SQL'
+            SELECT k.id, k.event_id, k.recorded_at, k.recorded_by_name,
+                   (k.sheet || jsonb_build_object('names', k.names)
+                            || CASE WHEN k.names THEN '{}'::jsonb ELSE '{"allergic": null}'::jsonb END)::text AS sheet
+              FROM kitchen_copies k
+              JOIN events ev ON ev.id = k.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, k.event_id, k.recorded_at, k.id
+            SQL,
         'dish_library' => <<<'SQL'
             SELECT d.id, d.name, d.description, array_to_string(ARRAY(SELECT json_array_elements_text(d.allergens)), ', ') AS allergens, array_to_string(ARRAY(SELECT json_array_elements_text(d.diets)), ', ') AS diets,
                    d.last_price_minor, d.last_price_currency, d.archived_at, d.created_at
@@ -411,7 +427,7 @@ final readonly class OrganisationArchive
     private const array TIMES = [
         'created_at', 'proved_at', 'joined_at', 'expires_at', 'accepted_at', 'declined_at', 'revoked_at',
         'asked_at', 'starts_at', 'ends_at', 'replied_at', 'shared_at', 'archived_at', 'started_at', 'ended_at', 'updated_at',
-        'superseded_at',
+        'superseded_at', 'recorded_at',
     ];
 
     private const array ROLES = [
@@ -496,7 +512,8 @@ final readonly class OrganisationArchive
                 foreach ($batch as $fetched) {
                     $row = self::row($fetched);
                     CsvFile::row($csv, Vec\map(Vec\values($row), self::cell(...)));
-                    \fwrite($json, (0 === $rows ? "\n        " : ",\n        ") . Str\replace(Json\encode($row, pretty: true), "\n", "\n        "));
+                    $listed = isset($row['sheet']) ? [...$row, 'sheet' => Json\decode((string) $row['sheet'])] : $row;
+                    \fwrite($json, (0 === $rows ? "\n        " : ",\n        ") . Str\replace(Json\encode($listed, pretty: true), "\n", "\n        "));
                     ++$rows;
                 }
             } while (self::BATCH === Iter\count($batch));
