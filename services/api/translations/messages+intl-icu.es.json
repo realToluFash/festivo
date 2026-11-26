@@ -506,6 +506,7 @@
     "guest_message.notice.read": "Leerlo en su página",
     "guest_message.notice.link": "{label}: {url}",
     "guest_message.notice.from": "{organisation} vía Soirely",
+    "guest_message.notice.footer": "To answer {hosts}, reply on your page. This email cannot take replies.",
     "validation.guest_message_required": "Escriba un mensaje.",
     "validation.guest_message_subject_too_long": "Acorte el asunto a {count, number, ::group-auto} caracteres como máximo.",
     "validation.guest_message_too_long": "Acorte el mensaje a {count, number, ::group-auto} caracteres como máximo.",
