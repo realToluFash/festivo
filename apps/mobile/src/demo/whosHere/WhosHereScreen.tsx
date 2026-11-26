@@ -119,7 +119,11 @@ function WhosHere({ start }: { start: WhStateName }) {
   const close = (): void => finish(s);
 
   const lead = s.role === 'station';
-  const lists = s.system === 'live' || s.system === 'refreshing' || s.system === 'stale';
+  const lists =
+    s.system === 'live' ||
+    s.system === 'refreshing' ||
+    s.system === 'stale' ||
+    s.system === 'partFailed';
   const showStations = lists && !lead && !phone;
   const door = showsDoor(s) ? (
     <PrimaryButton
@@ -671,6 +675,7 @@ function DoorForm({
               key={job}
               label={job}
               on={f.job === job}
+              hint={f.refused ? undefined : jobLine(job, jobEnd(s, job))}
               onPress={() => apply(setDoor(s, { job: f.job === job ? null : job }))}
               ref={i === 0 ? firstJob : undefined}
               testID={`wh.door.job.${job}`}

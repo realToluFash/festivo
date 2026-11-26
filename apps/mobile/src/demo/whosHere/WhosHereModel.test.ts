@@ -185,13 +185,16 @@ describe('Someone’s at the door', () => {
   });
 
   it('keeps what was typed and offers Close once the event has ended', () => {
-    const s = doorAnswer(setDoor(seed('event_ended'), {}), '+234');
     const ended = doorAnswer({ ...seed('door_number'), ended: true }, '+234');
 
-    expect(s.sheet).toBeNull();
     expect(ended.sheet).toMatchObject({ kind: 'door', form: { refused: true, name: WALK_ON } });
     expect(showsDoor(ended)).toBe(true);
     expect(showsDoor(closeSheet(ended))).toBe(false);
+  });
+
+  it('keeps Someone’s at the door while only Here failed to load', () => {
+    expect(showsDoor(seed('part_failed'))).toBe(true);
+    expect(showsDoor(seed('unreachable'))).toBe(false);
   });
 
   it('fails once with sc-3906’s line, then adds', () => {

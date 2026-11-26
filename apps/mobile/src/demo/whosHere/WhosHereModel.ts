@@ -529,7 +529,6 @@ export function jobLine(job: string, e: JobEnd): string {
 
 export const W = {
   title: 'Who’s here',
-  notBuilt: 'AC, not yet built',
   door: 'Someone’s at the door',
   live: (t: string) => `Live · updated ${t}`,
   stale: (t: string) => `Not live · last updated ${t}. Reconnecting.`,
@@ -565,7 +564,6 @@ export const W = {
   mobile: 'Mobile',
   optional: 'Optional',
   country: 'Country',
-  mobileNumber: 'Mobile number',
   job: 'Job',
   jobBlank: 'Choose their job.',
   where: 'Where do you need them?',
@@ -591,7 +589,6 @@ export const W = {
   moveTo: (st: string, n: string | null) => (n == null ? `Move to ${st}` : `Move ${n} to ${st}`),
   nobodyClockedIn: 'Nobody has clocked in yet.',
   allOnIt: (st: string) => `Everyone here is already on ${st}.`,
-  dismiss: 'Dismiss',
 };
 
 export function tooShort(country: string): string {
@@ -776,7 +773,7 @@ export function toastWords(s: WhState): string {
   const left = onStation(s, o.from).map((q) => q.name);
   const rest =
     left.length === 0
-      ? `Nobody on ${o.from}.`
+      ? `${W.nobodyOn(o.from)}.`
       : `${andList(left)} ${left.length > 1 ? 'are' : 'is'} on ${o.from}.`;
   return `${p.name} is on ${p.station}. ${rest}`;
 }
@@ -787,7 +784,8 @@ export function showsDoor(s: WhState): boolean {
     s.system !== 'live' &&
     s.system !== 'empty' &&
     s.system !== 'refreshing' &&
-    s.system !== 'stale'
+    s.system !== 'stale' &&
+    s.system !== 'partFailed'
   )
     return false;
   return !s.ended || (s.sheet?.kind === 'door' && s.sheet.form.refused);

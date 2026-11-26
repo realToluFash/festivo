@@ -7,15 +7,19 @@ import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { Disc } from '../team/TeamParts.tsx';
 
+import { W } from './WhosHereModel.ts';
+
 export function Chip({
   label,
   on,
+  hint,
   onPress,
   ref,
   testID,
 }: {
   label: string;
   on: boolean;
+  hint?: string | undefined;
   onPress: () => void;
   ref?: Ref<ViewInstance> | undefined;
   testID: string;
@@ -26,6 +30,7 @@ export function Chip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: on }}
+      accessibilityHint={hint}
       style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && styles.pressed]}
       testID={testID}
     >
@@ -131,7 +136,7 @@ export function StationTile({ station, people }: { station: string; people: read
         {station}
       </Text>
       {nobody ? (
-        <MarkLine kind="notyet" ink={tokens.colorAttention} words={`Nobody on ${station}`} dashed />
+        <MarkLine kind="notyet" ink={tokens.colorAttention} words={W.nobodyOn(station)} dashed />
       ) : (
         <Text size={14} style={styles.secondary}>
           {people.join(', ')}
