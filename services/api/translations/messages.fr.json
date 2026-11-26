@@ -553,7 +553,7 @@
     "service.plate_stage_invalid": "Cette assiette ne peut pas passer à cette étape depuis là où elle est.",
     "service.plate_empty": "Une assiette vide n’est pas portée à un invité. Retirez-la plutôt du plateau.",
     "service.table_nothing_to_serve": "Il n’y a encore rien à mettre sur un plateau pour cette table.",
-    "service.tray_check_incomplete": "Marquez chaque élément « Présent », ou « Absent » et « À apporter ensuite », avant de vérifier le plateau.",
+    "service.tray_check_incomplete": "Marquez chaque élément « Posé », ou « Pas posé » et « À apporter ensuite », avant de vérifier le plateau.",
     "service.undo_expired": "Plus de 2 minutes se sont écoulées depuis cette étape : elle ne peut plus être annulée.",
     "service.undo_not_last": "Autre chose a changé depuis cette étape. Annulez d’abord ce changement plus récent.",
     "service.ready_in_invalid": "Le délai « Prêt dans … min environ » peut être de 5, 10 ou 15 minutes, et ne se donne que pour un élément « En préparation ».",
