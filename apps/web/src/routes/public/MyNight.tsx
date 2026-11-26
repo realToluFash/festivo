@@ -223,7 +223,11 @@ function Night({ night, now, clock }: { night: MyNight; now: number; clock: Reac
   return (
     <>
       <div className="myn-head">
-        <p className="myn-only">{t('staffLink.night.only', { time: endsWords(night, now, t) })}</p>
+        <p className="myn-only">
+          {t('staffLink.night.only', {
+            time: formatEventClock(night.endsAt, night.event.timeZone, dateLocale()),
+          })}
+        </p>
         <p className="myn-event">{night.event.name}</p>
       </div>
       <div className="myn-columns">
