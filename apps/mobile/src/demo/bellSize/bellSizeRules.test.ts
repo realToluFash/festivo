@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   BELL_LANGUAGES,
   BESIDE_GAP,
+  EMPTY_GAP,
+  EMPTY_SENTENCE,
+  EMPTY_TILE,
+  emptySentenceSize,
+  emptyStart,
+  emptyTileAbove,
   MARK_ALL,
   markAllSize,
   markAllStart,
@@ -73,5 +79,37 @@ describe('the phone bell screen’s title at the accessibility sizes (sc-92959)'
     expect((500 * drawn) / start).toBeLessThanOrEqual(PAGE);
     expect((500 * (drawn + 1)) / start).toBeGreaterThan(PAGE);
     expect(phoneTitleSize(AX5, 50000, PAGE)).toBe(PHONE_TITLE);
+  });
+});
+
+describe('the bell’s empty sentence at the accessibility sizes (sc-94028)', () => {
+  const BESIDE = ROOM - EMPTY_TILE - EMPTY_GAP;
+
+  it('grows as main does, with no cap', () => {
+    expect(emptyStart(DEFAULT)).toBe(EMPTY_SENTENCE);
+    expect(emptyStart(AX5)).toBeCloseTo(EMPTY_SENTENCE * AX5);
+  });
+
+  it('keeps the tile beside it where its widest word fits beside, and below AX1 always', () => {
+    expect(emptyTileAbove(AX2, BESIDE, ROOM)).toBe(false);
+    expect(emptyTileAbove(AX2, BESIDE + 1, ROOM)).toBe(true);
+    expect(emptyTileAbove(SEVENTH, 5000, ROOM)).toBe(false);
+  });
+
+  it('keeps its grown size where its widest word fits its line', () => {
+    expect(emptySentenceSize(AX5, BESIDE, ROOM)).toBeCloseTo(EMPTY_SENTENCE * AX5);
+    expect(emptySentenceSize(AX5, ROOM, ROOM)).toBeCloseTo(EMPTY_SENTENCE * AX5);
+  });
+
+  it('steps down only for its widest word, over the panel’s full width once the tile is above', () => {
+    const drawn = emptySentenceSize(AX5, ROOM * 1.25, ROOM);
+
+    expect(drawn).toBeLessThan(EMPTY_SENTENCE * AX5);
+    expect(drawn).toBeGreaterThan(EMPTY_SENTENCE * AX5 * 0.75);
+    expect(emptySentenceSize(AX5, 5000, ROOM)).toBe(EMPTY_SENTENCE);
+  });
+
+  it('below AX1 draws as on main, whatever its widest word', () => {
+    expect(emptySentenceSize(SEVENTH, 5000, ROOM)).toBeCloseTo(EMPTY_SENTENCE * SEVENTH);
   });
 });
