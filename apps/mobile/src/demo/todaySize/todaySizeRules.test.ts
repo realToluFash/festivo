@@ -6,6 +6,12 @@ import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
 import { dotKept } from '../../layout/textSize.ts';
 
 import {
+  ARRIVING_EVERY,
+  FIGURE_RING,
+  TODAY_ARRIVEDS,
+  arrivedCount,
+  figureRing,
+  figureRoom,
   EVENT_DATES,
   EVENT_NAME,
   HEAD,
@@ -283,7 +289,7 @@ describe('the live cover upright (sc-93578)', () => {
     const upright = /\n {2}if \(upright\)[\s\S]*?\n {4}\);\n/u.exec(live)?.[0] ?? '';
 
     expect(words).toMatch(
-      /\{under && <View style=\{styles\.openUnder\}>\{open\}<\/View>\}\n {4}<\/View>\n/u,
+      /\{under && <View style=\{styles\.openUnder\}>\{open\}<\/View>\}\n {6}\{under && arrived != null && \([\s\S]*?<SizeFigure[\s\S]*?\)\}\n {4}<\/View>\n/u,
     );
     expect(live).toMatch(/\n {2}const block = under \? \(\n {4}words\n {2}\) : \(/u);
     expect(upright).toMatch(/<View style=\{styles\.uprightNow\}>\{block\}<\/View>/u);
@@ -336,5 +342,45 @@ describe('the switcher’s rows from AX1 (sc-92465)', () => {
     expect(dotKept('Jour 1 sur 1 · Salle des fêtes du Château de Chantilly')).toBe(
       'Jour 1 sur 1\u00a0· Salle des fêtes du Château de Chantilly',
     );
+  });
+});
+
+describe('the live cover with a guest arrived (sc-94022)', () => {
+  it('counts 1 of 12 and 141 of 152, and nobody until one is chosen', () => {
+    expect(TODAY_ARRIVEDS.map((one) => one.key)).toEqual(['none', 'one', 'many', 'live']);
+    expect(arrivedCount('none', 0)).toBeNull();
+    expect(arrivedCount('one', 0)).toEqual({ arrived: 1, expected: 12 });
+    expect(arrivedCount('many', 0)).toEqual({ arrived: 141, expected: 152 });
+  });
+
+  it('brings the first arrival in and undoes it again, inside 10 seconds', () => {
+    expect([0, 1, 2, 3].map((step) => arrivedCount('live', step))).toEqual([
+      null,
+      { arrived: 1, expected: 12 },
+      null,
+      { arrived: 1, expected: 12 },
+    ]);
+    expect(ARRIVING_EVERY).toBeLessThanOrEqual(10_000);
+  });
+
+  it('keeps main’s ring below AX1 and grows it to the two lines from AX1', () => {
+    expect(figureRing(18, 12.5)).toBe(FIGURE_RING);
+    expect(figureRing(18 * AX5, 12.5 * AX5)).toBe(
+      Math.ceil(18 * AX5 * 1.2) + Math.ceil(12.5 * AX5 * 1.3),
+    );
+  });
+
+  it('draws the figure from AX1 under Open the event, last in the words column, and below AX1 over it at the right', () => {
+    const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
+    const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+    const block = /\n {2}const block = [\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
+
+    expect(words.indexOf('<SizeFigure')).toBeGreaterThan(words.indexOf('styles.openUnder'));
+    expect(block).toMatch(/<View style=\{styles\.right\}>\s+<SizeFigure[^>]*\/>\s+\{open\}/u);
+  });
+
+  it('gives the figure’s words the column less the ring and its gap', () => {
+    expect(figureRoom(968, 136, 10)).toBe(822);
+    expect(figureRoom(100, 136, 10)).toBe(0);
   });
 });

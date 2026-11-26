@@ -19,12 +19,14 @@ import { dayChipRoom, liveChipRoom, openRoom } from '../../layout/liveCoverFit.t
 import { atAccessibilitySizes, dotKept } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { FitWords } from './FitWords.tsx';
+import { SizeFigure } from './TodaySizeArrived.tsx';
 import {
   LIVE_CHIP,
   LIVE_ENDS,
   LIVE_ENDS_AT,
   LIVE_NAME,
   LIVE_OPEN,
+  type ArrivedCount,
   openUnder,
   uprightChipSize,
 } from './todaySizeRules.ts';
@@ -35,11 +37,14 @@ export function LiveBanner({
   place,
   scale,
   top,
+  arrived = null,
 }: {
   name: string;
   place: string | null;
   scale: number;
   top?: ReactNode;
+  /** Guests arrived, drawn as the figure: from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022). */
+  arrived?: ArrivedCount | null;
 }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -161,6 +166,11 @@ export function LiveBanner({
         style={styles.white}
       />
       {under && <View style={styles.openUnder}>{open}</View>}
+      {under && arrived != null && (
+        <View style={styles.figureUnder}>
+          <SizeFigure count={arrived} scale={scale} cap={cap} column={column} />
+        </View>
+      )}
     </View>
   );
 
@@ -169,7 +179,14 @@ export function LiveBanner({
   ) : (
     <View style={styles.wideRow}>
       {words}
-      {open}
+      {arrived == null ? (
+        open
+      ) : (
+        <View style={styles.right}>
+          <SizeFigure count={arrived} scale={scale} cap={cap} column={RIGHT_COLUMN} />
+          {open}
+        </View>
+      )}
     </View>
   );
 
@@ -221,6 +238,9 @@ function GrownWords({
     </Text>
   );
 }
+
+/** Main's column at the cover's right below AX1, the figure over Open the event (sc-29978). */
+const RIGHT_COLUMN = 340;
 
 const styles = StyleSheet.create({
   banner: {
@@ -291,5 +311,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
+  figureUnder: { marginTop: tokens.spaceXs },
+  right: { width: RIGHT_COLUMN, gap: 18 },
   pressed: { opacity: 0.8 },
 });
