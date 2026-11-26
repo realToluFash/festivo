@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { SEND_MS } from './guest.ts';
+import { OPEN, SEND_MS, stepBack } from './guest.ts';
 import { GUEST_LINK_PAGES } from './guestLink.ts';
 
 const tested = config();
@@ -62,6 +62,29 @@ describe('an answer link from the invitation, on the guest’s page (sc-1291)', 
     expect(document.querySelector('[data-focus="withYouHead"]')).not.toBeNull();
   });
 
+  it('returns from Who’s coming, and from the kitchen through it, to Coming still chosen', async () => {
+    await open('/demo/guest?state=linkComingCarryOn');
+    const back = () => fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    const onTheLink = () => {
+      expect(screen.getByRole('heading', { name: 'Confirm your answer' })).toBeDefined();
+      expect(screen.getByText('From your message')).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Carry on' })).toBeDefined();
+      expect(screen.queryByText(/You’re down as/u)).toBeNull();
+    };
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carry on' }));
+    back();
+    onTheLink();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Carry on' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('heading', { name: 'Anything the kitchen must know?' })).toBeDefined();
+    back();
+    expect(screen.getByRole('heading', { name: 'Who’s coming with you?' })).toBeDefined();
+    back();
+    onTheLink();
+  });
+
   it('confirms Coming at once where no Yes step applies, and drops Yes’s chevron', async () => {
     await open('/demo/guest?state=linkComingConfirm');
 
@@ -101,5 +124,13 @@ describe('an answer link from the invitation, on the guest’s page (sc-1291)', 
     expect(screen.getByRole('heading', { name: 'Your answer' })).toBeDefined();
     expect(screen.queryByText('From your message')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('Back from a Yes step (sc-1291)', () => {
+  it('returns a link’s step, the kitchen first among them, to Coming chosen with nothing recorded', () => {
+    expect(stepBack('link')).toEqual({ kind: 'link', picked: 'coming', busy: false });
+    expect(stepBack('changing')).toEqual({ kind: 'changing', busy: null });
+    expect(stepBack('answer')).toBe(OPEN);
   });
 });

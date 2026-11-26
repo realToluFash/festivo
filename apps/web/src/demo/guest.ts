@@ -164,15 +164,18 @@ export interface Yours {
   failed: Press | null;
 }
 
+/** Where the Yes steps were entered from, and so where their Back returns: an answer link returns to its pre-selected answer (sc-1291). */
+export type StepFrom = 'answer' | 'changing' | 'link';
+
 export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
-  | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
+  | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: StepFrom }
   | { kind: 'kitchen'; busy?: boolean }
   | { kind: 'recorded'; same: boolean; downAs?: true }
   | { kind: 'link'; picked: Answer; busy: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
-  | { kind: 'withYou'; from: 'answer' | 'changing' }
+  | { kind: 'withYou'; from: StepFrom }
   | { kind: 'tellUs'; busy: boolean; result: 'failed' | 'limited' | 'thanks' | null; back: View };
 
 /** An answer on the guest's record; `by` names the member who recorded it for them (sc-3787). */
@@ -283,6 +286,13 @@ export interface Visit {
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
 const RECORDED: View = { kind: 'recorded', same: false };
+
+/** Back from a Yes step: the answers, the new answer, or the link's Coming still chosen with nothing recorded. */
+export function stepBack(from: StepFrom): View {
+  if (from === 'changing') return { kind: 'changing', busy: null };
+  if (from === 'link') return { kind: 'link', picked: 'coming', busy: false };
+  return OPEN;
+}
 const CLOSED: View = { kind: 'closed' };
 
 export const FROM_PAGE: Yours = {

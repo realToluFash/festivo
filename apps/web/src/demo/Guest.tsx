@@ -15,6 +15,7 @@ import {
   OPEN,
   REPLY_BY,
   SEND_MS,
+  type StepFrom,
   THANK_YOU,
   type View,
   type Visit,
@@ -28,6 +29,7 @@ import {
   shows,
   showsMessages,
   startOf,
+  stepBack,
   twoColumns,
   wordsFor,
 } from './guest.ts';
@@ -258,14 +260,14 @@ function Visitor({
     later(SEND_MS, () => record(chosen));
   }
 
-  function goOn(from: 'answer' | 'changing'): void {
+  function goOn(from: StepFrom): void {
     if (hasStep(visit.party)) go(() => ({ view: { kind: 'withYou', from } }), 'withYouHead');
     else kitchen.open(from);
   }
 
   function linkAnswer(chosen: Answer): void {
     if (carriesOn(visit, chosen)) {
-      goOn(visit.recorded == null ? 'answer' : 'changing');
+      goOn('link');
       return;
     }
 
@@ -361,10 +363,7 @@ function Visitor({
   function back(): void {
     go(
       (was) => ({
-        view:
-          was.view.kind === 'check' && was.view.from === 'changing'
-            ? { kind: 'changing', busy: null }
-            : OPEN,
+        view: stepBack(was.view.kind === 'check' ? was.view.from : 'answer'),
       }),
       'row-coming',
     );
