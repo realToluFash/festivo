@@ -64,7 +64,7 @@ export function NumberFields({
           <InsideField
             ref={numberRef}
             label={t('redeem.phone.mobile')}
-            defaultValue={number}
+            defaultValue={number ?? ''}
             onChangeText={onNumber}
             state={said == null ? 'plain' : 'blank'}
             line={said}

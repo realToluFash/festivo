@@ -526,7 +526,7 @@ function EventStep({
             <InsideField
               ref={field}
               label={t('redeem.yourName')}
-              defaultValue={step.typed?.name}
+              defaultValue={step.typed?.name ?? ''}
               onChangeText={(text) => {
                 name.current = text;
                 if (nameSaid != null) setNameSaid(null);
