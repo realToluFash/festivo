@@ -14,6 +14,7 @@ import {
   crossesMidnight,
   dietaryOf,
   headingOf,
+  updatedAfter,
   weekdayOf,
 } from '../kit/myNight.ts';
 import { useLayout } from '../layout/useLayout.ts';
@@ -72,14 +73,13 @@ export function useMyNight(eventId: string, every: number | null = EVERY_MS) {
 
 /** The night as it now reads, announcing a move to another station; the lead and the tables move with it. */
 function shown(was: Seen, night: MyNight): Seen {
-  const before = was.kind === 'shown' ? headingOf(was.night) : null;
-  const kept = was.kind === 'shown' ? was.updated : null;
-  const moved = before != null && before !== headingOf(night);
-
   return {
     kind: 'shown',
     night,
-    updated: night.station == null ? null : moved ? night.station : kept,
+    updated:
+      was.kind === 'shown'
+        ? updatedAfter(was.night, was.updated, night)
+        : updatedAfter(null, null, night),
     readAt: formatEventClock(new Date().toISOString(), night.event.timeZone, dateLocale()),
     at: Date.now(),
     stale: false,
