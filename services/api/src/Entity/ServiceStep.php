@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\MillisecondDateTimeType;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -47,7 +48,7 @@ class ServiceStep
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $by;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(type: MillisecondDateTimeType::NAME)]
     private DateTimeImmutable $at;
 
     #[ORM\Column(type: Types::BOOLEAN)]
