@@ -17,6 +17,8 @@ import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
+import { NoticeLines, UnreachableMark, noticeWords } from '../shiftNotices/ShiftNotices.tsx';
+import { afterResend, stateWordOf } from '../shiftNotices/shiftNoticesModel.ts';
 import { StatusShape } from '../staffLink/StaffLinkScreen.tsx';
 import type { OnRoster } from '../staffLink/StaffRosterModel.ts';
 import {
@@ -55,6 +57,9 @@ export interface BriefingParts {
   panels: ReactNode;
   demo: ReactNode;
   restart: () => void;
+  /** The roster's people with their briefing, and the way a change to them is kept (sc-4333's notices). */
+  people: Person[];
+  commit: (next: Person[]) => void;
 }
 
 const NO_BRIEF = {
@@ -84,10 +89,11 @@ function extrasOf(people: readonly Person[]): Record<string, Extra> {
 
 /** The briefing on the roster on a tablet (sc-3917): the card above it, its mark and buttons on each row, and its panels docked on a tablet on its side, centred upright. The roster keeps each row's link status; a briefing copy or send hands its change back through `hold`. */
 export function useBriefing(
-  state: BriefingState | null,
+  state: string | null,
   first: BriefingStart | null,
   roster: readonly OnRoster[],
   hold: (next: Person[]) => void,
+  fresh: () => BriefingStart = () => briefingStart(state as BriefingState),
 ): BriefingParts | null {
   const [opening] = useState(() => first ?? briefingStart('populated'));
   const [extras, setExtras] = useState(() => extrasOf(opening.people));
@@ -118,7 +124,7 @@ export function useBriefing(
 
   if (state == null || first == null) return null;
 
-  if (kind === 'phone')
+  if (kind === 'phone' && first.anyLayout !== true)
     return {
       card: (
         <DemoOnly title="Demo only: no phone frame">
@@ -131,12 +137,14 @@ export function useBriefing(
       panels: null,
       demo: null,
       restart: () => undefined,
+      people: [],
+      commit: () => undefined,
     };
 
   const people: Person[] = roster.map((one) => ({ ...one, ...(extras[one.id] ?? NO_BRIEF) }));
   const manage = first.access === 'manage';
   const acts = manage && !first.finished;
-  const sends = acts && first.live;
+  const sends = acts && first.live && first.concluded !== true;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
@@ -148,22 +156,22 @@ export function useBriefing(
   }
 
   function restart() {
-    const fresh = briefingStart(state as BriefingState);
-    setExtras(extrasOf(fresh.people));
-    setSide(fresh.side);
-    setRules(fresh.rules);
-    setDraft(fresh.draft ?? fresh.rules);
-    setCut(fresh.cut);
-    setSaved(fresh.saved);
-    setBusy(fresh.busy);
-    setMissed(fresh.missed);
-    setHandHeld(fresh.handHeld);
-    setCheckAt(fresh.checkAt);
-    setStuck(fresh.checkAt === 'loading');
+    const again = fresh();
+    setExtras(extrasOf(again.people));
+    setSide(again.side);
+    setRules(again.rules);
+    setDraft(again.draft ?? again.rules);
+    setCut(again.cut);
+    setSaved(again.saved);
+    setBusy(again.busy);
+    setMissed(again.missed);
+    setHandHeld(again.handHeld);
+    setCheckAt(again.checkAt);
+    setStuck(again.checkAt === 'loading');
     setSending(false);
     setSendFailed(false);
-    setResult(fresh.result);
-    setClipFails(fresh.copy === 'refused');
+    setResult(again.result);
+    setClipFails(again.copy === 'refused');
     setToast(null);
   }
 
@@ -256,7 +264,13 @@ export function useBriefing(
         return;
       }
       const sent = sendTo(people, due, costs);
-      commit(sent.people);
+      const held = new Set([...sent.held, ...sent.waits]);
+      commit(
+        afterResend(
+          sent.people,
+          due.map((one) => one.id).filter((id) => !held.has(id)),
+        ),
+      );
       setSide(null);
       const lines = resultLines(
         sent.sent,
@@ -382,7 +396,9 @@ export function useBriefing(
 
   function row(onRoster: OnRoster) {
     const one = shown(onRoster.id);
-    const words = [BW.tally[one.brief], noteOf(one)].filter(Boolean).join(' · ');
+    const unreachable = stateWordOf(one);
+    const words = [unreachable ?? BW.tally[one.brief], noteOf(one)].filter(Boolean).join(' · ');
+    const heard = [words, noticeWords(one)].filter(Boolean).join('. ');
     const rowActs = acts && one.brief === 'changed' && one.mobile != null;
     const after = (
       <>
@@ -424,15 +440,21 @@ export function useBriefing(
     );
 
     return {
-      words,
+      words: heard,
       below: (
         <>
           <View style={styles.inline} testID={`briefing.row.${one.id}`}>
-            <BriefMark brief={one.brief} />
-            <Text size={14} weight="semibold" accessible={false} style={styles.shrink}>
+            {unreachable == null ? <BriefMark brief={one.brief} /> : <UnreachableMark />}
+            <Text
+              size={14}
+              weight="semibold"
+              accessible={false}
+              style={[styles.shrink, unreachable != null && styles.attention]}
+            >
               {words}
             </Text>
           </View>
+          <NoticeLines one={one} />
           {one.briefCopy != null && one.brief === 'changed' && <CopiedLine one={one} />}
         </>
       ),
@@ -535,7 +557,7 @@ export function useBriefing(
     />
   );
 
-  return { card, row, panels, demo, restart };
+  return { card, row, panels, demo, restart, people, commit };
 }
 
 function tallyWords(tally: Record<Brief, number>): string {
