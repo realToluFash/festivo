@@ -3534,7 +3534,7 @@
       "checked_one": "{{count, number}} checked",
       "checked_other": "{{count, number}} checked",
       "onItsWay_one": "{{count, number}} on its way",
-      "onItsWay_other": "{{count, number}} on its way",
+      "onItsWay_other": "{{count, number}} on their way",
       "served_one": "{{count, number}} served",
       "served_other": "{{count, number}} served"
     },

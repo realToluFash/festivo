@@ -167,6 +167,6 @@
     "plate_stage_invalid": "Este plato no puede dar ese paso desde donde está ahora.",
     "plate_empty": "Un plato sin nada encima no se lleva a un invitado. Retírelo de la bandeja.",
     "table_nothing_to_serve": "Todavía no hay nada que poner en una bandeja para esta mesa.",
-    "tray_check_incomplete": "Marque cada elemento como puesto, o como no puesto y para llevar después, antes de revisar la bandeja.",
+    "tray_check_incomplete": "Marque cada elemento como «Puesto», o como «No puesto» y «Llevar después», antes de revisar la bandeja.",
     "undo_expired": "Han pasado más de 2 minutos desde ese paso, así que ya no se puede deshacer."
 }
