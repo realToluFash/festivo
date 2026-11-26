@@ -38,6 +38,7 @@ import { Notice } from './Notice.tsx';
 import { readOut, useReadOut } from './ReadOut.tsx';
 import { ShiftClockCard } from './ShiftClockCard.tsx';
 import { Text } from './Text.tsx';
+import { WhosHereWayIn } from './whosHere/WhosHereWayIn.tsx';
 
 /** Changes to their station, shift or lead show within 10 seconds (sc-3915). */
 const EVERY_MS = 10_000;
@@ -259,6 +260,7 @@ function Night({
             testID="myNight.openStation"
           />
         ))}
+      <WhosHereWayIn eventId={night.event.id} />
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />
