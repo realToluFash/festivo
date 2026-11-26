@@ -1,0 +1,15 @@
+# sc-4002: a member's role sheet offers the four event roles and none of the service levels.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/01a21572-bae5-7306-a41e-377df526ef2b?area=people
+- scrollUntilVisible:
+    {
+      element: { id: 'people.row.01a21573-9b33-762c-887d-a01fbd00588f' },
+      timeout: 60000,
+      centerElement: true,
+    }
+- tapOn: { id: 'people.row.01a21573-9b33-762c-887d-a01fbd00588f' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: member-product
+- assertNotVisible: 'Can work the floor'
+- assertNotVisible: 'Can run the floor'
