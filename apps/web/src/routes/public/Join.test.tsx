@@ -550,7 +550,7 @@ describe('an invitation, signed in', () => {
     ).toBeDefined();
     expect(screen.getByText('+234 ••• ••• 0009')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Add an email address' }).getAttribute('href')).toBe(
-      '/app/settings/account',
+      '/app/account',
     );
     expect(screen.queryByRole('button', { name: /Accept/u })).toBeNull();
   });
