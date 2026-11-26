@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const read = (...path: string[]) => readFileSync(join(...path), 'utf8');
 const redeem = read('src', 'components', 'Redeem.tsx');
 const demo = read('src', 'demo', 'doorCode', 'Redeem.tsx');
+const fields = read('src', 'components', 'FieldsAboveSend.tsx');
 
 describe('the event step keeps Your name and the number row above Send code with the keys up (sc-97734)', () => {
   it('lifts the refusal, Your name and the number row as one group, in the product and its demo alike', () => {
@@ -16,6 +17,13 @@ describe('the event step keeps Your name and the number row above Send code with
       expect(source).toMatch(/<View ref=\{numberBlock\}>/u);
     }
     expect(demo).not.toMatch(/KeysUp/u);
+  });
+
+  it('keeps the landing toast covering the step, as the focused-field lift it replaces did (sc-37983)', () => {
+    expect(fields).toMatch(/watchLandingToastTop\(lift\)/u);
+    expect(fields).toMatch(
+      /const shown = Math\.min\(\s*shownEnd\(keys, \{ y: frame\.top, height: frame\.height \}\),\s*landingToastTop\(\) \?\? Infinity,\s*\);/u,
+    );
   });
 
   it('still lands with Your name focused, and signed in shows no field', () => {
