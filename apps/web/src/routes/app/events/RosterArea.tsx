@@ -36,6 +36,7 @@ import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
 import { StaffTabs } from './StaffTabs.tsx';
+import { useBriefing } from './Briefing.tsx';
 import { StationSelect } from './StationsArea.tsx';
 import { stationGroups } from './stationWords.ts';
 import { type StaffTimes, clockWords, rangeWords, shiftBreaks, staffTimes } from './staffTimes.ts';
@@ -268,6 +269,22 @@ function Roster({
     return () => window.clearTimeout(timer);
   }, [bar]);
 
+  const briefing = useBriefing({
+    event,
+    people: staff,
+    rules: plan.rules,
+    times,
+    manage,
+    finished,
+    onEntry: (entry) => relinked(entry),
+    onRules: (rules) => onPlan({ ...plan, rules }),
+    focus: (id) => {
+      focusAfter.current = id;
+    },
+    announce,
+    onSide: () => setPanel(null),
+  });
+
   const shown = (id: string) => staff.find((one) => one.id === id) ?? null;
   const opened = panel != null && panel.kind !== 'add' ? shown(panel.id) : null;
 
@@ -353,6 +370,7 @@ function Roster({
   }
 
   function open(next: Panel) {
+    briefing.dismiss();
     setProblems({});
     setWarning(null);
     setFailed(null);
@@ -539,176 +557,183 @@ function Roster({
       <p className="visually-hidden" role="status">
         <span key={live.said}>{live.text}</span>
       </p>
-      <div className="mn-split">
-        <div className="mn-list">
-          <section className="sn-card">
-            <div className="sn-card-top">
-              <div className="sn-card-names">
-                <h2 id="rs-roster" tabIndex={-1}>
-                  {t('roster.roster')}
-                </h2>
-                {next != null && staff.length > 0 && <p className="mn-sub">{next}</p>}
-              </div>
-              {manage && staff.length > 0 && (
-                <button
-                  id="rs-add"
-                  type="button"
-                  className="desk-text"
-                  onClick={() => open({ kind: 'add' })}
-                >
-                  <Glyph name="plus" size={17} weight={2.3} />
-                  {t('roster.add')}
-                </button>
-              )}
-            </div>
-            {staff.length === 0 ? (
-              <div className="rs-empty">
-                <Glyph name="staff" size={28} weight={2} />
-                <p className="rs-empty-title">{t('roster.empty')}</p>
-                <p className="mn-sub">{t('roster.emptySub')}</p>
-                {manage && (
+      <div className={briefing.side ? 'bf is-side' : 'bf'}>
+        <div className="mn-split">
+          <div className="mn-list">
+            {staff.length > 0 && briefing.card}
+            <section className="sn-card">
+              <div className="sn-card-top">
+                <div className="sn-card-names">
+                  <h2 id="rs-roster" tabIndex={-1}>
+                    {t('roster.roster')}
+                  </h2>
+                  {next != null && staff.length > 0 && <p className="mn-sub">{next}</p>}
+                </div>
+                {manage && staff.length > 0 && (
                   <button
                     id="rs-add"
                     type="button"
-                    className="gs-pill is-primary"
+                    className="desk-text"
                     onClick={() => open({ kind: 'add' })}
                   >
+                    <Glyph name="plus" size={17} weight={2.3} />
                     {t('roster.add')}
                   </button>
                 )}
               </div>
-            ) : (
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
-              <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
-                <table className="rs-table" aria-labelledby="rs-roster">
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('roster.name')}</th>
-                      <th scope="col">{t('roster.job')}</th>
-                      <th scope="col">{t('roster.station')}</th>
-                      <th scope="col">{t('roster.shift')}</th>
-                      <th scope="col">{t('roster.link')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staff.map((one) => (
-                      <Fragment key={one.id}>
-                        <tr className={lit === one.id ? 'is-lit' : undefined}>
-                          <th scope="row">
-                            <button
-                              id={`rs-name-${one.id}`}
-                              type="button"
-                              className="rs-name"
-                              aria-current={lit === one.id || undefined}
-                              onClick={() => open({ kind: 'details', id: one.id })}
+              {staff.length === 0 ? (
+                <div className="rs-empty">
+                  <Glyph name="staff" size={28} weight={2} />
+                  <p className="rs-empty-title">{t('roster.empty')}</p>
+                  <p className="mn-sub">{t('roster.emptySub')}</p>
+                  {manage && (
+                    <button
+                      id="rs-add"
+                      type="button"
+                      className="gs-pill is-primary"
+                      onClick={() => open({ kind: 'add' })}
+                    >
+                      {t('roster.add')}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
+                <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
+                  <table className="rs-table bf-table" aria-labelledby="rs-roster">
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('roster.name')}</th>
+                        <th scope="col">{t('roster.job')}</th>
+                        <th scope="col">{t('roster.station')}</th>
+                        <th scope="col">{t('roster.shift')}</th>
+                        <th scope="col">{t('briefing.card')}</th>
+                        <th scope="col">{t('roster.link')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {staff.map((one) => (
+                        <Fragment key={one.id}>
+                          <tr className={lit === one.id ? 'is-lit' : undefined}>
+                            <th scope="row">
+                              <button
+                                id={`rs-name-${one.id}`}
+                                type="button"
+                                className="rs-name"
+                                aria-current={lit === one.id || undefined}
+                                onClick={() => open({ kind: 'details', id: one.id })}
+                              >
+                                {one.fullName}
+                              </button>
+                            </th>
+                            <td className={one.job == null ? 'rs-quiet' : undefined}>
+                              {one.job?.name ?? t('roster.noJob')}
+                            </td>
+                            <td className={one.station == null ? 'rs-quiet' : undefined}>
+                              <StationWords entry={one} />
+                            </td>
+                            <td
+                              className={
+                                one.shifts.length === 0 ? 'rs-no-shift rs-quiet' : 'rs-shift'
+                              }
                             >
-                              {one.fullName}
-                            </button>
-                          </th>
-                          <td className={one.job == null ? 'rs-quiet' : undefined}>
-                            {one.job?.name ?? t('roster.noJob')}
-                          </td>
-                          <td className={one.station == null ? 'rs-quiet' : undefined}>
-                            <StationWords entry={one} />
-                          </td>
-                          <td
-                            className={
-                              one.shifts.length === 0 ? 'rs-no-shift rs-quiet' : 'rs-shift'
-                            }
-                          >
-                            <ShiftCell entry={one} times={times} />
-                          </td>
-                          <td>
-                            <LinkCell
-                              entry={one}
-                              times={times}
-                              acts={acts}
-                              busy={copying === one.id}
-                              missed={missed === one.id}
-                              onCopy={() => void copy(one)}
-                              onMark={() => void markSent(one)}
-                            />
-                          </td>
-                        </tr>
-                        {held?.id === one.id && (
-                          <tr className="rs-held-row">
-                            <td colSpan={5}>
-                              <HeldLink entry={one} url={held.url} />
+                              <ShiftCell entry={one} times={times} />
+                            </td>
+                            <td>{briefing.cell(one)}</td>
+                            <td>
+                              <LinkCell
+                                entry={one}
+                                times={times}
+                                acts={acts}
+                                busy={copying === one.id}
+                                missed={missed === one.id}
+                                onCopy={() => void copy(one)}
+                                onMark={() => void markSent(one)}
+                              />
                             </td>
                           </tr>
-                        )}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          {held?.id === one.id && (
+                            <tr className="rs-held-row">
+                              <td colSpan={6}>
+                                <HeldLink entry={one} url={held.url} />
+                              </td>
+                            </tr>
+                          )}
+                          {briefing.held(one, 6)}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
+          {panel != null &&
+            (panel.kind === 'add' || opened != null) &&
+            (manage || panel.kind === 'details') && (
+              <aside className="mn-panel" aria-labelledby="sn-panel-title">
+                {panel.kind === 'details' && opened != null && (
+                  <Details
+                    entry={opened}
+                    plan={plan}
+                    times={times}
+                    manage={manage}
+                    finished={finished}
+                    failed={failed}
+                    onStation={(station) => void restation(opened, station)}
+                    onClose={close}
+                    onEdit={() => open({ kind: 'edit', id: opened.id })}
+                    onRemove={() => open({ kind: 'remove', id: opened.id })}
+                    onReplace={acts ? () => setReplacing(opened.id) : null}
+                  />
+                )}
+                {panel.kind === 'remove' && opened != null && (
+                  <RemoveAsk
+                    entry={opened}
+                    times={times}
+                    busy={busy}
+                    failed={failed}
+                    onKeep={() => {
+                      setFailed(null);
+                      setPanel({ kind: 'details', id: opened.id });
+                      focusAfter.current = 'rs-remove';
+                    }}
+                    onRemove={() => void remove(opened)}
+                  />
+                )}
+                {(panel.kind === 'add' || (panel.kind === 'edit' && editing != null)) && (
+                  <PersonForm
+                    title={
+                      editing == null
+                        ? t('roster.add')
+                        : t('roster.editTitle', { name: editing.fullName })
+                    }
+                    draft={draft}
+                    plan={plan}
+                    times={times}
+                    problems={problems}
+                    contact={contact}
+                    warning={warning}
+                    failed={failed}
+                    busy={busy}
+                    editing={editing != null}
+                    onChange={change}
+                    onSubmit={() => void submit(false)}
+                    onAnyway={() => void submit(true)}
+                    onCancelWarning={() => {
+                      setWarning(null);
+                      focusAfter.current = FIELD_IDS.number;
+                    }}
+                    onCancel={() => {
+                      if (editing == null) close();
+                      else open({ kind: 'details', id: editing.id });
+                    }}
+                  />
+                )}
+              </aside>
             )}
-          </section>
+          {briefing.panel}
         </div>
-        {panel != null &&
-          (panel.kind === 'add' || opened != null) &&
-          (manage || panel.kind === 'details') && (
-            <aside className="mn-panel" aria-labelledby="sn-panel-title">
-              {panel.kind === 'details' && opened != null && (
-                <Details
-                  entry={opened}
-                  plan={plan}
-                  times={times}
-                  manage={manage}
-                  finished={finished}
-                  failed={failed}
-                  onStation={(station) => void restation(opened, station)}
-                  onClose={close}
-                  onEdit={() => open({ kind: 'edit', id: opened.id })}
-                  onRemove={() => open({ kind: 'remove', id: opened.id })}
-                  onReplace={acts ? () => setReplacing(opened.id) : null}
-                />
-              )}
-              {panel.kind === 'remove' && opened != null && (
-                <RemoveAsk
-                  entry={opened}
-                  times={times}
-                  busy={busy}
-                  failed={failed}
-                  onKeep={() => {
-                    setFailed(null);
-                    setPanel({ kind: 'details', id: opened.id });
-                    focusAfter.current = 'rs-remove';
-                  }}
-                  onRemove={() => void remove(opened)}
-                />
-              )}
-              {(panel.kind === 'add' || (panel.kind === 'edit' && editing != null)) && (
-                <PersonForm
-                  title={
-                    editing == null
-                      ? t('roster.add')
-                      : t('roster.editTitle', { name: editing.fullName })
-                  }
-                  draft={draft}
-                  plan={plan}
-                  times={times}
-                  problems={problems}
-                  contact={contact}
-                  warning={warning}
-                  failed={failed}
-                  busy={busy}
-                  editing={editing != null}
-                  onChange={change}
-                  onSubmit={() => void submit(false)}
-                  onAnyway={() => void submit(true)}
-                  onCancelWarning={() => {
-                    setWarning(null);
-                    focusAfter.current = FIELD_IDS.number;
-                  }}
-                  onCancel={() => {
-                    if (editing == null) close();
-                    else open({ kind: 'details', id: editing.id });
-                  }}
-                />
-              )}
-            </aside>
-          )}
       </div>
       {replacing != null && shown(replacing) != null && (
         <ConfirmDialog
