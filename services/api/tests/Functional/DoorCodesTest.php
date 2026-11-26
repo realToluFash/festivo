@@ -411,6 +411,7 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame(ErrorCode::PhoneAlternative->type(), $answer['type'] ?? null);
         self::assertArrayNotHasKey('accessToken', $answer);
         self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]));
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM phone_sign_ins WHERE typed_name IS NOT NULL'), 'the name typed for the alternative is stored nowhere');
     }
 
     /** In one kernel, since the limiter's pool is reset between requests. */

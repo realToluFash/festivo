@@ -148,6 +148,9 @@ final readonly class PhoneSignIns
 
         if (null !== $held && $held->isVerified()) {
             if (!$held->isPrimary()) {
+                $signIn->forgetTypedName();
+                $this->entityManager->flush();
+
                 throw new ApiException(ErrorCode::PhoneAlternative, 'phone_sign_in.alternative');
             }
 
