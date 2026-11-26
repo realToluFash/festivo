@@ -1,7 +1,7 @@
-# sc-4002: the door code form's four levels, its blank check and the run-the-floor refusal, beside the demo. The refusal needs QA_API_URL's proxy turning the role into can_run_floor.
+# sc-4002: the door code form's four levels, its blank check and the run-the-floor refusal, beside the demo. The refusal needs QA_API_URL's proxy turning the role into can_run_floor. Pass EVENT_ID.
 appId: host.exp.Exponent
 ---
-- openLink: ${METRO_URL}/--/events/01a21572-bae5-7306-a41e-377df526ef2b?area=people
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
 - scrollUntilVisible: { element: { id: 'door.another' }, timeout: 60000, centerElement: true }
 - tapOn: { id: 'door.another' }
 - extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 15000 }
@@ -25,7 +25,6 @@ appId: host.exp.Exponent
 - waitForAnimationToEnd: { timeout: 4000 }
 - takeScreenshot: code-refused-product-at
 - extendedWaitUntil: { visible: 'A join code cannot let people run the floor.*', timeout: 15000 }
-- scrollUntilVisible: { element: { id: 'door.make' }, direction: UP, timeout: 20000 }
 - takeScreenshot: code-refused-product
 - openLink: ${METRO_URL}/--/demo/people?code=open
 - extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 30000 }

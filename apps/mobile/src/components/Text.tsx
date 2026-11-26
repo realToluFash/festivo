@@ -31,8 +31,8 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   size?: number;
   muted?: boolean;
   family?: Family;
-  /** Lines of whole points at the size it is drawn at, so a wrapping text's last line is never drawn clipped on the one above (sc-69816). */
-  wholeLines?: boolean;
+  /** Lines of whole points at the size it is drawn at, so a wrapping text's last line is never drawn clipped on the one above (sc-69816); a number is the line's height as a ratio of the size (sc-94081). */
+  wholeLines?: boolean | number;
   ref?: Ref<TextHandle> | undefined;
 }
 
@@ -67,8 +67,12 @@ export function Text({
         [
           styles.base,
           { fontWeight: WEIGHTS[weight], fontSize: size },
-          wholeLines && {
-            lineHeight: wholeLineHeight(size, drawnSize(size, fontScale, multiplier)),
+          wholeLines !== false && {
+            lineHeight: wholeLineHeight(
+              size,
+              drawnSize(size, fontScale, multiplier),
+              wholeLines === true ? undefined : wholeLines,
+            ),
           },
           muted && styles.muted,
           style,

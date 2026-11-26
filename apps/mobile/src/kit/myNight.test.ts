@@ -2,7 +2,14 @@ import type { MyNight } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { clockOpensAt, crossesMidnight, dietaryOf, headingOf, rowLineOf } from './myNight.ts';
+import {
+  clockOpensAt,
+  crossesMidnight,
+  dietaryOf,
+  headingOf,
+  rowLineOf,
+  updatedAfter,
+} from './myNight.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
   key === 'myNight.times'
@@ -66,5 +73,15 @@ describe('a staff member’s night in the app (sc-3915)', () => {
 
     expect(dietaryOf(t, guest)).toBe('guestNeeds.dietName.vegetarian, Kiwi (other)');
     expect(dietaryOf(t, { ...guest, diets: [], allergens: [] })).toBeNull();
+  });
+
+  it('announces a move to another station, keeps it while nothing moves, and drops it once a move leaves no station', () => {
+    const onC = { ...NIGHT, station: 'Section C' };
+    const jobOnly = { ...NIGHT, station: null, tables: null };
+
+    expect(updatedAfter(null, null, NIGHT)).toBeNull();
+    expect(updatedAfter(NIGHT, null, onC)).toBe('Section C');
+    expect(updatedAfter(onC, 'Section C', onC)).toBe('Section C');
+    expect(updatedAfter(onC, 'Section C', jobOnly)).toBeNull();
   });
 });

@@ -79,6 +79,10 @@ import { type EmailDomainsPage, asEmailDomainsPage } from './emailDomains.ts';
 import { type OrganisationExportPage, asOrganisationExportPage } from './organisationExport.ts';
 import { downloadName } from './fileName.ts';
 import type {
+  AudienceBook,
+  AudienceMatch,
+  GuestCondition,
+  SavedAudience,
   GuestMessageCheck,
   GuestMessageDetails,
   GuestMessageInput,
@@ -3826,6 +3830,47 @@ export class ApiClient {
     input: Pick<GuestMessageInput, 'audience' | 'guestIds' | 'follows'>,
   ): Promise<GuestMessageCheck> {
     return this.post<GuestMessageCheck>(`${this.messagesPath(eventId)}/check`, input);
+  }
+
+  /** Who gets it's count and See who (sc-3957): refused 422 naming an unknown condition, or with none; 403 without messages.manage. */
+  audienceMatch(eventId: string, conditions: GuestCondition[]): Promise<AudienceMatch> {
+    return this.post<AudienceMatch>(`${this.messagesPath(eventId)}/audience`, { conditions });
+  }
+
+  audienceBook(eventId: string): Promise<AudienceBook> {
+    return this.get<AudienceBook>(`${this.messagesPath(eventId)}/audiences`);
+  }
+
+  /** 422 on a blank or too long name, 409 on a used one or a 21st. */
+  async saveAudience(
+    eventId: string,
+    name: string,
+    conditions: GuestCondition[],
+  ): Promise<SavedAudience> {
+    const body = await this.post<{ audience: SavedAudience }>(
+      `${this.messagesPath(eventId)}/audiences`,
+      {
+        name,
+        conditions,
+      },
+    );
+
+    return body.audience;
+  }
+
+  async renameAudience(eventId: string, audienceId: string, name: string): Promise<SavedAudience> {
+    const body = await this.patch<{ audience: SavedAudience }>(
+      `${this.messagesPath(eventId)}/audiences/${encodeURIComponent(audienceId)}`,
+      { name },
+    );
+
+    return body.audience;
+  }
+
+  async deleteAudience(eventId: string, audienceId: string): Promise<void> {
+    await this.delete<unknown>(
+      `${this.messagesPath(eventId)}/audiences/${encodeURIComponent(audienceId)}`,
+    );
   }
 
   /** 202 even when no email can announce it: the message is on their pages all the same. */
