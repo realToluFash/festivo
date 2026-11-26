@@ -72,6 +72,10 @@ describe('joining, every state (spec §5)', () => {
       'code-exhausted': 'code',
       'code-failed': 'code',
       'used-up': 'event',
+      'event-keys': 'event',
+      'event-keys-number': 'event',
+      'event-keys-refused': 'event',
+      'event-keys-failed': 'event',
       'code-second-number': 'code',
       'second-number': 'event',
       'code-provider-only': 'code',
@@ -86,6 +90,26 @@ describe('joining, every state (spec §5)', () => {
       'people-in': 'peopleIn',
       'more-in': 'inside',
     } satisfies Record<string, RedeemStep>);
+  });
+
+  it('opens the keys-up states on the field and the refusal each names (sc-97734)', () => {
+    expect(flowAt('event-keys')).toMatchObject({ name: '', keys: 'name', usedUp: false });
+    expect(flowAt('event-keys-number')).toMatchObject({
+      name: JOAO.name,
+      number: '',
+      keys: 'number',
+    });
+    expect(flowAt('event-keys-refused')).toMatchObject({
+      usedUp: true,
+      failed: false,
+      keys: 'name',
+    });
+    expect(flowAt('event-keys-failed')).toMatchObject({
+      usedUp: false,
+      failed: true,
+      keys: 'name',
+    });
+    expect(freshFlow()).toMatchObject({ failed: false, keys: null });
   });
 
   it('opens on the welcome for anything else', () => {

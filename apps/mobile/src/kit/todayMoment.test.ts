@@ -51,7 +51,7 @@ const moment = (events: ListedEvent[], now = NOW) =>
   todayMoment({ events, at: AT }, now, LONDON, 'Folake', i18n.t);
 
 describe('todayMoment', () => {
-  it('a planning day greets, names the next event, and has nothing waiting on a source it lacks', () => {
+  it('a planning day greets, names the next event, and shows the tick once the events have loaded', () => {
     const plan = moment([event('Wedding'), event('Draft', { status: 'draft', phase: 'draft' })]);
 
     expect(plan).toMatchObject({
@@ -60,7 +60,8 @@ describe('todayMoment', () => {
       eyebrow: 'Tuesday 3 November',
       hello: 'Good morning, Folake',
       sub: 'Wedding starts on Friday.',
-      needs: null,
+      needs: [],
+      lead: null,
       now: null,
     });
     expect(plan.bars.map(({ event: { id }, ...bar }) => [id, bar])).toEqual([
@@ -369,5 +370,70 @@ describe("Today's arrived figure (sc-29978)", () => {
 
     expect(read.events[0]?.ready?.words).toBe('1\u202f204 of 1\u202f250 arrived');
     expect(read.now?.arrived).toMatchObject({ count: '1\u202f204', of: '1\u202f250' });
+  });
+});
+
+describe('todayMoment Needs you (sc-29884)', () => {
+  const owed = (at: string, rest: Partial<ListedEvent['milestones'][number]> = {}) => ({
+    at,
+    title: 'Give final numbers to the kitchen',
+    note: null,
+    owner: 'you' as const,
+    area: 'menu',
+    action: null,
+    ...rest,
+  });
+
+  it('lists a You milestone for a member who manages its area, and not for one who only reads', () => {
+    const milestones = [owed('2026-11-05T23:59:00Z')];
+    const manages = moment([event('Wedding', { permissions: ['menu.manage'], milestones })]);
+    const reads = moment([event('Wedding', { permissions: ['menu.read'], milestones })]);
+
+    expect(manages.needs?.map(({ title, due }) => [title, due])).toEqual([
+      ['Give final numbers to the kitchen', 'Due Thu 5 Nov'],
+    ]);
+    expect(manages.lead).toBe('1 thing needs you.');
+    expect(reads.needs).toEqual([]);
+    expect(reads.lead).toBeNull();
+  });
+
+  it('leaves Automatic and Event milestones out', () => {
+    const milestones = [
+      owed('2026-11-05T23:59:00Z', { owner: 'automatic' }),
+      owed('2026-11-05T23:59:00Z', { owner: 'event' }),
+    ];
+
+    expect(moment([event('Wedding', { permissions: ['menu.manage'], milestones })]).needs).toEqual(
+      [],
+    );
+  });
+
+  it('says overdue in days, earliest first, and counts every row', () => {
+    const milestones = [
+      owed('2026-11-04T23:59:00Z', { title: 'B' }),
+      owed('2026-11-01T23:59:00Z', { title: 'A' }),
+    ];
+    const shown = moment([event('Wedding', { permissions: ['menu.manage'], milestones })]);
+
+    expect(shown.needs?.map(({ title, due, late }) => [title, due, late])).toEqual([
+      ['A', '2 days overdue', true],
+      ['B', 'Due tomorrow', false],
+    ]);
+    expect(shown.lead).toBe('2 things need you.');
+  });
+
+  it('writes the year only when the due day is in another year', () => {
+    const milestones = [owed('2027-01-13T23:59:00Z')];
+    const shown = moment([event('Wedding', { permissions: ['menu.manage'], milestones })]);
+
+    expect(shown.needs?.[0]?.due).toBe('Due Wed, 13 Jan 2027');
+  });
+
+  it('has no Needs you on a first run', () => {
+    const first = moment([]);
+
+    expect(first.kind).toBe('first');
+    expect(first.needs).toBeNull();
+    expect(first.lead).toBeNull();
   });
 });
