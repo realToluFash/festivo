@@ -187,11 +187,36 @@ export interface SendServiceTapsOptions {
 const wait = (seconds: number) =>
   new Promise<void>((done) => setTimeout(done, Math.max(1, seconds) * 1_000));
 
-/** Oldest first, read from the store each time so a tap kept mid-send goes too; a refused tap is dropped and the ones after it still go. */
+const sending = new WeakMap<ServiceTapStore, Promise<ServiceTapsSent>>();
+
+/** Oldest first, a tap kept mid-send going too; a second call while one runs waits and sends nothing, so no tap or refusal line comes twice. */
 export async function sendServiceTaps(
   store: ServiceTapStore,
   send: SendServiceTap,
   options: SendServiceTapsOptions = {},
+): Promise<ServiceTapsSent> {
+  const running = sending.get(store);
+
+  if (running != null) {
+    await running.catch(() => undefined);
+
+    return { refused: [], left: await store.load(), refetch: false };
+  }
+
+  const run = sendInOrder(store, send, options);
+  sending.set(store, run);
+
+  try {
+    return await run;
+  } finally {
+    sending.delete(store);
+  }
+}
+
+async function sendInOrder(
+  store: ServiceTapStore,
+  send: SendServiceTap,
+  options: SendServiceTapsOptions,
 ): Promise<ServiceTapsSent> {
   const pause = options.wait ?? wait;
   const refused: ServiceTapRefused[] = [];

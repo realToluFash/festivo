@@ -91,6 +91,24 @@ describe('sending kept taps', () => {
     expect(sent).toEqual({ refused: [], left: [], refetch: true });
   });
 
+  it('sends each tap once when a second send starts while the first runs', async () => {
+    const store = memoryServiceTapStore([tap('k1'), tap('k2')]);
+    const keys: string[] = [];
+    const send = async (one: KeptServiceTap) => {
+      keys.push(one.key);
+      await Promise.resolve();
+    };
+
+    const [first, second] = await Promise.all([
+      sendServiceTaps(store, send),
+      sendServiceTaps(store, send),
+    ]);
+
+    expect(keys).toEqual(['k1', 'k2']);
+    expect(first).toEqual({ refused: [], left: [], refetch: true });
+    expect(second).toEqual({ refused: [], left: [], refetch: false });
+  });
+
   it('drops a refused tap with its lines, and still sends the ones after it', async () => {
     const store = memoryServiceTapStore([tap('k1'), tap('k2')]);
     const changed = [
