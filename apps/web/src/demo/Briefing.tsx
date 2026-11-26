@@ -97,6 +97,9 @@ export function useBriefing({
   const [draft, setDraft] = useState(first?.draft ?? null);
   const [cut, setCut] = useState(first?.cut ?? false);
   const [saved, setSaved] = useState(first?.saved ?? false);
+  const [notSaved, setNotSaved] = useState(first?.notSaved ?? false);
+  const [previewAt, setPreviewAt] = useState(first?.previewAt ?? 'shown');
+  const [previewStuck, setPreviewStuck] = useState(first?.previewAt === 'loading');
   const [busy, setBusy] = useState(first?.busy ?? null);
   const [missed, setMissed] = useState(first?.missed ?? null);
   const [handHeld, setHandHeld] = useState(first?.handHeld ?? null);
@@ -119,6 +122,13 @@ export function useBriefing({
 
     return () => window.clearTimeout(timer);
   }, [check, checkAt, stuck]);
+
+  useEffect(() => {
+    if (previewAt !== 'loading' || previewStuck) return;
+    const timer = window.setTimeout(() => setPreviewAt('shown'), ISSUE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [previewAt, previewStuck]);
 
   if (first == null) return OFF;
 
@@ -259,6 +269,7 @@ export function useBriefing({
   }
 
   function saveRules() {
+    setNotSaved(false);
     setRules((draft ?? '').trim());
     setDraft(null);
     setSaved(true);
@@ -412,6 +423,7 @@ export function useBriefing({
             handHeld={handHeld}
             onCopy={(id) => void copy(id)}
             onMark={mark}
+            jobsAt={`/demo/events/${event.id}/staff/jobs`}
             onClose={() => close('bf-copy')}
           />
         )}
@@ -422,6 +434,7 @@ export function useBriefing({
             manage={acts}
             cut={cut}
             saved={saved}
+            notSaved={notSaved}
             onEdit={() => {
               setDraft(rules);
               setSaved(false);
@@ -433,6 +446,7 @@ export function useBriefing({
             onCancel={() => {
               setDraft(null);
               setCut(false);
+              setNotSaved(false);
               setSide({ kind: 'rules', editing: false });
               focus('sn-panel-title');
             }}
@@ -445,7 +459,16 @@ export function useBriefing({
             one={previewed as Person}
             rules={rules}
             event={event.name}
-            onPick={(id) => setSide({ kind: 'preview', id })}
+            at={previewAt}
+            onPick={(id) => {
+              setPreviewStuck(false);
+              setPreviewAt(previewAt === 'shown' ? 'shown' : 'loading');
+              setSide({ kind: 'preview', id });
+            }}
+            onRetry={() => {
+              setPreviewStuck(false);
+              setPreviewAt('loading');
+            }}
             onClose={() => close('bf-preview')}
           />
         )}
@@ -724,7 +747,7 @@ function CopyRow({
         )}
         {handHeld != null && <HandHeld one={one} url={handHeld} short />}
       </div>
-      {acts && (
+      {acts && one.mobile != null && (
         <span className="bf-copy-acts">
           <CopyButton id={`bf-copy-${one.id}`} one={one} busy={busy} onCopy={onCopy} />
           {one.briefCopy != null && !one.briefCopy.marked && (
@@ -761,6 +784,7 @@ function CopyPanel({
   handHeld,
   onCopy,
   onMark,
+  jobsAt,
   onClose,
 }: {
   people: readonly Person[];
@@ -771,6 +795,7 @@ function CopyPanel({
   handHeld: { id: string; url: string } | null;
   onCopy: (id: string) => void;
   onMark: (id: string) => void;
+  jobsAt: string;
   onClose: () => void;
 }) {
   const listed = onShift(people);
@@ -790,9 +815,9 @@ function CopyPanel({
           <div className="rs-empty">
             <Glyph name="staff" size={28} weight={2} />
             <p className="rs-empty-title">{BW.nobody}</p>
-            <button type="button" className="gs-pill is-secondary" onClick={onClose}>
+            <Link className="gs-pill is-secondary" to={jobsAt}>
               {BW.giveShift}
-            </button>
+            </Link>
           </div>
         ) : (
           <>
@@ -824,6 +849,7 @@ function RulesPanel({
   manage,
   cut,
   saved,
+  notSaved,
   onEdit,
   onType,
   onSave,
@@ -835,6 +861,7 @@ function RulesPanel({
   manage: boolean;
   cut: boolean;
   saved: boolean;
+  notSaved: boolean;
   onEdit: () => void;
   onType: (next: string) => void;
   onSave: () => void;
@@ -900,6 +927,12 @@ function RulesPanel({
                 {BW.cut}
               </p>
             )}
+            {notSaved && (
+              <p className="mn-failed" role="alert">
+                <Glyph name="alert" size={17} weight={2.2} />
+                {BW.notSaved}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -922,14 +955,18 @@ function PreviewPanel({
   one,
   rules,
   event,
+  at,
   onPick,
+  onRetry,
   onClose,
 }: {
   people: readonly Person[];
   one: Person;
   rules: string;
   event: string;
+  at: 'loading' | 'shown' | 'failed';
   onPick: (id: string) => void;
+  onRetry: () => void;
   onClose: () => void;
 }) {
   const [starts, ends] = (one.shift ?? '').split(' to ');
@@ -952,40 +989,59 @@ function PreviewPanel({
           <Glyph name="eye" size={16} weight={2.3} />
           {BW.previewBanner}
         </p>
-        <div className="bf-phone" aria-label={`${one.name}’s page`} role="group">
-          <p className="myn-event">{event}</p>
-          {one.shift == null ? (
-            <section className="myn-card">
-              <p className="myn-big">{BW.previewNoShift('Saturday')}</p>
-            </section>
-          ) : (
-            <>
-              <p className="bf-phone-on">
-                <span className="myn-on-label">{MN.onTonight}</span>{' '}
-                <span className="myn-on-station">{one.station ?? one.job}</span>
-              </p>
+        {at === 'failed' ? (
+          <div className="bf-check-failed" role="alert">
+            <p className="rs-missed">
+              <Glyph name="alert" size={15} weight={2.2} />
+              {BW.didNotWork}
+            </p>
+            <button type="button" className="gs-pill is-secondary" onClick={onRetry}>
+              {BW.tryAgain}
+            </button>
+          </div>
+        ) : at === 'loading' ? (
+          <div className="bf-phone bf-bones" role="status" aria-busy="true">
+            <p className="visually-hidden">{BW.previewLoading}</p>
+            {[0, 1, 2].map((bone) => (
+              <span key={bone} className="bf-bone" aria-hidden="true" />
+            ))}
+          </div>
+        ) : (
+          <div className="bf-phone" aria-label={`${one.name}’s page`} role="group">
+            <p className="myn-event">{event}</p>
+            {one.shift == null ? (
               <section className="myn-card">
-                <p className="bf-phone-h">{MN.yourShift}</p>
-                <p className="myn-big">{one.job}</p>
-                <p className="myn-time">{MN.times(starts ?? '', ends ?? '')}</p>
+                <p className="myn-big">{BW.previewNoShift('Saturday')}</p>
               </section>
+            ) : (
+              <>
+                <p className="bf-phone-on">
+                  <span className="myn-on-label">{MN.onTonight}</span>{' '}
+                  <span className="myn-on-station">{one.station ?? one.job}</span>
+                </p>
+                <section className="myn-card">
+                  <p className="bf-phone-h">{MN.yourShift}</p>
+                  <p className="myn-big">{one.job}</p>
+                  <p className="myn-time">{MN.times(starts ?? '', ends ?? '')}</p>
+                </section>
+                <section className="myn-card">
+                  <p className="bf-phone-h">{MN.yourLead}</p>
+                  {one.id === 'ifeoma' ? (
+                    <p className="myn-quiet">{MN.noLead}</p>
+                  ) : (
+                    <p className="myn-big">Ifeoma Nduka · {MN.floorLead}</p>
+                  )}
+                </section>
+              </>
+            )}
+            {rules !== '' && (
               <section className="myn-card">
-                <p className="bf-phone-h">{MN.yourLead}</p>
-                {one.id === 'ifeoma' ? (
-                  <p className="myn-quiet">{MN.noLead}</p>
-                ) : (
-                  <p className="myn-big">Ifeoma Nduka · {MN.floorLead}</p>
-                )}
+                <p className="bf-phone-h">{MN.beforeYouStart}</p>
+                <p className="myn-rules">{rules}</p>
               </section>
-            </>
-          )}
-          {rules !== '' && (
-            <section className="myn-card">
-              <p className="bf-phone-h">{MN.beforeYouStart}</p>
-              <p className="myn-rules">{rules}</p>
-            </section>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
