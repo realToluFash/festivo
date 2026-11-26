@@ -19,12 +19,13 @@ appId: host.exp.Exponent
     visible:
       id: 'station.undo.chicken'
     timeout: 2000
-    optional: true
 - takeScreenshot: prep-0s
 - extendedWaitUntil:
     visible: 'QA_NEVER_THERE'
     timeout: 16000
     optional: true
+- assertVisible:
+    id: 'station.undo.chicken'
 - takeScreenshot: prep-16s
 - tapOn:
     id: 'station.ready.chicken'
@@ -32,10 +33,11 @@ appId: host.exp.Exponent
     visible:
       id: 'station.undo.chicken'
     timeout: 2000
-    optional: true
 - takeScreenshot: ready-0s
 - extendedWaitUntil:
     visible: 'QA_NEVER_THERE'
     timeout: 16000
     optional: true
+- assertVisible:
+    id: 'station.undo.chicken'
 - takeScreenshot: ready-16s

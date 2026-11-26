@@ -5,7 +5,7 @@ appId: host.exp.Exponent
 - openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
 - extendedWaitUntil:
     visible:
-      id: 'station.title|station.landing|station.refused.*|station.sheet'
+      id: 'station\.title|station\.landing|station\.refused\..*|station\.sheet'
     timeout: 30000
 - waitForAnimationToEnd:
     timeout: 5000

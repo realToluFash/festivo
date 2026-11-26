@@ -6,7 +6,6 @@ appId: host.exp.Exponent
     visible:
       id: 'station.title'
     timeout: 30000
-    optional: true
 - takeScreenshot: t00
 - extendedWaitUntil:
     visible: 'QA_NEVER_THERE'

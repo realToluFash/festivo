@@ -65,7 +65,6 @@ appId: host.exp.Exponent
     visible:
       id: 'station.notSent'
     timeout: 90000
-    optional: true
 - waitForAnimationToEnd
 - takeScreenshot: notsent
 - scrollUntilVisible:
