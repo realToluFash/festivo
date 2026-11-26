@@ -9,7 +9,8 @@ appId: host.exp.Exponent
       centerElement: true,
     }
 - tapOn: { id: 'people.row.01a21573-9b33-762c-887d-a01fbd00588f' }
-- waitForAnimationToEnd: { timeout: 4000 }
+- extendedWaitUntil: { visible: { id: 'people.role' }, timeout: 15000 }
+- waitForAnimationToEnd
 - takeScreenshot: member-product
 - assertNotVisible: 'Can work the floor'
 - assertNotVisible: 'Can run the floor'
