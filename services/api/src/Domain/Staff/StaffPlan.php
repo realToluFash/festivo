@@ -116,7 +116,7 @@ final readonly class StaffPlan
             $shifts = $this->staffShiftRepository->findOfJob($job);
 
             if ($this->shiftAttendanceRepository->anyWorkedInJob($job)) {
-                throw new ApiException(ErrorCode::StaffJobWorked, $this->translator->trans('staff.job_worked'));
+                throw new ApiException(ErrorCode::StaffJobWorked, 'staff.job_worked');
             }
 
             if (Iter\any($shifts, static fn (StaffShift $shift): bool => [] !== $shift->getPeople())) {
@@ -200,7 +200,7 @@ final readonly class StaffPlan
             $this->entityManager->refresh($shift);
 
             if (true === $this->shiftAttendanceRepository->findOneOn($shift, $person)?->worked()) {
-                throw new ApiException(ErrorCode::StaffShiftWorked, $this->translator->trans('staff.shift_worked', ['{name}' => $person->getFullName()]));
+                throw new ApiException(ErrorCode::StaffShiftWorked, 'staff.shift_worked', parameters: ['{name}' => $person->getFullName()]);
             }
             $shift->setPeople(Vec\filter($shift->getPeople(), static fn (StaffMember $one): bool => $one !== $person));
             $this->audit(self::UNASSIGNED, 'StaffShift', $shift, $by, ['person' => [$person->getId()->toRfc4122(), null]]);
