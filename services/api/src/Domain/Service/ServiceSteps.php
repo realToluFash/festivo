@@ -332,11 +332,11 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw new ApiException(ErrorCode::UndoExpired, 'service.undo_expired');
             }
 
-            $this->serviceExpectations->undoing($event, $subject, $expected);
-
             if (!$step->getBy()->getId()->equals($by->getId()) && !$grants->holds(Permission::ServiceManage)) {
                 throw ApiException::permissionRequired(Permission::ServiceManage);
             }
+
+            $this->serviceExpectations->undoing($event, $subject, $expected);
 
             foreach ($step->getSubjects() as $other) {
                 if (!$this->serviceStepRepository->findLastOn($event, $other)?->getId()->equals($step->getId())) {
