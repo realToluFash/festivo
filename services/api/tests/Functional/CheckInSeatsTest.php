@@ -205,6 +205,28 @@ final class CheckInSeatsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMoveAResizeOrNewFurnitureLeavesEveryDoorQuiet(): void
+    {
+        $this->startPlan();
+        $table = $this->addTable();
+        $ada = $this->guest(self::ADAEZE);
+        $this->seat($ada, 'table', $table);
+        $hub = self::service(RecordingHub::class);
+
+        foreach ([
+            'moved' => fn () => $this->as($this->owner, 'PATCH', $this->plan() . '/furniture', ['items' => [['kind' => 'table', 'id' => $table, 'version' => $this->versionOf('tables', $table), 'xCm' => 600, 'yCm' => 500]]]),
+            'resized' => fn () => $this->patch('tables', $table, ['widthCm' => 200]),
+            'row added' => fn () => $this->as($this->owner, 'POST', $this->plan() . '/rows'),
+        ] as $change => $make) {
+            $hub->published = [];
+            $make();
+            self::assertLessThan(300, $this->statusCode(), $change . ': ' . Json\encode($this->last()));
+            self::assertCount(0, Vec\filter($hub->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/check-in']), $change);
+            self::assertNotCount(0, $hub->published, $change . ': the plan itself is still published');
+        }
+    }
+
+    #[Test]
     public function aSeatCarriesNothingElseFromThePlan(): void
     {
         $this->startPlan();
