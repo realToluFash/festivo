@@ -1215,6 +1215,7 @@ describe('People opens on its own title under the crumb, as Guests does (sc-6963
             jobLabel: null,
             startsAt: EVENT.startsAt,
             endsAt: EVENT.endsAt,
+            timeZone: 'Europe/Lisbon',
           },
         ],
       },

@@ -35,6 +35,7 @@ const WEDDING: OutsideEvent = {
   jobLabel: 'Cloakroom',
   startsAt: '2030-11-14T16:00:00+01:00',
   endsAt: '2030-11-15T02:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const LAUNCH: OutsideEvent = { ...WEDDING, id: 'ev_2', name: 'Studio launch', role: 'can_edit' };
@@ -174,6 +175,7 @@ describe('reaching each event held from outside (sc-68438)', () => {
     organisationName: 'Les Salons',
     startsAt: '2030-11-21T19:30:00+01:00',
     endsAt: '2030-11-22T01:00:00+01:00',
+    timeZone: 'Europe/Lisbon',
   };
 
   it('lists Your events from two, and a member’s organisations', () => {

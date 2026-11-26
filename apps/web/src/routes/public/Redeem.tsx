@@ -161,20 +161,20 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
   }, [code]);
 
   // From check-in's way back (/d/in/:eventId): the grant the account already holds, redeeming nothing again.
-  const held =
-    again == null || state.status !== 'signedIn' ? null : outsideOn(state.session, again);
+  const account = state.status === 'signedIn' ? state.session : null;
+  const held = again == null || account == null ? null : outsideOn(account, again);
   const back: YoureIn | null =
     held == null || step.kind !== 'enter' || step.signedOut
       ? null
       : {
           eventId: held.id,
           event: held.name,
-          timeZone: null,
+          timeZone: held.timeZone,
           jobLabel: held.jobLabel,
           role: held.role,
           name,
           endsAt: held.endsAt,
-          held: false,
+          held: account?.heldByDevice === true,
         };
   const backShown = back != null;
 

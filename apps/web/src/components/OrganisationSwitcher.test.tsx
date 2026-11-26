@@ -1277,6 +1277,7 @@ describe('events from outside in the switcher (sc-68438)', () => {
       jobLabel: null,
       startsAt: '2099-11-21T19:30:00+01:00',
       endsAt: '2099-11-22T01:00:00+01:00',
+      timeZone: 'Europe/Lisbon',
     };
     const congress = {
       ...gala,
@@ -1285,6 +1286,7 @@ describe('events from outside in the switcher (sc-68438)', () => {
       organisationName: 'Congressos',
       startsAt: '2020-11-07T08:30:00+00:00',
       endsAt: '2099-11-07T19:00:00+00:00',
+      timeZone: 'Europe/Lisbon',
     };
     render(
       <MemoryRouter>
