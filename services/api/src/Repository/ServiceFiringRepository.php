@@ -26,6 +26,12 @@ final class ServiceFiringRepository extends ServiceEntityRepository
         return $this->findBy(['course' => $course]);
     }
 
+    /** @return list<ServiceFiring> */
+    public function findOnEvent(Event $event): array
+    {
+        return $this->findBy(['event' => $event], ['firedAt' => 'ASC']);
+    }
+
     public function anyOn(Event $event): bool
     {
         return null !== $this->findOneBy(['event' => $event]);
