@@ -362,7 +362,7 @@ export function useBriefing({
           onClick={() => open({ kind: 'rules', editing: false })}
         >
           <Glyph name="pen" size={16} weight={2.3} />
-          {manage ? BW.editRules : BW.rules}
+          {acts ? BW.editRules : BW.rules}
         </button>
         <button
           id="bf-preview"
