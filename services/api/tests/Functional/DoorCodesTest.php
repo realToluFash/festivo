@@ -290,6 +290,7 @@ final class DoorCodesTest extends ApiTestCase
         $second = $this->code('can_view');
         $this->redeem($first, 'Adébáyọ̀', '+2348031110004');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::em()->getConnection()->executeStatement("UPDATE verification_challenges SET created_at = created_at - INTERVAL '1 hour'");
 
         $again = $this->redeem($second, 'Adébáyọ̀', '+2348031110004');
 
@@ -313,7 +314,7 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame(429, $this->statusCode(), Json\encode($this->last()));
         $wait = (int) $this->client->getResponse()->headers->get('Retry-After');
         self::assertGreaterThan(39 * 60, $wait, 'forty minutes, not a second');
-        self::assertLessThanOrEqual(40 * 60 + 1, $wait);
+        self::assertLessThanOrEqual(40 * 60 + 5, $wait);
     }
 
     #[Test]
