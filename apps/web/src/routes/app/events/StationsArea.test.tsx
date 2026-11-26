@@ -109,6 +109,8 @@ function person(id: string, fullName: string, at: Ref | null, more: Record<strin
     link: 'no_mobile',
     linkBy: null,
     linkAt: null,
+    briefing: 'none',
+    briefingCopy: null,
     contactsErased: false,
     ...more,
   };
@@ -170,7 +172,7 @@ const STATIONS = {
   walk: ['kitchen', 'grill', 'pastry'],
 };
 
-const PLAN = { staff: STAFF, jobs: [], shifts: [], stations: STATIONS };
+const PLAN = { staff: STAFF, jobs: [], shifts: [], stations: STATIONS, rules: null };
 
 async function onStations(
   answers: Record<string, Answer>,

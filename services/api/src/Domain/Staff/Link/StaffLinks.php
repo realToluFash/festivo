@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Briefing\BriefingTracker;
 use App\Domain\Staff\ShiftClock;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
@@ -57,6 +58,7 @@ final readonly class StaffLinks
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private BriefingTracker $briefingTracker,
     ) {
     }
 
@@ -120,19 +122,30 @@ final readonly class StaffLinks
         return $this->staffLinkTokenRepository->findOneByTokenHash(LinkTokens::hash($token))?->getStaffMember();
     }
 
+    /** Opened in the Link column, and Read for a briefing that was handed out (sc-3917). */
     public function opened(StaffMember $entry): void
     {
-        if (!$this->window($entry)->open || StaffLinkStatus::Opened === $entry->getLinkStatus()) {
+        if (!$this->window($entry)->open) {
             return;
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($entry): void {
+        $moved = $this->entityManager->wrapInTransaction(function () use ($entry): bool {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
-            $entry->linkMoved(StaffLinkStatus::Opened, null, $this->clock->now());
+            $opened = StaffLinkStatus::Opened !== $entry->getLinkStatus();
+
+            if ($opened) {
+                $entry->linkMoved(StaffLinkStatus::Opened, null, $this->clock->now());
+            }
+
+            $read = $this->briefingTracker->opened($entry);
             $this->entityManager->flush();
+
+            return $opened || $read;
         });
 
-        $this->staffRosterPublisher->publish($entry->getEvent());
+        if ($moved) {
+            $this->staffRosterPublisher->publish($entry->getEvent());
+        }
     }
 
     /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished. */

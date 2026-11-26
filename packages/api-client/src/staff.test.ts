@@ -22,6 +22,8 @@ const entry = {
   link: 'no_mobile',
   linkBy: null,
   linkAt: null,
+  briefing: 'none',
+  briefingCopy: null,
   contactsErased: false,
 };
 
@@ -45,11 +47,30 @@ const plan = {
     courses: [],
     walk: [],
   },
+  rules: null,
 };
 
 describe('asStaffPlan', () => {
   it('reads the roster with its jobs and shifts', () => {
     expect(asStaffPlan(plan)).toEqual(plan);
+  });
+
+  it('reads the house rules, and a briefing copied and marked as sent (sc-3917)', () => {
+    const briefed = {
+      ...entry,
+      briefing: 'sent',
+      briefingCopy: { by: 'Ifeoma Nduka', at: '2026-11-01T11:00:00+01:00', marked: true },
+    };
+    const read = { ...plan, staff: [briefed], rules: 'Black shirts.' };
+
+    expect(asStaffPlan(read)).toEqual(read);
+  });
+
+  it('refuses a briefing state it does not know, and a plan without its rules', () => {
+    const { rules: _, ...withoutRules } = plan;
+
+    expect(asStaffPlan({ ...plan, staff: [{ ...entry, briefing: 'held' }] })).toBeNull();
+    expect(asStaffPlan(withoutRules)).toBeNull();
   });
 
   it('reads someone with no job and no shifts', () => {

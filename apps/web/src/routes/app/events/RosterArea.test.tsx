@@ -121,6 +121,8 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     link: 'no_mobile',
     linkBy: null,
     linkAt: null,
+    briefing: 'none',
+    briefingCopy: null,
     contactsErased: false,
     ...more,
   };
@@ -211,7 +213,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     );
     const router = createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff'] });
     render(<RouterProvider router={router} />);
@@ -231,7 +233,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
       new URL(String(input)).pathname === '/api/events/ev_1'
         ? json({ event: { ...EVENT, permissions: OWNER_PERMISSIONS, phase: 'live' } })
-        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        : json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     );
     render(
       <RouterProvider
@@ -250,7 +252,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
     });
 
     const add = await screen.findByRole('button', { name: 'Add a person' });
@@ -261,7 +263,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({ staff: [], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
       'POST /api/events/ev_1/staff': () =>
         json({ staff: entry('st_1', 'Chidi Okafor'), member: null }, 201),
     });
@@ -296,6 +298,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
       'POST /api/events/ev_1/staff': (body) =>
         (body as { allowShared: boolean }).allowShared
@@ -356,6 +359,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -385,6 +389,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -448,6 +453,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
               jobs: [],
               shifts: [],
               stations: NO_STATIONS,
+              rules: null,
             }),
         },
         permissions,
@@ -495,7 +501,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     signedIn();
     const sent = await onRoster({
       'GET /api/events/ev_1/staff': () =>
-        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [], stations: NO_STATIONS }),
+        json({ staff: [entry('st_1', 'Amaka Eze')], jobs: [], shifts: [], stations: NO_STATIONS, rules: null }),
       'DELETE /api/events/ev_1/staff/st_1': () => new Response(null, { status: 204 }),
     });
 
@@ -520,6 +526,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS,
@@ -541,6 +548,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
@@ -588,6 +596,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -610,6 +619,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
           jobs: [],
           shifts: [],
           stations: NO_STATIONS,
+          rules: null,
         }),
     });
 
@@ -684,6 +694,7 @@ describe('The Roster on the Staff page (sc-3906)', () => {
             jobs: [],
             shifts: [],
             stations: NO_STATIONS,
+            rules: null,
           }),
       },
       OWNER_PERMISSIONS.filter((one) => one !== 'staff.manage'),
@@ -728,6 +739,7 @@ describe('Each person’s own link on the Roster (sc-3912)', () => {
         jobs: [],
         shifts: [],
         stations: NO_STATIONS,
+        rules: null,
       });
   }
 
