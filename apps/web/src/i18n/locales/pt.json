@@ -2430,7 +2430,7 @@
     "notYetNext": "Volte a abri-la nessa altura. A ligação é sempre a mesma.",
     "notYetFoot": "Esta ligação é só para si. Nada fica guardado neste dispositivo.",
     "endedTitle": "Esta ligação já não está ativa.",
-    "endedBody": "Deixou de funcionar 2 horas depois do seu último turno.",
+    "endedBody": "As ligações da equipa deixam de funcionar 2 horas depois do seu último turno, ou quando o evento termina.",
     "endedNext": "Se trabalhar noutro evento, vai receber uma nova ligação para esse evento.",
     "foot": "Nada fica guardado neste dispositivo.",
     "failed": "Não funcionou. Tente de novo dentro de momentos.",

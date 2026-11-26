@@ -99,7 +99,7 @@ final class MyNightTest extends ApiTestCase
         self::assertSame(['id' => $this->eventId, 'name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $night['event']);
         self::assertFalse($night['checksIn']);
         self::assertFalse($night['dishes'], 'a section station dishes nothing');
-        self::assertSame('2027-03-07T03:00:00+01:00', $night['endsAt']);
+        self::assertSame('2027-03-07T02:00:00+01:00', $night['endsAt'], "the event's end, before 2 hours after the last shift");
         self::assertSame(['Section B', 'Waiter'], [$night['station'], $night['job']]);
         self::assertSame(['job' => 'Waiter', 'startsAt' => '2027-03-06T17:00:00+01:00', 'endsAt' => '2027-03-07T01:00:00+01:00'], $night['shift']);
         self::assertNull($night['later']);
@@ -203,6 +203,23 @@ final class MyNightTest extends ApiTestCase
         $this->as($user, 'GET', '/api/events/' . $this->eventId . '/my-night');
         self::assertSame(200, $this->statusCode(), 'their own account in the app');
         self::assertSame('Waiter', $this->last()['job'] ?? null);
+    }
+
+    #[Test]
+    public function theNightEndsTwoHoursAfterTheLastShiftWhenTheEventEndsLaterAndFollowsAMovedEnd(): void
+    {
+        $user = $this->signedIn();
+        $event = self::em()->find(Event::class, $this->eventId) ?? self::fail('no event');
+        $event->setTimes($event->getStartsAt(), new DateTimeImmutable('2027-03-07T04:00:00+01:00'));
+        self::em()->flush();
+
+        self::assertSame('2027-03-07T03:00:00+01:00', $this->night($user)['endsAt']);
+
+        $event = self::em()->find(Event::class, $this->eventId) ?? self::fail('no event');
+        $event->setTimes($event->getStartsAt(), new DateTimeImmutable('2027-03-07T00:00:00+01:00'));
+        self::em()->flush();
+
+        self::assertSame('2027-03-07T00:00:00+01:00', $this->night($user)['endsAt']);
     }
 
     #[Test]

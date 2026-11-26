@@ -198,6 +198,8 @@ final class ClockingTest extends ApiTestCase
     public function onALongShiftTheClockCardIsGone24HoursAfterTheClockIn(): void
     {
         $this->onShift($this->grace, '2027-03-06T08:00', '2027-03-07T07:00');
+        $this->event()->setTimes($this->event()->getStartsAt(), new DateTimeImmutable('2027-03-07T09:00:00+01:00'));
+        self::em()->flush();
         $user = $this->signedIn();
         self::mockTime(new DateTimeImmutable('2027-03-06T06:30:00Z'));
         $clocked = $this->clock($user, 'in');

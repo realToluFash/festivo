@@ -354,6 +354,21 @@ final class StaffLinkTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEventEndingBeforeTheTwoHoursEndsTheLinkThereOnTheAccessListAndTheLink(): void
+    {
+        $token = self::token($this->deliver($this->ada));
+        $event = self::em()->find(Event::class, $this->eventId) ?? self::fail('no event');
+        $event->setTimes($event->getStartsAt(), new DateTimeImmutable('2027-03-07T00:30:00+01:00'));
+        self::em()->flush();
+
+        self::assertSame('2027-03-07T00:30:00+01:00', Type\shape(['endsAt' => Type\string()], true)->coerce($this->people()['staffLinks'][0] ?? null)['endsAt']);
+        $this->at('2027-03-06T23:29:59Z');
+        self::assertSame('open', $this->open('look', $token)['state']);
+        $this->at('2027-03-06T23:30:00Z');
+        self::assertSame(['state' => 'ended'], $this->open('look', $token));
+    }
+
+    #[Test]
     public function theAccessListLeavesOutALinkWhoseWindowHasEnded(): void
     {
         $this->deliver($this->ada);

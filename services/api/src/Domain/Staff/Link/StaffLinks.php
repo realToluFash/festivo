@@ -154,7 +154,7 @@ final readonly class StaffLinks
         }
     }
 
-    /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */
+    /** From 12 hours before their first shift starts until 2 hours after their last one ends or the event's end, whichever comes first; not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */
     public function window(StaffMember $entry): StaffLinkWindow
     {
         $event = $entry->getEvent();
@@ -173,6 +173,7 @@ final readonly class StaffLinks
         $ends = Vec\map($shifts, static fn (StaffShift $shift): DateTimeImmutable => ShiftClock::instant($shift->getEndsAt(), $event));
         $from = Iter\reduce($starts, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other < $one ? $other : $one, $starts[0])->modify(self::OPENS_BEFORE);
         $until = Iter\reduce($ends, static fn (DateTimeImmutable $one, DateTimeImmutable $other): DateTimeImmutable => $other > $one ? $other : $one, $ends[0])->modify(self::ENDS_AFTER);
+        $until = $event->getEndsAt() < $until ? $event->getEndsAt() : $until;
 
         return match (true) {
             $now < $from => StaffLinkWindow::notYet($from, $until),
