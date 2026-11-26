@@ -105,6 +105,7 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
     focused: true,
     focusedSince: 1,
     readerOn: false,
+    touched: false,
     ticks: 1 + KEYS_RAISE_AFTER_TICKS,
   };
 
@@ -118,17 +119,22 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
   it('waits for the focus however late it comes (qa #97238)', () => {
     const step = mountedKeys('android', 'mount', true);
     const late = ARRIVED_FOCUS_TICKS;
-    expect(step({ focused: false, readerOn: false, ticks: late })).toBe('wait');
-    expect(step({ focused: true, readerOn: false, ticks: late })).toBe('tick');
-    expect(step({ focused: true, readerOn: false, ticks: late + 1 })).toBe('tick');
-    expect(step({ focused: true, readerOn: false, ticks: late + KEYS_RAISE_AFTER_TICKS })).toBe(
-      'raise',
-    );
+    expect(step({ focused: false, readerOn: false, touched: false, ticks: late })).toBe('wait');
+    expect(step({ focused: true, readerOn: false, touched: false, ticks: late })).toBe('tick');
+    expect(step({ focused: true, readerOn: false, touched: false, ticks: late + 1 })).toBe('tick');
+    expect(
+      step({
+        focused: true,
+        readerOn: false,
+        touched: false,
+        ticks: late + KEYS_RAISE_AFTER_TICKS,
+      }),
+    ).toBe('raise');
   });
 
   it('raises them once and never again, so Back, which leaves the field focused, keeps them down (qa #98098)', () => {
     const step = mountedKeys('android', 'mount', true);
-    const now = { focused: true, readerOn: false };
+    const now = { focused: true, readerOn: false, touched: false };
     const sent = Array.from({ length: ARRIVED_FOCUS_TICKS }, (_, i) =>
       step({ ...now, ticks: i + 1 }),
     );
@@ -136,11 +142,19 @@ describe('on an Android tablet, a field that opens focused puts its keys up with
     expect(sent.at(-1)).toBe('done');
   });
 
-  it('raises nothing after a blur and a focus, as a tap elsewhere and back makes', () => {
+  it('raises nothing after a blur and a focus, as a tap elsewhere makes', () => {
     const step = mountedKeys('android', 'mount', true);
-    const now = { focused: true, readerOn: false, ticks: 1 };
+    const now = { focused: true, readerOn: false, touched: false, ticks: 1 };
     expect(step(now)).toBe('tick');
     expect(step({ ...now, focused: false, ticks: 2 })).toBe('done');
+    expect(step({ ...now, ticks: 9 })).toBe('done');
+  });
+
+  it('raises nothing on a field a person pressed, whose own keys Back may have put down', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: true, readerOn: false, touched: false, ticks: 1 };
+    expect(step(now)).toBe('tick');
+    expect(step({ ...now, touched: true, ticks: 1 + KEYS_RAISE_AFTER_TICKS })).toBe('done');
     expect(step({ ...now, ticks: 9 })).toBe('done');
   });
 

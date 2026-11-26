@@ -66,13 +66,16 @@ export interface MountedKeys {
   focusedSince: number | null;
   /** As `ArrivedFocus.readerOn`: with a reader on, the field takes its focus at mount and nothing more, as at main before sc-92467. */
   readerOn: boolean | null;
+  /** A person has pressed the field. */
+  touched: boolean;
   ticks: number;
 }
 
-/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does now: Android gives it the caret but leaves the keys down, so once it has had the focus for a while, however late that comes, they are raised on it (sc-92467). Only once: Back puts the keys down without blurring the field, and Android reads them as down over a Modal, as a tablet's screens are, so a second raise would bring back keys a person had put down (qa #98098). `tick` waits a tick, `wait` waits for the focus or the reader. */
+/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does now: Android gives it the caret but leaves the keys down, so once it has had the focus for a while, however late that comes, they are raised on it (sc-92467). Only once: Back puts the keys down without blurring the field, and Android reads them as down over a Modal, as a tablet's screens are, so a second raise would bring back keys a person had put down (qa #98098). A pressed field gets none: the press raises the keys itself, and Back may already have put them down. `tick` waits a tick, `wait` waits for the focus or the reader. */
 export function mountedKeysStep(at: MountedKeys): 'tick' | 'wait' | 'raise' | 'done' {
   if (at.os !== 'android' || at.opened !== 'mount' || at.autoFocus !== true) return 'done';
-  if (at.readerOn === true || (at.focusedSince != null && !at.focused)) return 'done';
+  if (at.readerOn === true || at.touched) return 'done';
+  if (at.focusedSince != null && !at.focused) return 'done';
   if (at.ticks < 1) return 'tick';
   if (at.readerOn == null || !at.focused) return 'wait';
   if (at.focusedSince == null) return 'tick';
@@ -85,7 +88,9 @@ export function mountedKeys(
   os: string,
   opened: OpenedFocus,
   autoFocus: boolean | undefined,
-): (at: Pick<MountedKeys, 'focused' | 'readerOn' | 'ticks'>) => 'tick' | 'wait' | 'raise' | 'done' {
+): (
+  at: Pick<MountedKeys, 'focused' | 'readerOn' | 'touched' | 'ticks'>,
+) => 'tick' | 'wait' | 'raise' | 'done' {
   let focusedSince: number | null = null;
   let done = false;
 
