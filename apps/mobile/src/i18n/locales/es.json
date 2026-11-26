@@ -3782,7 +3782,7 @@
     "nobodyOn": "Nadie en {{station}}",
     "openNow": "Abierta ahora",
     "changesNobody": "Abrir una zona no cambia la zona de nadie. Eso se hace en Equipo.",
-    "picked": "Se ha abierto {{station}} en esta tableta. Nadie ha cambiado de zona.",
+    "picked": "Se ha abierto {{station}} en este dispositivo. Nadie ha cambiado de zona.",
     "movedTo": "Ahora está en la zona {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Ningún pase marchado",

@@ -3782,7 +3782,7 @@
     "nobodyOn": "Personne au poste {{station}}",
     "openNow": "Ouvert maintenant",
     "changesNobody": "Ouvrir un poste ne change le poste de personne. Cela se fait dans Équipe.",
-    "picked": "Poste {{station}} ouvert sur cette tablette. Personne n’a changé de poste.",
+    "picked": "Poste {{station}} ouvert sur cet appareil. Personne n’a changé de poste.",
     "movedTo": "Vous êtes désormais au poste {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Aucun service envoyé",

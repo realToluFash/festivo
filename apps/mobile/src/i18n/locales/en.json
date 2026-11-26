@@ -3631,7 +3631,7 @@
     "nobodyOn": "Nobody on {{station}}",
     "openNow": "Open now",
     "changesNobody": "Opening a station changes nobody’s station. Team does that.",
-    "picked": "{{station}} is open on this tablet. Nobody’s station changed.",
+    "picked": "{{station}} is open on this device. Nobody’s station changed.",
     "movedTo": "You’re on {{station}} now.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "No course fired",
