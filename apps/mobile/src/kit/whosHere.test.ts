@@ -45,6 +45,7 @@ const read = (here: WhosHereRow[], notHere: WhosHereRow[] = []): WhosHere => ({
   timeZone: 'Africa/Lagos',
   countryCode: 'NG',
   ended: false,
+  rosterSize: 2,
   viewer: { station: null, canCover: true, canAddWalkOn: true },
   notHere,
   here,

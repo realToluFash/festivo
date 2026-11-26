@@ -3978,6 +3978,7 @@
     "title": "Who’s here",
     "back": "Back",
     "door": "Someone’s at the door",
+    "empty": "Nobody on the staff yet",
     "live": "Live · updated {{time}}",
     "stale": "Not live · last updated {{time}}. Reconnecting.",
     "notHere_one": "Not here yet ({{count, number}})",

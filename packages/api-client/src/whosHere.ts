@@ -43,6 +43,7 @@ export interface WhosHere {
   timeZone: string;
   countryCode: string | null;
   ended: boolean;
+  rosterSize: number;
   viewer: WhosHereViewer;
   notHere: WhosHereRow[];
   here: WhosHereRow[];
@@ -174,6 +175,7 @@ export function asWhosHere(raw: unknown): WhosHere | null {
     typeof raw.timeZone !== 'string' ||
     !textOrNull(raw.countryCode) ||
     typeof raw.ended !== 'boolean' ||
+    typeof raw.rosterSize !== 'number' ||
     (viewer.station !== null && viewerStation == null) ||
     typeof viewer.canCover !== 'boolean' ||
     typeof viewer.canAddWalkOn !== 'boolean' ||
@@ -194,6 +196,7 @@ export function asWhosHere(raw: unknown): WhosHere | null {
     timeZone: raw.timeZone,
     countryCode: raw.countryCode,
     ended: raw.ended,
+    rosterSize: raw.rosterSize,
     viewer: {
       station: viewerStation,
       canCover: viewer.canCover,

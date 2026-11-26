@@ -182,6 +182,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
   const ended = (data?.ended ?? false) || endedHere;
   const refusedOpen = sheet?.kind === 'door' && sheet.refused;
   const showsDoor = data != null && data.viewer.canAddWalkOn && (!ended || refusedOpen);
+  const empty = data?.rosterSize === 0;
 
   function open(next: Open, from: string): void {
     backTo.current = from;
@@ -264,6 +265,15 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
         />
       </View>
     );
+  else if (empty)
+    body = (
+      <View style={styles.block} testID="whosHere.empty">
+        <Text size={17} weight="semibold" accessibilityRole="header">
+          {t('whosHere.empty')}
+        </Text>
+        {door}
+      </View>
+    );
   else
     body = (
       <Lists
@@ -344,7 +354,7 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
               </View>
             )}
           </View>
-          {door != null && <View style={!wide && styles.doorFull}>{door}</View>}
+          {door != null && !empty && <View style={!wide && styles.doorFull}>{door}</View>}
         </View>
         {body}
       </ScrollView>

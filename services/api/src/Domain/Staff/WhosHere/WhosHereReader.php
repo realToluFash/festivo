@@ -57,7 +57,8 @@ final readonly class WhosHereReader
             $this->shiftAttendanceRepository->findOnEvent($event),
             static fn (ShiftAttendance $attendance): string => $attendance->getShift()->getId()->toRfc4122() . ':' . $attendance->getPersonId()->toRfc4122(),
         );
-        $placed = Vec\filter_nulls(Vec\map($this->staffMemberRepository->findOnEvent($event), static fn (StaffMember $person): ?WhosHerePlace => self::placeOf($person, $shifts, $attendances, $now)));
+        $roster = $this->staffMemberRepository->findOnEvent($event);
+        $placed = Vec\filter_nulls(Vec\map($roster, static fn (StaffMember $person): ?WhosHerePlace => self::placeOf($person, $shifts, $attendances, $now)));
 
         $here = Vec\map(Vec\filter($placed, static fn (WhosHerePlace $one): bool => WhosHerePlace::HERE === $one->list), static fn (WhosHerePlace $one): StaffMember => $one->person);
         $hereAt = static fn (?string $id): array => null === $id ? [] : Vec\filter($here, static fn (StaffMember $one): bool => $id === (self::ref($one->getStation())['id'] ?? null));
@@ -96,6 +97,7 @@ final readonly class WhosHereReader
             'timeZone' => $event->getTimeZone(),
             'countryCode' => $event->getVenueCountryCode(),
             'ended' => self::ended($event, $now),
+            'rosterSize' => Iter\count($roster),
             'viewer' => [
                 'station' => self::ref($view->station),
                 'canCover' => $view->canCover,

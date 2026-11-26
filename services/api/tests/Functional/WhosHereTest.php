@@ -111,7 +111,7 @@ final class WhosHereTest extends ApiTestCase
         self::assertSame(['Grace Okon'], $bar['people'] ?? null);
         self::assertSame(['shift', '2027-03-07T01:00:00+01:00'], $this->jobEnd($read, 'Waiter'), 'the latest Waiter shift ending in the next 24 hours');
         self::assertSame(['event', '2027-03-07T02:00:00+01:00'], $this->jobEnd($read, 'Door'), 'Door has no shift tonight, and the event ends first');
-        self::assertSame([false, true, null], [$read['ended'], $this->viewer($read)['canCover'], $this->viewer($read)['station']]);
+        self::assertSame([false, 4, true, null], [$read['ended'], $read['rosterSize'], $this->viewer($read)['canCover'], $this->viewer($read)['station']]);
     }
 
     #[Test]
