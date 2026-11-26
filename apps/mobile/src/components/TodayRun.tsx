@@ -45,7 +45,7 @@ export function WhiteButton({
   );
 }
 
-/** With `grows`, upright from AX1: each chip grows to hold its words at main's size, the day's wrapping only between words with its dot kept on the word before, and taking the line under Live now where both do not fit side by side (sc-93211). */
+/** With `grows`, upright and on the phone from AX1: each chip grows to hold its words at main's size, the day's wrapping only between words with its dot kept on the word before, and taking the line under Live now where both do not fit side by side (sc-93211). */
 export function Chips({ now, grows = false }: { now: Now; grows?: boolean }) {
   const { t } = useTranslation();
   const height = grows ? styles.chipGrows : styles.chipFixed;
