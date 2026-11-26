@@ -19,7 +19,7 @@ import {
   UNDO_MINUTES,
   createServiceFreshness,
   freshnessKey,
-  refusalKey,
+  serverClock,
 } from '@soirely/domain';
 import { randomUUID } from 'expo-crypto';
 import type { TFunction } from 'i18next';
@@ -34,10 +34,17 @@ import { dateLocale } from '../../i18n/index.ts';
 import {
   type FacedPlate,
   type StationItemLine,
+  type StationMark,
   type StationTray,
   type StationView,
+  notSentLine,
   openingStation,
+  pickedKey,
+  rememberPick,
+  stationTime,
   stationView,
+  undoOpen,
+  undoPlan,
 } from '../../kit/kitchenStation.ts';
 import { useServerNow } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
@@ -61,7 +68,6 @@ import {
   Times,
 } from './StationParts.tsx';
 
-const PICKED = 'soirely.station.';
 const REFETCH_AFTER_MS = 150;
 
 type Loaded =
@@ -74,12 +80,6 @@ interface Mine {
   state: ItemState;
   readyIn: Eta;
   at: number;
-}
-
-interface Undoable {
-  was: ItemState;
-  at: number;
-  itemId: string;
 }
 
 interface Sizes {
@@ -146,10 +146,11 @@ export function KitchenStationView({
   const [kept, setKept] = useState<KeptServiceTap[]>([]);
   const [notSent, setNotSent] = useState<TapRefusal[]>([]);
   const [mine, setMine] = useState<ReadonlyMap<string, Mine>>(new Map());
-  const [undoable, setUndoable] = useState<ReadonlyMap<string, Undoable>>(new Map());
+  const [undoable, setUndoable] = useState<ReadonlyMap<string, StationMark>>(new Map());
   const [choosing, setChoosing] = useState<string | null>(null);
   const opener = useRef<ViewInstance | null>(null);
   const yours = useRef<string | null | undefined>(undefined);
+  const lastReads = useRef<readonly ServiceRead[]>([]);
   const hereBefore = useRef<Set<string> | null>(null);
   const phase = useRef<ServicePhase>('on');
   const store = useMemo(() => storedServiceTaps(eventId), [eventId]);
@@ -169,6 +170,7 @@ export function KitchenStationView({
         list.fired.map((course) => api.serviceRead(eventId, course.id)),
       );
       phase.current = reads.at(-1)?.phase ?? 'on';
+      lastReads.current = reads;
       setLoaded({ state: 'ok', list, reads });
       setMine(new Map());
       return phase.current;
@@ -200,7 +202,7 @@ export function KitchenStationView({
       .event(eventId)
       .then(setEvent)
       .catch(() => undefined);
-    void AsyncStorage.getItem(PICKED + eventId)
+    void AsyncStorage.getItem(pickedKey(eventId))
       .catch(() => null)
       .then((one) => setPicked(one));
     void store.load().then(setKept);
@@ -292,15 +294,14 @@ export function KitchenStationView({
 
   useEffect(() => (moved === '' ? undefined : readOut(moved)), [moved]);
 
-  const time = (at: Date | number | string) =>
-    new Date(at).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
+  const time = (at: Date | number | string) => stationTime(at, dateLocale());
 
   const pick = (id: string) => {
     setStation(id);
     setPicked(id);
     setListOpen(false);
     setChoosing(null);
-    void AsyncStorage.setItem(PICKED + eventId, id).catch(() => undefined);
+    void rememberPick(AsyncStorage, eventId, id).catch(() => undefined);
     const name =
       loaded.state === 'ok' ? loaded.list.stations.find((one) => one.id === id)?.name : '';
     setMoved(t('station.picked', { station: name ?? '' }));
@@ -309,7 +310,7 @@ export function KitchenStationView({
 
   const markItem = async (line: StationItemLine, state: ItemState, readyIn: Eta) => {
     const key = slot(line.courseId, line.key);
-    const at = Date.now();
+    const at = serverClock.now().getTime();
     const tap = keptServiceTap(
       eventId,
       { kind: 'itemState', courseId: line.courseId, item: line.key, state, readyIn },
@@ -318,10 +319,15 @@ export function KitchenStationView({
     );
     setChoosing(null);
     setMine((was) => new Map(was).set(key, { state, readyIn, at }));
-    if (line.item.id != null) {
-      const itemId = line.item.id;
-      setUndoable((was) => new Map(was).set(key, { was: line.item.state, at, itemId }));
-    }
+    setUndoable((was) =>
+      new Map(was).set(key, {
+        courseId: line.courseId,
+        key: line.key,
+        was: line.item.state,
+        tapKey: tap.key,
+        at,
+      }),
+    );
     setKept(await keepServiceTap(store, tap));
     await send();
   };
@@ -335,10 +341,31 @@ export function KitchenStationView({
       next.delete(key);
       return next;
     });
-    setMine((was) => new Map(was).set(key, { state: one.was, readyIn: null, at: Date.now() }));
-    const tap = keptServiceTap(eventId, { kind: 'undo', subject: one.itemId }, {}, randomUUID());
-    setKept(await keepServiceTap(store, tap));
+    setMine((was) =>
+      new Map(was).set(key, { state: one.was, readyIn: null, at: serverClock.now().getTime() }),
+    );
     await send();
+    let plan = undoPlan(one, await store.load(), lastReads.current);
+    if (plan.kind === 'unknown') {
+      await read().catch(() => undefined);
+      plan = undoPlan(one, await store.load(), lastReads.current);
+    }
+    if (plan.kind === 'drop') {
+      const left = (await store.load()).filter((tap) => tap.key !== plan.tapKey);
+      await store.save(left);
+      setKept(left);
+      return;
+    }
+    if (plan.kind === 'send') {
+      const tap = keptServiceTap(
+        eventId,
+        { kind: 'undo', subject: plan.subject },
+        {},
+        randomUUID(),
+      );
+      setKept(await keepServiceTap(store, tap));
+      await send();
+    }
   };
 
   const isKept = (line: StationItemLine) =>
@@ -450,7 +477,7 @@ export function KitchenStationView({
       onUndo={(line) => void undo(line)}
       undoable={(line) => {
         const one = undoable.get(slot(line.courseId, line.key));
-        return one != null && now.getTime() - one.at < UNDO_MINUTES * 60_000 ? one : null;
+        return one != null && undoOpen(one, now) ? one : null;
       }}
       isKept={isKept}
       time={time}
@@ -565,23 +592,6 @@ export function KitchenStationView({
       </Sheet>
     </>
   );
-}
-
-function notSentLine(t: TFunction, line: TapRefusal, reads: readonly ServiceRead[]): string {
-  const key = refusalKey(line);
-  if (key == null) return line.kind === 'other' ? line.title : '';
-  const item =
-    line.kind === 'itemNow'
-      ? (reads.flatMap((read) => read.items).find((one) => one.key === line.item)?.name ??
-        t('station.chefsChoice'))
-      : '';
-  return t(key, {
-    item,
-    by: 'by' in line ? (line.by ?? '') : '',
-    who: 'table' in line ? line.table : '',
-    name: line.kind === 'trayNotYours' ? line.name : '',
-    count: UNDO_MINUTES,
-  });
 }
 
 function Strip({ freshness, time }: { freshness: Freshness; time: (at: Date) => string }) {
@@ -791,7 +801,7 @@ function Left({
   onChoose: (id: string | null) => void;
   onMark: (line: StationItemLine, state: ItemState, readyIn: Eta) => void;
   onUndo: (line: StationItemLine) => void;
-  undoable: (line: StationItemLine) => Undoable | null;
+  undoable: (line: StationItemLine) => StationMark | null;
   isKept: (line: StationItemLine) => boolean;
   time: (at: number) => string;
 }) {

@@ -1,7 +1,31 @@
-import type { ServicePlate, ServiceRead, ServiceTray } from '@soirely/api-client';
+import {
+  ApiError,
+  type ServicePlate,
+  type ServiceRead,
+  type ServiceTray,
+  keepServiceTap,
+  keptServiceTap,
+  memoryServiceTapStore,
+  sendServiceTaps,
+} from '@soirely/api-client';
+import { readFileSync } from 'node:fs';
+import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { NO_FLAGS, hereSince, openingStation, stationView } from './kitchenStation.ts';
+import en from '../i18n/locales/en.json';
+import {
+  NO_FLAGS,
+  type StationMark,
+  hereSince,
+  notSentLine,
+  openingStation,
+  pickedKey,
+  rememberPick,
+  stationTime,
+  stationView,
+  undoOpen,
+  undoPlan,
+} from './kitchenStation.ts';
 
 const PASS = 'pass';
 const GRILL = 'grill';
@@ -490,5 +514,169 @@ describe('openingStation', () => {
     expect(openingStation(list(null), GRILL)).toBe(GRILL);
     expect(openingStation(list(null), null)).toBeNull();
     expect(openingStation(list(null), 'gone')).toBeNull();
+  });
+});
+
+describe('undo after a mark (sc-4015)', () => {
+  const marked = Date.parse(at(0));
+  const mark: StationMark = {
+    courseId: 'mains',
+    key: 'jollof',
+    was: 'ready',
+    tapKey: 'tap-1',
+    at: marked,
+  };
+  const after = (ms: number) => new Date(marked + ms);
+  const course = (id: string | null): ServiceRead => ({
+    ...read({ id: 'mains', name: 'Mains' }, [{ key: 'jollof', at: 'grill' }], []),
+    items: [
+      {
+        id,
+        key: 'jollof',
+        name: 'Jollof rice',
+        station: station(GRILL),
+        state: 'preparing',
+        readyIn: 10,
+        changedAt: at(0),
+        changedBy: 'Kemi',
+        preparingSince: at(0),
+      },
+    ],
+  });
+  const tap = (key: string) =>
+    keptServiceTap(
+      'e1',
+      { kind: 'itemState', courseId: 'mains', item: 'jollof', state: 'preparing', readyIn: 10 },
+      { item: 'ready' },
+      key,
+    );
+
+  it('is offered until two minutes have passed, by the server’s clock', () => {
+    expect(undoOpen(mark, after(119_000))).toBe(true);
+    expect(undoOpen(mark, after(120_000))).toBe(false);
+  });
+
+  it('is offered on an item’s first mark, which has no id yet', () => {
+    expect(undoOpen(mark, after(1_000))).toBe(true);
+    expect(undoPlan(mark, [], [course(null)])).toEqual({ kind: 'unknown' });
+    expect(undoPlan(mark, [], [course('item-1')])).toEqual({ kind: 'send', subject: 'item-1' });
+  });
+
+  it('takes a mark that was never sent out of what is kept, rather than sending an undo', () => {
+    expect(undoPlan(mark, [tap('tap-1')], [course(null)])).toEqual({
+      kind: 'drop',
+      tapKey: 'tap-1',
+    });
+    expect(undoPlan(mark, [tap('other')], [course('item-1')])).toEqual({
+      kind: 'send',
+      subject: 'item-1',
+    });
+  });
+});
+
+describe('a mark kept offline, and its Not sent line (sc-4015)', () => {
+  async function english() {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: 'en',
+      resources: { en: { translation: en } },
+      interpolation: { escapeValue: false },
+    });
+
+    return i18n.t;
+  }
+
+  const jollof = (): ServiceRead => ({
+    ...read({ id: 'mains', name: 'Mains' }, [{ key: 'jollof', at: 'grill' }], []),
+    items: [
+      {
+        id: 'item-1',
+        key: 'jollof',
+        name: 'Jollof rice',
+        station: station(GRILL),
+        state: 'preparing',
+        readyIn: 10,
+        changedAt: at(0),
+        changedBy: 'Kemi',
+        preparingSince: at(0),
+      },
+    ],
+  });
+  const ready = keptServiceTap(
+    'e1',
+    { kind: 'itemState', courseId: 'mains', item: 'jollof', state: 'ready', readyIn: null },
+    { item: 'ready' },
+    'tap-1',
+  );
+
+  it('stays kept while there is no connection, and is sent when there is one', async () => {
+    const store = memoryServiceTapStore();
+    await keepServiceTap(store, ready);
+
+    const offline = await sendServiceTaps(store, async () => {
+      throw new TypeError('Network request failed');
+    });
+    expect(offline.left.map((one) => one.key)).toEqual(['tap-1']);
+    expect(offline.refused).toEqual([]);
+
+    const online = await sendServiceTaps(store, async () => ({}));
+    expect(online.left).toEqual([]);
+    expect(online.refetch).toBe(true);
+  });
+
+  it('says who got there first when another disher marked the item while it was kept', async () => {
+    const store = memoryServiceTapStore();
+    await keepServiceTap(store, ready);
+    const sent = await sendServiceTaps(store, async () => {
+      throw new ApiError({
+        type: 'https://soirely.com/errors/service_changed',
+        title: 'Service changed',
+        status: 409,
+        changed: [{ item: 'jollof', state: 'preparing', by: 'Kemi' }],
+      } as ConstructorParameters<typeof ApiError>[0]);
+    });
+    const t = await english();
+
+    expect(sent.left).toEqual([]);
+    expect(
+      sent.refused.flatMap((one) => one.lines).map((line) => notSentLine(t, line, [jollof()])),
+    ).toEqual(['Jollof rice is preparing now, by Kemi.']);
+  });
+});
+
+describe('the station’s times (sc-4015)', () => {
+  it('are 24-hour, whatever the device’s own setting', () => {
+    expect(stationTime(new Date(2027, 2, 6, 19, 42), 'en-US')).toBe('19:42');
+  });
+});
+
+describe('picking a station from the list (sc-4015)', () => {
+  it('keeps the pick on this device for the event, and writes nothing else', async () => {
+    const writes: [string, string][] = [];
+    await rememberPick(
+      { setItem: async (key, value) => void writes.push([key, value]) },
+      'e1',
+      GRILL,
+    );
+
+    expect(writes).toEqual([[pickedKey('e1'), GRILL]]);
+  });
+
+  it('changes no roster: the screen calls the API only to read and to send service taps', () => {
+    const source = readFileSync(
+      new URL('../components/station/KitchenStationView.tsx', import.meta.url),
+      'utf8',
+    );
+    const calls = [
+      ...new Set([...source.matchAll(/\bapi\.(\w+)\(/gu)].map((one) => one[1])),
+    ].sort();
+
+    expect(calls).toEqual([
+      'event',
+      'kitchenStations',
+      'sendServiceTap',
+      'serviceRead',
+      'serviceSubscription',
+    ]);
   });
 });

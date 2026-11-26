@@ -1,4 +1,5 @@
 import type {
+  KeptServiceTap,
   KitchenStationsRead,
   ServiceCourseItem,
   ServiceFlags,
@@ -6,7 +7,15 @@ import type {
   ServiceRead,
   ServiceTray,
 } from '@soirely/api-client';
-import { type ItemMark, heldUpMinutes } from '@soirely/domain';
+import {
+  type ItemMark,
+  type ItemState,
+  type TapRefusal,
+  UNDO_MINUTES,
+  heldUpMinutes,
+  refusalKey,
+} from '@soirely/domain';
+import type { TFunction } from 'i18next';
 
 export interface StationItemLine {
   courseId: string;
@@ -299,4 +308,76 @@ export function openingStation(
   if (picked != null && stations.stations.some((one) => one.id === picked)) return picked;
 
   return null;
+}
+
+/** Where the station picked on this device is kept for an event: the device alone, never the roster. */
+export const pickedKey = (eventId: string) => `soirely.station.${eventId}`;
+
+export interface PickStore {
+  setItem(key: string, value: string): Promise<void>;
+}
+
+/** A pick from the list is this device's view and nothing else: the roster stays as it is. */
+export function rememberPick(store: PickStore, eventId: string, station: string): Promise<void> {
+  return store.setItem(pickedKey(eventId), station);
+}
+
+/** A mark this device made, open to Undo: the tap it was kept as, and the item by its course and key, since an item has no id until its first mark reaches the server. */
+export interface StationMark {
+  courseId: string;
+  key: string;
+  was: ItemState;
+  tapKey: string;
+  /** By the corrected clock, as the window is measured. */
+  at: number;
+}
+
+export function undoOpen(mark: StationMark, now: Date): boolean {
+  const since = now.getTime() - mark.at;
+
+  return since >= 0 && since < UNDO_MINUTES * 60_000;
+}
+
+export type UndoPlan =
+  { kind: 'drop'; tapKey: string } | { kind: 'send'; subject: string } | { kind: 'unknown' };
+
+/** A mark still kept is taken out before it is sent; a sent one is undone by the item's id, once a read carries it. */
+export function undoPlan(
+  mark: StationMark,
+  kept: readonly KeptServiceTap[],
+  reads: readonly ServiceRead[],
+): UndoPlan {
+  if (kept.some((tap) => tap.key === mark.tapKey)) return { kind: 'drop', tapKey: mark.tapKey };
+  const id = reads
+    .find((read) => read.course.id === mark.courseId)
+    ?.items.find((item) => item.key === mark.key)?.id;
+
+  return id == null ? { kind: 'unknown' } : { kind: 'send', subject: id };
+}
+
+/** Service times are 24-hour on these boards, whatever the device's own setting. */
+export function stationTime(at: Date | number | string, locale: string): string {
+  return new Date(at).toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+}
+
+export function notSentLine(t: TFunction, line: TapRefusal, reads: readonly ServiceRead[]): string {
+  const key = refusalKey(line);
+  if (key == null) return line.kind === 'other' ? line.title : '';
+  const item =
+    line.kind === 'itemNow'
+      ? (reads.flatMap((read) => read.items).find((one) => one.key === line.item)?.name ??
+        t('station.chefsChoice'))
+      : '';
+
+  return t(key, {
+    item,
+    by: 'by' in line ? (line.by ?? '') : '',
+    who: 'table' in line ? line.table : '',
+    name: line.kind === 'trayNotYours' ? line.name : '',
+    count: UNDO_MINUTES,
+  });
 }
