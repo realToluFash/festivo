@@ -13,6 +13,7 @@ use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
@@ -25,6 +26,7 @@ use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mercure\Update;
 
 /** Clocking in and out (sc-234): Grace's shift is 17:00 to 01:00 in Lagos (16:00Z to 00:00Z), so her link runs until 03:00 (02:00Z). */
 final class ClockingTest extends ApiTestCase
@@ -80,10 +82,17 @@ final class ClockingTest extends ApiTestCase
         self::assertSame(409, $this->statusCode(), 'at the scheduled end');
 
         self::mockTime(new DateTimeImmutable('2027-03-06T15:00:00Z'));
+        self::service(RecordingHub::class)->published = [];
         $clocked = $this->clock($user, 'in');
         self::assertSame(200, $this->statusCode(), Json\encode($clocked));
         self::assertSame('recorded', $clocked['outcome']);
         self::assertSame(['phase' => 'on', 'opensAt' => '2027-03-06T16:00:00+01:00', 'closesAt' => '2027-03-07T01:00:00+01:00', 'clockedInAt' => '2027-03-06T16:00:00+01:00', 'clockedOutAt' => null, 'outUntil' => '2027-03-07T07:00:00+01:00', 'workedMinutes' => null], $clocked['clock']);
+        self::assertSame(1, $this->whosHereSignals(), 'Who\'s here reads again on a clock-in');
+
+        $this->clock($user, 'in');
+        self::assertSame(1, $this->whosHereSignals(), 'a second clock-in changes nothing, so signals nothing');
+        $this->clock($user, 'out');
+        self::assertSame(2, $this->whosHereSignals(), 'and again on a clock-out');
     }
 
     #[Test]
@@ -427,8 +436,10 @@ final class ClockingTest extends ApiTestCase
 
         self::mockTime(new DateTimeImmutable('2027-03-06T15:10:00Z'));
         $tunde = $this->account('tunde@example.com', 'Tunde Bakare');
+        self::service(RecordingHub::class)->published = [];
         $this->as($tunde, 'POST', '/api/door-codes/' . $code['code'] . '/redeem', []);
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $joinedAndIn = $this->whosHereSignals();
 
         $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
         self::assertSame('Waiter', $rows['Tunde Bakare']['job'] ?? null, Json\encode($rows));
@@ -436,8 +447,10 @@ final class ClockingTest extends ApiTestCase
 
         $early = $this->account('ada@example.com', 'Ada Obi');
         self::mockTime(new DateTimeImmutable('2027-03-06T14:00:00Z'));
+        self::service(RecordingHub::class)->published = [];
         $this->as($early, 'POST', '/api/door-codes/' . $code['code'] . '/redeem', []);
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($this->whosHereSignals() + 1, $joinedAndIn, 'a redemption that clocks in signals once more than one that only joins the roster');
         $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
         self::assertArrayHasKey('Ada Obi', $rows, 'put on the shift');
         self::assertNull($rows['Ada Obi']['clockedInAt'], 'but not clocked in before the window opens');
@@ -602,6 +615,13 @@ final class ClockingTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($answer));
 
         return $this->token = Str\after_last(Type\string()->coerce($answer['url'] ?? null), '/') ?? self::fail('no token');
+    }
+
+    private function whosHereSignals(): int
+    {
+        $topic = 'events/' . $this->eventId . '/whos-here';
+
+        return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, static fn (Update $update): bool => [$topic] === $update->getTopics()));
     }
 
     private function event(): Event

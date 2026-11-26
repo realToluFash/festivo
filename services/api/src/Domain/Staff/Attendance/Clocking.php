@@ -82,7 +82,7 @@ final readonly class Clocking
         }));
     }
 
-    /** A redeemer put on a shift by a join code that names it, if its window is open; false outside it (sc-72). The caller holds the transaction. */
+    /** A redeemer put on a shift by a join code that names it, if its window is open; false outside it (sc-72). The caller holds the transaction, and publishes Who's here's signal once it has committed. */
     public function clockInOn(StaffShift $shift, StaffMember $entry, User $by): bool
     {
         $attendance = $this->shiftAttendanceRepository->findOneOn($shift, $entry);
@@ -92,7 +92,6 @@ final readonly class Clocking
         }
 
         $this->recordIn($shift, $entry, $attendance, $by);
-        $this->whosHereSignal->publish($entry->getEvent());
 
         return true;
     }
