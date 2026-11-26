@@ -59,10 +59,10 @@ final readonly class StaffSerialiser
     }
 
     /**
-     * @param ?list<StaffShift>                                                                               $shifts    the person's shifts by start, read when null
-     * @param ?array<string, list<array{id: string, name: string}>>                                           $tables    each seating section's tables, read when null
-     * @param ?StaffMember                                                                                    $floorLead the event's floor lead, read when null
-     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $notices   the event's change notices, read when null
+     * @param ?list<StaffShift>                                                                                                                 $shifts    the person's shifts by start, read when null
+     * @param ?array<string, list<array{id: string, name: string}>>                                                                             $tables    each seating section's tables, read when null
+     * @param ?StaffMember                                                                                                                      $floorLead the event's floor lead, read when null
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, concluded: array<string, string>, inApp: array<string, true>} $notices   the event's change notices, read when null
      *
      * @return array<string, mixed>
      */

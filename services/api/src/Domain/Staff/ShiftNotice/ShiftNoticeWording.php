@@ -74,6 +74,12 @@ final readonly class ShiftNoticeWording
         return $this->formatted(new DateTimeImmutable($day, new DateTimeZone('UTC')), 'EEEEdMMM', $locale);
     }
 
+    /** A wall-clock time on the locale's 24-hour clock. */
+    public function time(DateTimeImmutable $wall, string $locale): string
+    {
+        return $this->formatted($wall, 'HHmm', $locale);
+    }
+
     public static function isLong(Event $event): bool
     {
         return $event->getEndsAt()->getTimestamp() - $event->getStartsAt()->getTimestamp() > self::LONG_EVENT_DAYS * 86_400;

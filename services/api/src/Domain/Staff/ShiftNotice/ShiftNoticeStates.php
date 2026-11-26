@@ -9,6 +9,7 @@ use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Entity\Event;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
+use App\Enum\EventPhase;
 use App\Enum\NotificationDeliveryStatus;
 use App\Enum\ScheduledNotificationStatus;
 use DateTimeImmutable;
@@ -28,30 +29,35 @@ final readonly class ShiftNoticeStates
     ) {
     }
 
-    /** @return array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} waiting and sent by the person's id, inApp by their account's */
+    /** @return array{waiting: array<string, string>, sent: array<string, string>, concluded: array<string, string>, inApp: array<string, true>} waiting and sent by the person's id, inApp by their account's */
     public function ofEvent(Event $event): array
     {
         $eventId = $event->getId()->toRfc4122();
         $waiting = $this->connection->fetchAllKeyValue(
-            'SELECT source_id, due_at FROM scheduled_notifications WHERE type = :type AND event_id = :event AND status = :pending',
+            "SELECT split_part(source_id, ':', 1), due_at FROM scheduled_notifications WHERE type = :type AND event_id = :event AND status = :pending",
             ['type' => ShiftChangeNotice::NAME, 'event' => $eventId, 'pending' => ScheduledNotificationStatus::Pending->value],
         );
         $sent = $this->connection->fetchAllKeyValue(
-            'SELECT source_id, MAX(finished_at) FROM notification_deliveries WHERE type = :type AND event_id = :event AND status = :sent GROUP BY source_id',
+            "SELECT split_part(source_id, ':', 1), MAX(finished_at) FROM notification_deliveries WHERE type = :type AND event_id = :event AND status = :sent GROUP BY 1",
             ['type' => ShiftChangeNotice::NAME, 'event' => $eventId, 'sent' => NotificationDeliveryStatus::Sent->value],
+        );
+        $concluded = $this->connection->fetchAllKeyValue(
+            'SELECT source_id, MAX(finished_at) FROM notification_deliveries WHERE type = :type AND event_id = :event AND status = :sent GROUP BY source_id',
+            ['type' => ShiftConcludedNotice::NAME, 'event' => $eventId, 'sent' => NotificationDeliveryStatus::Sent->value],
         );
         $accounts = $this->connection->fetchFirstColumn('SELECT account_id FROM staff_members WHERE event_id = :event AND account_id IS NOT NULL', ['event' => $eventId]);
 
         return [
             'waiting' => Type\dict(Type\string(), Type\string())->coerce($waiting),
             'sent' => Type\dict(Type\string(), Type\string())->coerce($sent),
+            'concluded' => Type\dict(Type\string(), Type\string())->coerce($concluded),
             'inApp' => $this->shiftNoticeReach->of(...Vec\map($accounts, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)))),
         ];
     }
 
     /**
-     * @param list<StaffShift>                                                                                $shifts the person's shifts
-     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known  the event's, read when null
+     * @param list<StaffShift>                                                                                                                  $shifts the person's shifts
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, concluded: array<string, string>, inApp: array<string, true>} $known  the event's, read when null
      *
      * @return ?array<string, mixed>
      */
@@ -66,6 +72,16 @@ final readonly class ShiftNoticeStates
         $known ??= $this->ofEvent($event);
         $goesAt = $known['waiting'][$id] ?? null;
         $zone = new DateTimeZone($event->getTimeZone());
+        $concludedAt = $known['concluded'][$id] ?? null;
+
+        if (null !== $concludedAt) {
+            return [
+                'state' => 'told',
+                'at' => self::instant($concludedAt)->setTimezone($zone)->format(\DATE_ATOM),
+                'channel' => 'push',
+                'ending' => EventPhase::calledOff($event->getEndedAt(), $event->getStartsAt()) ? ShiftConcludedNotice::CALLED_OFF : ShiftConcludedNotice::ENDED,
+            ];
+        }
 
         if (null !== $goesAt && $this->inApp($entry, $known)) {
             return [
@@ -81,13 +97,13 @@ final readonly class ShiftNoticeStates
             return null;
         }
 
-        return ['state' => 'told', 'at' => self::instant($sentAt)->setTimezone($zone)->format(\DATE_ATOM), 'channel' => 'push'];
+        return ['state' => 'told', 'at' => self::instant($sentAt)->setTimezone($zone)->format(\DATE_ATOM), 'channel' => 'push', 'ending' => null];
     }
 
     /**
      * Whether a change notice can reach them (ShiftNoticeReach); the removal question and the card's count read it.
      *
-     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known the event's, read when null
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, concluded: array<string, string>, inApp: array<string, true>} $known the event's, read when null
      */
     public function inApp(StaffMember $entry, ?array $known = null): bool
     {

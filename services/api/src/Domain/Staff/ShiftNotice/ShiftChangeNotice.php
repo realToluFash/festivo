@@ -44,6 +44,12 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         return self::NAME . ':' . $entry->getId()->toRfc4122();
     }
 
+    /** A delivery is written once for each source, so each notice to the same person needs its own; the person's id leads it, for the roster to group by. */
+    public static function source(StaffMember $entry): string
+    {
+        return $entry->getId()->toRfc4122() . ':' . Uuid::v7()->toRfc4122();
+    }
+
     public function name(): string
     {
         return self::NAME;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Messaging\Model\Recipient;
+use App\Domain\Messaging\Model\RenderedNotification;
 use App\Domain\Messaging\NotificationWorker;
 use App\Domain\Messaging\PushTargets;
 use App\Domain\Organisation\OrganisationFounder;
@@ -102,7 +104,7 @@ final class ShiftNoticesTest extends ApiTestCase
 
         $this->at('2027-03-01T10:15:00Z');
         self::assertSame([['Your shift has changed · Owambe', ['Your start time is now 19:00 (was 18:00).'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
-        self::assertSame(['state' => 'told', 'at' => '2027-03-01T11:15:00+01:00', 'channel' => 'push'], $this->row($this->ada)['notice']);
+        self::assertSame(['state' => 'told', 'at' => '2027-03-01T11:15:00+01:00', 'channel' => 'push', 'ending' => null], $this->row($this->ada)['notice']);
     }
 
     #[Test]
@@ -262,8 +264,8 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->at('2027-03-05T18:15:00Z');
 
         self::assertSame(
-            [['Ada Obi', true], ['Bisi Ola', false]],
-            Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
+            [['Ada Obi', true], ['Ada Obi', false], ['Bisi Ola', false]],
+            Vec\map($this->sent(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
         );
     }
 
@@ -382,13 +384,23 @@ final class ShiftNoticesTest extends ApiTestCase
     /** @return list<array{0: string, 1: list<string>, 2: ?string}> */
     private function pushes(): array
     {
-        return Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
+        return Vec\map($this->sent(), static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
     }
 
     /** @return list<bool> */
     private function notYetUrgent(): array
     {
-        return Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => $sent['notification']->notYetUrgent);
+        return Vec\map($this->sent(), static fn (array $sent): bool => $sent['notification']->notYetUrgent);
+    }
+
+    /**
+     * The pushes sent, but for the day-before reminders, which ShiftRemindersTest covers.
+     *
+     * @return list<array{delivery: string, recipient: Recipient, category: NotificationCategory, notification: RenderedNotification, collapseKey: ?string}>
+     */
+    private function sent(): array
+    {
+        return Vec\filter(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => !Str\starts_with($sent['notification']->subject, 'Your shift starts'));
     }
 
     /** @return array{notice: mixed, briefing: string} */

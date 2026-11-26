@@ -145,6 +145,10 @@ class Event implements SoftDeletableInterface
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $staffRules = null;
 
+    /** The staffing page's Reminder the day before (sc-4333): on by default. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    private bool $staffReminder = true;
+
     /** Moved by CalendarChangeListener only when what a guest's calendar shows changes, so a pause leaves a subscribed calendar as it was (sc-3627). */
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 0])]
     private int $calendarSequence = 0;
@@ -342,6 +346,16 @@ class Event implements SoftDeletableInterface
     public function setStaffRules(?string $staffRules): void
     {
         $this->staffRules = $staffRules;
+    }
+
+    public function remindsStaff(): bool
+    {
+        return $this->staffReminder;
+    }
+
+    public function setStaffReminder(bool $on): void
+    {
+        $this->staffReminder = $on;
     }
 
     public function getCalendarSequence(): int
