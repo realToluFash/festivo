@@ -46,6 +46,10 @@ class ServiceItem
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $changedBy = null;
 
+    /** When it went from Ready to Preparing: a new time keeps it, so Held up counts from here (sc-4015, sc-34107). */
+    #[ORM\Column(type: MillisecondDateTimeType::NAME, nullable: true)]
+    private ?DateTimeImmutable $preparingSince = null;
+
     public function __construct(MenuCourse $course, string $itemKey)
     {
         $this->id = Uuid::v7();
@@ -89,23 +93,31 @@ class ServiceItem
         return $this->changedBy;
     }
 
+    public function getPreparingSince(): ?DateTimeImmutable
+    {
+        return $this->preparingSince;
+    }
+
     public function mark(ItemState $state, ?int $readyIn, DateTimeImmutable $at, User $by): void
     {
+        $this->preparingSince = ItemState::Preparing !== $state ? null : ($this->preparingSince ?? $at);
         $this->state = $state;
         $this->readyIn = ItemState::Preparing === $state ? $readyIn : null;
         $this->changedAt = $at;
         $this->changedBy = $by;
     }
 
-    /** @return array{state: string, readyIn: ?int, changedAt: ?string, changedBy: ?string} what undo puts back */
+    /** @return array{state: string, readyIn: ?int, changedAt: ?string, changedBy: ?string, preparingSince: ?string} what undo puts back */
     public function snapshot(): array
     {
-        return ['state' => $this->state->value, 'readyIn' => $this->readyIn, 'changedAt' => $this->changedAt?->format(\DATE_RFC3339_EXTENDED), 'changedBy' => $this->changedBy?->getId()->toRfc4122()];
+        return ['state' => $this->state->value, 'readyIn' => $this->readyIn, 'changedAt' => $this->changedAt?->format(\DATE_RFC3339_EXTENDED), 'changedBy' => $this->changedBy?->getId()->toRfc4122(), 'preparingSince' => $this->preparingSince?->format(\DATE_RFC3339_EXTENDED)];
     }
 
-    /** @param array{state: string, readyIn: ?int, changedAt: ?string, changedBy: ?string} $snapshot */
+    /** @param array{state: string, readyIn: ?int, changedAt: ?string, changedBy: ?string, preparingSince?: ?string} $snapshot */
     public function restore(array $snapshot, ?User $changedBy): void
     {
+        $since = $snapshot['preparingSince'] ?? null;
+        $this->preparingSince = null === $since ? null : new DateTimeImmutable($since);
         $this->state = ItemState::from($snapshot['state']);
         $this->readyIn = $snapshot['readyIn'];
         $this->changedAt = null === $snapshot['changedAt'] ? null : new DateTimeImmutable($snapshot['changedAt']);

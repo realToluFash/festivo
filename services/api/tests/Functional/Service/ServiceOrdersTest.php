@@ -73,18 +73,20 @@ final class ServiceOrdersTest extends ServiceTestCase
         $moimoi = new MenuChoiceOption($side, 'Moi moi', [], 0);
         $coconut->listItems([['kind' => 'fixed', 'name' => 'Coconut rice'], ['kind' => 'variants'], ['kind' => 'choice', 'choiceId' => $side->getId()->toRfc4122()], ['kind' => 'fixed', 'name' => 'plantain ']]);
         $poundedYam = new MenuDish($this->course, null, 'Pounded yam', null, [], [], 1);
-        Iter\apply([$coconut, $beef, $chicken, $side, $moimoi, $poundedYam], static fn (object $row) => self::em()->persist($row));
+        $childs = new MenuDishVariant($poundedYam, 'Child’s portion', false, [], [], null, 0);
+        Iter\apply([$coconut, $beef, $chicken, $side, $moimoi, $poundedYam, $childs], static fn (object $row) => self::em()->persist($row));
         self::em()->flush();
         $this->picks($beef->getId()->toRfc4122(), $this->guests['Adaeze Obi']);
         $this->picks($moimoi->getId()->toRfc4122(), $this->guests['Adaeze Obi']);
         $this->picks($coconut->getId()->toRfc4122(), $this->guests['Bola Ade']);
-        $this->picks($poundedYam->getId()->toRfc4122(), $this->guests['Chidi Eze']);
+        $this->picks($childs->getId()->toRfc4122(), $this->guests['Chidi Eze']);
         $this->arrive('Adaeze Obi', 'Bola Ade', 'Chidi Eze');
         $this->fire();
 
         self::assertSame(['coconut rice', 'beef', 'moi moi', 'plantain', 'jollof rice'], self::itemKeys($this->orderOf('Adaeze Obi')));
         self::assertSame(['coconut rice', OrderMaker::CHEFS_CHOICE, 'plantain', 'jollof rice'], self::itemKeys($this->orderOf('Bola Ade')), 'no variant and no side: one Chef’s choice');
         self::assertSame(['pounded yam', 'jollof rice', 'plantain'], self::itemKeys($this->orderOf('Chidi Eze')), 'a dish with no items is one item, itself');
+        self::assertSame(['Child’s portion', null], [$this->orderOf('Chidi Eze')['variant'], $this->orderOf('Adaeze Obi')['variant']], 'a variant that is no item is said beside them (sc-4015)');
     }
 
     #[Test]
