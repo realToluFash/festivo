@@ -6,6 +6,7 @@ namespace App\Domain\Event\DoorCode;
 
 use App\Audit\Auditor;
 use App\Domain\Event\People\EventPeople;
+use App\Domain\Staff\Attendance\JoinCodeShift;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\DoorCode;
 use App\Entity\DoorCodeRedemption;
@@ -38,6 +39,7 @@ final readonly class DoorCodeRedeemer
         private EventPersonRepository $eventPersonRepository,
         private MembershipRepository $membershipRepository,
         private DoorCodes $doorCodes,
+        private JoinCodeShift $joinCodeShift,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
@@ -136,7 +138,7 @@ final readonly class DoorCodeRedeemer
         }
     }
 
-    /** Takes one use, under the account's own name: a name typed at the door is never kept on an account (sc-4235). */
+    /** Takes one use, under the account's own name: a name typed at the door is never kept on an account (sc-4235). A code that names a shift also puts them on it and clocks them in (sc-234). */
     public function admit(DoorCode $doorCode, User $user, Request $request, bool $signedIn = true): EventPerson
     {
         return $this->entityManager->wrapInTransaction(function () use ($doorCode, $user, $request, $signedIn): EventPerson {
@@ -155,6 +157,12 @@ final readonly class DoorCodeRedeemer
                 'signedIn' => [null, $signedIn],
             ]);
             $this->entityManager->flush();
+            $shift = $doorCode->getShift();
+
+            if (null !== $shift) {
+                $this->joinCodeShift->place($shift, $user, $doorCode->getMadeBy() ?? $user);
+                $this->entityManager->flush();
+            }
 
             return $person;
         });

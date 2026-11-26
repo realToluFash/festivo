@@ -4200,6 +4200,7 @@ describe('door codes (sc-72)', () => {
     jobLabel: null,
     endsAt: '2026-11-14T23:30:00+00:00',
     again: false,
+    shift: null,
   };
 
   function client(
@@ -4338,6 +4339,24 @@ describe('door codes (sc-72)', () => {
 
     expect(redeemed.again).toBe(true);
     expect(sent[0]?.auth).toBe('Bearer live');
+  });
+
+  test('reads where a code naming a shift lands, and drops a shift it does not know (sc-234)', async () => {
+    const read = async (shift: unknown) =>
+      (
+        await client(json({ ...REDEEMED, shift }), store('live', null), []).redeemDoorCode(
+          'K7P2QX9M',
+        )
+      ).shift;
+
+    expect(await read({ landsOn: 'night' })).toEqual({ landsOn: 'night' });
+    expect(await read({ landsOn: 'in', notJoined: 'ended', job: 'Waiter' })).toEqual({
+      landsOn: 'in',
+      notJoined: 'ended',
+      job: 'Waiter',
+    });
+    expect(await read({ landsOn: 'in', notJoined: 'gone', job: 'Waiter' })).toBeNull();
+    expect(await read(undefined)).toBeNull();
   });
 
   test('reads the door code someone came in by on People', async () => {

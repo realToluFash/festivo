@@ -303,6 +303,7 @@
     "audit.field.addressKind": "Contact by",
     "audit.field.jobLabel": "Job",
     "audit.field.useCap": "People who can use it",
+    "audit.field.shift": "Shift",
     "audit.field.expiresAt": "Works until",
     "audit.field.stoppedAt": "Stopped",
     "audit.field.signedIn": "Signed in",

@@ -26,6 +26,8 @@ function list(arrived = false): Record<string, unknown> {
 }
 
 const NIGHT = {
+  pastAccess: false,
+  clock: null,
   event: { id: 'ev_1', name: 'Joana & Rui’s wedding', timeZone: 'Europe/Lisbon' },
   endsAt: '2030-11-14T23:30:00+00:00',
   station: null,

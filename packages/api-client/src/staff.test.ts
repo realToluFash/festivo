@@ -143,6 +143,7 @@ describe('asStaffLinkWindow', () => {
       mobile: { countryCode: 'NG', lastDigits: '4512' },
       reader: 'other',
       name: 'Ada Obi',
+      pastAccess: false,
       signedOutAt: null,
       timeZone: null,
     });

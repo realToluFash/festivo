@@ -942,7 +942,7 @@ function Failed({ words }: { words: string }) {
   );
 }
 
-function PanelTop({
+export function PanelTop({
   title,
   eyebrow,
   onClose,
@@ -973,7 +973,7 @@ function PanelTop({
   );
 }
 
-function PanelFoot({
+export function PanelFoot({
   cta,
   busy,
   onSave,
@@ -1454,13 +1454,14 @@ function ShiftForm({
   );
 }
 
-function When({
+export function When({
   legend,
   id,
   date,
   time,
   wrong,
   line = null,
+  step = COVERAGE_STEP_MS / 1000,
   onDate,
   onTime,
 }: {
@@ -1470,6 +1471,7 @@ function When({
   time: string;
   wrong: string | undefined;
   line?: string | null;
+  step?: number;
   onDate: (value: string) => void;
   onTime: (value: string) => void;
 }) {
@@ -1498,7 +1500,7 @@ function When({
           <input
             id={`${id}-time`}
             type="time"
-            step={COVERAGE_STEP_MS / 1000}
+            step={step}
             aria-label={t('jobs.labelled', { action: legend, what: t('jobs.time') })}
             value={time}
             aria-invalid={wrong != null}

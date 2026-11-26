@@ -62,8 +62,14 @@ class DoorCode
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?DoorCode $replacedBy = null;
 
-    public function __construct(Event $event, string $code, EventRole $role, ?string $jobLabel, int $useCap, DateTimeImmutable $expiresAt, User $madeBy)
+    /** The shift a redeemer is put on and clocked in to (sc-234); null for a code that names none. */
+    #[ORM\ManyToOne(targetEntity: StaffShift::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?StaffShift $shift;
+
+    public function __construct(Event $event, string $code, EventRole $role, ?string $jobLabel, int $useCap, DateTimeImmutable $expiresAt, User $madeBy, ?StaffShift $shift = null)
     {
+        $this->shift = $shift;
         $this->id = Uuid::v7();
         $this->event = $event;
         $this->code = $code;
@@ -132,5 +138,10 @@ class DoorCode
     public function setReplacedBy(DoorCode $replacedBy): void
     {
         $this->replacedBy = $replacedBy;
+    }
+
+    public function getShift(): ?StaffShift
+    {
+        return $this->shift;
     }
 }

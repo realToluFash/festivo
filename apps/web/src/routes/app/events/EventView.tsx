@@ -39,6 +39,7 @@ import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
 import { RosterArea, StaffRefused } from './RosterArea.tsx';
 import { StationsArea } from './StationsArea.tsx';
+import { HoursWorkedArea } from './HoursWorkedArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
 import { MessagesArea } from './MessagesArea.tsx';
 import { Forbidden } from '../Forbidden.tsx';
@@ -68,6 +69,7 @@ type Page =
   | 'run'
   | 'staffJobs'
   | 'staffStations'
+  | 'staffHours'
   | 'menuPicks'
   | 'kitchenSheet'
   | PlaceholderEventArea;
@@ -103,6 +105,10 @@ export function EventJobsShifts() {
 
 export function EventStations() {
   return <ForEvent page="staffStations" />;
+}
+
+export function EventHoursWorked() {
+  return <ForEvent page="staffHours" />;
 }
 
 export function EventMenuPicks() {
@@ -402,6 +408,13 @@ function EventOf({
 
   if (page === 'staffStations' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.staff) ? <StationsArea event={load.event} /> : <Withheld />;
+
+  if (page === 'staffHours' && load.kind === 'loaded')
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <HoursWorkedArea event={load.event} />
+    ) : (
+      <Withheld />
+    );
 
   if (page === 'guests' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.guests) ? (

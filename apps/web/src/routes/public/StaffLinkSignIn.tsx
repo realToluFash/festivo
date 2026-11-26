@@ -122,6 +122,7 @@ export function StaffLinkSignIn({
       <MyNightPage
         source={token}
         read={() => api.staffLinkNight(token)}
+        clockTap={(action) => api.staffLinkClock(token, action)}
         name={name}
         onSignOut={() => void signOut()}
         stillSignedIn={unreached}

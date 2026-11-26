@@ -189,7 +189,17 @@ export function Redeem({ code }: { code: string }) {
     }
     await reloadSignedIn().catch(() => undefined);
     setAccount(outcome.account);
-    if (redeemed != null) go({ kind: 'in', redeemed, event: at.opened.event });
+    if (redeemed != null) joined(redeemed, at.opened.event);
+  }
+
+  // A code that put them on its shift ends on My night over the event's Overview, where they clock in and out (sc-234).
+  function joined(redeemed: RedeemedDoorCode, event: OpenedDoorCode['event']): void {
+    if (redeemed.shift?.landsOn !== 'night') {
+      go({ kind: 'in', redeemed, event });
+      return;
+    }
+    router.replace(eventHref(redeemed.eventId));
+    router.push({ pathname: '/events/[id]/my-night', params: { id: redeemed.eventId } });
   }
 
   const key = `${step.kind}-${visit}`;
@@ -214,7 +224,7 @@ export function Redeem({ code }: { code: string }) {
           key={key}
           step={step}
           account={account}
-          onJoined={(redeemed) => go({ kind: 'in', redeemed, event: step.opened.event })}
+          onJoined={(redeemed) => joined(redeemed, step.opened.event)}
           onSent={(handle, typed) =>
             go({ kind: 'code', code: step.code, opened: step.opened, handle, typed })
           }

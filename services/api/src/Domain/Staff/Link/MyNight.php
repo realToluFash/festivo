@@ -6,6 +6,8 @@ namespace App\Domain\Staff\Link;
 
 use App\Domain\Event\LocalTimeResolver;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
+use App\Domain\Staff\Attendance\Clocking;
+use App\Domain\Staff\Http\ClockCardSerialiser;
 use App\Domain\Staff\LeadFinder;
 use App\Domain\Staff\ShiftClock;
 use App\Entity\Event;
@@ -17,6 +19,7 @@ use App\Entity\SeatingTable;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\StaffStation;
+use App\Enum\EventRole;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
 use App\Enum\ServicePlace;
@@ -45,12 +48,50 @@ final readonly class MyNight
         private GuestNeedRepository $guestNeedRepository,
         private ServingStationsInterface $servingStations,
         private MembershipDirectoryInterface $membershipDirectory,
+        private Clocking $clocking,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their job's level opens the door (sc-28230); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
-    public function of(StaffMember $entry, DateTimeImmutable $until): array
+    /**
+     * Past the person's access while still clocked in (sc-234): the event's name and the clock card, nothing else.
+     *
+     * @return array<string, mixed>
+     */
+    public function pastAccess(StaffMember $entry, DateTimeImmutable $until): array
+    {
+        $event = $entry->getEvent();
+        $zone = new DateTimeZone($event->getTimeZone());
+
+        return [
+            'pastAccess' => true,
+            'clock' => $this->card($entry),
+            'event' => ['id' => $event->getId()->toRfc4122(), 'name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
+            'endsAt' => $until->setTimezone($zone)->format(\DATE_ATOM),
+            'station' => null,
+            'job' => null,
+            'shift' => null,
+            'later' => null,
+            'lead' => null,
+            'timing' => [],
+            'doorsAt' => $event->getStartsAt()->setTimezone($zone)->format(\DATE_ATOM),
+            'tables' => null,
+            'checksIn' => false,
+            'dishes' => false,
+            'rules' => null,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function card(StaffMember $entry): ?array
+    {
+        $card = $this->clocking->cardOf($entry);
+
+        return null === $card ? null : ClockCardSerialiser::card($card['shift'], $card['attendance'], $this->clock->now());
+    }
+
+    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their level opens the door (sc-28230): their job's, or a join code's for the night it opened (sc-234); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
+    public function of(StaffMember $entry, DateTimeImmutable $until, ?EventRole $level = null): array
     {
         $event = $entry->getEvent();
         $zone = new DateTimeZone($event->getTimeZone());
@@ -62,6 +103,8 @@ final readonly class MyNight
         $doorsAt = $event->getStartsAt()->setTimezone($zone);
 
         return [
+            'pastAccess' => false,
+            'clock' => $this->card($entry),
             'event' => ['id' => $event->getId()->toRfc4122(), 'name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
             'endsAt' => $until->setTimezone($zone)->format(\DATE_ATOM),
             'station' => null === $station ? null : self::stationName($station),
@@ -76,7 +119,7 @@ final readonly class MyNight
             'timing' => $this->timing($event, $zone),
             'doorsAt' => $doorsAt->format(\DATE_ATOM),
             'tables' => $this->tables($station, $now >= $doorsAt),
-            'checksIn' => Iter\contains(StaffLinkGrants::levelOf($entry)->permissions(), Permission::GuestsCheckIn),
+            'checksIn' => Iter\contains(($level ?? StaffLinkGrants::levelOf($entry))->permissions(), Permission::GuestsCheckIn),
             'dishes' => $this->dishes($entry),
             'rules' => $event->getStaffRules(),
         ];
