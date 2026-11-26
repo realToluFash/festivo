@@ -3825,12 +3825,12 @@
       "flagged": "Puede que el enlace haya llegado a otra persona",
       "failed": "No se han podido cargar los cambios."
     },
-    "greetAs": "Greet as",
-    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
-    "greetAsCounter": "{{count, number}} of {{max, number}}",
-    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
-    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
-    "greetsByFullName": "Messages greet them by their full name."
+    "greetAs": "Nombre en el saludo",
+    "greetAsHint": "Cómo le saludan los mensajes, por ejemplo Auntie Bisi o Dr. Okafor. Déjelo en blanco para usar su nombre completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Acorte el nombre en el saludo a {{count, number}} caracteres como máximo.",
+    "greetsThemAs": "Los mensajes le saludan como «{{greetAs}}».",
+    "greetsByFullName": "Los mensajes le saludan por su nombre completo."
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -6849,44 +6849,44 @@
     "remove": "Quitar a {{name}}",
     "chosenTo": "Invitados elegidos",
     "change": "Cambiar",
-    "insert": "Insert",
+    "insert": "Insertar",
     "token": {
-      "greeting": "Greeting",
-      "event": "Event",
-      "date": "Date",
-      "hosts": "Hosts"
+      "greeting": "Saludo",
+      "event": "Evento",
+      "date": "Fecha",
+      "hosts": "Anfitriones"
     },
-    "tokenName": "{{token}}, filled in for each guest",
+    "tokenName": "{{token}}, que Soirely rellena para cada invitado",
     "tokenLine": {
-      "greeting": "Their Greet as, or their full name if they have none",
-      "event": "The event’s name",
-      "date": "The event’s day, or its days",
-      "hosts": "The event’s hosts"
+      "greeting": "Su nombre en el saludo o, si no lo tiene, su nombre completo",
+      "event": "El nombre del evento",
+      "date": "El día del evento, o sus días",
+      "hosts": "Los anfitriones del evento"
     },
-    "preview": "Preview",
-    "previewOn": "Preview on",
-    "edit": "Edit",
-    "previewHeading": "As {{name}} will see it",
-    "previewAs": "Preview as",
+    "preview": "Vista previa",
+    "previewOn": "Vista previa activada",
+    "edit": "Editar",
+    "previewHeading": "Como lo verá {{name}}",
+    "previewAs": "Ver como",
     "previewOption": "{{name}} · {{language}}",
-    "filling": "Filling it in for {{name}}…",
-    "previewFailed": "We could not fill it in for {{name}}.",
-    "previewFailedLine": "Check your connection and try again.",
-    "noLongerGuest": "{{name}} is no longer a guest, so it is filled in for {{next}} instead.",
-    "nobodyLeft": "{{name}} is no longer a guest, so there is nobody to preview it as.",
-    "greetedAsGreetAs": "Greeted as “{{greetAs}}”, their Greet as.",
-    "greetedAsName": "Greeted as {{name}}, their full name. They have no Greet as.",
+    "filling": "Rellenando el mensaje para {{name}}…",
+    "previewFailed": "No se ha podido rellenar el mensaje para {{name}}.",
+    "previewFailedLine": "Compruebe la conexión y vuelva a intentarlo.",
+    "noLongerGuest": "{{name}} ya no está en la lista de invitados, así que el mensaje se rellena para {{next}}.",
+    "nobodyLeft": "{{name}} ya no está en la lista de invitados, así que no queda nadie para la vista previa.",
+    "greetedAsGreetAs": "Se le saluda como «{{greetAs}}», su nombre en el saludo.",
+    "greetedAsName": "Se le saluda como {{name}}, su nombre completo. No tiene nombre en el saludo.",
     "languageFrom": {
-      "chose": "In {{language}}, the language they chose on their page.",
-      "host": "In {{language}}, the language you set for them.",
-      "organisation": "In {{language}}, your organisation’s language, as no language is set for them."
+      "chose": "En {{language}}, el idioma que eligió en su propia página.",
+      "host": "En {{language}}, el idioma que usted le asignó.",
+      "organisation": "En {{language}}, el idioma de su organización, porque no tiene un idioma asignado."
     },
-    "onlyOurs": "Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.",
-    "typedBraces": "Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.",
-    "nothingToFill": "Nothing to fill in, so every guest gets exactly these words.",
-    "nobodyToPreview": "No guests chosen yet, so there is nobody to preview it as.",
-    "whatSoirelySends": "What Soirely sends",
-    "emailFrom": "Email · from {{organisation}} via Soirely"
+    "onlyOurs": "Solo se traducen las palabras de Soirely. Las suyas aparecen en la página del invitado tal como las escribió.",
+    "typedBraces": "Lo que escriba entre llaves aparece tal cual. Para rellenar algo para cada invitado, use Insertar.",
+    "nothingToFill": "No hay nada que rellenar, así que todos los invitados reciben exactamente este texto.",
+    "nobodyToPreview": "Aún no ha elegido invitados, así que no hay nadie para la vista previa.",
+    "whatSoirelySends": "Lo que envía Soirely",
+    "emailFrom": "Correo electrónico · de {{organisation}} vía Soirely"
   },
   "service": {
     "stage": {

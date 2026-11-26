@@ -2719,12 +2719,12 @@
       "failed": "Não foi possível carregar as alterações.",
       "retry": "Tentar novamente"
     },
-    "greetAs": "Greet as",
-    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
-    "greetAsCounter": "{{count, number}} of {{max, number}}",
-    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
-    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
-    "greetsByFullName": "Messages greet them by their full name."
+    "greetAs": "Nome na saudação",
+    "greetAsHint": "Como as mensagens cumprimentam esta pessoa, por exemplo Auntie Bisi ou Dr. Okafor. Deixe em branco para usar o nome completo.",
+    "greetAsCounter": "{{count, number}} de {{max, number}}",
+    "greetAsTooLong": "Encurte o nome na saudação para {{count, number}} caracteres, no máximo.",
+    "greetsThemAs": "As mensagens cumprimentam esta pessoa como «{{greetAs}}».",
+    "greetsByFullName": "As mensagens cumprimentam esta pessoa pelo nome completo."
   },
   "guestNumbers": {
     "title": "Convidados",
