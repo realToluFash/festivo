@@ -3410,6 +3410,7 @@
     "removeTitle": "Remover {{name}} deste evento?",
     "removeLine": "Esta pessoa perde o acesso a este evento na próxima ação que fizer. Continua em {{organisation}}.",
     "keep": "Manter {{name}}",
+    "keepThem": "Não remover",
     "removeConfirm": "Remover",
     "removing": "A remover…",
     "removeFailed": "Não foi possível remover. Esta pessoa continua no evento. Tente novamente daqui a pouco.",
@@ -4441,6 +4442,8 @@
   },
   "briefing": {
     "card": "Briefing",
+    "refused": "Não pode ver a equipa deste evento.",
+    "backToEvent": "Voltar ao evento",
     "cardSub": "As regras da casa e o turno de cada pessoa, numa página própria.",
     "tally": "Estado do briefing",
     "read": "Lido",
@@ -7129,6 +7132,7 @@
     }
   },
   "checkIn": {
+    "noSeat": "Ainda sem lugar",
     "title": "Entradas",
     "count_one": "Chegadas: {{count, number}} de {{expected, number}}",
     "count_other": "Chegadas: {{count, number}} de {{expected, number}}",

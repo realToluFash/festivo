@@ -93,7 +93,16 @@ export interface ServiceRead {
 }
 
 export interface KitchenStationsRead {
-  stations: { id: string; name: string; people: { id: string; name: string }[] }[];
+  /** The event's name, since working the pass reads no event. */
+  event: string;
+  /** The reader's name, as the roster has it when they are on it. */
+  you: string;
+  stations: {
+    id: string;
+    name: string;
+    /** `you` marks the reader's own entry, by the roster rather than by name. */
+    people: { id: string; name: string; you: boolean }[];
+  }[];
   /** The station the reader is on, by the roster; null on none. */
   yours: string | null;
   fired: { id: string; name: string; firedAt: string }[];
@@ -297,7 +306,9 @@ export function asKitchenStationsRead(raw: unknown): KitchenStationsRead | null 
       const personId = text(person.id);
       const personName = text(person.name);
 
-      return personId == null || personName == null ? null : { id: personId, name: personName };
+      return personId == null || personName == null
+        ? null
+        : { id: personId, name: personName, you: person.you === true };
     });
 
     return id == null || name == null || people == null ? null : { id, name, people };
@@ -310,7 +321,9 @@ export function asKitchenStationsRead(raw: unknown): KitchenStationsRead | null 
     return id == null || name == null || firedAt == null ? null : { id, name, firedAt };
   });
 
-  if (stations == null || fired == null) return null;
+  const event = text(raw.event);
+  const you = text(raw.you);
+  if (stations == null || fired == null || event == null || you == null) return null;
 
-  return { stations, yours: text(raw.yours), fired };
+  return { event, you, stations, yours: text(raw.yours), fired };
 }

@@ -2396,6 +2396,7 @@
     "removeLine": "Esta persona perderá el acceso a este evento en su próxima acción. Seguirá en {{organisation}}.",
     "removeLineOutside": "Esta persona perderá el acceso en su próxima acción.",
     "keep": "Mantener a {{name}}",
+    "keepThem": "No quitar",
     "removeConfirm": "Quitar",
     "removing": "Quitando…",
     "removeFailed": "No se ha podido quitar. Esta persona sigue en el evento. Vuelva a intentarlo en un momento.",
@@ -3335,8 +3336,15 @@
     "single": "El acceso a eventos concretos se mantiene.",
     "change": "Cambiar su dirección de correo principal"
   },
+  "guest": {
+    "table": {
+      "row": "Fila {{row}}, asiento {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
-    "title": "Registro de llegada",
+    "noSeat": "Aún sin asiento",
+    "title": "Llegadas",
     "back": "Invitados",
     "open": "Abrir registro de llegada",
     "checkGuestsIn": "Registrar llegadas",
@@ -3769,6 +3777,14 @@
     "beforeYouStart": "Antes de empezar"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Zona de cocina · {{station}}",
     "titleSaid": "Zona de cocina · {{station}}. Elegir otra zona",
     "back": "Volver",
@@ -3782,7 +3798,7 @@
     "nobodyOn": "Nadie en {{station}}",
     "openNow": "Abierta ahora",
     "changesNobody": "Abrir una zona no cambia la zona de nadie. Eso se hace en Equipo.",
-    "picked": "Se ha abierto {{station}} en esta tableta. Nadie ha cambiado de zona.",
+    "picked": "Se ha abierto {{station}} en este dispositivo. Nadie ha cambiado de zona.",
     "movedTo": "Ahora está en la zona {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Ningún pase marchado",

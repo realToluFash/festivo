@@ -2316,6 +2316,7 @@
     "removeLine": "They lose this event on their next request. They stay in {{organisation}}.",
     "removeLineOutside": "Their access ends on their next request.",
     "keep": "Keep {{name}}",
+    "keepThem": "Keep them",
     "removeConfirm": "Remove",
     "removing": "Removing…",
     "removeFailed": "Removing did not work. They are still on this event. Try again in a moment.",
@@ -3208,7 +3209,14 @@
     "single": "Access to a single event still works.",
     "change": "Change your main email address"
   },
+  "guest": {
+    "table": {
+      "row": "Row {{row}}, seat {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Check-in",
     "back": "Guests",
     "open": "Open check-in",
@@ -3618,6 +3626,14 @@
     "beforeYouStart": "Before you start"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Kitchen station · {{station}}",
     "titleSaid": "Kitchen station · {{station}}. Pick another station",
     "back": "Back",
@@ -3631,7 +3647,7 @@
     "nobodyOn": "Nobody on {{station}}",
     "openNow": "Open now",
     "changesNobody": "Opening a station changes nobody’s station. Team does that.",
-    "picked": "{{station}} is open on this tablet. Nobody’s station changed.",
+    "picked": "{{station}} is open on this device. Nobody’s station changed.",
     "movedTo": "You’re on {{station}} now.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "No course fired",

@@ -1,0 +1,6 @@
+# sc-95416: sc95416-door-seat with the tablet on its side, then upright again. Vars: METRO_URL, EV.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: sc95416-door-seat.yaml
+- setOrientation: PORTRAIT

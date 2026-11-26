@@ -1,15 +1,17 @@
-import type {
-  KeptServiceTap,
-  KitchenStationsRead,
-  ServiceCourseItem,
-  ServiceFlags,
-  ServicePlate,
-  ServiceRead,
-  ServiceTray,
+import {
+  ApiError,
+  type KeptServiceTap,
+  type KitchenStationsRead,
+  type ServiceCourseItem,
+  type ServiceFlags,
+  type ServicePlate,
+  type ServiceRead,
+  type ServiceTray,
 } from '@soirely/api-client';
 import {
   type ItemMark,
   type ItemState,
+  type ServicePhase,
   type TapRefusal,
   UNDO_MINUTES,
   heldUpMinutes,
@@ -325,6 +327,8 @@ export interface StationMark {
   courseId: string;
   key: string;
   was: ItemState;
+  /** The state the mark left, which its undo expects to find. */
+  to: ItemState;
   tapKey: string;
   /** By the corrected clock, as the window is measured. */
   at: number;
@@ -337,7 +341,9 @@ export function undoOpen(mark: StationMark, now: Date): boolean {
 }
 
 export type UndoPlan =
-  { kind: 'drop'; tapKey: string } | { kind: 'send'; subject: string } | { kind: 'unknown' };
+  | { kind: 'drop'; tapKey: string }
+  | { kind: 'send'; subject: string; expected: { item: ItemState } }
+  | { kind: 'unknown' };
 
 export function undoPlan(
   mark: StationMark,
@@ -349,7 +355,14 @@ export function undoPlan(
     .find((read) => read.course.id === mark.courseId)
     ?.items.find((item) => item.key === mark.key)?.id;
 
-  return id == null ? { kind: 'unknown' } : { kind: 'send', subject: id };
+  return id == null
+    ? { kind: 'unknown' }
+    : { kind: 'send', subject: id, expected: { item: mark.to } };
+}
+
+/** What the undo line says was marked: the state the mark left, so a new time while Preparing reads Preparing. */
+export function undoWords(mark: StationMark): 'station.undoPreparing' | 'station.undoReady' {
+  return mark.to === 'preparing' ? 'station.undoPreparing' : 'station.undoReady';
 }
 
 export function stationTime(at: Date | number | string, locale: string): string {
@@ -376,4 +389,32 @@ export function notSentLine(t: TFunction, line: TapRefusal, reads: readonly Serv
     name: line.kind === 'trayNotYours' ? line.name : '',
     count: UNDO_MINUTES,
   });
+}
+
+/** The card a refused read shows: a 403 naming the floor sends a floor worker there, any other 403 is no access. */
+export function refusedAccess(error: unknown): 'floor' | 'none' | null {
+  if (!(error instanceof ApiError) || error.status !== 403) return null;
+  return error.problem.worksAt === 'floor' ? 'floor' : 'none';
+}
+
+export type TopicMessage =
+  { kind: 'heartbeat' } | { kind: 'phase'; phase: ServicePhase } | { kind: 'data' };
+
+/** Anything on the service topic that is not a heartbeat or a phase, a station change among them, is data to re-read. */
+export function topicMessage(data: string | null): TopicMessage {
+  let message: unknown = null;
+  try {
+    message = data == null ? null : JSON.parse(data);
+  } catch {
+    message = null;
+  }
+  const type =
+    typeof message === 'object' && message != null
+      ? (message as { type?: unknown; phase?: unknown })
+      : {};
+  if (type.type === 'heartbeat') return { kind: 'heartbeat' };
+  if (type.type === 'phase' && typeof type.phase === 'string') {
+    return { kind: 'phase', phase: type.phase as ServicePhase };
+  }
+  return { kind: 'data' };
 }

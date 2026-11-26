@@ -71,7 +71,6 @@ export const BW = {
   marked: (name: string) => `[Marked as sent to ${name}.]`,
   nobody: '[Nobody has a shift yet.]',
   giveShift: '[Give someone a shift]',
-  loading: '[Loading the staff…]',
   roster: 'Roster',
   close: 'Close',
   cancel: 'Cancel',
@@ -403,7 +402,6 @@ export interface BriefingStart {
   busy: string | null;
   missed: string | null;
   handHeld: { id: string; url: string } | null;
-  loading: boolean;
   check: Target | null;
   checkAt: 'loading' | 'shown' | 'failed';
   balance: number;
@@ -451,7 +449,6 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     busy: null,
     missed: null,
     handHeld: null,
-    loading: false,
     check: null,
     checkAt: 'shown',
     balance: BALANCE,
@@ -855,13 +852,6 @@ const STATES = {
       side: { kind: 'copy' },
       people: people().map((one) => ({ ...one, shift: null, more: [] })),
     }),
-  copyLoading: () =>
-    start({
-      name: 'Copy a person’s link, loading',
-      note: 'Bones while the list loads; still with Reduce motion.',
-      side: { kind: 'copy' },
-      loading: true,
-    }),
   checkLoading: () =>
     start({
       name: 'The check, working out the cost',
@@ -1255,7 +1245,6 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'copyNotIssued',
         'copyRefused',
         'copyNobody',
-        'copyLoading',
       ] as const
     ).map(link),
   },

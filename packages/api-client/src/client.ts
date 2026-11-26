@@ -552,6 +552,8 @@ export interface Account {
   waitingFor: JoinRequest | null;
   /** The events this account is on from outside their organisations (sc-71), soonest first. */
   outsideEvents: OutsideEvent[];
+  /** When this session ends, for a browser's that ends with the account's grants (sc-4235); null for any other. */
+  signedOutAt: string | null;
 }
 
 export interface JoinOffer {
@@ -763,6 +765,8 @@ export interface OutsideEvent {
   jobLabel: string | null;
   startsAt: string;
   endsAt: string | null;
+  /** The event's IANA zone, which its times are read in. */
+  timeZone: string;
 }
 
 /** A person on the roster holding a link not yet ended (sc-3912), with their job's level; `signedIn` stays false until sc-4235 signs them in. */
@@ -6752,13 +6756,14 @@ function asAccount(raw: unknown): Account | null {
     outsideEvents: Array.isArray(candidate.outsideEvents)
       ? candidate.outsideEvents.flatMap(asOutsideEvent)
       : [],
+    signedOutAt: typeof candidate.signedOutAt === 'string' ? candidate.signedOutAt : null,
   };
 }
 
 function asOutsideEvent(raw: unknown): OutsideEvent[] {
   if (typeof raw !== 'object' || raw == null) return [];
 
-  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt, timeZone } = raw as Record<
     string,
     unknown
   >;
@@ -6768,6 +6773,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
     typeof name !== 'string' ||
     typeof organisationName !== 'string' ||
     typeof startsAt !== 'string' ||
+    typeof timeZone !== 'string' ||
     !(EVENT_LEVELS as readonly unknown[]).includes(role)
   )
     return [];
@@ -6781,6 +6787,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
       jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
       startsAt,
       endsAt: typeof endsAt === 'string' ? endsAt : null,
+      timeZone,
     },
   ];
 }

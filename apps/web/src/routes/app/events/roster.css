@@ -614,3 +614,13 @@
   color: var(--colorInk);
   font: var(--typeBody);
 }
+
+.rs-refused {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceXxl);
+  color: var(--colorInkSecondary);
+  text-align: center;
+}

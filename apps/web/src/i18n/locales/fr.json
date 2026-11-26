@@ -3410,6 +3410,7 @@
     "removeTitle": "Retirer {{name}} de cet événement ?",
     "removeLine": "Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans {{organisation}}.",
     "keep": "Garder {{name}}",
+    "keepThem": "Ne pas retirer",
     "removeConfirm": "Retirer",
     "removing": "Retrait en cours…",
     "removeFailed": "Le retrait n’a pas abouti. Cette personne participe toujours à l’événement. Réessayez dans un instant.",
@@ -4441,6 +4442,8 @@
   },
   "briefing": {
     "card": "Briefing",
+    "refused": "Vous ne pouvez pas voir le personnel de cet événement.",
+    "backToEvent": "Retour à l’événement",
     "cardSub": "Les consignes et le service de chacun, sur une page personnelle.",
     "tally": "Où en est le briefing",
     "read": "Lu",
@@ -7129,6 +7132,7 @@
     }
   },
   "checkIn": {
+    "noSeat": "Pas encore de place",
     "title": "Arrivées",
     "count_one": "Arrivées : {{count, number}} sur {{expected, number}}",
     "count_other": "Arrivées : {{count, number}} sur {{expected, number}}",

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { connection } from '@soirely/domain';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -36,6 +37,7 @@ const NIGHT = {
   doorsAt: '2030-11-14T18:00:00+00:00',
   tables: null,
   checksIn: true,
+  dishes: false,
   rules: null,
 };
 
@@ -48,6 +50,7 @@ const HELD = {
   jobLabel: 'Bar and drinks',
   startsAt: '2030-11-14T15:00:00+00:00',
   endsAt: '2030-11-14T23:30:00+00:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const REFUSED = (status: number) => ({
@@ -104,6 +107,7 @@ function at(path: string, answers: Record<string, () => Response>): string[] {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   localStorage.clear();
@@ -196,6 +200,23 @@ describe('check-in in the browser (sc-28230)', () => {
     expect([...kept, document.cookie].join('\n')).not.toMatch(/Amara|Bísí|Zé|amara/);
     expect(opened.indexedDB).not.toHaveBeenCalled();
     expect(opened.caches).not.toHaveBeenCalled();
+  });
+
+  it('tells the offline band the time in the event’s zone, not the browser’s', async () => {
+    vi.useFakeTimers({ now: new Date('2030-11-14T09:10:00Z'), toFake: ['Date'] });
+    signedIn([{ ...HELD, timeZone: 'Asia/Tokyo' }]);
+    const tokyo = list();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () =>
+        json({ ...tokyo, checkIn: { ...(tokyo.checkIn as object), timeZone: 'Asia/Tokyo' } }),
+      'GET /api/events/ev_1/my-night': () =>
+        json({ ...NIGHT, event: { ...NIGHT.event, timeZone: 'Asia/Tokyo' } }),
+    });
+    await screen.findByText('Amara Eze');
+
+    act(() => connection.deviceOffline());
+
+    expect(await screen.findByText('Offline · as of 18:10')).toBeTruthy();
   });
 
   it('shows the link page in the list’s place once the grant has ended', async () => {
@@ -323,5 +344,45 @@ describe('the web shift page leads to check-in (sc-28230)', () => {
 
     expect(await screen.findByText(/Joana & Rui’s wedding/)).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
+  });
+});
+
+describe('the seat under each name in the browser (sc-60684)', () => {
+  const seated = (): Record<string, unknown> => {
+    const read = list();
+    const [amara, bisi] = read.guests as Record<string, unknown>[];
+
+    return {
+      ...read,
+      seated: true,
+      guests: [
+        { ...amara, seat: { kind: 'table', name: 'Table 4', section: 'Main hall' } },
+        { ...bisi, seat: null },
+      ],
+    };
+  };
+
+  it('shows each person’s seat under their name, and No seat yet for one without', async () => {
+    signedIn();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(seated()),
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+    });
+
+    const seat = await screen.findByText('Table 4 · Main hall');
+    expect(seat.previousElementSibling?.textContent).toBe('Amara Eze');
+    expect(screen.getByText('No seat yet').previousElementSibling?.textContent).toBe('Bísí Adé');
+  });
+
+  it('shows no seat line on an event nobody is seated on', async () => {
+    signedIn();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(list()),
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+    });
+
+    expect(await screen.findByText('Amara Eze')).toBeTruthy();
+    expect(screen.queryByText('No seat yet')).toBeNull();
+    expect(document.querySelector('.ci-seat')).toBeNull();
   });
 });

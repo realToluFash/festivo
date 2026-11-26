@@ -48,9 +48,10 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::Conflict, $message);
     }
 
-    public static function permissionRequired(Permission $permission): self
+    /** @param array<string, string> $members */
+    public static function permissionRequired(Permission $permission, array $members = []): self
     {
-        return new self(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => $permission->value], ['{permission}' => $permission->value]);
+        return new self(ErrorCode::PermissionRequired, 'access.permission_required', [], null, [], ['permission' => $permission->value, ...$members], ['{permission}' => $permission->value]);
     }
 
     public static function planRequired(PlanFeature $feature): self

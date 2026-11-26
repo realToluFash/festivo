@@ -3257,6 +3257,7 @@
     "removeTitle": "Remove {{name}} from this event?",
     "removeLine": "They lose this event on their next request. They stay in {{organisation}}.",
     "keep": "Keep {{name}}",
+    "keepThem": "Keep them",
     "removeConfirm": "Remove",
     "removing": "Removing…",
     "removeFailed": "Removing did not work. They are still on this event. Try again in a moment.",
@@ -4218,6 +4219,8 @@
   },
   "briefing": {
     "card": "Briefing",
+    "refused": "You cannot see this event’s staff.",
+    "backToEvent": "Back to the event",
     "cardSub": "House rules and everyone’s shift, on their own page.",
     "tally": "Where the briefing is",
     "read": "Read",
@@ -6761,6 +6764,7 @@
     }
   },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Check-in",
     "count_one": "{{count, number}} of {{expected, number}} arrived",
     "count_other": "{{count, number}} of {{expected, number}} arrived",

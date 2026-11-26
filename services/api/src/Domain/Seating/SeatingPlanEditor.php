@@ -23,6 +23,7 @@ use App\Enum\TableShape;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Realtime\CheckInSignal;
 use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -92,6 +93,7 @@ final readonly class SeatingPlanEditor
         private GuestSeater $guestSeater,
         private GuestRepository $guestRepository,
         private GuestPageSignal $guestPageSignal,
+        private CheckInSignal $checkInSignal,
     ) {
     }
 
@@ -149,7 +151,7 @@ final readonly class SeatingPlanEditor
             }
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, false);
 
         return $plan;
     }
@@ -266,7 +268,7 @@ final readonly class SeatingPlanEditor
             return $table;
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, false);
 
         return $table;
     }
@@ -313,7 +315,7 @@ final readonly class SeatingPlanEditor
             }
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, Iter\contains_key($fields, 'name') || Iter\contains_key($fields, 'sectionId'));
 
         return $table;
     }
@@ -372,7 +374,7 @@ final readonly class SeatingPlanEditor
             return $row;
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, false);
 
         return $row;
     }
@@ -414,7 +416,7 @@ final readonly class SeatingPlanEditor
             }
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, Iter\contains_key($fields, 'label') || Iter\contains_key($fields, 'sectionId'));
 
         return $row;
     }
@@ -468,7 +470,7 @@ final readonly class SeatingPlanEditor
             return $seat;
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, false);
 
         return $seat;
     }
@@ -507,7 +509,7 @@ final readonly class SeatingPlanEditor
             }
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, Iter\contains_key($fields, 'name') || Iter\contains_key($fields, 'sectionId'));
 
         return $seat;
     }
@@ -576,7 +578,7 @@ final readonly class SeatingPlanEditor
             }
         });
 
-        $this->published($event, $plan);
+        $this->published($event, $plan, false);
     }
 
     /** @param list<array{id: string, version: int, name: string}> $items */
@@ -1312,8 +1314,13 @@ final readonly class SeatingPlanEditor
         return new ApiException(ErrorCode::PreconditionFailed, 'seating.changed_since', members: null === $name ? [] : ['changedBy' => $name]);
     }
 
-    private function published(Event $event, ?SeatingPlan $plan): void
+    /** $door: the step may change the words of somebody's seat, so the open doors read their list again (sc-60684); a move, a turn, a resize or new empty furniture leaves them quiet. */
+    private function published(Event $event, ?SeatingPlan $plan, bool $door = true): void
     {
+        if ($door) {
+            $this->checkInSignal->send($event);
+        }
+
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $plan));
         null === $plan ? $this->guestPageSignal->send($event) : $this->guestPageSignal->seatingChanged($event);
     }

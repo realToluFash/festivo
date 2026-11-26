@@ -7,8 +7,10 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Event;
+use App\Entity\EventPerson;
 use App\Entity\Guest;
 use App\Entity\GuestNeed;
+use App\Entity\MenuCourse;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
 use App\Entity\ScheduleItem;
@@ -16,9 +18,11 @@ use App\Entity\SeatAssignment;
 use App\Entity\SeatingPlan;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
+use App\Entity\StaffItemStation;
 use App\Entity\StaffMember;
 use App\Entity\StaffStation;
 use App\Entity\User;
+use App\Enum\EventRole;
 use App\Enum\NeedKind;
 use App\Enum\SectionColour;
 use App\Enum\StationKind;
@@ -91,9 +95,10 @@ final class MyNightTest extends ApiTestCase
         $night = $this->night($this->signedIn());
 
         self::assertSame(200, $this->statusCode(), Json\encode($night));
-        self::assertSame(['event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'rules'], Vec\keys($night));
+        self::assertSame(['event', 'endsAt', 'station', 'job', 'shift', 'later', 'lead', 'timing', 'doorsAt', 'tables', 'checksIn', 'dishes', 'rules'], Vec\keys($night));
         self::assertSame(['id' => $this->eventId, 'name' => 'Owambe', 'timeZone' => 'Africa/Lagos'], $night['event']);
         self::assertFalse($night['checksIn']);
+        self::assertFalse($night['dishes'], 'a section station dishes nothing');
         self::assertSame('2027-03-07T03:00:00+01:00', $night['endsAt']);
         self::assertSame(['Section B', 'Waiter'], [$night['station'], $night['job']]);
         self::assertSame(['job' => 'Waiter', 'startsAt' => '2027-03-06T17:00:00+01:00', 'endsAt' => '2027-03-07T01:00:00+01:00'], $night['shift']);
@@ -124,6 +129,48 @@ final class MyNightTest extends ApiTestCase
         self::em()->clear();
 
         self::assertTrue($this->night($user)['checksIn'] ?? null);
+    }
+
+    #[Test]
+    public function aStationThatDishesSaysSoOnlyToAnAccountThatOpensTheKitchenStations(): void
+    {
+        $user = $this->signedIn();
+        $event = $this->event();
+        $course = new MenuCourse($event, 'Main', null, 0);
+        $course->listOwnItems(['Jollof rice']);
+        $grill = new StaffStation($event, StationKind::Place, 'Grill', 'grill', null, 1);
+        $bar = new StaffStation($event, StationKind::Place, 'Bar', 'bar', null, 2);
+        $pass = self::em()->getRepository(StaffStation::class)->findOneBy(['event' => $event, 'kind' => StationKind::Pass]) ?? self::fail('every event has its Pass');
+        $grant = EventPerson::outside($event, $user, EventRole::CanWorkPass, null, null);
+        foreach ([$course, $grill, $bar, $grant, new StaffItemStation($course, 'jollof rice', $grill)] as $row) {
+            self::em()->persist($row);
+        }
+        self::em()->flush();
+        $this->putOn($grill);
+
+        self::assertTrue($this->night($user)['dishes'] ?? null, 'the Grill dishes the jollof');
+
+        $this->putOn($pass);
+        self::assertTrue($this->night($user)['dishes'] ?? null, 'the Pass is a kitchen station');
+
+        $this->putOn($bar);
+        self::assertFalse($this->night($user)['dishes'] ?? null, 'the Bar dishes nothing');
+
+        $this->putOn(null);
+        self::assertFalse($this->night($user)['dishes'] ?? null, 'on no station');
+
+        $this->putOn($grill);
+        $grant = self::em()->find(EventPerson::class, $grant->getId()) ?? self::fail('no grant');
+        $grant->setRole(EventRole::CanWorkFloor);
+        self::em()->flush();
+        self::assertFalse($this->night($user)['dishes'] ?? null, 'the floor alone does not open the stations');
+
+        self::em()->remove(self::em()->find(EventPerson::class, $grant->getId()) ?? self::fail('no grant'));
+        self::em()->flush();
+        self::assertFalse($this->night($user)['dishes'] ?? null, "a staff link's own level does not open them");
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'pass']);
+        self::assertTrue($this->night($user)['dishes'] ?? null, "a job's Can work the pass opens them through the staff link");
     }
 
     #[Test]
@@ -274,6 +321,12 @@ final class MyNightTest extends ApiTestCase
         $item = new ScheduleItem($this->event(), $title, new DateTimeImmutable($wall . ':00Z'), null);
         $item->describe($title, new DateTimeImmutable($wall . ':00Z'), null, null, null, null, null, false, $toGuests, null);
         self::em()->persist($item);
+        self::em()->flush();
+    }
+
+    private function putOn(?StaffStation $station): void
+    {
+        $this->entry($this->grace)->setStation(null === $station ? null : self::em()->find(StaffStation::class, $station->getId()));
         self::em()->flush();
     }
 

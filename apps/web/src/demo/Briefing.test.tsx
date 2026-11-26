@@ -54,6 +54,13 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(button('Preview as')).toBeTruthy();
   });
 
+  it('gives a finished event House rules, opening on the rules with no Edit', async () => {
+    await open('finished');
+    expect(button('Edit the rules')).toBeNull();
+    press('House rules');
+    expect(button('Edit the rules')).toBeNull();
+  });
+
   it('sends after the check, and the result counts who has no number', async () => {
     await open('checkEnough');
     const dialog = await screen.findByRole('dialog');

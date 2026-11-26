@@ -1,9 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  ApiError,
   type KeptServiceTap,
   type KitchenStationsRead,
-  type OrganisationEvent,
   type ServiceFlags,
   type ServiceRead,
   keepServiceTap,
@@ -13,6 +11,7 @@ import {
 } from '@soirely/api-client';
 import {
   type Freshness,
+  type ServiceFreshness,
   type ItemState,
   type ServicePhase,
   type TapRefusal,
@@ -40,16 +39,18 @@ import {
   notSentLine,
   openingStation,
   pickedKey,
+  refusedAccess,
   rememberPick,
   stationTime,
   stationView,
+  topicMessage,
   undoOpen,
   undoPlan,
+  undoWords,
 } from '../../kit/kitchenStation.ts';
 import { useServerNow } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
-import { useSignedIn } from '../../signedIn.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { Glyph } from '../NightCards.tsx';
 import { readOut } from '../ReadOut.tsx';
@@ -127,16 +128,17 @@ export function KitchenStationView({
   eventId,
   kind,
   onBack,
+  from = null,
 }: {
   eventId: string;
   kind: LayoutKind;
   onBack: () => void;
+  /** The way in it opened from (sc-95382): its ‹ names Overview or Your night. */
+  from?: 'overview' | 'night' | null;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { account } = useSignedIn();
   const now = useServerNow();
-  const [event, setEvent] = useState<OrganisationEvent | null>(null);
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
   const [picked, setPicked] = useState<string | null | undefined>(undefined);
   const [station, setStation] = useState<string | null>(null);
@@ -149,6 +151,7 @@ export function KitchenStationView({
   const [undoable, setUndoable] = useState<ReadonlyMap<string, StationMark>>(new Map());
   const [choosing, setChoosing] = useState<string | null>(null);
   const opener = useRef<ViewInstance | null>(null);
+  const freshRef = useRef<ServiceFreshness | null>(null);
   const yours = useRef<string | null | undefined>(undefined);
   const lastReads = useRef<readonly ServiceRead[]>([]);
   const hereBefore = useRef<Set<string> | null>(null);
@@ -175,12 +178,9 @@ export function KitchenStationView({
       setMine(new Map());
       return phase.current;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        const opened = await api.event(eventId).catch(() => null);
-        setLoaded({
-          state: 'refused',
-          access: opened?.permissions.includes('service.work') === true ? 'floor' : 'none',
-        });
+      const access = refusedAccess(error);
+      if (access != null) {
+        setLoaded({ state: 'refused', access });
         return phase.current;
       }
       setLoaded((was) => (was.state === 'ok' ? was : { state: 'failed' }));
@@ -198,10 +198,6 @@ export function KitchenStationView({
   }, [store, read]);
 
   useEffect(() => {
-    void api
-      .event(eventId)
-      .then(setEvent)
-      .catch(() => undefined);
     void AsyncStorage.getItem(pickedKey(eventId))
       .catch(() => null)
       .then((one) => setPicked(one));
@@ -210,6 +206,7 @@ export function KitchenStationView({
 
   useEffect(() => {
     const fresh = createServiceFreshness({ read });
+    freshRef.current = fresh;
     const unsubscribe = fresh.subscribe(setFreshness);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const soon = () => {
@@ -220,22 +217,13 @@ export function KitchenStationView({
     const live = followTopic(realtimeTopic('EventService', eventId), {
       subscribe: () => api.serviceSubscription(eventId),
       onData: (data) => {
-        let message: unknown = null;
-        try {
-          message = data == null ? null : JSON.parse(data);
-        } catch {
-          message = null;
-        }
-        const type =
-          typeof message === 'object' && message != null
-            ? (message as { type?: unknown; phase?: unknown })
-            : {};
-        if (type.type === 'heartbeat') {
+        const message = topicMessage(data);
+        if (message.kind === 'heartbeat') {
           fresh.message('heartbeat');
           return;
         }
-        if (type.type === 'phase' && typeof type.phase === 'string') {
-          fresh.message('phase', type.phase as ServicePhase);
+        if (message.kind === 'phase') {
+          fresh.message('phase', message.phase);
           return;
         }
         fresh.message('data');
@@ -252,8 +240,13 @@ export function KitchenStationView({
       live.stop();
       unsubscribe();
       fresh.stop();
+      freshRef.current = null;
     };
   }, [eventId, read, send]);
+
+  useEffect(() => {
+    freshRef.current?.waiting(kept.length);
+  }, [kept, freshness?.state]);
 
   useEffect(() => {
     if (loaded.state !== 'ok' || picked === undefined) return;
@@ -324,6 +317,7 @@ export function KitchenStationView({
         courseId: line.courseId,
         key: line.key,
         was: line.item.state,
+        to: state,
         tapKey: tap.key,
         at,
       }),
@@ -360,7 +354,7 @@ export function KitchenStationView({
       const tap = keptServiceTap(
         eventId,
         { kind: 'undo', subject: plan.subject },
-        {},
+        plan.expected,
         randomUUID(),
       );
       setKept(await keepServiceTap(store, tap));
@@ -376,18 +370,42 @@ export function KitchenStationView({
         tap.body.item === line.key,
     );
 
+  const backLabel =
+    from == null
+      ? t('station.back')
+      : from === 'overview'
+        ? t('eventNav.overview')
+        : t('myNight.title');
+
   const page = (children: ReactNode) => (
     <View style={[styles.page, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.body, phone && styles.bodyPhone]}>
         <Pressable
           onPress={onBack}
           accessibilityRole="button"
+          accessibilityLabel={backLabel}
           style={[styles.back, { minHeight: z.side }]}
           testID="station.back"
         >
-          <Text size={15} weight="semibold" style={styles.accent}>
-            {t('station.back')}
-          </Text>
+          {from == null ? (
+            <Text size={15} weight="semibold" style={styles.accent}>
+              {backLabel}
+            </Text>
+          ) : (
+            <View style={styles.backTo}>
+              <Text
+                size={15}
+                weight="semibold"
+                style={styles.accent}
+                importantForAccessibility="no"
+              >
+                ‹
+              </Text>
+              <Text size={15} weight="semibold" style={styles.accent}>
+                {backLabel}
+              </Text>
+            </View>
+          )}
         </Pressable>
         {children}
       </ScrollView>
@@ -431,7 +449,7 @@ export function KitchenStationView({
   if (loaded.state === 'loading' || picked === undefined) return page(null);
 
   const list = loaded.list;
-  const you = account?.name ?? '';
+  const you = list.you;
   const listed: ListedStation[] = list.stations.map((one) => ({
     id: one.id,
     name: one.name,
@@ -439,11 +457,7 @@ export function KitchenStationView({
       one.people.length === 0
         ? null
         : one.people
-            .map((person) =>
-              one.id === list.yours && person.name === you
-                ? t('station.you', { name: person.name })
-                : person.name,
-            )
+            .map((person) => (person.you ? t('station.you', { name: person.name }) : person.name))
             .join(', '),
   }));
   const strip = freshness == null ? null : <Strip freshness={freshness} time={time} />;
@@ -512,7 +526,7 @@ export function KitchenStationView({
               {t('station.headerLine', {
                 you,
                 course: view.latest ?? t('station.noCourseFired'),
-                event: event?.name ?? '',
+                event: list.event,
               })}
             </Text>
             {strip}
@@ -579,7 +593,7 @@ export function KitchenStationView({
             {t('station.listTitle')}
           </Text>
           <Text size={15} style={styles.secondary}>
-            {t('station.listLine', { event: event?.name ?? '' })}
+            {t('station.listLine', { event: list.event })}
           </Text>
           <StationList current={station} stations={listed} side={z.side} onPick={pick} />
           <Quiet
@@ -881,7 +895,7 @@ function Left({
                 {one != null && (
                   <View style={styles.undo}>
                     <Text size={14} style={[styles.secondary, styles.grow]}>
-                      {t(one.was === 'ready' ? 'station.undoPreparing' : 'station.undoReady', {
+                      {t(undoWords(one), {
                         time: time(one.at),
                         count: UNDO_MINUTES,
                       })}
@@ -966,6 +980,7 @@ const styles = StyleSheet.create({
   body: { padding: tokens.space3xl, gap: tokens.spaceXl, paddingBottom: 96 },
   bodyPhone: { padding: tokens.spaceXl, paddingBottom: 96 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
@@ -1082,7 +1097,7 @@ const styles = StyleSheet.create({
   headRow: { paddingVertical: tokens.spaceLg, gap: tokens.spaceXs },
   headTop: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  sheet: { gap: tokens.spaceMd, paddingBottom: tokens.spaceLg },
+  sheet: { flexShrink: 1, gap: tokens.spaceMd, padding: tokens.space3xl },
   refused: {
     padding: tokens.space3xl,
     gap: tokens.spaceSm,

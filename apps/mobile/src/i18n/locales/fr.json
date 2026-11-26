@@ -2396,6 +2396,7 @@
     "removeLine": "Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans {{organisation}}.",
     "removeLineOutside": "Cette personne perdra l’accès à sa prochaine action.",
     "keep": "Garder {{name}}",
+    "keepThem": "Ne pas retirer",
     "removeConfirm": "Retirer",
     "removing": "Retrait en cours…",
     "removeFailed": "Le retrait n’a pas abouti. Cette personne participe toujours à l’événement. Réessayez dans un instant.",
@@ -3335,7 +3336,14 @@
     "single": "L’accès à un événement précis reste possible.",
     "change": "Modifier votre adresse e-mail principale"
   },
+  "guest": {
+    "table": {
+      "row": "Rangée {{row}}, place {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
+    "noSeat": "Pas encore de place",
     "title": "Arrivées",
     "back": "Invités",
     "open": "Ouvrir l’accueil des invités",
@@ -3769,6 +3777,14 @@
     "beforeYouStart": "Avant de commencer"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Poste de cuisine · {{station}}",
     "titleSaid": "Poste de cuisine · {{station}}. Choisir un autre poste",
     "back": "Retour",
@@ -3782,7 +3798,7 @@
     "nobodyOn": "Personne au poste {{station}}",
     "openNow": "Ouvert maintenant",
     "changesNobody": "Ouvrir un poste ne change le poste de personne. Cela se fait dans Équipe.",
-    "picked": "Poste {{station}} ouvert sur cette tablette. Personne n’a changé de poste.",
+    "picked": "Poste {{station}} ouvert sur cet appareil. Personne n’a changé de poste.",
     "movedTo": "Vous êtes désormais au poste {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Aucun service envoyé",

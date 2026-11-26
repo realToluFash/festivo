@@ -963,9 +963,11 @@ export interface CheckInCompanion {
   fullName: string | null;
   state: CompanionState;
   arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
 }
 
-/** A guest on the door's list: names, replies and arrivals, never a contact, need or group. */
+/** A guest on the door's list: names, replies, arrivals and their own seat, never a contact, need, group or tablemate. */
 export interface CheckInGuest {
   id: string;
   fullName: string;
@@ -976,6 +978,8 @@ export interface CheckInGuest {
   code: string | null;
   walkIn: boolean;
   arrival: Arrival | null;
+  /** Their own taken seat (sc-60684); null for none. */
+  seat: GuestSeat | null;
   companions: CheckInCompanion[];
 }
 
@@ -983,6 +987,8 @@ export interface CheckIn {
   state: CheckInState;
   opensAt: string;
   timeZone: string;
+  /** Whether anybody on the list has a taken seat: until then the door shows no seat line, and after it a person with none reads "No seat yet" (sc-60684). */
+  seated: boolean;
   count: { attended: number; expected: number };
   guests: CheckInGuest[];
 }
@@ -997,7 +1003,13 @@ function asCheckInCompanion(value: unknown): CheckInCompanion | null {
 
   return id == null || state == null
     ? null
-    : { id, fullName: text(row.fullName), state, arrival: asArrival(row.arrival) };
+    : {
+        id,
+        fullName: text(row.fullName),
+        state,
+        arrival: asArrival(row.arrival),
+        seat: asGuestSeat(row.seat),
+      };
 }
 
 function asCheckInGuest(value: unknown): CheckInGuest | null {
@@ -1019,6 +1031,7 @@ function asCheckInGuest(value: unknown): CheckInGuest | null {
     code: text(row.code),
     walkIn: row.walkIn === true,
     arrival: asArrival(row.arrival),
+    seat: asGuestSeat(row.seat),
     companions: companions as CheckInCompanion[],
   };
 }
@@ -1045,6 +1058,7 @@ export function asCheckIn(value: unknown): CheckIn | null {
     state,
     opensAt,
     timeZone,
+    seated: body.seated === true,
     count: { attended, expected },
     guests: guests as CheckInGuest[],
   };

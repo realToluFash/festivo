@@ -44,6 +44,7 @@ const OUTSIDE_EDIT: OutsideEvent[] = [
     jobLabel: null,
     startsAt: EVENT.startsAt,
     endsAt: EVENT.endsAt,
+    timeZone: 'Europe/Lisbon',
   },
 ];
 

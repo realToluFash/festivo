@@ -594,7 +594,12 @@ export function CalendarBoard<S extends string, E extends CalEvent>({
           headingTakesFocus
           testID="calendar.daySheet"
         >
-          <SheetScrollView bounces={false} contentContainerStyle={styles.sheetBody}>
+          <SheetScrollView
+            holdsHeading
+            bounces={false}
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetBody}
+          >
             {shownDay}
           </SheetScrollView>
         </Sheet>
@@ -648,8 +653,8 @@ const styles = StyleSheet.create({
   sideRow: { flexDirection: 'row', gap: SIDE_GAP },
   first: { gap: 18, paddingTop: tokens.spacePillEnd },
   failed: { gap: tokens.spaceLg, paddingTop: tokens.spaceXxs },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
   sheetBody: {
-    paddingTop: tokens.spaceXl,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceSm,
   },

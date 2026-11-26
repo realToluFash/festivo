@@ -149,7 +149,9 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
           way={way ?? null}
           fresh={fresh}
           offline={stale != null}
-          band={<StaleBand stale={stale} className="offline-band ci-band" />}
+          band={
+            <StaleBand stale={stale} className="offline-band ci-band" timeZone={shown.timeZone} />
+          }
           titleRef={title}
           onRead={(checkIn) => {
             setFresh([]);
@@ -482,6 +484,7 @@ function Row({
     <li className={classes}>
       <div className="ci-who">
         <p className="ci-name">{row.name}</p>
+        {row.seat != null && <p className="ci-seat">{row.seat}</p>}
         <p className="ci-reply">
           <ReplyMark reply={row.reply} size={16} />
           {t(REPLY_KEY[row.reply])}

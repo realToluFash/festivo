@@ -11,9 +11,12 @@ use App\Entity\StaffItemStation;
 use App\Entity\StaffStation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\RealtimeTopic;
 use App\Enum\StationKind;
 use App\Locale\NameNormaliser;
 use App\Repository\EmailAddressRepository;
+use App\Repository\StaffMemberRepository;
+use App\Tests\Double\Messaging\RecordingHub;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -50,12 +53,31 @@ final class KitchenStationsTest extends ServiceTestCase
         $list = $this->stations();
 
         self::assertSame(['Pass', 'Cold room', 'Grill'], Vec\map($list['stations'], static fn (array $one): mixed => $one['name']), 'the Bar dishes nothing');
-        self::assertSame([[], [], ['Tunde Disher', 'Kemi Cook']], Vec\map($list['stations'], static fn (array $one): array => Vec\map(Type\vec(Type\shape(['name' => Type\string()], true))->coerce($one['people']), static fn (array $person): string => $person['name'])));
+        self::assertSame([[], [], [['Tunde Disher', true], ['Kemi Cook', false]]], Vec\map($list['stations'], static fn (array $one): array => Vec\map(Type\vec(Type\shape(['name' => Type\string(), 'you' => Type\bool()], true))->coerce($one['people']), static fn (array $person): array => [$person['name'], $person['you']])), 'the viewer is matched by the roster, not by name');
         self::assertSame($this->grill->getId()->toRfc4122(), $list['yours']);
         self::assertSame([], $list['fired'], 'nothing fired yet');
+        self::assertSame([$this->event->getName(), 'Tunde Disher'], [$list['event'], $list['you']], 'working the pass reads no event, so the list names it');
 
         $this->caller = $this->owner;
-        self::assertNull($this->stations()['yours'], 'the owner is on no station');
+        $owner = $this->stations();
+        self::assertNull($owner['yours'], 'the owner is on no station');
+        self::assertSame($this->owner->getName(), $owner['you'], 'off the roster, the account\'s name');
+    }
+
+    #[Test]
+    public function aChangeToWhoIsOnAStationIsToldOnTheServiceTopic(): void
+    {
+        $this->onStation('Tunde Disher', 'tunde@lagoslights.example', $this->grill);
+        $tunde = self::service(StaffMemberRepository::class)->findOnStation($this->grill)[0];
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+
+        $this->caller = $this->owner;
+        $this->as('PUT', '/api/events/' . $this->event->getId()->toRfc4122() . '/stations/people/' . $tunde->getId()->toRfc4122(), ['station' => $this->cold->getId()->toRfc4122()]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $update = $hub->lastOn(RealtimeTopic::EventService->for($this->event->getId()->toRfc4122())) ?? self::fail('nothing told on the service topic');
+        self::assertSame(['type' => 'stations'], Json\decode($update->getData()));
     }
 
     #[Test]
@@ -84,10 +106,11 @@ final class KitchenStationsTest extends ServiceTestCase
         $this->invite('bisi@lagoslights.example', 'can_work_floor');
         $this->invite('ola@lagoslights.example', 'can_view');
 
-        foreach ([$bisi, $ola] as $caller) {
+        foreach (['floor' => $bisi, 'none' => $ola] as $works => $caller) {
             $this->caller = $caller;
             $this->as('GET', $this->path());
             $this->assertRefused(403, ErrorCode::PermissionRequired->type());
+            self::assertSame('floor' === $works ? 'floor' : null, $this->last()['worksAt'] ?? null, 'the refusal says where the floor\'s level does work');
         }
     }
 
@@ -130,13 +153,13 @@ final class KitchenStationsTest extends ServiceTestCase
         self::assertNull($this->item('plantain')['preparingSince']);
     }
 
-    /** @return array{stations: list<array<array-key, mixed>>, yours: ?string, fired: list<mixed>} */
+    /** @return array{event: string, you: string, stations: list<array<array-key, mixed>>, yours: ?string, fired: list<mixed>} */
     private function stations(): array
     {
         $body = $this->as('GET', $this->path());
         self::assertSame(200, $this->statusCode(), Json\encode($body));
 
-        return Type\shape(['stations' => Type\vec(Type\mixed_dict()), 'yours' => Type\nullable(Type\string()), 'fired' => Type\vec(Type\mixed())])->coerce($body);
+        return Type\shape(['event' => Type\string(), 'you' => Type\string(), 'stations' => Type\vec(Type\mixed_dict()), 'yours' => Type\nullable(Type\string()), 'fired' => Type\vec(Type\mixed())])->coerce($body);
     }
 
     private function path(): string

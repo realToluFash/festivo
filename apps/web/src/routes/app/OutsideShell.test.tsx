@@ -16,6 +16,7 @@ const WEDDING: OutsideEvent = {
   jobLabel: 'Cloakroom',
   startsAt: '2030-11-14T16:00:00+01:00',
   endsAt: '2030-11-15T02:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const LAUNCH: OutsideEvent = {
@@ -26,6 +27,7 @@ const LAUNCH: OutsideEvent = {
   jobLabel: null,
   startsAt: '2030-12-05T16:00:00+01:00',
   endsAt: '2030-12-05T23:00:00+01:00',
+  timeZone: 'Europe/Lisbon',
 };
 
 const READS = ['events.read', 'guests.read', 'schedule.read', 'seating.read', 'people.read'];
@@ -212,6 +214,15 @@ describe('an account with no organisation, inside an event it holds (sc-71)', ()
     const router = app('/app/events/ev_1/budget');
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/app/events/ev_1'));
+  });
+
+  it('refuses the Roster at a level without the staff, in place of sending it to Overview', async () => {
+    outside([WEDDING, LAUNCH]);
+    answering();
+    const router = app('/app/events/ev_1/staff/roster');
+
+    expect(await screen.findByText('You cannot see this event’s staff.')).toBeDefined();
+    expect(router.state.location.pathname).toBe('/app/events/ev_1/staff/roster');
   });
 
   it('reaches Your account and Sign out from the person at the sidebar’s foot', async () => {

@@ -858,7 +858,7 @@ function PreviewPage({ one, night }: { one: StaffEntry; night: MyNight }) {
             <span className="myn-on-station">{headingOf(night)}</span>
           </p>
           <NightShift night={night} shift={night.shift} />
-          <NightLead lead={night.lead} />
+          <NightLead lead={night.lead && { ...night.lead, phone: null }} />
         </>
       )}
       {night.rules != null && (

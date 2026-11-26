@@ -16,7 +16,7 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** The event's kitchen stations in the walking order, the Pass first, each with who is on it; the viewer's own; and the courses fired so far (sc-4015). */
+/** The event's name and the viewer's, by the roster where they are on it, since working the pass reads no event; its kitchen stations in the walking order, the Pass first, each with who is on it; the viewer's own; and the courses fired so far (sc-4015). */
 final readonly class KitchenStationList
 {
     public function __construct(
@@ -33,15 +33,21 @@ final readonly class KitchenStationList
         $served = $this->servingStations->of($event);
         $places = Dict\from_entries(Vec\map($this->staffStationRepository->findPlaces($event), static fn (StaffStation $one): array => [$one->getId()->toRfc4122(), $one]));
         $people = Dict\map($places, $this->staffMemberRepository->findOnStation(...));
+        $isTheirs = fn (StaffMember $one): bool => $this->serviceTables->isTheirs($one, $viewer);
         $yours = null;
+        $entry = null;
 
         foreach ($served['stops'] as $stop) {
-            if (Iter\any($people[$stop['id']] ?? [], fn (StaffMember $entry): bool => $this->serviceTables->isTheirs($entry, $viewer))) {
+            $entry = Iter\search($people[$stop['id']] ?? [], $isTheirs);
+
+            if (null !== $entry) {
                 $yours = $stop['id'];
 
                 break;
             }
         }
+
+        $entry ??= Iter\search($this->staffMemberRepository->findOnEvent($event), $isTheirs);
 
         $firedAt = [];
 
@@ -50,10 +56,12 @@ final readonly class KitchenStationList
         }
 
         return [
+            'event' => $event->getName(),
+            'you' => $entry?->getFullName() ?? $viewer->getName(),
             'stations' => Vec\map($served['stops'], static fn (array $stop): array => [
                 'id' => $stop['id'],
                 'name' => $stop['name'],
-                'people' => Vec\map($people[$stop['id']] ?? [], static fn (StaffMember $one): array => ['id' => $one->getId()->toRfc4122(), 'name' => $one->getFullName()]),
+                'people' => Vec\map($people[$stop['id']] ?? [], static fn (StaffMember $one): array => ['id' => $one->getId()->toRfc4122(), 'name' => $one->getFullName(), 'you' => $one === $entry]),
             ]),
             'yours' => $yours,
             'fired' => Vec\filter_nulls(Vec\map($served['courses'], static function (array $one) use ($firedAt): ?array {

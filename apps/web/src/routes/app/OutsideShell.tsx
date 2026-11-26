@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { Navigate, Outlet, matchPath, useLocation, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { DeskPersonFace, DeskSidebar } from '../../components/DeskSidebar.tsx';
@@ -83,7 +83,14 @@ export function OutsideShell({
 
   const areas = outsideAreas(event.role);
 
-  if (!atAccount && !gone && (held == null || routed == null || !areas.includes(routed.area))) {
+  const refusedHere =
+    held != null && matchPath('/app/events/:eventId/staff/roster', pathname) != null;
+
+  if (
+    !atAccount &&
+    !gone &&
+    (held == null || routed == null || (!areas.includes(routed.area) && !refusedHere))
+  ) {
     return <Navigate replace to={eventAreaPath(event.id, 'overview')} />;
   }
 

@@ -1045,7 +1045,7 @@ const styles = StyleSheet.create({
   headRow: { paddingVertical: tokens.spaceLg, gap: tokens.spaceXs },
   headTop: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   counts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceLg },
-  sheet: { gap: tokens.spaceMd, paddingBottom: tokens.spaceLg },
+  sheet: { flexShrink: 1, gap: tokens.spaceMd, padding: tokens.space3xl },
   refused: {
     padding: tokens.space3xl,
     gap: tokens.spaceSm,

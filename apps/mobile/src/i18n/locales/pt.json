@@ -2396,6 +2396,7 @@
     "removeLine": "Esta pessoa perde o acesso a este evento na próxima ação que fizer. Continua em {{organisation}}.",
     "removeLineOutside": "Esta pessoa perde o acesso na próxima ação que fizer.",
     "keep": "Manter {{name}}",
+    "keepThem": "Não remover",
     "removeConfirm": "Remover",
     "removing": "A remover…",
     "removeFailed": "Não foi possível remover. Esta pessoa continua no evento. Tente novamente daqui a pouco.",
@@ -3335,7 +3336,14 @@
     "single": "O acesso a eventos específicos mantém-se.",
     "change": "Alterar o seu endereço de e-mail principal"
   },
+  "guest": {
+    "table": {
+      "row": "Fila {{row}}, lugar {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
+    "noSeat": "Ainda sem lugar",
     "title": "Entradas",
     "back": "Convidados",
     "open": "Abrir registo de entradas",
@@ -3769,6 +3777,14 @@
     "beforeYouStart": "Antes de começar"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Posto da cozinha · {{station}}",
     "titleSaid": "Posto da cozinha · {{station}}. Escolher outro posto",
     "back": "Voltar",
@@ -3782,7 +3798,7 @@
     "nobodyOn": "Ninguém no posto {{station}}",
     "openNow": "Aberto agora",
     "changesNobody": "Abrir um posto não muda o posto de ninguém. Isso faz-se em Equipa.",
-    "picked": "Abriu o posto {{station}} neste tablet. Ninguém mudou de posto.",
+    "picked": "Abriu o posto {{station}} neste dispositivo. Ninguém mudou de posto.",
     "movedTo": "Agora está no posto {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Nenhum serviço avançou",

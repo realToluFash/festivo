@@ -1,5 +1,5 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, countLine, replyDate } from '@soirely/domain';
+import { countLine } from '@soirely/domain';
 import { type BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -28,7 +28,7 @@ import {
 import { keepList, keepWaiting, keptList, keptWaiting } from '../kit/doorStore.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { cardTags } from '../kit/eventsList.ts';
-import { markOf } from '../kit/guestRows.ts';
+import { type Person, peopleOf, saidOf } from '../kit/scanPeople.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -50,15 +50,6 @@ const SIDE_PANEL = 420;
 const UP_PANEL = 540;
 
 type Shown = { kind: 'guest'; guestId: string; twice: boolean } | { kind: 'notOnList' };
-
-interface Person {
-  id: string;
-  name: string;
-  companion: boolean;
-  line: string;
-  mark: 'arrived' | ReturnType<typeof markOf>;
-  arrived: boolean;
-}
 
 /** The door's list on this device (sc-1301): kept for offline, read again and the waiting arrivals sent whenever the connection answers. */
 function useDoorList(eventId: string, by: string | null) {
@@ -193,63 +184,6 @@ function useDoorList(eventId: string, by: string | null) {
   };
 }
 
-function peopleOf(
-  t: ReturnType<typeof useTranslation>['t'],
-  read: Extract<ScanRead, { kind: 'guest' }>,
-  timeZone: string,
-  twice: boolean,
-): Person[] {
-  const arrivedLine = (arrival: { at: string; by: string | null }) =>
-    arrival.by == null
-      ? t('checkIn.arrivedAt', { time: clockOf(arrival.at) })
-      : t('checkIn.arrivedAtBy', { time: clockOf(arrival.at), name: arrival.by });
-  const { guest } = read;
-  const word = t(REPLY_KEY[guest.reply]);
-  const hostLine =
-    guest.arrival != null
-      ? twice
-        ? arrivedLine(guest.arrival)
-        : `${word} · ${arrivedLine(guest.arrival)}`
-      : read.notComingSince != null
-        ? t('guestList.replied', {
-            reply: word,
-            date: replyDate(read.notComingSince, timeZone, currentLocale()),
-          })
-        : word;
-  const names = guest.companions.map((one) => one.fullName);
-
-  return [
-    {
-      id: guest.id,
-      name: guest.fullName,
-      companion: false,
-      line: hostLine,
-      mark: guest.arrival != null ? 'arrived' : markOf(guest.reply),
-      arrived: guest.arrival != null,
-    },
-    ...guest.companions.map((one, at) => ({
-      id: one.id,
-      name: companionShown(t, guest.fullName, names, at),
-      companion: true,
-      line:
-        one.arrival != null
-          ? t('checkIn.scan.companionLine', { line: arrivedLine(one.arrival) })
-          : one.state === 'held'
-            ? t('checkIn.scan.companionHeld')
-            : t('checkIn.scan.companionLine', { line: t(REPLY_KEY[one.state]) }),
-      mark: one.arrival != null ? ('arrived' as const) : markOf(one.state),
-      arrived: one.arrival != null,
-    })),
-  ];
-}
-
-function saidOf(people: readonly Person[], twice: boolean, nothingNew: string): string {
-  return people
-    .map((one) => `${one.name}, ${one.line}`)
-    .concat(twice ? [nothingNew] : [])
-    .join('. ');
-}
-
 function NotListedMark() {
   return (
     <View
@@ -374,6 +308,16 @@ function Result({
                 <Text size={16} weight="semibold" style={styles.compName}>
                   {p.name}
                 </Text>
+                {p.seat != null && (
+                  <Text
+                    size={14}
+                    weight="semibold"
+                    style={styles.seat}
+                    testID={`scan.seat.${p.id}`}
+                  >
+                    {p.seat}
+                  </Text>
+                )}
                 <Text size={14} weight="medium" style={[styles.secondary, styles.figures]}>
                   {p.line}
                 </Text>
@@ -389,6 +333,16 @@ function Result({
                 <Text size={20} weight="bold" accessibilityRole="header" style={styles.name}>
                   {p.name}
                 </Text>
+                {p.seat != null && (
+                  <Text
+                    size={15}
+                    weight="semibold"
+                    style={styles.seat}
+                    testID={`scan.seat.${p.id}`}
+                  >
+                    {p.seat}
+                  </Text>
+                )}
                 <Text size={15} weight="medium" style={[styles.secondary, styles.figures]}>
                   {p.line}
                 </Text>
@@ -561,7 +515,9 @@ export function ScannerView({
         : rescanned(checkIn, shownScan.guestId);
   const people =
     read?.kind === 'guest' && shownScan?.kind === 'guest'
-      ? peopleOf(t, read, checkIn?.timeZone ?? 'UTC', shownScan.twice)
+      ? checkIn == null
+        ? null
+        : peopleOf(t, read, checkIn, shownScan.twice, currentLocale())
       : null;
 
   const onScanned = ({ data }: BarcodeScanningResult) => {
@@ -577,7 +533,7 @@ export function ScannerView({
       }
       const twice = found.arrived != null;
       setShownScan({ kind: 'guest', guestId: found.guest.id, twice });
-      tell(saidOf(peopleOf(t, found, checkIn.timeZone, twice), twice, nothingNew));
+      tell(saidOf(peopleOf(t, found, checkIn, twice, currentLocale()), twice, nothingNew));
     };
     if (!isCheckInCode(data)) {
       answer({ kind: 'notOnList' });
@@ -903,6 +859,7 @@ const styles = StyleSheet.create({
   hostLead: { width: 28, alignItems: 'center', alignSelf: 'flex-start', paddingTop: 2 },
   name: { lineHeight: 25, letterSpacing: 20 * -0.01, marginBottom: 4 },
   compName: { lineHeight: 16 * 1.3, marginBottom: 3 },
+  seat: { lineHeight: 15 * 1.35, marginBottom: 2 },
   indent: { paddingLeft: 40 },
   info: { flexDirection: 'row', alignItems: 'flex-start', gap: 7 },
   strip: {

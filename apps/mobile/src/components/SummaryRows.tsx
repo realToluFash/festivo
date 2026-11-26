@@ -25,6 +25,7 @@ import {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { addressRuns, atWithItsLastCharacter, isLoneAt } from '../kit/addressBreaks.ts';
+import { TapPressable } from './TapPressable.tsx';
 import { Text, type TextProps } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
 import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
@@ -478,7 +479,7 @@ export function Row({
     );
 
   return (
-    <Pressable
+    <TapPressable
       ref={ref}
       onPress={onPress}
       disabled={off}
@@ -496,7 +497,7 @@ export function Row({
       testID={testID}
     >
       {words}
-    </Pressable>
+    </TapPressable>
   );
 }
 
