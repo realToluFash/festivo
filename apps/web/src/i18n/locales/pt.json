@@ -6793,7 +6793,7 @@
     "noneLine": "O que escrever aparece na página de cada convidado. Cada convidado que responder abre aqui uma conversa.",
     "pickOne": "Escolha uma conversa ou escreva aos seus convidados aqui em baixo.",
     "pickOneClosed": "Escolha uma conversa.",
-    "onlyManage": "Só alguém que possa alterar Mensagens pode escrever aqui.",
+    "onlyManage": "Só alguém que possa alterar {{area}} pode escrever aqui.",
     "writeToGuests": "Escrever aos seus convidados",
     "followUp": "Seguimento",
     "writeFollowUp": "Escreva uma mensagem de seguimento",

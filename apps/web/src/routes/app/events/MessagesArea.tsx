@@ -583,7 +583,7 @@ function MiniComposer({
     return (
       <p className="mg-manage">
         <Glyph name="info" size={16} weight={2.2} />
-        <span>{t('eventMessages.onlyManage')}</span>
+        <span>{t('eventMessages.onlyManage', { area: t('eventNav.messages') })}</span>
       </p>
     );
   }
