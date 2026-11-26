@@ -13,6 +13,7 @@ import {
   EVENT_STATES,
   type EventTimeline,
   type EventsSearch,
+  type FloorRead,
   isEventType,
   type Milestone,
   MEMBERS_MOST,
@@ -4065,6 +4066,23 @@ export class ApiClient {
         headers: { 'Idempotency-Key': tap.key },
       },
     );
+  }
+
+  /** Floor (sc-4021): every course's read as the caller sees it; 403 `permission_required` at the pass's level alone. */
+  async serviceFloor(eventId: string): Promise<FloorRead> {
+    return this.get<FloorRead>(`/api/events/${encodeURIComponent(eventId)}/service/floor`);
+  }
+
+  /** A hub token for this event's service topic: each course's patches and the heartbeat (sc-4005, sc-4028). */
+  async serviceSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/service/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
   }
 
   /** A hub token for this event's schedule topic alone. */
