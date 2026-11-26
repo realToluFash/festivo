@@ -238,7 +238,8 @@
     "web:eventForm.creditStadia",
     "mobile:eventForm.creditStadia",
     "web:eventMessages.message",
-    "messagesCounts:guest_message.notice.from"
+    "messagesCounts:guest_message.notice.from",
+    "web:eventMessages.token.date"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",

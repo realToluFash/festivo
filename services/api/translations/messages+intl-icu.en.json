@@ -515,5 +515,5 @@
     "guest_message.event_draft": "This event is a draft. Make it live to write to your guests.",
     "guest_message.event_ended": "This event finished more than 30 days ago, so you can no longer write to its guests.",
     "validation.guest_greet_as_too_long": "{count, plural, one {Shorten Greet as to {count, number, ::group-auto} character or fewer.} other {Shorten Greet as to {count, number, ::group-auto} characters or fewer.}}",
-    "validation.guest_message_token_unknown": "Not sent. Part of the message can’t be filled in for each guest: remove it, then use Insert."
+    "validation.guest_message_token_unknown": "Not sent. Part of the message cannot be filled in for each guest: remove it, then use Insert."
 }
