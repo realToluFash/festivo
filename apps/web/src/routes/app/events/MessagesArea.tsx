@@ -303,9 +303,7 @@ function whenWords(at: string): string {
 }
 
 function audienceWords(message: Pick<GuestMessageSummary, 'audience'>, t: TFunction): string {
-  return message.audience === 'all'
-    ? t('eventMessages.toAll')
-    : t('eventMessages.toChosen', { audience: t('eventMessages.chooseGuests') });
+  return message.audience === 'all' ? t('eventMessages.toAll') : t('eventMessages.toChosen');
 }
 
 function titleOf(message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>): string {
@@ -378,8 +376,8 @@ function Rows({
     <>
       {sending.length > 0 && rows(sending)}
       {done.length > 0 && (
-        <section className="mg-section" aria-label={t('eventMessages.done')}>
-          <h2 className="mg-section-head">{t('eventMessages.done')}</h2>
+        <section className="mg-section" aria-label={t('eventMessages.doneHeading')}>
+          <h2 className="mg-section-head">{t('eventMessages.doneHeading')}</h2>
           {rows(done)}
         </section>
       )}
