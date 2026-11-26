@@ -89,12 +89,12 @@ export const LONG_NAME =
 const LISBON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: DOOR_ZONE });
 
 /** The locale's clock, with the weekday when the end falls on a later day than now, so an end after midnight never reads as tonight. */
-export function signedOutTime(until: string, now: string): string {
+export function signedOutTime(until: string, now: string, between = ' '): string {
   if (LISBON_DAY.format(new Date(until)) === LISBON_DAY.format(new Date(now)))
     return clockOf(until);
   const weekday = new Intl.DateTimeFormat(readerLocale(), { weekday: 'long', timeZone: DOOR_ZONE });
 
-  return `${weekday.format(new Date(until))} ${clockOf(until)}`;
+  return `${weekday.format(new Date(until))}${between}${clockOf(until)}`;
 }
 
 /** The job beside the event's name: the shift's, or the label of the code a door-code holder came in on, as "You're in for…" shows it. */

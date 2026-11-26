@@ -59,7 +59,7 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
     async () => {
       await open('/demo/my-night?state=early');
 
-      expect(screen.getByText('Opens at 19:00 when doors open')).toBeDefined();
+      expect(screen.getByText('Shown when doors open, at 19:00')).toBeDefined();
       const opens = screen.getByRole('button', { name: 'Clock in opens at 16:00' });
       expect((opens as HTMLButtonElement).disabled).toBe(true);
     },
@@ -99,7 +99,7 @@ describe('the staff member’s page in the web demo (sc-3915)', () => {
 
     expect(screen.getByText('This is your night as it was at 19:32.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(screen.queryByText('Couldn’t reach Soirely')).toBeNull();
+    expect(screen.queryByText('Cannot reach Soirely')).toBeNull();
   });
 
   it('keeps Sign out in the app and drops the browser’s line', SLOW, async () => {

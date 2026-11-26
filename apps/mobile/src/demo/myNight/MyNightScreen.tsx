@@ -27,7 +27,7 @@ import {
   myNightStateOf,
   nightOf,
   rowLineOf,
-  signedOutAt,
+  signedInUntil,
 } from './myNightModel.ts';
 import { InsideEvent } from '../doorCode/Inside.tsx';
 import { ClockCard } from '../shiftClock/ShiftClockScreen.tsx';
@@ -407,7 +407,7 @@ function You({
         </Text>
         {!night.inApp && (
           <Text size={17} style={styles.secondary} testID="myNight.alone">
-            {MN.yoursAlone(signedOutAt(night))}
+            {MN.yoursAlone(signedInUntil(night))}
           </Text>
         )}
         {told != null && (

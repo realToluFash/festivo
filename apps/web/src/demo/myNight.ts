@@ -66,9 +66,9 @@ export const MN = {
   staff: 'Staff',
   guests: 'Guests',
   yourTables: 'Your tables',
-  opensAt: (time: string) => `Opens at ${time} when doors open`,
+  opensAt: (time: string) => `Shown when doors open, at ${time}`,
   updated: (station: string) => `Updated: you’re now on ${station}`,
-  staleTitle: 'Couldn’t reach Soirely',
+  staleTitle: 'Cannot reach Soirely',
   staleBody: (time: string) => `This is your night as it was at ${time}.`,
   tryAgain: 'Try again',
   loading: 'Loading your night…',
@@ -78,8 +78,8 @@ export const MN = {
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
-  signedOutAt: (time: string) =>
-    `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this device.`,
+  yoursAlone: (time: string) =>
+    `This link is yours alone. You are signed in until ${time}. Nothing stays on this device.`,
 } as const;
 
 export function guestCount(table: Table): string {
@@ -91,7 +91,7 @@ export function headingOf(night: Night): string {
 }
 
 export function yoursAlone(night: Night): string {
-  return MN.signedOutAt(signedOutTime(night.linkEndsAt, night.now));
+  return MN.yoursAlone(signedOutTime(night.linkEndsAt, night.now, ', '));
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });
@@ -214,7 +214,7 @@ export function fresh(night: Night): Night {
 
 const named: Record<MyNightState, string> = {
   night: 'Tonight, 19:40: doors open, tables open',
-  before_doors: 'Before doors, 16:20: Opens at 19:00 when doors open',
+  before_doors: 'Before doors, 16:20: Shown when doors open, at 19:00',
   early: 'Early, 15:30: Clock in opens at 16:00',
   two_shifts: 'Two shifts: Later: Bartender from 23:00',
   no_station: 'No station: Tonight you’re on Waiter, the floor lead, no tables',
@@ -222,7 +222,7 @@ const named: Record<MyNightState, string> = {
   no_lead_none: 'No lead at all: No lead named yet',
   updated: 'Updated: you’re now on Section C, announced',
   sparse: 'Sparse: no rules, no timing, no dietary needs, no phone for the lead',
-  stale: 'Couldn’t reach Soirely: your night as it was at 19:32',
+  stale: 'Cannot reach Soirely: your night as it was at 19:32',
   loading: 'Loading',
   app: 'In the app: no link line, Sign out stays',
 };

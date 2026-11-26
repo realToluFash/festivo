@@ -66,15 +66,15 @@ export const MN = {
   staff: 'Staff',
   guests: 'Guests',
   yourTables: 'Your tables',
-  opensAt: (time: string) => `Opens at ${time} when doors open`,
+  opensAt: (time: string) => `Shown when doors open, at ${time}`,
   updated: (station: string) => `Updated: you’re now on ${station}`,
-  staleTitle: 'Couldn’t reach Soirely',
+  staleTitle: 'Cannot reach Soirely',
   staleBody: (time: string) => `This is your night as it was at ${time}.`,
   tryAgain: 'Try again',
   loading: 'Loading your night…',
   signedInAs: (name: string) => `Signed in as ${name}`,
   yoursAlone: (when: string) =>
-    `This link is yours alone. You’ll be signed out at ${when}, and nothing stays on this device.`,
+    `This link is yours alone. You are signed in until ${when}. Nothing stays on this device.`,
   signOut: 'Sign out',
   signOutLands:
     'Sign out returns to Confirm it’s you with “Signed out.” (sc-4235). That page is in the web’s demo, /demo/staff-sign-in?state=signed-out.',
@@ -93,8 +93,8 @@ export function headingOf(night: Night): string {
   return night.station ?? night.job;
 }
 
-export function signedOutAt(night: Night): string {
-  return `${night.linkEndsDay} ${night.linkEnds}`;
+export function signedInUntil(night: Night): string {
+  return `${night.linkEndsDay}, ${night.linkEnds}`;
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });
@@ -218,7 +218,7 @@ export function fresh(night: Night): Night {
 
 const LEAD: Record<MyNightState, readonly [string, string]> = {
   night: ['Tonight, 19:40', 'Doors open, tables open; the demo moves Grace to Section C'],
-  before_doors: ['Before doors, 16:20', 'Opens at 19:00 when doors open'],
+  before_doors: ['Before doors, 16:20', 'Shown when doors open, at 19:00'],
   early: ['Early, 15:30', 'Clock in opens at 16:00; tables held'],
   two_shifts: ['Two shifts', 'Later: Bartender from 23:00'],
   no_station: ['No station', 'Tonight you’re on Waiter, the floor lead, no tables'],
@@ -226,7 +226,7 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   no_lead_none: ['No lead at all', 'No lead named yet, no Call'],
   updated: ['Updated', 'Updated: you’re now on Section C; the heading, lead and tables change'],
   sparse: ['Sparse', 'No rules, no timing, no dietary needs, a lead with no phone'],
-  stale: ['Couldn’t reach Soirely', 'Your night as it was at 19:32, with Try again'],
+  stale: ['Cannot reach Soirely', 'Your night as it was at 19:32, with Try again'],
   loading: ['Loading', 'Loading your night…'],
   app: ['In the app', 'Opened from the event’s Overview: ‹ Overview; no link line, Sign out stays'],
   app_event: [
