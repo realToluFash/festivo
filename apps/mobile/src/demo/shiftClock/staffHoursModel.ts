@@ -56,17 +56,17 @@ export function sampleRows(): HoursRow[] {
   ];
 }
 
-/** Femi was taken off the roster while clocked in, so his place opened and Ngozi took it; his times stay under his name. */
+/** Femi was taken off the roster while clocked in, so his place opened and Ngozi took it; his times stay under his name, after the shift's current people. */
 export function removedRows(): HoursRow[] {
   return sampleRows().flatMap((one) =>
     one.id === 'kelechi'
       ? [
           one,
+          row('ngozi', 'Ngozi Eze', 'Runner', h(18), h(25), h(20, 40), h(25, 12)),
           {
             ...row('femi', 'Femi Adeyemi', 'Runner', h(18), h(25), h(17, 48), null),
             removed: true,
           },
-          row('ngozi', 'Ngozi Eze', 'Runner', h(18), h(25), h(20, 40), h(25, 12)),
         ]
       : [one],
   );

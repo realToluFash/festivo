@@ -128,11 +128,11 @@ describe('the staff list’s hours', () => {
     expect(stillOnOf(on, false)).toBe(false);
   });
 
-  it('keeps a removed person on the shift they worked, beside whoever took their place', () => {
+  it('keeps a removed person on the shift they worked, after its current people', () => {
     const rows = hoursStart('removed').rows;
     const ids = rows.map((one) => one.id);
     const femi = rows.find((one) => one.id === 'femi') as HoursRow;
-    expect(ids.indexOf('ngozi')).toBe(ids.indexOf('femi') + 1);
+    expect(ids.slice(ids.indexOf('amina'))).toEqual(['amina', 'kelechi', 'ngozi', 'femi']);
     expect(femi).toMatchObject({ removed: true, job: 'Runner' });
     expect(clockedWords(femi)).toBe('In 17:48 · No clock-out');
     expect(markWords(femi)).toBe('Not clocked out · Counted to 01:00, the scheduled end');
