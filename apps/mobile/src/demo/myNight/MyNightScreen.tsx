@@ -20,6 +20,7 @@ import {
   type Night,
   type Table,
   MN,
+  checkInOf,
   fresh,
   guestCount,
   headingOf,
@@ -95,6 +96,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   const you = (
     <You night={night} onSignOut={() => setTold(MN.signOutLands)} inBar={wide} told={told} />
   );
+  const checkIn = checkInOf(night);
   const open = openOf(night);
 
   const left = (
@@ -114,13 +116,27 @@ export function MyNightScreen({ first }: { first: Night }) {
         </Text>
       </View>
       <Clock night={night} />
-      {open != null && (
+      {checkIn != null && (
         <PrimaryButton
-          label={open.label}
-          onPress={() => router.push(open.href as Href)}
-          testID="myNight.openStation"
+          label={checkIn.label}
+          onPress={() => router.push(checkIn.href as Href)}
+          testID="myNight.checkIn"
         />
       )}
+      {open != null &&
+        (open.primary ? (
+          <PrimaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={open.label}
+            onPress={() => router.push(open.href as Href)}
+            testID="myNight.openStation"
+          />
+        ))}
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}

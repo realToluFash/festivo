@@ -95,7 +95,7 @@ interface OrganiserSample {
   where: Where;
   opens: string;
   /** Your night's own sample, for a member with a shift. */
-  night: 'kitchen_pass';
+  night: 'kitchen_checkin';
 }
 
 const RONKE: OrganiserSample = {
@@ -104,7 +104,7 @@ const RONKE: OrganiserSample = {
   now: new Date('2026-11-05T20:40:00Z'),
   where: { own: 'Pass', lastPick: null, course: 'Mains' },
   opens: 'pass',
-  night: 'kitchen_pass',
+  night: 'kitchen_checkin',
 };
 
 const ORGANISER: Record<OrganiserState, OrganiserSample> = {

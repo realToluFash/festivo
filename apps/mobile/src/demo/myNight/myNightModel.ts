@@ -18,6 +18,7 @@ export const MY_NIGHT_STATES = [
   'app_event',
   'kitchen',
   'kitchen_pass',
+  'kitchen_checkin',
   'kitchen_floor',
   'kitchen_dishes_none',
   'kitchen_browser',
@@ -58,6 +59,8 @@ export type Night = {
   access: Access;
   /** Where Open {station} goes, by the station's own sample. */
   opens: string | null;
+  /** The job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
 };
 
 export const MN = {
@@ -96,6 +99,7 @@ export const MN = {
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
   demoKitchenMoveButton: 'Move Gbenga to the Grill',
+  checkIn: 'Check-in',
 } as const;
 
 export function guestCount(table: Table): string {
@@ -170,6 +174,7 @@ const NIGHT: Night = {
   kind: { kind: 'section', name: 'Section B' },
   access: 'Can work the floor',
   opens: null,
+  checksIn: false,
 };
 
 const RONKE: Lead = { name: 'Ronke Alade', phone: '+2348034567890', floor: false };
@@ -249,6 +254,19 @@ export function nightOf(state: MyNightState): Night {
         kind: { kind: 'kitchen', name: 'Pass', dishes: 2 },
         opens: '/demo/kitchen-station?from=night&on=pass',
       };
+    case 'kitchen_checkin':
+      return {
+        ...KITCHEN,
+        state,
+        name: 'Ronke Alade',
+        station: 'Pass',
+        job: 'Pass lead',
+        lead: { name: 'Bimpe Ojo', phone: '+2348091112223', floor: true },
+        kind: { kind: 'kitchen', name: 'Pass', dishes: 2 },
+        access: 'Lead',
+        opens: '/demo/kitchen-station?from=night&on=pass',
+        checksIn: true,
+      };
     case 'kitchen_floor':
       return { ...KITCHEN, state, access: 'Can work the floor' };
     case 'kitchen_dishes_none':
@@ -281,11 +299,18 @@ export function movedToGrill(night: Night): Night {
   };
 }
 
-/** Open {station} above Your shift, or nothing (sc-95382). */
-export function openOf(night: Night): { label: string; href: string } | null {
+/** Check-in above Your shift for a job that checks in, as sc-28230 draws it; null shows no button. */
+export function checkInOf(night: Night): { label: string; href: string } | null {
+  return night.checksIn ? { label: MN.checkIn, href: '/demo/guests/check-in?state=door' } : null;
+}
+
+/** Open {station} above Your shift, under Check-in as the secondary button when the job checks in too (sc-95382). */
+export function openOf(night: Night): { label: string; href: string; primary: boolean } | null {
   const label = openButton(night.kind, night.access, night.inApp);
 
-  return label == null || night.opens == null ? null : { label, href: night.opens };
+  return label == null || night.opens == null
+    ? null
+    : { label, href: night.opens, primary: checkInOf(night) == null };
 }
 
 export function fresh(night: Night): Night {
@@ -314,6 +339,10 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
     'Open Fryer above Your shift opens Kitchen station, ‹ Your night; the demo moves Gbenga to the Grill',
   ],
   kitchen_pass: ['On the Pass', 'Open Pass: the Pass dishes, so it opens as a station'],
+  kitchen_checkin: [
+    'On the Pass, with Check-in',
+    'A Lead whose job checks in: Check-in first and primary, Open Pass the secondary button under it',
+  ],
   kitchen_floor: ['Can work the floor on a kitchen station', 'No button: the station refuses it'],
   kitchen_dishes_none: ['A station that dishes nothing', 'Dessert table dishes no item: no button'],
   kitchen_browser: [

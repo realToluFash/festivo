@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { movedToGrill, nightOf, openOf } from '../myNight/myNightModel.ts';
+import { checkInOf, movedToGrill, nightOf, openOf } from '../myNight/myNightModel.ts';
 import { type Access, KS, openButton, opensStations, rowLine, rowShows } from './wayIn.ts';
 import { KITCHEN_WAY_IN_BOARDS, WAY_IN_STATES, overviewOf } from './wayInBoards.ts';
 import { stationIdOf, wayBackOf } from './wayInRoute.ts';
@@ -144,6 +144,20 @@ describe('Open {station} on Your night (sc-95382)', () => {
     expect(openOf(nightOf('kitchen_pass'))?.label).toBe('Open Pass');
   });
 
+  it('is the one primary button alone, and the secondary under Check-in when the job checks in', () => {
+    expect([checkInOf(nightOf('kitchen_pass')), openOf(nightOf('kitchen_pass'))?.primary]).toEqual([
+      null,
+      true,
+    ]);
+    expect([
+      checkInOf(nightOf('kitchen_checkin'))?.label,
+      openOf(nightOf('kitchen_checkin')),
+    ]).toEqual([
+      'Check-in',
+      { label: 'Open Pass', href: '/demo/kitchen-station?from=night&on=pass', primary: false },
+    ]);
+  });
+
   it('leaves Your night as it is for a section, no station, the floor, nothing dished, and a browser', () => {
     for (const state of [
       'app',
@@ -160,6 +174,7 @@ describe('Open {station} on Your night (sc-95382)', () => {
     expect(openOf(movedToGrill(nightOf('kitchen')))).toEqual({
       label: 'Open Grill',
       href: '/demo/kitchen-station?from=night&on=grill',
+      primary: true,
     });
   });
 });
