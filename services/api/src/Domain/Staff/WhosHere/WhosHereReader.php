@@ -47,7 +47,6 @@ final readonly class WhosHereReader
     ) {
     }
 
-    /** Where the lists put one person now: the same decision `read` makes for each of them. */
     public function place(Event $event, StaffMember $person): ?WhosHerePlace
     {
         return self::placeOf($person, $this->staffShiftRepository->findOnEvent($event), $this->attendances($event), $this->clock->now());
@@ -165,7 +164,7 @@ final readonly class WhosHereReader
         return ['id' => $station->getId()->toRfc4122(), 'name' => $station->getName()];
     }
 
-    /** @return array<string, ShiftAttendance> by shift and person */
+    /** @return array<string, mixed> */
     private function attendances(Event $event): array
     {
         return Dict\reindex(
