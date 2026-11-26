@@ -58,7 +58,7 @@ import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './Messag
 import { Preview } from './Preview.tsx';
 import { previewOf, previewOffOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
-import { SW, pausedWaits, sayNobody } from './ScheduledSave.ts';
+import { SW, pausedWaits, sayNobody, scheduledEnd } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
 import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
@@ -802,6 +802,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   const cancelled = draft.step === 'cancelled';
   const paused = draft.paused === true && !cancelled && draft.outcome == null;
   const refused = talk.m.refusedSave;
+  const end = scheduledEnd(draft, readsOnly(talk.m));
   const shown = draft.was ?? { subject: draft.subject, body: draft.body };
   const bubble = (
     <HostBubble
@@ -816,7 +817,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   let rest: ReactNode = null;
   let foot: ReactNode;
 
-  if (draft.was != null && draft.step === 'preview')
+  if (end === 'preview')
     return {
       title: messageName(draft),
       bare: true,
@@ -832,7 +833,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       align: 'start',
       foot: <PreviewBar onEdit={() => dispatch({ type: 'edit' })} onSave={talk.onSaveScheduled} />,
     };
-  if (cancelled)
+  if (end === 'cancelled')
     rest = (
       <SystemLine
         text={say.cancelledBy(draft.cancelledBy ?? READER, draft.cancelledAt ?? '')}
@@ -840,11 +841,10 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         glyph="x"
       />
     );
-  else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
-  else if (draft.outcome === 'nobody')
-    rest = <SystemLine text={sayNobody.line(at.time)} glyph="x" />;
-  else if (draft.outcome === 'sent') rest = null;
-  else if (draft.was != null) {
+  else if (end === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
+  else if (end === 'nobody') rest = <SystemLine text={sayNobody.line(at.time)} glyph="x" />;
+  else if (end === 'sent') rest = null;
+  else if (end === 'editing') {
     const editingLine = (
       <Text size={13.5} weight="medium" style={[styles.goes, !talk.wide && styles.goesOverFoot]}>
         {paused ? SW.editingPaused : say.editing(day, at.time)}
@@ -883,7 +883,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         />
       </>
     );
-  } else if (draft.step === 'check')
+  } else if (end === 'check')
     rest = (
       <Held>
         <CheckCard
@@ -900,7 +900,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         />
       </Held>
     );
-  else if (draft.asking)
+  else if (end === 'asking')
     rest = (
       <CancelAsk
         subject={messageName(draft)}
@@ -909,7 +909,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         onCancel={talk.onCancelScheduled}
       />
     );
-  else if (readsOnly(talk.m))
+  else if (end === 'reads')
     rest = paused ? (
       <PausedLine text={pausedWaits()} />
     ) : (
@@ -917,7 +917,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
         {say.goesAt(say.inZone(day, at.time, W.londonTime))}
       </Text>
     );
-  else
+  else if (end === 'actions')
     rest = (
       <>
         {paused ? (

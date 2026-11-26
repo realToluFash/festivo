@@ -1,3 +1,4 @@
+import type { Draft } from './MessagesModel.ts';
 import { CANCELLED_AT, SCHEDULED_BODY, SCHEDULE_AT } from './MessagesSample.ts';
 
 /** sc-3963's refused save, in the web demo's words (AC editing bullet; l10n #28795; pm 7 Nov). */
@@ -26,6 +27,33 @@ export const sayNobody = {
   row: (time: string) => `Nobody matched when it was due, ${time} · ${SW.sentNothing}`,
   line: (time: string) => `At ${time} no guest matched its conditions, so it sent nothing.`,
 };
+
+/** What a scheduled message shows under its bubble (sc-3963). Only `actions` offers Edit, Send now and Cancel…, and only `editing` and `preview` have a composer. */
+export type ScheduledEnd =
+  | 'preview'
+  | 'cancelled'
+  | 'tooLate'
+  | 'nobody'
+  | 'sent'
+  | 'editing'
+  | 'check'
+  | 'asking'
+  | 'reads'
+  | 'actions';
+
+export function scheduledEnd(
+  draft: Pick<Draft, 'step' | 'outcome' | 'was' | 'asking'>,
+  reading: boolean,
+): ScheduledEnd {
+  if (draft.was != null && draft.step === 'preview') return 'preview';
+  if (draft.step === 'cancelled') return 'cancelled';
+  if (draft.outcome != null) return draft.outcome;
+  if (draft.was != null) return 'editing';
+  if (draft.step === 'check') return 'check';
+  if (draft.asking) return 'asking';
+
+  return reading ? 'reads' : 'actions';
+}
 
 export const saySaved = {
   notSavedChanged: (name: string) => `Not saved. ${name} changed this message.`,

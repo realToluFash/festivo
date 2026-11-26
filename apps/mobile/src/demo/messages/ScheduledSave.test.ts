@@ -17,7 +17,8 @@ import {
 } from './MessagesModel.ts';
 import { DAYS, SCHEDULED, SCHEDULED_BODY } from './MessagesSample.ts';
 import { W } from './MessagesWords.ts';
-import { SW, pausedWaits, refusalLine, sayNobody } from './ScheduledSave.ts';
+import { readsOnly } from './NoticeStates.ts';
+import { SW, pausedWaits, refusalLine, sayNobody, scheduledEnd } from './ScheduledSave.ts';
 
 const REFUSED = ['editConflict', 'editSent', 'editCancelled', 'editTooLate'];
 const TYPED = SCHEDULED_BODY.replace('17:30', '17:15');
@@ -220,14 +221,41 @@ describe('sc-3963’s nobodyDue: a message that matched nobody when it went', ()
     expect(where(m)).toBe('done');
   });
 
-  it('says why it sent nothing, greyed, with no actions and no Who it reached', () => {
-    const talk = source('Conversation.tsx');
+  it('says why it sent nothing, greyed, with no Edit, Send now, Cancel… or composer', () => {
+    const m = opened('nobodyDue');
+    const end = m.draft == null ? null : scheduledEnd(m.draft, readsOnly(m));
 
     expect(sayNobody.line('09:00')).toBe(
       'At 09:00 no guest matched its conditions, so it sent nothing.',
     );
-    expect(talk).toContain("if (draft.outcome === 'nobody') return [];");
-    expect(talk).toContain('<SystemLine text={sayNobody.line(at.time)} glyph="x" />');
-    expect(talk).toContain("draft.outcome === 'tooLate' || draft.outcome === 'nobody'");
+    expect(end).toBe('nobody');
+    expect(['actions', 'editing', 'preview', 'reads']).not.toContain(end);
+    expect(
+      m.draft == null
+        ? null
+        : scheduledEnd({ step: m.draft.step, was: m.draft.was, asking: m.draft.asking }, false),
+    ).toBe('actions');
+
+    const parts = source('Conversation.tsx');
+    const body = parts.slice(
+      parts.indexOf('function scheduledParts('),
+      parts.indexOf('function draftParts('),
+    );
+    const branch = (from: string, to: string) =>
+      body.slice(body.indexOf(`end === '${from}'`), body.indexOf(`end === '${to}'`));
+    const actions = body.slice(
+      body.indexOf("else if (end === 'actions')"),
+      body.indexOf('\n  return {'),
+    );
+    const nobody = branch('nobody', 'sent');
+
+    expect(nobody).toContain('<SystemLine text={sayNobody.line(at.time)} glyph="x" />');
+    for (const id of ['messages.sched.edit', 'messages.sched.now', 'messages.sched.cancel']) {
+      expect(actions).toContain(`testID="${id}"`);
+      expect(body.split(`testID="${id}"`)).toHaveLength(2);
+    }
+    expect(branch('editing', 'check')).toContain('foot = (');
+    expect(body.split('foot = (')).toHaveLength(2);
+    expect(body).toContain("draft.outcome === 'tooLate' || draft.outcome === 'nobody'");
   });
 });
