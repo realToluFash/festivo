@@ -7,6 +7,8 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\ServiceFiring;
+use App\Enum\EventStatus;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -38,5 +40,21 @@ final class ServiceFiringRepository extends ServiceEntityRepository
     public function findOneAt(MenuCourse $course, string $tableKey): ?ServiceFiring
     {
         return $this->findOneBy(['course' => $course, 'tableKey' => $tableKey]);
+    }
+
+    /** @return list<Event> the events with a course fired that are not yet over by `now`; a Draft or a paused one is among them */
+    public function findEventsFiredBy(DateTimeImmutable $now): array
+    {
+        /** @var list<Event> */
+        return $this->getEntityManager()->createQueryBuilder()
+            ->select('event')
+            ->from(Event::class, 'event')
+            ->where('event.status <> :ended')
+            ->andWhere('event.endsAt > :now')
+            ->andWhere('EXISTS (SELECT firing.id FROM ' . ServiceFiring::class . ' firing WHERE firing.event = event)')
+            ->setParameter('ended', EventStatus::Ended->value)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
     }
 }

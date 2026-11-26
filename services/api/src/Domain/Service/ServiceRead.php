@@ -26,6 +26,7 @@ use App\Repository\ServicePlateRepository;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 /** @phpstan-type Viewer array{grants: Grants, user: User} */
 final readonly class ServiceRead
@@ -39,6 +40,8 @@ final readonly class ServiceRead
         private ServiceItemRepository $serviceItemRepository,
         private ServicePlateRepository $servicePlateRepository,
         private TrayRead $trayRead,
+        private ServicePhases $servicePhases,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -108,6 +111,8 @@ final readonly class ServiceRead
             'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId)),
             'sections' => ServiceCounts::bySection($tableReads),
             'counts' => ServiceCounts::of(Vec\filter($plates, static fn (ServicePlate $plate): bool => $plate->isOrder()), $states),
+            // Not in a patch: it moves with the clock and the event, and a device learns it from the heartbeat and its reads (sc-4028).
+            ...(null === $viewer ? [] : ['phase' => $this->servicePhases->of($event, $this->clock->now())->value]),
         ];
     }
 

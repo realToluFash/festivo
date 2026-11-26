@@ -161,6 +161,7 @@ final class OrganisationExportTest extends ApiTestCase
         'service_items' => "the night's service as it ran: its working state, like the run of show's presses",
         'service_plates' => "the night's service as it ran: its working state, like the run of show's presses",
         'service_steps' => "the night's service as it ran: its working state, like the run of show's presses",
+        'service_taps' => 'a write\'s key and first answer, kept 24 hours so a retried tap changes nothing',
         'service_trays' => "the night's service as it ran: its working state, like the run of show's presses",
         'scheduled_notifications' => "notifications: one person's, or deliveries",
         'schema_probes' => "Soirely's own records",
