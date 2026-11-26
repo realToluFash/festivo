@@ -438,7 +438,7 @@ describe('A link signed in as its own account (sc-4235)', () => {
     ).toBeTruthy();
     expect(asked).toContain('POST /api/staff-links/night {"token":"tok_ada"}');
     expect(screen.getByText('Joana & Rui’s wedding')).toBeTruthy();
-    expect(screen.getByText(/^Tonight only · ends .*02:00$/u)).toBeTruthy();
+    expect(screen.getByText('Tonight only · ends 02:00')).toBeTruthy();
     expect(screen.getByText('17:00 to 01:00')).toBeTruthy();
     expect(screen.getByText('Ends on Sunday at 01:00')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Call Dayo Okafor' }).getAttribute('href')).toBe(
@@ -602,7 +602,7 @@ describe('A link signed in as its own account (sc-4235)', () => {
     expect(await screen.findByRole('heading', { name: 'Joana & Rui’s wedding' })).toBeTruthy();
     expect(
       screen.getByText(
-        /^Clocking out signs you out of this browser\. Otherwise you will be signed out at .*04:00\.$/u,
+        'Clocking out signs you out of this browser. Otherwise you will be signed out at Saturday 04:00.',
       ),
     ).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Your shift' })).toBeNull();
