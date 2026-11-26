@@ -88,6 +88,7 @@
     "timedOutBody_many": "{{organisation}} encerra a sessão após {{count, number}} de dias sem utilização. Inicie sessão novamente para prosseguir.",
     "providerOnlyTitle": "{{organisation}}: início de sessão só com Google ou Apple",
     "providerOnlyBody": "O início de sessão com palavra-passe está desativado em {{organisation}}. Em vez disso, utilize {{providers}}.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "providerOnlyFootnote": "Uma regra definida por {{organisation}}: o início de sessão com palavra-passe está desativado para todos os membros.",
     "anotherAccount": "Iniciar sessão com outra conta"
   },

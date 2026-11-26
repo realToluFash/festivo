@@ -1,4 +1,4 @@
-import { type Provider, ProviderCancelled } from '@soirely/api-client';
+import { type Account, type Provider, ProviderCancelled } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { PROVIDER_NAMES, signInWithProvider } from '../providerSignIn.ts';
-import { nextAfterSignIn } from '../challenge.ts';
+import { carryOnAfter, nextAfterSignIn } from '../challenge.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { drawnSize } from '../layout/textSize.ts';
@@ -33,12 +33,18 @@ function failedElsewhere(provider: string): void {
   router.replace(`/welcome?providerFailed=${provider}`);
 }
 
+/** Said on welcome over the screen, which Back returns to, as a door code's refusal is (sc-94849). */
+export function failedOver(provider: string): void {
+  router.push(`/welcome?providerFailed=${provider}`);
+}
+
 /** Built to each owner's published specification; the marks are copied, not redrawn. */
 export function ProviderButtons({
   onFailed = failedElsewhere,
   only,
   alone = false,
   before,
+  onSignedIn,
 }: {
   onFailed?: ((provider: string) => void) | undefined;
   only?: readonly string[] | undefined;
@@ -46,6 +52,8 @@ export function ProviderButtons({
   alone?: boolean | undefined;
   /** Done before the provider opens, as a join link holds itself to come back to. */
   before?: (() => Promise<void>) | undefined;
+  /** Signed in and bound for the app, the screen that offered the buttons carries on as the account instead, as a door code's refusal does (sc-94849). */
+  onSignedIn?: ((account: Account) => Promise<void>) | undefined;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -55,7 +63,15 @@ export function ProviderButtons({
 
     try {
       await before?.();
-      router.replace(await nextAfterSignIn(await signInWithProvider(provider), { alone }));
+      const outcome = await signInWithProvider(provider);
+      const next = await nextAfterSignIn(outcome, { alone, carryOn: onSignedIn ?? null });
+      if (onSignedIn == null) {
+        router.replace(next);
+        return;
+      }
+      const after = carryOnAfter(outcome, next);
+      if (after.kind === 'here') await onSignedIn(after.account);
+      else router.push(after.to);
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);

@@ -1,4 +1,4 @@
-import { formatTimeOfDay, listFormat, lockLiftsAt } from '@soirely/domain';
+import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
@@ -9,7 +9,8 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
-import { currentLocale, dateLocale } from '../../i18n/index.ts';
+import { providerList } from '../../providerList.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
@@ -323,15 +324,4 @@ function refusalFrom(error: unknown, typed: string): Status {
   }
 
   return { kind: 'failed' };
-}
-
-const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
-
-/** "Google or Apple", in the reader's language; the names are the providers' own. */
-function providerList(providers: string[]): string {
-  const names = (providers.length > 0 ? providers : ['google', 'apple']).map(
-    (provider) => PROVIDER_NAMES[provider] ?? provider,
-  );
-
-  return listFormat(currentLocale(), { type: 'disjunction' }).format(names);
 }

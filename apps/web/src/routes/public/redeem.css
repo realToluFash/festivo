@@ -273,6 +273,18 @@ a.rd-primary {
   gap: var(--spaceSm);
 }
 
+/* The provider-only refusal's buttons (sc-94849): Google's and Apple's own, the column's width, 48 high as the column's primary. */
+.rd-providers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.rd-providers > .rd-provider {
+  width: 100%;
+  min-height: var(--sizeHitPhonePrimary);
+}
+
 .rd-ways {
   display: flex;
   flex-direction: column;

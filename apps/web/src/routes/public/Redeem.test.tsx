@@ -391,6 +391,48 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect(screen.getByLabelText('Mobile number').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('refuses a Google-or-Apple-only member after the right code, forgetting the name (sc-94849)', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/oauth_only',
+            title: 'No',
+            status: 403,
+            organisation: 'Ìrè Events',
+            email: 'bisi@ire.events',
+            providers: ['apple', 'google'],
+          },
+          403,
+        ),
+    });
+
+    await sendTo('Bisi');
+    await typeCode();
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Ìrè Events signs in with Google or Apple only',
+      }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(/^A code sent to your phone cannot sign you in to this account\./u),
+    ).toBeDefined();
+    const buttons = screen.getAllByRole('button', { name: /^Continue with/u });
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Continue with Google',
+      'Continue with Apple',
+    ]);
+    expect(screen.queryByLabelText('Mobile number')).toBeNull();
+    expect(screen.queryByDisplayValue('Bisi')).toBeNull();
+  });
+
   it('asks two-factor before the grant, on the code screen', async () => {
     signedOut();
     at('/d/K7P2QX9M', {
