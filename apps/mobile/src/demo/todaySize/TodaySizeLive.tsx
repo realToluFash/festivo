@@ -40,6 +40,7 @@ export function LiveBanner({
   top,
   arrived = null,
   phone = false,
+  foot = 0,
 }: {
   name: string;
   place: string | null;
@@ -48,6 +49,8 @@ export function LiveBanner({
   /** Guests arrived, drawn as the figure: on the iPad from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022); on the phone over Open the event, as main places it. */
   arrived?: ArrivedCount | null;
   phone?: boolean;
+  /** Room added under the phone's words, where a sheet rises over the cover's foot (sc-95084). */
+  foot?: number;
 }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -207,7 +210,9 @@ export function LiveBanner({
         <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
         <View style={styles.phoneTop}>{top}</View>
         <View style={styles.grow} />
-        <View style={styles.phoneNow}>{block}</View>
+        <View style={[styles.phoneNow, foot > 0 && { marginBottom: tokens.space4xl + foot }]}>
+          {block}
+        </View>
       </View>
     );
 
