@@ -143,6 +143,7 @@ final readonly class ServiceRead
             $row = $rows[$item['key']] ?? null;
 
             return [
+                'id' => $row?->getId()->toRfc4122(),
                 'key' => $item['key'],
                 'name' => $item['name'],
                 'station' => $stops[$item['stop']] ?? null,
@@ -150,6 +151,7 @@ final readonly class ServiceRead
                 'readyIn' => $row?->getReadyIn(),
                 'changedAt' => $row?->getChangedAt()?->format(\DATE_RFC3339_EXTENDED),
                 'changedBy' => $row?->getChangedBy()?->getId()->toRfc4122(),
+                'preparingSince' => $row?->getPreparingSince()?->format(\DATE_RFC3339_EXTENDED),
             ];
         });
     }
@@ -182,6 +184,7 @@ final readonly class ServiceRead
             'isOrder' => $plate->isOrder(),
             'stage' => $plate->getStage()->value,
             'items' => Vec\map($plate->getItems(), static fn (array $item): array => [...$item, 'state' => ($states[$item['key']] ?? ItemState::Ready)->value]),
+            'variant' => $plate->getVariant(),
             'toFollow' => $plate->getToFollow(),
             'trayId' => $plate->getTray()?->getId()->toRfc4122(),
             'steps' => $plate->getSteps(),

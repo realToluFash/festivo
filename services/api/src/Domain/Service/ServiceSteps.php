@@ -191,7 +191,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             }
 
             $before = ServiceUndo::before(plates: [$plate]);
-            $plate->mark($itemKey, $mark);
+            $plate->mark($itemKey, $mark, $now);
             $this->serviceUndo->recorded($tray->getEvent(), 'mark', $before, ServiceUndo::none(), $by, $now);
         });
     }

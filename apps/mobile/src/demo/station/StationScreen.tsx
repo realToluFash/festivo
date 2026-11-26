@@ -642,6 +642,7 @@ function Left({
                     <View style={styles.segments}>
                       <Segments
                         item={l.item}
+                        id={l.item}
                         preparing={prep || s.choosing === l.item}
                         side={z.side}
                         onReady={() => setS(prep ? markReady(s, l.item) : choose(s, null))}

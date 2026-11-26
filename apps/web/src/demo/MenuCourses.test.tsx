@@ -215,6 +215,24 @@ describe('the event Menu (sc-3902)', () => {
     },
   );
 
+  it(
+    'sits in the outsider’s shell from outside: no organisation, Search, Events, Budget or bell',
+    SLOW,
+    async () => {
+      await menu('menuOutside');
+
+      const side = screen.getByRole('navigation', { name: 'Adaeze & Tunde’s wedding' });
+      expect(within(side).getByRole('button', { name: 'Menu' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+      expect(within(side).queryByRole('button', { name: /Budget/ })).toBeNull();
+      expect(within(side).queryByRole('link', { name: /Events/ })).toBeNull();
+      expect(screen.queryByRole('searchbox')).toBeNull();
+      expect(screen.queryByRole('navigation', { name: CW.crumb })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Notifications/ })).toBeNull();
+    },
+  );
+
   it('refuses a blank new dish from outside as it does a member’s', SLOW, async () => {
     await menu('addDishOutsideBlank');
 
