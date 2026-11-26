@@ -1,4 +1,4 @@
-import { tokens } from '../../theme/tokens.ts';
+import { tokens } from '../theme/tokens.ts';
 
 /** The mark's slot at the row's start, as ReplyMark's MarkSlot draws it. */
 const MARK_SLOT = 28;

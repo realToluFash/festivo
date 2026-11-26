@@ -25,9 +25,11 @@ import { currentLocale } from '../i18n/index.ts';
 import { beforeOpenTags, clockOf } from '../kit/checkIn.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { cardTags } from '../kit/eventsList.ts';
+import { arrivedUnder } from '../kit/doorRow.ts';
 import { markOf } from '../kit/guestRows.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
+import { wordsIn } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AlertLine } from './AlertLine.tsx';
 import { Amber, AmberChoices } from './Amber.tsx';
@@ -42,6 +44,7 @@ import { Pill } from './SettingsParts.tsx';
 import { Sheet } from './Sheet.tsx';
 import { PageToast, Row, RowList, TextAction } from './Summary.tsx';
 import { Text } from './Text.tsx';
+import { MeasuredWords } from './Title.tsx';
 
 /** The door's list is read again this often while the live channel is quiet, as the night's is. */
 const READ_AGAIN_MS = 10_000;
@@ -128,6 +131,9 @@ export function CheckInView({
   const [failed, setFailed] = useState<ReadonlySet<string>>(new Set());
   const [said, setSaid] = useState<string | null>(null);
   const [walkIn, setWalkIn] = useState<WalkIn | null>(null);
+  const [rowWidths, setRowWidths] = useState({ guest: 0, companion: 0 });
+  const [buttonWidth, setButtonWidth] = useState(0);
+  const [wordWidths, setWordWidths] = useState<Readonly<Record<string, number>>>({});
   const search = useRef<TextInputInstance>(null);
   const opener = useRef<ViewInstance>(null);
   const loaded = door.load.kind === 'loaded';
@@ -318,22 +324,49 @@ export function CheckInView({
       )}
     </View>
   ) : (
-    <RowList
-      items={rows.map((row) => ({
-        key: row.id,
-        inset: row.companion ? 80 : 40,
-        row: (
-          <DoorLine
-            row={row}
-            open={open}
-            big={kind === 'phone'}
-            failed={failed.has(row.id)}
-            onArrive={() => arrive(row)}
-            onUndo={() => undo(row)}
-          />
-        ),
-      }))}
-    />
+    <>
+      <MeasuredWords
+        words={wordsIn(rows.map((row) => row.name))}
+        size={16}
+        weight="semibold"
+        onWidth={(word, drawn) =>
+          setWordWidths((was) => (was[word] === drawn ? was : { ...was, [word]: drawn }))
+        }
+      />
+      <RowList
+        items={rows.map((row) => {
+          const side = row.companion ? 'companion' : 'guest';
+
+          return {
+            key: row.id,
+            inset: row.companion ? 80 : 40,
+            row: (
+              <DoorLine
+                row={row}
+                open={open}
+                big={kind === 'phone'}
+                failed={failed.has(row.id)}
+                under={
+                  row.arrival == null &&
+                  open &&
+                  arrivedUnder({
+                    row: rowWidths[side],
+                    button: buttonWidth,
+                    widest: Math.max(0, ...wordsIn([row.name]).map((one) => wordWidths[one] ?? 0)),
+                  })
+                }
+                onRowWidth={(drawn) =>
+                  setRowWidths((was) => (was[side] === drawn ? was : { ...was, [side]: drawn }))
+                }
+                onButtonWidth={setButtonWidth}
+                onArrive={() => arrive(row)}
+                onUndo={() => undo(row)}
+              />
+            ),
+          };
+        })}
+      />
+    </>
   );
 
   const form =
@@ -452,6 +485,9 @@ function DoorLine({
   open,
   big,
   failed,
+  under,
+  onRowWidth,
+  onButtonWidth,
   onArrive,
   onUndo,
 }: {
@@ -459,6 +495,10 @@ function DoorLine({
   open: boolean;
   big: boolean;
   failed: boolean;
+  /** Arrived under the name's lines, because the name's widest word has no room beside it (sc-96359). */
+  under: boolean;
+  onRowWidth: (width: number) => void;
+  onButtonWidth: (width: number) => void;
   onArrive: () => void;
   onUndo: () => void;
 }) {
@@ -473,6 +513,16 @@ function DoorLine({
             ? t('checkIn.arrivedAt', { time: clockOf(arrival.at) })
             : t('checkIn.arrivedAtBy', { time: clockOf(arrival.at), name: arrival.by })
         }`;
+  const arrivedButton = (
+    <ArrivedButton
+      name={row.name}
+      big={big}
+      under={under}
+      onWidth={onButtonWidth}
+      onPress={onArrive}
+      id={row.id}
+    />
+  );
   const trail = !open ? null : arrival != null ? (
     <TextAction
       label={t('checkIn.undo')}
@@ -481,45 +531,56 @@ function DoorLine({
       accessibilityLabel={t('checkIn.undoFor', { name: row.name })}
       testID={`checkIn.undo.${row.id}`}
     />
-  ) : (
-    <ArrivedButton name={row.name} big={big} onPress={onArrive} id={row.id} />
+  ) : under ? null : (
+    arrivedButton
   );
 
   return (
     <View style={row.companion && styles.indent}>
-      <Row
-        title={row.name}
-        line={row.seat == null ? line : undefined}
-        below={
-          row.seat == null ? undefined : (
-            <>
-              <Text
-                size={14}
-                weight="semibold"
-                accessible={false}
-                style={styles.seat}
-                testID={`checkIn.seat.${row.id}`}
-              >
-                {row.seat}
-              </Text>
-              <Text size={14} weight="medium" accessible={false} style={styles.below}>
-                {line}
-              </Text>
-            </>
-          )
-        }
-        lead={
-          <MarkSlot
-            kind={
-              arrival != null ? (row.reply === 'walkIn' ? 'walkin' : 'arrived') : markOf(row.reply)
-            }
-          />
-        }
-        trail={trail}
-        pad={10}
-        accessibilityLabel={[row.name, row.seat, line].filter((one) => one != null).join('. ')}
-        testID={`checkIn.row.${row.id}`}
-      />
+      <View onLayout={(event) => onRowWidth(event.nativeEvent.layout.width)}>
+        <Row
+          title={row.name}
+          line={row.seat == null ? line : undefined}
+          below={
+            row.seat == null ? (
+              under ? (
+                arrivedButton
+              ) : undefined
+            ) : (
+              <>
+                <Text
+                  size={14}
+                  weight="semibold"
+                  accessible={false}
+                  style={styles.seat}
+                  testID={`checkIn.seat.${row.id}`}
+                >
+                  {row.seat}
+                </Text>
+                <Text size={14} weight="medium" accessible={false} style={styles.below}>
+                  {line}
+                </Text>
+                {under && arrivedButton}
+              </>
+            )
+          }
+          lead={
+            <MarkSlot
+              kind={
+                arrival != null
+                  ? row.reply === 'walkIn'
+                    ? 'walkin'
+                    : 'arrived'
+                  : markOf(row.reply)
+              }
+            />
+          }
+          trail={trail}
+          pad={10}
+          accessibilityLabel={[row.name, row.seat, line].filter((one) => one != null).join('. ')}
+          testID={`checkIn.row.${row.id}`}
+        />
+      </View>
       {failed && (
         <View style={styles.failedAt}>
           <AlertLine text={t('checkIn.notRecorded')} small />
@@ -533,11 +594,15 @@ export function ArrivedButton({
   name,
   id,
   big,
+  under = false,
+  onWidth,
   onPress,
 }: {
   name: string;
   id: string;
   big: boolean;
+  under?: boolean;
+  onWidth?: (width: number) => void;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
@@ -546,9 +611,11 @@ export function ArrivedButton({
   return (
     <Pressable
       onPress={onPress}
+      onLayout={onWidth && ((event) => onWidth(event.nativeEvent.layout.width))}
       style={({ pressed }) => [
         styles.arrived,
         { minHeight: height, borderRadius: height / 2 },
+        under && styles.arrivedUnder,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
@@ -698,6 +765,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     backgroundColor: tokens.colorAccentTint,
   },
+  arrivedUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceSm },
   panes: { flex: 1, flexDirection: 'row', backgroundColor: tokens.colorCard },
   doorPane: { flex: 1, borderRightWidth: 1, borderRightColor: tokens.colorBorder },
   doorPaneNarrow: { flex: 0, width: 520 },
