@@ -167,6 +167,9 @@ export const STATE_NAMES = [
   'cover_selected',
   'cover_none_selected',
   'cover_nobody_here',
+  'cover_nobody_to_move',
+  'not_here_empty',
+  'here_empty',
   'station_lead',
   'row_add_mobile_manage',
   'row_add_mobile_walk_on_lead',
@@ -307,6 +310,26 @@ export function seed(k: WhStateName): WhState {
       });
       s.sheet = { kind: 'cover', target: 4, chosen: null, tried: false };
       s.opener = 'cover|4';
+      break;
+    case 'cover_nobody_to_move':
+      list.forEach((p) => {
+        p.here = p.id === LEAD.id;
+      });
+      s.sheet = { kind: 'cover', target: 11, chosen: null, tried: false };
+      s.opener = 'cover|11';
+      break;
+    case 'not_here_empty':
+      list.forEach((p) => {
+        if (!p.here && p.start <= s.clock + 15) {
+          p.here = true;
+          p.inAt = Math.min(p.start, s.clock) - 5;
+        }
+      });
+      break;
+    case 'here_empty':
+      list.forEach((p) => {
+        p.here = false;
+      });
       break;
     case 'row_add_mobile_walk_on_lead':
     case 'row_add_mobile_station_lead':

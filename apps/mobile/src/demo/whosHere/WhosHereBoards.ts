@@ -8,6 +8,9 @@ const BOARDS: Record<WhStateName, readonly [string, string]> = {
   cover_selected: ['Cover · Grace chosen', 'Move Grace Okon to Section B'],
   cover_none_selected: ['Cover · moved with nobody chosen', 'Choose who covers Section B.'],
   cover_nobody_here: ['Cover · nobody here', 'Nobody has clocked in yet.'],
+  cover_nobody_to_move: ['Cover · nobody to move', 'Everyone here is already on Section A.'],
+  not_here_empty: ['Not here yet · empty', 'Everyone due by 18:20 has clocked in.'],
+  here_empty: ['Here · empty', 'Nobody has clocked in yet.'],
   station_lead: ['A station lead', 'Their station only: Call and the door, no Cover'],
   row_add_mobile_manage: ['Add a mobile number · staff.manage', 'On any row with no number'],
   row_add_mobile_walk_on_lead: [

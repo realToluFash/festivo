@@ -235,6 +235,29 @@ describe('Cover', () => {
   });
 });
 
+describe('the empty states', () => {
+  it('empties Not here yet once everyone due has clocked in, and keeps Here', () => {
+    const s = seed('not_here_empty');
+
+    expect(notHere(s)).toEqual([]);
+    expect(here(s).length).toBeGreaterThan(0);
+  });
+
+  it('empties Here when nobody has clocked in', () => {
+    const s = seed('here_empty');
+
+    expect(here(s)).toEqual([]);
+    expect(notHere(s).length).toBeGreaterThan(0);
+  });
+
+  it('has nobody to move when everyone here is on that station', () => {
+    const s = seed('cover_nobody_to_move');
+
+    expect(coverCandidates(s, 'Section A · T1–T6')).toEqual([]);
+    expect(names(here(s))).toEqual(['Grace Okon']);
+  });
+});
+
 describe('the states', () => {
   it('opens every state by name, and an unknown one as populated', () => {
     for (const k of STATE_NAMES) expect(whStateOf(k)).toBe(k);
