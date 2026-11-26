@@ -6,6 +6,7 @@ namespace App\Domain\Staff\Briefing;
 
 use App\Audit\Auditor;
 use App\Domain\Staff\Link\StaffLinks;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Entity\User;
@@ -29,6 +30,7 @@ final readonly class Briefings
         private BriefingPrinter $briefingPrinter,
         private EntityManagerInterface $entityManager,
         private StaffRosterPublisher $staffRosterPublisher,
+        private ShiftNotices $shiftNotices,
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
@@ -70,6 +72,7 @@ final readonly class Briefings
             $read = StaffBriefStatus::Read === $entry->getBriefStatus() && $print === $entry->getBriefPrint();
             $entry->setBrief($read ? StaffBriefStatus::Read : StaffBriefStatus::Sent, $print);
             $entry->setBriefCopy($by, $now, true);
+            $this->shiftNotices->briefed($entry);
 
             if (!$entry->getLinkStatus()->delivered()) {
                 $entry->linkMoved(StaffLinkStatus::Sent, $by, $now);

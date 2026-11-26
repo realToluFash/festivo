@@ -106,6 +106,14 @@ class StaffMember
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $briefCopyMarked = false;
 
+    /**
+     * What the person was last told of their shifts, job, date and venue, by their briefing or their last change notice (sc-4333); null before the briefing went.
+     *
+     * @var ?array<string, mixed>
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $told = null;
+
     public function __construct(Event $event, string $fullName, ?string $mobile, ?string $email, ?User $member)
     {
         $this->id = Uuid::v7();
@@ -279,5 +287,17 @@ class StaffMember
         $this->briefCopyBy = $by;
         $this->briefCopyAt = $at;
         $this->briefCopyMarked = $marked;
+    }
+
+    /** @return ?array<string, mixed> */
+    public function getTold(): ?array
+    {
+        return $this->told;
+    }
+
+    /** @param ?array<string, mixed> $told */
+    public function told(?array $told): void
+    {
+        $this->told = $told;
     }
 }
