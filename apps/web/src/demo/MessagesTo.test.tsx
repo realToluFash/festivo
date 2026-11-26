@@ -387,7 +387,7 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       'saveTaken',
       'élodie’s friends',
       '16 of 60 characters',
-      'There’s already a saved audience called Elodie’s friends.',
+      'There is already a saved audience called Elodie’s friends.',
     ],
     [
       'saveFull',
@@ -514,7 +514,7 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       fireEvent.change(again, { target: { value: 'No Reply Yet' } });
       fireEvent.click(within(popover()).getByRole('button', { name: 'Save' }));
       expect(within(popover()).getByRole('alert').textContent).toBe(
-        'There’s already a saved audience called No reply yet.',
+        'There is already a saved audience called No reply yet.',
       );
       fireEvent.change(again, { target: { value: '   ' } });
       fireEvent.click(within(popover()).getByRole('button', { name: 'Save' }));
@@ -627,7 +627,7 @@ describe('Who gets it: To with its conditions, at a desk (sc-3957)', () => {
       fireEvent.change(field, { target: { value: 'FAMILY WHO HAVEN’T REPLIED' } });
       fireEvent.click(within(to).getByRole('button', { name: 'Save audience' }));
       expect(within(to).getByRole('alert').textContent).toBe(
-        'There’s already a saved audience called Family who haven’t replied.',
+        'There is already a saved audience called Family who haven’t replied.',
       );
       fireEvent.change(field, { target: { value: 'Reminder: Family, no reply' } });
       fireEvent.click(within(to).getByRole('button', { name: 'Save audience' }));

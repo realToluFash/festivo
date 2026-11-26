@@ -634,7 +634,7 @@ describe('Who gets it (sc-3957)', () => {
 
     fireEvent.change(field, { target: { value: 'AUDIENCE 3' } });
     saveIt();
-    expect(said()).toBe('There’s already a saved audience called Audience 3.');
+    expect(said()).toBe('There is already a saved audience called Audience 3.');
 
     fireEvent.change(field, { target: { value: 'Reminder' } });
     saveIt();
@@ -657,7 +657,7 @@ describe('Who gets it (sc-3957)', () => {
     });
     saveIt();
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'There’s already a saved audience called Reminder.',
+      'There is already a saved audience called Reminder.',
     );
   });
 
