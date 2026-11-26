@@ -54,6 +54,7 @@ import {
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
+import { KS } from '../station/wayIn.ts';
 import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
 
 const AREA_GLYPH: Record<InsideArea, GlyphName> = { ...EVENT_GLYPH, checkIn: 'tick' };
@@ -95,6 +96,12 @@ export interface NightRow {
   onOpen: () => void;
 }
 
+/** Someone whose access opens the kitchen stations, on the event's day (sc-95382): under Your night, or first. */
+export interface StationRow {
+  line: string;
+  onOpen: () => void;
+}
+
 export interface MoreGroup {
   key: string;
   title: string;
@@ -124,6 +131,7 @@ export function InsideEvent({
   shown = doorEvent(code),
   groups = [],
   night,
+  station,
   onAt,
   onSignOut,
   onAccount,
@@ -136,6 +144,7 @@ export function InsideEvent({
   shown?: Shown;
   groups?: readonly MoreGroup[];
   night?: NightRow;
+  station?: StationRow;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -167,6 +176,7 @@ export function InsideEvent({
         locale={locale}
         you={!side}
         night={night}
+        station={station}
         onPeople={() => onAt('people')}
         onSignOut={onSignOut}
         tell={tell}
@@ -365,6 +375,7 @@ function Overview({
   locale,
   you,
   night,
+  station,
   onPeople,
   onSignOut,
   tell,
@@ -376,6 +387,7 @@ function Overview({
   /** Signed in as and Sign out at the foot; on its side the person button holds them. */
   you: boolean;
   night: NightRow | undefined;
+  station: StationRow | undefined;
   onPeople: () => void;
   onSignOut: () => void;
   tell: (words: string) => void;
@@ -431,6 +443,25 @@ function Overview({
                       opens
                       onPress={night.onOpen}
                       testID="inside.night"
+                    />
+                  ),
+                },
+              ]),
+          ...(station == null
+            ? []
+            : [
+                {
+                  key: 'station',
+                  inset: 40,
+                  row: (
+                    <Row
+                      title={KS.title}
+                      line={station.line}
+                      lead={<LineIcon name="tablet" />}
+                      opens
+                      accessibilityLabel={KS.label(station.line)}
+                      onPress={station.onOpen}
+                      testID="inside.station"
                     />
                   ),
                 },

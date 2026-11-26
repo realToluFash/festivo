@@ -13,6 +13,7 @@ import { tokens } from '../../theme/tokens.ts';
 import { goBack } from '../DemoScreen.tsx';
 import { Glyph } from '../queue/QueueParts.tsx';
 import { OFFLINE_GLYPH } from '../team/TeamParts.tsx';
+import { type StationOpening, openedOn, stationIdOf, wayBackOf } from './wayInRoute.ts';
 import {
   CONFIRM_LEAD,
   EMPTY,
@@ -77,11 +78,20 @@ import {
   Times,
 } from './StationParts.tsx';
 
+/** ?from= for the way in it opened from (sc-95382): its ‹ names Overview or Your night; ?on= for the station it opens on. */
 export function StationRoute() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; from?: string; on?: string }>();
   const state = stationStateOf(params.state);
+  const back = wayBackOf(params.from);
 
-  return <KitchenStation key={state} start={state} />;
+  return (
+    <KitchenStation
+      key={`${state}:${params.from ?? ''}:${params.on ?? ''}`}
+      start={state}
+      on={stationIdOf(params.on)}
+      back={back}
+    />
+  );
 }
 
 interface Sizes {
@@ -92,10 +102,18 @@ interface Sizes {
   item: number;
 }
 
-function KitchenStation({ start }: { start: StationStateName }) {
+function KitchenStation({
+  start,
+  on,
+  back,
+}: {
+  start: StationStateName;
+  on: StationOpening | null;
+  back: string | null;
+}) {
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
-  const [s, setS] = useState<StationState>(() => seed(start));
+  const [s, setS] = useState<StationState>(() => openedOn(seed(start), on));
   const opener = useRef<ViewInstance | null>(null);
   const runOutOpener = useRef<ViewInstance | null>(null);
   const [asked, setAsked] = useState<string | null>(null);
@@ -124,9 +142,25 @@ function KitchenStation({ start }: { start: StationStateName }) {
           style={[styles.back, { minHeight: side }]}
           testID="station.back"
         >
-          <Text size={15} weight="semibold" style={styles.accent}>
-            Back
-          </Text>
+          {back == null ? (
+            <Text size={15} weight="semibold" style={styles.accent}>
+              Back
+            </Text>
+          ) : (
+            <View style={styles.backTo}>
+              <Text
+                size={15}
+                weight="semibold"
+                style={styles.accent}
+                importantForAccessibility="no"
+              >
+                ‹
+              </Text>
+              <Text size={15} weight="semibold" style={styles.accent}>
+                {back}
+              </Text>
+            </View>
+          )}
         </Pressable>
         {children}
         <Switches s={s} setS={setS} start={start} />
@@ -885,6 +919,7 @@ const styles = StyleSheet.create({
   bodyPhone: { padding: tokens.spaceXl, paddingBottom: 96 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
   broken: { color: tokens.colorBrokenText },

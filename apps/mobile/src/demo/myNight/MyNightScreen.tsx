@@ -1,11 +1,11 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Brand } from '../../components/Brand.tsx';
-import { SecondaryButton } from '../../components/Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
@@ -24,8 +24,10 @@ import {
   guestCount,
   headingOf,
   moved,
+  movedToGrill,
   myNightStateOf,
   nightOf,
+  openOf,
   rowLineOf,
   signedInUntil,
 } from './myNightModel.ts';
@@ -93,6 +95,7 @@ export function MyNightScreen({ first }: { first: Night }) {
   const you = (
     <You night={night} onSignOut={() => setTold(MN.signOutLands)} inBar={wide} told={told} />
   );
+  const open = openOf(night);
 
   const left = (
     <>
@@ -127,6 +130,13 @@ export function MyNightScreen({ first }: { first: Night }) {
           </View>
         )}
       </Card>
+      {open != null && (
+        <PrimaryButton
+          label={open.label}
+          onPress={() => router.push(open.href as Href)}
+          testID="myNight.openStation"
+        />
+      )}
       <Card title={MN.yourLead}>
         <YourLead lead={night.lead} />
       </Card>
@@ -255,6 +265,13 @@ export function MyNightScreen({ first }: { first: Night }) {
                 label={MN.demoMoveButton}
                 onPress={() => setNight(moved(night))}
                 testID="myNight.demo.move"
+              />
+            )}
+            {night.state === 'kitchen' && night.updated == null && (
+              <SecondaryButton
+                label={MN.demoKitchenMoveButton}
+                onPress={() => setNight(movedToGrill(night))}
+                testID="myNight.demo.moveKitchen"
               />
             )}
             <SecondaryButton label={MN.backToDemo} onPress={goBack} testID="myNight.demo.back" />
