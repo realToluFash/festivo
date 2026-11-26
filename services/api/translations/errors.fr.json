@@ -161,6 +161,14 @@
     "plan_sold_by_contract": "Ce forfait est vendu sur contrat, et non par paiement en ligne. Contactez Soirely pour y souscrire.",
     "plan_not_priced": "Ce forfait n’a pas de prix dans votre devise de facturation.",
     "nothing_paid_through_provider": "Il n’y a aucun moyen de paiement à mettre à jour avant le paiement d’un forfait.",
+    "audience_name_taken": "Ce nom est déjà utilisé par un public enregistré.",
+    "audiences_full": "Cet événement a déjà le maximum de publics enregistrés.",
     "table_not_yours": "Cette table est dans la zone de quelqu’un d’autre. Adressez-vous à cette personne ou au maître d’hôtel.",
-    "level_not_allowed_for_code": "Un code d’accès ne peut pas donner le droit de diriger la salle. Accordez « Peut diriger la salle » à une seule personne, avec son propre lien depuis la liste du personnel."
+    "level_not_allowed_for_code": "Un code d’accès ne peut pas donner le droit de diriger la salle. Accordez « Peut diriger la salle » à une seule personne, avec son propre lien depuis la liste du personnel.",
+    "tray_not_yours": "Ce plateau est celui de {name}. Adressez-vous à cette personne ou au maître d’hôtel.",
+    "plate_stage_invalid": "Cette assiette ne peut pas passer à cette étape depuis là où elle est.",
+    "plate_empty": "Une assiette vide n’est pas portée à un invité. Retirez-la plutôt du plateau.",
+    "table_nothing_to_serve": "Il n’y a encore rien à mettre sur un plateau pour cette table.",
+    "tray_check_incomplete": "Marquez chaque élément « Présent », ou « Absent » et « À apporter ensuite », avant de vérifier le plateau.",
+    "undo_expired": "Plus de 2 minutes se sont écoulées depuis cette étape : elle ne peut plus être annulée."
 }

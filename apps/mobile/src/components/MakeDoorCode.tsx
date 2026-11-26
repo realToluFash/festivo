@@ -63,6 +63,7 @@ export function MakeDoorCode({
   const [failed, setFailed] = useState<string | null>(null);
   const [refused, setRefused] = useState(false);
   const [sending, setSending] = useState(false);
+  const [answered, setAnswered] = useState(0);
   const [draft, setDraft] = useState<Ends | null>(null);
   const [picking, setPicking] = useState<Picking | null>(null);
   const going = useRef(false);
@@ -92,6 +93,7 @@ export function MakeDoorCode({
     } catch (error) {
       if (error instanceof ApiError && error.is('level_not_allowed_for_code')) setRefused(true);
       else setFailed(refusalSaid(error, t('doorCodes.failMake')));
+      setAnswered((count) => count + 1);
     } finally {
       going.current = false;
       setSending(false);
@@ -229,6 +231,7 @@ export function MakeDoorCode({
       cancelTestID="door.make.cancel"
       opener={opener}
       over={over}
+      toTop={answered}
       testID="door.make"
     >
       {refused && !sending && <Said words={t('doorCodes.runRefused')} interrupts />}

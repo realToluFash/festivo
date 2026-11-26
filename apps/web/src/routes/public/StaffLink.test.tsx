@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -386,7 +386,7 @@ describe('A link signed in as its own account (sc-4235)', () => {
     expect(screen.getAllByText('Signed in as Ana Sousa').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText(
-        /^This link is yours alone\. You’ll be signed out at .*02:00, and nothing stays on this device\.$/u,
+        /^This link is yours alone\. You are signed in until .*02:00\. Nothing stays on this device\.$/u,
       ).length,
     ).toBeGreaterThan(0);
   });
@@ -398,8 +398,33 @@ describe('A link signed in as its own account (sc-4235)', () => {
         answer({ ...NIGHT, doorsAt: '2099-03-06T19:00:00+00:00', tables: [] }),
     });
 
-    expect(await screen.findByText('Opens at 19:00 when doors open')).toBeTruthy();
+    expect(await screen.findByText('Shown when doors open, at 19:00')).toBeTruthy();
     expect(screen.queryByText('Folake Adeyemi')).toBeNull();
+  });
+
+  it('drops the update once a move leaves no station', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setInterval', 'clearInterval'] });
+    const nights = [
+      NIGHT,
+      { ...NIGHT, station: 'Section C' },
+      { ...NIGHT, station: null, tables: null },
+    ];
+    try {
+      routed({
+        'POST /api/staff-links/opened': () => answer(YOURS),
+        'POST /api/staff-links/night': () => answer(nights.length > 1 ? nights.shift() : nights[0]),
+      });
+
+      await screen.findByRole('heading', { name: 'Tonight you’re on Section B' });
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      expect(await screen.findByText('Updated: you’re now on Section C')).toBeTruthy();
+
+      await act(() => vi.advanceTimersByTimeAsync(10_000));
+      expect(await screen.findByRole('heading', { name: 'Tonight you’re on Waiter' })).toBeTruthy();
+      expect(screen.queryByText('Updated: you’re now on Section C')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('marks the floor lead when they stand in, and says when there is no lead at all', async () => {

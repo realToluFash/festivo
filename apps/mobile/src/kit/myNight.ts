@@ -26,6 +26,17 @@ export function headingOf(night: MyNight): string {
   return night.station ?? night.job ?? '';
 }
 
+/** The station a move took them to, kept until the next move; none once a move leaves no station. */
+export function updatedAfter(
+  was: MyNight | null,
+  kept: string | null,
+  night: MyNight,
+): string | null {
+  if (night.station == null) return null;
+
+  return was != null && headingOf(was) !== headingOf(night) ? night.station : kept;
+}
+
 /** When clocking in opens, while that is still ahead; null once the window is open or with no shift. */
 export function clockOpensAt(night: MyNight, now: Date): string | null {
   if (night.shift == null) return null;

@@ -16,7 +16,7 @@ use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
-/** All guests, or those chosen (sc-3942): the guests on the list, never a companion, who has no contact details of their own (sc-1468). sc-3957 adds its conditions here. */
+/** All guests, those chosen (sc-3942), or those matching every condition when it goes (sc-3957): the guests on the list, never a companion, who has no contact details of their own (sc-1468). */
 final readonly class GuestAudienceResolver implements AudienceResolverInterface
 {
     public function __construct(
@@ -25,10 +25,17 @@ final readonly class GuestAudienceResolver implements AudienceResolverInterface
     ) {
     }
 
-    /** @param list<string> $chosen ignored for all guests */
-    public static function audience(Uuid $eventId, string $choice, array $chosen): Audience
+    /**
+     * @param list<string>                                 $chosen     only for those chosen
+     * @param list<array{type: string, groupId?: ?string}> $conditions only for conditions
+     */
+    public static function audience(Uuid $eventId, string $choice, array $chosen, array $conditions = []): Audience
     {
-        return Audience::guests($eventId, ['choice' => $choice, 'guestIds' => GuestMessage::ALL === $choice ? [] : $chosen]);
+        return Audience::guests($eventId, [
+            'choice' => $choice,
+            'guestIds' => GuestMessage::CHOSEN === $choice ? $chosen : [],
+            ...GuestMessage::CONDITIONS === $choice ? ['conditions' => $conditions] : [],
+        ]);
     }
 
     public function kind(): NotificationAudienceKind
@@ -38,24 +45,26 @@ final readonly class GuestAudienceResolver implements AudienceResolverInterface
 
     public function resolve(Audience $audience, ?Uuid $after, int $limit): array
     {
+        $choice = $audience->conditions['choice'] ?? null;
         $chosen = self::chosen($audience);
 
-        if ([] === $chosen && GuestMessage::CHOSEN === ($audience->conditions['choice'] ?? null)) {
+        if ([] === $chosen && GuestMessage::CHOSEN === $choice) {
             return [];
         }
 
+        [$matching, $parameters] = GuestMessage::CONDITIONS === $choice ? GuestConditions::where(self::conditions($audience)) : ['TRUE', []];
         $ids = $this->connection->fetchFirstColumn(
             <<<'SQL'
-                SELECT id FROM guests
-                WHERE event_id = :event
-                  AND host_id IS NULL
-                  AND removed_at IS NULL
-                  AND (:all OR id IN (:chosen))
-                  AND (CAST(:after AS UUID) IS NULL OR id > CAST(:after AS UUID))
-                ORDER BY id
-                LIMIT :limit
-                SQL,
+                SELECT g.id FROM guests g
+                WHERE g.event_id = :event
+                  AND g.host_id IS NULL
+                  AND g.removed_at IS NULL
+                  AND (:all OR g.id IN (:chosen))
+                  AND (CAST(:after AS UUID) IS NULL OR g.id > CAST(:after AS UUID))
+                  AND
+                SQL . ' ' . $matching . ' ORDER BY g.id LIMIT :limit',
             [
+                ...$parameters,
                 'event' => self::eventId($audience),
                 'all' => [] === $chosen,
                 'chosen' => [] === $chosen ? [Uuid::v7()->toRfc4122()] : $chosen,
@@ -84,6 +93,12 @@ final readonly class GuestAudienceResolver implements AudienceResolverInterface
     private static function eventId(Audience $audience): string
     {
         return Type\string()->coerce($audience->conditions['eventId'] ?? null);
+    }
+
+    /** @return list<array{type: string, groupId?: ?string}> */
+    public static function conditions(Audience $audience): array
+    {
+        return Type\vec(Type\shape(['type' => Type\string(), 'groupId' => Type\optional(Type\nullable(Type\string()))]))->coerce($audience->conditions['conditions'] ?? []);
     }
 
     /** @return list<string> */

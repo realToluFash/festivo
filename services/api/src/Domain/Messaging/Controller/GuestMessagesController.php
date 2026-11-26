@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\Audience\GuestAudienceResolver;
+use App\Domain\Messaging\Audience\GuestConditions;
 use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\GuestMessages\GuestMessageSender;
@@ -49,6 +50,7 @@ final readonly class GuestMessagesController
         private GuestReach $guestReach,
         private GuestMessagesChanged $guestMessagesChanged,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private GuestConditions $guestConditions,
         private GuestRepository $guestRepository,
         private GuestMessageNotice $guestMessageNotice,
     ) {
@@ -152,9 +154,11 @@ final readonly class GuestMessagesController
         $body = Input::body($request, Type\shape([
             'audience' => self::audienceType(),
             'guestIds' => Type\optional(Type\vec(Type\string())),
+            'conditions' => Type\optional(Type\mixed()),
             'follows' => Type\optional(Type\nullable(Type\string())),
         ]));
-        $plan = $this->guestMessageSender->check($this->event($eventId), $body['audience'], $body['guestIds'] ?? [], $body['follows'] ?? null);
+        $event = $this->event($eventId);
+        $plan = $this->guestMessageSender->check($event, $body['audience'], $body['guestIds'] ?? [], $body['follows'] ?? null, $this->guestConditions->read($event, $body['conditions'] ?? []));
 
         return new JsonResponse([
             'people' => Iter\count($plan->deliveries),
@@ -177,9 +181,11 @@ final readonly class GuestMessagesController
             'guestIds' => Type\optional(Type\vec(Type\string())),
             'subject' => Type\optional(Type\nullable(Type\string())),
             'message' => Type\string(),
+            'conditions' => Type\optional(Type\mixed()),
             'follows' => Type\optional(Type\nullable(Type\string())),
         ]));
-        $sent = $this->guestMessageSender->send($this->event($eventId), $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message'], $body['follows'] ?? null);
+        $event = $this->event($eventId);
+        $sent = $this->guestMessageSender->send($event, $this->user(), $body['audience'], $body['guestIds'] ?? [], $body['subject'] ?? null, $body['message'], $body['follows'] ?? null, $this->guestConditions->read($event, $body['conditions'] ?? []));
         $queued = $sent->plan->toldByEmail();
         $this->guestMessagesChanged->onEvent($eventId);
 
@@ -193,7 +199,7 @@ final readonly class GuestMessagesController
     /** @return Type\TypeInterface<string> */
     private static function audienceType(): Type\TypeInterface
     {
-        return Type\union(Type\literal_scalar(GuestMessage::ALL), Type\literal_scalar(GuestMessage::CHOSEN));
+        return Type\union(Type\literal_scalar(GuestMessage::ALL), Type\literal_scalar(GuestMessage::CHOSEN), Type\literal_scalar(GuestMessage::CONDITIONS));
     }
 
     private function managesGuests(Event $event): bool

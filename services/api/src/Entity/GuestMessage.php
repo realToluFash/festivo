@@ -24,6 +24,8 @@ class GuestMessage
 
     public const string CHOSEN = 'chosen';
 
+    public const string CONDITIONS = 'conditions';
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -38,6 +40,10 @@ class GuestMessage
     /** @var list<string> */
     #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
     private array $chosenGuestIds = [];
+
+    /** @var ?list<array{type: string, groupId?: ?string}> its own copy, never its saved audience's (sc-3957) */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $conditions = null;
 
     #[ORM\Column(type: Types::STRING, length: 600, nullable: true)]
     private ?string $subject;
@@ -74,15 +80,21 @@ class GuestMessage
         return $this->event;
     }
 
-    public function isToAll(): bool
-    {
-        return self::ALL === $this->audience;
-    }
-
     /** @return list<string> */
     public function getChosenGuestIds(): array
     {
         return $this->chosenGuestIds;
+    }
+
+    public function getAudience(): string
+    {
+        return $this->audience;
+    }
+
+    /** @return ?list<array{type: string, groupId?: ?string}> */
+    public function getConditions(): ?array
+    {
+        return $this->conditions;
     }
 
     public function getSubject(): ?string

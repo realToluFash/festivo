@@ -2099,6 +2099,22 @@ describe("a section's hint is drawn in lines of whole points (sc-13281)", () => 
   });
 });
 
+describe("a row's line under its title is drawn in lines of whole points (sc-94081)", () => {
+  const text = readFileSync(join('src', 'components', 'SummaryRows.tsx'), 'utf8');
+  const line = /\{line != null && \(([\s\S]*?)\n\s*\)\}/u.exec(text)?.[1] ?? '';
+
+  it('gives the line its ratio through wholeLines', () => {
+    expect(
+      line,
+      'At 14 × 1.4 the line is 19.6 pt, and iOS draws its last line cut with an empty line under it (qa3, #94027).',
+    ).toMatch(/\bwholeLines=\{ROW_LINE\}/u);
+  });
+
+  it('sets no fractional line height under a title', () => {
+    expect(text).not.toMatch(/\n {2}line: \{/u);
+  });
+});
+
 describe('a pill with words grows with them rather than cutting them (sc-13281)', () => {
   const styleOf = (file: string, name: string) =>
     new RegExp(`\\n {2}${name}: \\{([^}]*)\\}`, 'u').exec(

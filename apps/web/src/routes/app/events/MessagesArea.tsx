@@ -1,9 +1,12 @@
 import {
   ApiError,
+  type AudienceBook,
   type DeliveryState,
+  type GuestCondition,
   type GuestMessageCheck,
   type GuestMessageDelivery,
   type GuestMessageDetails,
+  type GuestMessageInput,
   type GuestMessageRow,
   type GuestMessageSummary,
   type NotSentReason,
@@ -23,8 +26,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { messageSegments, messageWire, numberFormat } from '@soirely/domain';
+import { messageSegments, messageWire, numberFormat, sortedGroups } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Glyph } from '../../../components/Glyph.tsx';
@@ -36,10 +40,17 @@ import { useServerNow } from '../../../serverNow.ts';
 import { canOn } from '../../../session.ts';
 import {
   type Field,
+  type Picked,
+  type Quick,
   type Refusals,
   type Who,
   MESSAGE_MAXIMUM,
+  NOT_REPLIED,
+  QUICKS,
   SUBJECT_MAXIMUM,
+  asCondition,
+  audienceRefusal,
+  audienceRefusalOf,
   closedOf,
   conversationsOf,
   fieldOfPath,
@@ -47,7 +58,21 @@ import {
   matching,
   refusalsOf,
   shortTitle,
+  writesToNotReplied,
 } from './messagesArea.ts';
+import {
+  type Counted,
+  type Groups,
+  SavedRow,
+  WhoBlock,
+  conditionsChip,
+  conditionsWords,
+  deletedGroups,
+  groupsOf,
+  refusalLine,
+  useAudienceMatch,
+  useFocusLater,
+} from './MessagesTo.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import {
   type FieldHandle,
@@ -60,6 +85,7 @@ import { plainWords } from './messageWords.ts';
 import './messages.css';
 
 const CHIPS_SHOWN = 6;
+const NO_BOOK: AudienceBook = { audiences: [], groups: [] };
 const CANT_SHOWN = 2;
 
 type Draft = {
@@ -95,9 +121,15 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const closed = closedOf(event, now);
   const manage = canOn(event, 'messages.manage');
   const addresses = canOn(event, 'guests.manage');
+  const { state: arriving } = useLocation();
   const [list, setList] = useState<ListLoad>({ kind: 'loading' });
-  const [pane, setPane] = useState<Pane>({ kind: 'idle' });
+  const [pane, setPane] = useState<Pane>(() =>
+    writesToNotReplied(arriving) && manage && closed == null
+      ? { kind: 'compose', who: NOT_REPLIED, openTo: false, body: '', follows: null }
+      : { kind: 'idle' },
+  );
   const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
+  const [draftBook, setDraftBook] = useState<AudienceBook>(NO_BOOK);
   const [ask, setAsk] = useState(0);
   const [guests, setGuests] = useState<PickableGuest[] | null>(null);
   const [said, setSaid] = useState('');
@@ -184,7 +216,13 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const draft =
     pane.kind === 'compose' && pane.follows == null
       ? {
-          line: `${audienceWords({ audience: draftTo.kind }, t)} · ${t('eventMessages.notSentYet')}`,
+          line: `${
+            draftTo.kind === 'conditions'
+              ? t('eventMessages.toAudience', {
+                  audience: `${t('eventMessages.guestsWho')} ${conditionsWords(draftTo.conditions, groupsOf(draftBook, []), t)}`,
+                })
+              : audienceWords({ audience: draftTo.kind, conditions: null }, t)
+          } · ${t('eventMessages.notSentYet')}`,
           when: whenWords(now.toISOString()),
         }
       : null;
@@ -249,6 +287,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               desk={desk}
               first={pane}
               onWho={setDraftTo}
+              onBook={setDraftBook}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
                 setPane({ kind: 'message', id: pane.follows?.id ?? id });
@@ -338,8 +377,27 @@ function whenWords(at: string): string {
   }).format(new Date(at));
 }
 
-function audienceWords(message: Pick<GuestMessageSummary, 'audience'>, t: TFunction): string {
-  return message.audience === 'all' ? t('eventMessages.toAll') : t('eventMessages.toChosen');
+function timeWords(at: string): string {
+  return new Intl.DateTimeFormat(currentLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(at));
+}
+
+function audienceWords(
+  message: Pick<GuestMessageSummary, 'audience' | 'conditions'>,
+  t: TFunction,
+): string {
+  if (message.audience === 'all') return t('eventMessages.toAll');
+
+  if (message.audience !== 'conditions') return t('eventMessages.toChosen');
+
+  const conditions = message.conditions ?? [];
+
+  return t('eventMessages.toAudience', {
+    audience: `${t('eventMessages.guestsWho')} ${conditionsWords(conditions.map(asCondition), groupsOf(null, conditions), t)}`,
+  });
 }
 
 function titleOf(
@@ -603,11 +661,13 @@ function ComposePane({
   desk,
   first,
   onWho,
+  onBook,
   onSent,
 }: {
   desk: Desk;
   first: Draft;
   onWho: (who: Who) => void;
+  onBook: (book: AudienceBook) => void;
   onSent: (id: string, count: number) => void;
 }) {
   const { t } = useTranslation();
@@ -621,6 +681,13 @@ function ComposePane({
   const [refused, setRefused] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'write' });
   const guests = desk.guests;
+  const [book, setBook] = useState<AudienceBook>(NO_BOOK);
+  useEffect(() => onBook(book), [book, onBook]);
+  const counted = useAudienceMatch(
+    desk.event.id,
+    who.kind === 'conditions' ? who.conditions : null,
+  );
+  const groups = groupsOf(book, counted.match?.conditions ?? []);
   const [previewing, setPreviewing] = useState(false);
   const [gone, setGone] = useState<readonly string[]>([]);
   const [nobodyLeft, setNobodyLeft] = useState<{ name: string; who: Who } | null>(null);
@@ -630,6 +697,19 @@ function ComposePane({
   const off = desk.whyOff != null;
   const now = useServerNow();
 
+  useEffect(() => {
+    let current = true;
+
+    api.audienceBook(desk.event.id).then(
+      (found) => current && setBook(found),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [desk.event.id]);
+
   function refuse(words: Partial<Record<Field, string>>): void {
     setWrong(words);
     const field = (['who', 'subject', 'message'] as const).find((one) => words[one] != null);
@@ -638,6 +718,14 @@ function ComposePane({
   }
 
   function fromApi(error: unknown): void {
+    const audience = audienceRefusalOf(error);
+
+    if (audience != null) {
+      setStep({ kind: 'write' });
+      setRefused(refusalLine(audience, t));
+      desk.focus('refused');
+      return;
+    }
     if (error instanceof ApiError && error.status === 422) {
       const words: Partial<Record<Field, string>> = {};
 
@@ -658,12 +746,22 @@ function ComposePane({
     if (off) return;
 
     const refusals = refusalsOf(who, subject, message);
-    setRefused(null);
+    const why = audienceRefusal(
+      who,
+      deletedGroups(who, groups),
+      counted.counting ? null : (counted.match?.count ?? null),
+    );
+
+    setRefused(why == null ? null : refusalLine(why, t));
     if (firstRefused(refusals) != null) {
       refuse(refusalWords(refusals, t));
       return;
     }
     setWrong({});
+    if (why != null) {
+      desk.focus('refused');
+      return;
+    }
     setStep({ kind: 'checking' });
     desk.focus('check');
     api
@@ -700,8 +798,12 @@ function ComposePane({
   }
 
   const chosen = who.kind === 'chosen' ? who.ids : [];
+  const matched = (counted.match?.guests ?? []).map((guest) => guest.id);
   const people = (guests ?? [])
-    .filter((guest) => who.kind === 'all' || chosen.includes(guest.id))
+    .filter(
+      (guest) =>
+        who.kind === 'all' || (who.kind === 'conditions' ? matched : chosen).includes(guest.id),
+    )
     .filter((guest) => !gone.includes(guest.id))
     .sort((a, b) => a.name.localeCompare(b.name, currentLocale()));
   const previewOff =
@@ -768,11 +870,13 @@ function ComposePane({
     );
 
   const chipWords =
-    who.kind === 'all'
-      ? allGuestsChip(t, guests)
-      : chosen.length === 0
-        ? t('eventMessages.chooseGuests')
-        : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
+    who.kind === 'conditions'
+      ? conditionsChip(who, book.audiences, counted, t)
+      : who.kind === 'all'
+        ? allGuestsChip(t, guests)
+        : chosen.length === 0
+          ? t('eventMessages.chooseGuests')
+          : `${t('eventMessages.chooseGuests')} · ${numberFormat(currentLocale()).format(chosen.length)}`;
 
   return (
     <div className="mg-in is-compose">
@@ -806,8 +910,15 @@ function ComposePane({
                   addresses={desk.addresses}
                   chip={chip}
                   choosingFirst={choosing}
+                  eventId={desk.event.id}
+                  book={book}
+                  setBook={setBook}
+                  counted={counted}
+                  groups={groups}
+                  say={desk.say}
                   onPick={(next) => {
                     setWho(next);
+                    setRefused(null);
                     fixed('who', { who: next });
                   }}
                   onClose={(toChip) => {
@@ -972,7 +1083,9 @@ function ComposePane({
   );
 }
 
-function audienceOf(who: Who): { audience: 'all' | 'chosen'; guestIds?: string[] } {
+function audienceOf(who: Who): Pick<GuestMessageInput, 'audience' | 'guestIds' | 'conditions'> {
+  if (who.kind === 'conditions') return { audience: 'conditions', conditions: [...who.conditions] };
+
   return who.kind === 'all' ? { audience: 'all' } : { audience: 'chosen', guestIds: [...who.ids] };
 }
 
@@ -1149,6 +1262,12 @@ function ToPopover({
   addresses,
   chip,
   choosingFirst,
+  eventId,
+  book,
+  setBook,
+  counted,
+  groups,
+  say,
   onPick,
   onClose,
   onNobody,
@@ -1158,6 +1277,12 @@ function ToPopover({
   addresses: boolean;
   chip: RefObject<HTMLButtonElement | null>;
   choosingFirst: boolean;
+  eventId: string;
+  book: AudienceBook;
+  setBook: (change: (book: AudienceBook) => AudienceBook) => void;
+  counted: Counted;
+  groups: Groups;
+  say: (words: string) => void;
   onPick: (who: Who) => void;
   onClose: (toChip: boolean) => void;
   onNobody: () => void;
@@ -1166,11 +1291,24 @@ function ToPopover({
   const [choosing, setChoosing] = useState(
     choosingFirst || (who.kind === 'chosen' && who.ids.length === 0),
   );
+  const [kept, setKept] = useState(who.kind === 'conditions' ? who.conditions : []);
   const box = useRef<HTMLDivElement>(null);
+  const focusLater = useFocusLater(box);
   const titleId = useId();
   const name = useId();
   const chosen = who.kind === 'chosen' ? who.ids : [];
   const number = numberFormat(currentLocale());
+  const coming = useAudienceMatch(eventId, QUICK_CONDITIONS.coming);
+  const notReplied = useAudienceMatch(eventId, QUICK_CONDITIONS.notReplied);
+  const quickCounts = { coming, notReplied };
+  const pick: Picked | 'all' | 'chosen' =
+    who.kind !== 'conditions'
+      ? who.kind
+      : who.pick.startsWith('saved:') &&
+          !book.audiences.some((one) => `saved:${one.id}` === who.pick)
+        ? 'who'
+        : who.pick;
+  const shared = { eventId, book, setBook, focusLater, say };
 
   useEffect(() => {
     if (!choosing) box.current?.querySelector<HTMLElement>('input:checked')?.focus();
@@ -1178,7 +1316,7 @@ function ToPopover({
 
   useEffect(() => {
     const keys = (key: globalThis.KeyboardEvent) => {
-      if (key.key !== 'Escape') return;
+      if (key.key !== 'Escape' || key.defaultPrevented) return;
 
       key.preventDefault();
       onClose(true);
@@ -1197,6 +1335,11 @@ function ToPopover({
       document.removeEventListener('pointerdown', outside);
     };
   }, [chip, onClose]);
+
+  function conditions(next: readonly GuestCondition[], picked: Picked): void {
+    setKept(next);
+    onPick({ kind: 'conditions', conditions: next, pick: picked });
+  }
 
   if (choosing)
     return (
@@ -1237,12 +1380,27 @@ function ToPopover({
       <div className="mgt-scroll">
         <fieldset className="mg-radios">
           <legend className="desk-unseen">{t('eventMessages.to')}</legend>
+          {sortedGroups(book.audiences).map((one) => (
+            <SavedRow
+              key={one.id}
+              shared={shared}
+              audience={one}
+              radio={{ name, checked: pick === `saved:${one.id}` }}
+              groups={groups}
+              onChoose={() => conditions(one.conditions.map(asCondition), `saved:${one.id}`)}
+              onGone={() => {
+                if (who.kind === 'conditions' && who.pick === `saved:${one.id}`)
+                  onPick({ ...who, pick: 'who' });
+                focusLater('input:checked');
+              }}
+            />
+          ))}
           <label className="mg-radio-row">
             <input
               type="radio"
               name={name}
               className="desk-radio"
-              checked={who.kind === 'all'}
+              checked={pick === 'all'}
               onChange={() => onPick({ kind: 'all' })}
             />
             <span className="today-grow">{t('eventMessages.allGuests')}</span>
@@ -1250,12 +1408,31 @@ function ToPopover({
               <span className="mg-radio-count">{number.format(guests.length)}</span>
             )}
           </label>
+          {QUICKS.map((quick) => {
+            const count = quickCounts[quick].match?.count;
+
+            return (
+              <label key={quick} className="mg-radio-row">
+                <input
+                  type="radio"
+                  name={name}
+                  className="desk-radio"
+                  checked={pick === quick}
+                  onChange={() => conditions(QUICK_CONDITIONS[quick], quick)}
+                />
+                <span className="today-grow">
+                  {t(`eventMessages.${quick === 'coming' ? 'coming' : 'hasntReplied'}`)}
+                </span>
+                {count != null && <span className="mg-radio-count">{number.format(count)}</span>}
+              </label>
+            );
+          })}
           <label className="mg-radio-row">
             <input
               type="radio"
               name={name}
               className="desk-radio"
-              checked={who.kind === 'chosen'}
+              checked={pick === 'chosen'}
               onChange={() => {
                 onPick({ kind: 'chosen', ids: chosen });
                 setChoosing(true);
@@ -1275,11 +1452,38 @@ function ToPopover({
               </button>
             </div>
           )}
+          <label className="mg-radio-row">
+            <input
+              type="radio"
+              name={name}
+              className="desk-radio"
+              checked={pick === 'who'}
+              onChange={() => conditions(who.kind === 'conditions' ? who.conditions : kept, 'who')}
+            />
+            <span className="today-grow">{t('eventMessages.guestsWho')}</span>
+          </label>
         </fieldset>
+        {who.kind === 'conditions' && (
+          <WhoBlock
+            shared={shared}
+            who={who}
+            counted={counted}
+            groups={groups}
+            onConditions={(next) =>
+              conditions(next, pick === 'all' || pick === 'chosen' ? 'who' : pick)
+            }
+            onSaved={(saved) => onPick({ ...who, pick: saved })}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+const QUICK_CONDITIONS: Record<Quick, GuestCondition[]> = {
+  coming: [{ type: 'coming' }],
+  notReplied: [{ type: 'notReplied' }],
+};
 
 const SKELETON_ROWS = 7;
 
@@ -1679,6 +1883,14 @@ function Said({ message, onWho }: { message: GuestMessageDetails; onWho: () => v
         <span aria-hidden="true">·</span>
         <span className="mg-bit">{`${message.sentBy} · ${whenWords(message.sentAt)}`}</span>
       </p>
+      {message.audience === 'conditions' && !message.sending && (
+        <p className="mg-goes">
+          {t('eventMessages.workedOut', {
+            time: timeWords(message.sentAt),
+            guests: t('eventMessages.guests', { count: of }),
+          })}
+        </p>
+      )}
       {message.sending ? (
         <p className="mg-sending">
           <span className="mg-spin" aria-hidden="true" />

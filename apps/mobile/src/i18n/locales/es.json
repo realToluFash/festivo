@@ -3631,35 +3631,95 @@
     "joinedWith": "Se unió al evento con el código de acceso {{code}} ({{time}}).",
     "runRefused": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal."
   },
+  "service": {
+    "stage": {
+      "toServe": "Por servir",
+      "dishing": "Emplatando",
+      "checked": "Revisado",
+      "onItsWay": "En camino",
+      "served": "Servido"
+    },
+    "item": {
+      "ready": "Listo",
+      "preparing": "En preparación"
+    },
+    "mark": {
+      "on": "Puesto",
+      "notOn": "No puesto",
+      "bringAfter": "Llevar después"
+    },
+    "owed": {
+      "bringAfter": "Llevar después",
+      "toFollow": "A continuación",
+      "sentBack": "Devuelto"
+    },
+    "sentBack": {
+      "wrongDish": "Plato equivocado",
+      "notRight": "No está bien",
+      "dropped": "Se ha caído",
+      "allergyConcern": "Posible alergia"
+    },
+    "choice": {
+      "whatsReadyNow": "Lo que esté listo, ya",
+      "waitForAll": "Esperar a todo"
+    },
+    "noOrder": {
+      "notHereYet": "Aún no ha llegado",
+      "nothingForThisCourse": "Nada en este pase",
+      "left": "Se ha ido"
+    },
+    "stageCount": {
+      "toServe_one": "{{count, number}} por servir",
+      "toServe_many": "{{count, number}} por servir",
+      "toServe_other": "{{count, number}} por servir",
+      "dishing_one": "{{count, number}} emplatando",
+      "dishing_many": "{{count, number}} emplatando",
+      "dishing_other": "{{count, number}} emplatando",
+      "checked_one": "{{count, number}} revisado",
+      "checked_many": "{{count, number}} revisados",
+      "checked_other": "{{count, number}} revisados",
+      "onItsWay_one": "{{count, number}} en camino",
+      "onItsWay_many": "{{count, number}} en camino",
+      "onItsWay_other": "{{count, number}} en camino",
+      "served_one": "{{count, number}} servido",
+      "served_many": "{{count, number}} servidos",
+      "served_other": "{{count, number}} servidos"
+    },
+    "readyIn": "Listo en unos {{minutes, number}} min",
+    "held": "Esperando a cocina",
+    "heldCount_one": "{{count, number}} esperando a cocina",
+    "heldCount_many": "{{count, number}} esperando a cocina",
+    "heldCount_other": "{{count, number}} esperando a cocina"
+  },
   "myNight": {
-    "title": "Your night",
-    "only": "Tonight only · ends {{time}}",
-    "onTonight": "Tonight you’re on",
-    "yourShift": "Your shift",
-    "times": "{{start}} to {{end}}",
-    "endsOn": "Ends on {{day}} at {{time}}",
-    "later": "Later: {{job}} from {{time}}",
-    "clockOpensAt": "Clock in opens at {{time}}",
-    "clockOpensLine": "You can clock in from an hour before your shift starts.",
-    "yourLead": "Your lead",
-    "floorLead": "Floor lead",
-    "call": "Call",
-    "callLead": "Call {{name}}",
-    "callFloorLead": "Call {{name}}, floor lead",
-    "noLead": "No lead named yet",
-    "timing": "Tonight’s timing",
-    "staff": "Staff",
-    "guests": "Guests",
-    "yourTables": "Your tables",
-    "opensAt": "Opens at {{time}} when doors open",
-    "guestCount_one": "{{count, number}} guest",
-    "guestCount_many": "{{count, number}} guests",
-    "guestCount_other": "{{count, number}} guests",
-    "updated": "Updated: you’re now on {{station}}",
-    "staleTitle": "Couldn’t reach Soirely",
-    "staleBody": "This is your night as it was at {{time}}.",
-    "tryAgain": "Try again",
-    "loading": "Loading your night…",
-    "otherNeed": "{{what}} (other)"
+    "title": "Su noche",
+    "only": "Solo esta noche · termina: {{time}}",
+    "onTonight": "Esta noche:",
+    "yourShift": "Su turno",
+    "times": "{{start}} a {{end}}",
+    "endsOn": "Termina el {{day}}, {{time}}",
+    "later": "Más tarde: {{job}} · {{time}}",
+    "clockOpensAt": "Fichar · {{time}}",
+    "clockOpensLine": "Puede fichar desde una hora antes del inicio de su turno.",
+    "yourLead": "Su responsable",
+    "floorLead": "Responsable de sala",
+    "call": "Llamar",
+    "callLead": "Llamar a {{name}}",
+    "callFloorLead": "Llamar a {{name}}, responsable de sala",
+    "noLead": "Aún sin responsable",
+    "timing": "Horario de esta noche",
+    "staff": "Personal",
+    "guests": "Invitados",
+    "yourTables": "Sus mesas",
+    "opensAt": "Se muestran al abrir las puertas: {{time}}",
+    "guestCount_one": "{{count, number}} invitado",
+    "guestCount_many": "{{count, number}} de invitados",
+    "guestCount_other": "{{count, number}} invitados",
+    "updated": "Actualizado: ahora está en {{station}}",
+    "staleTitle": "No se puede conectar con Soirely",
+    "staleBody": "Su noche, tal como estaba a esta hora: {{time}}.",
+    "tryAgain": "Reintentar",
+    "loading": "Cargando su noche…",
+    "otherNeed": "{{what}} (otra)"
   }
 }

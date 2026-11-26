@@ -181,10 +181,16 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
 });
 
 describe('the live cover upright from AX1 (sc-93211)', () => {
-  it('grows its chips upright only, and keeps main’s chips on the phone and below AX1', () => {
-    const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
-    expect(below).toMatch(/<Chips now=\{now\} \/>/u);
+  it('grows its chips upright, and keeps main’s chips below AX1', () => {
     expect(cover).toMatch(/<NowBlock moment=\{moment\} wide=\{!phone\} \/>/u);
+  });
+});
+
+describe('the live cover on the phone from AX1 (sc-93855)', () => {
+  it('grows its chips by the upright rule from AX1 and keeps main’s below it', () => {
+    const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
+    expect(below).toMatch(/<Chips now=\{now\} grows=\{whole\} \/>/u);
+    expect(cover).toMatch(/const whole = useAccessibilitySizes\(\);/u);
   });
 });
 
