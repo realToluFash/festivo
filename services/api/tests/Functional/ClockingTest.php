@@ -101,6 +101,25 @@ final class ClockingTest extends ApiTestCase
     }
 
     #[Test]
+    public function onBackToBackShiftsAClockOutBeforeTheFirstEndsLetsTheNextBeClockedInTo(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T18:00', '2027-03-06T23:00');
+        $this->onShift($this->grace, '2027-03-06T23:30', '2027-03-07T03:00');
+        $user = $this->signedIn();
+        self::mockTime(new DateTimeImmutable('2027-03-06T17:02:00Z'));
+        $this->clock($user, 'in');
+        self::mockTime(new DateTimeImmutable('2027-03-06T21:45:00Z'));
+        self::assertSame('recorded', $this->clock($user, 'out')['outcome']);
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T21:50:00Z'));
+        self::assertSame('ready', $this->card($user)['phase'], 'the second shift, not the first one clocked out of');
+        $second = $this->clock($user, 'in');
+        self::assertSame('recorded', $second['outcome'], Json\encode($second));
+        $card = Type\shape(['phase' => Type\string(), 'clockedInAt' => Type\string()], true)->coerce($second['clock']);
+        self::assertSame(['on', '2027-03-06T22:50:00+01:00'], [$card['phase'], $card['clockedInAt']]);
+    }
+
+    #[Test]
     public function clockingOutWithoutClockingInIsRefusedAndASecondClockOutChangesNothing(): void
     {
         $user = $this->signedIn();
@@ -283,6 +302,24 @@ final class ClockingTest extends ApiTestCase
 
         $this->as($user, 'PUT', $this->path('hours/' . $this->shiftOf($this->grace) . '/' . $this->grace), ['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => '2027-03-07T01:15']);
         self::assertContains($this->statusCode(), [403, 404]);
+    }
+
+    #[Test]
+    public function aGrantFromOutsideAtCanEditCannotCorrectTimes(): void
+    {
+        $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
+        $bisi = $this->account('bisi@lagoslights.example', 'Bisi Adeyemi');
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/people', ['address' => 'bisi@lagoslights.example', 'role' => 'can_edit', 'jobLabel' => null]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::mockTime(new DateTimeImmutable('2027-03-06T20:00:00Z'));
+
+        $hours = $this->as($bisi, 'GET', $this->path('hours'));
+        self::assertSame(200, $this->statusCode(), Json\encode($hours));
+        self::assertFalse($hours['canCorrect'] ?? null);
+
+        $this->as($bisi, 'PUT', $this->path('hours/' . $this->shiftOf($this->grace) . '/' . $this->grace), ['clockedInAt' => '2027-03-06T15:52', 'clockedOutAt' => '2027-03-07T01:15']);
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([], self::em()->getRepository(ShiftAttendance::class)->findAll(), 'nothing was written');
     }
 
     #[Test]
