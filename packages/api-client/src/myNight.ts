@@ -1,6 +1,6 @@
 /** A person's own night (sc-3915): what their page shows, and nothing about anybody else beyond their lead. Times are in the event's offset. */
 export interface MyNight {
-  event: { name: string; timeZone: string };
+  event: { id: string; name: string; timeZone: string };
   /** The link's end, when the browser is signed out. */
   endsAt: string;
   station: string | null;
@@ -13,6 +13,8 @@ export interface MyNight {
   doorsAt: string;
   /** Null with no section station; empty until doors open. */
   tables: MyNightTable[] | null;
+  /** Their job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
 }
 
 export interface MyNightMoment {
@@ -114,7 +116,7 @@ function asLead(raw: unknown): MyNight['lead'] | undefined {
 /** The night, or null when it is not one this client knows. */
 export function asMyNight(raw: unknown): MyNight | null {
   if (!isRecord(raw) || !isRecord(raw.event)) return null;
-  const { name, timeZone } = raw.event;
+  const { id, name, timeZone } = raw.event;
   const { endsAt, station, job, doorsAt } = raw;
   const shift = asShift(raw.shift);
   const later = asLater(raw.later);
@@ -123,6 +125,7 @@ export function asMyNight(raw: unknown): MyNight | null {
   const tables = raw.tables === null ? null : every(raw.tables, asTable);
 
   if (
+    typeof id !== 'string' ||
     typeof name !== 'string' ||
     typeof timeZone !== 'string' ||
     typeof endsAt !== 'string' ||
@@ -133,12 +136,13 @@ export function asMyNight(raw: unknown): MyNight | null {
     later === undefined ||
     lead === undefined ||
     timing == null ||
-    (raw.tables !== null && tables == null)
+    (raw.tables !== null && tables == null) ||
+    typeof raw.checksIn !== 'boolean'
   )
     return null;
 
   return {
-    event: { name, timeZone },
+    event: { id, name, timeZone },
     endsAt,
     station,
     job,
@@ -148,5 +152,6 @@ export function asMyNight(raw: unknown): MyNight | null {
     timing,
     doorsAt,
     tables,
+    checksIn: raw.checksIn,
   };
 }

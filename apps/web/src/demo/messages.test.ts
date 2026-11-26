@@ -68,10 +68,10 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
   it('has the spec’s 42 states, the notice’s 3, Who it reached’s 8, sc-3942’s 3, sc-3960’s 13, sc-3963’s 9, sc-3950’s 3, sc-3954’s 6, sc-3976’s 17, sc-3971’s 16, sc-3946’s 7, sc-3966’s 7 more, sc-45251’s 14, sc-3978’s 6, sc-4330’s 39, sc-46343’s 19, sc-3942’s 5 refusals, its 10 Choose guests and sc-83081’s bell with its 11 and sc-84143’s one, in order, each linked once from the demo home', () => {
     const keys = MESSAGE_STATES.map((one) => one.key);
 
-    expect(keys).toHaveLength(274);
-    expect(keys.slice(246, 251)).toEqual(REFUSAL_STATES.map((one) => one.key));
-    expect(keys.slice(251, 261)).toEqual(CHOOSE_STATES.map((one) => one.key));
-    expect(keys.slice(261)).toEqual(['bell', ...BELL_STATES.map((one) => one.key)]);
+    expect(keys).toHaveLength(276);
+    expect(keys.slice(248, 253)).toEqual(REFUSAL_STATES.map((one) => one.key));
+    expect(keys.slice(253, 263)).toEqual(CHOOSE_STATES.map((one) => one.key));
+    expect(keys.slice(263)).toEqual(['bell', ...BELL_STATES.map((one) => one.key)]);
     expect(keys.slice(101, 104)).toEqual(['whatsAppLine', 'checkWhatsApp', 'whatsAppRead']);
     expect(keys.slice(104, 110)).toEqual([
       'channelsWrite',
@@ -81,7 +81,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'channelsMany',
       'channelsNone',
     ]);
-    expect(keys.slice(110, 118)).toEqual([
+    expect(keys.slice(110, 120)).toEqual([
       'reasons',
       'trySms',
       'trySmsQuiet',
@@ -90,12 +90,14 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'closedReached',
       'reachedQuiet',
       'unbrokenSubject',
+      'tallMessage',
+      'tallFollowUp',
     ]);
-    expect(keys.slice(118, 128)).toEqual(WAITS_STATES.map((one) => one.key));
-    expect(keys.slice(128, 145)).toEqual(NOTICE_STATES.map((one) => one.key));
-    expect(keys.slice(145, 161)).toEqual(INVITE_STATES.map((one) => one.key));
-    expect(keys.slice(161, 168)).toEqual(SMS_STATES.map((one) => one.key));
-    expect(keys.slice(188, 227)).toEqual(TELL_STATES.map((one) => one.key));
+    expect(keys.slice(120, 130)).toEqual(WAITS_STATES.map((one) => one.key));
+    expect(keys.slice(130, 147)).toEqual(NOTICE_STATES.map((one) => one.key));
+    expect(keys.slice(147, 163)).toEqual(INVITE_STATES.map((one) => one.key));
+    expect(keys.slice(163, 170)).toEqual(SMS_STATES.map((one) => one.key));
+    expect(keys.slice(190, 229)).toEqual(TELL_STATES.map((one) => one.key));
     expect(keys.slice(0, 3)).toEqual(['first', 'loading', 'inUse']);
     expect(keys.slice(6, 10)).toEqual([
       'channelReply',
@@ -124,7 +126,7 @@ describe('Messaging B · Conversations, the rules (sc-31371)', () => {
       'editCancelled',
       'editTooLate',
     ]);
-    expect(new Set(keys).size).toBe(274);
+    expect(new Set(keys).size).toBe(276);
     expect(MESSAGES_PAGES.flatMap((page) => page.states.map((one) => one.to))).toEqual(
       keys.map((key) => `/demo/events/evt-wed-4/messages?state=${key}`),
     );

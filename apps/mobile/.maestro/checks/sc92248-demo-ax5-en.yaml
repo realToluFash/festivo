@@ -1,0 +1,9 @@
+# sc-92248: the band-title demo at size=ax5&lang=en, upright. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/demo/band-title?size=ax5&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 8000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: band-demo

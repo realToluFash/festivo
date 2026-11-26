@@ -158,6 +158,7 @@ import {
 import { GUESTS as TALKS, type GuestKey } from '../messages/MessagesSample.ts';
 import type { BudgetState } from '../budget/BudgetModel.ts';
 import { BudgetScreen } from '../budget/BudgetScreen.tsx';
+import type { BriefingState } from '../briefing/briefingModel.ts';
 import { StaffRoster } from '../staffLink/StaffRoster.tsx';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventModel.ts';
@@ -240,6 +241,7 @@ export function EventScreen({
   guests = null,
   budget = null,
   staff = null,
+  briefing = null,
   people = null,
   peopleParams,
   guestsFrom: figureOpens = null,
@@ -260,6 +262,8 @@ export function EventScreen({
   budget?: BudgetState | null;
   /** The Staff area's roster state (sc-77903). */
   staff?: RosterState | null;
+  /** sc-3917: the briefing above the roster, on a tablet. */
+  briefing?: BriefingState | null;
   /** The People card's state on Overview (sc-29914); none is the populated card. */
   people?: CardState | null;
   /** People's own query, when People opens in this frame from its own page (sc-67665). */
@@ -879,7 +883,7 @@ export function EventScreen({
   if (at === 'staff' && messagesHere)
     page = (
       <AreaPage area={at} event={shown} locale={dateLocale()}>
-        <StaffRoster state={staff ?? 'populated'} />
+        <StaffRoster state={staff ?? 'populated'} briefing={briefing} />
       </AreaPage>
     );
   else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;

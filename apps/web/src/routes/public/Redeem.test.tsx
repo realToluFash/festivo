@@ -67,7 +67,7 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
   });
 }
 
-function signedIn(): void {
+function signedIn(outsideEvents: unknown[] = []): void {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
   const ire = membership({ id: 'org_2', name: 'Ìrè Events' });
   __setSessionState({
@@ -87,8 +87,9 @@ function signedIn(): void {
       organisationCountry: null,
       timezone: null,
       waitingFor: null,
+      outsideEvents,
     },
-  });
+  } as never);
 }
 
 function signedOut(): void {
@@ -582,5 +583,68 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
     expect(screen.queryByText(/That code does not work/u)).toBeNull();
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Brandão');
+  });
+});
+
+describe('"You’re in for…" leads to check-in (sc-28230)', () => {
+  const REDEEMED = (role: string) => ({
+    eventId: 'ev_1',
+    name: 'Kemi Okafor',
+    role,
+    jobLabel: 'Bar and drinks',
+    endsAt: '2030-11-14T23:30:00+00:00',
+    again: false,
+  });
+
+  it('offers Check-in to a code that checks guests in', async () => {
+    signedIn();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_check_in'), 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect((await screen.findByRole('link', { name: 'Check-in' })).getAttribute('href')).toBe(
+      '/door/ev_1',
+    );
+    expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
+  });
+
+  it('offers no Check-in to a code that can only view', async () => {
+    signedIn();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json({ ...OPENED, role: 'can_view' }),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_view'), 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect(await screen.findByRole('button', { name: 'Open the event' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
+  });
+
+  it('reads /d/in/:eventId as after redeeming, and redeems nothing again', async () => {
+    signedIn([
+      {
+        id: 'ev_1',
+        name: 'Joana & Rui’s wedding',
+        organisationName: 'Lumen Feiras',
+        role: 'can_check_in',
+        jobLabel: 'Bar and drinks',
+        startsAt: '2030-11-14T15:00:00+00:00',
+        endsAt: '2030-11-14T23:30:00+00:00',
+      },
+    ]);
+    const sent = at('/d/in/ev_1', {});
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
+      }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Check-in' }).getAttribute('href')).toBe('/door/ev_1');
+    expect(sent.filter((one) => one.line.includes('/redeem'))).toEqual([]);
   });
 });

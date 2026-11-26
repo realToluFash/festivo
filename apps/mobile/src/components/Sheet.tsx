@@ -18,6 +18,8 @@ import {
   type GestureResponderEvent,
   type LayoutChangeEvent,
   Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   PanResponder,
   Platform,
   Pressable,
@@ -32,7 +34,7 @@ import {
   sheetDragCloses,
   sheetDragSpeed,
   sheetDragStarts,
-  sheetStripHas,
+  sheetTouchHolds,
   sheetKeysCover,
   sheetPadding,
   sheetUnderKeys,
@@ -254,7 +256,9 @@ function SheetFrame({
             testID={testID}
           >
             <StripHeld.Provider value={drags && stripHeld}>
-              <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+              <ScrolledAway.Provider value={drag.scrolledAway}>
+                <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+              </ScrolledAway.Provider>
             </StripHeld.Provider>
             {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
@@ -376,6 +380,7 @@ function sheetDrag(first: SheetDragNow) {
   // The scrim fills the modal's window from its top, so the frame's y there is where a touch's pageY meets it.
   let frame = { top: 0, height: 0 };
   let touch: SheetTouch | null = null;
+  let away = false;
   const back = () => {
     const { shift, fade, reduced } = now;
     if (!reduced) {
@@ -400,17 +405,17 @@ function sheetDrag(first: SheetDragNow) {
         const { pageX, pageY, timestamp, touches } = nativeEvent;
         if (touch?.dragging) back();
         const from = pageY - frame.top;
-        now.holdStrip(touches.length === 1 && sheetStripHas(from));
-        touch =
-          touches.length === 1
-            ? {
-                from,
-                x0: pageX,
-                y0: pageY,
-                samples: [{ y: pageY, t: timestamp }],
-                dragging: false,
-              }
-            : null;
+        const holds = sheetTouchHolds({ from, touches: touches.length, scrolled: away });
+        now.holdStrip(holds);
+        touch = holds
+          ? {
+              from,
+              x0: pageX,
+              y0: pageY,
+              samples: [{ y: pageY, t: timestamp }],
+              dragging: false,
+            }
+          : null;
       },
       onTouchMove: ({ nativeEvent }: GestureResponderEvent) => {
         if (touch == null) return;
@@ -449,6 +454,9 @@ function sheetDrag(first: SheetDragNow) {
     },
     follow: (next: SheetDragNow) => {
       now = next;
+    },
+    scrolledAway: (scrolled: boolean) => {
+      away = scrolled;
     },
   };
 }
@@ -542,11 +550,37 @@ const Revealed = createContext(true);
 
 const StripHeld = createContext(false);
 
-/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). */
-export function SheetScrollView(props: ScrollViewProps) {
-  const held = useContext(StripHeld);
+const ScrolledAway = createContext<(scrolled: boolean) => void>(() => undefined);
 
-  return <ScrollView {...props} scrollEnabled={!held && props.scrollEnabled !== false} />;
+/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet (sc-95217). */
+export function SheetScrollView({
+  holdsHeading = false,
+  ...props
+}: ScrollViewProps & { holdsHeading?: boolean }) {
+  const held = useContext(StripHeld);
+  const scrolledAway = useContext(ScrolledAway);
+
+  useEffect(() => {
+    if (!holdsHeading) return;
+
+    return () => scrolledAway(false);
+  }, [holdsHeading, scrolledAway]);
+
+  return (
+    <ScrollView
+      {...props}
+      scrollEnabled={!held && props.scrollEnabled !== false}
+      {...(holdsHeading
+        ? {
+            scrollEventThrottle: 16,
+            onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+              scrolledAway(event.nativeEvent.contentOffset.y > 0);
+              props.onScroll?.(event);
+            },
+          }
+        : {})}
+    />
+  );
 }
 
 /** False while a sheet that names no window hides its content, so a heading waits to take focus until it can (sc-11032). */

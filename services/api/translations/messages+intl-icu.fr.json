@@ -417,7 +417,7 @@
     "payment_reminder.email.settings": "Paramètres de notification",
     "payment_reminder.email.footer": "Vous recevez ce message parce que vous pouvez enregistrer des paiements dans l’organisation {organisation}. Pour ne plus recevoir ces e-mails, désactivez les e-mails Facturation dans Paramètres de notification.",
     "limits.staff_links": "Ce lien a été ouvert trop souvent. Réessayez {hour, plural, other {à {time}}}.",
-    "limits.service_taps": "Too many steps at once. Try again {hour, plural, other {at {time}}}.",
+    "limits.service_taps": "Trop d’étapes à la fois. Réessayez {hour, plural, other {à {time}}}.",
     "guestReplies.bell.coming": "{count, plural, one {{count, number, ::group-auto} vient} many {{count, number, ::group-auto} viennent} other {{count, number, ::group-auto} viennent}}",
     "guestReplies.bell.notComing": "{count, plural, one {{count, number, ::group-auto} ne vient pas} many {{count, number, ::group-auto} ne viennent pas} other {{count, number, ::group-auto} ne viennent pas}}",
     "guestReplies.bell.maybe": "{count, plural, one {{count, number, ::group-auto} à confirmer} many {{count, number, ::group-auto} à confirmer} other {{count, number, ::group-auto} à confirmer}}",

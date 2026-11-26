@@ -16,6 +16,7 @@ use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\StaffStation;
 use App\Enum\NeedKind;
+use App\Enum\Permission;
 use App\Repository\GuestNeedRepository;
 use App\Repository\ScheduleItemRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -43,7 +44,7 @@ final readonly class MyNight
     ) {
     }
 
-    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open */
+    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their job's level opens the door (sc-28230) */
     public function of(StaffMember $entry, DateTimeImmutable $until): array
     {
         $event = $entry->getEvent();
@@ -56,7 +57,7 @@ final readonly class MyNight
         $doorsAt = $event->getStartsAt()->setTimezone($zone);
 
         return [
-            'event' => ['name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
+            'event' => ['id' => $event->getId()->toRfc4122(), 'name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
             'endsAt' => $until->setTimezone($zone)->format(\DATE_ATOM),
             'station' => null === $station ? null : self::stationName($station),
             'job' => $shown?->getJob()->getName() ?? $entry->getJob()?->getName(),
@@ -70,6 +71,7 @@ final readonly class MyNight
             'timing' => $this->timing($event, $zone),
             'doorsAt' => $doorsAt->format(\DATE_ATOM),
             'tables' => $this->tables($station, $now >= $doorsAt),
+            'checksIn' => Iter\contains(StaffLinkGrants::levelOf($entry)->permissions(), Permission::GuestsCheckIn),
         ];
     }
 

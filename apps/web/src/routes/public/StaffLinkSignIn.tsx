@@ -73,7 +73,7 @@ export function StaffLinkSignIn({
     setFocus((was) => ({ to, n: was.n + 1 }));
   };
 
-  const { signOut } = useSignOut(() => {
+  const { signOut, unreached } = useSignOut(() => {
     setSignedOut(true);
     go({ ...CONFIRM, signedOut: true });
   });
@@ -117,9 +117,11 @@ export function StaffLinkSignIn({
   if (reader === 'yours')
     return (
       <MyNightPage
-        token={token}
+        source={token}
+        read={() => api.staffLinkNight(token)}
         name={name}
         onSignOut={() => void signOut()}
+        stillSignedIn={unreached}
         onLost={() => void onSignedIn()}
       />
     );

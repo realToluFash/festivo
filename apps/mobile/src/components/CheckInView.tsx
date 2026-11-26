@@ -1,5 +1,12 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
-import { REPLY_KEY } from '@soirely/domain';
+import {
+  type DoorRow,
+  REPLY_KEY,
+  countLine,
+  doorRows,
+  listedAs,
+  walkInProblem,
+} from '@soirely/domain';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -15,15 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { followReadingAgain } from '../followTopic.ts';
 import { currentLocale } from '../i18n/index.ts';
-import {
-  type DoorRow,
-  beforeOpenTags,
-  clockOf,
-  countLine,
-  doorRows,
-  listedAs,
-  walkInProblem,
-} from '../kit/checkIn.ts';
+import { beforeOpenTags, clockOf } from '../kit/checkIn.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { cardTags } from '../kit/eventsList.ts';
 import { markOf } from '../kit/guestRows.ts';

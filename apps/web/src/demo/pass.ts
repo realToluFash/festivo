@@ -34,7 +34,7 @@ export const PW = {
   dialogueCaption: 'The browser’s print dialogue · a plain stand-in, not Soirely’s',
   newWords: 'New words · [en]',
   asOf: 'as of 20:09',
-  connected: 'Connected · up to date 20:09',
+  connected: 'Connected · up to date at 20:09',
   noConnection: 'No connection · as of 20:09',
   demoNote:
     'Demo only: the stand-in shows where the browser’s print dialogue opens. Nothing is printed or stored.',

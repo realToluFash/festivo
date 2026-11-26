@@ -734,6 +734,8 @@ export interface CoursesStart {
   libraryFailed?: boolean;
   /** Try again on a library that did not load fails once more, then loads. */
   libraryRetryFails?: boolean;
+  /** sc-95116: the event is held from outside at Can edit the event, so Add dish never reaches the library. */
+  outside?: boolean;
   /** sc-3905: the dates every course's close is worked out from. */
   picks: PicksDates;
   /** sc-3905: the reply-by date moves to this, two seconds after the state opens. */
@@ -1009,6 +1011,26 @@ const STATES = {
       name: 'Add dish, a new dish',
       note: 'sc-3901’s form, with Only for this event; Last price only while unticked.',
       opened: { kind: 'addDish', courseId: MAIN, tab: 'new' },
+    }),
+  menuOutside: () =>
+    start({
+      name: 'From outside, at Can edit the event',
+      note: 'An account in no organisation, or a member of another, added on People. Add dish on a course opens the new dish form: no From the library tab and no Only for this event.',
+      outside: true,
+    }),
+  addDishOutside: () =>
+    start({
+      name: 'Add dish, from outside',
+      note: 'No organisation’s library at all: the new dish form, kept for this event only, and no Last price.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'new' },
+      outside: true,
+    }),
+  addDishOutsideBlank: () =>
+    start({
+      name: 'Add dish, from outside, nothing filled in',
+      note: 'Checked before it sends, as a member’s new dish is: the name and Contains.',
+      opened: { kind: 'addDish', courseId: MAIN, tab: 'new', press: true },
+      outside: true,
     }),
   addDishNewBlank: () =>
     start({
@@ -2425,7 +2447,7 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
     ).map(link),
   },
   {
-    name: 'Add dish, from the library or new',
+    name: 'Add dish, from the library or new, and from outside (sc-95116)',
     states: (
       [
         'addDish',
@@ -2437,6 +2459,9 @@ export const COURSES_PAGES: readonly { name: string; states: readonly DemoLink[]
         'addDishSame',
         'addDishNew',
         'addDishNewBlank',
+        'menuOutside',
+        'addDishOutside',
+        'addDishOutsideBlank',
       ] as const
     ).map(link),
   },
