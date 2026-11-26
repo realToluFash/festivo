@@ -1,0 +1,20 @@
+# sc-92467 regression: pw opens with keys up and takes typing with no tap.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/security
+- extendedWaitUntil:
+    visible:
+      id: 'security.password'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'security.password'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'security.password'
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: opened
+- inputText: 'abcdef'
+- takeScreenshot: typed

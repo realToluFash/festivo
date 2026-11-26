@@ -1,0 +1,20 @@
+# sc-92467 regression: zone opens with keys up and takes typing with no tap.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.zone'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.zone'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'account.zone'
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: opened
+- inputText: 'Tokyo'
+- takeScreenshot: typed

@@ -1,0 +1,20 @@
+# sc-92467 regression: name opens with keys up and takes typing with no tap.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.name'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.name'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'account.name'
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: opened
+- inputText: 'Zq'
+- takeScreenshot: typed

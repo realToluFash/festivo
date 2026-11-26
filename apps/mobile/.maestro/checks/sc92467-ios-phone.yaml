@@ -1,0 +1,20 @@
+# sc-92467 regression: phone opens with keys up and takes typing with no tap.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/account
+- extendedWaitUntil:
+    visible:
+      id: 'account.phone.add'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'account.phone.add'
+    timeout: 20000
+    centerElement: true
+- tapOn:
+    id: 'account.phone.add'
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: opened
+- inputText: '7700900123'
+- takeScreenshot: typed
