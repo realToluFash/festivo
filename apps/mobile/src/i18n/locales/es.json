@@ -3778,12 +3778,12 @@
   },
   "station": {
     "wayIn": {
-      "title": "Kitchen station",
+      "title": "Zona de cocina",
       "line": "{{station}} · {{course}}",
-      "pick": "Pick a station",
-      "said": "Kitchen station, {{line}}",
-      "asOf": "{{line}} · as of {{time}}",
-      "open": "Open {{station}}"
+      "pick": "Elegir una zona",
+      "said": "Zona de cocina, {{line}}",
+      "asOf": "{{line}} · actualizado: {{time}}",
+      "open": "Abrir {{station}}"
     },
     "title": "Zona de cocina · {{station}}",
     "titleSaid": "Zona de cocina · {{station}}. Elegir otra zona",
