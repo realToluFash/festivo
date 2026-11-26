@@ -7,7 +7,7 @@ import { Opened } from '../../../components/EventPageParts.tsx';
 import { Glyph } from '../../../components/Glyph.tsx';
 import { Ask, Head, RowWords } from '../../../components/SettingsParts.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { dayIn, dayWords } from './courseDefault.ts';
+import { dayIn } from './courseDefault.ts';
 import { copyLine, dueError, saveSheet, shortDay } from './kitchenSheet.ts';
 
 export function DownloadMark() {
@@ -191,7 +191,7 @@ function DueRow({
           <p className="ks-picks">
             <Glyph name="info" size={15} weight={2.2} />
             {t('kitchenSheet.picksOpen', {
-              date: dayWords(dayIn(new Date(until), event.timeZone), locale),
+              date: shortDay(dayIn(new Date(until), event.timeZone), locale),
             })}
           </p>
         )
