@@ -92,8 +92,9 @@ final readonly class ShiftNoticeStates
         }
 
         $sentAt = $known['sent'][$id] ?? null;
+        $briefedAt = $entry->getBriefCopyAt();
 
-        if (null === $sentAt || [] !== $this->toldShifts->changesOf($entry, $shifts)) {
+        if (null === $sentAt || (null !== $briefedAt && self::instant($sentAt) <= $briefedAt) || [] !== $this->toldShifts->changesOf($entry, $shifts)) {
             return null;
         }
 
