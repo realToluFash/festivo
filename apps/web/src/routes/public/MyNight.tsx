@@ -121,12 +121,13 @@ export function MyNightPage({
 /** The night as it now reads, announcing a move to another station; the lead and the tables move with it. */
 function shown(was: Seen, night: MyNight): Seen {
   const before = was.kind === 'shown' ? headingOf(was.night) : null;
-  const moved = before != null && before !== headingOf(night) && night.station != null;
+  const kept = was.kind === 'shown' ? was.updated : null;
+  const moved = before != null && before !== headingOf(night);
 
   return {
     kind: 'shown',
     night,
-    updated: moved ? night.station : was.kind === 'shown' ? was.updated : null,
+    updated: night.station == null ? null : moved ? night.station : kept,
     readAt: formatEventClock(new Date().toISOString(), night.event.timeZone, dateLocale()),
     at: Date.now(),
     stale: false,
