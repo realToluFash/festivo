@@ -19,4 +19,7 @@ interface MembershipDirectoryInterface
 
     /** The same answer for every event of the organisation at once, for a list. */
     public function eventScopeIn(User $user, Uuid $organisationId): ?EventScope;
+
+    /** Whether the account, not a member, holds a live grant on one of the organisation's events from outside or through a staff link (sc-71, sc-4235). */
+    public function isOutsideIn(User $user, Uuid $organisationId): bool;
 }
