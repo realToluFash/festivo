@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { ReadOut } from '../../components/ReadOut.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import { ASK_MS, type Ask, askAnswered, pressAsk } from './CheckWaits.ts';
+import { type Ask } from './CheckWaits.ts';
 import { DeliveryMark, MessageGlyph } from './MessageMarks.tsx';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, WW, say } from './MessagesWords.ts';
 import type { Extra, Refusal } from './NoticeStates.ts';
 import { NW, sayNotice } from './NoticeWords.ts';
 import { DayRule, GuestBubble, SystemLine } from './Stream.tsx';
+import { useOwnerAsk } from './useOwnerAsk.ts';
 
 const INK2 = tokens.colorInkSecondary;
 
@@ -139,37 +138,8 @@ export function RefusedLines({
 
 /** Ask an owner in the notice's wait, for a member without billing.manage, as sc-3963's check has it. */
 export function NoticeAsk({ start, owners = 2 }: { start: Ask; owners?: number }) {
-  const [ask, setAsk] = useState<Ask>(start);
-  const now = useRef<Ask>(start);
-  const pressed = useRef(false);
-  const sentRef = useRef<ViewInstance>(null);
-  const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { ask, onAsk, sentRef } = useOwnerAsk(start);
   const sent = say.ownersAsked(owners);
-
-  const move = (next: Ask) => {
-    now.current = next;
-    setAsk(next);
-  };
-  const onAsk = () => {
-    const next = pressAsk(now.current);
-    if (!next.sends) return;
-    pressed.current = true;
-    move(next.ask);
-    answer.current = setTimeout(() => move(askAnswered(now.current, true)), ASK_MS);
-  };
-
-  useEffect(
-    () => () => {
-      if (answer.current != null) clearTimeout(answer.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    if (ask !== 'sent' || !pressed.current) return undefined;
-    const later = setTimeout(() => moveScreenReaderFocus(sentRef.current), 350);
-
-    return () => clearTimeout(later);
-  }, [ask]);
 
   if (ask === 'sent')
     return (

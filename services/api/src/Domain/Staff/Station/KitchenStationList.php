@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Station;
 
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
+use App\Domain\Staff\RosterNames;
 use App\Entity\Event;
 use App\Entity\StaffMember;
 use App\Entity\StaffStation;
@@ -25,6 +26,7 @@ final readonly class KitchenStationList
         private StaffMemberRepository $staffMemberRepository,
         private ServiceFiringRepository $serviceFiringRepository,
         private ServiceTables $serviceTables,
+        private RosterNames $rosterNames,
     ) {
     }
 
@@ -47,8 +49,6 @@ final readonly class KitchenStationList
             }
         }
 
-        $entry ??= Iter\search($this->staffMemberRepository->findOnEvent($event), $isTheirs);
-
         $firedAt = [];
 
         foreach ($this->serviceFiringRepository->findOnEvent($event) as $firing) {
@@ -57,7 +57,7 @@ final readonly class KitchenStationList
 
         return [
             'event' => $event->getName(),
-            'you' => $entry?->getFullName() ?? $viewer->getName(),
+            'you' => $this->rosterNames->of($event)($viewer),
             'stations' => Vec\map($served['stops'], static fn (array $stop): array => [
                 'id' => $stop['id'],
                 'name' => $stop['name'],

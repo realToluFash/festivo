@@ -1,3 +1,4 @@
+import type { Finished, Reach, ShiftNotice } from '../shiftNotices/shiftNoticesModel.ts';
 import type { LinkStatus, Trail } from '../staffLink/StaffLinkModel.ts';
 import { type OnRoster, rosterOrder, sampleRoster } from '../staffLink/StaffRosterModel.ts';
 import { TW } from '../staffLink/StaffTextModel.ts';
@@ -12,6 +13,10 @@ export interface Person extends OnRoster {
   waitText: boolean;
   channel: 'sms' | 'whatsApp';
   briefCopy: { trail: Trail; marked: boolean } | null;
+  /** sc-4333: how S2 and S3 reach them, the line under their Briefing word, and Called off or Event ended. */
+  reach?: Reach;
+  notice?: ShiftNotice | null;
+  ended?: Finished | null;
 }
 
 export const RULES_MAX = 2000;
@@ -397,6 +402,9 @@ export interface BriefingStart {
   /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
   quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
+  /** sc-4333: the event is Finished, so no send is offered while Copy link stays; the phone shows it too. */
+  concluded?: boolean;
+  anyLayout?: boolean;
 }
 
 function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'title' | 'what'>): BriefingStart {

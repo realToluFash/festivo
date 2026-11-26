@@ -250,9 +250,16 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
       'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
     );
-    expect(providerOnlyLine('Ìrè Events', ['apple', 'google'])).toBe(
-      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple or Google.',
+    expect(providerOnlyLine('Ìrè Events', ['apple'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple.',
     );
+    for (const both of [
+      ['apple', 'google'],
+      ['google', 'apple'],
+    ] as const)
+      expect(providerOnlyLine('Ìrè Events', both)).toBe(
+        'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
+      );
   });
 
   it('starts again signed out with nothing kept', () => {

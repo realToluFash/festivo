@@ -18,6 +18,8 @@ import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import { useBriefing } from '../briefing/StaffBriefing.tsx';
 import { type BriefingState, briefingStart } from '../briefing/briefingModel.ts';
+import { useShiftNotices } from '../shiftNotices/ShiftNotices.tsx';
+import { type ShiftState, briefingFor, shiftStart } from '../shiftNotices/shiftNoticesModel.ts';
 import { ISSUE_MS as SEND_MS, SHOWN_WORDS, shownOf } from './StaffLinkModel.ts';
 import { StatusShape } from './StaffLinkScreen.tsx';
 import {
@@ -51,16 +53,24 @@ const RETRY_MS = 1200;
 
 type Phase = 'loading' | 'failed' | 'ready';
 
-/** The event's Staff in the app (sc-77903): the roster to read, in sc-3906's order, each person opening their own link, with sc-3917's briefing on it on a tablet. */
+/** The event's Staff in the app (sc-77903): the roster to read, in sc-3906's order, each person opening their own link, with sc-3917's briefing on it on a tablet, or sc-4333's reminder card and shift notices with it on every layout. */
 export function StaffRoster({
   state,
   briefing = null,
+  shift = null,
 }: {
   state: RosterState;
   briefing?: BriefingState | null;
+  shift?: ShiftState | null;
 }) {
   const texts = textRoster(state);
-  const [opening] = useState(() => (briefing == null ? null : briefingStart(briefing)));
+  const startOf = () =>
+    shift != null
+      ? briefingFor(shiftStart(shift))
+      : briefing == null
+        ? null
+        : briefingStart(briefing);
+  const [opening] = useState(startOf);
   const first = (): OnRoster[] => opening?.people ?? texts?.people ?? sampleRoster();
   const sms = texts != null;
   const [phase, setPhase] = useState<Phase>(
@@ -132,7 +142,14 @@ export function StaffRoster({
     router.push(`/demo/staff-link?person=${person.id}${view}${withSms}`);
   }
 
-  const brief = useBriefing(briefing, opening, people, (next) => hold(next));
+  const brief = useBriefing(
+    shift ?? briefing,
+    opening,
+    people,
+    (next) => hold(next),
+    () => startOf() ?? briefingStart('populated'),
+  );
+  const notices = useShiftNotices(shift, brief);
   const check = bulkCheck(people, credits);
   const bulkShown =
     sms && manage && !erased && opening?.finished !== true && phase === 'ready' && check.n > 0;
@@ -281,6 +298,7 @@ export function StaffRoster({
   return (
     <View style={styles.page} testID={`staff.${state}`}>
       {brief?.card}
+      {notices?.card}
       <View style={styles.head}>
         <View
           ref={head}
@@ -305,9 +323,11 @@ export function StaffRoster({
           </Text>
         )}
         {body}
+        {phase === 'ready' && notices?.foot}
       </View>
       <DemoOnly title="Demo only: the board’s switches">
         {brief?.demo}
+        {notices?.demo}
         <SecondaryButton
           label="A change on the web: Amina Yusuf’s link sent"
           onPress={webChange}
@@ -342,11 +362,11 @@ export function StaffRoster({
             resetKept();
             const again = textRoster(state);
             setPhase(state === 'loading' ? 'loading' : state === 'failed' ? 'failed' : 'ready');
-            const people =
-              briefing == null ? (again?.people ?? sampleRoster()) : briefingStart(briefing).people;
+            const people = startOf()?.people ?? again?.people ?? sampleRoster();
             setBase(people);
             setPeople(state === 'empty' ? [] : rosterOrder(people));
             brief?.restart();
+            notices?.restart();
             setLeft(again?.credits ?? BALANCE);
             setCredits(again?.credits ?? BALANCE);
             setChecking(again?.checking ?? false);

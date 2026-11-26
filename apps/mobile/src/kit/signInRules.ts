@@ -114,13 +114,13 @@ export function saidOnWelcome(
   return params.signedOut == null ? null : [t('signIn.endedTitle'), t('signIn.endedBody')];
 }
 
-/** The providers named in the refusal, Google and Apple when it named none. */
+/** The providers named in the refusal, Google first whatever order the API lists them in, as the heading names them (sc-96668); Google and Apple when it named none. */
 export function providerNames(providers: readonly string[]): string[] {
   const names: Record<string, string> = { google: 'Google', apple: 'Apple' };
 
-  return (providers.length > 0 ? providers : ['google', 'apple']).map(
-    (provider) => names[provider] ?? provider,
-  );
+  return [...(providers.length > 0 ? providers : ['google', 'apple'])]
+    .sort((a, b) => Number(b === 'google') - Number(a === 'google'))
+    .map((provider) => names[provider] ?? provider);
 }
 
 export type RulesNotice = 'due' | 'readOnly' | 'twoFactor' | 'changed';

@@ -28,6 +28,7 @@ import {
   undoOpen,
   undoPlan,
   undoWords,
+  withoutRefused,
 } from './kitchenStation.ts';
 
 const PASS = 'pass';
@@ -596,6 +597,15 @@ describe('undo after a mark (sc-4015)', () => {
       subject: 'item-1',
       expected: { item: 'preparing' },
     });
+  });
+
+  it('is no longer offered on a mark refused as Not sent', () => {
+    const marks = new Map([
+      ['mains|jollof', mark],
+      ['mains|plantain', { ...mark, key: 'plantain', tapKey: 'tap-2' }],
+    ]);
+
+    expect([...withoutRefused(marks, [{ tap: tap('tap-1') }]).keys()]).toEqual(['mains|plantain']);
   });
 });
 

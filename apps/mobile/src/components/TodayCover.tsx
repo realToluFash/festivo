@@ -664,6 +664,7 @@ export function NowBlock({
   const { open: go } = useTodayShell();
   const whole = useAccessibilitySizes();
   const [column, setColumn] = useState(0);
+  const [name, setName] = useState<number | null>(null);
   const { now, run } = moment;
 
   if (now == null) return null;
@@ -689,19 +690,40 @@ export function NowBlock({
     const words = (
       <>
         <Chips now={now} grows={whole} />
-        <Text
-          size={wide ? 48 : 36}
-          weight="bold"
-          accessibilityRole="header"
-          style={[
-            styles.white,
-            { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
-          ]}
-        >
-          {now.name}
-        </Text>
         {!wide && whole ? (
-          <CoverLine size={16} line={1.3} weight="semibold" room={column} style={styles.white}>
+          <CoverLine
+            size={36}
+            line={1.06}
+            weight="bold"
+            accessibilityRole="header"
+            room={column}
+            onDrawn={setName}
+            style={[styles.white, { letterSpacing: 36 * -0.02 }]}
+          >
+            {now.name}
+          </CoverLine>
+        ) : (
+          <Text
+            size={wide ? 48 : 36}
+            weight="bold"
+            accessibilityRole="header"
+            style={[
+              styles.white,
+              { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
+            ]}
+          >
+            {now.name}
+          </Text>
+        )}
+        {!wide && whole ? (
+          <CoverLine
+            size={16}
+            line={1.3}
+            weight="semibold"
+            room={column}
+            under={name ?? Infinity}
+            style={styles.white}
+          >
             {now.ends}
           </CoverLine>
         ) : (
@@ -715,7 +737,7 @@ export function NowBlock({
     const onOpen = () => go({ to: 'event', id: now.event.id, name: now.name });
     const open =
       !wide && whole ? (
-        <WholeWhiteButton label={label} onPress={onOpen} column={column} under={Infinity} />
+        <WholeWhiteButton label={label} onPress={onOpen} column={column} under={name ?? Infinity} />
       ) : (
         <WhiteButton label={label} onPress={onOpen} />
       );

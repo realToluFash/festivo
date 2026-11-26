@@ -10,6 +10,7 @@ use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
 use App\Domain\Service\Model\Expected;
 use App\Domain\Service\Model\ServingTable;
+use App\Domain\Staff\RosterNames;
 use App\Domain\Staff\Station\ServiceTables;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -51,6 +52,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         private ClockInterface $clock,
         private ServingTables $servingTables,
         private ServiceTables $serviceTables,
+        private RosterNames $rosterNames,
         private OrderMaker $orderMaker,
         private ServiceRead $serviceRead,
         private ServiceChanges $serviceChanges,
@@ -388,7 +390,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         $grants->require(Permission::ServiceWork);
 
         if (!$tray->getWaiter()->getId()->equals($by->getId()) && !$grants->holds(Permission::ServiceManage)) {
-            throw new ApiException(ErrorCode::TrayNotYours, 'service.tray_not_yours', members: ['waiter' => ['id' => $tray->getWaiter()->getId()->toRfc4122(), 'name' => $tray->getWaiter()->getName()]], parameters: ['{name}' => $tray->getWaiter()->getName()]);
+            $name = $this->rosterNames->of($tray->getEvent())($tray->getWaiter());
+
+            throw new ApiException(ErrorCode::TrayNotYours, 'service.tray_not_yours', members: ['waiter' => ['id' => $tray->getWaiter()->getId()->toRfc4122(), 'name' => $name]], parameters: ['{name}' => $name]);
         }
     }
 

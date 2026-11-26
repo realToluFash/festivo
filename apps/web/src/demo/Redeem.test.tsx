@@ -332,7 +332,7 @@ describe('a member of an organisation that signs in with Google or Apple only (s
   it('draws each linked provider and no other', async () => {
     await redeem('provider-only-both');
 
-    expect(screen.getByText(line('Apple or Google'))).toBeDefined();
+    expect(screen.getByText(line('Google or Apple'))).toBeDefined();
     const names = screen.getAllByRole('button').map((one) => one.textContent);
     expect(names).toEqual(['Continue with Google', 'Continue with Apple']);
   });

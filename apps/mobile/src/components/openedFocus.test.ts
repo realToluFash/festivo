@@ -4,6 +4,9 @@ import {
   ARRIVED_FOCUS_TICKS,
   type ArrivedFocus,
   arrivedFocusStep,
+  type MountedKeys,
+  mountedKeys,
+  mountedKeysStep,
   openedFocus,
   settledFocus,
   windowArrival,
@@ -90,5 +93,55 @@ describe('a field sends no focus before the device says whether a screen reader 
     expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
     expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, readerOn: false })).toBe('focus');
+  });
+});
+
+describe('on an Android tablet, a field that opens focused puts its keys up with no tap (sc-92467)', () => {
+  const mounted: MountedKeys = {
+    os: 'android',
+    opened: 'mount',
+    autoFocus: true,
+    focused: true,
+    raised: false,
+    readerOn: false,
+    ticks: 1,
+  };
+
+  it('raises the keys on the field once it has the focus, a tick after mount', () => {
+    expect(mountedKeysStep({ ...mounted, ticks: 0 })).toBe('wait');
+    expect(mountedKeysStep({ ...mounted, focused: false })).toBe('wait');
+    expect(mountedKeysStep(mounted)).toBe('raise');
+    expect(mountedKeysStep({ ...mounted, ticks: 3 })).toBe('raise');
+  });
+
+  it('raises them only once, so the back key keeps them down though Android reads them as down over a Modal', () => {
+    expect(mountedKeysStep({ ...mounted, raised: true })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, raised: true, ticks: 2 })).toBe('done');
+  });
+
+  it('raises nothing more after a blur and a focus, as the back key and a tap make', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: false, readerOn: false, ticks: 1 };
+    expect(step(now)).toBe('wait');
+    expect(step({ ...now, focused: true })).toBe('raise');
+    expect(step(now)).toBe('done');
+    expect(step({ ...now, focused: true, ticks: 2 })).toBe('done');
+  });
+
+  it('stops waiting after a few seconds', () => {
+    expect(mountedKeysStep({ ...mounted, focused: false, ticks: ARRIVED_FOCUS_TICKS })).toBe(
+      'done',
+    );
+  });
+
+  it('waits for the screen reader to be known, and with one on leaves focus as it was', () => {
+    expect(mountedKeysStep({ ...mounted, readerOn: null })).toBe('wait');
+    expect(mountedKeysStep({ ...mounted, readerOn: true })).toBe('done');
+  });
+
+  it('moves nothing on an iPhone or iPad, for a field that waited for its window, or one that does not open focused', () => {
+    expect(mountedKeysStep({ ...mounted, os: 'ios' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, opened: 'arrived' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, autoFocus: undefined })).toBe('done');
   });
 });

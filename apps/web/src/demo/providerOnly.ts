@@ -5,7 +5,7 @@ export const PROVIDER_ORG = 'Ìrè Events';
 
 const NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
 
-/** The accounts the three states draw: Google linked, Apple linked, both (the API lists them by provider name, so Apple first, and the line reads them in that order as sign-in does). */
+/** The accounts the three states draw: Google linked, Apple linked, both (as the API lists them, by provider name, so Apple first). */
 export const LINKED = {
   google: ['google'],
   apple: ['apple'],
@@ -22,9 +22,13 @@ export function linkedIn(state: string): readonly Provider[] {
 export const providerOnlyTitle = (organisation: string) =>
   `${organisation} signs in with Google or Apple only`;
 
-/** "Google", "Apple", or both joined as the locale joins a choice; English joins two with "or". */
+const ORDER: readonly Provider[] = ['google', 'apple'];
+
+/** "Google", "Apple", or both joined as the locale joins a choice, Google first whatever order the API lists them in, as the heading names them (sc-96668); English joins two with "or". */
 export const providerNames = (providers: readonly Provider[]) =>
-  providers.map((one) => NAMES[one]).join(' or ');
+  ORDER.filter((one) => providers.includes(one))
+    .map((one) => NAMES[one])
+    .join(' or ');
 
 /** [en]'s line (#94892 on sc-94849): no password in it, which they never typed. */
 export const providerOnlyLine = (organisation: string, providers: readonly Provider[]) =>

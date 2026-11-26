@@ -100,7 +100,7 @@ export const isSecondNumber = (number: string) =>
 export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 117' } as const;
 export const PROVIDER_ORG = 'Ìrè Events';
 
-/** As the API lists them, by provider name: Apple first, so the line reads "Apple or Google" as sign-in's does. */
+/** As the API lists them, by provider name: Apple first. The line still reads "Google or Apple" (sc-96668). */
 const LINKED = {
   google: ['google'],
   apple: ['apple'],
