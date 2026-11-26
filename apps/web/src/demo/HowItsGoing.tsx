@@ -168,7 +168,7 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
               {state.online ? (
                 <>
                   <span className="hig-status-dot" aria-hidden="true" />
-                  <span>Connected · up to date {NOW}</span>
+                  <span>Connected · up to date at {NOW}</span>
                 </>
               ) : (
                 <>
@@ -227,7 +227,7 @@ function HowItsGoing({ name }: { name: ServiceStateName }) {
             ro={ro}
             access={access}
             strip={
-              state.online ? `Connected · up to date ${NOW}` : `No connection · as of ${AS_OF}`
+              state.online ? `Connected · up to date at ${NOW}` : `No connection · as of ${AS_OF}`
             }
             act={actRunOut}
             close={() => actRunOut(closeRunOut(ro))}

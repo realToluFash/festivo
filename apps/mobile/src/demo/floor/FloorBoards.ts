@@ -7,7 +7,7 @@ const WHAT: Record<FloorState, readonly [string, string]> = {
   manage: ['service.manage, no section', 'Other tables only, every table'],
   moved: ['After a section move', 'You’re on Section D now.'],
   offline: ['No connection', '2 taps waiting, each marked Waiting to send'],
-  notSent: ['Not sent', 'Ada Obi is served now, by Tomi Ade.'],
+  notSent: ['Not sent', 'Ada Obi is now Served, marked by Tomi Ade.'],
   table: ['A table', 'Flagged guests, trays, seats, a held guest and owed plates'],
   nothingReady: ['A held guest, nothing Ready', 'Only Wait for all'],
   sendBack: ['Send back', 'Four reasons, nothing sent until one is chosen'],

@@ -306,7 +306,7 @@ describe('a table the person may not write at', () => {
 
 describe('live and offline', () => {
   it('reads the strip’s two states at 24-hour times, with the taps waiting', () => {
-    expect(stripLine(floorSeed('yours'))).toBe('Connected · up to date 21:04');
+    expect(stripLine(floorSeed('yours'))).toBe('Connected · up to date at 21:04');
     expect(stripLine(floorSeed('offline'))).toBe('No connection · as of 21:04 · 2 taps waiting');
   });
 
@@ -322,7 +322,7 @@ describe('live and offline', () => {
   it('sends the kept taps on connecting again, so none still reads Waiting to send', () => {
     const f = reconnect(choose(floorSeed('offline'), 'Table 2', 5, WAIT_ALL));
     const t2 = at(f, 'Table 2');
-    expect(stripLine(f)).toBe('Connected · up to date 21:04');
+    expect(stripLine(f)).toBe('Connected · up to date at 21:04');
     expect(f.kept).toBe(0);
     expect(f.undo?.kept).toBe(false);
     expect(t2.seats[4]?.held?.kept).toBe(false);
@@ -334,7 +334,7 @@ describe('live and offline', () => {
   it('names who changed the guest first in the Not sent card, until dismissed', () => {
     const f = floorSeed('notSent');
     expect(f.notSent).toEqual([
-      'Ada Obi is served now, by Tomi Ade.',
+      'Ada Obi is now Served, marked by Tomi Ade.',
       'Too late to undo: 2 minutes had passed.',
     ]);
     expect(dismissNotSent(f).notSent).toEqual([]);

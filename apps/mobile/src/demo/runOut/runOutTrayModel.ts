@@ -652,5 +652,5 @@ export function trayLine(s: RunOutState): string {
 }
 
 export function stripLine(s: RunOutState): string {
-  return s.online ? `Connected · up to date ${NOW}` : `No connection · as of ${AS_OF}`;
+  return s.online ? `Connected · up to date at ${NOW}` : `No connection · as of ${AS_OF}`;
 }

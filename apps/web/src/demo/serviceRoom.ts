@@ -636,7 +636,7 @@ export type Strip = 'connected' | 'offline' | 'notStarted' | 'refreshing' | 'unr
 export function stripLine(strip: Strip): string {
   switch (strip) {
     case 'connected':
-      return `Connected · up to date ${NOW}`;
+      return `Connected · up to date at ${NOW}`;
     case 'offline':
       return `No connection · as of ${AS_OF}`;
     case 'notStarted':
