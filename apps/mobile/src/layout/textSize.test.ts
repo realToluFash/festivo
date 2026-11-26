@@ -11,7 +11,6 @@ import {
   drawnSize,
   besideGlyph,
   besideGlyphInPill,
-  fitTracked,
   fitWidest,
   grownPad,
   labelStart,
@@ -226,26 +225,26 @@ describe('fitWidest', () => {
   });
 });
 
-describe("fitTracked, This week's strip on an iPhone 17 Pro (sc-94682)", () => {
+describe("fitWidest with tracking, This week's strip on an iPhone 17 Pro (sc-94682)", () => {
   // A day's column, a seventh of the strip less 10 a side; TODAY at the seventh step, 11 × 1.353, its five letters tracked 0.66 each.
   const column = 48.9;
   const start = 11 * 1.353;
   const tracking = 5 * 0.66;
 
   it("keeps the step's size for a label that fits its column", () => {
-    expect(fitTracked(11, start, 34, 3 * 0.66, column)).toBe(start);
+    expect(fitWidest(11, start, 34, column, 3 * 0.66)).toBe(start);
   });
 
   it('steps TODAY down to the largest whole size at which it fits, its tracking kept', () => {
-    expect(fitTracked(11, start, 54.2, tracking, column)).toBe(13);
+    expect(fitWidest(11, start, 54.2, column, tracking)).toBe(13);
   });
 
   it('never steps under the default size', () => {
-    expect(fitTracked(11, start, 120, tracking, column)).toBe(11);
+    expect(fitWidest(11, start, 120, column, tracking)).toBe(11);
   });
 
   it('leaves a label at or under the default size as it is, even when it is too wide', () => {
-    expect(fitTracked(11, 11, 60, tracking, column)).toBe(11);
+    expect(fitWidest(11, 11, 60, column, tracking)).toBe(11);
   });
 });
 

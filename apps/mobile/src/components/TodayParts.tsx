@@ -18,7 +18,7 @@ import {
   capUnderTitle,
   dayLineShares,
   drawnSize,
-  fitTracked,
+  fitWidest,
   wholeLineHeight,
 } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -455,7 +455,7 @@ function StripLabel({ text, today }: { text: string; today: boolean }) {
   const room = column?.key === key ? column.width : undefined;
   const known = width != null && room != null && room > 0;
   const drawn = known
-    ? fitTracked(TYPE.label, start, width, [...text].length * STRIP_TRACKING, room)
+    ? fitWidest(TYPE.label, start, width, room, [...text].length * STRIP_TRACKING)
     : start;
 
   return (

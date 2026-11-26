@@ -130,24 +130,17 @@ export function piecesOf(word: string): string[] {
     .filter((piece) => piece !== '');
 }
 
-/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. */
-export function fitWidest(size: number, start: number, widest: number, slot: number): number {
-  if (widest <= slot) return start;
-
-  return Math.max(size, Math.floor((start * slot) / widest));
-}
-
-/** As `fitWidest`, for a word whose tracking, `tracking` across it, stays the same at every size: it is taken out before the word is scaled (sc-94682). */
-export function fitTracked(
+/** The one size for labels whose widest word, drawn at `start`, measures `widest` in a slot `slot` wide: `start` when it fits, never below `size`. Tracking that stays the same at every size, `tracking` across the word, is taken out before the word is scaled (sc-94682). */
+export function fitWidest(
   size: number,
   start: number,
-  width: number,
-  tracking: number,
+  widest: number,
   slot: number,
+  tracking = 0,
 ): number {
-  if (width <= slot || start <= size) return start;
+  if (widest <= slot) return start;
 
-  return Math.max(size, Math.floor((start * (slot - tracking)) / (width - tracking)));
+  return Math.max(size, Math.floor((start * (slot - tracking)) / (widest - tracking)));
 }
 
 /** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
