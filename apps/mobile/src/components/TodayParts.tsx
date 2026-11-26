@@ -171,37 +171,6 @@ export function EventThumb({
   );
 }
 
-function ActionButton({
-  label,
-  filled,
-  onPress,
-}: {
-  label: string;
-  filled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={{ top: 4, bottom: 4 }}
-      style={({ pressed }) => [
-        styles.action,
-        filled ? styles.actionFilled : styles.actionSoft,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-    >
-      <Text
-        size={tokens.typeButton.size}
-        weight="semibold"
-        style={filled ? styles.onAccent : undefined}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function NeedRow({
   need,
   first,
@@ -213,6 +182,7 @@ function NeedRow({
   last: boolean;
   wide: boolean;
 }) {
+  const { t } = useTranslation();
   const { open } = useTodayShell();
   const { id, name } = need.event;
   const due = (
@@ -221,8 +191,8 @@ function NeedRow({
       <Text
         size={wide ? 14 : TYPE.sub}
         weight={need.late || first ? 'semibold' : 'medium'}
+        accessible={false}
         style={need.late ? styles.late : first ? undefined : styles.secondary}
-        numberOfLines={1}
       >
         {need.due}
       </Text>
@@ -230,34 +200,45 @@ function NeedRow({
   );
 
   return (
-    <View style={[styles.needRow, !last && styles.ruled]}>
+    <Pressable
+      onPress={() => open({ to: 'event', id, name })}
+      style={({ pressed }) => [styles.needRow, !last && styles.ruled, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={t('todayScreen.needRow', {
+        title: need.title,
+        event: name,
+        due: need.due,
+      })}
+    >
       <EventThumb event={need.event} side={wide ? 46 : 44} />
       <View style={styles.words}>
-        <Text size={TYPE.row} weight="semibold">
+        <Text size={TYPE.row} weight="semibold" accessible={false}>
           {need.title}
         </Text>
         {wide ? (
-          <View style={styles.inline}>
+          <View style={styles.inlineNeed}>
             {due}
-            <Text size={14} weight="medium" style={styles.secondary} numberOfLines={1}>
+            <Text
+              size={14}
+              weight="medium"
+              numberOfLines={2}
+              accessible={false}
+              style={styles.inlineName}
+            >
               {` · ${name}`}
             </Text>
           </View>
         ) : (
           <>
-            <Text size={TYPE.sub} weight="medium" style={styles.secondary} numberOfLines={1}>
+            <Text size={TYPE.sub} weight="medium" accessible={false} style={styles.secondary}>
               {name}
             </Text>
             {due}
           </>
         )}
       </View>
-      <ActionButton
-        label={need.action}
-        filled={first}
-        onPress={() => open({ to: 'event', id, name })}
-      />
-    </View>
+      <Glyph name="chevron" ink={tokens.colorInkTertiary} />
+    </Pressable>
   );
 }
 
@@ -291,11 +272,17 @@ export function NeedsYou({ moment, wide, top }: { moment: Moment; wide: boolean;
 
   return (
     <>
-      <SectionHead title={t('todayScreen.needsYou')} count={needs.length} top={top} />
+      <View
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={t('todayScreen.needsHead', { count: needs.length })}
+      >
+        <SectionHead title={t('todayScreen.needsYou')} count={needs.length} top={top} />
+      </View>
       <Panel style={wide && styles.panelWide}>
         {needs.map((need, index) => (
           <NeedRow
-            key={need.title}
+            key={`${need.event.id}:${need.title}`}
             need={need}
             first={index === 0}
             last={index === needs.length - 1}
@@ -1127,24 +1114,16 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
   },
   thumb: { overflow: 'hidden', flex: 0 },
-  action: {
-    minHeight: tokens.sizeControlDense,
-    paddingVertical: tokens.spaceXxs,
-    paddingHorizontal: 15,
-    borderRadius: tokens.sizeControlDense / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 0,
-  },
-  actionFilled: { backgroundColor: tokens.colorAccent },
-  actionSoft: { backgroundColor: tokens.colorCard },
   due: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs, flexShrink: 0 },
   needRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacePillEnd,
+    minHeight: tokens.sizeHit,
     paddingVertical: tokens.spaceLg,
   },
+  inlineNeed: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 1 },
+  inlineName: { flexShrink: 1, color: tokens.colorInkSecondary },
   clear: {
     flexDirection: 'row',
     alignItems: 'center',
