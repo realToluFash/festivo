@@ -1,0 +1,18 @@
+# sc-92250: a tap on a row under a day opens nothing; Today stays, This week still on screen. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(Wine tasting starts|Début : Wine tasting)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- takeScreenshot: before
+- tapOn: { text: '(Wine tasting starts|Début : Wine tasting)' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2500, optional: true }
+- takeScreenshot: after
+- assertVisible: { text: '(Wine tasting starts|Début : Wine tasting)' }
+- assertVisible: { text: '(This week|Cette semaine)' }
