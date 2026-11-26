@@ -347,13 +347,12 @@ function audienceWords(
 ): string {
   if (message.audience === 'all') return t('eventMessages.toAll');
 
-  const conditions = message.audience === 'conditions' ? (message.conditions ?? []) : null;
+  if (message.audience !== 'conditions') return t('eventMessages.toChosen');
 
-  return t('eventMessages.toChosen', {
-    audience:
-      conditions == null
-        ? t('eventMessages.chooseGuests')
-        : `${t('eventMessages.guestsWho')} ${conditionsWords(conditions.map(asCondition), groupsOf(null, conditions), t)}`,
+  const conditions = message.conditions ?? [];
+
+  return t('eventMessages.toAudience', {
+    audience: `${t('eventMessages.guestsWho')} ${conditionsWords(conditions.map(asCondition), groupsOf(null, conditions), t)}`,
   });
 }
 
@@ -427,8 +426,8 @@ function Rows({
     <>
       {sending.length > 0 && rows(sending)}
       {done.length > 0 && (
-        <section className="mg-section" aria-label={t('eventMessages.done')}>
-          <h2 className="mg-section-head">{t('eventMessages.done')}</h2>
+        <section className="mg-section" aria-label={t('eventMessages.doneHeading')}>
+          <h2 className="mg-section-head">{t('eventMessages.doneHeading')}</h2>
           {rows(done)}
         </section>
       )}
