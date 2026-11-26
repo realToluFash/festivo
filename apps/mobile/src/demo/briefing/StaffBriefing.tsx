@@ -1,11 +1,11 @@
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View, type ViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
 import { NoteBox } from '../../components/EventEdits.tsx';
-import { Field } from '../../components/Field.tsx';
+import { Field, TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Sheet, SheetActions } from '../../components/Sheet.tsx';
@@ -532,17 +532,15 @@ function HandHeld({ one, url, short = false }: { one: Person; url: string; short
           {BW.refused}
         </Text>
       </View>
-      <Text size={14} weight="semibold">
-        {short ? BW.link : BW.linkFor(one.name)}
-      </Text>
-      <TextInput
-        value={url}
-        editable={false}
-        selectTextOnFocus
-        accessibilityLabel={BW.linkFor(one.name)}
-        style={styles.heldField}
-        testID={`briefing.held.${one.id}`}
-      />
+      <Field label={short ? BW.link : BW.linkFor(one.name)}>
+        <TextField
+          value={url}
+          accessibilityLabel={short ? BW.link : BW.linkFor(one.name)}
+          submitting
+          selectTextOnFocus
+          testID={`briefing.held.${one.id}`}
+        />
+      </Field>
     </View>
   );
 }
@@ -1050,15 +1048,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorInkSecondary,
   },
   held: { gap: tokens.spaceXs, flexGrow: 1 },
-  heldField: {
-    minHeight: tokens.sizeHit,
-    paddingHorizontal: tokens.spaceMd,
-    borderRadius: tokens.radiusField,
-    borderWidth: 2,
-    borderColor: tokens.colorAccent,
-    color: tokens.colorInk,
-    fontSize: 15,
-  },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
