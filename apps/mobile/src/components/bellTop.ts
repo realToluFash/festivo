@@ -5,6 +5,11 @@ import { tokens } from '../theme/tokens.ts';
 export const BELL_HEADING = 18;
 export const BELL_MARK_ALL = 15;
 
+/** The phone screen's title on main: 30 bold, lines at 1.12, tracked -0.02 of its size, so the tracking grows with it (sc-92959). */
+export const PHONE_TITLE = 30;
+export const PHONE_TITLE_LINE = 1.12;
+export const PHONE_TITLE_TRACKING = -0.02;
+
 /** Between the heading and Mark all read on one row. */
 export const BELL_BESIDE_GAP = tokens.spaceSm;
 
