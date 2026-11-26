@@ -123,12 +123,10 @@ const OVERFLOW = (count: number) =>
 
 export interface ShiftChange {
   removal: boolean;
-  /** Minutes from the event's first midnight, of the start, or the new start of a retimed shift. */
   startsAt: number;
   line: string;
 }
 
-/** At most three shift lines: the removals first, then the others, each soonest first; the three are printed in start order and the rest counted in the overflow line. With no shift left there is no overflow line (pm, 26 Nov, on bm's #96358). */
 export function shiftLinesOf(changes: readonly ShiftChange[], noShiftLeft = false): string[] {
   const soonest = (a: ShiftChange, b: ShiftChange) => a.startsAt - b.startsAt;
   const chosen = [
@@ -151,7 +149,6 @@ const at = (day: number, time: string) => {
   return day * 1440 + hours * 60 + minutes;
 };
 
-/** Friday is day 0 of the event, Friday to Sunday. Four lines, the removal the latest: it is named, with the two soonest others, and Sunday's addition is left out. */
 export const OVERFLOW_SAMPLE: readonly ShiftChange[] = [
   { removal: true, startsAt: at(2, '16:00'), line: SHIFT.removed('Sunday 16:00', '22:00') },
   { removal: false, startsAt: at(2, '10:00'), line: SHIFT.added('Sunday 10:00', '14:00') },
