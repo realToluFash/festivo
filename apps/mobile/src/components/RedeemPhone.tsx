@@ -11,6 +11,7 @@ import { CodeStep, type CodeStepStatus } from '../steps/CodeStep.tsx';
 import { InsideField } from '../steps/InsideField.tsx';
 import { Says } from '../steps/Lines.tsx';
 import { useCountdown } from '../steps/useCountdown.ts';
+import { useAccessibilitySizes } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton } from './Buttons.tsx';
 import { CountryPicker } from './CountryPicker.tsx';
@@ -23,6 +24,7 @@ export function shownNumber(country: string, number: string): string {
 /** Signed out at a door code (sc-4235): the country's code and the mobile, beside each other as the app demo's redeem draws them. */
 export function NumberFields({
   country,
+  number,
   numberRef,
   said,
   sending,
@@ -31,6 +33,8 @@ export function NumberFields({
   onSubmit,
 }: {
   country: string;
+  /** The number typed before, back from the phone code. */
+  number?: string | undefined;
   numberRef: RefObject<TextInputInstance | null>;
   said: string | null;
   sending: boolean;
@@ -39,24 +43,28 @@ export function NumberFields({
   onSubmit: () => void;
 }) {
   const { t } = useTranslation();
+  const over = useAccessibilitySizes();
 
   return (
     <View>
-      <View style={styles.phoneRow}>
-        <View style={styles.country}>
+      {/* As PhoneEntry: the code over the number from the accessibility sizes on, and a fresh row on a live text-size change (sc-78438). */}
+      <View key={over ? 'over' : 'beside'} style={over ? styles.phoneOver : styles.phoneRow}>
+        <View>
           <CountryPicker
             label={t('redeem.phone.countryCode')}
             value={country}
             onChange={onCountry}
             disabled={sending}
             withCallingCode
+            compact
             testID="redeem.event.country"
           />
         </View>
-        <View style={styles.grow}>
+        <View style={over ? undefined : styles.grow}>
           <InsideField
             ref={numberRef}
             label={t('redeem.phone.mobile')}
+            defaultValue={number ?? ''}
             onChangeText={onNumber}
             state={said == null ? 'plain' : 'blank'}
             line={said}
@@ -183,6 +191,7 @@ export function PhoneCodeScreen({
       wrong={texted ? t('redeem.phone.wrongText') : t('redeem.phone.wrongWhatsApp')}
       status={status}
       cooldown={left}
+      boxesTop={tokens.space3xl}
       onCode={(full) => void check(full)}
       onResend={() => void sendNew()}
       testID="redeem.code"
@@ -200,6 +209,6 @@ export function PhoneCodeScreen({
 
 const styles = StyleSheet.create({
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-  country: { flexBasis: 120 },
+  phoneOver: { gap: tokens.spaceSm },
   grow: { flex: 1, minWidth: 0 },
 });

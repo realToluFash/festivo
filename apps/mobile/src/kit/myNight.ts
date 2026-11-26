@@ -64,11 +64,44 @@ export function rowLineOf(t: TFunction, night: MyNight, locale: string): string 
   })}`;
 }
 
+/** The route param through which check-in knows it was opened from Your night, and leads back there (sc-28230). */
+export const CHECK_IN_FROM = 'from';
+
+/** The params that carry Your night across check-in and its scanner, none when check-in was opened elsewhere. */
+function fromOf(from: string | undefined): { [CHECK_IN_FROM]?: 'night' } {
+  return from === 'night' ? { [CHECK_IN_FROM]: 'night' } : {};
+}
+
+/** Check-in for an event, keeping where it was opened from (sc-28230). */
+export function checkInHrefOf(
+  id: string,
+  from: string | undefined,
+  extra: { focus?: string; tap?: string } = {},
+) {
+  return {
+    pathname: '/events/[id]/check-in' as const,
+    params: { id, ...extra, ...fromOf(from) },
+  };
+}
+
+/** Check-in's scanner, which hands where check-in was opened from back on both of its ways back (sc-28230). */
+export function scanHrefOf(id: string, from: string | undefined) {
+  return { pathname: '/events/[id]/scan' as const, params: { id, ...fromOf(from) } };
+}
+
+/** Check-in's way back: Your night when opened from it, else the event's Guests, which has no href of its own (sc-28230). */
+export function checkInBackOf(
+  id: string,
+  from: string | undefined,
+):
+  | { label: 'myNight.title'; href: { pathname: '/events/[id]/my-night'; params: { id: string } } }
+  | { label: 'checkIn.back'; href: null } {
+  return from === 'night'
+    ? { label: 'myNight.title', href: { pathname: '/events/[id]/my-night', params: { id } } }
+    : { label: 'checkIn.back', href: null };
+}
+
 /** Where My night's Check-in leads, for a job whose level opens check-in at the door (sc-28230); null shows no button. */
-export function checkInOf(
-  night: MyNight,
-): { pathname: '/events/[id]/check-in'; params: { id: string } } | null {
-  return night.checksIn
-    ? { pathname: '/events/[id]/check-in', params: { id: night.event.id } }
-    : null;
+export function checkInOf(night: MyNight) {
+  return night.checksIn ? checkInHrefOf(night.event.id, 'night') : null;
 }
