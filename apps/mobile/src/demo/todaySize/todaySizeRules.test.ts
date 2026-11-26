@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
-import { dotKept } from '../../layout/textSize.ts';
+import { LABEL_LINE, dotKept } from '../../layout/textSize.ts';
 
 import {
   ARRIVING_EVERY,
@@ -31,6 +31,7 @@ import {
   chipsUnderDates,
   daysUntil,
   stripDays,
+  stripLabelRoom,
   stripLabelSize,
   linkUnder,
   liveName,
@@ -434,6 +435,25 @@ describe('This week’s strip, a day’s label (sc-94682)', () => {
 
   it('draws a step below the default as main does, even where the label is over its column', () => {
     expect(stripLabelSize(9, 50, 5, 47)).toBe(9);
+  });
+
+  it('keeps the step’s line as the label’s room, so a stepped-down TODAY leaves today’s circle in line', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const room = stripLabelRoom(seventh);
+
+    expect(drawn).toBeLessThan(seventh);
+    expect(room).toBeCloseTo(Math.ceil(seventh * LABEL_LINE));
+    expect(room).toBeGreaterThan(Math.ceil(drawn * LABEL_LINE));
+    expect(stripLabelRoom(STRIP_LABEL)).toBeCloseTo(Math.ceil(STRIP_LABEL * LABEL_LINE));
+  });
+
+  it('sizes every day’s label room from the step alone, never from the size it is drawn at', () => {
+    const strip = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeStrip.tsx'), 'utf8');
+    const room = /style=\{\[styles\.labelRoom, \{ minHeight: stripLabelRoom\((\w+)\) \}\]\}/u.exec(
+      strip,
+    );
+
+    expect(room?.[1]).toBe('start');
   });
 
   it('draws seven days from today, a dot only where an event has a row', () => {

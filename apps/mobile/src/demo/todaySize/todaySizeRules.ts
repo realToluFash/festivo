@@ -8,7 +8,13 @@ import {
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
-import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  fitWidest,
+  labelStart,
+  piecesIn,
+  wholeLineHeight,
+} from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type TodayName = 'qa' | 'long';
@@ -241,6 +247,11 @@ export function stripLabelSize(
   const tracking = letters * STRIP_TRACKING;
 
   return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));
+}
+
+/** sc-94682: a day's label keeps the room of this step's line whatever size it is drawn at, so today's circle stays in line with the other six. */
+export function stripLabelRoom(start: number): number {
+  return wholeLineHeight(start, start);
 }
 
 /** The strip's seven days from today, a dot for each event with a row that day. */

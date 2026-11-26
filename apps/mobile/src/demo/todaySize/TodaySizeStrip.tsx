@@ -6,7 +6,6 @@ import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Panel } from '../../components/TodayParts.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
-import { wholeLineHeight } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import {
@@ -15,6 +14,7 @@ import {
   STRIP_TRACKING,
   type TodayWeek,
   stripDays,
+  stripLabelRoom,
   stripLabelSize,
 } from './todaySizeRules.ts';
 
@@ -108,8 +108,7 @@ function StripLabel({ text, today, scale }: { text: string; today: boolean; scal
 
   return (
     <View
-      // A stepped-down label keeps the step's line, so today's circle stays in line with the other six.
-      style={[styles.labelRoom, { minHeight: wholeLineHeight(start, start) }]}
+      style={[styles.labelRoom, { minHeight: stripLabelRoom(start) }]}
       onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
     >
       <MeasuredWords
