@@ -9,9 +9,12 @@ use App\Domain\Messaging\PushTargets;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
+use App\Entity\NotificationPreference;
 use App\Entity\Organisation;
 use App\Entity\StaffMember;
 use App\Entity\User;
+use App\Enum\NotificationCategory;
+use App\Enum\NotificationChannel;
 use App\Enum\PushTargetKind;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingPushSender;
@@ -200,6 +203,28 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aBriefedPersonWithEventDayPushSwitchedOffIsSentNothingAndCountsAsNotInTheApp(): void
+    {
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->signedIn($bisi, 'bisi@example.com', withPush: true);
+        $account = self::em()->find(StaffMember::class, $bisi)?->getAccount() ?? self::fail('no account');
+        self::em()->persist(new NotificationPreference($account, NotificationCategory::EventDay, NotificationChannel::Push, false));
+        self::em()->flush();
+        $this->assign($this->evening, $bisi);
+        $this->briefed($bisi);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+        self::assertFalse($this->inApp($bisi));
+        self::assertTrue($this->inApp($this->ada));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([], Vec\filter(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => 'Bisi Ola' === $sent['recipient']->name));
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+    }
+
+    #[Test]
     public function aBriefedPersonNeverSignedInIsSentNothing(): void
     {
         $bisi = $this->person('Bisi Ola', '0803 111 0010');
@@ -298,6 +323,13 @@ final class ShiftNoticesTest extends ApiTestCase
         $row = Iter\search($staff, static fn (array $one): bool => $one['id'] === $staffId) ?? self::fail('nobody ' . $staffId);
 
         return ['notice' => $row['notice'], 'briefing' => $row['briefing']];
+    }
+
+    private function inApp(string $staffId): bool
+    {
+        $staff = Type\vec(Type\shape(['id' => Type\string(), 'inApp' => Type\bool()], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['staff'] ?? null);
+
+        return (Iter\search($staff, static fn (array $one): bool => $one['id'] === $staffId) ?? self::fail('nobody ' . $staffId))['inApp'];
     }
 
     private function assign(string $shiftId, string $staffId): void

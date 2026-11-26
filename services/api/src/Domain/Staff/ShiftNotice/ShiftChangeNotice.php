@@ -9,7 +9,6 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
-use App\Domain\Messaging\PushTargets;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Enum\NotificationAudienceKind;
@@ -35,7 +34,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         private ToldShifts $toldShifts,
         private ShiftNoticeWording $shiftNoticeWording,
         private StaffRosterPublisher $staffRosterPublisher,
-        private PushTargets $pushTargets,
+        private ShiftNoticeReach $shiftNoticeReach,
     ) {
     }
 
@@ -111,7 +110,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         $entry = $this->entry($payload);
         $account = $entry?->getAccount();
 
-        return null !== $entry && null !== $account && [] !== $this->toldShifts->changesOf($entry) && [] !== $this->pushTargets->inApp($account->getId());
+        return null !== $entry && null !== $account && [] !== $this->toldShifts->changesOf($entry) && [] !== $this->shiftNoticeReach->of($account->getId());
     }
 
     public function thread(array $payload): ?string

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\ShiftNotice;
 
-use App\Domain\Messaging\PushTargets;
 use App\Domain\Staff\ShiftClock;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Entity\Event;
@@ -25,7 +24,7 @@ final readonly class ShiftNoticeStates
     public function __construct(
         private Connection $connection,
         private ToldShifts $toldShifts,
-        private PushTargets $pushTargets,
+        private ShiftNoticeReach $shiftNoticeReach,
     ) {
     }
 
@@ -46,13 +45,13 @@ final readonly class ShiftNoticeStates
         return [
             'waiting' => Type\dict(Type\string(), Type\string())->coerce($waiting),
             'sent' => Type\dict(Type\string(), Type\string())->coerce($sent),
-            'inApp' => $this->pushTargets->inApp(...Vec\map($accounts, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)))),
+            'inApp' => $this->shiftNoticeReach->of(...Vec\map($accounts, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)))),
         ];
     }
 
     /**
-     * @param list<StaffShift>                                                                      $shifts the person's shifts
-     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known the event's, read when null
+     * @param list<StaffShift>                                                                                $shifts the person's shifts
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known  the event's, read when null
      *
      * @return ?array<string, mixed>
      */
@@ -86,7 +85,7 @@ final readonly class ShiftNoticeStates
     }
 
     /**
-     * Signed in to the app with notifications allowed, so a change notice can reach them; the removal question says so only then.
+     * Whether a change notice can reach them (ShiftNoticeReach); the removal question and the card's count read it.
      *
      * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known the event's, read when null
      */
