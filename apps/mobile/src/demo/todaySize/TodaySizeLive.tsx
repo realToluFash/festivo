@@ -45,7 +45,7 @@ export function LiveBanner({
   place: string | null;
   scale: number;
   top?: ReactNode;
-  /** Guests arrived, drawn as the figure on the iPad: from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022). */
+  /** Guests arrived, drawn as the figure: on the iPad from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022); on the phone over Open the event, as main places it. */
   arrived?: ArrivedCount | null;
   phone?: boolean;
 }) {
@@ -170,6 +170,11 @@ export function LiveBanner({
         line={1.3}
         style={styles.white}
       />
+      {phone && arrived != null && (
+        <View>
+          <SizeFigure count={arrived} scale={scale} cap={cap} column={column} />
+        </View>
+      )}
       {phone && <View style={styles.hair} />}
       {under && <View style={phone ? styles.openFlush : styles.openUnder}>{open}</View>}
       {under && !phone && arrived != null && (

@@ -371,12 +371,14 @@ describe('the live cover with a guest arrived (sc-94022)', () => {
     );
   });
 
-  it('draws the figure from AX1 under Open the event, last in the words column, and below AX1 over it at the right', () => {
+  it('draws the figure from AX1 under Open the event, last in the words column, below AX1 over it at the right, and on the phone over its hairline as main does', () => {
     const live = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeLive.tsx'), 'utf8');
     const words = /\n {2}const words = \([\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
     const block = /\n {2}const block = [\s\S]*?\n {2}\);\n/u.exec(live)?.[0] ?? '';
 
-    expect(words.indexOf('<SizeFigure')).toBeGreaterThan(words.indexOf('styles.openUnder'));
+    expect(words.lastIndexOf('<SizeFigure')).toBeGreaterThan(words.indexOf('styles.openUnder'));
+    expect(words.indexOf('<SizeFigure')).toBeLessThan(words.indexOf('styles.hair'));
+    expect(words).toMatch(/\{phone && arrived != null && \(\s+<View>\s+<SizeFigure/u);
     expect(block).toMatch(/<View style=\{styles\.right\}>\s+<SizeFigure[^>]*\/>\s+\{open\}/u);
   });
 
