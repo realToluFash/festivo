@@ -587,7 +587,7 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211). */
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
 function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -683,7 +683,7 @@ export function NowBlock({
   if (!moment.full) {
     const words = (
       <>
-        <Chips now={now} />
+        <Chips now={now} grows={whole} />
         <Text
           size={wide ? 48 : 36}
           weight="bold"
