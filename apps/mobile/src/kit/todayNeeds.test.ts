@@ -3,7 +3,7 @@ import { createInstance } from 'i18next';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import { sayIn } from '../demo/today.ts';
+import { dayWords } from './todayMoment.ts';
 import { dueWords, needsOf as needsOfWith, type YouEvent } from './todayNeeds.ts';
 
 const i18n = createInstance();
@@ -16,9 +16,16 @@ beforeAll(() =>
 );
 
 const LONDON = 'Europe/London';
-const us = sayIn('en-US');
-const gb = sayIn('en-GB');
-const day = us.day;
+const dayIn =
+  (locale: string) =>
+  (date: string, withYear: boolean): string =>
+    dayWords(date, locale, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      ...(withYear ? { year: 'numeric' } : {}),
+    });
+const day = dayIn('en-US');
 
 const needsOf = (events: YouEvent[], now: Date, day: (date: string, withYear: boolean) => string) =>
   needsOfWith(events, now, day, i18n.t);
@@ -117,7 +124,7 @@ describe('the due words', () => {
       '2026-11-13T23:59:00Z',
       LONDON,
       new Date('2026-11-10T09:00:00Z'),
-      gb.day,
+      dayIn('en-GB'),
       i18n.t,
     );
 

@@ -43,7 +43,7 @@ export function shownEvent(event: ListedEvent): ShownEvent {
 const SHORT_DAY: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
 
 /** A wall day, `2026-11-03`, written in the reader's language. */
-function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+export function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
   );

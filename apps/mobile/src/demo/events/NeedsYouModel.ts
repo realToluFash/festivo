@@ -2,7 +2,7 @@ import type { Milestone } from '@soirely/domain';
 
 import { sayIn } from '../today.ts';
 import { dueWords, isYours } from '../../kit/todayNeeds.ts';
-import { demoT, headLabel } from '../today/needsYou.ts';
+import { demoT } from '../today/needsYou.ts';
 import type { EventDemoState } from './EventsModel.ts';
 
 export type NeedsState = Extract<EventDemoState, `needsYou${string}`>;
@@ -21,7 +21,7 @@ export const NEEDS_WORDS = {
 
 /** Today's heading key, and the heading alone with no row. */
 export function headingLabel(count: number): string {
-  return count === 0 ? NEEDS_WORDS.heading : headLabel(count);
+  return count === 0 ? NEEDS_WORDS.heading : demoT('todayScreen.needsHead', { count });
 }
 
 export interface NeedRow {
