@@ -40,7 +40,6 @@ import {
   TextAction,
 } from '../../components/Summary.tsx';
 import {
-  type CodeChoice,
   atWords,
   clockWords,
   dayWords,
@@ -55,7 +54,13 @@ import {
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
 import { stationItem, type TonightRow } from '../station/TonightRows.tsx';
-import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
+import {
+  AREA_WORDS,
+  areasFor,
+  type InsideArea,
+  type InsideLevel,
+  moreAreas,
+} from './RedeemModel.ts';
 
 const AREA_GLYPH: Record<InsideArea, GlyphName> = { ...EVENT_GLYPH, checkIn: 'tick' };
 const TABS = [
@@ -64,6 +69,8 @@ const TABS = [
   [W.more, 'dots'],
 ] as const satisfies readonly (readonly [string, GlyphName])[];
 type Tab = (typeof TABS)[number][0];
+/** A service level has no Guests: Overview, and More for the account (sc-96279). */
+const SERVICE_TABS = TABS.filter(([tab]) => tab !== W.guests);
 
 const JOAO: PeopleViewer = { id: JOAO_ID, role: 'Member' };
 const CHECK_IN_LATER = 'Check-in has its own design.';
@@ -137,7 +144,7 @@ export function InsideEvent({
   locale: string;
   moreAtStart?: boolean;
   code?: Redeemable;
-  role: CodeChoice;
+  role: InsideLevel;
   shown?: Shown;
   groups?: readonly MoreGroup[];
   night?: NightRow;
@@ -273,7 +280,7 @@ export function InsideEvent({
       )}
       {phone && (
         <TabBar
-          tabs={TABS}
+          tabs={areasFor(role).includes('guests') ? TABS : SERVICE_TABS}
           bottom={foot}
           at={at === 'people' ? W.more : W.overview}
           onTab={onTab}
@@ -378,7 +385,7 @@ function Overview({
   tell,
 }: {
   shown: Shown;
-  role: CodeChoice;
+  role: InsideLevel;
   who: string;
   locale: string;
   /** Signed in as and Sign out at the foot; on its side the person button holds them. */
@@ -391,6 +398,61 @@ function Overview({
 }) {
   const until = atWords(shown.ends, locale, shown.day);
   const checks = role === 'Can check guests in';
+  /** A service level opens no Guests or People: Overview is its card, Your night and the service (sc-96279). */
+  const reads = areasFor(role).includes('guests');
+  const rows = [
+    ...(night == null
+      ? []
+      : [
+          {
+            key: 'night',
+            inset: 40,
+            row: (
+              <Row
+                title={W.yourNight}
+                line={night.line}
+                lead={<LineIcon name="clock" />}
+                opens
+                onPress={night.onOpen}
+                testID="inside.night"
+              />
+            ),
+          },
+        ]),
+    ...(station == null ? [] : [stationItem(station, 'inside.station')]),
+    ...(reads
+      ? [
+          {
+            key: 'guests',
+            inset: 40,
+            row: (
+              <Row
+                title={W.guests}
+                line={W.guestsLine}
+                lead={<LineIcon name="users" />}
+                opens
+                onPress={() => tell('Guests has its own design.')}
+                testID="inside.guests"
+              />
+            ),
+          },
+          {
+            key: 'people',
+            inset: 40,
+            row: (
+              <Row
+                title={W.people}
+                line={onEventCount(everyone().length)}
+                lead={<LineIcon name="people" />}
+                opens
+                onPress={onPeople}
+                testID="inside.people"
+              />
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <>
@@ -424,57 +486,7 @@ function Overview({
           strong
         />
       </SummaryCard>
-      <RowList
-        items={[
-          ...(night == null
-            ? []
-            : [
-                {
-                  key: 'night',
-                  inset: 40,
-                  row: (
-                    <Row
-                      title={W.yourNight}
-                      line={night.line}
-                      lead={<LineIcon name="clock" />}
-                      opens
-                      onPress={night.onOpen}
-                      testID="inside.night"
-                    />
-                  ),
-                },
-              ]),
-          ...(station == null ? [] : [stationItem(station, 'inside.station')]),
-          {
-            key: 'guests',
-            inset: 40,
-            row: (
-              <Row
-                title={W.guests}
-                line={W.guestsLine}
-                lead={<LineIcon name="users" />}
-                opens
-                onPress={() => tell('Guests has its own design.')}
-                testID="inside.guests"
-              />
-            ),
-          },
-          {
-            key: 'people',
-            inset: 40,
-            row: (
-              <Row
-                title={W.people}
-                line={onEventCount(everyone().length)}
-                lead={<LineIcon name="people" />}
-                opens
-                onPress={onPeople}
-                testID="inside.people"
-              />
-            ),
-          },
-        ]}
-      />
+      {rows.length > 0 && <RowList items={rows} />}
       {you && <You who={who} onSignOut={onSignOut} />}
     </>
   );
