@@ -8,7 +8,6 @@ import {
   SHIFT_STATES,
   SW,
   briefingFor,
-  canTakeOff,
   cardOf,
   delivered,
   leftOutOf,
@@ -20,7 +19,6 @@ import {
   shiftStateOf,
   spendOf,
   stateWordOf,
-  takenOff,
 } from './shiftNoticesModel.ts';
 
 const card = (state: ShiftState, o: Partial<ShiftStart> = {}) => {
@@ -31,7 +29,6 @@ const card = (state: ShiftState, o: Partial<ShiftStart> = {}) => {
     on: s.on,
     finished: s.finished,
     lastSent: s.lastSent,
-    included: s.included,
     balance: s.balance,
     manage: s.manage,
     billing: s.billing,
@@ -149,40 +146,42 @@ describe('the reminder card', () => {
     });
   });
 
-  it('names what pays: included messages, credits, or both', () => {
-    expect(card('cost_included').cost).toBe('2 by text or WhatsApp, from your included messages.');
+  it('counts credits only, and never names included messages', () => {
     expect(card('cost_credits').cost).toBe('2 by text or WhatsApp, using 93 of your credits.');
-    expect(card('cost_both').cost).toBe(
-      '2 by text or WhatsApp: 1 from your included messages, the rest using 62 of your credits.',
-    );
+    expect(SW.cost(1, 31)).toBe('1 by text or WhatsApp, using 31 of your credits.');
   });
 
   it('never counts push in the cost line', () => {
     const pushOnly = shiftPeople().map((one): Person => ({ ...one, reach: 'push' }));
 
-    expect(spendOf(remindedOf(pushOnly), 0, 0)).toEqual({
+    expect(spendOf(remindedOf(pushOnly), 0)).toEqual({
       texts: 0,
-      fromIncluded: 0,
       credits: 0,
       notCovered: 0,
     });
     expect(card('list', { people: pushOnly }).cost).toBeNull();
   });
 
-  it('warns in place of the cost line, counting only those not covered, with the button by permission', () => {
+  it('warns in place of the cost line, counting only those not covered: the app’s line for billing.manage, Ask an owner for anyone else', () => {
     expect(card('cost_short')).toMatchObject({
       cost: null,
-      shortfall: { words: SW.shortfall(1), button: 'buy' },
+      shortfall: { words: SW.shortfall(1), way: 'notInApp' },
     });
+    expect(SW.notInApp).toBe('Credits cannot be added in the app.');
     expect(SW.shortfall(1)).toBe(
       '1 person will not get the reminder by text or WhatsApp: not enough credits. If they have the app, they still get it by push.',
     );
     expect(card('cost_short_read_only')).toMatchObject({
       control: 'word',
       cost: null,
-      shortfall: { words: SW.shortfall(2), button: 'ask' },
+      shortfall: { words: SW.shortfall(2), way: 'ask' },
     });
-    expect(card('cost_short', { billing: false }).shortfall?.button).toBe('ask');
+    expect(card('cost_short', { billing: false }).shortfall?.way).toBe('ask');
+    expect(SW.asked(1)).toBe('The owner has been sent the link to Plan and billing.');
+    expect(SW.asked(2)).toBe('The owners have been sent the link to Plan and billing.');
+    expect(SW.askFailed).toBe('Not sent. Try again in a moment.');
+    expect(shiftStart('cost_short_asked_one')).toMatchObject({ ask: 'sent', owners: 1 });
+    expect(shiftStart('cost_short_ask_failed')).toMatchObject({ ask: 'failed', billing: false });
   });
 
   it('keeps the Next, cost and left-out lines for staff.read, with On as a word', () => {
@@ -255,7 +254,7 @@ describe('the reminder card', () => {
       'Next on Friday, Oct 16, to 1 person as things stand.',
     );
     expect(SW.sent('Friday, Oct 16', 1)).toBe('Sent on Friday, Oct 16, to 1 person.');
-    expect(SW.costCredits(1, 62)).toBe('1 by text or WhatsApp, using 62 of your credits.');
+    expect(SW.cost(1, 62)).toBe('1 by text or WhatsApp, using 62 of your credits.');
   });
 });
 
@@ -275,7 +274,7 @@ describe('what the page offers', () => {
   });
 });
 
-describe('time passing and taking someone off', () => {
+describe('time passing', () => {
   it('delivers a waiting change and a held one, back to the state before', () => {
     const dayo = delivered(person('list', 'dayo'));
     const kelechi = delivered(person('list', 'kelechi'));
@@ -289,36 +288,6 @@ describe('time passing and taking someone off', () => {
       'Told on Friday, Oct 16 at 09:00, by WhatsApp.',
     ]);
     expect(delivered(person('list', 'yusuf'))).toEqual(person('list', 'yusuf'));
-  });
-
-  it('takes someone off with one last message, and out of the next reminder', () => {
-    const people = shiftStart('list').people.map((one) =>
-      one.id === 'tope' ? takenOff(one) : one,
-    );
-    const tope = people.find((one) => one.id === 'tope') as Person;
-
-    expect(tope.brief).toBe('changed');
-    expect(rowLines(tope).map((line) => line.words)).toEqual([
-      'Goes at 19:55',
-      'Taken off the shift',
-      'Edits before then go in the same message.',
-    ]);
-    expect(remindedOf(people)).toHaveLength(4);
-    expect(canTakeOff(tope)).toBe(false);
-    expect(SW.removeConfirm('Tope Afolabi')).toBe(
-      'Tope Afolabi gets one last message within 15 minutes to say so, and nothing after that.',
-    );
-  });
-
-  it('folds a removal into a change still waiting', () => {
-    const dayo = takenOff(person('list', 'dayo'));
-
-    expect(rowLines(dayo).map((line) => line.words)).toEqual([
-      'Goes at 19:55',
-      'Start 15:00 (was 17:00)',
-      'Taken off the shift',
-      'Edits before then go in the same message.',
-    ]);
   });
 });
 

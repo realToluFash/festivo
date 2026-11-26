@@ -38,7 +38,7 @@ export const KIND_NAMES: Record<MessageKind, string> = {
   venue: 'Venue changed',
   date: 'Date changed',
   several: 'Three changes in one message',
-  removed: 'Taken off the shift',
+  removed: 'Removed from the event',
   called_off: 'The event is called off',
   event_ended: 'The event has ended (End now)',
   reminder: 'The reminder the day before',

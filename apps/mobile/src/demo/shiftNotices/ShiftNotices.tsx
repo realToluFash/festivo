@@ -1,32 +1,29 @@
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type ViewInstance } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PrimaryButton, QuietButton, SecondaryButton } from '../../components/Buttons.tsx';
+import { SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { OnOffSwitch } from '../../components/OnOffSwitch.tsx';
-import { readOut } from '../../components/ReadOut.tsx';
-import { Sheet, SheetActions } from '../../components/Sheet.tsx';
+import { ReadOut, readOut } from '../../components/ReadOut.tsx';
+import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { ShapeMark } from '../../components/StatusMark.tsx';
-import { PageToast } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { BriefingParts } from '../briefing/StaffBriefing.tsx';
 import { ISSUE_MS, type Person } from '../briefing/briefingModel.ts';
+import { ASK_MS, type Ask, askAnswered, pressAsk } from '../messages/CheckWaits.ts';
 import { MessageGlyph } from '../messages/MessageMarks.tsx';
 import {
   type LineMark,
   type ShiftState,
   SW,
-  canTakeOff,
   cardOf,
   delivered,
   rowLines,
   sendsOffered,
   shiftStart,
-  takenOff,
 } from './shiftNoticesModel.ts';
 
 const hidden = {
@@ -37,12 +34,11 @@ const hidden = {
 export interface ShiftParts {
   card: ReactNode;
   foot: ReactNode;
-  panels: ReactNode;
   demo: ReactNode;
   restart: () => void;
 }
 
-/** sc-4333 on the Staff page: the reminder card above the roster, the removal confirm, and the board's switches. The rows' lines are the briefing's, through `NoticeLines`. */
+/** sc-4333 on the Staff page: the reminder card above the roster and the board's switches. The app offers no removal (sc-77903). The rows' lines are the briefing's, through `NoticeLines`. */
 export function useShiftNotices(
   state: ShiftState | null,
   brief: BriefingParts | null,
@@ -52,10 +48,7 @@ export function useShiftNotices(
   const [failed, setFailed] = useState<boolean | null>(opening?.failedAt ?? null);
   const [saveFails, setSaveFails] = useState(opening?.saveFails ?? false);
   const [saving, setSaving] = useState(false);
-  const [asking, setAsking] = useState<string | null>(opening?.asking ?? null);
-  const [toast, setToast] = useState<string | null>(null);
-  const opener = useRef<ViewInstance | null>(null);
-  const insets = useSafeAreaInsets();
+  const [askKey, setAskKey] = useState(0);
   const phone = useLayout().kind === 'phone';
 
   if (state == null || opening == null || brief == null) return null;
@@ -66,13 +59,10 @@ export function useShiftNotices(
     on,
     finished: opening.finished,
     lastSent: opening.lastSent,
-    included: opening.included,
     balance: opening.balance,
     manage: opening.manage,
     billing: opening.billing,
   });
-  const asked = people.find((one) => one.id === asking) ?? null;
-  const removable = people.find(canTakeOff) ?? null;
 
   function flip(next: boolean) {
     setSaving(true);
@@ -94,13 +84,7 @@ export function useShiftNotices(
     setFailed(fresh.failedAt);
     setSaveFails(fresh.saveFails);
     setSaving(false);
-    setAsking(fresh.asking);
-    setToast(null);
-  }
-
-  function takeOff(id: string) {
-    brief?.commit(people.map((one) => (one.id === id ? takenOff(one) : one)));
-    setAsking(null);
+    setAskKey((key) => key + 1);
   }
 
   const shortfall = view.shortfall && (
@@ -111,18 +95,12 @@ export function useShiftNotices(
           {view.shortfall.words}
         </Text>
       </View>
-      {view.shortfall.button === 'buy' ? (
-        <PrimaryButton
-          label={SW.buyFirst}
-          onPress={() => setToast(`${SW.buyFirst} has its own design (sc-3931).`)}
-          testID="shift.card.buy"
-        />
+      {view.shortfall.way === 'notInApp' ? (
+        <Text size={14} weight="medium" style={styles.secondary} testID="shift.card.notInApp">
+          {SW.notInApp}
+        </Text>
       ) : (
-        <SecondaryButton
-          label={SW.askOwner}
-          onPress={() => setToast(`${SW.askOwner} has its own design (sc-3963).`)}
-          testID="shift.card.ask"
-        />
+        <AskOwner key={askKey} start={opening.ask} owners={opening.owners} />
       )}
     </View>
   );
@@ -210,74 +188,8 @@ export function useShiftNotices(
     </Text>
   );
 
-  const go = asked != null && (
-    <PrimaryButton
-      label={SW.removeGo}
-      onPress={() => takeOff(asked.id)}
-      paired={!phone}
-      testID="shift.remove.go"
-    />
-  );
-  const cancel = (
-    <QuietButton
-      label={SW.cancel}
-      onPress={() => setAsking(null)}
-      inset={!phone}
-      testID="shift.remove.cancel"
-    />
-  );
-
-  const panels = (
-    <>
-      <Sheet
-        open={asked != null}
-        onClose={() => setAsking(null)}
-        scrimLabel={SW.cancel}
-        opener={opener}
-        testID="shift.remove"
-      >
-        {asked != null && (
-          <View style={styles.sheet}>
-            <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-              {SW.removeTitle(asked.name)}
-            </Text>
-            <Text size={16}>{SW.removeConfirm(asked.name)}</Text>
-            <SheetActions>
-              {phone ? (
-                <>
-                  {go}
-                  {cancel}
-                </>
-              ) : (
-                <>
-                  {cancel}
-                  {go}
-                </>
-              )}
-            </SheetActions>
-          </View>
-        )}
-      </Sheet>
-      {toast != null && (
-        <PageToast
-          words={toast}
-          onClose={() => setToast(null)}
-          bottom={insets.bottom + tokens.spaceXl}
-        />
-      )}
-    </>
-  );
-
   const demo = (
     <>
-      {sendsOffered(opening.finished) && removable != null && (
-        <SecondaryButton
-          ref={opener}
-          label={`On the web: take ${removable.name} off the shift`}
-          onPress={() => setAsking(removable.id)}
-          testID="shift.demo.remove"
-        />
-      )}
       {sendsOffered(opening.finished) && (
         <SecondaryButton
           label="Time passes: the waiting and held messages go"
@@ -295,7 +207,79 @@ export function useShiftNotices(
     </>
   );
 
-  return { card, foot, panels, demo, restart };
+  return { card, foot, demo, restart };
+}
+
+/** Ask an owner, as sc-3931 has it: the owners are sent the link to Plan and billing, or Not sent and try again. */
+function AskOwner({ start, owners }: { start: Ask; owners: number }) {
+  const [ask, setAsk] = useState<Ask>(start);
+  const now = useRef<Ask>(start);
+  const pressed = useRef(false);
+  const sentRef = useRef<ViewInstance>(null);
+  const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sent = SW.asked(owners);
+
+  const move = (next: Ask) => {
+    now.current = next;
+    setAsk(next);
+  };
+  const onAsk = () => {
+    const next = pressAsk(now.current);
+    if (!next.sends) return;
+    pressed.current = true;
+    move(next.ask);
+    answer.current = setTimeout(() => move(askAnswered(now.current, true)), ASK_MS);
+  };
+
+  useEffect(
+    () => () => {
+      if (answer.current != null) clearTimeout(answer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (ask !== 'sent' || !pressed.current) return undefined;
+    const later = setTimeout(() => moveScreenReaderFocus(sentRef.current), 350);
+
+    return () => clearTimeout(later);
+  }, [ask]);
+
+  if (ask === 'sent')
+    return (
+      <View ref={sentRef} accessible accessibilityLabel={sent} testID="shift.card.askSent">
+        <ReadOut words={sent} style={styles.inline}>
+          <Glyph name="tick" size={15} ink={tokens.colorAccentText} weight={2.8} />
+          <Text size={14} weight="medium" accessible={false} style={styles.shrink}>
+            {sent}
+          </Text>
+        </ReadOut>
+      </View>
+    );
+
+  return (
+    <View style={styles.ask}>
+      <SecondaryButton
+        label={SW.askOwner}
+        off={ask === 'asking'}
+        onPress={onAsk}
+        testID="shift.card.ask"
+      />
+      {ask === 'failed' && (
+        <ReadOut
+          words={SW.askFailed}
+          interrupts
+          accessibilityRole="alert"
+          style={styles.inline}
+          testID="shift.card.askFailed"
+        >
+          <Glyph name="alert" size={15} ink={tokens.colorBroken} weight={2.3} />
+          <Text size={14} weight="semibold" style={[styles.broken, styles.shrink]}>
+            {SW.askFailed}
+          </Text>
+        </ReadOut>
+      )}
+    </View>
+  );
 }
 
 /** The lines under a person's Briefing word, each with its own shape beside its words. */
@@ -432,7 +416,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
   stop: { width: 6, height: 6, borderRadius: 1, backgroundColor: tokens.colorInkSecondary },
-  sheet: { flexShrink: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
+  ask: { gap: tokens.spaceSm },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },
   broken: { color: tokens.colorBrokenText },

@@ -397,7 +397,6 @@ export function StaffRoster({
         />
       </Sheet>
       {brief?.panels}
-      {notices?.panels}
       {(toast != null || asked) && (
         <PageToast
           words={asked ? `${TW.askOwner} has its own design (sc-3963).` : (toast ?? []).join(' ')}

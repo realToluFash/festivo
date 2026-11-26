@@ -1,6 +1,8 @@
 import type { BriefingStart, Person } from '../briefing/briefingModel.ts';
 import { RULES, SMS_CREDITS, WHATSAPP_CREDITS } from '../briefing/briefingModel.ts';
 import type { LinkStatus } from '../staffLink/StaffLinkModel.ts';
+import type { Ask } from '../messages/CheckWaits.ts';
+import { W, WW, say } from '../messages/MessagesWords.ts';
 import type { RosterState } from '../staffLink/StaffRosterModel.ts';
 
 /** How S2 and S3 reach a person (Decided, 19 Oct): push when signed in with notifications allowed, else sc-3954's order, else nobody. */
@@ -8,7 +10,11 @@ export type Reach = 'push' | 'sms' | 'whatsApp' | 'none';
 
 export type ChangeField = 'start' | 'end' | 'job' | 'date' | 'venue';
 
-export type Change = { field: ChangeField; now: string; was: string } | { field: 'off' };
+export interface Change {
+  field: ChangeField;
+  now: string;
+  was: string;
+}
 
 export type ShiftNotice =
   | { kind: 'waiting'; at: string; changes: readonly Change[]; was: 'read' | 'sent'; day: string }
@@ -47,23 +53,11 @@ export const SW = {
   nobody: 'Nobody to remind yet.',
   sent: (date: string, n: number) =>
     plural(n, `Sent on ${date}, to 1 person.`, `Sent on ${date}, to {count} people.`),
-  costIncluded: (n: number) =>
-    plural(
-      n,
-      '1 by text or WhatsApp, from your included messages.',
-      '{count} by text or WhatsApp, from your included messages.',
-    ),
-  costCredits: (n: number, credits: number) =>
+  cost: (n: number, credits: number) =>
     plural(
       n,
       `1 by text or WhatsApp, using ${credits} of your credits.`,
       `{count} by text or WhatsApp, using ${credits} of your credits.`,
-    ),
-  costBoth: (n: number, included: number, credits: number) =>
-    plural(
-      n,
-      `1 by text or WhatsApp: ${included} from your included messages, the rest using ${credits} of your credits.`,
-      `{count} by text or WhatsApp: ${included} from your included messages, the rest using ${credits} of your credits.`,
     ),
   shortfall: (n: number) =>
     plural(
@@ -71,8 +65,10 @@ export const SW = {
       '1 person will not get the reminder by text or WhatsApp: not enough credits. If they have the app, they still get it by push.',
       '{count} people will not get the reminder by text or WhatsApp: not enough credits. If they have the app, they still get it by push.',
     ),
-  buyFirst: 'Buy credits first',
-  askOwner: 'Ask an owner',
+  notInApp: W.creditsNotInApp,
+  askOwner: WW.askOwner,
+  asked: say.ownersAsked,
+  askFailed: WW.askFailed,
   notBriefed: (n: number) =>
     plural(
       n,
@@ -95,7 +91,6 @@ export const SW = {
     date: (now: string, was: string) => `Date ${now} (was ${was})`,
     venue: (now: string, was: string) => `Venue ${now} (was ${was})`,
   } satisfies Record<ChangeField, (now: string, was: string) => string>,
-  takenOff: 'Taken off the shift',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: {
     push: (date: string, time: string) => `Told on ${date} at ${time}, by push.`,
@@ -107,11 +102,6 @@ export const SW = {
   cantLine: "Can't be reached: not signed in to the app, and no mobile number.",
   calledOffLine: 'Called off',
   endedLine: 'Event ended',
-  removeConfirm: (name: string) =>
-    `${name} gets one last message within 15 minutes to say so, and nothing after that.`,
-  removeTitle: (name: string) => `[Take ${name} off the shift?]`,
-  removeGo: '[Take off the shift]',
-  cancel: 'Cancel',
   footnote: '[Once a person’s briefing went, a change to their shift goes to them by itself.]',
 };
 
@@ -133,8 +123,6 @@ export interface RowLine {
 }
 
 function changeWords(change: Change): string {
-  if (change.field === 'off') return SW.takenOff;
-
   return SW.change[change.field](change.now, change.was);
 }
 
@@ -165,12 +153,8 @@ export function stateWordOf(one: Pick<Person, 'notice'>): string | null {
   return one.notice?.kind === 'unreachable' ? SW.cantWord : null;
 }
 
-export function isTakenOff(one: Pick<Person, 'notice'>): boolean {
-  return one.notice?.kind === 'waiting' && one.notice.changes.some((c) => c.field === 'off');
-}
-
 function onAShift(one: Person): boolean {
-  return one.shift != null && !isTakenOff(one);
+  return one.shift != null;
 }
 
 /** S3 goes only to people whose briefing went and who can be reached (Decided, 20 Oct). */
@@ -194,24 +178,17 @@ const creditsFor = (one: Person) => (one.reach === 'whatsApp' ? WHATSAPP_CREDITS
 
 export interface Spend {
   texts: number;
-  fromIncluded: number;
   credits: number;
   notCovered: number;
 }
 
-/** sc-3931's reservation preview, as sample: included messages first in roster order, then credits, each text paid whole or not at all. Push is never counted. */
-export function spendOf(reminded: readonly Person[], included: number, balance: number): Spend {
-  let includedLeft = included;
+/** sc-3931's reservation preview, as sample: credits only, as texts have nothing included (sc-3931, 31 Oct), each text paid whole or not at all in roster order. Push is never counted. */
+export function spendOf(reminded: readonly Person[], balance: number): Spend {
   let left = balance;
-  const spend: Spend = { texts: 0, fromIncluded: 0, credits: 0, notCovered: 0 };
+  const spend: Spend = { texts: 0, credits: 0, notCovered: 0 };
   for (const one of reminded) {
     if (one.reach !== 'sms' && one.reach !== 'whatsApp') continue;
     spend.texts += 1;
-    if (includedLeft > 0) {
-      includedLeft -= 1;
-      spend.fromIncluded += 1;
-      continue;
-    }
     const cost = creditsFor(one);
     if (cost > left) {
       spend.notCovered += 1;
@@ -226,10 +203,8 @@ export function spendOf(reminded: readonly Person[], included: number, balance: 
 
 export function costLine(spend: Spend): string | null {
   if (spend.texts === 0 || spend.notCovered > 0) return null;
-  if (spend.fromIncluded === spend.texts) return SW.costIncluded(spend.texts);
-  if (spend.fromIncluded === 0) return SW.costCredits(spend.texts, spend.credits);
 
-  return SW.costBoth(spend.texts, spend.fromIncluded, spend.credits);
+  return SW.cost(spend.texts, spend.credits);
 }
 
 export interface CardInput {
@@ -238,7 +213,6 @@ export interface CardInput {
   finished: Finished | null;
   /** The last reminder had gone: the eve of a one-day event, or after the last day's on several. */
   lastSent: { date: string; count: number } | null;
-  included: number;
   balance: number;
   manage: boolean;
   billing: boolean;
@@ -250,7 +224,8 @@ export interface CardView {
   what: string | null;
   next: string | null;
   cost: string | null;
-  shortfall: { words: string; button: 'buy' | 'ask' } | null;
+  /** billing.manage reads the app's line, with no link and no button (epic 37); anyone else gets Ask an owner. */
+  shortfall: { words: string; way: 'notInApp' | 'ask' } | null;
   leftOut: string[];
 }
 
@@ -285,7 +260,7 @@ export function cardOf(input: CardInput): CardView {
     return { ...NOTHING, ...head, next: SW.sent(input.lastSent.date, input.lastSent.count) };
 
   const reminded = remindedOf(input.people);
-  const spend = spendOf(reminded, input.included, input.balance);
+  const spend = spendOf(reminded, input.balance);
   const out = leftOutOf(input.people);
 
   return {
@@ -294,7 +269,7 @@ export function cardOf(input: CardInput): CardView {
     cost: costLine(spend),
     shortfall:
       spend.notCovered > 0
-        ? { words: SW.shortfall(spend.notCovered), button: input.billing ? 'buy' : 'ask' }
+        ? { words: SW.shortfall(spend.notCovered), way: input.billing ? 'notInApp' : 'ask' }
         : null,
     leftOut: [
       ...(out.notBriefed > 0 ? [SW.notBriefed(out.notBriefed)] : []),
@@ -312,7 +287,7 @@ export function sendsOffered(finished: Finished | null): boolean {
 export function delivered(one: Person): Person {
   const notice = one.notice ?? null;
   if (one.reach == null || one.reach === 'none') return one;
-  if (notice?.kind === 'waiting' && !isTakenOff(one))
+  if (notice?.kind === 'waiting')
     return {
       ...one,
       brief: notice.was,
@@ -328,23 +303,6 @@ export function delivered(one: Person): Person {
   return one;
 }
 
-export function takenOff(one: Person): Person {
-  const waiting = one.notice?.kind === 'waiting' ? one.notice : null;
-  const was = one.brief === 'read' ? 'read' : 'sent';
-
-  return {
-    ...one,
-    brief: 'changed',
-    notice: {
-      kind: 'waiting',
-      at: GOES_AT,
-      day: NOW_DAY,
-      was: waiting?.was ?? was,
-      changes: [...(waiting?.changes ?? []), { field: 'off' }],
-    },
-  };
-}
-
 export function afterResend(people: readonly Person[], sent: readonly string[]): Person[] {
   return people.map((one) => {
     const notice = one.notice ?? null;
@@ -353,10 +311,6 @@ export function afterResend(people: readonly Person[], sent: readonly string[]):
 
     return { ...one, notice: { kind: 'told', on: NOW_DAY, at: NOW_AT, by: one.reach } };
   });
-}
-
-export function canTakeOff(one: Person): boolean {
-  return onAShift(one) && one.brief !== 'none' && (one.reach ?? 'none') !== 'none';
 }
 
 type Sample = Pick<Person, 'id' | 'name' | 'job' | 'station' | 'shift' | 'mobile'> & {
@@ -531,9 +485,10 @@ export interface ShiftStart {
   failedAt: boolean | null;
   finished: Finished | null;
   lastSent: { date: string; count: number } | null;
-  included: number;
   balance: number;
-  asking: string | null;
+  /** Ask an owner's start, and how many owners its sent line names. */
+  ask: Ask;
+  owners: number;
   overNotice: boolean;
 }
 
@@ -550,9 +505,9 @@ function start(o: Partial<ShiftStart> & Pick<ShiftStart, 'title' | 'what'>): Shi
     failedAt: null,
     finished: null,
     lastSent: null,
-    included: 0,
     balance: 1500,
-    asking: null,
+    ask: 'ready',
+    owners: 2,
     overNotice: false,
     ...o,
   };
@@ -584,12 +539,6 @@ const STATES = {
       saveFails: true,
       failedAt: true,
     }),
-  removed: () =>
-    start({
-      title: 'Taking someone off the shift',
-      what: 'Tope Afolabi gets one last message within 15 minutes to say so, and nothing after that.',
-      asking: 'tope',
-    }),
   none_briefed: () =>
     start({
       title: 'Nobody briefed yet',
@@ -611,22 +560,10 @@ const STATES = {
       people: [],
       roster: 'empty',
     }),
-  cost_included: () =>
-    start({
-      title: 'Paid from included messages',
-      what: '2 by text or WhatsApp, from your included messages.',
-      included: 10,
-    }),
   cost_credits: () =>
     start({
       title: 'Paid with credits',
-      what: '2 by text or WhatsApp, using 93 of your credits.',
-    }),
-  cost_both: () =>
-    start({
-      title: 'Paid with both',
-      what: '2 by text or WhatsApp: 1 from your included messages, the rest using 62 of your credits.',
-      included: 1,
+      what: '2 by text or WhatsApp, using 93 of your credits. Credits only: texts have nothing included',
     }),
   no_credits: () =>
     start({
@@ -641,17 +578,48 @@ const STATES = {
   cost_short: () =>
     start({
       title: 'Credits short, billing.manage',
-      what: '1 person will not get the reminder…, with Buy credits first',
+      what: '1 person will not get the reminder…, then Credits cannot be added in the app. No link and no button',
       balance: 40,
     }),
   cost_short_read_only: () =>
     start({
       title: 'Credits short, staff.read',
-      what: '2 people will not get the reminder…, with Ask an owner',
+      what: '2 people will not get the reminder…, with Ask an owner. Press it',
       manage: false,
       billing: false,
       roster: 'smsReadOnly',
       balance: 0,
+    }),
+  cost_short_asked: () =>
+    start({
+      title: 'Ask an owner, sent',
+      what: 'The owners have been sent the link to Plan and billing.',
+      manage: false,
+      billing: false,
+      roster: 'smsReadOnly',
+      balance: 0,
+      ask: 'sent',
+    }),
+  cost_short_asked_one: () =>
+    start({
+      title: 'Ask an owner, sent to the one owner',
+      what: 'The owner has been sent the link to Plan and billing.',
+      manage: false,
+      billing: false,
+      roster: 'smsReadOnly',
+      balance: 0,
+      ask: 'sent',
+      owners: 1,
+    }),
+  cost_short_ask_failed: () =>
+    start({
+      title: 'Ask an owner, not sent',
+      what: 'Not sent. Try again in a moment. Press Ask an owner again',
+      manage: false,
+      billing: false,
+      roster: 'smsReadOnly',
+      balance: 0,
+      ask: 'failed',
     }),
   called_off: () =>
     start({
