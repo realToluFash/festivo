@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { type BriefingStateName, BW, briefingAt } from './briefing.ts';
+import { NW } from './notices.ts';
 import { ISSUE_MS } from './staffLink.ts';
 
 const tested = config();
@@ -163,5 +164,15 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.getByText(BW.previewLoading)).toBeTruthy();
     await wait(ISSUE_MS);
     expect(screen.getByRole('group', { name: 'Amina Yusuf’s page' })).toBeTruthy();
+  });
+
+  it('refuses a send on a page opened before End now, and reloads it Finished (sc-4333)', async () => {
+    await open('noticesFinishedRefusedBefore');
+    expect(document.getElementById('sv-over')).toBeNull();
+    const sends = screen.getAllByRole('button', { name: /^Send/ });
+    fireEvent.click(sends[0] as HTMLElement);
+    expect(document.getElementById('sv-over')?.textContent).toContain(NW.alreadyOver);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
   });
 });
