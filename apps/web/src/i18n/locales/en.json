@@ -6424,6 +6424,7 @@
     "toAll": "To all guests",
     "toChosen": "To chosen guests",
     "toAudience": "To {{audience}}",
+    "notSentYet": "not sent yet",
     "sending": "Sending…",
     "reached": "Reached {{count, number}} of {{total, number}}",
     "queued_one": "Message queued. Sending to {{count, number}} person now.",

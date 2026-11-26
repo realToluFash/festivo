@@ -371,6 +371,24 @@ describe('Messages at a desk (sc-3942)', () => {
     );
   });
 
+  it('lists the message being written at the top, lit, with whom it goes to', async () => {
+    onMessages();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'New' }));
+    const row = screen.getByRole('button', {
+      name: /^New message, To all guests · not sent yet, /,
+    });
+    expect(row.getAttribute('aria-current')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: /All guests/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Choose guests' }));
+    expect(
+      await screen.findByRole('button', {
+        name: /^New message, To chosen guests · not sent yet, /,
+      }),
+    ).toBeTruthy();
+  });
+
   it('refuses Done with nobody chosen, under To', async () => {
     onMessages();
 
