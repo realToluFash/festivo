@@ -7,6 +7,7 @@ import {
 } from '@soirely/api-client';
 import {
   emailProblem,
+  firstName,
   formatPhone,
   listFormat,
   phoneE164,
@@ -53,6 +54,11 @@ export function personShown(person: EventPerson): PersonShown {
   return person.addressKind === 'mobile'
     ? { kind: 'address', name: formatPhone(person.address), mark: 'phone' }
     : { kind: 'address', name: person.address, mark: 'mail' };
+}
+
+/** Only an account name is cut to its first word: an address or a number is no name (sc-91678). */
+export function firstNameOf(person: EventPerson): string | null {
+  return person.user == null ? null : firstName(person.user.name);
 }
 
 /** Owners, Admins and the Lead change People: the API says so in the event's own permissions. */

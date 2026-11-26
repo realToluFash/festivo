@@ -9,6 +9,7 @@ import {
   holderOf,
   cardFacts,
   cardWords,
+  firstNameOf,
   inListOrder,
   managesPeople,
   nowCan,
@@ -265,6 +266,13 @@ describe('Someone from outside the organisation', () => {
     });
     expect(personShown(WITHHELD)).toEqual({ kind: 'notJoined' });
     expect(personShown(PRIYA)).toEqual({ kind: 'named', name: 'Priya Shah', userId: 'u_priya' });
+  });
+
+  it('cuts only an account name to its first word, never an address or a number (sc-91678)', () => {
+    expect(firstNameOf(PRIYA)).toBe('Priya');
+    expect(firstNameOf(BISI)).toBeNull();
+    expect(firstNameOf(PHONE)).toBeNull();
+    expect(firstNameOf(WITHHELD)).toBeNull();
   });
 
   it('opens a row with no account yet, and lines it with role and job label', () => {

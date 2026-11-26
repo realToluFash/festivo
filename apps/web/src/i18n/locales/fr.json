@@ -3410,6 +3410,7 @@
     "removeTitle": "Retirer {{name}} de cet événement ?",
     "removeLine": "Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans {{organisation}}.",
     "keep": "Garder {{name}}",
+    "keepThem": "Ne pas retirer",
     "removeConfirm": "Retirer",
     "removing": "Retrait en cours…",
     "removeFailed": "Le retrait n’a pas abouti. Cette personne participe toujours à l’événement. Réessayez dans un instant.",

@@ -761,7 +761,11 @@ function RoleDialog({
               ? t('eventPeople.removeOutsideLine')
               : t('eventPeople.removeLine', { organisation: organisationName })
           }
-          keep={t('eventPeople.keep', { name: firstName(name) })}
+          keep={
+            person.user == null
+              ? t('eventPeople.keepThem')
+              : t('eventPeople.keep', { name: firstName(name) })
+          }
           go={t('eventPeople.removeConfirm')}
           busy={removingNow ? t('eventPeople.removing') : undefined}
           failed={refused ?? undefined}

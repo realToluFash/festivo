@@ -2396,6 +2396,7 @@
     "removeLine": "Esta persona perderá el acceso a este evento en su próxima acción. Seguirá en {{organisation}}.",
     "removeLineOutside": "Esta persona perderá el acceso en su próxima acción.",
     "keep": "Mantener a {{name}}",
+    "keepThem": "No quitar",
     "removeConfirm": "Quitar",
     "removing": "Quitando…",
     "removeFailed": "No se ha podido quitar. Esta persona sigue en el evento. Vuelva a intentarlo en un momento.",

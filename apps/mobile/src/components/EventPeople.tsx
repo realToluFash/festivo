@@ -7,7 +7,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { firstName, initials, numberFormat } from '@soirely/domain';
+import { initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import { atWords, inMadeOrder, shownCode } from '../kit/doorCodes.ts';
 import {
   JOB_LABEL_MOST,
   addRefused,
+  firstNameOf,
   holderOf,
   inListOrder,
   joinedLine,
@@ -117,6 +118,7 @@ function sheetWords(
   organisation: string,
 ): RoleSheetWords<EventRole> {
   const name = nameOf(t, person);
+  const first = firstNameOf(person);
 
   return {
     ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
@@ -127,14 +129,14 @@ function sheetWords(
     removeLine: person.outside
       ? t('eventPeople.removeLineOutside')
       : t('eventPeople.removeLine', { organisation }),
-    keep: t('eventPeople.keep', { name: firstName(name) }),
+    keep: first == null ? t('eventPeople.keepThem') : t('eventPeople.keep', { name: first }),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
     savedHeard: (role) =>
       t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
     notChanged: (held) =>
       t('eventPeople.changeFailed', {
-        name: firstName(name),
+        name: first ?? name,
         role: t(`eventPeople.role.${held}`),
       }),
     removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
