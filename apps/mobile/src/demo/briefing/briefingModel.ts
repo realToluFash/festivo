@@ -71,6 +71,7 @@ export const BW = {
   cut: `That was longer than ${n0(RULES_MAX)} characters, so the end was left out.`,
   saved: '[Saved. The rules are on everyone’s shift page now.]',
   previewWho: 'Whose page',
+  previewSearch: '[Search the staff]',
   previewBanner: '[Preview only. Nothing is recorded: no read and no link open.]',
   previewNoShift: (day: string) => `[You are on the staff for ${day}, with no shift yet.]`,
   onTonight: 'Tonight you’re on',

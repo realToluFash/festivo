@@ -7,6 +7,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from '../../components/Bu
 import { NoteBox } from '../../components/EventEdits.tsx';
 import { Field, TextField } from '../../components/Field.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { ListPicker } from '../../components/ListPicker.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { Sheet, SheetActions } from '../../components/Sheet.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
@@ -74,7 +75,7 @@ export function useBriefing(
   roster: readonly OnRoster[],
   hold: (next: Person[]) => void,
 ): BriefingParts | null {
-  const opening = first ?? briefingStart('populated');
+  const [opening] = useState(() => first ?? briefingStart('populated'));
   const [extras, setExtras] = useState(() => extrasOf(opening.people));
   const [side, setSide] = useState<Side>(opening.side);
   const [rules, setRules] = useState(opening.rules);
@@ -840,24 +841,19 @@ function PreviewPanel({
   onPick: (id: string) => void;
   onClose: () => void;
 }) {
-  const at = people.findIndex((person) => person.id === one.id);
-  const next = people[(at + 1) % people.length];
-
   return (
     <>
       <PanelHead title={BW.previewAs} onClose={onClose} />
-      <View style={styles.inline}>
-        <Text size={15} weight="semibold" style={styles.shrink}>
-          {`${BW.previewWho}: ${one.name}`}
-        </Text>
-        {next != null && (
-          <QuietButton
-            label={`[Next: ${next.name}]`}
-            onPress={() => onPick(next.id)}
-            testID="briefing.preview.next"
-          />
-        )}
-      </View>
+      <Field label={BW.previewWho}>
+        <ListPicker
+          label={BW.previewWho}
+          searchLabel={BW.previewSearch}
+          choices={people.map((person) => ({ code: person.id, name: person.name }))}
+          value={one.id}
+          onChange={onPick}
+          testID="briefing.preview.who"
+        />
+      </Field>
       <View style={styles.banner}>
         <Glyph name="eye" size={16} ink={tokens.colorAttentionText} />
         <Text size={14} weight="semibold" style={[styles.attention, styles.shrink]}>
