@@ -439,6 +439,24 @@ describe('Messages at a desk (sc-3942)', () => {
     expect(screen.queryByRole('button', { name: /^All guests/ })).toBeNull();
   });
 
+  it('says why nobody can write under an open conversation without messages.manage', async () => {
+    const { message: _body, deliveries, ...summary } = { ...SENT, follows: null };
+    onMessages(
+      {
+        'GET /api/events/ev_1/messages': () =>
+          json({ messages: [{ ...summary, deliveries: deliveries.length }] }),
+        'GET /api/events/ev_1/messages/m_1': () => json({ message: { ...SENT, follows: null } }),
+      },
+      { permissions: OWNER_PERMISSIONS.filter((one) => one !== 'messages.manage') },
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Dinner starts at seven/ }));
+
+    expect(await screen.findByRole('log', { name: /Dinner starts at seven/ })).toBeTruthy();
+    expect(screen.getByText('Only someone who can change Messages can send.')).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Write a follow-up' })).toBeNull();
+  });
+
   it('is refused without messages.read, and hidden from the nav', async () => {
     onMessages(
       {},
