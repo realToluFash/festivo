@@ -9,10 +9,24 @@ export function codePoints(text: string): number {
   return Array.from(text).length;
 }
 
-/** A key typed at the limit is not taken; a paste that would go over keeps its first part and says so. */
+function isOneKey(before: string, typed: string): boolean {
+  const was = Array.from(before);
+  const now = Array.from(typed);
+  if (now.length !== was.length + 1) return false;
+
+  let start = 0;
+  while (start < was.length && was[start] === now[start]) start += 1;
+  let end = 0;
+  while (end < was.length - start && was[was.length - 1 - end] === now[now.length - 1 - end])
+    end += 1;
+
+  return start + end === was.length;
+}
+
+/** A key typed at the limit is not taken; a paste that would go over, even by one over a selection, keeps its first part and says so. */
 export function fitRules(before: string, typed: string): { text: string; cut: boolean } {
   if (codePoints(typed) <= STAFF_RULES_MAXIMUM) return { text: typed, cut: false };
-  if (codePoints(typed) - codePoints(before) <= 1) return { text: before, cut: false };
+  if (isOneKey(before, typed)) return { text: before, cut: false };
 
   return { text: Array.from(typed).slice(0, STAFF_RULES_MAXIMUM).join(''), cut: true };
 }
