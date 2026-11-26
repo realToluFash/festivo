@@ -1,0 +1,45 @@
+# sc-94682: the demo's Today with This week's strip, in ORIENT, at the seventh step (en, fr), the default size and AX1; This week's heading brought to the middle for each. Run at the device's default text size. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=seventh&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-seventh-en
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=seventh&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-seventh-fr
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=default&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-default-en
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=ax1&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-ax1-en
