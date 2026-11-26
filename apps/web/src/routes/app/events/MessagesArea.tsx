@@ -88,6 +88,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
   const addresses = canOn(event, 'guests.manage');
   const [list, setList] = useState<ListLoad>({ kind: 'loading' });
   const [pane, setPane] = useState<Pane>({ kind: 'idle' });
+  const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
   const [ask, setAsk] = useState(0);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
@@ -155,6 +156,13 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
 
   const lit = pane.kind === 'message' ? pane.id : pane.kind === 'reached' ? pane.of : null;
   const conversations = list.kind === 'loaded' ? conversationsOf(list.messages) : [];
+  const draft =
+    pane.kind === 'compose' && pane.follows == null
+      ? {
+          line: `${audienceWords({ audience: draftTo.kind }, t)} · ${t('eventMessages.notSentYet')}`,
+          when: whenWords(now.toISOString()),
+        }
+      : null;
 
   return (
     <div ref={root} className="desk ev desk-page ev-msgs">
@@ -190,7 +198,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
                   {t('eventMessages.tryAgain')}
                 </button>
               </div>
-            ) : list.messages.length === 0 ? (
+            ) : list.messages.length === 0 && draft == null ? (
               <div className="mg-empty">
                 <h2>{t('eventMessages.noneYet')}</h2>
                 <p>{t('eventMessages.noneLine')}</p>
@@ -198,6 +206,8 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
             ) : (
               <Rows
                 conversations={conversations}
+                draft={draft}
+                onDraft={() => focus('body')}
                 lit={lit}
                 onOpen={(id) => {
                   setPane({ kind: 'message', id });
@@ -213,6 +223,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               key="compose"
               desk={desk}
               first={pane}
+              onWho={setDraftTo}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
                 setPane({ kind: 'message', id: pane.follows?.id ?? id });
@@ -312,12 +323,19 @@ function titleOf(message: Pick<GuestMessageSummary, 'subject' | 'firstLine'>): s
 
 type Conversation = { id: string; messages: GuestMessageRow[] };
 
+/** The new message being written, at the top of the list and lit, as the demo has it until it is sent. */
+type DraftRow = { line: string; when: string };
+
 function Rows({
   conversations,
+  draft,
+  onDraft,
   lit,
   onOpen,
 }: {
   conversations: readonly Conversation[];
+  draft: DraftRow | null;
+  onDraft: () => void;
   lit: string | null;
   onOpen: (id: string) => void;
 }) {
@@ -372,8 +390,32 @@ function Rows({
     </ul>
   );
 
+  const title = t('eventMessages.newMessage');
+
   return (
     <>
+      {draft != null && (
+        <ul className="mg-rows">
+          <li>
+            <button
+              type="button"
+              className="mg-row is-on"
+              aria-label={[title, draft.line, draft.when].join(', ')}
+              aria-current="true"
+              onClick={onDraft}
+            >
+              <GroupMark />
+              <span className="desk-row-words">
+                <span className="desk-row-title">
+                  <span className="desk-row-name">{title}</span>
+                </span>
+                <span className="desk-row-line">{draft.line}</span>
+              </span>
+              <span className="mg-when">{draft.when}</span>
+            </button>
+          </li>
+        </ul>
+      )}
       {sending.length > 0 && rows(sending)}
       {done.length > 0 && (
         <section className="mg-section" aria-label={t('eventMessages.doneHeading')}>
@@ -524,14 +566,17 @@ function failureWords(error: unknown, t: TFunction): string {
 function ComposePane({
   desk,
   first,
+  onWho,
   onSent,
 }: {
   desk: Desk;
   first: Draft;
+  onWho: (who: Who) => void;
   onSent: (id: string, count: number) => void;
 }) {
   const { t } = useTranslation();
   const [who, setWho] = useState<Who>(first.who);
+  useEffect(() => onWho(who), [who, onWho]);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState(first.body);
   const [toOpen, setToOpen] = useState(first.openTo);

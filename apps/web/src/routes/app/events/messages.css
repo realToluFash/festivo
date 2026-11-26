@@ -740,6 +740,24 @@
   content: attr(data-placeholder);
 }
 
+/* The product's Message is a textarea; the demo draws it as text in the card, growing to its 200 px. */
+textarea.mg-field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  resize: none;
+  field-sizing: content;
+}
+
+textarea.mg-field::placeholder {
+  color: var(--colorInkTertiary);
+  opacity: 1;
+}
+
 .mg-tools {
   display: flex;
   align-items: center;
@@ -1029,6 +1047,39 @@
 .mg-radio-row.is-person .desk-radio {
   grid-row: span 2;
   align-self: center;
+}
+
+/* At a phone the conversations stand above the open one, as the demo's reflow has them at 320 (WCAG 2.2 1.4.10); the shell already pads the page 16 px, so neither pane adds its own. */
+@media (width <= 40rem) {
+  .ev-msgs.desk-page {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .mg {
+    flex-direction: column;
+  }
+
+  .mg-list {
+    width: auto;
+    padding-inline: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--colorBorder);
+  }
+
+  .mg-in,
+  .mg-pane.is-loading {
+    padding-inline: 0;
+  }
+
+  .mg-head {
+    flex-wrap: wrap;
+  }
+
+  .mg-head-words {
+    flex: 1 1 10rem;
+    overflow-wrap: anywhere;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
