@@ -28,7 +28,7 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 
-/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777). */
+/** An event's guest list, each companion under their host; the clients sort it by name (sc-1468). Greet as goes to every reader, as how the guest is addressed and not a way to reach them (sc-3960). Without `contacts` the contact, language and needs keys are left out, not sent empty: Language goes with the contact details (sc-3790), needs with guests.manage (sc-3777). */
 final readonly class GuestSerialiser
 {
     public function __construct(
@@ -142,6 +142,7 @@ final readonly class GuestSerialiser
         return [
             'id' => $host->getId()->toRfc4122(),
             'fullName' => $host->getFullName(),
+            'greetAs' => $host->getGreetAs(),
             'group' => null === $group ? null : self::group($group),
             'walkIn' => $host->isWalkIn(),
             'arrival' => CheckInSerialiser::arrival($host, $zone),

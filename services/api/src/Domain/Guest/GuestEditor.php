@@ -78,6 +78,7 @@ final readonly class GuestEditor
             $guest->setEmail($new->email);
             $guest->setMobile($new->mobile);
             $guest->setLanguage($new->language);
+            $guest->setGreetAs($new->greetAs);
             $guest->setGroup($group);
             $guest->raiseVersion();
 
@@ -217,6 +218,7 @@ final readonly class GuestEditor
             'email' => $guest->getEmail() !== $new->email,
             'mobile' => $guest->getMobile() !== $new->mobile,
             'language' => $guest->getLanguage() !== $new->language,
+            'greetAs' => $guest->getGreetAs() !== $new->greetAs,
             'companions' => $before !== $after,
             'group' => $guest->getGroup() !== $group,
         ]));
