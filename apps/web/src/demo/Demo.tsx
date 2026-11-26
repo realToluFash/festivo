@@ -12,6 +12,7 @@ import {
 import { NotFound } from '../routes/public/NotFound.tsx';
 import { offButton } from '../offButton.ts';
 import { offField } from '../offField.ts';
+import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
@@ -448,6 +449,8 @@ function DemoHome({ from }: { from: string }) {
         </ul>
         <h3>Events in A · Summary first · desktop</h3>
         <BoardPages pages={EVENTS_PAGES} />
+        <h3>All dates in A, loading and failed (sc-98187) · desktop and 320 px</h3>
+        <BoardPages pages={ALL_DATES_PAGES} />
         <h3>An event in a phone browser hands over to the app · 390 and 320 px</h3>
         <BoardPages pages={HANDOFF_PAGES} />
         <h3>Today, Events and Calendar fit a phone’s window (sc-57468) · 390 and 320 px</h3>
