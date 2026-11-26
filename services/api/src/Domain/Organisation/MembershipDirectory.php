@@ -6,9 +6,8 @@ namespace App\Domain\Organisation;
 
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\Staff\Link\OutsideEvent;
 use App\Domain\Staff\Link\StaffLinkGrants;
-use App\Entity\Event;
-use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\PlanFeature;
@@ -94,10 +93,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
             return false;
         }
 
-        $inOrganisation = static fn (Event $event): bool => $event->getOrganisation()->getId()->equals($organisationId);
-
-        return Iter\any($this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now()), static fn (EventPerson $person): bool => $inOrganisation($person->getEvent()))
-            || Iter\any($this->staffLinkGrants->live($user), static fn (array $live): bool => $inOrganisation($live['entry']->getEvent()));
+        return Iter\any($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
     }
 
     /** @return list<PlanFeature> */

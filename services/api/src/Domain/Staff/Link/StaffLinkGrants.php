@@ -51,13 +51,19 @@ final readonly class StaffLinkGrants
         return $live;
     }
 
+    /** @return list<OutsideEvent> every event the account reaches from outside, the grants from outside first (the first is where it lands), then its staff links */
+    public function liveOutsideEvents(User $user): array
+    {
+        return [
+            ...Vec\map($this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now()), static fn (EventPerson $person): OutsideEvent => new OutsideEvent($person->getEvent(), $person->getRole(), $person->getJobLabel(), $person->getEvent()->getClosesAt())),
+            ...Vec\map($this->live($user), static fn (array $grant): OutsideEvent => new OutsideEvent($grant['entry']->getEvent(), self::levelOf($grant['entry']), $grant['entry']->getJob()?->getName(), $grant['until'])),
+        ];
+    }
+
     /** When a browser signed in by phone code is signed out: the last of the account's live grants to end, or null once none is live. */
     public function lastEndFor(User $user): ?DateTimeImmutable
     {
-        $ends = [
-            ...Vec\map($this->live($user), static fn (array $grant): DateTimeImmutable => $grant['until']),
-            ...Vec\filter_nulls(Vec\map($this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now()), static fn (EventPerson $person): ?DateTimeImmutable => $person->getEvent()->getClosesAt())),
-        ];
+        $ends = Vec\filter_nulls(Vec\map($this->liveOutsideEvents($user), static fn (OutsideEvent $outside): ?DateTimeImmutable => $outside->until));
 
         return Iter\reduce($ends, static fn (?DateTimeImmutable $last, DateTimeImmutable $end): DateTimeImmutable => null === $last || $end > $last ? $end : $last, null);
     }
