@@ -3,6 +3,7 @@ import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Provider } from '@soirely/api-client';
+import Svg, { Path } from 'react-native-svg';
 import {
   Platform,
   StyleSheet,
@@ -23,7 +24,7 @@ import { useLineSize, WelcomeBrand } from '../../components/Welcome.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { CodeBoxes, type CodeBoxesHandle } from '../../steps/CodeBoxes.tsx';
 import { InsideField } from '../../steps/InsideField.tsx';
-import { Heading, Says } from '../../steps/Lines.tsx';
+import { Heading, Says, stepTitle, useStepTitleSize } from '../../steps/Lines.tsx';
 import { minutesSeconds, RESEND_SECONDS } from '../../steps/rules.ts';
 import { useCountdown } from '../../steps/useCountdown.ts';
 import { useAccessibilitySizes } from '../../layout/useLayout.ts';
@@ -73,6 +74,7 @@ import {
   PROVIDER_ORG,
   redeemStateOf,
   refusalOf,
+  signedOut,
 } from './RedeemModel.ts';
 
 type Go = (next: Partial<Flow>) => void;
@@ -93,10 +95,10 @@ function RedeemFlow({ start }: { start: Flow }) {
   const [visit, setVisit] = useState(0);
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const go = useCallback<Go>((next) => {
-    setFlow((now) => ({ ...now, held: false, more: false, ...next }));
+    setFlow((now) => ({ ...now, held: false, more: false, signedOut: false, ...next }));
     setVisit((now) => now + 1);
   }, []);
-  const signOut = () => go(freshFlow());
+  const signOut = () => go(signedOut());
   const step = `${flow.step}-${visit}`;
 
   switch (flow.step) {
@@ -319,6 +321,7 @@ function EnterStep({ flow, go }: { flow: Flow; go: Go }) {
         />
       }
     >
+      {flow.signedOut && <SignedOutLine />}
       <Heading title={W.enterCode} />
       <View style={styles.fields}>
         <InsideField
@@ -718,8 +721,44 @@ function Refusal({ title, body }: { title: string; body: string }) {
   );
 }
 
+/** "Signed out." as a status above the page's own heading, said without focus moving (sc-4235, Decided 12 Nov). */
+function SignedOutLine() {
+  const size = useStepTitleSize();
+  useReadOut(W.signedOut);
+
+  return (
+    <View style={styles.signedOut} testID="redeem.signedOut">
+      <Svg
+        width={26}
+        height={26}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={tokens.colorInkSecondary}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <Path d="m16 17 5-5-5-5" />
+        <Path d="M21 12H9" />
+      </Svg>
+      <Text size={size} weight="bold" style={[styles.grow, stepTitle(size)]}>
+        {W.signedOut}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
+  signedOut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    marginBottom: tokens.spaceLg,
+  },
   onCover: { color: tokens.colorInkOnDark },
   secondary: { color: tokens.colorInkSecondary },
   tile: { marginTop: tokens.spaceLg },

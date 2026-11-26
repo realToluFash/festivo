@@ -78,6 +78,7 @@ export const W = {
   endsLine: 'Access ends when the event concludes.',
   openEvent: 'Open the event',
   signOut: 'Sign out',
+  signedOut: 'Signed out.',
   checkIn: 'Check guests in',
   guests: 'Guests',
   guestsLine: 'Names and replies only, no contact details',
