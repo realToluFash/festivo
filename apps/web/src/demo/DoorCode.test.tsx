@@ -317,7 +317,7 @@ describe('the service levels on a code and on someone from outside (sc-4002)', (
     expect(make.queryByRole('radio', { name: /^Can run the floor/u })).toBeNull();
     expect(
       make.getByText(
-        'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+        'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
       ),
     ).toBeDefined();
   });
@@ -327,7 +327,7 @@ describe('the service levels on a code and on someone from outside (sc-4002)', (
     const make = dialog('Door code');
 
     expect(make.getByRole('alert').textContent).toBe(
-      'A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
+      'A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
     );
     expect(
       (make.getByRole('radio', { name: /^Can work the floor/u }) as HTMLInputElement).checked,

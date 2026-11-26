@@ -91,10 +91,10 @@ def sync_shortcut(db, shortcut, now, full=False):
     return fetched
 
 
-def design_branch_move(history, states, prs):
+def design_branch_move(history, states, branches):
     """The ux/ branch or pull request whose push moved a story from Needs Design to Ready For
-    Dev, if its last move was that one; otherwise None."""
-    branches = {pr["number"]: pr.get("branch") for pr in prs}
+    Dev, if its last move was that one; otherwise None. `branches` names each pull request's
+    branch, by number."""
     for entry in reversed(history):
         moves = history_moves(entry)
         if not moves:
@@ -112,21 +112,58 @@ def design_branch_move(history, states, prs):
     return None
 
 
+def design_pull_requests(raw, prs):
+    """Each ux/ branch naming a story, with its pull requests by number, each True once merged
+    or closed. Shortcut's record and sq's GitHub view are both read, and either seeing a pull
+    request finished settles it, since the other may not have caught up with the merge."""
+    found = {}
+
+    def see(branch, number, finished):
+        if not roles.is_design_branch(branch):
+            return
+        pulls = found.setdefault(branch, {})
+        if number is not None:
+            pulls[number] = pulls.get(number, False) or bool(finished)
+
+    for branch in raw.get("branches") or []:
+        see(branch.get("name"), None, False)
+        for pr in branch.get("pull_requests") or []:
+            see(branch.get("name"), pr.get("number"), pr.get("merged") or pr.get("closed"))
+    for pr in raw.get("pull_requests") or []:
+        see(pr.get("branch_name"), pr.get("number"), pr.get("merged") or pr.get("closed"))
+    for pr in prs:
+        if pr.get("story_id") == raw["id"] or pr.get("branch") in found:
+            see(pr.get("branch"), pr["number"], pr.get("state") in ("merged", "closed"))
+    return found
+
+
+def demo_unmerged(pulls):
+    """A ux/ branch with an open pull request, or with none sq can match, is demo work still
+    to merge."""
+    return any(not numbers or not all(numbers.values()) for numbers in pulls.values())
+
+
 def undo_design_branch_moves(db, shortcut, raws, states, epics):
     """Shortcut's GitHub integration moves a story to Ready For Dev when a branch naming it is
     pushed, a designer's ux/ branch too, while its demo is still under review. Ready For Dev
-    means a merged demo, so the move is undone and the designer moves it on after the merge.
+    means a merged demo, so the move is undone while a ux/ branch naming the story has not
+    merged, and stands once every one has: the integration makes the same move on the merge.
     A story Shortcut fails on is stored without its `updated_at`, so the next sync tries again."""
     ids = {name: int(state_id) for state_id, name in states.items()}
     if "Needs Design" not in ids:
         return
     prs = store.prs(db)
     for raw in raws:
-        if states.get(str(raw.get("workflow_state_id"))) != "Ready For Dev" or not any(
-                roles.is_design_branch(b.get("name")) for b in raw.get("branches") or []):
+        if states.get(str(raw.get("workflow_state_id"))) != "Ready For Dev":
             continue
+        pulls = design_pull_requests(raw, prs)
+        if not demo_unmerged(pulls):
+            continue
+        branches = {pr["number"]: pr.get("branch") for pr in prs}
+        branches.update({number: branch for branch, numbers in pulls.items()
+                         for number in numbers})
         try:
-            if design_branch_move(shortcut.history(raw["id"]), states, prs):
+            if design_branch_move(shortcut.history(raw["id"]), states, branches):
                 moved = shortcut.update(raw["id"], workflow_state_id=ids["Needs Design"])
                 store.put_story(db, slim(moved or shortcut.story(raw["id"]), states, epics))
         except ShortcutError:
