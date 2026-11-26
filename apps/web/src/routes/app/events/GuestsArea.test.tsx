@@ -489,6 +489,7 @@ describe('Guests (sc-1468)', () => {
     expect(await within(form()).findByText('Bimpe Adeyemi added.')).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toEqual({
       fullName: 'Bimpe Adeyemi',
+      greetAs: null,
       email: 'bimpe@example.com',
       mobile: { countryCode: 'GB', number: '07700 900123' },
       companions: [{ fullName: null, needs: NONE }],
@@ -1548,6 +1549,7 @@ describe('A guest’s details, and correcting them (sc-3773)', () => {
     expect(ifMatch).toBe('"1"');
     expect(puts(sent)[0]?.body).toEqual({
       fullName: 'Ngozi Eze-Okafor',
+      greetAs: null,
       email: 'ngozi@example.com',
       mobile: { countryCode: 'NG', number: '0803 555 0142' },
       companions: [{ id: 'c_1', fullName: 'Obi Eze', needs: NONE }],
@@ -3312,6 +3314,7 @@ describe('A guest’s needs (sc-3777)', () => {
     await within(form()).findByText('Bimpe added.');
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/guests')?.body).toEqual({
       fullName: 'Bimpe',
+      greetAs: null,
       email: null,
       mobile: null,
       language: null,

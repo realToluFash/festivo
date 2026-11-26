@@ -514,5 +514,7 @@
     "validation.guest_message_no_guests": "Cet événement n’a encore aucun invité à qui écrire.",
     "guest_message.event_draft": "Cet événement est un brouillon. Publiez-le pour écrire à vos invités.",
     "guest_message.event_ended": "Cet événement s’est terminé il y a plus de 30 jours : vous ne pouvez plus écrire à ses invités.",
-    "saved_audience.full": "Cet événement a {most, number, ::group-auto} publics enregistrés, le maximum. Supprimez-en un pour en enregistrer un autre."
+    "saved_audience.full": "Cet événement a {most, number, ::group-auto} publics enregistrés, le maximum. Supprimez-en un pour en enregistrer un autre.",
+    "validation.guest_greet_as_too_long": "{count, plural, one {Shorten Greet as to {count, number, ::group-auto} character or fewer.} other {Shorten Greet as to {count, number, ::group-auto} characters or fewer.}}",
+    "validation.guest_message_token_unknown": "Not sent. Part of the message can’t be filled in for each guest: remove it, then use Insert."
 }

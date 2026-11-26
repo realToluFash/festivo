@@ -4,36 +4,19 @@ import {
   type PasskeyOptions,
   type SecondFactor,
 } from '@soirely/api-client';
-import {
-  cleanCode,
-  codeProblem,
-  formatTimeOfDay,
-  lockLiftsAt,
-  shapeRecovery,
-} from '@soirely/domain';
+import { cleanCode, codeProblem, shapeRecovery } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { selectCode } from '../codeScreen.ts';
-import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
 import { focusWhereSent, offField } from '../offField.ts';
 import { askPasskey, canUsePasskeys } from '../passkey.ts';
+import { type Mode, type SecondFactorStatus, statusFrom } from '../secondFactorStatus.ts';
 import { FieldError } from './FieldError.tsx';
 import { NoBrowser, Refused, Waiting } from './PasskeyParts.tsx';
 import { ColumnBack } from './Onboarding.tsx';
-
-type Mode = 'passkey' | 'app' | 'recovery';
-
-type Status =
-  | { kind: 'ready' }
-  | { kind: 'checking' }
-  | { kind: 'wrong'; message: string }
-  | { kind: 'waiting' }
-  | { kind: 'refused' }
-  | { kind: 'paused'; time: string; liftsAt: number }
-  | { kind: 'failed' };
 
 /** "Enter your code", for any step a second factor guards: a sign-in, or a password reset. */
 export function SecondFactorStep({
@@ -51,6 +34,7 @@ export function SecondFactorStep({
   headingRef,
   factors = { app: true, passkeys: false },
   passkey,
+  opensOn,
 }: {
   intro: string;
   recoveryIntro: string;
@@ -70,15 +54,17 @@ export function SecondFactorStep({
   factors?: HeldFactors;
   /** Where the account holds a passkey: the step opens on it, its sheet over the page (sc-86885). */
   passkey?: { lead: string; options: () => Promise<PasskeyOptions> };
+  /** Recovery, for a step reached from Use a recovery code instead elsewhere: the staff link's (sc-4235). */
+  opensOn?: 'recovery';
 }) {
   const { t } = useTranslation();
   const browserCan = canUsePasskeys();
   const offersPasskey = factors.passkeys && passkey != null && browserCan;
   const codeMode: Mode = factors.app ? 'app' : 'recovery';
-  const [mode, setMode] = useState<Mode>(offersPasskey ? 'passkey' : codeMode);
+  const [mode, setMode] = useState<Mode>(opensOn ?? (offersPasskey ? 'passkey' : codeMode));
   const [typed, setTyped] = useState('');
   const [blank, setBlank] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>({ kind: 'ready' });
+  const [status, setStatus] = useState<SecondFactorStatus>({ kind: 'ready' });
 
   const checking = status.kind === 'checking' || status.kind === 'waiting';
   const opened = useRef(false);
@@ -351,32 +337,4 @@ export function SecondFactorStep({
       </div>
     </>
   );
-}
-
-function statusFrom(refusal: unknown, mode: Mode, t: (key: string) => string): Status {
-  if (!(refusal instanceof ApiError)) return { kind: 'failed' };
-
-  if (refusal.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
-
-    if (liftsAt != null) {
-      return {
-        kind: 'paused',
-        time: formatTimeOfDay(liftsAt, dateLocale()),
-        liftsAt: liftsAt.getTime(),
-      };
-    }
-  }
-
-  if (refusal.is('recovery_code_used'))
-    return { kind: 'wrong', message: t('twoFactor.recoveryUsed') };
-
-  if (refusal.is('two_factor_code_invalid')) {
-    return {
-      kind: 'wrong',
-      message: mode === 'app' ? t('twoFactor.codeWrong') : t('twoFactor.recoveryWrong'),
-    };
-  }
-
-  return { kind: 'failed' };
 }

@@ -98,6 +98,23 @@ export interface PickableGuest {
   name: string;
   flag: 'no_address' | 'bouncing' | 'complained' | null;
   email?: string | null;
+  /** The language Soirely's words reach them in (sc-3790). */
+  language: string;
+}
+
+/** Which step of sc-3790's rule gave a guest's language. */
+export type LanguageFrom = 'chose' | 'host' | 'organisation';
+
+/** As one guest will see it (sc-3960): who they are greeted as, their language and why, and each channel's notice. */
+export interface GuestMessagePreview {
+  guest: {
+    id: string;
+    name: string;
+    greetAs: string | null;
+    language: string;
+    languageFrom: LanguageFrom;
+  };
+  notices: { channel: 'email'; subject: string; text: string }[];
 }
 
 export interface GuestMessageInput {

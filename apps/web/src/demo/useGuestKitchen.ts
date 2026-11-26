@@ -4,7 +4,6 @@ import { useLater } from '../useLater.ts';
 import {
   EARLIER,
   HOLD_MS,
-  OPEN,
   SEND_MS,
   TODAY,
   type View,
@@ -12,6 +11,7 @@ import {
   agreesOnSend,
   sameAnswer,
   sentAnswer,
+  stepBack,
 } from './guest.ts';
 import {
   type Field,
@@ -55,7 +55,7 @@ function checkView(from: From): View {
     busy: false,
     failed: false,
     refused: false,
-    from: from === 'changing' ? 'changing' : 'answer',
+    from: from === 'closed' ? 'answer' : from,
   };
 }
 
@@ -200,7 +200,7 @@ export function useGuestKitchen(visit: Visit, state: string | null, go: Go): Gue
         ? go(backToClosed, 'kitchen')
         : go(
             (was) => ({
-              view: from === 'changing' ? { kind: 'changing', busy: null } : OPEN,
+              view: stepBack(from),
               kitchen: was.kitchen == null ? null : { ...was.kitchen, alert: null },
             }),
             'row-coming',

@@ -6,6 +6,7 @@ namespace App\Domain\Messaging\Controller;
 
 use App\Domain\Messaging\Audience\GuestAudienceResolver;
 use App\Domain\Messaging\Audience\GuestConditions;
+use App\Domain\Messaging\GuestMessages\GuestMessageNotice;
 use App\Domain\Messaging\GuestMessages\GuestMessagesChanged;
 use App\Domain\Messaging\GuestMessages\GuestMessageSender;
 use App\Domain\Messaging\GuestMessages\GuestMessageSerialiser;
@@ -20,9 +21,11 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use App\Locale\GuestLanguage;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use App\Repository\GuestMessageRepository;
+use App\Repository\GuestRepository;
 use Collator;
 use Psl\Iter;
 use Psl\Type;
@@ -32,6 +35,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
 
 /** An event's messages to its guests (sc-3942): All messages, one message's deliveries, the check before Send, and Send. */
 final readonly class GuestMessagesController
@@ -47,6 +51,8 @@ final readonly class GuestMessagesController
         private GuestMessagesChanged $guestMessagesChanged,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
         private GuestConditions $guestConditions,
+        private GuestRepository $guestRepository,
+        private GuestMessageNotice $guestMessageNotice,
     ) {
     }
 
@@ -67,7 +73,7 @@ final readonly class GuestMessagesController
         return new JsonResponse(['message' => $this->guestMessageSerialiser->details($message, $this->managesGuests($event))]);
     }
 
-    /** Choose guests (sc-3942): every guest a message can go to, A to Z, each with why email can't tell them; the address only for those who manage guests, as sc-3773 rules. */
+    /** Choose guests (sc-3942): every guest a message can go to, A to Z, each with why email can't tell them and the language Soirely's words reach them in (sc-3960); the address only for those who manage guests, as sc-3773 rules. */
     #[Route('/api/events/{eventId}/messages/guests', name: 'guest_messages_guests', methods: ['GET'])]
     #[InEvent(Permission::MessagesManage)]
     public function guests(string $eventId): JsonResponse
@@ -80,15 +86,52 @@ final readonly class GuestMessagesController
             static fn (PlannedDelivery $one, PlannedDelivery $other): int => (int) $collator->compare($one->name, $other->name),
         );
 
-        return new JsonResponse(['guests' => Vec\map($deliveries, static function (PlannedDelivery $delivery) use ($addresses): array {
+        $languages = [];
+
+        foreach ($this->guestRepository->findOnList($event) as $listed) {
+            $languages[$listed->getId()->toRfc4122()] = GuestLanguage::forMessage($listed);
+        }
+
+        return new JsonResponse(['guests' => Vec\map($deliveries, static function (PlannedDelivery $delivery) use ($addresses, $languages): array {
+            $id = $delivery->recipientId->toRfc4122();
             $guest = [
-                'id' => $delivery->recipientId->toRfc4122(),
+                'id' => $id,
                 'name' => $delivery->name,
                 'flag' => $delivery->notSent?->value,
+                'language' => $languages[$id] ?? null,
             ];
 
             return $addresses ? [...$guest, 'email' => $delivery->address] : $guest;
         })]);
+    }
+
+    /** As one guest will see it (sc-3960): who they are greeted as, the language Soirely's words reach them in and why, and the notice each channel sends them. Their page fills the message in with packages/domain's messageTokens. */
+    #[Route('/api/events/{eventId}/messages/preview/{guestId}', name: 'guest_messages_preview', methods: ['GET'], requirements: ['guestId' => '[0-9a-f-]{36}'])]
+    #[InEvent(Permission::MessagesManage)]
+    public function preview(string $eventId, string $guestId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $guest = $this->guestRepository->findOneInEvent($event->getId(), Uuid::fromString($guestId));
+
+        if (null === $guest || null !== $guest->getHost()) {
+            throw ApiException::notFound('access.not_found');
+        }
+
+        $language = GuestLanguage::forMessage($guest);
+        $email = $this->guestMessageNotice->notice($event, $guest, $guest->getFullName() ?? '', $language, preview: true);
+
+        return new JsonResponse([
+            'guest' => [
+                'id' => $guest->getId()->toRfc4122(),
+                'name' => $guest->getFullName(),
+                'greetAs' => $guest->getGreetAs(),
+                'language' => $language,
+                'languageFrom' => GuestLanguage::messageLanguageFrom($guest),
+            ],
+            'notices' => [
+                ['channel' => 'email', 'subject' => $email->subject, 'text' => $email->body],
+            ],
+        ]);
     }
 
     #[Route('/api/events/{eventId}/messages/subscriptions', name: 'guest_messages_subscribe', methods: ['POST'])]

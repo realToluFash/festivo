@@ -61,6 +61,7 @@ import {
   changeAnswer,
   changeWhen,
   changedRows,
+  GREET_AS_MAXIMUM,
 } from '@soirely/domain';
 import {
   type ReactNode,
@@ -129,6 +130,7 @@ import { GuestColumn, ReplyMark, guestAddress } from './GuestColumn.tsx';
 import { decideRow, repliesOf } from './guestReplyBy.ts';
 import {
   CompanionField,
+  GreetAsField,
   GuestField,
   LanguageField,
   PhoneField,
@@ -1953,6 +1955,7 @@ const EMPTY: AddTyped = {
   number: '',
   companions: [],
   language: null,
+  greetAs: '',
   needs: NO_NEEDS,
 };
 
@@ -2022,6 +2025,8 @@ function AddForm({
     if (typeof problem === 'object') return problem.refused;
     if (problem === 'blank') return t('guestList.blankName');
     if (problem === 'tooLong') return t('guestList.nameTooLong', { most: GUEST_NAME_MAXIMUM });
+    if (problem === 'greetAsTooLong')
+      return t('guestList.greetAsTooLong', { count: GREET_AS_MAXIMUM });
     if (problem === 'emailShape') return t('forms.emailShape');
 
     return (
@@ -2163,6 +2168,11 @@ function AddForm({
           error={words('fullName')}
           focusKey="fullName"
           onChange={(fullName) => change({ fullName })}
+        />
+        <GreetAsField
+          value={typed.greetAs ?? ''}
+          error={words('greetAs')}
+          onChange={(greetAs) => change({ greetAs })}
         />
         <GuestField
           label={t('guestList.emailAddress')}

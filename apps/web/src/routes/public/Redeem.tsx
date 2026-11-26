@@ -151,7 +151,22 @@ function Redeem({ code }: { code: string }) {
         'field',
       );
     } catch (error) {
-      refused(event, error);
+      const said = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
+      if (said.name == null && said.number == null) {
+        refused(event, error);
+        return;
+      }
+      setStep({
+        ...event,
+        busy: false,
+        trouble: null,
+        entry: {
+          ...event.entry,
+          checked: true,
+          refused: { name: said.name ?? null, number: said.number ?? null },
+        },
+      });
+      document.getElementById(said.name == null ? 'rd-number' : 'rd-name')?.focus();
     }
   }
 

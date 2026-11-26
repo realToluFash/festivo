@@ -514,5 +514,7 @@
     "validation.guest_message_no_guests": "Este evento ainda não tem convidados a quem escrever.",
     "guest_message.event_draft": "Este evento é um rascunho. Publique-o para escrever aos seus convidados.",
     "guest_message.event_ended": "Este evento terminou há mais de 30 dias, por isso já não pode escrever aos seus convidados.",
-    "saved_audience.full": "Este evento tem {most, number, ::group-auto} públicos guardados, o máximo possível. Elimine um para guardar outro."
+    "saved_audience.full": "Este evento tem {most, number, ::group-auto} públicos guardados, o máximo possível. Elimine um para guardar outro.",
+    "validation.guest_greet_as_too_long": "{count, plural, one {Shorten Greet as to {count, number, ::group-auto} character or fewer.} other {Shorten Greet as to {count, number, ::group-auto} characters or fewer.}}",
+    "validation.guest_message_token_unknown": "Not sent. Part of the message can’t be filled in for each guest: remove it, then use Insert."
 }
