@@ -266,3 +266,9 @@
     margin: var(--spaceSm) var(--spaceXl) 0;
   }
 }
+
+.mn-panel-body > .sn-select,
+.mn-panel-body > .bf-banner,
+.mn-panel-body > .bf-phone {
+  flex: none;
+}
