@@ -31,6 +31,7 @@ final readonly class StaffRemovedNotice implements NotificationTypeInterface
         private EntityManagerInterface $entityManager,
         private ShiftNoticeWording $shiftNoticeWording,
         private TranslatorInterface $translator,
+        private ShiftUrgency $shiftUrgency,
     ) {
     }
 
@@ -108,6 +109,7 @@ final readonly class StaffRemovedNotice implements NotificationTypeInterface
     {
         $event = $this->event($payloads[0]) ?? throw new LogicException('Its event went after it was found still due.');
         $day = $event->getStartsAt()->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d');
+        $startsAt = Type\shape(['startsAt' => Type\string()], true)->coerce($payloads[0])['startsAt'];
 
         return new RenderedNotification(
             $this->translator->trans('staff.shift_notice.removed', [
@@ -115,6 +117,7 @@ final readonly class StaffRemovedNotice implements NotificationTypeInterface
                 'date' => $this->shiftNoticeWording->day($day, $recipient->locale),
             ], 'messages', $recipient->locale),
             '',
+            notYetUrgent: !$this->shiftUrgency->isUrgent(new DateTimeImmutable($startsAt)),
         );
     }
 

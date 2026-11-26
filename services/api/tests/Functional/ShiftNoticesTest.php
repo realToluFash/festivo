@@ -248,6 +248,37 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function thePushIsUrgentOnlyWithinTwentyFourHoursOfTheirStart(): void
+    {
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->at('2027-03-01T10:15:00Z');
+        self::mockTime(new DateTimeImmutable('2027-03-05T18:00:00Z'));
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->assign($this->evening, $bisi);
+        $this->signedIn($bisi, 'bisi@example.com', withPush: true);
+        $this->briefed($bisi);
+        $this->editTimes($this->evening, '2027-03-06T18:30', '2027-03-06T23:00');
+        $this->at('2027-03-05T18:15:00Z');
+
+        self::assertSame(
+            [['Ada Obi', true], ['Bisi Ola', false]],
+            Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->notYetUrgent]),
+        );
+    }
+
+    #[Test]
+    public function aRemovalMoreThanADayAheadIsNotUrgent(): void
+    {
+        $this->briefed($this->ada);
+        $this->as($this->owner, 'DELETE', $this->path($this->ada));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([true], Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => $sent['notification']->notYetUrgent));
+    }
+
+    #[Test]
     public function aChangeStillWaitingWhenTheEventIsFinishedNeverGoes(): void
     {
         $this->editEvent(['hosts' => ['Ada and Tunde']]);

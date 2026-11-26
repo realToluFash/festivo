@@ -21,6 +21,7 @@ final readonly class ShiftNotices
         private ToldShifts $toldShifts,
         private NotificationScheduler $notificationScheduler,
         private ClockInterface $clock,
+        private ShiftUrgency $shiftUrgency,
     ) {
     }
 
@@ -78,7 +79,7 @@ final readonly class ShiftNotices
             $entry->getId()->toRfc4122(),
             Trigger::at($this->clock->now()->add(new DateInterval(self::WAIT))),
             Audience::removedStaffMember($event->getId(), $account->getId()),
-            ['eventId' => $event->getId()->toRfc4122()],
+            ['eventId' => $event->getId()->toRfc4122(), 'startsAt' => $this->shiftUrgency->startOf($entry)->format(\DATE_ATOM)],
             $event,
         );
     }
