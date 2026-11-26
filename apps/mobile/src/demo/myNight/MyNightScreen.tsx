@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -26,8 +26,10 @@ import {
   moved,
   myNightStateOf,
   nightOf,
+  rowLineOf,
   signedOutAt,
 } from './myNightModel.ts';
+import { InsideEvent } from '../doorCode/Inside.tsx';
 import { ClockCard } from '../shiftClock/ShiftClockScreen.tsx';
 import { useClockCard } from '../shiftClock/useClockCard.ts';
 
@@ -42,7 +44,39 @@ export function MyNightRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const first = myNightStateOf(state);
 
+  if (first === 'app_event') return <FromTheEvent night={nightOf(first)} />;
+
   return <MyNightScreen key={first} first={nightOf(first)} />;
+}
+
+/** In the app, a staff-link holder lands in their event (sc-71); Your night heads its Overview and opens the page over it. */
+function FromTheEvent({ night }: { night: Night }) {
+  const [at, setAt] = useState<'overview' | 'people'>('overview');
+
+  return (
+    <InsideEvent
+      at={at}
+      role="Can view"
+      who={night.name}
+      locale="en"
+      shown={{
+        id: 'evt-adebayo-60',
+        name: night.event,
+        day: '2026-11-28',
+        starts: night.starts,
+        ends: { date: '2026-11-29', time: night.linkEnds },
+        venue: 'Eko Hotel, Victoria Island',
+        job: night.job,
+      }}
+      night={{
+        line: rowLineOf(night),
+        onOpen: () => router.push('/demo/my-night?state=app'),
+      }}
+      onAt={setAt}
+      onSignOut={goBack}
+      onAccount={() => router.push('/demo/settings/account?as=noOrg')}
+    />
+  );
 }
 
 /** A staff member's whole night on one page (sc-3915): one column on a phone, two on a tablet. */
@@ -144,7 +178,7 @@ export function MyNightScreen({ first }: { first: Night }) {
           >
             <Glyph name="back" size={20} ink={tokens.colorAccentText} weight={2.4} />
             <Text size={17} weight="semibold" style={styles.accent}>
-              {MN.events}
+              {MN.overview}
             </Text>
           </Pressable>
         )}

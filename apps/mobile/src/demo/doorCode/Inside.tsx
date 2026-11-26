@@ -89,6 +89,12 @@ export interface MoreRow {
   onPress: () => string | null;
 }
 
+/** A person on this event's roster: Your night (sc-3915) heads Overview's rows and opens their night over it. */
+export interface NightRow {
+  line: string;
+  onOpen: () => void;
+}
+
 export interface MoreGroup {
   key: string;
   title: string;
@@ -117,6 +123,7 @@ export function InsideEvent({
   moreAtStart = false,
   shown = doorEvent(code),
   groups = [],
+  night,
   onAt,
   onSignOut,
   onAccount,
@@ -128,6 +135,7 @@ export function InsideEvent({
   role: CodeChoice;
   shown?: Shown;
   groups?: readonly MoreGroup[];
+  night?: NightRow;
   who: string;
   onAt: (at: 'overview' | 'people') => void;
   onSignOut: () => void;
@@ -158,6 +166,7 @@ export function InsideEvent({
         who={who}
         locale={locale}
         you={!side}
+        night={night}
         onPeople={() => onAt('people')}
         onSignOut={onSignOut}
         tell={tell}
@@ -362,6 +371,7 @@ function Overview({
   who,
   locale,
   you,
+  night,
   onPeople,
   onSignOut,
   tell,
@@ -372,6 +382,7 @@ function Overview({
   locale: string;
   /** Signed in as and Sign out at the foot; on its side the person button holds them. */
   you: boolean;
+  night: NightRow | undefined;
   onPeople: () => void;
   onSignOut: () => void;
   tell: (words: string) => void;
@@ -413,6 +424,24 @@ function Overview({
       </SummaryCard>
       <RowList
         items={[
+          ...(night == null
+            ? []
+            : [
+                {
+                  key: 'night',
+                  inset: 40,
+                  row: (
+                    <Row
+                      title={W.yourNight}
+                      line={night.line}
+                      lead={<LineIcon name="clock" />}
+                      opens
+                      onPress={night.onOpen}
+                      testID="inside.night"
+                    />
+                  ),
+                },
+              ]),
           {
             key: 'guests',
             inset: 40,
