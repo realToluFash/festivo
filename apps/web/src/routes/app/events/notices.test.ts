@@ -177,6 +177,7 @@ describe('the removal question’s added line (sc-4333)', () => {
   it('is there only once their briefing went and a push reaches them, before the event is Finished', () => {
     expect(removalLine(person(), false, t)).toBe(line);
     expect(removalLine(person({ briefing: 'read' }), false, t)).toBe(line);
+    expect(removalLine(person({ briefing: 'changed' }), false, t)).toBe(line);
     expect(removalLine(person({ briefing: 'none' }), false, t)).toBeNull();
     expect(removalLine(person({ inApp: false }), false, t)).toBeNull();
     expect(removalLine(person(), true, t)).toBeNull();
