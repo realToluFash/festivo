@@ -35,6 +35,7 @@ import { canOn, useSession } from '../../../session.ts';
 import { FieldWrong } from './GuestFields.tsx';
 import { useHubTopics } from './useHubTopics.ts';
 import { useStartingCountry } from './useStartingCountry.ts';
+import { EventCrumb } from './EventOverview.tsx';
 import { StaffTabs } from './StaffTabs.tsx';
 import { useBriefing } from './Briefing.tsx';
 import { StationSelect } from './StationsArea.tsx';
@@ -120,6 +121,27 @@ function firstWrong(problems: Problems): Field | null {
 }
 
 /** /app/events/:id/staff (sc-3906): the Roster on the event's Staff page, as its demo draws it at a desk. */
+/** Without staff.read, as the briefing's demo draws it: the refusal in place of the Roster. */
+export function StaffRefused({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  usePageTitle(pageTitle(t, [t('briefing.refused'), event.name]));
+
+  return (
+    <div className="desk ev desk-page ev-page gs mn sn rs">
+      <div className="ev-wide mn-page">
+        <EventCrumb name={event.name} />
+        <div className="rs-refused" role="alert">
+          <Glyph name="lock" size={28} weight={2} />
+          <p className="rs-empty-title">{t('briefing.refused')}</p>
+          <Link className="gs-pill is-secondary" to={`/app/events/${encodeURIComponent(event.id)}`}>
+            {t('briefing.backToEvent')}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RosterArea({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const desk = useDeskTop();

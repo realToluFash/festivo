@@ -4218,6 +4218,8 @@
   },
   "briefing": {
     "card": "Briefing",
+    "refused": "You cannot see this event’s staff.",
+    "backToEvent": "Back to the event",
     "cardSub": "House rules and everyone’s shift, on their own page.",
     "tally": "Where the briefing is",
     "read": "Read",

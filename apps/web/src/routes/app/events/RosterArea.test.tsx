@@ -170,27 +170,6 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 
-  it('answers a member without the staff permission as a page that does not exist, under the crumb row and its one bell (sc-39509)', async () => {
-    signedIn();
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
-      new URL(String(input)).pathname === '/api/events/ev_1'
-        ? json({ event: { ...EVENT, permissions: ['events.read'], phase: 'live' } })
-        : json({}),
-    );
-    render(
-      <RouterProvider
-        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff/roster'] })}
-      />,
-    );
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'This page does not exist' }),
-    ).toBeDefined();
-    const bell = await screen.findByRole('button', { name: /^Notifications/ });
-    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
-    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
-  });
-
   it('answers an area an event does not have as a page that does not exist, under the crumb row and its one bell (sc-39509)', async () => {
     signedIn();
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({}));
@@ -1101,5 +1080,43 @@ describe('The briefing on the Roster (sc-3917)', () => {
     expect(within(page).getByText('Before you start')).toBeDefined();
     expect(within(page).getByText('Black shirts. Phones away on the floor.')).toBeDefined();
     expect(sent.map((one) => one.line)).toContain('GET /api/events/ev_1/staff/st_1/preview');
+  });
+
+  it('previews their lead with no Call, since a preview offers nothing to do', async () => {
+    signedIn();
+    await onRoster({
+      'GET /api/events/ev_1/staff': plan([entry('st_1', 'Amaka Eze', ON)]),
+      'GET /api/events/ev_1/staff/st_1/preview': () =>
+        json({ ...NIGHT, lead: { name: 'Ifeoma Nduka', phone: '+2348031110001', floor: true } }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview as' }));
+    const page = await screen.findByRole('group', { name: 'Amaka Eze’s page' });
+
+    expect(within(page).getByText('Ifeoma Nduka')).toBeDefined();
+    expect(within(page).queryByRole('link')).toBeNull();
+  });
+
+  it('refuses the Roster without staff.read, with a way back to the event, under the crumb row and its one bell (sc-39509)', async () => {
+    signedIn();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? json({ event: { ...EVENT, permissions: ['events.read'], phase: 'live' } })
+        : json({}),
+    );
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/events/ev_1/staff/roster'] })}
+      />,
+    );
+
+    const refusal = await screen.findByRole('alert');
+    expect(within(refusal).getByText('You cannot see this event’s staff.')).toBeDefined();
+    expect(
+      within(refusal).getByRole('link', { name: 'Back to the event' }).getAttribute('href'),
+    ).toBe('/app/events/ev_1');
+    const bell = await screen.findByRole('button', { name: /^Notifications/ });
+    expect(bell.closest('.ev-crumb-row')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Notifications/ })).toHaveLength(1);
   });
 });
