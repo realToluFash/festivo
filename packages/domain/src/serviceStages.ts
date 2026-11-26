@@ -12,7 +12,7 @@ export const READY_IN_MINUTES = [5, 10, 15] as const;
 
 export type ReadyIn = (typeof READY_IN_MINUTES)[number];
 
-export const ITEM_MARKS = ['on', 'notOn'] as const;
+export const ITEM_MARKS = ['on', 'notOn', 'bringAfter'] as const;
 
 export type ItemMark = (typeof ITEM_MARKS)[number];
 
