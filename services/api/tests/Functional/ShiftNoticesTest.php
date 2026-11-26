@@ -191,6 +191,26 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPersonBriefedBeforeTheDeployIsRemindedButToldOfNoChangeUntilBriefedAgain(): void
+    {
+        $this->briefed($this->ada);
+        self::em()->getConnection()->executeStatement('UPDATE staff_members SET told = NULL WHERE id = :id', ['id' => $this->ada]);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($this->ada));
+        $this->at('2027-03-01T10:15:00Z');
+        self::assertSame([], $this->pushes());
+
+        $this->at('2027-03-05T09:00:00Z');
+        self::assertSame([['Ada Obi', 'Your shift starts Saturday 6 Mar at 19:00 · Owambe', ['Bartender at Harbour Hall.']]], $this->reminders());
+
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T20:00', '2027-03-06T23:00');
+        $this->at('2027-03-05T09:15:00Z');
+
+        self::assertSame([['Your shift has changed · Owambe', ['Your start time is now 20:00 (was 19:00).'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
+    }
+
+    #[Test]
     public function aNewVenueIsToldToEveryoneWhoseBriefingWent(): void
     {
         $bisi = $this->person('Bisi Ola', '0803 111 0010');
@@ -465,14 +485,17 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->briefed($this->ada);
         $this->briefed($bisi);
         self::mockTime(new DateTimeImmutable('2027-03-06T19:00:00Z'));
+        $this->editTimes($late, '2027-03-06T22:30', '2027-03-07T02:00');
         $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         $this->at('2027-03-06T19:00:00Z');
+        $this->at('2027-03-06T19:15:00Z');
 
         self::assertSame(
             [['Bisi Ola', 'The event has ended · Owambe', ['It ended before your shift, so you do not need to come.']]],
             Vec\map($this->sentApartFromReminders(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->subject, $sent['notification']->lines]),
         );
+        self::assertSame('ended', Type\shape(['ending' => Type\string()], true)->coerce($this->row($bisi)['notice'])['ending']);
     }
 
     #[Test]
