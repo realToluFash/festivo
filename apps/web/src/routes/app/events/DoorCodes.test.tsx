@@ -241,7 +241,7 @@ describe('door codes on People, at a desk (sc-72)', () => {
         json(
           {
             type: 'https://soirely.com/errors/level_not_allowed_for_code',
-            title: 'A join code can’t let people run the floor.',
+            title: 'A join code cannot let people run the floor.',
             status: 422,
           },
           422,
@@ -256,7 +256,7 @@ describe('door codes on People, at a desk (sc-72)', () => {
     expect(within(dialog).queryByRole('radio', { name: /Can run the floor/u })).toBeNull();
     expect(
       within(dialog).getByText(
-        'A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.',
+        'A code cannot give edit access, or let anyone run the floor. Give those to a named person instead.',
       ),
     ).toBeDefined();
 
@@ -268,7 +268,7 @@ describe('door codes on People, at a desk (sc-72)', () => {
 
     expect(
       await within(dialog).findByText(
-        'A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
+        'A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.',
       ),
     ).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/events/ev_1/door-codes')?.body).toMatchObject(
