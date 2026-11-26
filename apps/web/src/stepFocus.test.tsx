@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { useFocusOnceShown } from './stepFocus.ts';
-import { cssRule } from './test-styles.ts';
+import { cssRule, stylesheet } from './test-styles.ts';
 
 function Card() {
   const [stage, setStage] = useState<'open' | 'loading' | 'at-rest'>('open');
@@ -56,7 +56,16 @@ describe('where focus lands for a notice (sc-74701)', () => {
   it("rings a page heading it lands on, over that page's own :focus { outline: none }", () => {
     const ring = cssRule('[data-notice-landing]:focus');
 
-    expect(ring).toContain('outline: 2px solid var(--colorAccent) !important;');
+    expect(ring).toContain('outline: 2px solid var(--noticeRing, var(--colorAccent)) !important;');
     expect(ring).toContain('outline-offset: 2px !important;');
+  });
+
+  it("keeps Today's white ring on its hero, which the important accent would otherwise take", () => {
+    expect(
+      cssRule(
+        '.today-banner,\n.today-now',
+        stylesheet(import.meta.dirname, 'components/today.css'),
+      ),
+    ).toContain('--noticeRing: var(--colorInkOnDark);');
   });
 });
