@@ -8,7 +8,13 @@ import {
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
-import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  fitWidest,
+  labelStart,
+  piecesIn,
+  wholeLineHeight,
+} from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type TodayName = 'qa' | 'long';
@@ -173,19 +179,26 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   );
 }
 
-export type TodayWeek = 'quiet' | 'days';
+export type TodayWeek = 'quiet' | 'days' | 'starts';
 
 export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
   { key: 'quiet', label: 'Nothing on' },
   { key: 'days', label: 'Days with events' },
+  { key: 'starts', label: 'Two events starting' },
 ];
 
 export const DAY_NAME = 14;
 export const DAY_DATE = 13.5;
 
+/** A row's event: one of the sample events, or the Garden party QA starts this week (sc-94683). */
+export type WeekRowEvent = SizeEvent['key'] | 'garden';
+
+export const GARDEN_PARTY = { name: 'Garden party', mesh: 'teal' } as const;
+
 export interface WeekDay {
   date: string;
-  rows: readonly { time: string; title: string; key: SizeEvent['key']; note: string }[];
+  /** A row with no title is its event's start, titled by the product's own `todayScreen.starts`. */
+  rows: readonly { time: string; title?: string; key: WeekRowEvent; note: string }[];
 }
 
 /** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an item on it as main's agenda draws one; the last has no note. */
@@ -203,6 +216,56 @@ export const WEEK_DAYS: readonly WeekDay[] = [
     rows: [{ time: '20:00', title: 'The party starts', key: 'party', note: '' }],
   },
 ];
+
+/** This week with two events starting, the Garden party on Friday and the party on Sunday, each row titled Début : {name} in French as main titles a start (sc-94683). */
+export const STARTS_DAYS: readonly WeekDay[] = [
+  {
+    date: SIZE_TODAY,
+    rows: [{ time: '19:00', title: 'Replies close', key: 'ireti', note: 'Automatic' }],
+  },
+  { date: '2026-11-27', rows: [{ time: '12:00', key: 'garden', note: '' }] },
+  { date: '2026-11-29', rows: [{ time: '20:00', key: 'party', note: '' }] },
+];
+
+/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
+export function titleOnOneLine(width: number, room: number): boolean {
+  return room > 0 && width <= room;
+}
+
+/** Main's strip label, `TYPE.label` in semibold capitals, tracked by a fixed 6% of it at every size. */
+export const STRIP_LABEL = 11;
+export const STRIP_TRACKING = STRIP_LABEL * 0.06;
+
+/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size, and below it as main draws it. */
+export function stripLabelSize(
+  start: number,
+  width: number,
+  letters: number,
+  column: number,
+): number {
+  if (width <= column || start <= STRIP_LABEL) return start;
+  const tracking = letters * STRIP_TRACKING;
+
+  return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));
+}
+
+/** sc-94682: a day's label keeps the room of this step's line whatever size it is drawn at, so today's circle stays in line with the other six. */
+export function stripLabelRoom(start: number): number {
+  return wholeLineHeight(start, start);
+}
+
+/** The strip's seven days from today, a dot for each event with a row that day. */
+export function stripDays(week: TodayWeek): { date: string; dots: WeekRowEvent[] }[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.parse(`${SIZE_TODAY}T00:00Z`) + index * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const days = week === 'starts' ? STARTS_DAYS : week === 'days' ? WEEK_DAYS : [];
+    const rows = days.find((day) => day.date === date)?.rows ?? [];
+
+    return { date, dots: [...new Set(rows.map((row) => row.key))] };
+  });
+}
 
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';

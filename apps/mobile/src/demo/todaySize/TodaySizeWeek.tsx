@@ -5,27 +5,31 @@ import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
-import { atAccessibilitySizes, dayLineShares } from '../../layout/textSize.ts';
+import { atAccessibilitySizes, dayLineShares, wholeLineHeight } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
 import {
   DAY_DATE,
   DAY_NAME,
+  GARDEN_PARTY,
   SIZE_TODAY,
-  WEEK_DAYS,
   type WeekDay,
+  type WeekRowEvent,
   daysUntil,
+  titleOnOneLine,
   wordsStart,
 } from './todaySizeRules.ts';
 
-/** sc-92250: This week's days at a stand-in size, as main's agenda draws them; only the day line differs, its date after its dot only while it shares the name's line. */
+/** sc-92250: This week's days at a stand-in size, as main's agenda draws them; the day line's date follows its dot only while it shares the name's line, and a row's title takes only the lines it draws (sc-94683). */
 export function WeekDays({
+  days,
   locale,
   scale,
   cap,
   wide,
 }: {
+  days: readonly WeekDay[];
   locale: string;
   scale: number;
   cap: number;
@@ -33,7 +37,7 @@ export function WeekDays({
 }) {
   return (
     <View style={styles.panel}>
-      {WEEK_DAYS.map((day, index) => (
+      {days.map((day, index) => (
         <Day
           key={day.date}
           day={day}
@@ -41,7 +45,7 @@ export function WeekDays({
           scale={scale}
           cap={cap}
           wide={wide}
-          ruled={index < WEEK_DAYS.length - 1}
+          ruled={index < days.length - 1}
         />
       ))}
     </View>
@@ -101,7 +105,8 @@ function Day({
       )}
       {day.rows.map((row, index) => {
         const last = index === day.rows.length - 1;
-        const event = EVENTS[row.key];
+        const event = rowEvent(row.key);
+        const title = row.title ?? t('todayScreen.starts', { name: event.name });
         const time = (
           <Text
             size={14 * scale}
@@ -116,7 +121,7 @@ function Day({
 
         return (
           <View
-            key={`${row.key}${row.time}${row.title}`}
+            key={`${row.key}${row.time}${title}`}
             style={[
               stacked ? styles.itemStacked : styles.item,
               last && styles.itemLast,
@@ -129,9 +134,7 @@ function Day({
               {!stacked && time}
               <View style={[styles.stripe, { backgroundColor: eventColour(event) }]} />
               <View style={styles.words}>
-                <Text size={15 * scale} weight="semibold" allowFontScaling={false}>
-                  {row.title}
-                </Text>
+                <RowTitle text={title} size={15 * scale} />
                 <Text
                   size={13 * scale}
                   weight="medium"
@@ -146,6 +149,50 @@ function Day({
           </View>
         );
       })}
+    </View>
+  );
+}
+
+function rowEvent(key: WeekRowEvent) {
+  return key === 'garden' ? GARDEN_PARTY : EVENTS[key];
+}
+
+/** A row's title, hidden until it knows whether it fits one line: if it does it is held to that line, so it never takes a blank second one; if not it wraps between words in exactly the width it is drawn in (sc-94683). */
+function RowTitle({ text, size }: { text: string; size: number }) {
+  const [room, setRoom] = useState(0);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const key = `${size}|${text}`;
+  const width = measured?.key === key ? measured.width : null;
+  const known = width != null && room > 0;
+  const oneLine = known && titleOnOneLine(width, room);
+
+  return (
+    <View
+      style={!known && styles.waiting}
+      onLayout={(event: LayoutChangeEvent) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <MeasuredWords
+        words={[text]}
+        size={size}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(_, next) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === next ? now : { key, width: next },
+          )
+        }
+      />
+      <Text
+        key={oneLine ? 'one' : `wraps|${room}`}
+        size={size}
+        weight="semibold"
+        allowFontScaling={false}
+        numberOfLines={oneLine ? 1 : undefined}
+        style={[{ lineHeight: wholeLineHeight(size, size) }, known && !oneLine && { width: room }]}
+        testID="demo.todaySize.rowTitle"
+      >
+        {text}
+      </Text>
     </View>
   );
 }

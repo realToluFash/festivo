@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
@@ -11,12 +11,14 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from './Text.tsx';
+import { Text, TitleCap } from './Text.tsx';
 import { CappedWholeWords, MeasuredWords, MenuWords } from './Title.tsx';
 import {
   atAccessibilitySizes,
   capUnderTitle,
   dayLineShares,
+  drawnSize,
+  fitWidest,
   wholeLineHeight,
 } from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -374,14 +376,10 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
               day.dots.length > 0 ? `, ${day.dots.map((event) => event.name).join(', ')}` : ''
             }`}
           >
-            <Text
-              size={TYPE.label}
-              weight="semibold"
-              accessible={false}
-              style={[styles.weekday, day.today ? styles.accent : styles.secondary]}
-            >
-              {(day.today ? todayShort : day.weekday).toLocaleUpperCase()}
-            </Text>
+            <StripLabel
+              text={(day.today ? todayShort : day.weekday).toLocaleUpperCase()}
+              today={day.today}
+            />
             <View
               style={[
                 styles.dayCircle,
@@ -426,6 +424,70 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
         </View>
       )}
     </Panel>
+  );
+}
+
+const STRIP_TRACKING = TYPE.label * 0.06;
+
+/** A day's label in the strip: main's text up to the default size; above it, hidden until measured, it steps down alone to the largest whole size at which it fits its column, never under the default size, keeping the step's line so the circles stay in line (sc-94682). */
+function StripLabel({ text, today }: { text: string; today: boolean }) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
+  const start = drawnSize(
+    TYPE.label,
+    fontScale,
+    cap == null ? undefined : capUnderTitle(cap, TYPE.label),
+  );
+  const key = `${start}|${text}`;
+  const [column, setColumn] = useState<{ key: string; width: number } | null>(null);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const look = [styles.weekday, today ? styles.accent : styles.secondary];
+
+  if (start <= TYPE.label)
+    return (
+      <Text size={TYPE.label} weight="semibold" accessible={false} style={look}>
+        {text}
+      </Text>
+    );
+
+  const width = measured?.key === key ? measured.width : undefined;
+  // A column's onLayout does not fire again when only the text size changes, so its width is kept per word and size, read again by a new key.
+  const room = column?.key === key ? column.width : undefined;
+  const known = width != null && room != null && room > 0;
+  const drawn = known
+    ? fitWidest(TYPE.label, start, width, room, [...text].length * STRIP_TRACKING)
+    : start;
+
+  return (
+    <View
+      key={key}
+      style={[styles.labelRoom, { minHeight: wholeLineHeight(start, start) }]}
+      onLayout={(event) => setColumn({ key, width: event.nativeEvent.layout.width })}
+    >
+      <MeasuredWords
+        words={[text]}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        style={styles.weekday}
+        onWidth={(_, measuredWidth) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === measuredWidth ? now : { key, width: measuredWidth },
+          )
+        }
+      />
+      <Text
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawn}
+        size={drawn}
+        weight="semibold"
+        allowFontScaling={false}
+        accessible={false}
+        style={[look, !known && styles.waiting]}
+      >
+        {text}
+      </Text>
+    </View>
   );
 }
 
@@ -1105,7 +1167,8 @@ const styles = StyleSheet.create({
   stripWithBars: { paddingBottom: tokens.spacePillEnd },
   days: { flexDirection: 'row' },
   dayColumn: { flex: 1, alignItems: 'center', gap: 5 },
-  weekday: { letterSpacing: TYPE.label * 0.06 },
+  weekday: { letterSpacing: STRIP_TRACKING },
+  labelRoom: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   dayCircle: { alignItems: 'center', justifyContent: 'center' },
   dayToday: { backgroundColor: tokens.colorAccent },
   dots: { height: tokens.spaceXs, flexDirection: 'row', gap: 3 },

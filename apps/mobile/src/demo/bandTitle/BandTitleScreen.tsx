@@ -1,10 +1,10 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { coverRowSides, pastSides } from '../../components/bodyEdges.ts';
-import { Cover } from '../../components/Cover.tsx';
+import { Confetti, Cover, type Piece } from '../../components/Cover.tsx';
 import { EventMesh } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
@@ -12,6 +12,7 @@ import { BellButton, bandBody, OrgButton } from '../../components/TodayCover.tsx
 import type { Tell } from '../../components/TodayParts.tsx';
 import { Toast } from '../../components/Toast.tsx';
 import { TodayShellProvider } from '../../components/todayShell.ts';
+import type { Box } from '../../kit/confettiClearance.ts';
 import { atAccessibilitySizes } from '../../layout/textSize.ts';
 import { DemoOnly } from '../../steps/Lines.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -38,6 +39,13 @@ import {
   bandStart,
   bandTitle,
 } from './bandTitleRules.ts';
+
+/** The phone band's pieces as TodayCover draws them, by share of the band below the status bar. */
+const BAND_PIECES: readonly Piece[] = [
+  [0.308, 0.357, 'half', 16, 200, 'sun'],
+  [0.687, 0.286, 'bar', 22, -30, 'white'],
+  [0.769, 0.607, 'half', 14, 30, 'rose'],
+];
 
 export interface BandTitleStart {
   size: FilterSize;
@@ -76,7 +84,7 @@ export function BandTitleScreen({ start }: { start: BandTitleStart }) {
           <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
             <NavBar />
             <View style={styles.page}>
-              <DemoOnly title="Stand-ins for the device’s text size, its language and the moment. The band’s title draws at the size chosen; the tile, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s, less the three confetti pieces main draws on a day with no event, which this demo leaves out. From AX1 the title is one line, whole, at least 8 clear of the tile and of Search: centred on the screen while it fits there, else centred in the room between them, stepped down to the largest size that fits that room and the row’s height, never under its default size. Nothing is sent and no string is added.">
+              <DemoOnly title="Stand-ins for the device’s text size, its language and the moment. The band’s title draws at the size chosen; the tile, Search and the bell stay as main draws them at this device’s size. At the standard sizes the band is main’s, its three confetti pieces included on a day with no event. From AX1 the title is one line, whole, at least 8 clear of the tile and of Search: centred on the screen while it fits there, else centred in the room between them, stepped down to the largest size that fits that room and the row’s height, never under its default size, and a piece of confetti within 8 of the title is not drawn, as on the account cards. Nothing is sent and no string is added.">
                 <Choices
                   heading="Text size"
                   options={FILTER_SIZES}
@@ -130,15 +138,24 @@ function Band({
   const insets = useSafeAreaInsets();
   const drawn = momentOf(moment === 'day' ? 'dayNow' : 'quiet', sayIn(language), t);
   const { now } = drawn;
+  const [title, setTitle] = useState<Box | null>(null);
 
   return (
     <View style={[styles.band, { height: top + bandBody(drawn, 'phone') }]}>
       {now == null ? (
-        <Cover pieces={[]} shade="foot" />
+        <>
+          <Cover pieces={[]} shade="foot" />
+          <View style={[styles.pieces, { top }]}>
+            <Confetti
+              pieces={BAND_PIECES}
+              words={atAccessibilitySizes(scale) ? (title == null ? null : [title]) : undefined}
+            />
+          </View>
+        </>
       ) : (
         <EventMesh event={now.event} shade="day" />
       )}
-      <BandRowWithTitle scale={scale} top={top} sides={coverRowSides(insets)} />
+      <BandRowWithTitle scale={scale} top={top} sides={coverRowSides(insets)} onTitle={setTitle} />
       {now != null && (
         <View style={[styles.bandNow, pastSides(tokens.spaceXl, insets)]}>
           <View style={styles.liveDot} />
@@ -155,10 +172,13 @@ function BandRowWithTitle({
   scale,
   top,
   sides,
+  onTitle,
 }: {
   scale: number;
   top: number;
   sides: { paddingLeft: number; paddingRight: number };
+  /** The title's box from the band's top row down, once it is drawn at its fitted size. */
+  onTitle: (box: Box | null) => void;
 }) {
   const { t } = useTranslation();
   const title = t('todayScreen.today');
@@ -179,6 +199,21 @@ function BandRowWithTitle({
   const pending = large && fitted == null;
   const drawn = fitted?.size ?? start;
   const inRoom = large && fitted?.centred === 'room' && row != null;
+  const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null);
+  const [text, setText] = useState<Box | null>(null);
+
+  useEffect(() => {
+    onTitle(
+      pending || placed == null || text == null
+        ? null
+        : {
+            x: placed.x + text.x,
+            y: placed.y + text.y,
+            width: text.width,
+            height: text.height,
+          },
+    );
+  }, [onTitle, pending, placed, text]);
 
   return (
     <View
@@ -212,9 +247,11 @@ function BandRowWithTitle({
           inRoom && { left: row.tileEnd + BAND_CLEAR, right: undefined, width: bandRoom(row) },
         ]}
         pointerEvents="box-none"
+        onLayout={({ nativeEvent: { layout } }) => setPlaced({ x: layout.x, y: layout.y })}
       >
         <Text
           key={drawn}
+          onLayout={({ nativeEvent: { layout } }) => setText(layout)}
           size={drawn}
           weight="semibold"
           allowFontScaling={false}
@@ -238,6 +275,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: tokens.colorPage },
   page: { gap: tokens.spaceMd, paddingHorizontal: tokens.spaceXxl, paddingTop: tokens.spaceLg },
   band: { overflow: 'hidden' },
+  pieces: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

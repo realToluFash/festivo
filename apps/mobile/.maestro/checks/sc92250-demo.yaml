@@ -1,0 +1,45 @@
+# sc-92250: the demo's Today with This week's days, in ORIENT, at four sizes and languages; This week's heading brought to the middle for each. Vars: METRO_URL, ORIENT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=ax5&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-ax5-fr
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=ax1&lang=fr
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-ax1-fr
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=ax5&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-ax5-en
+- openLink: ${METRO_URL}/--/demo/today-size?week=days&size=default&lang=en
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible:
+    element: { text: '(This week|Cette semaine|THIS WEEK|CETTE SEMAINE)' }
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: d-default-en
