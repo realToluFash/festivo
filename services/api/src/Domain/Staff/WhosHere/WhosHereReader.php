@@ -110,7 +110,7 @@ final readonly class WhosHereReader
                 'people' => Vec\map($hereAt($station['id']), static fn (StaffMember $one): string => $one->getFullName()),
             ]),
             'doorStations' => null !== $view->station ? Vec\filter_nulls([self::ref($view->station)]) : $stations,
-            'jobs' => Vec\map($this->staffJobRepository->findOnEvent($event), static fn (StaffJob $job): array => self::job($job, $shifts, $event, $now, $zone)),
+            'jobs' => Vec\map($this->staffJobRepository->findOnEvent($event), static fn (StaffJob $job): array => self::walkOnJob($job, $shifts, $event, $now, $zone)),
         ];
     }
 
@@ -207,7 +207,7 @@ final readonly class WhosHereReader
      *
      * @return array{id: string, name: string, walkOnEndsAt: string, walkOnEnd: 'shift'|'event'|'day'}
      */
-    private static function job(StaffJob $job, array $shifts, Event $event, DateTimeImmutable $now, DateTimeZone $zone): array
+    private static function walkOnJob(StaffJob $job, array $shifts, Event $event, DateTimeImmutable $now, DateTimeZone $zone): array
     {
         $end = self::walkOnEnd($job, $shifts, $event, $now);
 
