@@ -63,7 +63,11 @@
     "messagesCounts:audit.field.plan",
     "messagesCounts:guestReplies.push.title",
     "web:eventForm.creditStadia",
-    "mobile:eventForm.creditStadia"
+    "mobile:eventForm.creditStadia",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other"
   ],
   "fr": [
     "web:staffRates.hoursMinutes",
@@ -239,7 +243,11 @@
     "mobile:eventForm.creditStadia",
     "web:eventMessages.message",
     "messagesCounts:guest_message.notice.from",
-    "web:eventMessages.token.date"
+    "web:eventMessages.token.date",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
@@ -307,6 +315,10 @@
     "messagesCounts:guestReplies.push.title",
     "web:eventForm.creditStadia",
     "mobile:eventForm.creditStadia",
-    "messagesCounts:guest_message.notice.from"
+    "messagesCounts:guest_message.notice.from",
+    "mobile:station.heldUpFor_one",
+    "mobile:station.heldUpFor_other",
+    "mobile:station.minutes_one",
+    "mobile:station.minutes_other"
   ]
 }
