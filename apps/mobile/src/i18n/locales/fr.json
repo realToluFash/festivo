@@ -3936,7 +3936,7 @@
     "of": "{{worked}} sur {{scheduled}} planifiées",
     "assumed": "dont {{time}} estimées (départ non pointé)",
     "noneShifts_one": "{{count, number}} service sans pointage",
-    "noneShifts_many": "{{count, number}} services sans pointage",
+    "noneShifts_many": "{{count, number}} de services sans pointage",
     "noneShifts_other": "{{count, number}} services sans pointage",
     "liveSummary": "Arrivées pointées : {{on, number}} sur {{all, number}}",
     "liveAt": "Mis à jour à {{time}}",
