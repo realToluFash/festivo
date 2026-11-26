@@ -2,8 +2,7 @@ import { phoneLengthProblem } from '@soirely/domain';
 
 export type Role = 'floor' | 'station' | 'manage';
 export type Via = 'copy' | 'text';
-export type System =
-  'live' | 'loading' | 'empty' | 'stale' | 'refreshing' | 'partFailed' | 'unreachable' | 'notFound';
+export type System = 'live' | 'loading' | 'empty' | 'stale' | 'unreachable' | 'notFound';
 
 export interface Staffer {
   id: number;
@@ -40,11 +39,12 @@ export interface MobileForm {
   number: string;
   tried: boolean;
   busy: boolean;
+  failed: boolean;
 }
 
 export type Sheet =
   | { kind: 'door'; form: DoorForm }
-  | { kind: 'cover'; target: number; chosen: number | null; tried: boolean }
+  | { kind: 'cover'; target: number; chosen: number | null; tried: boolean; failed: boolean }
   | { kind: 'noLink'; id: number }
   | { kind: 'hasLink'; id: number; via: Via; again: boolean }
   | { kind: 'mobile'; id: number; form: MobileForm };
@@ -75,7 +75,6 @@ export function time(minutes: number): string {
 }
 
 export const EVENT = 'Adébáyọ̀ at 60';
-export const DOORS = 'Doors 19:00';
 export const COUNTRY = 'NG';
 export const LEAD = { id: 5, station: 'Section A · T1–T6' };
 export const FLOOR_LEAD = 1;
@@ -168,6 +167,7 @@ export const STATE_NAMES = [
   'cover_none_selected',
   'cover_nobody_here',
   'cover_nobody_to_move',
+  'cover_failed',
   'not_here_empty',
   'here_empty',
   'station_lead',
@@ -191,6 +191,7 @@ export const STATE_NAMES = [
   'add_mobile',
   'add_mobile_blank',
   'add_mobile_too_short',
+  'add_mobile_failed',
   'add_mobile_copied',
   'add_mobile_texted',
   'didnt_clock_in',
@@ -198,9 +199,7 @@ export const STATE_NAMES = [
   'door_refused_event_ended',
   'loading',
   'empty',
-  'refreshing',
   'stale',
-  'part_failed',
   'unreachable',
   'not_found',
 ] as const;
@@ -228,15 +227,13 @@ export function blankDoor(): DoorForm {
 }
 
 export function blankMobile(): MobileForm {
-  return { country: COUNTRY, number: '', tried: false, busy: false };
+  return { country: COUNTRY, number: '', tried: false, busy: false, failed: false };
 }
 
 const SYSTEM: Partial<Record<WhStateName, System>> = {
   loading: 'loading',
   empty: 'empty',
-  refreshing: 'refreshing',
   stale: 'stale',
-  part_failed: 'partFailed',
   unreachable: 'unreachable',
   not_found: 'notFound',
 };
@@ -264,7 +261,7 @@ export function seed(k: WhStateName): WhState {
     toast: null,
     system: SYSTEM[k] ?? 'live',
     epic36: k === 'door_texted' || k === 'add_mobile_texted',
-    failNext: k === 'door_failed',
+    failNext: k === 'door_failed' || k === 'add_mobile_failed' || k === 'cover_failed',
   };
   const walkOn = (phone: string): Staffer => ({
     id: WALK_ON_ID,
@@ -296,26 +293,29 @@ export function seed(k: WhStateName): WhState {
     case 'cover':
     case 'cover_selected':
     case 'cover_none_selected':
+    case 'cover_failed':
       s.sheet = {
         kind: 'cover',
         target: 4,
-        chosen: k === 'cover_selected' ? 5 : null,
+        chosen: k === 'cover_selected' || k === 'cover_failed' ? 5 : null,
         tried: k === 'cover_none_selected',
+        failed: k === 'cover_failed',
       };
       s.opener = 'cover|4';
+      s.failNext = false;
       break;
     case 'cover_nobody_here':
       list.forEach((p) => {
         p.here = false;
       });
-      s.sheet = { kind: 'cover', target: 4, chosen: null, tried: false };
+      s.sheet = { kind: 'cover', target: 4, chosen: null, tried: false, failed: false };
       s.opener = 'cover|4';
       break;
     case 'cover_nobody_to_move':
       list.forEach((p) => {
         p.here = p.id === LEAD.id;
       });
-      s.sheet = { kind: 'cover', target: 11, chosen: null, tried: false };
+      s.sheet = { kind: 'cover', target: 11, chosen: null, tried: false, failed: false };
       s.opener = 'cover|11';
       break;
     case 'not_here_empty':
@@ -387,16 +387,24 @@ export function seed(k: WhStateName): WhState {
     case 'add_mobile':
     case 'add_mobile_blank':
     case 'add_mobile_too_short':
+    case 'add_mobile_failed':
       list.push(walkOn(''));
       s.sheet = {
         kind: 'mobile',
         id: WALK_ON_ID,
         form: {
           ...blankMobile(),
-          number: k === 'add_mobile_too_short' ? '803 555 01' : '',
+          number:
+            k === 'add_mobile_too_short'
+              ? '803 555 01'
+              : k === 'add_mobile_failed'
+                ? '803 555 0144'
+                : '',
           tried: k !== 'add_mobile',
+          failed: k === 'add_mobile_failed',
         },
       };
+      s.failNext = false;
       break;
     case 'didnt_clock_in':
       s.clock = at(25, 10);
@@ -532,7 +540,6 @@ export const W = {
   door: 'Someone’s at the door',
   live: (t: string) => `Live · updated ${t}`,
   stale: (t: string) => `Not live · last updated ${t}. Reconnecting.`,
-  refreshing: 'Refreshing…',
   notHere: (n: number) => `Not here yet (${n})`,
   notHereEmpty: (t: string) => `Everyone due by ${t} has clocked in.`,
   here: (n: number) => `Here (${n})`,
@@ -550,7 +557,6 @@ export const W = {
   shift: (p: Staffer) => `Shift ${time(p.start)} – ${time(p.end)}`,
   clockedInAt: (t: string) => `Clocked in at ${t}`,
   movedFrom: (st: string, t: string) => `Moved from ${st} at ${t}`,
-  partFailed: 'The list of who is here did not load. Check your connection and try again.',
   tryAgain: 'Try again',
   loading: 'Loading the staff…',
   unreachableTitle: 'Cannot reach Soirely',
@@ -569,6 +575,8 @@ export const W = {
   where: 'Where do you need them?',
   whereBlank: 'Choose where you need them.',
   failed: (n: string) => `Nothing was changed. ${n} was not added. Try again.`,
+  mobileFailed: 'Nothing was changed. Check your connection and try again.',
+  coverFailed: (n: string) => `Nothing was changed. ${n} was not moved. Try again.`,
   refused: 'The event has ended, so nobody can be added.',
   close: 'Close',
   done: 'Done',
@@ -658,7 +666,7 @@ export function openDoor(s: WhState): WhState {
 export function openCover(s: WhState, target: number): WhState {
   return {
     ...s,
-    sheet: { kind: 'cover', target, chosen: null, tried: false },
+    sheet: { kind: 'cover', target, chosen: null, tried: false, failed: false },
     opener: `cover|${target}`,
   };
 }
@@ -723,6 +731,7 @@ export function doorAnswer(s: WhState, dial: string): WhState {
 export function mobileAnswer(s: WhState, dial: string): WhState {
   if (s.sheet?.kind !== 'mobile') return s;
   const { id, form } = s.sheet;
+  if (s.failNext) return { ...setMobile(s, { busy: false, failed: true }), failNext: false };
   const phone = shown(dial, form.number);
   return {
     ...s,
@@ -739,7 +748,7 @@ export function coverCandidates(s: WhState, station: string): Staffer[] {
 
 export function choose(s: WhState, id: number): WhState {
   if (s.sheet?.kind !== 'cover') return s;
-  return { ...s, sheet: { ...s.sheet, chosen: id, tried: false } };
+  return { ...s, sheet: { ...s.sheet, chosen: id, tried: false, failed: false } };
 }
 
 export function moveChosen(s: WhState): WhState {
@@ -749,6 +758,7 @@ export function moveChosen(s: WhState): WhState {
   const mover = chosen == null ? undefined : byId(s, chosen);
   if (t == null) return s;
   if (mover == null) return { ...s, sheet: { ...s.sheet, tried: true } };
+  if (s.failNext) return { ...s, sheet: { ...s.sheet, failed: true }, failNext: false };
   const from = mover.station;
   return {
     ...s,
@@ -780,14 +790,7 @@ export function toastWords(s: WhState): string {
 
 /** Someone's at the door is left out once the event has ended, but stays beside the refused sheet until Close. */
 export function showsDoor(s: WhState): boolean {
-  if (
-    s.system !== 'live' &&
-    s.system !== 'empty' &&
-    s.system !== 'refreshing' &&
-    s.system !== 'stale' &&
-    s.system !== 'partFailed'
-  )
-    return false;
+  if (s.system !== 'live' && s.system !== 'empty' && s.system !== 'stale') return false;
   return !s.ended || (s.sheet?.kind === 'door' && s.sheet.form.refused);
 }
 
