@@ -87,7 +87,7 @@ final readonly class ShiftNoticeStates
             return [
                 'state' => 'waiting',
                 'goesAt' => self::instant($goesAt)->setTimezone($zone)->format(\DATE_ATOM),
-                'changes' => Vec\map($this->toldShifts->changesOf($entry, $shifts), static fn (ShiftChange $change): array => self::change($change, $event)),
+                'changes' => Vec\map($this->toldShifts->changesOf($entry, $shifts, null), static fn (ShiftChange $change): array => self::change($change, $event)),
             ];
         }
 
@@ -132,6 +132,7 @@ final readonly class ShiftNoticeStates
             'new' => $change->new,
             'old' => $change->old,
             'count' => $change->count,
+            'on' => $at($change->on),
         ];
     }
 

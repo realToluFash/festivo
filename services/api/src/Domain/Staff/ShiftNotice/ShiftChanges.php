@@ -16,12 +16,16 @@ final readonly class ShiftChanges
 {
     public const int SHIFT_LINES_SHOWN = 3;
 
-    /** @return list<ShiftChange> */
-    public static function between(ShiftTold $told, ShiftTold $now): array
+    /**
+     * @param ?non-negative-int $shown the shift lines named, every one when null, as the roster's Waiting lines have them
+     *
+     * @return list<ShiftChange>
+     */
+    public static function between(ShiftTold $told, ShiftTold $now, ?int $shown = self::SHIFT_LINES_SHOWN): array
     {
         $lines = 1 === Iter\count($told->shifts) && 1 === Iter\count($now->shifts)
             ? self::oneShift(Vec\values($told->shifts)[0], Vec\values($now->shifts)[0])
-            : self::shifts($told->shifts, $now->shifts);
+            : self::shifts($told->shifts, $now->shifts, $shown);
 
         if (null !== $now->job && null !== $told->job && $now->job[0] !== $told->job[0] && [] !== $now->shifts) {
             $lines[] = ShiftChange::value(ShiftChangeKind::Job, $now->job[1], $told->job[1]);
@@ -63,10 +67,11 @@ final readonly class ShiftChanges
     /**
      * @param array<string, array{0: string, 1: string}> $told
      * @param array<string, array{0: string, 1: string}> $now
+     * @param ?non-negative-int                          $shown
      *
      * @return list<ShiftChange>
      */
-    private static function shifts(array $told, array $now): array
+    private static function shifts(array $told, array $now, ?int $shown): array
     {
         $removed = Vec\map(
             Dict\diff_by_key($told, $now),
@@ -85,7 +90,7 @@ final readonly class ShiftChanges
         }
 
         $soonest = static fn (ShiftChange $a, ShiftChange $b): int => [$a->start, $a->end] <=> [$b->start, $b->end];
-        $chosen = Vec\slice([...Vec\sort($removed, $soonest), ...Vec\sort($others, $soonest)], 0, self::SHIFT_LINES_SHOWN);
+        $chosen = Vec\slice([...Vec\sort($removed, $soonest), ...Vec\sort($others, $soonest)], 0, $shown);
         $lines = Vec\sort($chosen, $soonest);
         $left = Iter\count($removed) + Iter\count($others) - Iter\count($chosen);
         $noneLeft = [] === $now && [] !== $told;

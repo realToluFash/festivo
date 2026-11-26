@@ -21,14 +21,15 @@ final readonly class ToldShifts
      * Nothing before their briefing went.
      *
      * @param ?list<StaffShift> $shifts the person's shifts, read when null
+     * @param ?non-negative-int $shown  the shift lines named, every one when null
      *
      * @return list<ShiftChange>
      */
-    public function changesOf(StaffMember $entry, ?array $shifts = null): array
+    public function changesOf(StaffMember $entry, ?array $shifts = null, ?int $shown = ShiftChanges::SHIFT_LINES_SHOWN): array
     {
         $told = $entry->getTold();
 
-        return null === $told ? [] : ShiftChanges::between(ShiftTold::fromArray($told), $this->shiftSnapshots->of($entry, $shifts));
+        return null === $told ? [] : ShiftChanges::between(ShiftTold::fromArray($told), $this->shiftSnapshots->of($entry, $shifts), $shown);
     }
 
     /** The caller flushes. */

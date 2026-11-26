@@ -24,6 +24,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
@@ -96,6 +97,7 @@ final class ShiftNoticesTest extends ApiTestCase
                 'new' => null,
                 'old' => null,
                 'count' => 0,
+                'on' => '2027-03-06T19:00:00+01:00',
             ]],
         ], $this->row($this->ada)['notice']);
 
@@ -330,6 +332,177 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->at('2027-03-07T01:30:00Z');
 
         self::assertSame([], $this->pushes());
+    }
+
+    #[Test]
+    public function theReminderGoesAtTenTheDayBeforeOnlyToThoseWhoseBriefingWent(): void
+    {
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->assign($this->evening, $bisi);
+        $this->signedIn($bisi, 'bisi@example.com', withPush: true);
+        $this->briefed($this->ada);
+        $this->at('2027-03-05T08:59:00Z');
+        self::assertSame([], $this->reminders());
+
+        $this->at('2027-03-05T09:00:00Z');
+
+        self::assertSame([['Ada Obi', 'Your shift starts Saturday 6 Mar at 18:00 · Owambe', ['Bartender at Harbour Hall.']]], $this->reminders());
+    }
+
+    #[Test]
+    public function twoShiftsStartingOnOneDayGetOneReminderWithTheFirstStart(): void
+    {
+        $this->editEvent(['endsAt' => '2027-03-08T02:00']);
+        $this->assign($this->newShift('2027-03-06T12:00', '2027-03-06T15:00'), $this->ada);
+        $this->assign($this->newShift('2027-03-07T18:00', '2027-03-07T23:00'), $this->ada);
+        $this->briefed($this->ada);
+        $this->at('2027-03-06T09:00:00Z');
+
+        self::assertSame([
+            ['Ada Obi', 'Your shift starts Saturday 6 Mar at 12:00 · Owambe', ['Bartender at Harbour Hall.']],
+            ['Ada Obi', 'Your shift starts Sunday 7 Mar at 18:00 · Owambe', ['Bartender at Harbour Hall.']],
+        ], $this->reminders());
+    }
+
+    #[Test]
+    public function theCardCountsWhoIsRemindedAndWhoIsLeftOutThenTheSentLineAlone(): void
+    {
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->assign($this->evening, $bisi);
+        $chidi = $this->person('Chidi Eze', '0803 111 0011');
+        $this->assign($this->newShift('2027-03-06T20:00', '2027-03-06T23:00'), $chidi);
+        $this->signedIn($chidi, 'chidi@example.com', withPush: false);
+        $this->briefed($this->ada);
+        $this->briefed($chidi);
+
+        self::assertSame(
+            ['on' => true, 'time' => '10:00', 'next' => ['date' => '2027-03-05', 'count' => 1], 'notBriefed' => 1, 'unreachable' => 1, 'sent' => null, 'concluded' => null],
+            $this->as($this->owner, 'GET', $this->path('reminder')),
+        );
+
+        $this->at('2027-03-05T09:00:00Z');
+
+        self::assertSame(['date' => '2027-03-05', 'count' => 1], $this->as($this->owner, 'GET', $this->path('reminder'))['sent'] ?? null);
+    }
+
+    #[Test]
+    public function theSwitchOffSendsNoReminderAndIsRefusedOnceFinished(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->as($this->owner, 'PUT', $this->path('reminder'), ['on' => false]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-05T09:00:00Z');
+        self::assertSame([], $this->reminders());
+
+        $this->at('2027-03-07T03:00:00Z');
+        $this->as($this->owner, 'PUT', $this->path('reminder'), ['on' => true]);
+
+        self::assertSame([409, 'event_concluded'], [$this->statusCode(), Str\after_last((string) ($this->last()['type'] ?? ''), '/')]);
+        self::assertSame(['on' => false, 'next' => null, 'sent' => null, 'concluded' => 'ended'], Dict\select_keys($this->as($this->owner, 'GET', $this->path('reminder')), ['on', 'next', 'sent', 'concluded']));
+    }
+
+    #[Test]
+    public function aCallOffIsSentAtOnceInPlaceOfAChangeWaitingAndNothingGoesAfterIt(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-01T10:00:00Z');
+
+        self::assertSame([['Your shift is called off · Owambe', ['The event on Saturday 6 Mar will not go ahead. You do not need to come.'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
+        self::assertSame('called_off', Type\shape(['ending' => Type\string()], true)->coerce($this->row($this->ada)['notice'])['ending']);
+
+        $this->editTimes($this->evening, '2027-03-06T20:00', '2027-03-06T23:00');
+        $this->at('2027-03-05T09:00:00Z');
+
+        self::assertCount(1, $this->pushes());
+        self::assertSame([], $this->reminders());
+        self::assertSame('called_off', $this->as($this->owner, 'GET', $this->path('reminder'))['concluded'] ?? null);
+    }
+
+    #[Test]
+    public function endNowTellsOnlyThoseWithAShiftStillToStart(): void
+    {
+        $late = $this->newShift('2027-03-06T22:00', '2027-03-07T02:00');
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->assign($late, $bisi);
+        $this->signedIn($bisi, 'bisi@example.com', withPush: true);
+        $this->live();
+        $this->briefed($this->ada);
+        $this->briefed($bisi);
+        self::mockTime(new DateTimeImmutable('2027-03-06T19:00:00Z'));
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-06T19:00:00Z');
+
+        self::assertSame(
+            [['Bisi Ola', 'The event has ended · Owambe', ['It ended before your shift, so you do not need to come.']]],
+            Vec\map($this->sent(), static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->subject, $sent['notification']->lines]),
+        );
+    }
+
+    #[Test]
+    public function aRemovalJustBeforeACallOffIsStillSent(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->as($this->owner, 'DELETE', $this->path($this->ada));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([['You are no longer on the staff for Owambe on Saturday 6 Mar', [], null]], $this->pushes());
+    }
+
+    #[Test]
+    public function noBriefingIsMarkedSentOnceTheEventIsFinished(): void
+    {
+        $this->live();
+        $this->as($this->owner, 'POST', $this->path($this->ada . '/briefing/link'));
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        $this->as($this->owner, 'POST', $this->path($this->ada . '/briefing/sent'));
+
+        self::assertSame([409, 'event_concluded'], [$this->statusCode(), Str\after_last((string) ($this->last()['type'] ?? ''), '/')]);
+        self::assertSame('none', $this->row($this->ada)['briefing']);
+    }
+
+    #[Test]
+    public function aLiveEventIsDeletedOnlyOnceFinishedAfterABriefingWent(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+
+        self::assertSame('staffBriefed', $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/deletion')['deleteRefusedBecause'] ?? null);
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => 'Owambe']);
+        self::assertSame([409, 'event_call_off_first'], [$this->statusCode(), Str\after_last((string) ($this->last()['type'] ?? ''), '/')]);
+    }
+
+    #[Test]
+    public function aBriefedDraftIsStillDeleted(): void
+    {
+        $this->briefed($this->ada);
+        $this->as($this->owner, 'DELETE', '/api/events/' . $this->eventId, ['name' => 'Owambe']);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    private function live(): void
+    {
+        $this->editEvent(['hosts' => ['Ada and Tunde']]);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/make-live');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** @return list<array{0: string, 1: string, 2: list<string>}> */
+    private function reminders(): array
+    {
+        return Vec\map(
+            Vec\filter(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => Str\starts_with($sent['notification']->subject, 'Your shift starts')),
+            static fn (array $sent): array => [$sent['recipient']->name, $sent['notification']->subject, $sent['notification']->lines],
+        );
     }
 
     private function briefed(string $staffId): void
