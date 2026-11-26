@@ -173,19 +173,26 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   );
 }
 
-export type TodayWeek = 'quiet' | 'days';
+export type TodayWeek = 'quiet' | 'days' | 'starts';
 
 export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
   { key: 'quiet', label: 'Nothing on' },
   { key: 'days', label: 'Days with events' },
+  { key: 'starts', label: 'Two events starting' },
 ];
 
 export const DAY_NAME = 14;
 export const DAY_DATE = 13.5;
 
+/** A row's event: one of the sample events, or the Garden party QA starts this week (sc-94683). */
+export type WeekRowEvent = SizeEvent['key'] | 'garden';
+
+export const GARDEN_PARTY = { name: 'Garden party', mesh: 'teal' } as const;
+
 export interface WeekDay {
   date: string;
-  rows: readonly { time: string; title: string; key: SizeEvent['key']; note: string }[];
+  /** A row with no title is its event's start, titled by the product's own `todayScreen.starts`. */
+  rows: readonly { time: string; title?: string; key: WeekRowEvent; note: string }[];
 }
 
 /** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an item on it as main's agenda draws one; the last has no note. */
@@ -203,6 +210,21 @@ export const WEEK_DAYS: readonly WeekDay[] = [
     rows: [{ time: '20:00', title: 'The party starts', key: 'party', note: '' }],
   },
 ];
+
+/** This week with two events starting, the Garden party on Friday and the party on Sunday, each row titled Début : {name} in French as main titles a start (sc-94683). */
+export const STARTS_DAYS: readonly WeekDay[] = [
+  {
+    date: SIZE_TODAY,
+    rows: [{ time: '19:00', title: 'Replies close', key: 'ireti', note: 'Automatic' }],
+  },
+  { date: '2026-11-27', rows: [{ time: '12:00', key: 'garden', note: '' }] },
+  { date: '2026-11-29', rows: [{ time: '20:00', key: 'party', note: '' }] },
+];
+
+/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
+export function titleOnOneLine(width: number, room: number): boolean {
+  return room > 0 && width <= room;
+}
 
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';
