@@ -195,7 +195,7 @@ describe('a member of an organisation that signs in with Google or Apple only (s
   it('names both, joined with or, when both are linked', async () => {
     await open('/demo/staff-sign-in?state=provider-only-both');
 
-    expect(screen.getByText(line('Google or Apple'))).toBeDefined();
+    expect(screen.getByText(line('Apple or Google'))).toBeDefined();
     const names = screen.getAllByRole('button').map((one) => one.textContent);
     expect(names).toEqual(['Continue with Google', 'Continue with Apple']);
   });
