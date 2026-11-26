@@ -2430,7 +2430,7 @@
     "notYetNext": "Vuelva a abrirlo entonces. El enlace no cambia.",
     "notYetFoot": "Este enlace es solo para usted. No se guarda nada en este dispositivo.",
     "endedTitle": "Este enlace ya no está activo.",
-    "endedBody": "Dejó de funcionar 2 horas después de su último turno.",
+    "endedBody": "Los enlaces del personal dejan de funcionar 2 horas después de su último turno, o cuando termina el evento.",
     "endedNext": "Si trabaja en otro evento, recibirá un enlace nuevo para ese evento.",
     "foot": "No se guarda nada en este dispositivo.",
     "failed": "No ha funcionado. Vuelva a intentarlo en un momento.",
