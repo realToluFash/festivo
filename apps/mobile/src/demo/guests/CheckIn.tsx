@@ -35,6 +35,8 @@ import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
 import { navSide, titleBeside } from './DoorNav.ts';
+import { type DoorFrom, scanHref } from './ScanModel.ts';
+import { MN } from '../myNight/myNightModel.ts';
 import { arrivedUnder } from '../../kit/doorRow.ts';
 import { wordsIn } from '../../layout/textSize.ts';
 
@@ -132,9 +134,12 @@ function cardOf(
   };
 }
 
-function leave(): void {
-  if (router.canGoBack()) router.back();
-  else router.replace('/demo/guests?state=onTheDay' as Href);
+function leaveTo(from: DoorFrom): () => void {
+  return () => {
+    if (router.canGoBack()) router.back();
+    else
+      router.replace((from === 'night' ? '/demo/my-night' : '/demo/guests?state=onTheDay') as Href);
+  };
 }
 
 export function ArrivedButton({
@@ -179,11 +184,15 @@ export function CheckInScreen({
   state,
   seating = 'seated',
   searchAsk = null,
+  from = 'guests',
 }: {
   state: DoorState | null;
   seating?: Seating;
   searchAsk?: string | null;
+  from?: DoorFrom;
 }) {
+  const leave = leaveTo(from);
+  const backWord = from === 'night' ? MN.title : W.guests;
   const shell = useShell();
   const layout: Layout = shell.layout;
   const insets = useSafeAreaInsets();
@@ -391,7 +400,7 @@ export function CheckInScreen({
           event={event}
           words={cardOf(phase, count, state === 'doorEmpty')}
           layout={layout}
-          onStep={() => router.push('/demo/guests/scan?state=scanning' as Href)}
+          onStep={() => router.push(scanHref(from) as Href)}
           stepLabel={open ? W.scanCode : null}
         />
       ) : null}
@@ -465,7 +474,7 @@ export function CheckInScreen({
   if (layout === 'phone')
     return (
       <View style={[styles.page, { paddingTop: insets.top }]}>
-        <DoorNav onBack={leave} />
+        <DoorNav label={backWord} onBack={leave} />
         <ScrollView
           style={styles.grow}
           contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]}
@@ -547,7 +556,7 @@ export function CheckInScreen({
       onArea={toGuests}
       more={more}
       onMore={setMore}
-      back={{ label: W.guests, onPress: leave }}
+      back={{ label: backWord, onPress: leave }}
       overlay={
         <>
           {walkIn != null && (
@@ -568,7 +577,7 @@ export function CheckInScreen({
 }
 
 /** The phone's top: the title centred between the back pill and its mirror while it fits there, and on its own row under the pill once a large text size leaves it no room. */
-function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
+function DoorNav({ label, onBack }: { label: string; onBack: () => void }): ReactNode {
   const [width, setWidth] = useState(0);
   const [back, setBack] = useState(0);
   const [title, setTitle] = useState(0);
@@ -590,7 +599,7 @@ function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
       />
       <View style={styles.nav}>
         <View onLayout={(event) => setBack(event.nativeEvent.layout.width)}>
-          <Back label={W.guests} onPress={onBack} />
+          <Back label={label} onPress={onBack} />
         </View>
         {beside && (
           <View

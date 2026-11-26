@@ -12,6 +12,9 @@ import {
   scannedOf,
   searchAskOf,
   searchHref,
+  doorFromOf,
+  doorHref,
+  scanHref,
   tell,
   waitingOf,
 } from './ScanModel.ts';
@@ -101,12 +104,22 @@ describe('the scanner’s states, as guests-a-spec §19 names them', () => {
   it('asks Check-in to focus its search on every Search by name tap', () => {
     const askOf = (href: string) =>
       searchAskOf(Object.fromEntries(new URL(href, 'https://demo.soirely').searchParams));
-    const one = askOf(searchHref(1));
-    const two = askOf(searchHref(2));
+    const one = askOf(searchHref(1, 'guests'));
+    const two = askOf(searchHref(2, 'guests'));
     expect(one).not.toBeNull();
     expect(two).not.toBeNull();
     expect(two).not.toBe(one);
     expect(searchAskOf({})).toBeNull();
     expect(searchAskOf({ focus: 'other', tap: '3' })).toBeNull();
+  });
+
+  it('keeps Your night as Check-in’s way back through the scanner and its Search by name', () => {
+    const paramsOf = (href: string) =>
+      Object.fromEntries(new URL(href, 'https://demo.soirely').searchParams);
+    for (const href of [scanHref('night'), doorHref('night'), searchHref(3, 'night')])
+      expect(doorFromOf(paramsOf(href).from)).toBe('night');
+    for (const href of [scanHref('guests'), doorHref('guests'), searchHref(3, 'guests')])
+      expect(doorFromOf(paramsOf(href).from)).toBe('guests');
+    expect(searchAskOf(paramsOf(searchHref(3, 'night')))).toBe('3');
   });
 });

@@ -301,7 +301,9 @@ export function movedToGrill(night: Night): Night {
 
 /** Check-in above Your shift for a job that checks in, as sc-28230 draws it; null shows no button. */
 export function checkInOf(night: Night): { label: string; href: string } | null {
-  return night.checksIn ? { label: MN.checkIn, href: '/demo/guests/check-in?state=door' } : null;
+  return night.checksIn
+    ? { label: MN.checkIn, href: '/demo/guests/check-in?state=door&from=night' }
+    : null;
 }
 
 /** Open {station} above Your shift, under Check-in as the secondary button when the job checks in too (sc-95382). */
