@@ -3776,6 +3776,14 @@
     "beforeYouStart": "Antes de começar"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Posto da cozinha · {{station}}",
     "titleSaid": "Posto da cozinha · {{station}}. Escolher outro posto",
     "back": "Voltar",

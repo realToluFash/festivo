@@ -3625,6 +3625,14 @@
     "beforeYouStart": "Before you start"
   },
   "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
     "title": "Kitchen station · {{station}}",
     "titleSaid": "Kitchen station · {{station}}. Pick another station",
     "back": "Back",

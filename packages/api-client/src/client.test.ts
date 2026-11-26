@@ -1990,6 +1990,7 @@ describe('who is signed in', () => {
       jobLabel: 'Kitchen',
       startsAt: '2030-11-14T16:00:00+01:00',
       endsAt: '2030-11-14T15:00:00+00:00',
+      timeZone: 'Europe/Lisbon',
     };
     const account = await client(
       json({ ...ACCOUNT, outsideEvents: [outside, { id: 'e2', role: 'lead' }] }),

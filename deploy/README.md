@@ -41,6 +41,7 @@ deploy/deploy.sh <sha>
 | `proxy`                        | Caddy: TLS for `APP_HOST`, `API_HOST` and `RP_HOST` (passkey files only), Let's Encrypt                                                                     |
 | `api`                          | the API's prod image                                                                                                                                        |
 | `notification-worker`          | `app:notifications:work`, the notification pipeline (sc-104)                                                                                                |
+| `service-heartbeat`            | `app:service:heartbeat`, the beat a kitchen station's strip reads as connected (sc-4028)                                                                    |
 | `scheduler`                    | every line of `services/api/config/crontab` through supercronic, the checks below among them, and `app:two-factor-recovery:expire` every 5 minutes (sc-509) |
 | `backup`                       | the nightly database backup at 04:00 UTC and its check at 06:00 UTC (`deploy/backup/crontab`; Backups, below)                                               |
 | `web`                          | the web client's image                                                                                                                                      |
@@ -154,7 +155,7 @@ RESTORE_KEY=… RESTORE_SECRET=… deploy/restore.sh <YYYY-MM-DD> <identity file
 
 1. Fetches that night's backup and checks it opens with the identity. Nothing has
    closed yet, so a missing or unreadable backup changes nothing.
-2. Stops `proxy`, `api`, `notification-worker`, `scheduler` and `backup`: no request is
+2. Stops `proxy`, `api`, `notification-worker`, `service-heartbeat`, `scheduler` and `backup`: no request is
    served from here until the last step.
 3. Drops the database and restores the backup into a new one.
 4. Runs the migrations, then every `app:prune-*` and `app:erase-*` in

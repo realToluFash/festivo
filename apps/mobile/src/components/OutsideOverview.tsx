@@ -15,6 +15,7 @@ import { CARD_PIECES, Confetti } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { CardSays, OnCard, Row, RowList, SummaryCard, TextAction } from './Summary.tsx';
 import { Text, type TextHandle } from './Text.tsx';
+import { useStationRowItem } from './StationWayIn.tsx';
 import { useYourNightItem } from './YourNight.tsx';
 
 /** Overview at Can view and Can check guests in held from outside an organisation, as the `no-org` demo draws it: the event's card with the level line, Guests and People, and on a phone or an upright tablet who is signed in (sc-71). */
@@ -42,6 +43,7 @@ export function OutsideOverview({
   const onEvent = usePeopleCount(event.id);
   const place = event.venue?.name ?? event.venue?.address?.formatted ?? null;
   const night = useYourNightItem(event.id);
+  const station = useStationRowItem(event);
 
   return (
     <View style={styles.stack} testID="outside.overview">
@@ -69,6 +71,7 @@ export function OutsideOverview({
       <RowList
         items={[
           ...(night == null ? [] : [night]),
+          ...(station == null ? [] : [station]),
           {
             key: 'guests',
             inset: 40,
