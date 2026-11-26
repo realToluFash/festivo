@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Service;
 
-use App\Domain\Staff\StaffRoster;
 use App\Domain\Staff\Model\StaffDetails;
+use App\Domain\Staff\StaffRoster;
 use App\Entity\MenuCourse;
 use App\Entity\StaffItemStation;
 use App\Entity\StaffStation;
