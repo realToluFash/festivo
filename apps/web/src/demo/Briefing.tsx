@@ -362,7 +362,7 @@ export function useBriefing({
           onClick={() => open({ kind: 'rules', editing: false })}
         >
           <Glyph name="pen" size={16} weight={2.3} />
-          {manage ? BW.editRules : BW.rules}
+          {acts ? BW.editRules : BW.rules}
         </button>
         <button
           id="bf-preview"
@@ -429,7 +429,6 @@ export function useBriefing({
         {side.kind === 'copy' && (
           <CopyPanel
             people={rows}
-            loading={first.loading}
             acts={acts}
             busy={busy}
             missed={missed}
@@ -804,7 +803,6 @@ function PanelHead({ title, onClose }: { title: string; onClose: () => void }) {
 
 function CopyPanel({
   people,
-  loading,
   acts,
   busy,
   missed,
@@ -815,7 +813,6 @@ function CopyPanel({
   onClose,
 }: {
   people: readonly Person[];
-  loading: boolean;
   acts: boolean;
   busy: string | null;
   missed: string | null;
@@ -830,15 +827,8 @@ function CopyPanel({
   return (
     <>
       <PanelHead title={BW.copyTitle} onClose={onClose} />
-      <div className="mn-panel-body" aria-busy={loading || undefined}>
-        {loading ? (
-          <div className="bf-bones" role="status">
-            <p className="visually-hidden">{BW.loading}</p>
-            {[0, 1, 2, 3].map((at) => (
-              <span key={at} className="bf-bone" aria-hidden="true" />
-            ))}
-          </div>
-        ) : listed.length === 0 ? (
+      <div className="mn-panel-body">
+        {listed.length === 0 ? (
           <div className="rs-empty">
             <Glyph name="staff" size={28} weight={2} />
             <p className="rs-empty-title">{BW.nobody}</p>
