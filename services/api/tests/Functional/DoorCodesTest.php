@@ -387,6 +387,35 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theAccountSaysWhenABrowserSessionSignedInAtTheDoorEndsAndNamesNoEndForTheApps(): void
+    {
+        $code = $this->code('can_check_in');
+        $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
+        $number = '+2348031110005';
+        $this->phoneOn($joanna, $number);
+
+        $browser = $this->signInFor($code, Type\string()->coerce($this->sendFor($code, 'Jo', $number)['handle']), $this->codeTo($number), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($browser));
+        $account = Type\shape(['signedOutAt' => Type\string()], true)->coerce($browser['account']);
+        self::assertSame(new DateTimeImmutable(Type\string()->coerce($browser['endsAt']))->getTimestamp(), new DateTimeImmutable($account['signedOutAt'])->getTimestamp(), 'the sign-in reads it as /me does');
+        $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($browser['accessToken'])]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(
+            new DateTimeImmutable(Type\string()->coerce($browser['endsAt']))->getTimestamp(),
+            new DateTimeImmutable(Type\string()->coerce($this->last()['signedOutAt'] ?? null))->getTimestamp(),
+            'an account with an address and a number is signed out with its grant all the same',
+        );
+
+        $kunle = '+2348031110006';
+        $this->phoneOn($this->account('kunle@bakare.ng', 'Kunle Bakare'), $kunle);
+        $app = $this->signInFor($code, Type\string()->coerce($this->sendFor($code, 'Kunle', $kunle)['handle']), $this->codeTo($kunle));
+        self::assertSame(200, $this->statusCode(), Json\encode($app));
+        $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($app['accessToken'])]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertNull($this->last()['signedOutAt'], 'the app keeps its usual life');
+    }
+
+    #[Test]
     public function withTwoFactorOnInABrowserTheGrantWaitsForItAndTheSignedInRedeemTakesItWithTheSessionItIssued(): void
     {
         $code = $this->code('can_view');

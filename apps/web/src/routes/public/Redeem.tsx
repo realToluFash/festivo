@@ -83,7 +83,7 @@ interface YoureIn {
 function youreIn(
   redeemed: RedeemedDoorCode,
   event: OpenedDoorCode['event'],
-  held: boolean,
+  signedOutAt: string | null,
 ): YoureIn {
   return {
     eventId: redeemed.eventId,
@@ -92,8 +92,8 @@ function youreIn(
     jobLabel: redeemed.jobLabel,
     role: redeemed.role,
     name: redeemed.name,
-    endsAt: redeemed.endsAt,
-    held,
+    endsAt: signedOutAt ?? redeemed.endsAt,
+    held: signedOutAt != null,
   };
 }
 
@@ -173,8 +173,8 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
           jobLabel: held.jobLabel,
           role: held.role,
           name,
-          endsAt: held.endsAt,
-          held: account?.heldByDevice === true,
+          endsAt: account?.signedOutAt ?? held.endsAt,
+          held: account?.signedOutAt != null,
         };
   const backShown = back != null;
 
@@ -186,8 +186,8 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
     setStep({ ...event, busy: true, trouble: null });
     try {
       const redeemed = await api.redeemDoorCode(event.code);
-      await rereadOutsideEvents().catch(() => undefined);
-      go({ kind: 'in', you: youreIn(redeemed, event.opened.event, false) });
+      const signedOutAt = await rereadOutsideEvents().catch(() => null);
+      go({ kind: 'in', you: youreIn(redeemed, event.opened.event, signedOutAt) });
     } catch (error) {
       refused(event, error);
     }
@@ -284,7 +284,8 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
       return;
     }
     await refreshAccount();
-    if (redeemed != null) go({ kind: 'in', you: youreIn(redeemed, at.opened.event, true) });
+    if (redeemed != null)
+      go({ kind: 'in', you: youreIn(redeemed, at.opened.event, redeemed.endsAt) });
   }
 
   const { signOut } = useSignOut(() =>

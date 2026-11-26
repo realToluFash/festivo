@@ -1956,6 +1956,7 @@ const ACCOUNT = {
   colourScheme: null,
   waitingFor: null,
   outsideEvents: [],
+  signedOutAt: null,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
