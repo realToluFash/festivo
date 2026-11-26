@@ -128,6 +128,9 @@ A check is written like a flow, and also:
   A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
   in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
   `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
+- **A wait or an assertion before every screenshot**, on what that screen shows (an id or
+  `{{t:}}` text), never a screenshot alone: a renamed, missing or blank screen would still pass.
+  The rule on conditional taps above is one case of this.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 

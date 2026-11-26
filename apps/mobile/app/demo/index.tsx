@@ -81,6 +81,7 @@ import {
   STAFF_TEXT_BOARDS,
 } from '../../src/demo/staffLink/StaffLinkBoards.ts';
 import { SHIFT_CLOCK_BOARDS, STAFF_HOURS_BOARDS } from '../../src/demo/shiftClock/boards.ts';
+import { WHOS_HERE_BOARDS } from '../../src/demo/whosHere/WhosHereBoards.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 interface Board {
@@ -2759,6 +2760,14 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Staffing · the event’s hours, actual times and corrections (sc-234) · phone, tablet portrait and landscape',
     boards: STAFF_HOURS_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · Who’s here, the floor lead’s live list, the door and Cover (sc-3918) · phone, tablet portrait and landscape',
+    boards: WHOS_HERE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,

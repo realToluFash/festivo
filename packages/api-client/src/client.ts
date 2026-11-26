@@ -91,7 +91,12 @@ import type {
   GuestMessageSent,
   PickableGuest,
 } from './guestMessages.ts';
-import { type KitchenSheet, asKitchenSheet } from './kitchenSheet.ts';
+import {
+  type FinalNumbers,
+  type KitchenSheet,
+  asFinalNumbers,
+  asKitchenSheet,
+} from './kitchenSheet.ts';
 import {
   type AuditExportOutcome,
   type AuditFilters,
@@ -3984,8 +3989,10 @@ export class ApiClient {
 
   /** The kitchen sheet as of now (sc-3911): refused 403 without menu.read; without guests.manage `allergic` is null. */
   async kitchenSheet(eventId: string): Promise<KitchenSheet> {
-    const body = await this.get<{ sheet?: unknown }>(`${this.menuPath(eventId)}/kitchen-sheet`);
-    const sheet = asKitchenSheet(body?.sheet);
+    const body = await this.get<{ sheet?: unknown; finalNumbers?: unknown }>(
+      `${this.menuPath(eventId)}/kitchen-sheet`,
+    );
+    const sheet = asKitchenSheet(body?.sheet, body?.finalNumbers);
 
     if (sheet == null)
       throw new Error(
@@ -3999,9 +4006,40 @@ export class ApiClient {
   async kitchenSheetPdf(
     eventId: string,
   ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
-    const response = await this.answered(`${this.menuPath(eventId)}/kitchen-sheet/pdf`, {
-      method: 'POST',
-    });
+    return this.pdfAt(`${this.menuPath(eventId)}/kitchen-sheet/pdf`);
+  }
+
+  /** Final numbers due (sc-30812), a day or null: refused 403 without menu.manage, 422 on `due`. */
+  async setFinalNumbersDue(eventId: string, due: string | null): Promise<FinalNumbers> {
+    const body = await this.put<{ finalNumbers?: unknown }>(
+      `${this.menuPath(eventId)}/final-numbers`,
+      { due },
+    );
+
+    return asFinalNumbers(body?.finalNumbers);
+  }
+
+  /** Give final numbers…: the PDF as `kitchenSheetPdf` makes it, recorded as given; 503 records nothing. Refused 403 without menu.manage. */
+  async giveFinalNumbers(
+    eventId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    return this.pdfAt(`${this.menuPath(eventId)}/kitchen-sheet/copies`);
+  }
+
+  /** Download this copy: as given, in the request's language. */
+  async kitchenCopyPdf(
+    eventId: string,
+    copyId: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    return this.pdfAt(
+      `${this.menuPath(eventId)}/kitchen-sheet/copies/${encodeURIComponent(copyId)}/pdf`,
+    );
+  }
+
+  private async pdfAt(
+    path: string,
+  ): Promise<{ name: string | null; bytes: Uint8Array<ArrayBuffer> }> {
+    const response = await this.answered(path, { method: 'POST' });
 
     return {
       name: downloadName(response.headers.get('Content-Disposition')),
