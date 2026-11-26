@@ -22,6 +22,7 @@ use App\Enum\MilestoneOwner;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use App\Enum\SeededRole;
+use App\Http\Access\Grants;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
@@ -30,6 +31,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -451,6 +453,75 @@ final class OutsideAccessTest extends ApiTestCase
         $id = $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', 'can_view');
         $this->as($this->owner, 'PATCH', '/api/events/' . $this->owambe . '/people/' . $id, ['role' => 'lead']);
         self::assertSame(422, $this->statusCode(), 'nor changed to it');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function readingLevels(): iterable
+    {
+        yield 'Can view' => ['can_view'];
+        yield 'Can check guests in' => ['can_check_in'];
+    }
+
+    /** sc-94342: Menu, Messages and Staff refuse a reading level from outside as Budget does, reads included, and the refusal carries nothing of the area. */
+    #[Test]
+    #[DataProvider('readingLevels')]
+    public function aReadingLevelFromOutsideIsRefusedEveryAreaItDoesNotOpen(string $level): void
+    {
+        $organisation = '/api/orgs/' . $this->organisation->getId()->toRfc4122();
+        $this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Jollof rice', 'allergens' => ['celery']]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+        $event = '/api/events/' . $this->owambe;
+        $someId = '0190a1b2-0000-7000-8000-000000000000';
+
+        $routes = [
+            ['GET', $event . '/messages'],
+            ['GET', $event . '/messages/' . $someId],
+            ['POST', $event . '/messages/subscriptions'],
+            ['GET', $event . '/menu'],
+            ['GET', $event . '/menu/picks'],
+            ['GET', $event . '/menu/preview'],
+            ['GET', $event . '/menu/kitchen-sheet'],
+            ['POST', $event . '/menu/kitchen-sheet/pdf'],
+            ['POST', $event . '/menu/subscriptions'],
+            ['PUT', $event . '/menu/picks/people/' . $someId . '/courses/' . $someId],
+            ['PUT', $event . '/menu/picks/variants/' . $someId],
+            ['GET', $organisation . '/dishes'],
+            ['GET', $event . '/staff'],
+            ['POST', $event . '/staff/subscriptions'],
+            ['GET', $event . '/budget'],
+        ];
+        foreach ($routes as [$method, $path]) {
+            $refusal = $this->as($caterer, $method, $path, 'GET' === $method ? null : []);
+            self::assertSame(403, $this->statusCode(), $method . ' ' . $path);
+            self::assertSame(ErrorCode::PermissionRequired->type(), $refusal['type'] ?? null, $method . ' ' . $path);
+            self::assertStringNotContainsString('Jollof', Json\encode($refusal), $path);
+            self::assertSame([], Vec\filter(Vec\keys($refusal), static fn (string $key): bool => !Iter\contains(['type', 'title', 'status', 'detail', 'code', 'permission', 'instance', 'correlationId'], $key)), $path);
+        }
+    }
+
+    /** sc-94342: by area, not route, so Reports and any area added later is closed from outside with nothing added to its routes. */
+    #[Test]
+    #[DataProvider('readingLevels')]
+    public function aReadingLevelFromOutsideHoldsOnlyThePermissionsOfTheAreasItOpens(string $level): void
+    {
+        $role = EventRole::from($level);
+        $grants = Grants::fromOutside($role);
+
+        foreach (Permission::cases() as $permission) {
+            if ($grants->holds($permission)) {
+                self::assertContains($permission->area(), $role->areasFromOutside(), $permission->value);
+            }
+        }
+        self::assertFalse($grants->holds(Permission::ReportsRead));
+        self::assertTrue(Grants::onEvent($role)->holds(Permission::MessagesRead), 'a Member at the same level still reads Messages');
+
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($caterer, 'GET', '/api/events/' . $this->owambe));
+        $expected = ['events.read', 'guests.read', 'seating.read', 'run_of_show.read', 'people.read', ...('can_check_in' === $level ? ['guests.check_in'] : [])];
+        self::assertEqualsCanonicalizing($expected, $event['event']['permissions']);
     }
 
     /** @return iterable<string, array{0: string, 1: EventRole}> */
