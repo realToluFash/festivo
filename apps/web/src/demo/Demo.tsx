@@ -102,6 +102,8 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
+import { BriefingPage } from './Briefing.tsx';
+import { BRIEFING_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -307,6 +309,7 @@ export default function Demo() {
       <Route path="events/:id/staff" element={<Navigate to="roster" replace />} />
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
+      <Route path="events/:id/staff/briefing" element={<BriefingPage />} />
       <Route path="events/:id/staff/jobs" element={<JobsShiftsPage />} />
       <Route path="events/:id/staff/hours" element={<StaffHoursPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
@@ -573,6 +576,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-34">34 · Staffing</h2>
         <h3>The roster: who works the event, without making them members (sc-3906) · desktop</h3>
         <BoardPages pages={ROSTER_PAGES} />
+        <h3>
+          The briefing: house rules and everyone’s shift, sent with one tap (sc-3917) · desktop and
+          narrow web
+        </h3>
+        <BoardPages pages={BRIEFING_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>
