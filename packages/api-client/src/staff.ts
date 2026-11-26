@@ -15,6 +15,50 @@ export interface StaffBriefingCopy {
   marked: boolean;
 }
 
+export type StaffChangeKind =
+  | 'start_time'
+  | 'end_time'
+  | 'shift_added'
+  | 'shift_removed'
+  | 'shift_retimed'
+  | 'more_changes'
+  | 'no_shift_left'
+  | 'job'
+  | 'date'
+  | 'venue';
+
+const CHANGE_KINDS: readonly StaffChangeKind[] = [
+  'start_time',
+  'end_time',
+  'shift_added',
+  'shift_removed',
+  'shift_retimed',
+  'more_changes',
+  'no_shift_left',
+  'job',
+  'date',
+  'venue',
+];
+
+/** One line of a change notice waiting to go (sc-4333): shift lines carry instants, a start or end time line its new time in `start` and its old in `oldStart`, the job and venue lines names, the date line days, More changes a count. */
+export interface StaffChange {
+  kind: StaffChangeKind;
+  start: string | null;
+  end: string | null;
+  oldStart: string | null;
+  oldEnd: string | null;
+  new: string | null;
+  old: string | null;
+  count: number;
+}
+
+/** Where a person's change notice stands (sc-4333), for the roster's Briefing column; null before their briefing went. */
+export type StaffNotice =
+  | { state: 'waiting'; goesAt: string; changes: StaffChange[] }
+  | { state: 'told'; at: string; channel: string }
+  | { state: 'not_delivered'; reason: 'no_device' | 'provider' }
+  | { state: 'unreachable' };
+
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
 export const STAFF_ACCESS: readonly StaffAccess[] = ['view', 'check_in', 'floor', 'pass', 'run'];
@@ -60,6 +104,7 @@ export interface StaffEntry {
   briefing: StaffBriefing;
   briefingCopy: StaffBriefingCopy | null;
   contactsErased: boolean;
+  notice: StaffNotice | null;
 }
 
 export interface StaffJob {
@@ -172,6 +217,58 @@ function asBriefingCopy(raw: unknown): StaffBriefingCopy | null | undefined {
     : undefined;
 }
 
+function asChange(raw: unknown): StaffChange | null {
+  if (!isRecord(raw)) return null;
+  const { kind, start, end, oldStart, oldEnd, count } = raw;
+
+  return CHANGE_KINDS.includes(kind as StaffChangeKind) &&
+    text(start) &&
+    text(end) &&
+    text(oldStart) &&
+    text(oldEnd) &&
+    text(raw.new) &&
+    text(raw.old) &&
+    typeof count === 'number'
+    ? {
+        kind: kind as StaffChangeKind,
+        start,
+        end,
+        oldStart,
+        oldEnd,
+        new: raw.new,
+        old: raw.old,
+        count,
+      }
+    : null;
+}
+
+function asNotice(raw: unknown): StaffNotice | null | undefined {
+  if (raw === null || raw === undefined) return null;
+  if (!isRecord(raw)) return undefined;
+
+  switch (raw.state) {
+    case 'waiting': {
+      const changes = every(raw.changes, asChange);
+
+      return typeof raw.goesAt === 'string' && changes != null
+        ? { state: 'waiting', goesAt: raw.goesAt, changes }
+        : undefined;
+    }
+    case 'told':
+      return typeof raw.at === 'string' && typeof raw.channel === 'string'
+        ? { state: 'told', at: raw.at, channel: raw.channel }
+        : undefined;
+    case 'not_delivered':
+      return raw.reason === 'no_device' || raw.reason === 'provider'
+        ? { state: 'not_delivered', reason: raw.reason }
+        : undefined;
+    case 'unreachable':
+      return { state: 'unreachable' };
+    default:
+      return undefined;
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value != null && !Array.isArray(value);
 }
@@ -237,6 +334,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
   } = raw;
   const job = asJobRef(raw.job);
   const briefingCopy = asBriefingCopy(raw.briefingCopy);
+  const notice = asNotice(raw.notice);
   const station = raw.station === null ? null : asStationRef(raw.station);
   const stations = every(raw.stations, asStationRef);
   const shifts = Array.isArray(raw.shifts) ? raw.shifts.map(asEntryShift) : null;
@@ -259,6 +357,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     !text(linkAt) ||
     !BRIEFINGS.includes(briefing as StaffBriefing) ||
     briefingCopy === undefined ||
+    notice === undefined ||
     typeof contactsErased !== 'boolean'
   )
     return null;
@@ -281,6 +380,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     briefing: briefing as StaffBriefing,
     briefingCopy,
     contactsErased,
+    notice,
   };
 }
 

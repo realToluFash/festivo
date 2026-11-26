@@ -25,6 +25,7 @@ const entry = {
   briefing: 'none',
   briefingCopy: null,
   contactsErased: false,
+  notice: null,
 };
 
 const plan = {
@@ -64,6 +65,56 @@ describe('asStaffPlan', () => {
     const read = { ...plan, staff: [briefed], rules: 'Black shirts.' };
 
     expect(asStaffPlan(read)).toEqual(read);
+  });
+
+  it('reads a change notice waiting to go, told, and nobody to reach (sc-4333)', () => {
+    const waiting = {
+      ...entry,
+      briefing: 'sent',
+      notice: {
+        state: 'waiting',
+        goesAt: '2026-11-01T11:15:00+01:00',
+        changes: [
+          {
+            kind: 'start_time',
+            start: '2026-11-07T15:00:00+01:00',
+            end: null,
+            oldStart: '2026-11-07T16:00:00+01:00',
+            oldEnd: null,
+            new: null,
+            old: null,
+            count: 0,
+          },
+        ],
+      },
+    };
+    const told = {
+      ...entry,
+      notice: { state: 'told', at: '2026-11-01T11:15:00+01:00', channel: 'push' },
+    };
+    const unreachable = { ...entry, notice: { state: 'unreachable' } };
+    const read = { ...plan, staff: [waiting, told, unreachable] };
+
+    expect(asStaffPlan(read)).toEqual(read);
+  });
+
+  it('refuses a change notice of a state or kind it does not know', () => {
+    expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice: { state: 'held' } }] })).toBeNull();
+    expect(
+      asStaffPlan({
+        ...plan,
+        staff: [
+          {
+            ...entry,
+            notice: {
+              state: 'waiting',
+              goesAt: '2026-11-01T11:15:00+01:00',
+              changes: [{ kind: 'pay' }],
+            },
+          },
+        ],
+      }),
+    ).toBeNull();
   });
 
   it('refuses a briefing state it does not know, and a plan without its rules', () => {
