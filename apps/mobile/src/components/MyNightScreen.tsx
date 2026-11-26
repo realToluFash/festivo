@@ -8,6 +8,7 @@ import {
   type ShiftClockCard as ClockCard,
 } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
+import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -17,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
+  checkInOf,
   clockAt,
   crossesMidnight,
   dietaryOf,
@@ -25,11 +27,12 @@ import {
   weekdayOf,
 } from '../kit/myNight.ts';
 import { type ClockLine, actionOf, answerOf, recordedWords } from '../kit/shiftClock.ts';
+import { openStationOf } from '../kit/stationWayIn.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Brand } from './Brand.tsx';
-import { SecondaryButton } from './Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Glyph } from './Glyph.tsx';
 import { Notice } from './Notice.tsx';
 import { readOut, useReadOut } from './ReadOut.tsx';
@@ -210,6 +213,13 @@ function Night({
         {clock}
       </>
     );
+  const checkIn = checkInOf(night);
+  const station = openStationOf(night);
+  const openStation = () =>
+    router.push({
+      pathname: '/events/[id]/station',
+      params: { id: night.event.id, from: 'night' },
+    });
 
   const left = (
     <>
@@ -228,10 +238,38 @@ function Night({
         </Text>
       </View>
       {clock}
+      {checkIn != null && (
+        <PrimaryButton
+          label={t('checkIn.title')}
+          onPress={() => router.push(checkIn)}
+          testID="myNight.checkIn"
+        />
+      )}
+      {station != null &&
+        (checkIn == null ? (
+          <PrimaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ))}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />
       </Card>
+      {night.rules != null && (
+        <Card title={t('myNight.beforeYouStart')}>
+          <Text size={17} style={styles.rules}>
+            {night.rules}
+          </Text>
+        </Card>
+      )}
     </>
   );
 
@@ -534,6 +572,7 @@ function You({ name, inBar }: { name: string; inBar: boolean }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
+  rules: { lineHeight: 26 },
   bar: {
     flexDirection: 'row',
     flexWrap: 'wrap',

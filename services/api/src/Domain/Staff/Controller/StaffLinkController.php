@@ -13,7 +13,6 @@ use App\Domain\Staff\Link\StaffLinkWindow;
 use App\Domain\User\CallerSession;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\PhoneSignIn\PhoneHint;
-use App\Domain\User\TokenIssuer;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
@@ -27,7 +26,6 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
-use App\Repository\RefreshTokenRepository;
 use DateTimeZone;
 use Psl\Iter;
 use Psl\Type;
@@ -50,8 +48,6 @@ final readonly class StaffLinkController
         private SignInResponse $signInResponse,
         private CodeField $codeField,
         private CallerSession $callerSession,
-        private RefreshTokenRepository $refreshTokenRepository,
-        private TokenIssuer $tokenIssuer,
         private StaffLinkGrants $staffLinkGrants,
         private MyNight $myNight,
     ) {
@@ -194,20 +190,7 @@ final readonly class StaffLinkController
                 default => 'other',
             },
             'name' => $reader instanceof User && !$mine ? $entry->getFullName() : null,
-        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->signedOutAt($reader, $entry), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
-    }
-
-    /** The moment a session that ends with its account's grants ends, in the event's zone; null for one that does not, as the app's. */
-    private function signedOutAt(User $reader, StaffMember $entry): ?string
-    {
-        $chain = $this->callerSession->chain();
-        $session = null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]);
-
-        if (true !== $session?->endsWithGrants()) {
-            return null;
-        }
-
-        return $this->tokenIssuer->grantsEndFor($reader)->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM);
+        ] + ($reader instanceof User && $mine ? ['signedOutAt' => $this->callerSession->endsAt($reader)?->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM), 'timeZone' => $entry->getEvent()->getTimeZone()] : []);
     }
 
     /** @return array<string, string|bool> */

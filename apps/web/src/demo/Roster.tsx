@@ -5,6 +5,8 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { ConfirmDialog } from '../components/ConfirmDialog.tsx';
 import { Glyph } from '../components/Glyph.tsx';
 import { Dialog, type Tell } from '../components/SettingsParts.tsx';
+import { BriefingRefused, useBriefing } from './Briefing.tsx';
+import { BW, briefingRosterStart } from './briefing.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { KeptArea, KeptHere } from './KeptOffline.tsx';
 import { clockWords } from './tabKept.ts';
@@ -81,7 +83,7 @@ import './roster.css';
 
 const FIELD_IDS = { name: 'rs-f-name', number: 'rs-f-number', email: 'rs-f-email' } as const;
 
-/** /demo/events/evt-wed-4/staff/roster (sc-3906): the Roster on the event's Staff page at 1280 × 800, by ?state=. */
+/** /demo/events/evt-wed-4/staff/roster (sc-3906): the Roster on the event's Staff page at 1280 × 800, by ?state=; the briefing's states add its card and column (sc-3917). */
 export function RosterPage() {
   const { id } = useParams();
   const [params] = useSearchParams();
@@ -93,7 +95,7 @@ export function RosterPage() {
 
 function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
   const [event] = useState(() => sampleEvent(id));
-  const [first] = useState(() => rosterStart(raw));
+  const [first] = useState(() => briefingRosterStart(raw) ?? rosterStart(raw));
 
   if (event == null) return <Navigate to="/demo/events" replace />;
   if (event.id !== STATIONS_EVENT)
@@ -119,7 +121,11 @@ function RosterAt({ id, raw }: { id: string | undefined; raw: string | null }) {
       >
         {(tell) => (
           <RosterWordsContext value={ROSTER_WORDS[first.lang]}>
-            <RosterView first={first} event={event} tell={tell} />
+            {first.briefing?.access === 'none' ? (
+              <BriefingRefused event={event} />
+            ) : (
+              <RosterView first={first} event={event} tell={tell} />
+            )}
           </RosterWordsContext>
         )}
       </EventsShell>
@@ -156,6 +162,24 @@ function RosterView({
   const [checkFailed, setCheckFailed] = useState(first.checkFailed);
   const focusAfter = useRef<string | null>(null);
   const { manage, finished, erased } = first;
+  const bf = useBriefing({
+    first: first.briefing,
+    entries,
+    setEntries,
+    focus: (id) => {
+      focusAfter.current = id;
+    },
+    announce,
+    credits: sms?.credits ?? first.briefing?.balance ?? 0,
+    spend: (used) => setSms((was) => (was == null ? was : { ...was, credits: was.credits - used })),
+    tell,
+    event,
+    onSide: () => {
+      setPanel(null);
+      setWarning(null);
+      setFailed(null);
+    },
+  });
 
   useEffect(() => {
     if (first.held != null) {
@@ -206,6 +230,7 @@ function RosterView({
   const lit = panel != null && panel.kind !== 'add' ? panel.id : null;
 
   function open(next: Panel) {
+    bf.dismiss();
     setPressed(false);
     setWarning(null);
     setFailed(null);
@@ -249,7 +274,7 @@ function RosterView({
       return;
     }
 
-    const made = entryFrom(draft, editing);
+    const made = bf.adopt(entryFrom(draft, editing), editing);
     setPressed(false);
     setWarning(null);
     setFailed(null);
@@ -286,9 +311,10 @@ function RosterView({
       entries.map((one) =>
         one.id !== id
           ? one
-          : station === ''
-            ? { ...one, station: null }
-            : withoutGone({ ...one, station }),
+          : bf.adopt(
+              station === '' ? { ...one, station: null } : withoutGone({ ...one, station }),
+              one,
+            ),
       ),
     );
     say([
@@ -417,7 +443,9 @@ function RosterView({
   const next = texts && n === 0 && rows.length > 0 ? TW.allSent : nextLine(entries, finished, RW);
 
   return (
-    <div className="desk-page ev-page gs mn sn rs">
+    <div
+      className={`desk-page ev-page gs mn sn rs${bf.on ? ' bf' : ''}${bf.side ? ' is-side' : ''}`}
+    >
       <div className="ev-wide mn-page">
         <KeptHere />
         <div className="ev-crumb-row">
@@ -458,6 +486,7 @@ function RosterView({
         </p>
         <div className="mn-split">
           <div className="mn-list">
+            {bf.card}
             <section className="sn-card">
               <div className="sn-card-top">
                 <div className="sn-card-names">
@@ -509,13 +538,17 @@ function RosterView({
               ) : (
                 // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1).
                 <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
-                  <table className="rs-table" aria-labelledby="rs-roster">
+                  <table
+                    className={bf.on ? 'rs-table bf-table' : 'rs-table'}
+                    aria-labelledby="rs-roster"
+                  >
                     <thead>
                       <tr>
                         <th scope="col">{RW.person}</th>
                         <th scope="col">{RW.job}</th>
                         <th scope="col">{RW.station}</th>
                         <th scope="col">{RW.shift}</th>
+                        {bf.on && <th scope="col">{BW.column}</th>}
                         <th scope="col">{RW.link}</th>
                       </tr>
                     </thead>
@@ -550,6 +583,7 @@ function RosterView({
                                 <span className="rs-more">{RW.more(one.more.length)}</span>
                               )}
                             </td>
+                            {bf.on && <td>{bf.cell(one)}</td>}
                             <td>
                               <LinkCell
                                 entry={one}
@@ -566,11 +600,12 @@ function RosterView({
                           </tr>
                           {held?.id === one.id && (
                             <tr className="rs-held-row">
-                              <td colSpan={5}>
+                              <td colSpan={bf.on ? 6 : 5}>
                                 <HeldLink entry={one} url={held.url} />
                               </td>
                             </tr>
                           )}
+                          {bf.held(one, bf.on ? 6 : 5)}
                         </Fragment>
                       ))}
                     </tbody>
@@ -626,6 +661,7 @@ function RosterView({
               )}
             </aside>
           )}
+          {bf.panel}
         </div>
       </div>
       {check != null && checking != null && texts && sms != null && (
@@ -686,6 +722,7 @@ function RosterView({
           </div>
         </Dialog>
       )}
+      {bf.check}
       {replacing != null && (
         <ConfirmDialog
           id="rs-replace"
@@ -717,6 +754,7 @@ function RosterView({
 }
 
 function firstSaid(first: RosterStart, LW: RosterWords['lw']): string {
+  if (first.briefing?.said != null) return first.briefing.said;
   if (first.held != null) return LW.refused;
   if (first.missed != null) return LW.notIssued;
 

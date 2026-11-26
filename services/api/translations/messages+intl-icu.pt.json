@@ -417,6 +417,7 @@
     "payment_reminder.email.settings": "Definições de notificações",
     "payment_reminder.email.footer": "Está a receber esta mensagem porque pode registar pagamentos em {organisation}. Para deixar de receber estes e-mails, desative o e-mail de Faturação nas Definições de notificações.",
     "limits.staff_links": "Esta ligação foi aberta demasiadas vezes. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.service_taps": "Demasiados passos de uma vez. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
     "guestReplies.bell.coming": "{count, plural, one {{count, number, ::group-auto} vem} many {{count, number, ::group-auto} vêm} other {{count, number, ::group-auto} vêm}}",
     "guestReplies.bell.notComing": "{count, plural, one {{count, number, ::group-auto} não vem} many {{count, number, ::group-auto} não vêm} other {{count, number, ::group-auto} não vêm}}",
     "guestReplies.bell.maybe": "{count, plural, one {{count, number, ::group-auto} por confirmar} many {{count, number, ::group-auto} por confirmar} other {{count, number, ::group-auto} por confirmar}}",

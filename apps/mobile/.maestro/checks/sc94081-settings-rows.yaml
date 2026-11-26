@@ -1,0 +1,25 @@
+# sc-94081: Settings' rows down to Notifications, at whatever text size the phone is set to.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings
+- extendedWaitUntil:
+    visible: '{{t:settings.title}}'
+    timeout: 30000
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-1
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-2
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-3
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-4
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-5
+- swipe: { start: '50%,70%', end: '50%,30%', duration: 1500 }
+- waitForAnimationToEnd
+- takeScreenshot: rows-6

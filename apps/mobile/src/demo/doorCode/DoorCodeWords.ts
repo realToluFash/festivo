@@ -179,6 +179,23 @@ export function youreIn(event: string, job: string | null): string {
   return job == null ? `You’re in for ${event}` : `You’re in for ${event} · ${job}`;
 }
 
+const PROVIDER_NAMES = { google: 'Google', apple: 'Apple' } as const;
+
+/** sc-69's heading, fed by the 403 `oauth_only`'s organisation (sc-94849). */
+export function providerOnlyTitle(organisation: string): string {
+  return `${organisation} signs in with Google or Apple only`;
+}
+
+/** [en]'s line (#94892 on sc-94849): the linked providers, joined as the locale joins a choice; English joins two with "or". */
+export function providerOnlyLine(
+  organisation: string,
+  providers: readonly (keyof typeof PROVIDER_NAMES)[],
+): string {
+  const names = providers.map((one) => PROVIDER_NAMES[one]).join(' or ');
+
+  return `A code sent to your phone cannot sign you in to this account. ${organisation} asks everyone in it to use ${names}.`;
+}
+
 export function joinAs(name: string): string {
   return `Join as ${name}`;
 }

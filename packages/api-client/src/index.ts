@@ -36,4 +36,6 @@ export * from './kitchenSheet.ts';
 export * from './schedule.ts';
 export * from './screens.ts';
 export * from './pressQueue.ts';
+export * from './serviceTapQueue.ts';
+export * from './serviceRead.ts';
 export * from './fileName.ts';

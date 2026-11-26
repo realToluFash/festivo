@@ -10,6 +10,7 @@ use App\Entity\Event;
 use App\Entity\Guest;
 use App\Enum\GuestReply;
 use App\Enum\RealtimeTopic;
+use App\Realtime\CheckInSignal;
 use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -34,6 +35,7 @@ final class SeatFreeingListener
         private readonly SeatingSerialiser $seatingSerialiser,
         private readonly RealtimePublisher $realtimePublisher,
         private readonly GuestPageSignal $guestPageSignal,
+        private readonly CheckInSignal $checkInSignal,
     ) {
     }
 
@@ -74,6 +76,7 @@ final class SeatFreeingListener
         $this->freedIn = [];
 
         foreach ($events as $id => $event) {
+            $this->checkInSignal->send($event);
             $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $id, $this->seatingSerialiser->seating($event, $this->seatingPlanRepository->findOneForEvent($event)));
             $this->guestPageSignal->seatingChanged($event);
         }

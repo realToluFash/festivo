@@ -22,6 +22,7 @@ use App\Enum\MilestoneOwner;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use App\Enum\SeededRole;
+use App\Http\Access\Grants;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\ScriptedMilestones;
 use App\Tests\Traits\OnboardsAccounts;
@@ -30,6 +31,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -215,6 +217,18 @@ final class OutsideAccessTest extends ApiTestCase
     }
 
     #[Test]
+    public function anOutsiderWhoJoinsTheOrganisationNoLongerReachesItsEventsFromOutside(): void
+    {
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', 'can_view');
+        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($caterer, 'GET', '/api/auth/me')['outsideEvents']));
+
+        $this->join($caterer, SeededRole::Member);
+
+        self::assertSame([], $this->as($caterer, 'GET', '/api/auth/me')['outsideEvents']);
+    }
+
+    #[Test]
     public function aMemberOfAnotherOrganisationIsToldOfTheEventsTheyReachFromOutside(): void
     {
         $other = $this->account('owner@ayo.events', 'Ayo Owner');
@@ -323,6 +337,7 @@ final class OutsideAccessTest extends ApiTestCase
             'role' => 'can_check_in',
             'jobLabel' => 'Kitchen',
             'startsAt' => '2030-11-14T16:00:00+01:00',
+            'timeZone' => 'Africa/Lagos',
         ]], Vec\map(Type\vec(Type\dict(Type\string(), Type\mixed()))->coerce($me['outsideEvents']), static fn (array $event): array => [
             'id' => $event['id'],
             'name' => $event['name'],
@@ -330,6 +345,7 @@ final class OutsideAccessTest extends ApiTestCase
             'role' => $event['role'],
             'jobLabel' => $event['jobLabel'],
             'startsAt' => $event['startsAt'],
+            'timeZone' => $event['timeZone'],
         ]));
     }
 
@@ -453,6 +469,113 @@ final class OutsideAccessTest extends ApiTestCase
         self::assertSame(422, $this->statusCode(), 'nor changed to it');
     }
 
+    /** @return iterable<string, array{string}> */
+    public static function readingLevels(): iterable
+    {
+        yield 'Can view' => ['can_view'];
+        yield 'Can check guests in' => ['can_check_in'];
+    }
+
+    /** sc-94342: Menu, Messages and Staff refuse a reading level from outside as Budget does, reads included, and the refusal carries nothing of the area. */
+    #[Test]
+    #[DataProvider('readingLevels')]
+    public function aReadingLevelFromOutsideIsRefusedEveryAreaItDoesNotOpen(string $level): void
+    {
+        $organisation = '/api/orgs/' . $this->organisation->getId()->toRfc4122();
+        $this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Jollof rice', 'allergens' => ['celery']]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+        $event = '/api/events/' . $this->owambe;
+        $someId = '0190a1b2-0000-7000-8000-000000000000';
+
+        $routes = [
+            ['GET', $event . '/messages'],
+            ['GET', $event . '/messages/' . $someId],
+            ['POST', $event . '/messages/subscriptions'],
+            ['GET', $event . '/menu'],
+            ['GET', $event . '/menu/picks'],
+            ['GET', $event . '/menu/asked-again'],
+            ['GET', $event . '/menu/preview'],
+            ['GET', $event . '/menu/kitchen-sheet'],
+            ['POST', $event . '/menu/kitchen-sheet/pdf'],
+            ['POST', $event . '/menu/subscriptions'],
+            ['PUT', $event . '/menu/picks/people/' . $someId . '/courses/' . $someId],
+            ['PUT', $event . '/menu/picks/variants/' . $someId],
+            ['GET', $organisation . '/dishes'],
+            ['GET', $event . '/staff'],
+            ['POST', $event . '/staff/subscriptions'],
+            ['GET', $event . '/budget'],
+        ];
+        foreach ($routes as [$method, $path]) {
+            $refusal = $this->as($caterer, $method, $path, 'GET' === $method ? null : []);
+            self::assertSame(403, $this->statusCode(), $method . ' ' . $path);
+            self::assertSame(ErrorCode::PermissionRequired->type(), $refusal['type'] ?? null, $method . ' ' . $path);
+            self::assertStringNotContainsString('Jollof', Json\encode($refusal), $path);
+            self::assertSame([], Vec\filter(Vec\keys($refusal), static fn (string $key): bool => !Iter\contains(['type', 'title', 'status', 'detail', 'code', 'permission', 'instance', 'correlationId'], $key)), $path);
+        }
+    }
+
+    /** sc-94342: by area, not route, so Reports and any area added later is closed from outside with nothing added to its routes. */
+    #[Test]
+    #[DataProvider('readingLevels')]
+    public function aReadingLevelFromOutsideHoldsOnlyThePermissionsOfTheAreasItOpens(string $level): void
+    {
+        $role = EventRole::from($level);
+        $grants = Grants::fromOutside($role);
+
+        foreach (Permission::cases() as $permission) {
+            if ($grants->holds($permission)) {
+                self::assertContains($permission->area(), $role->areasFromOutside(), $permission->value);
+            }
+        }
+        self::assertFalse($grants->holds(Permission::ReportsRead));
+        self::assertTrue(Grants::onEvent($role)->holds(Permission::MessagesRead), 'a Member at the same level still reads Messages');
+
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level);
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($caterer, 'GET', '/api/events/' . $this->owambe));
+        $expected = ['events.read', 'guests.read', 'seating.read', 'run_of_show.read', 'people.read', ...('can_check_in' === $level ? ['guests.check_in'] : [])];
+        self::assertEqualsCanonicalizing($expected, $event['event']['permissions']);
+    }
+
+    /** sc-95116: from outside, Can edit the event adds a dish kept to the event and never reads or adds to the library. */
+    #[Test]
+    public function fromOutsideADishAddedToTheMenuStaysOnTheEvent(): void
+    {
+        $organisation = '/api/orgs/' . $this->organisation->getId()->toRfc4122();
+        $jollof = $this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Jollof rice', 'allergens' => ['celery']]);
+        self::assertSame(201, $this->statusCode(), Json\encode($jollof));
+        $libraryDishId = Type\shape(['dish' => Type\shape(['id' => Type\string()], true)], true)->coerce($jollof)['dish']['id'];
+        $egusi = Type\shape(['dish' => Type\shape(['id' => Type\string()], true)], true)->coerce($this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Egusi soup', 'allergens' => ['fish']]))['dish']['id'];
+        $this->as($this->owner, 'POST', $organisation . '/dishes/' . $egusi . '/archive', []);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $menu = '/api/events/' . $this->owambe . '/menu';
+        $course = Type\shape(['courseId' => Type\string()], true)->coerce($this->as($this->owner, 'POST', $menu . '/courses', ['name' => 'Main']))['courseId'];
+        $dishes = $menu . '/courses/' . $course . '/dishes';
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', 'can_edit');
+
+        foreach ([['name' => 'Suya bites', 'allergens' => ['peanuts']], ['name' => 'Suya bites', 'allergens' => ['peanuts'], 'onlyForEvent' => false], ['libraryDishId' => $libraryDishId, 'onlyForEvent' => true], ['libraryDishId' => '0190a1b2-0000-7000-8000-000000000000']] as $body) {
+            $refusal = $this->as($caterer, 'POST', $dishes, $body);
+            self::assertSame(403, $this->statusCode(), Json\encode($body));
+            self::assertSame(ErrorCode::PermissionRequired->type(), $refusal['type'] ?? null);
+            self::assertStringNotContainsString('Jollof', Json\encode($refusal));
+        }
+
+        $this->as($caterer, 'POST', $dishes, ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
+        self::assertSame(201, $this->statusCode(), 'a name the library holds is no question from outside: ' . Json\encode($this->last()));
+        $this->as($caterer, 'POST', $dishes, ['name' => 'Egusi soup', 'allergens' => ['fish'], 'onlyForEvent' => true]);
+        self::assertSame(201, $this->statusCode(), 'nor is a name an archived dish holds: ' . Json\encode($this->last()));
+        $this->as($caterer, 'POST', $dishes, ['name' => 'Suya bites', 'allergens' => ['peanuts'], 'onlyForEvent' => true]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $onMenu = Type\shape(['menu' => Type\shape(['courses' => Type\vec(Type\shape(['dishes' => Type\vec(Type\shape(['name' => Type\string()], true))], true))], true)], true)->coerce($this->as($this->owner, 'GET', $menu));
+        self::assertSame(['Jollof rice', 'Egusi soup', 'Suya bites'], Vec\map($onMenu['menu']['courses'][0]['dishes'], static fn (array $dish): string => $dish['name']));
+        $library = Type\shape(['dishes' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($this->as($this->owner, 'GET', $organisation . '/dishes'));
+        self::assertSame(['Jollof rice', 'Egusi soup'], Vec\map($library['dishes'], static fn (array $dish): string => $dish['name']));
+    }
+
     /** @return iterable<string, array{0: string, 1: EventRole}> */
     public static function serviceLevels(): iterable
     {
@@ -463,16 +586,23 @@ final class OutsideAccessTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('serviceLevels')]
-    public function someoneFromOutsideWorksTheServiceAtALevelAndReadsNothingElseOfTheEvent(string $level, EventRole $role): void
+    public function someoneFromOutsideWorksTheServiceAtALevelAndReadsNothingElseOfTheEventButItsCard(string $level, EventRole $role): void
     {
         $waiter = $this->account('bisi@lagoslights.example', 'Bisi');
         $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level, 'Waiter');
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($role, $this->outsider($this->owambe, $waiter)?->getRole());
 
-        foreach (['/people', '/guests', '/budget'] as $rest) {
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($waiter, 'GET', '/api/events/' . $this->owambe));
+        self::assertSame(200, $this->statusCode(), 'the event\'s card, for Overview (sc-95382)');
+        self::assertSame(['events.read', 'service.work', ...(EventRole::CanRunFloor === $role ? ['service.manage'] : [])], $event['event']['permissions']);
+
+        $this->as($waiter, 'GET', '/api/events/' . $this->owambe . '/service/stations');
+        self::assertSame(EventRole::CanWorkFloor === $role ? 403 : 200, $this->statusCode(), 'the stations');
+
+        foreach (['/people', '/guests', '/schedule', '/seating-plan', '/budget'] as $rest) {
             $this->as($waiter, 'GET', '/api/events/' . $this->owambe . $rest);
-            self::assertContains($this->statusCode(), [403, 404], $rest);
+            self::assertSame(403, $this->statusCode(), $rest);
         }
     }
 
@@ -557,7 +687,12 @@ final class OutsideAccessTest extends ApiTestCase
 
     private function member(string $address, SeededRole $seeded, string $name): User
     {
-        $user = $this->account($address, $name);
+        return $this->join($this->account($address, $name), $seeded);
+    }
+
+    private function join(User $user, SeededRole $seeded): User
+    {
+        $user = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
         self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));

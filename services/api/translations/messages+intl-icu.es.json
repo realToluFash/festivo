@@ -417,6 +417,7 @@
     "payment_reminder.email.settings": "Configuración de notificaciones",
     "payment_reminder.email.footer": "Recibe este correo porque puede registrar pagos en {organisation}. Para dejar de recibirlos, desactive el correo de Facturación en Configuración de notificaciones.",
     "limits.staff_links": "Este enlace se ha abierto demasiadas veces. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.service_taps": "Demasiados pasos a la vez. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
     "guestReplies.bell.coming": "{count, plural, one {{count, number, ::group-auto} viene} many {{count, number, ::group-auto} vienen} other {{count, number, ::group-auto} vienen}}",
     "guestReplies.bell.notComing": "{count, plural, one {{count, number, ::group-auto} no viene} many {{count, number, ::group-auto} no vienen} other {{count, number, ::group-auto} no vienen}}",
     "guestReplies.bell.maybe": "{count, plural, one {{count, number, ::group-auto} por confirmar} many {{count, number, ::group-auto} por confirmar} other {{count, number, ::group-auto} por confirmar}}",
@@ -515,7 +516,7 @@
     "validation.guest_message_no_guests": "Este evento aún no tiene invitados a los que escribir.",
     "guest_message.event_draft": "Este evento es un borrador. Publíquelo para escribir a sus invitados.",
     "guest_message.event_ended": "Este evento terminó hace más de 30 días, así que ya no puede escribir a sus invitados.",
-    "saved_audience.full": "Este evento tiene {most, number, ::group-auto} públicos guardados, el máximo posible. Elimina uno para guardar otro.",
+    "saved_audience.full": "Este evento tiene {most, number, ::group-auto} públicos guardados, el máximo posible. Elimine uno para guardar otro.",
     "validation.guest_greet_as_too_long": "Acorte el nombre en el saludo a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
     "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar."
 }

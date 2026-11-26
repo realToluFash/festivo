@@ -2387,10 +2387,16 @@ span {
   margin-bottom: var(--space3xl);
 }
 
-/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
+}
+
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not.
+   Important, because a page heading's own :focus { outline: none } would otherwise hide it (sc-74701);
+   a scope whose ring is another colour sets --noticeRing. */
 [data-notice-landing]:focus {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
+  outline: 2px solid var(--noticeRing, var(--colorAccent)) !important;
+  outline-offset: 2px !important;
 }
 
 .two-factor-overdue {

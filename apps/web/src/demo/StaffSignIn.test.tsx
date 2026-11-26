@@ -158,6 +158,62 @@ describe('a second number on an account, after the right code (sc-4235)', () => 
   });
 });
 
+describe('a member of an organisation that signs in with Google or Apple only (sc-94849)', () => {
+  const title = 'Ìrè Events signs in with Google or Apple only';
+  const line = (providers: string) =>
+    `A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
+
+  it('names nothing before the right code, then refuses it in place of the code step', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const router = await open('/demo/staff-sign-in?state=code-provider-only');
+
+    expect(screen.queryByText(/Ìrè|@/u)).toBeNull();
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Sign in');
+    await wait(1000);
+
+    expect(router.state.location.pathname).toBe('/demo/staff-sign-in');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(title);
+    expect(screen.getByText('Staff link')).toBeDefined();
+    expect(screen.getByText('Joana & Rui’s wedding')).toBeDefined();
+    expect(screen.getByText(line('Google'))).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+    expect(screen.queryByLabelText('Code from WhatsApp')).toBeNull();
+    expect(screen.queryByText(/password|@/iu)).toBeNull();
+  });
+
+  it('draws only the providers the account has linked, Google before Apple', async () => {
+    await open('/demo/staff-sign-in?state=provider-only-apple');
+
+    expect(screen.getByText(line('Apple'))).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
+  });
+
+  it('names both, joined with or, when both are linked', async () => {
+    await open('/demo/staff-sign-in?state=provider-only-both');
+
+    expect(screen.getByText(line('Apple or Google'))).toBeDefined();
+    const names = screen.getAllByRole('button').map((one) => one.textContent);
+    expect(names).toEqual(['Continue with Google', 'Continue with Apple']);
+  });
+
+  it('opens the link signed in once a provider signs them in, with no code asked', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const router = await open('/demo/staff-sign-in?state=provider-only');
+
+    press('Continue with Google');
+    expect(
+      screen.getByRole('button', { name: 'Continue with Google' }).getAttribute('aria-busy'),
+    ).toBe('true');
+    await wait(1000);
+
+    expect(router.state.location.pathname).toBe('/demo/my-night');
+  });
+});
+
 describe('signed in as someone else, and signed out (sc-4235)', () => {
   it('names the link’s person and signs out to continue', async () => {
     await open('/demo/staff-sign-in?state=wrong-account');

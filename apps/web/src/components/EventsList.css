@@ -362,6 +362,10 @@
   margin-top: auto;
 }
 
+.ev-card-foot.is-unseen {
+  visibility: hidden;
+}
+
 .ev-card-foot :is(a, button) {
   position: relative;
   z-index: 2;

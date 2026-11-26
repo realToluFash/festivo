@@ -6,7 +6,7 @@ export interface MyNight {
   pastAccess: boolean;
   /** Their shift's clock card (sc-234); null once it is gone. */
   clock: ShiftClockCard | null;
-  event: { name: string; timeZone: string };
+  event: { id: string; name: string; timeZone: string };
   /** The link's end, when the browser is signed out. */
   endsAt: string;
   station: string | null;
@@ -19,6 +19,12 @@ export interface MyNight {
   doorsAt: string;
   /** Null with no section station; empty until doors open. */
   tables: MyNightTable[] | null;
+  /** Their job's level opens check-in at the door (sc-28230). */
+  checksIn: boolean;
+  /** Their station is a kitchen station and their access opens it (sc-95382). */
+  dishes: boolean;
+  /** The house rules, shown as Before you start (sc-3917). */
+  rules: string | null;
 }
 
 export interface MyNightMoment {
@@ -120,7 +126,7 @@ function asLead(raw: unknown): MyNight['lead'] | undefined {
 /** The night, or null when it is not one this client knows. */
 export function asMyNight(raw: unknown): MyNight | null {
   if (!isRecord(raw) || !isRecord(raw.event)) return null;
-  const { name, timeZone } = raw.event;
+  const { id, name, timeZone } = raw.event;
   const { endsAt, station, job, doorsAt } = raw;
   const shift = asShift(raw.shift);
   const later = asLater(raw.later);
@@ -130,6 +136,7 @@ export function asMyNight(raw: unknown): MyNight | null {
   const clock = raw.clock === null ? null : asShiftClockCard(raw.clock);
 
   if (
+    typeof id !== 'string' ||
     typeof name !== 'string' ||
     typeof timeZone !== 'string' ||
     typeof endsAt !== 'string' ||
@@ -141,6 +148,9 @@ export function asMyNight(raw: unknown): MyNight | null {
     lead === undefined ||
     timing == null ||
     (raw.tables !== null && tables == null) ||
+    typeof raw.checksIn !== 'boolean' ||
+    typeof raw.dishes !== 'boolean' ||
+    !text(raw.rules) ||
     typeof raw.pastAccess !== 'boolean' ||
     (raw.clock !== null && clock == null)
   )
@@ -149,7 +159,7 @@ export function asMyNight(raw: unknown): MyNight | null {
   return {
     pastAccess: raw.pastAccess,
     clock,
-    event: { name, timeZone },
+    event: { id, name, timeZone },
     endsAt,
     station,
     job,
@@ -159,5 +169,8 @@ export function asMyNight(raw: unknown): MyNight | null {
     timing,
     doorsAt,
     tables,
+    checksIn: raw.checksIn,
+    dishes: raw.dishes,
+    rules: raw.rules,
   };
 }

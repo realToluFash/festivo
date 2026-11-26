@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Service\Controller;
 
+use App\Domain\Service\Model\Expected;
 use App\Domain\Service\ServiceRead;
 use App\Domain\Service\ServiceSteps;
+use App\Domain\Service\ServiceTaps;
+use App\Domain\Staff\Station\KitchenStationList;
 use App\Entity\Event;
 use App\Entity\MenuCourse;
 use App\Entity\ServicePlate;
@@ -16,7 +19,9 @@ use App\Enum\HeldChoice;
 use App\Enum\ItemMark;
 use App\Enum\ItemState;
 use App\Enum\Permission;
+use App\Enum\PlateStage;
 use App\Enum\SentBackReason;
+use App\Enum\ServicePlace;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\InThisEvent;
@@ -27,6 +32,7 @@ use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
 use App\Repository\ServicePlateRepository;
 use App\Repository\ServiceTrayRepository;
+use Closure;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,7 +40,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** A service (sc-4005): one read per course, and the steps that move plates. Each write answers the course's read as the caller sees it. */
+/** A service (sc-4005): one read per course, and the steps that move plates. Each write answers the course's read as the caller sees it, and carries a key and what its tap saw (sc-4028). */
 final readonly class ServiceController
 {
     public function __construct(
@@ -46,6 +52,8 @@ final readonly class ServiceController
         private ServiceRead $serviceRead,
         private ServiceSteps $serviceSteps,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
+        private ServiceTaps $serviceTaps,
+        private KitchenStationList $kitchenStationList,
     ) {
     }
 
@@ -54,6 +62,17 @@ final readonly class ServiceController
     public function read(#[InThisEvent('courseId')] MenuCourse $course): JsonResponse
     {
         return $this->answered($course);
+    }
+
+    /** Kitchen stations open with the pass (sc-4002), so working only the floor is refused here (sc-4015). */
+    #[Route('/api/events/{eventId}/service/stations', name: 'service_stations', methods: ['GET'])]
+    #[InEvent(Permission::ServiceWork)]
+    public function stations(string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $this->grants($event)->requireServiceAt(ServicePlace::Pass);
+
+        return new JsonResponse($this->kitchenStationList->of($event, $this->user()));
     }
 
     #[Route('/api/events/{eventId}/service/subscriptions', name: 'service_subscribe', methods: ['POST'])]
@@ -70,10 +89,12 @@ final readonly class ServiceController
     #[InEvent(Permission::ServiceWork)]
     public function item(Request $request, #[InThisEvent('courseId')] MenuCourse $course): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['item' => Type\string(), 'state' => Type\backed_enum(ItemState::class), 'readyIn' => Type\optional(Type\nullable(Type\int()))]));
-        $this->serviceSteps->markItem($course, $body['item'], $body['state'], $body['readyIn'] ?? null, $this->grants($course->getEvent()), $this->user());
+        return $this->tapped($request, $course->getEvent(), function () use ($request, $course): JsonResponse {
+            $body = Input::body($request, Type\shape(['item' => Type\string(), 'state' => Type\backed_enum(ItemState::class), 'readyIn' => Type\optional(Type\nullable(Type\int())), 'expected' => self::expectedShape()]));
+            $this->serviceSteps->markItem($course, $body['item'], $body['state'], $body['readyIn'] ?? null, self::expected($body, 'item'), $this->grants($course->getEvent()), $this->user());
 
-        return $this->answered($course);
+            return $this->answered($course);
+        });
     }
 
     #[Route('/api/events/{eventId}/service/plates/{plateId}/choice', name: 'service_choice', methods: ['PUT'])]
@@ -81,10 +102,13 @@ final readonly class ServiceController
     public function choice(Request $request, string $eventId, string $plateId): JsonResponse
     {
         $plate = $this->plate($eventId, $plateId);
-        $body = Input::body($request, Type\shape(['choice' => Type\backed_enum(HeldChoice::class)]));
-        $this->serviceSteps->choose($plate, $body['choice'], $this->grants($plate->getEvent()), $this->user());
 
-        return $this->answered($plate->getCourse());
+        return $this->tapped($request, $plate->getEvent(), function () use ($request, $plate): JsonResponse {
+            $body = Input::body($request, Type\shape(['choice' => Type\backed_enum(HeldChoice::class), 'expected' => self::expectedShape()]));
+            $this->serviceSteps->choose($plate, $body['choice'], self::expected($body, 'plates'), $this->grants($plate->getEvent()), $this->user());
+
+            return $this->answered($plate->getCourse());
+        });
     }
 
     /** `table` is a table's key from the read. */
@@ -104,60 +128,78 @@ final readonly class ServiceController
     public function mark(Request $request, string $eventId, string $trayId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $body = Input::body($request, Type\shape(['plateId' => Type\string(), 'item' => Type\string(), 'mark' => Type\nullable(Type\backed_enum(ItemMark::class))]));
-        $this->serviceSteps->mark($tray, $this->plate($eventId, $body['plateId']), $body['item'], $body['mark'], $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse());
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $eventId, $tray): JsonResponse {
+            $body = Input::body($request, Type\shape(['plateId' => Type\string(), 'item' => Type\string(), 'mark' => Type\nullable(Type\backed_enum(ItemMark::class)), 'expected' => self::expectedShape()]));
+            $this->serviceSteps->mark($tray, $this->plate($eventId, $body['plateId']), $body['item'], $body['mark'], self::expected($body, 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse());
+        });
     }
 
     #[Route('/api/events/{eventId}/service/trays/{trayId}/check', name: 'service_tray_check', methods: ['POST'])]
     #[InEvent(Permission::ServiceWork)]
-    public function check(string $eventId, string $trayId): JsonResponse
+    public function check(Request $request, string $eventId, string $trayId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $this->serviceSteps->check($tray, $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse());
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $tray): JsonResponse {
+            $this->serviceSteps->check($tray, self::expected(self::expectedBody($request), 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse());
+        });
     }
 
     #[Route('/api/events/{eventId}/service/trays/{trayId}/plates/{plateId}', name: 'service_tray_take_off', methods: ['DELETE'])]
     #[InEvent(Permission::ServiceWork)]
-    public function takeOff(string $eventId, string $trayId, string $plateId): JsonResponse
+    public function takeOff(Request $request, string $eventId, string $trayId, string $plateId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $this->serviceSteps->takeOff($tray, $this->plate($eventId, $plateId), $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse());
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $eventId, $tray, $plateId): JsonResponse {
+            $this->serviceSteps->takeOff($tray, $this->plate($eventId, $plateId), self::expected(self::expectedBody($request), 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse());
+        });
     }
 
     #[Route('/api/events/{eventId}/service/trays/{trayId}/take-to-table', name: 'service_tray_take', methods: ['POST'])]
     #[InEvent(Permission::ServiceWork)]
-    public function takeToTable(string $eventId, string $trayId): JsonResponse
+    public function takeToTable(Request $request, string $eventId, string $trayId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $this->serviceSteps->takeToTable($tray, $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse());
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $tray): JsonResponse {
+            $this->serviceSteps->takeToTable($tray, self::expected(self::expectedBody($request), 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse());
+        });
     }
 
     #[Route('/api/events/{eventId}/service/trays/{trayId}/plates/{plateId}/served', name: 'service_tray_tick', methods: ['POST'])]
     #[InEvent(Permission::ServiceWork)]
-    public function tick(string $eventId, string $trayId, string $plateId): JsonResponse
+    public function tick(Request $request, string $eventId, string $trayId, string $plateId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $this->serviceSteps->tick($tray, $this->plate($eventId, $plateId), $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse());
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $eventId, $tray, $plateId): JsonResponse {
+            $this->serviceSteps->tick($tray, $this->plate($eventId, $plateId), self::expected(self::expectedBody($request), 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse());
+        });
     }
 
     #[Route('/api/events/{eventId}/service/trays/{trayId}/all-served', name: 'service_tray_all_served', methods: ['POST'])]
     #[InEvent(Permission::ServiceWork)]
-    public function allServed(string $eventId, string $trayId): JsonResponse
+    public function allServed(Request $request, string $eventId, string $trayId): JsonResponse
     {
         $tray = $this->tray($eventId, $trayId);
-        $counts = $this->serviceSteps->allServed($tray, $this->grants($tray->getEvent()), $this->user());
 
-        return $this->answered($tray->getCourse(), Response::HTTP_OK, $counts);
+        return $this->tapped($request, $tray->getEvent(), function () use ($request, $tray): JsonResponse {
+            $counts = $this->serviceSteps->allServed($tray, self::expected(self::expectedBody($request), 'plates'), $this->grants($tray->getEvent()), $this->user());
+
+            return $this->answered($tray->getCourse(), Response::HTTP_OK, $counts);
+        });
     }
 
     #[Route('/api/events/{eventId}/service/plates/{plateId}/sent-back', name: 'service_send_back', methods: ['POST'])]
@@ -165,22 +207,74 @@ final readonly class ServiceController
     public function sendBack(Request $request, string $eventId, string $plateId): JsonResponse
     {
         $plate = $this->plate($eventId, $plateId);
-        $body = Input::body($request, Type\shape(['reason' => Type\backed_enum(SentBackReason::class)]));
-        $this->serviceSteps->sendBack($plate, $body['reason'], $this->grants($plate->getEvent()), $this->user());
 
-        return $this->answered($plate->getCourse());
+        return $this->tapped($request, $plate->getEvent(), function () use ($request, $plate): JsonResponse {
+            $body = Input::body($request, Type\shape(['reason' => Type\backed_enum(SentBackReason::class), 'expected' => self::expectedShape()]));
+            $this->serviceSteps->sendBack($plate, $body['reason'], self::expected($body, 'plates'), $this->grants($plate->getEvent()), $this->user());
+
+            return $this->answered($plate->getCourse());
+        });
     }
 
     /** `subject` is a plate's, a tray's or an item's id. */
     #[Route('/api/events/{eventId}/service/undo', name: 'service_undo', methods: ['POST'])]
     #[InEvent(Permission::ServiceWork)]
-    public function undo(Request $request, string $eventId): Response
+    public function undo(Request $request, string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
-        $body = Input::body($request, Type\shape(['subject' => Type\string()]));
-        $this->serviceSteps->undo($event, $body['subject'], $this->grants($event), $this->user());
 
-        return new Response(null, Response::HTTP_NO_CONTENT);
+        return $this->tapped($request, $event, function () use ($request, $event): JsonResponse {
+            $body = Input::body($request, Type\shape(['subject' => Type\string(), 'expected' => self::expectedShape()]));
+            $this->serviceSteps->undo($event, $body['subject'], self::expected($body, null), $this->grants($event), $this->user());
+
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        });
+    }
+
+    /**
+     * A key and an answer kept for it: the same key again gets the first answer and changes nothing.
+     *
+     * @param Closure(): JsonResponse $write
+     */
+    private function tapped(Request $request, Event $event, Closure $write): JsonResponse
+    {
+        $user = $this->user();
+        $sent = $this->serviceTaps->sent($request, $user);
+
+        return $this->serviceTaps->once($event, $user, $sent, $write);
+    }
+
+    /** @return Type\TypeInterface<array{plates?: array<string, PlateStage>, item?: ItemState}|null> */
+    private static function expectedShape(): Type\TypeInterface
+    {
+        return Type\optional(Type\nullable(Type\shape(['plates' => Type\optional(Type\dict(Type\string(), Type\backed_enum(PlateStage::class))), 'item' => Type\optional(Type\backed_enum(ItemState::class))])));
+    }
+
+    /** @return array{expected?: array{plates?: array<string, PlateStage>, item?: ItemState}|null} */
+    private static function expectedBody(Request $request): array
+    {
+        return Input::body($request, Type\shape(['expected' => self::expectedShape()]));
+    }
+
+    /**
+     * @param array{expected?: array{plates?: array<string, PlateStage>, item?: ItemState}|null, ...} $body
+     * @param 'plates'|'item'|null                                                                    $wanted null when either will do
+     */
+    private static function expected(array $body, ?string $wanted): Expected
+    {
+        $saw = $body['expected'] ?? null;
+        $expected = new Expected($saw['plates'] ?? null, $saw['item'] ?? null);
+        $missing = match ($wanted) {
+            'plates' => null === $expected->plates,
+            'item' => null === $expected->item,
+            null => null === $expected->plates && null === $expected->item,
+        };
+
+        if ($missing) {
+            throw new ApiException(ErrorCode::ExpectedRequired, 'service.expected_required');
+        }
+
+        return $expected;
     }
 
     /** @param array<string, mixed> $extra */

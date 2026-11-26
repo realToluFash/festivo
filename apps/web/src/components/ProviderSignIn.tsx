@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
+import { holdReturn } from '../heldReturn.ts';
+import { offButton } from '../offButton.ts';
 import { startProviderSignIn } from '../providerSignIn.ts';
 import { OrLine } from './OrLine.tsx';
 
@@ -10,24 +13,39 @@ type Provider = 'google' | 'apple';
 export function ProviderSignIn({
   only,
   pair = false,
-}: { only?: readonly string[]; pair?: boolean } = {}) {
+  returnTo,
+}: { only?: readonly string[]; pair?: boolean; returnTo?: string } = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [leaving, setLeaving] = useState(false);
   const shown = (['google', 'apple'] as const).filter(
     (provider: Provider) => only == null || only.length === 0 || only.includes(provider),
   );
+  const column = returnTo != null;
+  const wide = column ? ' rd-provider' : '';
+  const off = column
+    ? { 'aria-busy': leaving || undefined, ...offButton(leaving, { dim: false }) }
+    : {};
+
+  function start(provider: Provider, name: string): void {
+    if (returnTo != null) {
+      holdReturn(returnTo);
+      setLeaving(true);
+    }
+    void startProviderSignIn(provider).catch(() => {
+      setLeaving(false);
+      void navigate(`/sign-in?provider-failed=${name}`);
+    });
+  }
 
   const buttons = (
     <>
       {shown.includes('google') && (
         <button
-          className="button button-google"
+          className={`button button-google${wide}`}
           type="button"
-          onClick={() => {
-            void startProviderSignIn('google').catch(() =>
-              navigate('/sign-in?provider-failed=Google'),
-            );
-          }}
+          {...off}
+          onClick={() => start('google', 'Google')}
         >
           <GoogleMark />
           <span>{t('signIn.withGoogle', { provider: 'Google' })}</span>
@@ -36,13 +54,10 @@ export function ProviderSignIn({
 
       {shown.includes('apple') && (
         <button
-          className={pair ? 'button button-apple button-apple-light' : 'button button-apple'}
+          className={`${pair ? 'button button-apple button-apple-light' : 'button button-apple'}${wide}`}
           type="button"
-          onClick={() => {
-            void startProviderSignIn('apple').catch(() =>
-              navigate('/sign-in?provider-failed=Apple'),
-            );
-          }}
+          {...off}
+          onClick={() => start('apple', 'Apple')}
         >
           <AppleMark onLight={pair} />
           <span>{t('signIn.withApple', { provider: 'Apple' })}</span>
@@ -50,6 +65,8 @@ export function ProviderSignIn({
       )}
     </>
   );
+
+  if (column) return <div className="rd-providers">{buttons}</div>;
 
   return (
     <>

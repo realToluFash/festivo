@@ -8,6 +8,7 @@ import {
   sheetKeysCover,
   sheetPadding,
   sheetStripHas,
+  sheetTouchHolds,
   sheetUnderKeys,
   sheetWindows,
 } from './sheet.ts';
@@ -150,6 +151,23 @@ describe('dragging a sheet down', () => {
     expect(sheetStripHas(44)).toBe(true);
     expect(sheetStripHas(45)).toBe(false);
     expect(sheetStripHas(-1)).toBe(false);
+  });
+
+  it('holds no drag while the sheet is scrolled from its top, even from the strip', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 1, scrolled: true })).toBe(false);
+  });
+
+  it('holds a drag from the strip with the sheet at its top', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 1, scrolled: false })).toBe(true);
+  });
+
+  it('holds no drag outside the strip, scrolled or not', () => {
+    expect(sheetTouchHolds({ from: 45, touches: 1, scrolled: false })).toBe(false);
+    expect(sheetTouchHolds({ from: 45, touches: 1, scrolled: true })).toBe(false);
+  });
+
+  it('holds no drag for a second finger', () => {
+    expect(sheetTouchHolds({ from: 10, touches: 2, scrolled: false })).toBe(false);
   });
 
   it('reads the speed over the last tenth of a second before the finger lifts', () => {

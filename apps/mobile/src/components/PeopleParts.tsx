@@ -16,7 +16,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
 import { useShellLayout } from './settingsShell.ts';
 import { Avatar } from './SettingsParts.tsx';
-import { Sheet } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetScrollView } from './Sheet.tsx';
 import {
   Ask,
   type AskProps,
@@ -349,7 +349,15 @@ export function RoleSheet<R extends string>({
         headingTakesFocus
         testID="people.roleSheet"
       >
-        <View style={styles.sheetBody}>{parts}</View>
+        <SheetScrollView
+          holdsHeading
+          style={styles.sheetScroll}
+          contentContainerStyle={styles.sheetBody}
+          bounces={false}
+          testID="people.roleSheet.scroll"
+        >
+          {parts}
+        </SheetScrollView>
       </Sheet>
       <Ask open={open && removing != null} opener={opener} {...ask} />
     </>
@@ -835,9 +843,10 @@ const styles = StyleSheet.create({
   },
   failed: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceMd },
   remove: { borderTopWidth: 1, borderTopColor: tokens.colorBorder, paddingTop: tokens.spaceXxs },
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
   sheetBody: {
     gap: tokens.spaceLg,
-    paddingTop: 27,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },

@@ -7,17 +7,25 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\Staff\Link\StaffLinks;
+use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
+use App\Entity\ProviderIdentity;
 use App\Entity\RefreshToken;
+use App\Entity\Role;
 use App\Entity\StaffMember;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
+use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
+use App\Http\RefreshTokenCookies;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
@@ -26,6 +34,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -301,12 +310,72 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
-    public function aJobAboveCheckingInStillHoldsNoMoreThanReading(): void
+    public function aMemberSignedInByTheirLinkKeepsTheirOrganisationRoleAndIsNotListedAsOutside(): void
     {
-        $this->jobAccess('run');
+        $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
+        $token = $this->link($this->ada);
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+
+        self::assertNull($this->outsideRole($this->owner));
+        $this->as($this->owner, 'GET', '/api/events/' . $this->eventId);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/my-night');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->signsOutWithTheLink($token, $answer, $this->owner);
+    }
+
+    #[Test]
+    public function aMemberWithNoRoleOnTheEventGetsNothingFromTheLinkButTheirNight(): void
+    {
+        $member = $this->account('kemi@ade.ng', 'Kemi Ade');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => SeededRole::Member]);
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        self::em()->persist(new Membership($organisation, $member, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+        $this->phone($member, self::NUMBER, primary: true, verified: true);
+        $token = $this->link($this->ada);
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+
+        self::assertNull($this->outsideRole($member));
+        $this->as($member, 'GET', '/api/events/' . $this->eventId);
+        self::assertSame(404, $this->statusCode(), Json\encode($this->last()));
+        $this->as($member, 'GET', '/api/events/' . $this->eventId . '/my-night');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->signsOutWithTheLink($token, $answer, $member);
+    }
+
+    /** @return iterable<string, array{0: string, 1: string, 2: list<string>, 3: int, 4: int}> job access, level, the event read's permissions, the stations read, the other areas' reads */
+    public static function jobLevels(): iterable
+    {
+        $reads = ['events.read', 'guests.read', 'seating.read', 'run_of_show.read', 'people.read'];
+
+        yield 'Can view' => ['view', 'can_view', $reads, 403, 200];
+        yield 'Can check guests in' => ['check_in', 'can_check_in', [...$reads, 'guests.check_in'], 403, 200];
+        yield 'Can work the floor' => ['floor', 'can_work_floor', ['events.read', 'service.work'], 403, 403];
+        yield 'Can work the pass' => ['pass', 'can_work_pass', ['events.read', 'service.work'], 200, 403];
+        yield 'Can run the floor' => ['run', 'can_run_floor', ['events.read', 'service.work', 'service.manage'], 200, 403];
+    }
+
+    /** @param list<string> $permissions */
+    #[Test]
+    #[DataProvider('jobLevels')]
+    public function aJobsLevelIsWhatTheStaffLinkHoldsAndAServiceLevelReadsTheEventsCardAndNothingElse(string $access, string $level, array $permissions, int $stations, int $areas): void
+    {
+        $this->jobAccess($access);
         $user = $this->signedIn();
 
-        self::assertSame('can_view', $this->outsideRole($user));
+        self::assertSame($level, $this->outsideRole($user));
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($user, 'GET', '/api/events/' . $this->eventId));
+        self::assertSame(200, $this->statusCode(), "the event's card opens Overview (sc-95382)");
+        self::assertEqualsCanonicalizing($permissions, $event['event']['permissions']);
+        $this->as($user, 'GET', '/api/events/' . $this->eventId . '/service/stations');
+        self::assertSame($stations, $this->statusCode(), Json\encode($this->last()));
+        foreach (['/guests', '/schedule', '/seating-plan', '/people'] as $rest) {
+            $this->as($user, 'GET', '/api/events/' . $this->eventId . $rest);
+            self::assertSame($areas, $this->statusCode(), $rest);
+        }
     }
 
     #[Test]
@@ -458,6 +527,139 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertSame('Ada Obi', $entry->getFullName());
     }
 
+    #[Test]
+    public function aLinkedMemberOfAGoogleOrAppleOnlyOrganisationIsRefusedAfterTheRightCodeAndTheEntryIsLinked(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $token = $this->link($this->ada);
+        $sessions = self::em()->getRepository(RefreshToken::class)->count(['user' => $tope->getId()]);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER), 'cookie');
+
+        self::assertSame(403, $this->statusCode(), Json\encode($answer));
+        self::assertSame(ErrorCode::OAuthOnly->type(), $answer['type'] ?? null);
+        self::assertSame('Lumen Feiras', $answer['organisation'] ?? null);
+        self::assertSame('tope@lumen.pt', $answer['email'] ?? null);
+        self::assertSame(['google'], $answer['providers'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertNull($this->client->getCookieJar()->get(RefreshTokenCookies::NAME, RefreshTokenCookies::PATH), 'no session');
+        self::assertSame($sessions, self::em()->getRepository(RefreshToken::class)->count(['user' => $tope->getId()]));
+        self::assertSame($tope->getId()->toRfc4122(), $this->entry($this->ada)->getAccount()?->getId()->toRfc4122(), 'the link ties the entry to the account');
+        self::assertTrue($this->audited('staff.account_linked'));
+        self::assertFalse($this->audited('phone.signed_in'));
+    }
+
+    #[Test]
+    public function aLinkedMemberIsRefusedTheirOwnOrganisationsLinkAsWell(): void
+    {
+        $this->phone($this->owner, self::NUMBER, primary: true, verified: true);
+        $this->linkProvider($this->owner, 'g-owner');
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $organisation->setProviderSignInOnly(true);
+        self::em()->flush();
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertSame('Ìrè Events', $answer['organisation'] ?? null);
+    }
+
+    #[Test]
+    public function withTwoFactorOnALinkedMemberIsRefusedBeforeTheTwoFactorStep(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $this->twoFactorOn($tope);
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertArrayNotHasKey('twoFactorChallenge', $answer);
+    }
+
+    #[Test]
+    public function sendCodeAnswersAlikeForARefusedMembersNumberAndAnyOther(): void
+    {
+        $gate = $this->newJob('Gate', 'check_in');
+        $other = $this->person('Femi Ola', '0803 111 0010', $gate);
+        $this->onShift($other, $gate);
+        $this->providerOnlyMember();
+
+        foreach ([$this->ada, $other] as $staffId) {
+            $this->post('/api/staff-links/sign-in/send', ['token' => $this->link($staffId)]);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+            self::assertSame(['handle', 'cooldownSeconds'], Vec\keys($this->last()));
+        }
+    }
+
+    #[Test]
+    public function anUnlinkedMemberOfAGoogleOrAppleOnlyOrganisationIsStillSignedInByCodeAndReadsButCannotChange(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $this->unlinkProviders($tope);
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        $this->as($tope, 'PATCH', '/api/orgs/' . $this->lumenOf($tope)->getId()->toRfc4122(), ['name' => 'Renamed']);
+        self::assertSame([403, ErrorCode::OAuthOnlyUnlinked->type()], [$this->statusCode(), $this->last()['type'] ?? null], Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aMemberOfAnOrganisationRequiringOnlyTwoFactorIsSignedInByCodeAsBefore(): void
+    {
+        $tope = $this->providerOnlyMember();
+        $lumen = $this->lumenOf($tope);
+        $lumen->setProviderSignInOnly(false);
+        $lumen->setAdministratorsNeedTwoFactor(true);
+        self::em()->flush();
+        $token = $this->link($this->ada);
+
+        $answer = $this->signIn($token, $this->send($token), $this->codeTo(self::NUMBER));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($answer));
+        self::assertTrue($this->audited('phone.signed_in'));
+    }
+
+    /** Tope, an Admin of Lumen Feiras, which signs in with Google or Apple only, with Google linked; Ada's entry's mobile is their verified primary. */
+    private function providerOnlyMember(): User
+    {
+        $founder = $this->account('owner@lumen.pt', 'Lumen Owner');
+        $lumen = self::service(OrganisationFounder::class)->found($founder, 'Lumen Feiras', 'PT', 'Europe/Lisbon');
+        $lumen->setProviderSignInOnly(true);
+        self::em()->flush();
+        $tope = $this->account('tope@lumen.pt', 'Tope Bello');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $lumen, 'seededAs' => SeededRole::Admin]) ?? self::fail('no role');
+        self::em()->persist(new Membership($lumen, self::em()->find(User::class, $tope->getId()) ?? self::fail('no user'), $role, MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->flush();
+        $this->linkProvider($tope, 'g-tope');
+        $this->phone($tope, self::NUMBER, primary: true, verified: true);
+
+        return $tope;
+    }
+
+    private function lumenOf(User $user): Organisation
+    {
+        return self::em()->getRepository(Membership::class)->findOneBy(['user' => $user->getId()])?->getOrganisation() ?? self::fail('no organisation');
+    }
+
+    private function linkProvider(User $user, string $subject): void
+    {
+        self::em()->persist(new ProviderIdentity(self::em()->find(User::class, $user->getId()) ?? self::fail('no user'), IdentityProvider::Google, $subject, null));
+        self::em()->flush();
+    }
+
+    private function unlinkProviders(User $user): void
+    {
+        foreach (self::em()->getRepository(ProviderIdentity::class)->findBy(['user' => $user->getId()]) as $identity) {
+            self::em()->remove($identity);
+        }
+
+        self::em()->flush();
+    }
+
     private function signedIn(): User
     {
         $token = $this->link($this->ada);
@@ -465,6 +667,23 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         return $this->accountOn(self::NUMBER) ?? self::fail('no account');
+    }
+
+    /** @param array<string, mixed> $answer a cookie sign-in's answer */
+    private function signsOutWithTheLink(#[SensitiveParameter] string $token, array $answer, User $user): void
+    {
+        $plain = $this->client->getCookieJar()->get(RefreshTokenCookies::NAME, RefreshTokenCookies::PATH)?->getValue() ?? self::fail('no cookie');
+        $chain = self::em()->getRepository(RefreshToken::class)->findOneBy(['tokenHash' => TokenIssuer::hash($plain)]) ?? self::fail('no session');
+        self::assertTrue($chain->endsWithGrants());
+        self::assertTrue($chain->getUser()->getId()->equals($user->getId()));
+
+        $this->client->request('POST', '/api/staff-links/look', server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($answer['accessToken']),
+        ], content: Json\encode(['token' => $token]));
+
+        $ends = self::service(StaffLinkGrants::class)->lastEndFor(self::em()->find(User::class, $user->getId()) ?? self::fail('no user')) ?? self::fail('no grant');
+        self::assertSame($ends->setTimezone(new DateTimeZone('Africa/Lagos'))->format(\DATE_ATOM), $this->last()['signedOutAt'] ?? null, Json\encode($this->last()));
     }
 
     private function outsideRole(User $user): ?string

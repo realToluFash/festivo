@@ -26,6 +26,7 @@ use App\Repository\ServicePlateRepository;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 /** @phpstan-type Viewer array{grants: Grants, user: User} */
 final readonly class ServiceRead
@@ -39,6 +40,8 @@ final readonly class ServiceRead
         private ServiceItemRepository $serviceItemRepository,
         private ServicePlateRepository $servicePlateRepository,
         private TrayRead $trayRead,
+        private ServicePhases $servicePhases,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -108,6 +111,8 @@ final readonly class ServiceRead
             'trays' => Vec\map($trays, fn (ServiceTray $tray): array => $this->trayRead->tray($tray, $onTrays, $stations['stops'], $stopOf, $passId)),
             'sections' => ServiceCounts::bySection($tableReads),
             'counts' => ServiceCounts::of(Vec\filter($plates, static fn (ServicePlate $plate): bool => $plate->isOrder()), $states),
+            // Not in a patch: it moves with the clock and the event, and a device learns it from the heartbeat and its reads (sc-4028).
+            ...(null === $viewer ? [] : ['phase' => $this->servicePhases->of($event, $this->clock->now())->value]),
         ];
     }
 
@@ -138,6 +143,7 @@ final readonly class ServiceRead
             $row = $rows[$item['key']] ?? null;
 
             return [
+                'id' => $row?->getId()->toRfc4122(),
                 'key' => $item['key'],
                 'name' => $item['name'],
                 'station' => $stops[$item['stop']] ?? null,
@@ -145,6 +151,7 @@ final readonly class ServiceRead
                 'readyIn' => $row?->getReadyIn(),
                 'changedAt' => $row?->getChangedAt()?->format(\DATE_RFC3339_EXTENDED),
                 'changedBy' => $row?->getChangedBy()?->getId()->toRfc4122(),
+                'preparingSince' => $row?->getPreparingSince()?->format(\DATE_RFC3339_EXTENDED),
             ];
         });
     }
@@ -177,6 +184,7 @@ final readonly class ServiceRead
             'isOrder' => $plate->isOrder(),
             'stage' => $plate->getStage()->value,
             'items' => Vec\map($plate->getItems(), static fn (array $item): array => [...$item, 'state' => ($states[$item['key']] ?? ItemState::Ready)->value]),
+            'variant' => $plate->getVariant(),
             'toFollow' => $plate->getToFollow(),
             'trayId' => $plate->getTray()?->getId()->toRfc4122(),
             'steps' => $plate->getSteps(),

@@ -1,4 +1,11 @@
-import { fallsOnEarlierDay, formatDay, formatTimeOfDay, nextMidnight } from '@soirely/domain';
+import {
+  fallsOnEarlierDay,
+  formatDay,
+  formatEventClock,
+  formatEventWeekday,
+  formatTimeOfDay,
+  nextMidnight,
+} from '@soirely/domain';
 import {
   type ReactNode,
   type Ref,
@@ -10,6 +17,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
@@ -118,16 +126,18 @@ export function OfflineBoxLook({ words, onRetry }: { words: string; onRetry: () 
   );
 }
 
-/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. `box` draws it as the amber box instead. */
+/** The band itself, for a load that keeps its own: the page's, or the bell's feed inside its popover. `box` draws it as the amber box instead; `timeZone` reads it on an event's clock, as the rows under it are. */
 export function StaleBand({
   stale,
   className = 'offline-band',
   box = false,
+  timeZone,
   ref,
 }: {
   stale: Stale | null;
   className?: string;
   box?: boolean;
+  timeZone?: string;
   ref?: Ref<HTMLDivElement>;
 }) {
   const { t } = useTranslation();
@@ -148,15 +158,7 @@ export function StaleBand({
     return () => window.clearTimeout(timer);
   }, [at]);
 
-  const words =
-    at == null
-      ? ''
-      : fallsOnEarlierDay(at, now)
-        ? t('offline.asOfDay', {
-            day: formatDay(at, dateLocale()),
-            time: formatTimeOfDay(at, dateLocale()),
-          })
-        : t('offline.asOf', { time: formatTimeOfDay(at, dateLocale()) });
+  const words = at == null ? '' : asOfWords(at, now, timeZone, t);
 
   const showing = stale != null;
   const unanswered = stale?.unanswered ?? 0;
@@ -207,6 +209,27 @@ export function StaleBand({
       )}
     </div>
   );
+}
+
+function asOfWords(at: Date, now: Date, timeZone: string | undefined, t: TFunction): string {
+  const locale = dateLocale();
+
+  if (timeZone == null)
+    return fallsOnEarlierDay(at, now)
+      ? t('offline.asOfDay', { day: formatDay(at, locale), time: formatTimeOfDay(at, locale) })
+      : t('offline.asOf', { time: formatTimeOfDay(at, locale) });
+
+  const moment = at.toISOString();
+  const time = formatEventClock(moment, timeZone, locale);
+
+  return dayIn(at, timeZone) < dayIn(now, timeZone)
+    ? t('offline.asOfDay', { day: formatEventWeekday(moment, timeZone, locale), time })
+    : t('offline.asOf', { time });
+}
+
+/** `2026-11-26` in that zone, which sorts as the calendar does. */
+function dayIn(moment: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(moment);
 }
 
 /** sc-4028's crossed-out signal, so one state has one shape. */

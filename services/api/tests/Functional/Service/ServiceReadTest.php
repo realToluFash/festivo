@@ -57,6 +57,7 @@ final class ServiceReadTest extends ServiceTestCase
     #[Test]
     public function aClientThatAppliesEachPatchHasWhatARefetchReturns(): void
     {
+        self::mockTime(new DateTimeImmutable('2027-03-06T19:00:00.437Z'));
         $dessert = new MenuCourse($this->event, 'Dessert', null, 1);
         $dessert->listOwnItems(['Puff-puff']);
         self::em()->persist($dessert);
@@ -123,8 +124,9 @@ final class ServiceReadTest extends ServiceTestCase
             }
 
             self::assertNotSame([], Vec\filter($hub->published, static fn (Update $update): bool => isset(Type\mixed_dict()->coerce(Json\decode($update->getData()))['patch'])), $what . ' published nothing');
-            self::assertSame($this->read(), $patched[$this->courseId()], $what . ', the Main');
-            self::assertSame($this->read($dessert), $patched[$this->courseId($dessert)], $what . ', the Dessert');
+            self::em()->clear();
+            self::assertSame(self::unphased($this->read()), self::unphased($patched[$this->courseId()]), $what . ', the Main');
+            self::assertSame(self::unphased($this->read($dessert)), self::unphased($patched[$this->courseId($dessert)]), $what . ', the Dessert');
         }
     }
 
@@ -152,5 +154,19 @@ final class ServiceReadTest extends ServiceTestCase
 
         self::assertStringNotContainsString('Adaeze', Json\encode(self::service(ServiceRead::class)->of(self::em()->find(MenuCourse::class, $this->course->getId()) ?? self::fail('no course'), null)));
         self::assertSame('Adaeze Obi', $this->guestOf(self::tableOf($this->read()), 'Adaeze Obi')['name']);
+    }
+
+    /**
+     * The phase moves with the clock and the event, not with a step, so no patch carries it (sc-4028).
+     *
+     * @param array<array-key, mixed> $read
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function unphased(array $read): array
+    {
+        unset($read['phase']);
+
+        return $read;
     }
 }

@@ -2,7 +2,14 @@ import type { MyNight } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { crossesMidnight, dietaryOf, headingOf, rowLineOf, updatedAfter } from './myNight.ts';
+import {
+  checkInOf,
+  crossesMidnight,
+  dietaryOf,
+  headingOf,
+  rowLineOf,
+  updatedAfter,
+} from './myNight.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
   key === 'myNight.times'
@@ -14,7 +21,7 @@ const t = ((key: string, values?: Record<string, unknown>) =>
 const NIGHT: MyNight = {
   pastAccess: false,
   clock: null,
-  event: { name: 'Adébáyọ̀ at 60', timeZone: 'Africa/Lagos' },
+  event: { id: 'ev-1', name: 'Adébáyọ̀ at 60', timeZone: 'Africa/Lagos' },
   endsAt: '2026-11-29T02:00:00+01:00',
   station: 'Section B',
   job: 'Waiter',
@@ -28,7 +35,23 @@ const NIGHT: MyNight = {
   timing: [],
   doorsAt: '2026-11-28T19:00:00+01:00',
   tables: null,
+  checksIn: false,
+  dishes: false,
+  rules: null,
 };
+
+describe('My night leads to check-in (sc-28230)', () => {
+  it('to the event’s check-in for a job that checks guests in', () => {
+    expect(checkInOf({ ...NIGHT, checksIn: true })).toEqual({
+      pathname: '/events/[id]/check-in',
+      params: { id: 'ev-1' },
+    });
+  });
+
+  it('nowhere for a job that cannot', () => {
+    expect(checkInOf(NIGHT)).toBeNull();
+  });
+});
 
 describe('a staff member’s night in the app (sc-3915)', () => {
   it('names where they are and the shift on the event’s Your night row, the job with no station', () => {

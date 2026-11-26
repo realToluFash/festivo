@@ -16,12 +16,14 @@ use App\Entity\EventPerson;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\PhoneNumber;
+use App\Entity\ProviderIdentity;
 use App\Entity\Role;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
+use App\Enum\IdentityProvider;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
@@ -124,6 +126,17 @@ final class DoorCodesTest extends ApiTestCase
 
         $person = self::em()->getRepository(EventPerson::class)->findOneBy(['user' => $this->joinedAs()->getId()]) ?? self::fail('no grant');
         self::assertSame($level, $person->getRole());
+
+        $token = Type\string()->coerce($joined['accessToken']);
+        $this->client->request('GET', '/api/events/' . $this->owambe, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame(200, $this->statusCode(), "the event's card opens Overview (sc-95382)");
+        self::assertSame(['events.read', 'service.work'], $this->last()['event']['permissions'] ?? null);
+        $this->client->request('GET', '/api/events/' . $this->owambe . '/service/stations', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame(EventRole::CanWorkFloor === $level ? 403 : 200, $this->statusCode(), 'the stations');
+        foreach (['/guests', '/schedule', '/seating-plan', '/people'] as $rest) {
+            $this->client->request('GET', '/api/events/' . $this->owambe . $rest, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+            self::assertSame(403, $this->statusCode(), $rest);
+        }
     }
 
     #[Test]
@@ -385,6 +398,35 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
+    public function theAccountSaysWhenABrowserSessionSignedInAtTheDoorEndsAndNamesNoEndForTheApps(): void
+    {
+        $code = $this->code('can_check_in');
+        $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
+        $number = '+2348031110005';
+        $this->phoneOn($joanna, $number);
+
+        $browser = $this->signInFor($code, Type\string()->coerce($this->sendFor($code, 'Jo', $number)['handle']), $this->codeTo($number), 'cookie');
+        self::assertSame(200, $this->statusCode(), Json\encode($browser));
+        $account = Type\shape(['signedOutAt' => Type\string()], true)->coerce($browser['account']);
+        self::assertSame(new DateTimeImmutable(Type\string()->coerce($browser['endsAt']))->getTimestamp(), new DateTimeImmutable($account['signedOutAt'])->getTimestamp(), 'the sign-in reads it as /me does');
+        $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($browser['accessToken'])]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(
+            new DateTimeImmutable(Type\string()->coerce($browser['endsAt']))->getTimestamp(),
+            new DateTimeImmutable(Type\string()->coerce($this->last()['signedOutAt'] ?? null))->getTimestamp(),
+            'an account with an address and a number is signed out with its grant all the same',
+        );
+
+        $kunle = '+2348031110006';
+        $this->phoneOn($this->account('kunle@bakare.ng', 'Kunle Bakare'), $kunle);
+        $app = $this->signInFor($code, Type\string()->coerce($this->sendFor($code, 'Kunle', $kunle)['handle']), $this->codeTo($kunle));
+        self::assertSame(200, $this->statusCode(), Json\encode($app));
+        $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($app['accessToken'])]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertNull($this->last()['signedOutAt'], 'the app keeps its usual life');
+    }
+
+    #[Test]
     public function withTwoFactorOnInABrowserTheGrantWaitsForItAndTheSignedInRedeemTakesItWithTheSessionItIssued(): void
     {
         $code = $this->code('can_view');
@@ -414,6 +456,33 @@ final class DoorCodesTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), 'the signed-in redeem takes the use with the token two-factor issued: ' . Json\encode($this->last()));
         $this->client->request('POST', '/api/auth/refresh', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: Json\encode(['refreshTokenIn' => 'cookie']));
         self::assertSame(200, $this->statusCode(), 'and the session lasts with the grant: ' . Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aLinkedMemberOfAGoogleOrAppleOnlyOrganisationIsRefusedAfterTheRightCodeWithNoSessionGrantOrUse(): void
+    {
+        $code = $this->code('can_view');
+        $founder = $this->account('owner@lumen.pt', 'Lumen Owner');
+        $lumen = self::service(OrganisationFounder::class)->found($founder, 'Lumen Feiras', 'PT', 'Europe/Lisbon');
+        $lumen->setProviderSignInOnly(true);
+        self::em()->flush();
+        $bisi = $this->account('bisi@lumen.pt', 'Bisi Adeyemi');
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $lumen, 'seededAs' => SeededRole::Member]) ?? self::fail('no role');
+        self::em()->persist(new Membership($lumen, self::em()->find(User::class, $bisi->getId()) ?? self::fail('no user'), $role, MembershipStatus::Active, new DateTimeImmutable()));
+        self::em()->persist(new ProviderIdentity(self::em()->find(User::class, $bisi->getId()) ?? self::fail('no user'), IdentityProvider::Apple, 'a-bisi', null));
+        self::em()->flush();
+        $this->phoneOn($bisi, '+2348031110006');
+
+        $answer = $this->redeem($code, 'Bisi', '+2348031110006');
+
+        self::assertSame([403, ErrorCode::OAuthOnly->type()], [$this->statusCode(), $answer['type'] ?? null], Json\encode($answer));
+        self::assertSame('Lumen Feiras', $answer['organisation'] ?? null);
+        self::assertSame(['apple'], $answer['providers'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $answer);
+        self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($code)->getId()]), 'no use taken');
+        self::assertSame(0, self::em()->getRepository(EventPerson::class)->count(['user' => $bisi->getId()]), 'no grant');
+        self::assertSame(0, self::em()->getRepository(AuditEntry::class)->count(['action' => 'phone.signed_in']), 'no session');
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT COUNT(*) FROM phone_sign_ins WHERE typed_name IS NOT NULL'), 'the name typed is stored nowhere');
     }
 
     #[Test]

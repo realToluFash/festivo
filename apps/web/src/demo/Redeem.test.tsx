@@ -287,6 +287,71 @@ describe('a name, a number and the phone code (sc-4235)', () => {
   });
 });
 
+describe('a member of an organisation that signs in with Google or Apple only (sc-94849)', () => {
+  const line = (providers: string) =>
+    `A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use ${providers}.`;
+
+  it('refuses the right phone code in place of the code step, the typed name forgotten', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('code-provider-only');
+
+    expect(screen.queryByText(/Ìrè/u)).toBeNull();
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Verify');
+    await wait(1000);
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Ìrè Events signs in with Google or Apple only',
+      }),
+    ).toBeDefined();
+    expect(screen.getByText(line('Google'))).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Send code' })).toBeNull();
+    expect(screen.queryByLabelText('Code from WhatsApp')).toBeNull();
+    expect(screen.queryByText(/password|@|Signed in as/iu)).toBeNull();
+  });
+
+  it('refuses her number typed on the event the same way, after the right code', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('event');
+
+    type('Your name', 'Bisi');
+    type('Mobile number', '915 604 117');
+    press('Send code');
+    await wait(1000);
+    type('Code from WhatsApp', SAMPLE.code);
+    press('Verify');
+    await wait(1000);
+
+    expect(screen.getByText(line('Google'))).toBeDefined();
+  });
+
+  it('draws each linked provider and no other', async () => {
+    await redeem('provider-only-both');
+
+    expect(screen.getByText(line('Apple or Google'))).toBeDefined();
+    const names = screen.getAllByRole('button').map((one) => one.textContent);
+    expect(names).toEqual(['Continue with Google', 'Continue with Apple']);
+  });
+
+  it('returns to the door code signed in, where Join as admits her by her account’s name', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await redeem('provider-only-apple');
+
+    press('Continue with Apple');
+    await wait(1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Joana & Rui’s wedding' })).toBeDefined();
+    press('Join as Bisi Adeyemi');
+    await wait(1000);
+
+    expect(screen.getByText('Signed in as Bisi Adeyemi')).toBeDefined();
+    expect(screen.queryByText(/You’ll be signed out at/u)).toBeNull();
+  });
+});
+
 describe('the Soirely wordmark', () => {
   it.each(['enter', 'browser-name', 'browser-event', 'code', 'browser-in', 'signed-out'])(
     'sits above the column on %s',

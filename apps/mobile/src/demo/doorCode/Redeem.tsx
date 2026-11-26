@@ -2,9 +2,18 @@ import { formattingLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
+import type { Provider } from '@soirely/api-client';
+import {
+  Platform,
+  StyleSheet,
+  type TextInputInstance,
+  View,
+  type ViewInstance,
+} from 'react-native';
 
 import { PrimaryButton, QuietButton } from '../../components/Buttons.tsx';
+import { OneHeight } from '../../components/OneHeight.tsx';
+import { ProviderButton } from '../../components/ProviderSignIn.tsx';
 import { focusChecked } from '../../components/Field.tsx';
 import { focusPicker } from '../../components/CountryPicker.tsx';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
@@ -42,6 +51,8 @@ import {
 import {
   joinAs,
   memberTitle,
+  providerOnlyLine,
+  providerOnlyTitle,
   resendIn,
   sentTo,
   tryAgainAt,
@@ -54,10 +65,12 @@ import { TurningButton } from './TurningButton.tsx';
 import { InsideEvent, You } from './Inside.tsx';
 import {
   afterPhoneCode,
+  BISI,
   type Flow,
   flowAt,
   freshFlow,
   phoneTitle,
+  PROVIDER_ORG,
   redeemStateOf,
   refusalOf,
 } from './RedeemModel.ts';
@@ -144,6 +157,8 @@ function RedeemFlow({ start }: { start: Flow }) {
       );
     case 'code':
       return <PhoneCodeStep key={step} flow={flow} go={go} />;
+    case 'providerOnly':
+      return <ProviderOnlyStep key={step} flow={flow} go={go} />;
     case 'in':
       return (
         <DemoScreen
@@ -546,6 +561,61 @@ function EventStep({ flow, go, locale }: { flow: Flow; go: Go; locale: string })
   );
 }
 
+// Apple then Google on iPhone, Google then Apple on Android (sc-29076), whatever order the account lists them in.
+const IOS_ORDER: readonly Provider[] = ['apple', 'google'];
+const ANDROID_ORDER: readonly Provider[] = ['google', 'apple'];
+
+const PROVIDER_LABELS: Record<Provider, string> = {
+  google: 'Continue with Google',
+  apple: 'Continue with Apple',
+};
+
+/** The right phone code refused, as sc-69 refuses a password (sc-94849): each linked provider and no other, in the platform's order (sc-29076). Signed in, the door code's page is back and Join as admits her. */
+function ProviderOnlyStep({ flow, go }: { flow: Flow; go: Go }) {
+  const [busy, setBusy] = useState(false);
+  const providers = flow.providers ?? [];
+  const ordered = (Platform.OS === 'android' ? ANDROID_ORDER : IOS_ORDER).filter((provider) =>
+    providers.includes(provider),
+  );
+
+  useEffect(() => {
+    if (!busy) return;
+    const next = setTimeout(
+      () => go({ step: 'joinAs', who: BISI.account, providers: null }),
+      NEXT_STEP_MS,
+    );
+
+    return () => clearTimeout(next);
+  }, [busy, go]);
+
+  return (
+    <DemoScreen
+      nav={<NavBar left="close" onLeft={() => go(freshFlow())} />}
+      foot={
+        <OneHeight style={styles.providers}>
+          {ordered.map((provider) => (
+            <ProviderButton
+              key={provider}
+              provider={provider}
+              label={PROVIDER_LABELS[provider]}
+              onPress={() => setBusy(true)}
+              busy={busy}
+              testID={`redeem.providerOnly.${provider}`}
+            />
+          ))}
+        </OneHeight>
+      }
+    >
+      <EventTile />
+      <Heading
+        title={providerOnlyTitle(PROVIDER_ORG)}
+        intro={providerOnlyLine(PROVIDER_ORG, providers)}
+        answer={flow.step}
+      />
+    </DemoScreen>
+  );
+}
+
 function PhoneCodeStep({ flow, go }: { flow: Flow; go: Go }) {
   const boxes = useRef<CodeBoxesHandle>(null);
   const [texted, setTexted] = useState(flow.texted);
@@ -663,4 +733,5 @@ const styles = StyleSheet.create({
   boxes: { marginTop: tokens.space3xl },
   ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
   inFoot: { gap: tokens.spaceXl },
+  providers: { gap: tokens.spaceLg },
 });

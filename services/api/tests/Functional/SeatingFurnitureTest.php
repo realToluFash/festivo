@@ -25,6 +25,7 @@ use Psl\Iter;
 use Psl\Json;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Mercure\Update;
 
 /** One step of moves, turns and resizes on the Floor plan, saved all or nothing, refused whole by a colleague's newer change or by the room's walls (sc-5028). */
 final class SeatingFurnitureTest extends ApiTestCase
@@ -59,7 +60,7 @@ final class SeatingFurnitureTest extends ApiTestCase
         $table = $this->add('tables', ['shape' => 'rectangular']);
         $row = $this->add('rows');
         $seat = $this->add('seats');
-        $published = Iter\count(self::service(RecordingHub::class)->published);
+        $published = $this->seatingPublished();
 
         $this->step([
             ['kind' => 'table', 'id' => $table['id'], 'version' => $table['version'], 'xCm' => 400, 'yCm' => 300, 'rotation' => 15, 'widthCm' => 240, 'lengthCm' => 90],
@@ -72,7 +73,7 @@ final class SeatingFurnitureTest extends ApiTestCase
         self::assertSame([400, 300, 15, 240, 90], $this->pick($now['tables'][0], 'xCm', 'yCm', 'rotation', 'widthCm', 'lengthCm'));
         self::assertSame([1200, 1500, 90], $this->pick($now['rows'][0], 'xCm', 'yCm', 'rotation'));
         self::assertSame([2000, 200], $this->pick($now['singleSeats'][0], 'xCm', 'yCm'));
-        self::assertSame($published + 1, Iter\count(self::service(RecordingHub::class)->published));
+        self::assertSame($published + 1, $this->seatingPublished());
     }
 
     #[Test]
@@ -216,6 +217,11 @@ final class SeatingFurnitureTest extends ApiTestCase
         }
 
         self::fail('not added');
+    }
+
+    private function seatingPublished(): int
+    {
+        return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/seating']));
     }
 
     /** @return list<mixed> */

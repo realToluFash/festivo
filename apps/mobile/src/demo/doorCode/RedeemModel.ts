@@ -1,3 +1,5 @@
+import type { Provider } from '@soirely/api-client';
+
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
 import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
@@ -30,6 +32,12 @@ export const REDEEM_STATES = [
   'used-up',
   'code-second-number',
   'second-number',
+  'code-provider-only',
+  'code-provider-only-apple',
+  'code-provider-only-both',
+  'provider-only',
+  'provider-only-apple',
+  'provider-only-both',
   'in',
   'event-in',
   'event-in-view',
@@ -48,6 +56,7 @@ export type RedeemStep =
   | 'joinAs'
   | 'member'
   | 'code'
+  | 'providerOnly'
   | 'in'
   | 'inside'
   | 'peopleIn';
@@ -76,6 +85,8 @@ export interface Flow {
   tries: number;
   /** Inside the event with More open: Your account and Sign out (`more-in`). */
   more: boolean;
+  /** The providers linked to the number's account, when its organisation signs in with Google or Apple only (sc-94849). */
+  providers: readonly Provider[] | null;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
@@ -84,6 +95,30 @@ export const RITA = { name: 'Rita Sousa', number: '916 480 233' } as const;
 
 export const isSecondNumber = (number: string) =>
   number.replace(/\D/gu, '') === RITA.number.replace(/\D/gu, '');
+
+/** A member of Ìrè Events, Google linked: what she types is hers until the right code, then forgotten (sc-94849). */
+export const BISI = { typed: 'Bisi', account: 'Bisi Adeyemi', number: '915 604 117' } as const;
+export const PROVIDER_ORG = 'Ìrè Events';
+
+/** As the API lists them, by provider name: Apple first, so the line reads "Apple or Google" as sign-in's does. */
+const LINKED = {
+  google: ['google'],
+  apple: ['apple'],
+  both: ['apple', 'google'],
+} as const satisfies Record<string, readonly Provider[]>;
+
+function linkedIn(state: RedeemState): readonly Provider[] {
+  if (state.endsWith('-apple')) return LINKED.apple;
+
+  return state.endsWith('-both') ? LINKED.both : LINKED.google;
+}
+
+const isBisi = (number: string) => number.replace(/\D/gu, '') === BISI.number.replace(/\D/gu, '');
+
+/** Only her number is refused: Google linked, or what her deep-linked state linked. Any other number signs in, whatever a state left behind. */
+export function providersFor(flow: Flow): readonly Provider[] | null {
+  return isBisi(flow.number) ? (flow.providers ?? LINKED.google) : null;
+}
 
 export function freshFlow(step: RedeemStep = 'welcome'): Flow {
   return {
@@ -105,6 +140,7 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     role: BAR.role,
     tries: 0,
     more: false,
+    providers: null,
   };
 }
 
@@ -184,6 +220,20 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, ...RITA, step: 'code' };
     case 'second-number':
       return { ...plain, ...RITA, step: 'event', numberSaid: W.secondNumber };
+    case 'code-provider-only':
+    case 'code-provider-only-apple':
+    case 'code-provider-only-both':
+      return {
+        ...plain,
+        step: 'code',
+        name: BISI.typed,
+        number: BISI.number,
+        providers: linkedIn(state),
+      };
+    case 'provider-only':
+    case 'provider-only-apple':
+    case 'provider-only-both':
+      return { ...plain, step: 'providerOnly', providers: linkedIn(state) };
     case 'in':
       return { ...joao, step: 'in' };
     case 'event-in':
@@ -197,8 +247,20 @@ export function flowAt(state: RedeemState): Flow {
   }
 }
 
-/** The step a phone code ends on: back to the number for a second number, the one refusal for a code that filled meanwhile, else You're in. */
+/** The step a phone code ends on: back to the number for a second number, Google or Apple only for a member whose organisation asks it (nothing typed kept), the one refusal for a code that filled meanwhile, else You're in. */
 export function afterPhoneCode(flow: Flow): Flow {
+  const providers = providersFor(flow);
+  if (providers != null)
+    return {
+      ...flow,
+      step: 'providerOnly',
+      providers,
+      name: '',
+      number: '',
+      digits: '',
+      phone: 'entering',
+      held: false,
+    };
   if (isSecondNumber(flow.number))
     return {
       ...flow,
@@ -236,17 +298,31 @@ export function refusalOf(
 
 export type InsideArea = 'checkIn' | EventPlace;
 const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
+
+/** Every level an account from outside can hold on an event: a join code's, an invite's or a job's (sc-4002, sc-4235). */
+export type InsideLevel = CodeChoice | 'Can run the floor';
+export const SERVICE_LEVELS = [
+  'Can work the floor',
+  'Can work the pass',
+  'Can run the floor',
+] as const satisfies readonly InsideLevel[];
+
+export function isServiceLevel(level: InsideLevel): boolean {
+  return SERVICE_LEVELS.some((one) => one === level);
+}
+
 /** The phone's tabs; every other area the role sees is in More. */
 export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
 
-/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order. */
-export function areasFor(role: CodeChoice): InsideArea[] {
+/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order; a service level Overview alone (sc-96279). */
+export function areasFor(role: InsideLevel): InsideArea[] {
   if (role === 'Can edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+  if (isServiceLevel(role)) return ['overview'];
 
   return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
 }
 
-export function moreAreas(role: CodeChoice, phone: boolean): InsideArea[] {
+export function moreAreas(role: InsideLevel, phone: boolean): InsideArea[] {
   return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
 }
 

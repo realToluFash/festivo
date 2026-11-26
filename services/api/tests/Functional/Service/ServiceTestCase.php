@@ -23,12 +23,17 @@ use App\Locale\NameNormaliser;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Regex;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Uid\Uuid;
 
 /** A wedding at 19:00 with a Main of Jollof rice and Plantain, and five guests at Table 1 in Section A, as sc-4005's tests share it. */
 abstract class ServiceTestCase extends ApiTestCase
@@ -280,16 +285,105 @@ abstract class ServiceTestCase extends ApiTestCase
         return $user;
     }
 
-    /** @param array<array-key, mixed>|null $body */
-    protected function as(string $method, string $path, ?array $body = null): array
+    /**
+     * @param array<array-key, mixed>|null $body
+     * @param array<string, string>        $headers
+     */
+    protected function as(string $method, string $path, ?array $body = null, array $headers = []): array
+    {
+        if ('GET' !== $method && self::isTap($path)) {
+            $headers += ['HTTP_IDEMPOTENCY_KEY' => Uuid::v4()->toRfc4122()];
+            $body ??= [];
+
+            if (!Iter\contains_key($body, 'expected')) {
+                $body['expected'] = $this->expectedNow($path, $body);
+            }
+        }
+
+        return $this->raw($method, $path, $body, $headers);
+    }
+
+    /** @param array<string, string> $headers */
+    protected function raw(string $method, string $path, ?array $body = null, array $headers = []): array
     {
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->caller),
             'HTTP_ACCEPT_LANGUAGE' => 'en',
+            ...$headers,
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();
+    }
+
+    protected static function isTap(string $path): bool
+    {
+        return Str\contains($path, '/service/') && !Str\ends_with($path, '/trays') && !Str\ends_with($path, '/subscriptions');
+    }
+
+    /** @param array<array-key, mixed> $body */
+    protected function expectedNow(string $path, array $body): array
+    {
+        $matches = Regex\first_match($path, '#/course/([^/]+)/items$#');
+
+        if (null !== $matches) {
+            $state = $this->db()->fetchOne('SELECT state FROM service_items WHERE course_id = :course AND item_key = :item', ['course' => $matches[1], 'item' => Type\string()->coerce($body['item'] ?? '')]);
+
+            return ['item' => \is_string($state) ? $state : 'ready'];
+        }
+
+        if (Str\ends_with($path, '/undo')) {
+            $subject = Type\string()->coerce($body['subject'] ?? '');
+            $item = $this->db()->fetchOne('SELECT state FROM service_items WHERE id = :id', ['id' => $subject]);
+
+            if (\is_string($item)) {
+                return ['item' => $item];
+            }
+
+            $onTray = $this->stagesOnTray($subject);
+
+            return ['plates' => [] !== $onTray ? $onTray : $this->stagesOf([$subject])];
+        }
+
+        $matches = Regex\first_match($path, '#/trays/([^/]+)/(check|take-to-table|all-served)$#');
+
+        if (null !== $matches) {
+            return ['plates' => $this->stagesOnTray($matches[1])];
+        }
+
+        $matches = Regex\first_match($path, '#/plates/([^/]+)(/served|/choice|/sent-back)?$#');
+
+        if (null !== $matches) {
+            return ['plates' => $this->stagesOf([$matches[1]])];
+        }
+
+        return ['plates' => $this->stagesOf([Type\string()->coerce($body['plateId'] ?? '')])];
+    }
+
+    protected function stagesOnTray(string $trayId): array
+    {
+        if (!Uuid::isValid($trayId)) {
+            return [];
+        }
+
+        return Type\dict(Type\string(), Type\string())->coerce($this->db()->fetchAllKeyValue('SELECT id, stage FROM service_plates WHERE tray_id = :tray', ['tray' => $trayId]));
+    }
+
+    /** @param list<string> $ids */
+    protected function stagesOf(array $ids): array
+    {
+        $ids = Vec\filter($ids, Uuid::isValid(...));
+
+        if ([] === $ids) {
+            return [];
+        }
+
+        return Type\dict(Type\string(), Type\string())->coerce($this->db()->fetchAllKeyValue('SELECT id, stage FROM service_plates WHERE id IN (:ids)', ['ids' => $ids], ['ids' => ArrayParameterType::STRING]));
+    }
+
+    protected function db(): Connection
+    {
+        return self::em()->getConnection();
     }
 
     /** @return array<array-key, mixed> */

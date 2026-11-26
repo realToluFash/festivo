@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\MillisecondDateTimeType;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -30,7 +31,7 @@ class ServiceFiring
     #[ORM\Column(type: Types::STRING, length: 80)]
     private string $tableKey;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(type: MillisecondDateTimeType::NAME)]
     private DateTimeImmutable $firedAt;
 
     #[ORM\ManyToOne(targetEntity: User::class)]

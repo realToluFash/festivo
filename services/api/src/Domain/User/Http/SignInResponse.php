@@ -30,7 +30,7 @@ final readonly class SignInResponse
         array $alongside = [],
     ): JsonResponse {
         if ($admission instanceof IssuedTokens) {
-            return new IssuedTokensResponse($admission, $delivery, $request, ['account' => $this->accountSerialiser->serialise($user)] + $alongside);
+            return new IssuedTokensResponse($admission, $delivery, $request, ['account' => $this->accountSerialiser->serialise($user, $admission)] + $alongside);
         }
 
         // Nothing alongside a challenge: whatever it would say waits on the code.

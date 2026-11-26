@@ -323,13 +323,13 @@ describe('offline, by sc-4028', () => {
     const s = seed('waitingToSend');
     expect(stateLine(s, 'Plantain').word).toBe('Preparing');
     expect(strip(s)).toBe('No connection · as of 19:40 · 1 tap waiting');
-    expect(strip(goOnline(s, true))).toBe('Connected · up to date 19:42');
+    expect(strip(goOnline(s, true))).toBe('Connected · up to date at 19:42');
   });
 
   it('drops a kept mark another disher beat, with its Not sent line, and holds theirs', () => {
     const s = seed('notSent');
     expect(s.notSent.map((r) => notSentLine(s, r))).toEqual([
-      'Plantain is preparing now, by Kemi Adebayo.',
+      'Plantain is now Preparing, marked by Kemi Adebayo.',
     ]);
     expect(stateLine(s, 'Plantain').line).toBe('ready in about 15 min');
   });
@@ -355,8 +355,8 @@ describe('picking a station', () => {
 
   it('says once that the station is open here and nobody’s station changed', () => {
     const s = pick(seed('pick'), 'grill');
-    expect(s.moved).toBe('Grill is open on this tablet. Nobody’s station changed.');
-    expect(pickedLine('pass')).toBe('Pass is open on this tablet. Nobody’s station changed.');
+    expect(s.moved).toBe('Grill is open on this device. Nobody’s station changed.');
+    expect(pickedLine('pass')).toBe('Pass is open on this device. Nobody’s station changed.');
   });
 
   it('follows a move by Team with one line', () => {

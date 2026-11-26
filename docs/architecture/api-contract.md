@@ -223,6 +223,8 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
   behind two-factor) the access token keeps its usual life for the signed-in redeem. In the
   app it keeps the usual life. A link read by the entry's own account names `signedOutAt`
   and the event's `timeZone`, `signedOutAt` null for a session that does not end so.
+  Every read of the account names `signedOutAt` the same way, for the session it is read
+  in (the one a sign-in has just begun, else the caller's), whatever addresses it holds.
 - A phone-only account is refused an invitation with `409 invitation_needs_email` until
   the invited address is on it and verified. The invitation's preview carries
   `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.

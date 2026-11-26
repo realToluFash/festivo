@@ -11,42 +11,22 @@ final class Version20261126180000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Clocking in and out (sc-234): when each person on a shift actually started and stopped, with any correction kept beside what was recorded.';
+        return 'A service\'s times are kept to the millisecond (sc-4005), as its writes answer and publish them, so a refetch reads what the patch said.';
     }
 
     public function up(Schema $schema): void
     {
-        $this->addSql(<<<'SQL'
-            CREATE TABLE shift_attendances (
-                id                UUID NOT NULL,
-                shift_id          UUID NOT NULL,
-                staff_member_id   UUID NOT NULL,
-                clocked_in_at     TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                clocked_out_at    TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                corrected_in_at   TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                in_corrected_by   VARCHAR(160) DEFAULT NULL,
-                in_corrected_on   TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                corrected_out_at  TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                out_corrected_by  VARCHAR(160) DEFAULT NULL,
-                out_corrected_on  TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
-                PRIMARY KEY (id)
-            )
-            SQL);
-        $this->addSql('CREATE UNIQUE INDEX uniq_shift_attendance ON shift_attendances (shift_id, staff_member_id)');
-        $this->addSql('CREATE INDEX IDX_378E0DC6BB70BC0E ON shift_attendances (shift_id)');
-        $this->addSql('CREATE INDEX IDX_378E0DC644DB03B1 ON shift_attendances (staff_member_id)');
-        $this->addSql('ALTER TABLE shift_attendances ADD CONSTRAINT FK_378E0DC6BB70BC0E FOREIGN KEY (shift_id) REFERENCES staff_shifts (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE shift_attendances ADD CONSTRAINT FK_378E0DC644DB03B1 FOREIGN KEY (staff_member_id) REFERENCES staff_members (id) ON DELETE CASCADE NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE door_codes ADD shift_id UUID DEFAULT NULL');
-        $this->addSql('ALTER TABLE door_codes ADD CONSTRAINT FK_14377D6EBB70BC0E FOREIGN KEY (shift_id) REFERENCES staff_shifts (id) ON DELETE SET NULL NOT DEFERRABLE');
-        $this->addSql('CREATE INDEX IDX_14377D6EBB70BC0E ON door_codes (shift_id)');
+        $this->addSql('ALTER TABLE service_firings ALTER fired_at TYPE TIMESTAMP(3) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_items ALTER changed_at TYPE TIMESTAMP(3) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_plates ALTER owed_at TYPE TIMESTAMP(3) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_steps ALTER at TYPE TIMESTAMP(3) WITHOUT TIME ZONE');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE door_codes DROP CONSTRAINT FK_14377D6EBB70BC0E');
-        $this->addSql('DROP INDEX IDX_14377D6EBB70BC0E');
-        $this->addSql('ALTER TABLE door_codes DROP shift_id');
-        $this->addSql('DROP TABLE shift_attendances');
+        $this->addSql('ALTER TABLE service_firings ALTER fired_at TYPE TIMESTAMP(0) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_items ALTER changed_at TYPE TIMESTAMP(0) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_plates ALTER owed_at TYPE TIMESTAMP(0) WITHOUT TIME ZONE');
+        $this->addSql('ALTER TABLE service_steps ALTER at TYPE TIMESTAMP(0) WITHOUT TIME ZONE');
     }
 }

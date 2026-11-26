@@ -86,6 +86,7 @@
     "timedOutBody_other": "{{organisation}} signs people out after {{count, number}} days without use. Sign in again to carry on.",
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
     "anotherAccount": "Sign in with another account"
   },
@@ -1681,6 +1682,7 @@
     "noCurrency": "No currency matches “{{typed}}”.",
     "notSaved": "Not saved. Your changes are still here. Try again.",
     "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
+    "eventGone": "Nothing was changed. This event is no longer available.",
     "changedElsewhere": "Not saved. Somebody else changed this event since you opened it. What you typed is still here.",
     "showLatest": "Show the latest",
     "showLatestTitle": "Show the latest version?",
@@ -2315,6 +2317,7 @@
     "removeLine": "They lose this event on their next request. They stay in {{organisation}}.",
     "removeLineOutside": "Their access ends on their next request.",
     "keep": "Keep {{name}}",
+    "keepThem": "Keep them",
     "removeConfirm": "Remove",
     "removing": "Removing…",
     "removeFailed": "Removing did not work. They are still on this event. Try again in a moment.",
@@ -3207,7 +3210,14 @@
     "single": "Access to a single event still works.",
     "change": "Change your main email address"
   },
+  "guest": {
+    "table": {
+      "row": "Row {{row}}, seat {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Check-in",
     "back": "Guests",
     "open": "Open check-in",
@@ -3541,7 +3551,49 @@
     "readyIn": "Ready in about {{minutes, number}} min",
     "held": "Waiting on the kitchen",
     "heldCount_one": "{{count, number}} waiting on the kitchen",
-    "heldCount_other": "{{count, number}} waiting on the kitchen"
+    "heldCount_other": "{{count, number}} waiting on the kitchen",
+    "fresh": {
+      "connected": "Connected · up to date at {{time}}",
+      "noConnection": "No connection · as of {{time}}",
+      "noConnectionWaiting_one": "No connection · as of {{time}} · {{count, number}} tap waiting",
+      "noConnectionWaiting_other": "No connection · as of {{time}} · {{count, number}} taps waiting",
+      "notStarted": "Not started yet"
+    },
+    "waitingToSend": "Waiting to send",
+    "notSent": {
+      "heading": "Not sent · the floor changed while you were offline",
+      "stageNow": {
+        "toServe": "{{who}} is now To serve, marked by {{by}}.",
+        "dishing": "{{who}} is now Dishing, marked by {{by}}.",
+        "checked": "{{who}} is now Checked, marked by {{by}}.",
+        "onItsWay": "{{who}} is now On its way, marked by {{by}}.",
+        "served": "{{who}} is now Served, marked by {{by}}."
+      },
+      "stageNowUnnamed": {
+        "toServe": "{{who}} is now To serve.",
+        "dishing": "{{who}} is now Dishing.",
+        "checked": "{{who}} is now Checked.",
+        "onItsWay": "{{who}} is now On its way.",
+        "served": "{{who}} is now Served."
+      },
+      "offTray": "{{by}} took {{who}} off this tray.",
+      "offTrayUnnamed": "{{who}} was taken off this tray.",
+      "itemNow": {
+        "ready": "{{item}} is now Ready, marked by {{by}}.",
+        "preparing": "{{item}} is now Preparing, marked by {{by}}."
+      },
+      "itemNowUnnamed": {
+        "ready": "{{item}} is now Ready.",
+        "preparing": "{{item}} is now Preparing."
+      },
+      "trayNotYours": "{{name}} has this tray now.",
+      "undoExpired_one": "Too late to undo: {{count, number}} minute had passed.",
+      "undoExpired_other": "Too late to undo: {{count, number}} minutes had passed."
+    },
+    "needsConnection": {
+      "startTray": "Starting a tray needs a connection.",
+      "flaggedTick": "Needs a connection: check {{name}} at the table."
+    }
   },
   "myNight": {
     "title": "Your night",
@@ -3571,7 +3623,102 @@
     "staleBody": "This is your night as it was at {{time}}.",
     "tryAgain": "Try again",
     "loading": "Loading your night…",
-    "otherNeed": "{{what}} (other)"
+    "otherNeed": "{{what}} (other)",
+    "beforeYouStart": "Before you start"
+  },
+  "station": {
+    "wayIn": {
+      "title": "Kitchen station",
+      "line": "{{station}} · {{course}}",
+      "pick": "Pick a station",
+      "said": "Kitchen station, {{line}}",
+      "asOf": "{{line}} · as of {{time}}",
+      "open": "Open {{station}}"
+    },
+    "title": "Kitchen station · {{station}}",
+    "titleSaid": "Kitchen station · {{station}}. Pick another station",
+    "back": "Back",
+    "pickTitle": "Pick a kitchen station",
+    "pickLine": "{{you}} · you’re not on a kitchen station at this event. Open one to see the trays that need it.",
+    "listTitle": "Kitchen stations",
+    "listLine": "{{event}} · in the walking order",
+    "close": "Close",
+    "closeList": "Close Kitchen stations",
+    "you": "{{name}} · you",
+    "nobodyOn": "Nobody on {{station}}",
+    "openNow": "Open now",
+    "changesNobody": "Opening a station changes nobody’s station. Team does that.",
+    "picked": "{{station}} is open on this device. Nobody’s station changed.",
+    "movedTo": "You’re on {{station}} now.",
+    "headerLine": "{{you}} · {{course}} · {{event}}",
+    "noCourseFired": "No course fired",
+    "asYouFace": "As you face it",
+    "traysHere_one": "{{count, number}} tray here",
+    "traysHere_other": "{{count, number}} trays here",
+    "leftToDish": "Left to dish",
+    "headingHere": "Heading here",
+    "trays_one": "{{count, number}} tray",
+    "trays_other": "{{count, number}} trays",
+    "toDish_one": "{{count, number}} to dish",
+    "toDish_other": "{{count, number}} to dish",
+    "waiting_one": "{{count, number}} waiting",
+    "waiting_other": "{{count, number}} waiting",
+    "readyInLine_one": "ready in about {{count, number}} min",
+    "readyInLine_other": "ready in about {{count, number}} min",
+    "heldUpFor_one": "{{count, number}} min",
+    "heldUpFor_other": "{{count, number}} min",
+    "heldUp": "Held up",
+    "runOut": "Run out",
+    "paused": "Paused",
+    "dishFirst": "Dish first · clean tools",
+    "flagged_one": "{{count, number}} flagged",
+    "flagged_other": "{{count, number}} flagged",
+    "readyInAbout": "Ready in about",
+    "noTime": "No time",
+    "minutes_one": "{{count, number}} min",
+    "minutes_other": "{{count, number}} min",
+    "noTimeSaid": "{{item}}, no time given",
+    "minutesSaid_one": "{{item}}, ready in about {{count, number}} minute",
+    "minutesSaid_other": "{{item}}, ready in about {{count, number}} minutes",
+    "undoReady_one": "Marked Ready at {{time}} · can be undone for {{count, number}} minute",
+    "undoReady_other": "Marked Ready at {{time}} · can be undone for {{count, number}} minutes",
+    "undoPreparing_one": "Marked Preparing at {{time}} · can be undone for {{count, number}} minute",
+    "undoPreparing_other": "Marked Preparing at {{time}} · can be undone for {{count, number}} minutes",
+    "undo": "Undo",
+    "gotIt": "Got it",
+    "nothingFromHere": "Nothing from here",
+    "seat": "Seat {{seat}}",
+    "chefsChoice": "Chef’s choice",
+    "courseItem": "{{course}} · {{item}}",
+    "itemCount": "{{item}} · {{count, number}}",
+    "trayLine_one": "{{waiter}} · {{count, number}} plate",
+    "trayLine_other": "{{waiter}} · {{count, number}} plates",
+    "hereLine_one": "{{waiter}} · {{count, number}} plate · here since {{time}}",
+    "hereLine_other": "{{waiter}} · {{count, number}} plates · here since {{time}}",
+    "headingRow": "{{table}} · {{waiter}}",
+    "arrived_one": "{{table}}’s tray is here · {{count, number}} plate",
+    "arrived_other": "{{table}}’s tray is here · {{count, number}} plates",
+    "arrivedFirst": "Arrived first.",
+    "saidFlagged": "Flagged: {{plates}}",
+    "saidFlaggedPlate": "{{seat}}, {{flags}}, dish first, clean tools",
+    "saidFromLeft": "From your left: {{plates}}",
+    "saidNothing": "nothing from here",
+    "saidPaused": "paused",
+    "empty": {
+      "noCourse": "No course has been fired yet. Trays show here once the first course is.",
+      "noHeading": "No tray is heading here.",
+      "noItem": "Nothing on a fired course is dished at {{station}}.",
+      "noTray": "No tray here yet. A tray shows here as it arrives."
+    },
+    "refused": {
+      "floorTitle": "Kitchen stations open with Can work the pass",
+      "floorLine": "You can work the floor at this event: your tables and the room.",
+      "noneTitle": "The service isn’t open to you",
+      "noneLine": "Your access to this event does not include working the service.",
+      "back": "Back to the event"
+    },
+    "failed": "The station did not load. Check your connection and try again.",
+    "tryAgain": "Try again"
   },
   "shiftClock": {
     "clockIn": "Clock in",

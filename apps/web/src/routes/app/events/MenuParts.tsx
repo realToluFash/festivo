@@ -884,6 +884,7 @@ export function AddDishPanel({
   onStartNew,
   onPatch,
   onOnlyEvent,
+  outside,
 }: {
   tab: 'library' | 'new';
   query: string;
@@ -904,10 +905,32 @@ export function AddDishPanel({
   onStartNew: (name: string) => void;
   onPatch: (next: Partial<DishForm>) => void;
   onOnlyEvent: (onlyEvent: boolean) => void;
+  /** sc-95116: held from outside, so the library is neither read nor added to. */
+  outside: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const shown = shownDishes(library, query, [], i18n.language);
   const looking = query.trim() !== '';
+
+  if (outside)
+    return (
+      <DishFields
+        form={form}
+        problems={problems}
+        notStated={false}
+        editing={null}
+        prices={false}
+        language={language}
+        onPatch={onPatch}
+        beforePrice={
+          <div className="desk-field mc-only">
+            <p id="mc-only-help" className="desk-help">
+              {t('eventMenu.notLibrary')}
+            </p>
+          </div>
+        }
+      />
+    );
 
   return (
     <>

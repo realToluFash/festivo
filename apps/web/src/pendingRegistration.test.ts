@@ -23,6 +23,7 @@ const B: Account = {
   emailAddresses: [],
   phoneNumbers: [],
   outsideEvents: [],
+  signedOutAt: null,
 };
 
 const A = { registration: 'a-handle', email: 'ada@example.com' };

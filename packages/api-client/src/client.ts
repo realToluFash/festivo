@@ -172,6 +172,13 @@ import {
   type PressSent,
   asSchedule,
 } from './schedule.ts';
+import type { KeptServiceTap } from './serviceTapQueue.ts';
+import {
+  type KitchenStationsRead,
+  type ServiceRead,
+  asKitchenStationsRead,
+  asServiceRead,
+} from './serviceRead.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
@@ -553,6 +560,8 @@ export interface Account {
   waitingFor: JoinRequest | null;
   /** The events this account is on from outside their organisations (sc-71), soonest first. */
   outsideEvents: OutsideEvent[];
+  /** When this session ends, for a browser's that ends with the account's grants (sc-4235); null for any other. */
+  signedOutAt: string | null;
 }
 
 export interface JoinOffer {
@@ -764,6 +773,8 @@ export interface OutsideEvent {
   jobLabel: string | null;
   startsAt: string;
   endsAt: string | null;
+  /** The event's IANA zone, which its times are read in. */
+  timeZone: string;
 }
 
 /** A person on the roster holding a link not yet ended (sc-3912), with their job's level; `signedIn` stays false until sc-4235 signs them in. */
@@ -3356,6 +3367,45 @@ export class ApiClient {
     ).staff;
   }
 
+  /** A new link for the person from the briefing (sc-3917): as deliverStaffLink, and recorded as the briefing's copy, which leaves the briefing where it was. */
+  async copyBriefingLink(
+    eventId: string,
+    staffId: string,
+  ): Promise<{ url: string; staff: StaffEntry }> {
+    const body = await this.post<{ url?: unknown; staff?: unknown }>(
+      `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/link`,
+    );
+    const { staff } = this.staffAnswerOf(body);
+
+    return { url: typeof body.url === 'string' ? body.url : '', staff };
+  }
+
+  /** After a briefing copy: Sent, not read, and Link sent; refused 409 `conflict` before one. */
+  async markBriefingSent(eventId: string, staffId: string): Promise<StaffEntry> {
+    return this.staffAnswerOf(
+      await this.post<unknown>(
+        `${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/briefing/sent`,
+      ),
+    ).staff;
+  }
+
+  /** Blank clears them; refused `validation_failed` on `rules` past STAFF_RULES_MAXIMUM code points. */
+  async saveHouseRules(eventId: string, rules: string): Promise<string | null> {
+    const body = await this.put<{ rules?: unknown }>(
+      `/api/events/${encodeURIComponent(eventId)}/briefing/rules`,
+      { rules },
+    );
+
+    return typeof body.rules === 'string' ? body.rules : null;
+  }
+
+  /** The person's shift page as they would see it (sc-3917), recording nothing; staff.read. */
+  async previewStaffNight(eventId: string, staffId: string): Promise<MyNight> {
+    return this.myNightOf(
+      await this.get<unknown>(`${this.staffPath(eventId)}/${encodeURIComponent(staffId)}/preview`),
+    );
+  }
+
   /** The roster with the event's jobs and shifts (sc-3908); refused 403 without staff.read. */
   async staffPlan(eventId: string): Promise<StaffPlan> {
     return this.staffPlanOf(await this.get<unknown>(this.staffPath(eventId)));
@@ -4062,6 +4112,62 @@ export class ApiClient {
     );
   }
 
+  /** sc-4005's read of one course's service: 403 without service.work. */
+  async serviceRead(eventId: string, courseId: string): Promise<ServiceRead> {
+    const body = await this.get<{ service?: unknown }>(
+      `${this.servicePath(eventId)}/course/${encodeURIComponent(courseId)}`,
+    );
+    const read = asServiceRead(body?.service);
+
+    if (read == null)
+      throw new Error(
+        'The API answered a service read in a shape this client does not know. Check ServiceRead in services/api.',
+      );
+
+    return read;
+  }
+
+  /** The event's kitchen stations, the reader's own and the courses fired (sc-4015): 403 without service.work, or to whoever works only the floor. */
+  async kitchenStations(eventId: string): Promise<KitchenStationsRead> {
+    const body = await this.get<unknown>(`${this.servicePath(eventId)}/stations`);
+    const read = asKitchenStationsRead(body);
+
+    if (read == null)
+      throw new Error(
+        'The API answered the kitchen stations in a shape this client does not know. Check KitchenStationList in services/api.',
+      );
+
+    return read;
+  }
+
+  /** A hub token for this event's service topic alone (sc-4005). */
+  async serviceSubscription(eventId: string): Promise<RealtimeSubscription> {
+    const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
+      `${this.servicePath(eventId)}/subscriptions`,
+    );
+
+    return {
+      token: typeof body.token === 'string' ? body.token : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  private servicePath(eventId: string): string {
+    return `/api/events/${encodeURIComponent(eventId)}/service`;
+  }
+
+  /** A kept service tap (sc-4028); the same key again answers as the first time, 409 `service_changed` names each plate or item that moved since. */
+  async sendServiceTap(tap: KeptServiceTap): Promise<void> {
+    await this.request<unknown>(
+      `/api/events/${encodeURIComponent(tap.eventId)}/service${tap.path}`,
+      {
+        method: tap.method,
+        body: { ...tap.body, expected: tap.expected },
+        headers: { 'Idempotency-Key': tap.key },
+      },
+    );
+  }
+
   /** A hub token for this event's schedule topic alone. */
   async scheduleSubscription(eventId: string): Promise<RealtimeSubscription> {
     const body = await this.post<{ token?: unknown; expiresAt?: unknown }>(
@@ -4121,7 +4227,9 @@ export class ApiClient {
 
   /** Clock in or out at the person's link (sc-234), at the server's time when it arrives; also past access while still clocked in. Refused 409 `conflict` outside the window, or out with no clock-in. */
   async staffLinkClock(token: string, action: ClockAction): Promise<ClockOutcome> {
-    return this.clockOutcomeOf(await this.post<unknown>('/api/staff-links/clock', { token, action }));
+    return this.clockOutcomeOf(
+      await this.post<unknown>('/api/staff-links/clock', { token, action }),
+    );
   }
 
   /** The same in the app. */
@@ -6711,13 +6819,14 @@ function asAccount(raw: unknown): Account | null {
     outsideEvents: Array.isArray(candidate.outsideEvents)
       ? candidate.outsideEvents.flatMap(asOutsideEvent)
       : [],
+    signedOutAt: typeof candidate.signedOutAt === 'string' ? candidate.signedOutAt : null,
   };
 }
 
 function asOutsideEvent(raw: unknown): OutsideEvent[] {
   if (typeof raw !== 'object' || raw == null) return [];
 
-  const { id, name, organisationName, role, jobLabel, startsAt, endsAt } = raw as Record<
+  const { id, name, organisationName, role, jobLabel, startsAt, endsAt, timeZone } = raw as Record<
     string,
     unknown
   >;
@@ -6727,6 +6836,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
     typeof name !== 'string' ||
     typeof organisationName !== 'string' ||
     typeof startsAt !== 'string' ||
+    typeof timeZone !== 'string' ||
     !(EVENT_LEVELS as readonly unknown[]).includes(role)
   )
     return [];
@@ -6740,6 +6850,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
       jobLabel: typeof jobLabel === 'string' ? jobLabel : null,
       startsAt,
       endsAt: typeof endsAt === 'string' ? endsAt : null,
+      timeZone,
     },
   ];
 }
