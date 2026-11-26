@@ -168,6 +168,9 @@ final class MyNightTest extends ApiTestCase
         self::em()->remove(self::em()->find(EventPerson::class, $grant->getId()) ?? self::fail('no grant'));
         self::em()->flush();
         self::assertFalse($this->night($user)['dishes'] ?? null, "a staff link's own level does not open them");
+
+        $this->as($this->owner, 'PUT', $this->path('jobs/' . $this->jobId), ['name' => 'Waiter', 'access' => 'pass']);
+        self::assertTrue($this->night($user)['dishes'] ?? null, "a job's Can work the pass opens them through the staff link");
     }
 
     #[Test]

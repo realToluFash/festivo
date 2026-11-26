@@ -346,12 +346,18 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
-    public function aJobAboveCheckingInStillHoldsNoMoreThanReading(): void
+    public function aJobAtAServiceLevelHoldsThatLevel(): void
     {
-        $this->jobAccess('run');
+        $this->jobAccess('pass');
         $user = $this->signedIn();
 
-        self::assertSame('can_view', $this->outsideRole($user));
+        self::assertSame('can_work_pass', $this->outsideRole($user));
+        $this->as($user, 'GET', '/api/events/' . $this->eventId . '/service/stations');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->jobAccess('run');
+
+        self::assertSame('can_run_floor', $this->outsideRole($user));
     }
 
     #[Test]
