@@ -743,6 +743,8 @@ export interface OpenedDoorCode {
     endsAt: string;
     timeZone: string;
     organisation: string;
+    /** The organisation's country, where a number typed at the door code starts. */
+    country: string;
   };
   standing: 'member' | 'in' | null;
 }

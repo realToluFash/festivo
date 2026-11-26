@@ -21,6 +21,7 @@ export function CodeStep({
   cooldown,
   onCode,
   onResend,
+  boxesTop = tokens.space4xl,
   children,
   testID,
 }: {
@@ -33,6 +34,8 @@ export function CodeStep({
   cooldown: number;
   onCode: (code: string) => void;
   onResend: () => void;
+  /** The room between the intro and the boxes, as the screen's demo draws it. */
+  boxesTop?: number;
   /** Other quiet ways on, such as Text it to me instead. */
   children?: ReactNode;
   testID: string;
@@ -54,7 +57,7 @@ export function CodeStep({
         intro={spent ? t(`${copy}.${status.kind}Body`) : intro}
       />
       {(done || asksForCode(status)) && (
-        <View style={styles.boxes}>
+        <View style={{ marginTop: boxesTop }}>
           <CodeBoxes
             ref={boxes}
             label={t('steps.codeLabel')}
@@ -94,7 +97,6 @@ export function CodeStep({
 export const NEXT_STEP_MS = 500;
 
 const styles = StyleSheet.create({
-  boxes: { marginTop: tokens.space4xl },
   ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
   waysSpent: { marginTop: tokens.space3xl },
 });
