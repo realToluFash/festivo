@@ -1,6 +1,7 @@
 import { type Ref, useState } from 'react';
 import { type LayoutRectangle, StyleSheet, View, type ViewInstance } from 'react-native';
 
+import { Glyph } from '../../components/Glyph.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
 import {
@@ -17,6 +18,10 @@ import {
   type CodeStatus,
   codeStatus,
   type DoorCode,
+  type Moment,
+  type Shift,
+  shiftState,
+  shiftWords,
   underCard,
 } from './DoorCodeModel.ts';
 import { cardTop, doorCodeSaid, W } from './DoorCodeWords.ts';
@@ -26,6 +31,14 @@ const TAGS: Record<Exclude<CodeStatus, 'working'>, { word: string; mark: MarkKin
   stopped: { word: W.stopped, mark: 'paused' },
   expired: { word: W.expired, mark: 'ended' },
 };
+
+const SHIFT_TAGS = {
+  full: { word: W.shiftFull, shape: null },
+  over: {
+    word: W.shiftOver,
+    shape: <Glyph name="clock" size={13} ink={tokens.colorInkOnDark} weight={2.4} />,
+  },
+} as const;
 
 /** People's Confetti card with no code yet: what a code does, and the one step. */
 export function NoCodeCard({
@@ -53,20 +66,22 @@ export function NoCodeCard({
   );
 }
 
-/** A code on People: what it gives, the code read in its groups, how far it has gone, one step; a tag only when it is not working. */
+/** A code on People: what it gives and its shift, the code read in its groups, how far it has gone, one step; a tag only when it is not working. */
 export function DoorCodeCard({
   code,
+  shift,
   locale,
-  today,
+  now,
   onHold,
   onMakeNew,
   onStop,
   stepRef,
 }: {
   code: DoorCode;
+  shift: Shift | null;
   locale: string;
-  /** The sample's day, so an end on another day names it. */
-  today: string;
+  /** The sample's moment: an end on another day names it, and a shift past its end is over. */
+  now: Moment;
   onHold: () => void;
   onMakeNew: () => void;
   onStop: () => void;
@@ -77,6 +92,8 @@ export function DoorCodeCard({
   const holds = cardStep(status) === 'hold';
   const under = underCard(status);
   const [words, setWords] = useState<LayoutRectangle | null>(null);
+  const shiftIs = shift == null ? null : shiftState(shift, now);
+  const shiftTag = shiftIs == null || shiftIs === 'free' ? null : SHIFT_TAGS[shiftIs];
 
   return (
     <>
@@ -94,6 +111,19 @@ export function DoorCodeCard({
       >
         <View style={styles.words} onLayout={(event) => setWords(event.nativeEvent.layout)}>
           <OnCard text={cardTop(code.role, code.job)} />
+          {shift != null && (
+            <View style={styles.codeRow}>
+              <OnCard text={shiftWords(shift, locale)} />
+              {shiftTag != null && (
+                <GlassTag
+                  word={shiftTag.word}
+                  mark={shiftTag.shape == null ? 'ended' : undefined}
+                  shape={shiftTag.shape ?? undefined}
+                  testID={`door.shiftTag.${code.id}`}
+                />
+              )}
+            </View>
+          )}
           <View style={styles.codeRow}>
             <Text
               size={30}
@@ -105,7 +135,8 @@ export function DoorCodeCard({
             </Text>
             {tag != null && <GlassTag word={tag.word} mark={tag.mark} />}
           </View>
-          <OnCard text={cardLine(code, locale, today)} />
+          <OnCard text={cardLine(code, locale, now.date)} />
+          {shiftTag != null && <OnCard text={W.notPutOn} />}
         </View>
       </SummaryCard>
       {under.length > 0 && (

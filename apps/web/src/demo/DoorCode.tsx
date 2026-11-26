@@ -18,8 +18,10 @@ import {
   BUSY_MS,
   CODE_LINES,
   CODE_ROLES,
+  type CodeRole,
   type DoorAsk,
   type DoorCode,
+  type DoorShift,
   type DoorStart,
   DOOR_EVENT,
   DOOR_ORG,
@@ -28,6 +30,7 @@ import {
   HOLD_MS,
   JOIN_MS,
   LABEL_MOST,
+  MAKE_FRESH,
   type MakeForm,
   type MakeStart,
   W,
@@ -41,19 +44,28 @@ import {
   formFrom,
   heldLine,
   jobHelp,
+  lockLine,
   doorCodeSaid,
   joiner,
   madeCode,
   makeLines,
+  namedShift,
   newLine,
+  newOpensForm,
   nextCode,
+  offeredShifts,
+  pickedLine,
+  placesLine,
   printLine,
   printWhen,
   qrSaid,
   renewed,
   roleLine,
+  shiftLine,
+  shiftStatus,
   shownCode,
   stopLine,
+  withShift,
 } from './doorCode.ts';
 import { focusWhenFree, LayersContext, useDeskDialog } from '../layers.ts';
 import type { OnEvent } from './people.ts';
@@ -115,6 +127,7 @@ export function DoorArea({
     return () => clearTimeout(timer);
   }, [start.joins]);
 
+  const { shifts, now } = start;
   const taken = codes.map((one) => one.code);
 
   function made(form: MakeForm, into: number | null): void {
@@ -144,11 +157,18 @@ export function DoorArea({
     focusWhenFree(() => document.querySelector<HTMLElement>(STEP(done.index)));
   }
 
+  function renewIn(index: number): void {
+    const code = codes[index];
+    if (code == null) return;
+    setAsk(null);
+    setMake({ ...MAKE_FRESH, form: formFrom(code, shifts, now), into: index });
+  }
+
   function step(code: DoorCode, index: number): void {
     if (code.state === 'working') setHeld(index);
     else if (code.state === 'full')
       setAsk({ kind: 'new', index, phase: 'ask', held: false, failsOnce: false });
-    else setMake({ ...MAKE_FRESH, form: formFrom(code), into: index });
+    else renewIn(index);
   }
 
   function print(index: number): void {
@@ -178,7 +198,13 @@ export function DoorArea({
         <div className="dc-codes">
           {codes.map((code, index) => (
             <div key={code.code} className="dc-code-item">
-              <CodeCard code={code} index={index} onStep={() => step(code, index)} />
+              <CodeCard
+                code={code}
+                index={index}
+                shifts={shifts}
+                now={now}
+                onStep={() => step(code, index)}
+              />
               <CodeActions
                 code={code}
                 stopRef={index === 0 ? stopButton : undefined}
@@ -198,6 +224,8 @@ export function DoorArea({
       {make != null && (
         <MakeDialog
           start={make}
+          shifts={shifts}
+          now={now}
           onClose={() => setMake(null)}
           onMade={(form) => made(form, make.into)}
         />
@@ -205,6 +233,7 @@ export function DoorArea({
       {heldCode != null && held != null && (
         <HoldUp
           code={heldCode}
+          now={now}
           onClose={() => setHeld(null)}
           onPrint={() => print(held)}
           onNew={() =>
@@ -222,6 +251,9 @@ export function DoorArea({
           code={asked}
           onKeep={() => setAsk(null)}
           onDone={settled}
+          {...(ask.kind === 'new' && newOpensForm(asked, shifts)
+            ? { onOpen: () => renewIn(ask.index) }
+            : {})}
         />
       )}
       {codes[printing] != null &&
@@ -235,30 +267,53 @@ export function DoorArea({
   );
 }
 
-const MAKE_FRESH: MakeStart = {
-  form: { role: 'Can view', label: '', cap: '', ends: { kind: 'event' } },
-  checked: false,
-  phase: 'open',
-  failsOnce: false,
-  refused: false,
-  menu: false,
-  into: null,
-  focus: 'first',
-};
-
 const TAGS = {
   full: { kind: 'ended', word: W.full },
   stopped: { kind: 'paused', word: W.stopped },
   ranOut: { kind: 'ended', word: W.ranOut },
 } as const;
 
-function CodeCard({ code, index, onStep }: { code: DoorCode; index: number; onStep: () => void }) {
+const SHIFT_TAGS = { full: W.shiftFull, over: W.shiftOver } as const;
+
+function CodeCard({
+  code,
+  index,
+  shifts,
+  now,
+  onStep,
+}: {
+  code: DoorCode;
+  index: number;
+  shifts: readonly DoorShift[];
+  now: string;
+  onStep: () => void;
+}) {
   const tag = code.state === 'working' ? null : TAGS[code.state];
+  const shift = namedShift(code, shifts);
+  const live = code.state === 'working' || code.state === 'full';
+  const status = shift == null || !live ? 'open' : shiftStatus(shift, now);
 
   return (
     <div className="dc-card" data-index={index}>
       <Card size="page">
-        <p className="desk-on-card">{roleLine(code)}</p>
+        <div className="dc-card-lines">
+          <p className="desk-on-card">{roleLine(code)}</p>
+          {shift != null && (
+            <div className="dc-card-shift">
+              <p className="desk-on-card">{shiftLine(shift)}</p>
+              {status !== 'open' && (
+                <span className="desk-glass">
+                  {status === 'full' ? (
+                    <Mark kind="ended" />
+                  ) : (
+                    <Glyph name="clock" size={13} weight={2.4} />
+                  )}
+                  {SHIFT_TAGS[status]}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
         <div className="dc-card-code">
           <p className="dc-code-big">
             <span aria-hidden="true">{shownCode(code.code)}</span>
@@ -271,7 +326,10 @@ function CodeCard({ code, index, onStep }: { code: DoorCode; index: number; onSt
             </span>
           )}
         </div>
-        <p className="desk-on-card">{countLine(code)}</p>
+        <div className="dc-card-lines">
+          <p className="desk-on-card">{countLine(code, now)}</p>
+          {status !== 'open' && <p className="desk-on-card">{W.notPutOn}</p>}
+        </div>
         <button type="button" className="desk-step" onClick={onStep}>
           {code.state === 'working' ? W.hold : W.makeNew}
           <Glyph name="arrow" size={16} weight={2.4} />
@@ -313,11 +371,13 @@ function CodeAsk({
   code,
   onKeep,
   onDone,
+  onOpen,
 }: {
   ask: DoorAsk;
   code: DoorCode;
   onKeep: () => void;
   onDone: (ask: DoorAsk) => void;
+  onOpen?: () => void;
 }) {
   const [phase, setPhase] = useState<AskPhase>(ask.phase);
   const fails = useRef(ask.failsOnce);
@@ -350,7 +410,7 @@ function CodeAsk({
       busy={waits ? (stop ? W.stopping : W.making) : undefined}
       failed={phase === 'failed' && stop ? W.failStop : undefined}
       onKeep={onKeep}
-      onGo={() => setPhase('busy')}
+      onGo={() => (onOpen == null ? setPhase('busy') : onOpen())}
     />
   );
 }
@@ -358,12 +418,14 @@ function CodeAsk({
 /** Show the code at a desk: the whole window white, the QR at 420 and the code at 56; Esc closes it. */
 function HoldUp({
   code,
+  now,
   onClose,
   onPrint,
   onNew,
   onStop,
 }: {
   code: DoorCode;
+  now: string;
   onClose: () => void;
   onPrint: () => void;
   onNew: () => void;
@@ -374,19 +436,28 @@ function HoldUp({
   return host == null
     ? null
     : createPortal(
-        <HoldBox code={code} onClose={onClose} onPrint={onPrint} onNew={onNew} onStop={onStop} />,
+        <HoldBox
+          code={code}
+          now={now}
+          onClose={onClose}
+          onPrint={onPrint}
+          onNew={onNew}
+          onStop={onStop}
+        />,
         host,
       );
 }
 
 function HoldBox({
   code,
+  now,
   onClose,
   onPrint,
   onNew,
   onStop,
 }: {
   code: DoorCode;
+  now: string;
   onClose: () => void;
   onPrint: () => void;
   onNew: () => void;
@@ -451,7 +522,7 @@ function HoldBox({
         </p>
         <p className="dc-hold-role">{heldLine(code)}</p>
         <p className="dc-hold-count" role="status">
-          {countLine(code)}
+          {countLine(code, now)}
         </p>
       </div>
       <div className="dc-acts is-held">
@@ -486,10 +557,14 @@ export function Qr({ code, size, label = true }: { code: string; size: number; l
 
 function MakeDialog({
   start,
+  shifts,
+  now,
   onClose,
   onMade,
 }: {
   start: MakeStart;
+  shifts: readonly DoorShift[];
+  now: string;
   onClose: () => void;
   onMade: (form: MakeForm) => void;
 }) {
@@ -499,14 +574,22 @@ function MakeDialog({
   const [phase, setPhase] = useState(start.phase);
   const [refused, setRefused] = useState(start.refused);
   const [menu, setMenu] = useState(start.menu);
+  const [shiftMenu, setShiftMenu] = useState(start.shiftMenu);
   const fails = useRef(start.failsOnce);
+  const shiftRef = useRef<HTMLButtonElement>(null);
   const roleRef = useRef<HTMLInputElement>(null);
   const capRef = useRef<HTMLInputElement>(null);
   const endsRef = useRef<HTMLButtonElement>(null);
   const timeRef = useRef<HTMLSelectElement>(null);
-  const lines = checked ? makeLines(form) : {};
+  const lines = checked ? makeLines(form, now) : {};
   const busy = phase === 'busy' || phase === 'held';
-  const first = { first: roleRef, cap: capRef, time: timeRef }[start.focus];
+  const offered = offeredShifts(shifts, now);
+  const picked = shifts.find((shift) => shift.id === form.shift) ?? null;
+  const first = {
+    first: offered.length > 0 ? shiftRef : roleRef,
+    cap: capRef,
+    time: timeRef,
+  }[start.focus];
 
   const arrive = useEffectEvent(() => {
     if (fails.current) {
@@ -530,7 +613,7 @@ function MakeDialog({
 
   function makeIt(): void {
     if (busy) return;
-    const found = makeLines(form);
+    const found = makeLines(form, now);
     setChecked(true);
     if (found.cap != null) {
       capRef.current?.focus();
@@ -569,31 +652,30 @@ function MakeDialog({
         </p>
       )}
       {phase === 'failed' && <TextAction label={W.tryAgain} onClick={makeIt} />}
+      <ShiftChoice
+        offered={offered}
+        picked={picked}
+        open={shiftMenu}
+        buttonRef={shiftRef}
+        onOpen={() => setShiftMenu(true)}
+        onClose={() => setShiftMenu(false)}
+        onPick={(shift) => setForm((was) => withShift(was, shift))}
+      />
       <fieldset className="desk-choices">
         <legend className="desk-legend">{W.theirRole}</legend>
-        <ul className="desk-rows">
-          {CODE_ROLES.map((role) => (
-            <li key={role}>
-              <label className={role === form.role ? 'desk-row is-picked' : 'desk-row'}>
-                <RowWords title={role} lines={[CODE_LINES[role]]} />
-                <input
-                  ref={role === form.role ? roleRef : undefined}
-                  type="radio"
-                  className="desk-radio"
-                  name={name}
-                  checked={role === form.role}
-                  onChange={() => change({ role })}
-                />
-              </label>
-            </li>
-          ))}
-          <li>
-            <label className="desk-row is-off">
-              <RowWords title={W.canEdit} lines={[W.noEdit]} />
-              <input type="radio" className="desk-radio" name={name} checked={false} disabled />
-            </label>
-          </li>
-        </ul>
+        {picked == null ? (
+          <RoleRadios
+            name={name}
+            role={form.role}
+            roleRef={roleRef}
+            onPick={(role) => change({ role })}
+          />
+        ) : (
+          <div className="desk-row dc-locked">
+            <RowWords title={form.role} lines={[lockLine(picked)]} />
+            <Glyph name="lock" size={18} weight={2.2} className="dc-lock" />
+          </div>
+        )}
       </fieldset>
       <Field
         label={W.jobLabel}
@@ -614,6 +696,7 @@ function MakeDialog({
       />
       <EndsChoice
         ends={form.ends}
+        now={now}
         open={menu}
         error={lines.ends ?? null}
         buttonRef={endsRef}
@@ -626,6 +709,198 @@ function MakeDialog({
   );
 }
 
+function RoleRadios({
+  name,
+  role: chosen,
+  roleRef,
+  onPick,
+}: {
+  name: string;
+  role: CodeRole;
+  roleRef: RefObject<HTMLInputElement | null>;
+  onPick: (role: CodeRole) => void;
+}) {
+  return (
+    <ul className="desk-rows">
+      {CODE_ROLES.map((role) => (
+        <li key={role}>
+          <label className={role === chosen ? 'desk-row is-picked' : 'desk-row'}>
+            <RowWords title={role} lines={[CODE_LINES[role]]} />
+            <input
+              ref={role === chosen ? roleRef : undefined}
+              type="radio"
+              className="desk-radio"
+              name={name}
+              checked={role === chosen}
+              onChange={() => onPick(role)}
+            />
+          </label>
+        </li>
+      ))}
+      <li>
+        <label className="desk-row is-off">
+          <RowWords title={W.canEdit} lines={[W.noEdit]} />
+          <input type="radio" className="desk-radio" name={name} checked={false} disabled />
+        </label>
+      </li>
+    </ul>
+  );
+}
+
+/** A row's menu at a desk: it opens on the picked item, arrow keys move, Escape goes back to the row, a click outside closes it. */
+function useDropMenu(
+  open: boolean,
+  menu: RefObject<HTMLUListElement | null>,
+  buttonRef: RefObject<HTMLButtonElement | null>,
+  close: (back: boolean) => void,
+): (event: ReactKeyboardEvent) => void {
+  useEffect(() => {
+    if (!open) return;
+    const items = () => [
+      ...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitemradio]') ?? []),
+    ];
+    (items().find((item) => item.getAttribute('aria-checked') === 'true') ?? items()[0])?.focus();
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!menu.current?.contains(target) && !buttonRef.current?.contains(target)) close(false);
+    };
+    document.addEventListener('pointerdown', outside);
+
+    return () => document.removeEventListener('pointerdown', outside);
+  }, [open, close, menu, buttonRef]);
+
+  return (event) => {
+    const all = [...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitemradio]') ?? [])];
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close(true);
+    } else if (event.key === 'Tab') close(false);
+    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = at + (event.key === 'ArrowDown' ? 1 : -1);
+      all[(next + all.length) % all.length]?.focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      (event.key === 'Home' ? all[0] : all.at(-1))?.focus();
+    }
+  };
+}
+
+/** Shift (optional), first on the form (sc-234): No shift, then the shifts a code may name, as a menu under the row as Ends drops. */
+function ShiftChoice({
+  offered,
+  picked,
+  open,
+  buttonRef,
+  onOpen,
+  onClose,
+  onPick,
+}: {
+  offered: readonly DoorShift[];
+  picked: DoorShift | null;
+  open: boolean;
+  buttonRef: RefObject<HTMLButtonElement | null>;
+  onOpen: () => void;
+  onClose: () => void;
+  onPick: (shift: DoorShift | null) => void;
+}) {
+  const id = useId();
+  const menu = useRef<HTMLUListElement>(null);
+  const close = useCallback(
+    (back: boolean) => {
+      onClose();
+      if (back) buttonRef.current?.focus();
+    },
+    [onClose, buttonRef],
+  );
+  const keys = useDropMenu(open, menu, buttonRef, close);
+  const none = offered.length === 0;
+  const choices = [
+    { key: 'none', word: W.noShift, line: null, shift: null },
+    ...offered.map((shift) => ({
+      key: shift.id,
+      word: shiftLine(shift),
+      line: placesLine(shift),
+      shift,
+    })),
+  ];
+
+  function pick(shift: DoorShift | null): void {
+    close(true);
+    onPick(shift);
+  }
+
+  return (
+    <fieldset className="desk-choices">
+      <legend className="desk-legend">{W.shift}</legend>
+      <div className="dc-ends-at">
+        <button
+          ref={buttonRef}
+          type="button"
+          className={none ? 'desk-row dc-ends-row is-off' : 'desk-row dc-ends-row'}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? `${id}-menu` : undefined}
+          aria-disabled={none || undefined}
+          onClick={() => {
+            if (none) return;
+            if (open) close(false);
+            else onOpen();
+          }}
+        >
+          <RowWords
+            title={picked == null ? W.noShift : pickedLine(picked)}
+            lines={[none ? W.noShiftToOffer : picked == null ? W.noShiftLine : W.shiftLine]}
+          />
+          <Glyph
+            name={open ? 'chevup' : 'chevdown'}
+            size={18}
+            weight={2.3}
+            className={none ? 'dc-ends-chev is-off' : 'dc-ends-chev'}
+          />
+        </button>
+        {open && (
+          <ul
+            ref={menu}
+            id={`${id}-menu`}
+            className="desk-menu dc-ends-menu"
+            role="menu"
+            aria-label={W.shift}
+            onKeyDown={keys}
+          >
+            {choices.map((choice) => {
+              const on = (choice.shift?.id ?? null) === (picked?.id ?? null);
+
+              return (
+                <li key={choice.key} role="none">
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={on}
+                    tabIndex={-1}
+                    className="desk-menu-item dc-ends-item"
+                    onClick={() => pick(choice.shift)}
+                  >
+                    <span className="desk-menu-tick">
+                      {on && <Glyph name="tick" size={16} weight={2.6} />}
+                    </span>
+                    <span className="dc-ends-words">
+                      <span className="dc-ends-word">{choice.word}</span>
+                      {choice.line != null && <span className="dc-ends-line">{choice.line}</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
 const ENDS_CHOICES = [
   { key: 'event', word: W.whenEventEnds, line: eventEndWords() },
   { key: 'earlier', word: W.earlier, line: W.earlierLine },
@@ -634,6 +909,7 @@ const ENDS_CHOICES = [
 /** Ends: a row that drops a menu at a desk (the phone's sheet); Earlier adds a Day and a Time, never after the event. */
 function EndsChoice({
   ends,
+  now,
   open,
   error,
   buttonRef,
@@ -643,6 +919,7 @@ function EndsChoice({
   onPick,
 }: {
   ends: Ends;
+  now: string;
   open: boolean;
   error: string | null;
   buttonRef: RefObject<HTMLButtonElement | null>;
@@ -661,38 +938,7 @@ function EndsChoice({
     [onClose, buttonRef],
   );
 
-  useEffect(() => {
-    if (!open) return;
-    const items = () => [
-      ...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitemradio]') ?? []),
-    ];
-    (items().find((item) => item.getAttribute('aria-checked') === 'true') ?? items()[0])?.focus();
-    const outside = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (!menu.current?.contains(target) && !buttonRef.current?.contains(target)) close(false);
-    };
-    document.addEventListener('pointerdown', outside);
-
-    return () => document.removeEventListener('pointerdown', outside);
-  }, [open, close, buttonRef]);
-
-  function keys(event: ReactKeyboardEvent): void {
-    const all = [...(menu.current?.querySelectorAll<HTMLElement>('[role=menuitemradio]') ?? [])];
-    const at = all.indexOf(document.activeElement as HTMLElement);
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      close(true);
-    } else if (event.key === 'Tab') close(false);
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      const next = at + (event.key === 'ArrowDown' ? 1 : -1);
-      all[(next + all.length) % all.length]?.focus();
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      (event.key === 'Home' ? all[0] : all.at(-1))?.focus();
-    }
-  }
+  const keys = useDropMenu(open, menu, buttonRef, close);
 
   function pick(key: 'event' | 'earlier'): void {
     close(key === 'event');
@@ -709,7 +955,7 @@ function EndsChoice({
     if (error != null) said.current?.scrollIntoView({ block: 'nearest' });
   }, [error]);
 
-  const days = endDays();
+  const days = endDays(now);
   const earlier = ends.kind === 'earlier' ? ends : null;
   const told = error == null ? undefined : `${id}-error`;
 

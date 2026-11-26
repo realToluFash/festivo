@@ -85,6 +85,15 @@ export const W = {
   close: 'Close',
   esc: 'Esc',
   backToPeople: 'Back to People',
+  shift: 'Shift (optional)',
+  noShift: 'No shift',
+  noShiftLine: 'Pick one to put whoever joins on it while it has a free place.',
+  shiftLine:
+    'Whoever joins goes on this shift while it has a free place, and is clocked in if they join from an hour before it starts.',
+  noShiftToOffer: 'No shift has a place a code can fill',
+  shiftFull: 'Shift full',
+  shiftOver: 'Shift over',
+  notPutOn: 'People who join now are not put on it.',
 } as const;
 
 /** sc-4002: a code offers the two service levels that work a place; Can run the floor is refused (422 level_not_allowed_for_code). */
@@ -103,6 +112,21 @@ export const CODE_LINES: Record<CodeRole, string> = {
   'Can work the pass': LEVEL_LINES['Can work the pass'],
 };
 
+/** A shift's job carries a level (sc-3908); a code may name it only at a level it may give. */
+export type JobLevel = CodeRole | 'Can run the floor';
+
+export interface DoorShift {
+  id: string;
+  job: string;
+  level: JobLevel;
+  starts: string;
+  ends: string;
+  places: number;
+  taken: number;
+}
+
+export type ShiftStatus = 'open' | 'full' | 'over';
+
 export type Ends = { kind: 'event' } | { kind: 'earlier'; day: string; time: string };
 export type CodeState = 'working' | 'full' | 'stopped' | 'ranOut';
 
@@ -115,6 +139,7 @@ export interface DoorCode {
   ends: Ends;
   state: CodeState;
   endedAt: string | null;
+  shift: string | null;
 }
 
 /** The reader's region refines the English screen's dates, never replaces them (formattingLocale): en-US reads "Sat, Nov 14", and en-GB or any other region "Sat 14 Nov". */
@@ -217,6 +242,9 @@ export interface MakeForm {
   label: string;
   cap: string;
   ends: Ends;
+  shift: string | null;
+  /** The level No shift gives back: the one chosen before a shift was picked. */
+  before: CodeRole;
 }
 
 export interface MakeLines {
@@ -239,6 +267,8 @@ export const BLANK_FORM: MakeForm = {
   label: '',
   cap: '',
   ends: { kind: 'event' },
+  shift: null,
+  before: 'Can view',
 };
 
 export function jobHelp(label: string): string {
@@ -285,7 +315,7 @@ export function heldLine(code: DoorCode): string {
   return [code.role, code.label].filter((part) => part != null && part !== '').join(' · ');
 }
 
-export function countLine(code: DoorCode): string {
+export function countLine(code: DoorCode, now = DESK_NOW): string {
   switch (code.state) {
     case 'stopped':
       if (code.used === 0) return W.nobodyCameIn;
@@ -296,9 +326,9 @@ export function countLine(code: DoorCode): string {
     case 'ranOut':
       if (code.used === 0) return W.nobodyCameIn;
 
-      return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : atWords(`${isoDayOf(DESK_NOW)}T${code.endedAt}:00Z`)}`;
+      return `${code.used} of ${code.cap} used · ended at ${code.endedAt == null ? '' : atWords(`${isoDayOf(now)}T${code.endedAt}:00Z`, now)}`;
     default:
-      return `${code.used} of ${code.cap} used · until ${untilWords(code.ends)}`;
+      return `${code.used} of ${code.cap} used · until ${untilWords(code.ends, now)}`;
   }
 }
 
@@ -338,6 +368,7 @@ export function madeCode(form: MakeForm, code: string): DoorCode {
     ends: form.ends,
     state: 'working',
     endedAt: null,
+    shift: form.shift,
   };
 }
 
@@ -345,15 +376,153 @@ export function renewed(code: DoorCode, fresh: string): DoorCode {
   return { ...code, code: fresh, used: 0, state: 'working', endedAt: null };
 }
 
-/** Making a new code for a stopped or run-out one starts from its role, label and cap; an end that has passed goes back to the event's. */
-export function formFrom(code: DoorCode, now = DESK_NOW): MakeForm {
-  return {
+/** Making a new code starts from the old one's role, label and cap; an end that has passed goes back to the event's, and its shift stays only while a code may still name it (sc-234). */
+export function formFrom(
+  code: DoorCode,
+  shifts: readonly DoorShift[] = [],
+  now = DESK_NOW,
+): MakeForm {
+  const form: MakeForm = {
     role: code.role,
     label: code.label ?? '',
     cap: String(code.cap),
     ends: endsLine(code.ends, now) == null ? code.ends : { kind: 'event' },
+    shift: null,
+    before: code.role,
+  };
+  const named = namedShift(code, shifts);
+
+  return named != null && nameable(named, now) ? withShift(form, named) : form;
+}
+
+const WEEKDAY = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: DOOR_ZONE });
+
+/** A shift past midnight reads its start day; no date anywhere. */
+export const shiftLine = (shift: DoorShift) =>
+  `${shift.job} · ${WEEKDAY.format(new Date(shift.starts))} ${clockOf(shift.starts)} to ${clockOf(shift.ends)}`;
+
+export const placesLine = (shift: DoorShift) =>
+  `${shift.places - shift.taken} of ${shift.places} ${shift.places === 1 ? 'place' : 'places'} free`;
+
+export const pickedLine = (shift: DoorShift) => `${shiftLine(shift)} · ${placesLine(shift)}`;
+
+export const lockLine = (shift: DoorShift) =>
+  `Set by the ${shift.job} shift. Pick No shift to choose another.`;
+
+export function shiftStatus(shift: DoorShift, now = DESK_NOW): ShiftStatus {
+  if (Date.parse(shift.ends) <= Date.parse(now)) return 'over';
+
+  return shift.taken >= shift.places ? 'full' : 'open';
+}
+
+export const codeMayGive = (level: JobLevel): level is CodeRole =>
+  CODE_ROLES.some((role) => role === level);
+
+const nameable = (shift: DoorShift, now: string) =>
+  shiftStatus(shift, now) === 'open' && codeMayGive(shift.level);
+
+/** The shifts a code may name: a free place, before its scheduled end, at a level a code may give; by scheduled start. */
+export function offeredShifts(shifts: readonly DoorShift[], now = DESK_NOW): DoorShift[] {
+  return shifts
+    .filter((shift) => nameable(shift, now))
+    .sort((one, other) => Date.parse(one.starts) - Date.parse(other.starts));
+}
+
+/** A shift sets the level to its job's; No shift gives back the level chosen before it. */
+export function withShift(form: MakeForm, shift: DoorShift | null): MakeForm {
+  if (shift == null) return form.shift == null ? form : { ...form, shift: null, role: form.before };
+  if (!codeMayGive(shift.level)) return form;
+
+  return {
+    ...form,
+    shift: shift.id,
+    role: shift.level,
+    before: form.shift == null ? form.role : form.before,
   };
 }
+
+/** A deleted shift is no shift: the card names none and Make a new code is sc-72's. */
+export function namedShift(code: DoorCode, shifts: readonly DoorShift[]): DoorShift | null {
+  return code.shift == null ? null : (shifts.find((shift) => shift.id === code.shift) ?? null);
+}
+
+/** On a code naming a shift, the Ask's Make a new code opens the form; otherwise it makes the code at once. */
+export const newOpensForm = (code: DoorCode, shifts: readonly DoorShift[]) =>
+  namedShift(code, shifts) != null;
+
+const SATURDAY = '2026-11-14';
+const SUNDAY = '2026-11-15';
+const on = (day: string, time: string) => `${day}T${time}:00Z`;
+
+/** The wedding's shifts, its jobs and levels as the Staff page's (sc-3908). Floor lead runs the floor, so no code names it. */
+export const DOOR_SHIFTS: readonly DoorShift[] = [
+  {
+    id: 'lead',
+    job: 'Floor lead',
+    level: 'Can run the floor',
+    starts: on(SATURDAY, '15:00'),
+    ends: on(SUNDAY, '00:00'),
+    places: 1,
+    taken: 0,
+  },
+  {
+    id: 'cook',
+    job: 'Cook',
+    level: 'Can work the pass',
+    starts: on(SATURDAY, '13:00'),
+    ends: on(SATURDAY, '22:00'),
+    places: 3,
+    taken: 1,
+  },
+  {
+    id: 'door',
+    job: 'Door',
+    level: 'Can check guests in',
+    starts: on(SATURDAY, '14:30'),
+    ends: on(SATURDAY, '19:00'),
+    places: 2,
+    taken: 1,
+  },
+  {
+    id: 'bar',
+    job: 'Bar',
+    level: 'Can view',
+    starts: on(SATURDAY, '16:00'),
+    ends: on(SUNDAY, '01:00'),
+    places: 2,
+    taken: 1,
+  },
+  {
+    id: 'runner',
+    job: 'Runner',
+    level: 'Can work the floor',
+    starts: on(SATURDAY, '17:00'),
+    ends: on(SUNDAY, '00:00'),
+    places: 2,
+    taken: 2,
+  },
+  {
+    id: 'waiter',
+    job: 'Waiter',
+    level: 'Can work the floor',
+    starts: on(SATURDAY, '18:00'),
+    ends: on(SUNDAY, '01:00'),
+    places: 8,
+    taken: 5,
+  },
+];
+
+const shiftOf = (id: string): DoorShift => {
+  const found = DOOR_SHIFTS.find((shift) => shift.id === id);
+  if (found == null) throw new Error(`No sample shift ${id}`);
+
+  return found;
+};
+
+export const WAITER_SHIFT = shiftOf('waiter');
+export const DOOR_SHIFT = shiftOf('door');
+/** The night itself, after the Door shift's 19:00 end and before the code's. */
+export const NIGHT_NOW = on(SATURDAY, '20:00');
 
 type Who = readonly [name: string, initials: string, tone?: number];
 
@@ -405,6 +574,7 @@ export const BAR: DoorCode = {
   ends: { kind: 'event' },
   state: 'working',
   endedAt: null,
+  shift: null,
 };
 
 export const CLOAKROOM: DoorCode = {
@@ -416,6 +586,20 @@ export const CLOAKROOM: DoorCode = {
   ends: { kind: 'event' },
   state: 'working',
   endedAt: null,
+  shift: null,
+};
+
+/** A code naming the Waiter shift (sc-234). */
+export const WAITERS: DoorCode = {
+  code: 'T6PJ2VXC',
+  role: 'Can work the floor',
+  label: 'Waiting staff',
+  cap: 30,
+  used: 5,
+  ends: { kind: 'event' },
+  state: 'working',
+  endedAt: null,
+  shift: WAITER_SHIFT.id,
 };
 
 const idOf = (name: string) =>
@@ -537,6 +721,10 @@ export const DOOR_STATES = [
   'code-remove',
   'code-removing',
   'code-removed',
+  'code-shift',
+  'code-shift-full',
+  'code-shift-over',
+  'new_code_shift_kept',
 ] as const;
 export const MAKE_STATES = [
   'open',
@@ -547,6 +735,9 @@ export const MAKE_STATES = [
   'making',
   'failed',
   'refused',
+  'shift',
+  'shift-list',
+  'shift-none',
 ] as const;
 export const HOLD_STATES = [
   'open',
@@ -573,6 +764,7 @@ export interface MakeStart {
   /** The API's 422 level_not_allowed_for_code, from a stale form or a direct call: the client never offers the level. */
   refused: boolean;
   menu: boolean;
+  shiftMenu: boolean;
   into: number | null;
   focus: 'first' | 'cap' | 'time';
 }
@@ -597,6 +789,8 @@ export interface DoorStart {
   toast: string | null;
   print: boolean;
   onEvent: OnEvent[];
+  shifts: readonly DoorShift[];
+  now: string;
 }
 
 export interface DoorParams {
@@ -611,25 +805,38 @@ const isMake = (name: string | null): name is MakeState => MAKE_STATES.some((one
 const isHold = (name: string | null): name is HoldState => HOLD_STATES.some((one) => one === name);
 
 const TYPED: MakeForm = {
+  ...BLANK_FORM,
   role: 'Can check guests in',
   label: 'Bar and drinks',
   cap: '30',
-  ends: { kind: 'event' },
 };
 
+export const MAKE_FRESH: MakeStart = {
+  form: BLANK_FORM,
+  checked: false,
+  phase: 'open',
+  failsOnce: false,
+  refused: false,
+  menu: false,
+  shiftMenu: false,
+  into: null,
+  focus: 'first',
+};
+
+/** Nothing a code can fill: every place taken, and Floor lead never offered. */
+const NO_ROOM = DOOR_SHIFTS.map((shift) => ({ ...shift, taken: shift.places }));
+
 function makeStart(state: MakeState): MakeStart {
-  const start: MakeStart = {
-    form: BLANK_FORM,
-    checked: false,
-    phase: 'open',
-    failsOnce: false,
-    refused: false,
-    menu: false,
-    into: null,
-    focus: 'first',
-  };
+  const start = MAKE_FRESH;
 
   switch (state) {
+    case 'shift':
+      return {
+        ...start,
+        form: withShift({ ...BLANK_FORM, label: 'Waiting staff', cap: '30' }, WAITER_SHIFT),
+      };
+    case 'shift-list':
+      return { ...start, shiftMenu: true };
     case 'refused':
       return { ...start, form: { ...TYPED, role: 'Can work the floor' }, refused: true };
     case 'blank':
@@ -690,9 +897,17 @@ export function doorStartOf(params: DoorParams): DoorStart | null {
     toast: null,
     print,
     onEvent: barCrew,
+    shifts: DOOR_SHIFTS,
+    now: DESK_NOW,
   };
   const none = { ...start, codes: [], onEvent: [...NAMED] };
+  const waiters = {
+    ...start,
+    codes: [WAITERS],
+    onEvent: [...NAMED, ...crewOf(WAITERS, BAR_CREW, 0, WAITERS.used)],
+  };
 
+  if (make === 'shift-none') return { ...none, make: makeStart(make), shifts: NO_ROOM };
   if (make != null) return { ...none, make: makeStart(make) };
   if (hold != null) {
     const ask = (kind: DoorAsk['kind'], phase: AskPhase, failsOnce = false): DoorAsk => ({
@@ -750,6 +965,22 @@ export function doorStartOf(params: DoorParams): DoorStart | null {
       return { ...start, person: JOAO, remove: 'ask' };
     case 'code-removing':
       return { ...start, person: JOAO, remove: 'held' };
+    case 'code-shift':
+      return waiters;
+    case 'code-shift-full':
+      return {
+        ...waiters,
+        shifts: DOOR_SHIFTS.map((shift) =>
+          shift.id === WAITER_SHIFT.id ? { ...shift, taken: shift.places } : shift,
+        ),
+      };
+    case 'code-shift-over':
+      return { ...start, codes: [{ ...BAR, shift: DOOR_SHIFT.id }], now: NIGHT_NOW };
+    case 'new_code_shift_kept':
+      return {
+        ...waiters,
+        make: { ...MAKE_FRESH, form: formFrom(WAITERS, DOOR_SHIFTS), into: 0 },
+      };
     case 'code-removed':
       return {
         ...start,
@@ -786,6 +1017,9 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       people('state=code-expired', 'Expired'),
       people('state=code-made', 'Made, with the toast'),
       people('state=code-keyboard', 'From the keyboard'),
+      people('state=code-shift', 'The code names a shift (sc-234)'),
+      people('state=code-shift-full', 'Its shift full (sc-234)'),
+      people('state=code-shift-over', 'Its shift over, on the night (sc-234)'),
       people('state=loading', 'Loading'),
       people('state=failed', 'Failed'),
       people('state=readOnly', 'Read only'),
@@ -802,6 +1036,10 @@ export const DOOR_PAGES: readonly { name: string; states: readonly DemoLink[] }[
       people('code=making', 'Making'),
       people('code=failed', 'Making failed'),
       people('code=refused', 'Refused: a code can’t run the floor (sc-4002)'),
+      people('code=shift-list', 'Shift (optional), the list open (sc-234)'),
+      people('code=shift', 'A shift picked: Their role set by it (sc-234)'),
+      people('code=shift-none', 'No shift a code can fill (sc-234)'),
+      people('state=new_code_shift_kept', 'Make a new code, the Waiter shift kept (sc-234)'),
     ],
   },
   {

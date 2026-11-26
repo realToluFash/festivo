@@ -11,11 +11,14 @@ import {
   type DoorCode,
   type DoorStart,
   formFrom,
+  freshMake,
   HUGO,
   madeCode,
   type MakeStart,
-  NO_PROBLEMS,
+  newCodeOpensForm,
+  offeredShifts,
   renewed,
+  shiftOf,
 } from './DoorCodeModel.ts';
 import { newLine, stopLine, W } from './DoorCodeWords.ts';
 import { HoldItUp, SEND_MS } from './HoldItUp.tsx';
@@ -25,7 +28,7 @@ interface Making {
   open: boolean;
   visit: number;
   start: MakeStart;
-  /** The stopped or ended code a new one takes the place of. */
+  /** The code a new one takes the place of. */
   replaces: string | null;
 }
 
@@ -43,10 +46,6 @@ interface Asking {
   line: string;
 }
 
-function freshMake(form: CodeForm): MakeStart {
-  return { form, problems: NO_PROBLEMS, endsDraft: null, sending: 'idle', failed: false };
-}
-
 /** The door codes on People, under Add: a card each, what is under it, and the screens and Asks they open. */
 export function DoorCodes({
   start,
@@ -62,7 +61,9 @@ export function DoorCodes({
   const [codes, setCodes] = useState(start.codes);
   const [had, setHad] = useState(start.had);
   const [making, setMaking] = useState<Making | null>(
-    start.make == null ? null : { open: true, visit: 1, start: start.make, replaces: null },
+    start.make == null
+      ? null
+      : { open: true, visit: 1, start: start.make, replaces: start.make.replaces ?? null },
   );
   const [holding, setHolding] = useState<Holding | null>(
     start.hold == null ? null : { open: true, visit: 1, codeId: start.hold.codeId },
@@ -105,13 +106,13 @@ export function DoorCodes({
     setMaking((was) => ({
       open: true,
       visit: (was?.visit ?? 0) + 1,
-      start: freshMake(formFrom(replacing)),
+      start: freshMake(formFrom(replacing, start.shifts, start.now)),
       replaces: replacing?.id ?? null,
     }));
   }
 
   function made(form: CodeForm): void {
-    const code = madeCode(form, had);
+    const code = madeCode(form, had, start.shifts);
     const replaces = making?.replaces ?? null;
     setHad((now) => [...now, code.code]);
     setCodes((now) =>
@@ -152,8 +153,12 @@ export function DoorCodes({
             confirm: { label: W.makeNew, testID: 'door.new.confirm' },
             onKeep: closeAsk,
             onConfirm: () => {
-              if (asked != null) renew(asked);
               setAsking({ ...asking, open: false });
+              if (asked != null && newCodeOpensForm(asked, start.shifts)) {
+                openMake(asked);
+                return;
+              }
+              if (asked != null) renew(asked);
               onToast(W.made);
             },
           }
@@ -182,8 +187,9 @@ export function DoorCodes({
           <DoorCodeCard
             key={code.id}
             code={code}
+            shift={shiftOf(code.shift, start.shifts)}
             locale={locale}
-            today={start.now.date}
+            now={start.now}
             stepRef={(node) => {
               if (node == null) steps.current.delete(code.id);
               else steps.current.set(code.id, node);
@@ -201,6 +207,7 @@ export function DoorCodes({
           key={`make-${making.visit}`}
           open={making.open}
           start={making.start}
+          shifts={offeredShifts(start.shifts, start.now)}
           locale={locale}
           opener={opener}
           onClose={() => setMaking((was) => (was == null ? null : { ...was, open: false }))}
@@ -222,6 +229,11 @@ export function DoorCodes({
           opener={opener}
           onClose={() => setHolding((was) => (was == null ? null : { ...was, open: false }))}
           onRenew={() => {
+            if (newCodeOpensForm(held, start.shifts)) {
+              setHolding((was) => (was == null ? null : { ...was, open: false }));
+              openMake(held);
+              return;
+            }
             const code = renew(held);
             setHolding((was) => (was == null ? null : { ...was, codeId: code.id }));
           }}

@@ -89,6 +89,15 @@ export const W = {
   schedule: 'Schedule',
   seating: 'Seating',
   address: 'soirely.com/join',
+  shift: 'Shift (optional)',
+  noShift: 'No shift',
+  noShiftLine: 'Pick one to put whoever joins on it while it has a free place.',
+  shiftLine:
+    'Whoever joins goes on this shift while it has a free place, and is clocked in if they join from an hour before it starts.',
+  noShiftRoom: 'No shift has a place a code can fill',
+  shiftFull: 'Shift full',
+  shiftOver: 'Shift over',
+  notPutOn: 'People who join now are not put on it.',
 } as const;
 
 export function cardTop(role: string, job: string | null): string {
@@ -210,4 +219,19 @@ export function signedInAs(name: string): string {
 
 export function onEventCount(people: number): string {
   return people === 1 ? '1 person on this event' : `${people} people on this event`;
+}
+
+export function freePlaces(free: number, places: number): string {
+  return `${free} of ${places} ${places === 1 ? 'place' : 'places'} free`;
+}
+
+export function setBy(job: string): string {
+  return `Set by the ${job} shift. Pick No shift to choose another.`;
+}
+
+/** You're in, when the code's shift was not joined (pm, 26 Nov). */
+export function notOnShift(job: string, why: 'full' | 'over'): string {
+  return why === 'full'
+    ? `The ${job} shift is full, so you’re not on it. Tell whoever gave you the code.`
+    : `The ${job} shift has ended, so you’re not on it. Tell whoever gave you the code.`;
 }

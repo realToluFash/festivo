@@ -13,7 +13,7 @@ import {
   type PeopleViewer,
   type PeopleWorld,
 } from '../people/PeopleSample.ts';
-import { cameIn, tooShortFor, usedEnded, usedUntil, W } from './DoorCodeWords.ts';
+import { cameIn, freePlaces, tooShortFor, usedEnded, usedUntil, W } from './DoorCodeWords.ts';
 
 export { atWords, type Moment };
 
@@ -63,6 +63,8 @@ export interface DoorCode {
   ends: Ends;
   stopped: boolean;
   endedAt: string | null;
+  /** The shift whoever joins is put on, by id: one since deleted names no shift. */
+  shift: string | null;
 }
 
 export type CodeStatus = 'working' | 'full' | 'stopped' | 'expired';
@@ -126,7 +128,9 @@ export function nextCode(had: readonly string[]): string {
 }
 
 export interface CodeForm {
+  /** The level chosen on the radios, given back when No shift is picked. */
   role: CodeRole;
+  shift: string | null;
   job: string;
   cap: string;
   ends: Ends;
@@ -172,35 +176,154 @@ export function firstProblem(problems: FormProblems): 'cap' | 'ends' | null {
   return problems.ends == null ? null : 'ends';
 }
 
-export function madeCode(form: CodeForm, had: readonly string[]): DoorCode {
+export function madeCode(
+  form: CodeForm,
+  had: readonly string[],
+  shifts: readonly Shift[] = [],
+): DoorCode {
   const code = nextCode(had);
   const job = form.job.trim();
+  const picked = shiftOf(form.shift, shifts);
 
   return {
     id: `code-${code.replace(' ', '').toLowerCase()}`,
     code,
-    role: form.role,
+    role: levelOf(form, shifts),
     job: job === '' ? null : job,
     cap: Number(form.cap.trim()),
     used: 0,
     ends: form.ends,
     stopped: false,
     endedAt: null,
+    shift: picked?.id ?? null,
   };
 }
 
+/** sc-72's Make a new code at once, for a code that names no shift. */
 export function renewed(old: DoorCode, had: readonly string[]): DoorCode {
   return madeCode(
-    { role: old.role, job: old.job ?? '', cap: String(old.cap), ends: old.ends },
+    { role: old.role, shift: null, job: old.job ?? '', cap: String(old.cap), ends: old.ends },
     had,
   );
 }
 
-/** A stopped or ended code is made again on the form, its role, job and cap kept, its end the event's. */
-export function formFrom(old: DoorCode | null): CodeForm {
-  return old == null
-    ? { role: FIRST_CODE_ROLE, job: '', cap: '', ends: { kind: 'event' } }
-    : { role: old.role, job: old.job ?? '', cap: String(old.cap), ends: { kind: 'event' } };
+/** A code made again on the form: its role, job and cap kept, its end the event's, its shift kept while a code can still name it (pm, 26 Nov). */
+export function formFrom(
+  old: DoorCode | null,
+  shifts: readonly Shift[] = [],
+  now: Moment = NOW,
+): CodeForm {
+  if (old == null)
+    return { role: FIRST_CODE_ROLE, shift: null, job: '', cap: '', ends: { kind: 'event' } };
+  const kept = shiftOf(old.shift, shifts);
+
+  return {
+    role: old.role,
+    shift: kept != null && nameable(kept, now) ? kept.id : null,
+    job: old.job ?? '',
+    cap: String(old.cap),
+    ends: { kind: 'event' },
+  };
+}
+
+/** sc-3908's jobs carry a level; a code may give every one but Can run the floor (sc-4002). */
+export type JobLevel = CodeRole | 'Can run the floor';
+
+export interface Shift {
+  id: string;
+  job: string;
+  level: JobLevel;
+  date: string;
+  start: string;
+  /** Before its start, it ends the next day. */
+  end: string;
+  places: number;
+  taken: number;
+}
+
+function shift(
+  id: string,
+  job: string,
+  level: JobLevel,
+  [start, end]: readonly [string, string],
+  places: number,
+  taken: number,
+): Shift {
+  return { id: `shift-${id}`, job, level, date: EVENT.day, start, end, places, taken };
+}
+
+/** The wedding's shifts: Waiter has room; Kitchen is full; Set-up is over on the day; Floor lead runs the floor, so no code names it. */
+export const SHIFTS: readonly Shift[] = [
+  shift('setup', 'Set-up', 'Can view', ['08:00', '12:00'], 6, 4),
+  shift('kitchen', 'Kitchen', 'Can work the pass', ['13:00', '00:00'], 4, 4),
+  shift('door', 'Door', 'Can check guests in', ['14:00', '23:30'], 2, 1),
+  shift('floor-lead', 'Floor lead', 'Can run the floor', ['14:00', '01:00'], 1, 0),
+  shift('waiter', 'Waiter', 'Can work the floor', ['18:00', '01:00'], 8, 5),
+  shift('runner', 'Runner', 'Can work the floor', ['18:00', '00:30'], 4, 2),
+];
+export const WAITER_SHIFT = 'shift-waiter';
+
+function nextDay(date: string): string {
+  const day = new Date(`${date}T00:00Z`);
+  day.setUTCDate(day.getUTCDate() + 1);
+
+  return day.toISOString().slice(0, 10);
+}
+
+export function shiftEnd(one: Shift): Moment {
+  return { date: one.end <= one.start ? nextDay(one.date) : one.date, time: one.end };
+}
+
+export function shiftOf(id: string | null, shifts: readonly Shift[]): Shift | null {
+  return shifts.find((one) => one.id === id) ?? null;
+}
+
+export function codeMayGive(level: JobLevel): level is CodeRole {
+  return level !== 'Can run the floor';
+}
+
+export function shiftState(one: Shift, now: Moment): 'free' | 'full' | 'over' {
+  if (stamp(now) >= stamp(shiftEnd(one))) return 'over';
+
+  return one.taken >= one.places ? 'full' : 'free';
+}
+
+export function nameable(one: Shift, now: Moment): boolean {
+  return shiftState(one, now) === 'free' && codeMayGive(one.level);
+}
+
+/** What Make a door code offers: a free place, before its scheduled end, at a level a code may give, by scheduled start. */
+export function offeredShifts(shifts: readonly Shift[], now: Moment): Shift[] {
+  return shifts
+    .filter((one) => nameable(one, now))
+    .sort((a, b) => stamp({ ...a, time: a.start }).localeCompare(stamp({ ...b, time: b.start })));
+}
+
+/** The level a code is made with: its shift job's while one is picked, else the radios'. */
+export function levelOf(form: CodeForm, shifts: readonly Shift[]): CodeRole {
+  const picked = shiftOf(form.shift, shifts);
+
+  return picked != null && codeMayGive(picked.level) ? picked.level : form.role;
+}
+
+/** A card's Make a new code opens the form, past its Ask, only when the code names a shift (pm, 26 Nov). */
+export function newCodeOpensForm(code: DoorCode, shifts: readonly Shift[]): boolean {
+  return shiftOf(code.shift, shifts) != null;
+}
+
+function weekday(date: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(
+    new Date(`${date}T00:00Z`),
+  );
+}
+
+/** "Waiter · Saturday 18:00 to 01:00": a shift past midnight reads its start day. */
+export function shiftWords(one: Shift, locale: string): string {
+  return `${one.job} · ${weekday(one.date, locale)} ${clockWords(one.start, locale)} to ${clockWords(one.end, locale)}`;
+}
+
+export function placesFree(one: Shift): string {
+  return freePlaces(one.places - one.taken, one.places);
 }
 
 export function plainCode(typed: string): string {
@@ -226,6 +349,11 @@ export const BAR: Redeemable = {
   job: 'Bar and drinks',
 };
 export const CLOAKROOM: Redeemable = { code: 'M4TB 7KQ8', role: 'Can view', job: 'Cloakroom' };
+/** A code naming the Door shift: You're in when it is full or over keeps sc-72's Check-in. */
+export const DOOR: Redeemable = { code: 'W5HC 6TN3', role: 'Can check guests in', job: 'Door' };
+const WAITING: Redeemable = { code: 'R8VN 2CJ5', role: 'Can work the floor', job: 'Waiting staff' };
+const KITCHEN: Redeemable = { code: 'T6PZ 3WL9', role: 'Can work the pass', job: 'Kitchen' };
+const SET_UP: Redeemable = { code: 'K2FX 8MD4', role: 'Can view', job: 'Set-up crew' };
 const REDEEMABLE: readonly Redeemable[] = [BAR, CLOAKROOM];
 
 /** Wrong, expired and stopped get one answer, as a code that never existed (sc-72). */
@@ -363,6 +491,10 @@ export function cloakroomCrew(count: number): OnEvent[] {
   return CLOAK_CREW.slice(0, count).map(joinerBy(CLOAKROOM));
 }
 
+function crewBy(by: Redeemable, count: number): OnEvent[] {
+  return CREW.slice(0, count).map(joinerBy(by));
+}
+
 export function everyone(): OnEvent[] {
   return [...named(), ...crew()];
 }
@@ -379,6 +511,10 @@ export const PEOPLE_DOOR_STATES = [
   'code-remove',
   'code-removing',
   'code-removed',
+  'code-shift',
+  'code-shift-full',
+  'code-shift-over',
+  'new_code_shift_kept',
 ] as const;
 export const MAKE_STATES = [
   'open',
@@ -389,6 +525,9 @@ export const MAKE_STATES = [
   'making',
   'failed',
   'refused',
+  'shift-list',
+  'shift-picked',
+  'shift-none',
 ] as const;
 export const HOLD_STATES = [
   'open',
@@ -413,6 +552,7 @@ export const BAR_CODE: DoorCode = {
   ends: { kind: 'event' },
   stopped: false,
   endedAt: null,
+  shift: null,
 };
 const CLOAK_CODE: DoorCode = {
   id: 'code-m4tb7kq8',
@@ -424,7 +564,30 @@ const CLOAK_CODE: DoorCode = {
   ends: { kind: 'event' },
   stopped: false,
   endedAt: null,
+  shift: null,
 };
+
+function shiftCode(by: Redeemable, shift: string, cap: number, used: number): DoorCode {
+  return {
+    id: `code-${plainCode(by.code).toLowerCase()}`,
+    code: by.code,
+    role: by.role,
+    job: by.job,
+    cap,
+    used,
+    ends: { kind: 'event' },
+    stopped: false,
+    endedAt: null,
+    shift,
+  };
+}
+
+/** "Door code · Can work the floor · Waiting staff", naming the Waiter shift; the five it let in are on it. */
+export const WAITER_CODE = shiftCode(WAITING, WAITER_SHIFT, 30, 5);
+const KITCHEN_CODE = shiftCode(KITCHEN, 'shift-kitchen', 10, 4);
+const SET_UP_CODE = shiftCode(SET_UP, 'shift-setup', 10, 4);
+/** Every shift full or a floor lead's: Make a door code has none to offer. */
+const NO_ROOM: readonly Shift[] = SHIFTS.map((one) => ({ ...one, taken: one.places }));
 
 export interface MakeStart {
   form: CodeForm;
@@ -434,6 +597,9 @@ export interface MakeStart {
   failed: boolean;
   /** The API's 422 level_not_allowed_for_code, from a stale form or a direct call: the client never offers the level. */
   refused?: boolean;
+  shiftsOpen?: boolean;
+  /** Opened from a card's Make a new code: the code Make stops. */
+  replaces?: string;
 }
 
 export interface HoldStart {
@@ -449,6 +615,8 @@ export interface DoorStart {
   codes: DoorCode[];
   had: string[];
   now: Moment;
+  /** The event's shifts, as the planner has them now. */
+  shifts: readonly Shift[];
   make: MakeStart | null;
   hold: HoldStart | null;
 }
@@ -475,6 +643,7 @@ function start(
     codes,
     had: codes.map((one) => one.code),
     now,
+    shifts: SHIFTS,
     make: null,
     hold: null,
   };
@@ -522,24 +691,46 @@ function stateStart(state: PeopleDoorState): DoorStart {
         { toast: 'João Pereira is off this event.' },
         everyone().filter((one) => one.id !== JOAO_ID),
       );
+    case 'code-shift':
+      return shiftStart(WAITER_CODE);
+    case 'code-shift-full':
+      return shiftStart(KITCHEN_CODE);
+    case 'code-shift-over':
+      return shiftStart(SET_UP_CODE);
+    case 'new_code_shift_kept': {
+      const shown = shiftStart(WAITER_CODE);
+
+      return {
+        ...shown,
+        make: {
+          ...freshMake(formFrom(WAITER_CODE, shown.shifts, shown.now)),
+          replaces: WAITER_CODE.id,
+        },
+      };
+    }
   }
+}
+
+function shiftStart(code: DoorCode): DoorStart {
+  const by = { code: code.code, role: code.role, job: code.job };
+
+  return start([code], {}, [...named(), ...crewBy(by, code.used)]);
+}
+
+export function freshMake(form: CodeForm): MakeStart {
+  return { form, problems: NO_PROBLEMS, endsDraft: null, sending: 'idle', failed: false };
 }
 
 const TYPED: CodeForm = {
   role: FIRST_CODE_ROLE,
+  shift: null,
   job: 'Bar and drinks',
   cap: '30',
   ends: { kind: 'event' },
 };
 
 function makeStart(state: MakeState): MakeStart {
-  const plain: MakeStart = {
-    form: formFrom(null),
-    problems: NO_PROBLEMS,
-    endsDraft: null,
-    sending: 'idle',
-    failed: false,
-  };
+  const plain = freshMake(formFrom(null));
 
   switch (state) {
     case 'open':
@@ -565,6 +756,12 @@ function makeStart(state: MakeState): MakeStart {
       return { ...plain, form: TYPED, failed: true };
     case 'refused':
       return { ...plain, form: { ...TYPED, role: 'Can work the floor' }, refused: true };
+    case 'shift-list':
+      return { ...plain, shiftsOpen: true };
+    case 'shift-picked':
+      return { ...plain, form: { ...plain.form, shift: WAITER_SHIFT } };
+    case 'shift-none':
+      return plain;
   }
 }
 
@@ -617,7 +814,12 @@ export function doorStartOf(
   show: string | undefined,
 ): DoorStart | null {
   const making = oneOf(MAKE_STATES, code);
-  if (making != null) return { ...stateStart('code-none'), make: makeStart(making) };
+  if (making != null)
+    return {
+      ...stateStart('code-none'),
+      ...(making === 'shift-none' ? { shifts: NO_ROOM } : {}),
+      make: makeStart(making),
+    };
   const holding = oneOf(HOLD_STATES, show);
   if (holding != null) return holdStart(holding);
   const shown = oneOf(PEOPLE_DOOR_STATES, OLD_NAMES[state ?? ''] ?? state);

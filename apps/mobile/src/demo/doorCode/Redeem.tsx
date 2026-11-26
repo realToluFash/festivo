@@ -17,7 +17,9 @@ import { ProviderButton } from '../../components/ProviderSignIn.tsx';
 import { focusChecked } from '../../components/Field.tsx';
 import { focusPicker } from '../../components/CountryPicker.tsx';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { Glyph } from '../../components/Glyph.tsx';
 import { useReadOut } from '../../components/ReadOut.tsx';
+import { ShapeMark } from '../../components/StatusMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLineSize, WelcomeBrand } from '../../components/Welcome.tsx';
 import { meshFor } from '../../kit/today.ts';
@@ -51,6 +53,7 @@ import {
 import {
   joinAs,
   memberTitle,
+  notOnShift,
   providerOnlyLine,
   providerOnlyTitle,
   resendIn,
@@ -180,6 +183,7 @@ function RedeemFlow({ start }: { start: Flow }) {
             intro={W.endsLine}
             answer={flow.step}
           />
+          {flow.notOn != null && <NotOnShift job={flow.code.job ?? ''} why={flow.notOn} />}
         </DemoScreen>
       );
     case 'inside':
@@ -230,6 +234,22 @@ function Welcome({ onJoinCode }: { onJoinCode: () => void }) {
         />
       }
     />
+  );
+}
+
+/** The code's shift was full or over, so they joined without it (pm, 26 Nov). */
+function NotOnShift({ job, why }: { job: string; why: 'full' | 'over' }) {
+  return (
+    <View style={styles.notOn} testID={`redeem.in.${why}`}>
+      {why === 'full' ? (
+        <ShapeMark kind="ended" side={18} ink={tokens.colorInkSecondary} />
+      ) : (
+        <Glyph name="clock" size={18} ink={tokens.colorInkSecondary} weight={2.2} />
+      )}
+      <Text size={15} weight="medium" style={styles.notOnWords}>
+        {notOnShift(job, why)}
+      </Text>
+    </View>
   );
 }
 
@@ -731,6 +751,18 @@ const styles = StyleSheet.create({
   refusalWords: { gap: tokens.spaceXxs },
   refusedTitle: { color: tokens.colorBrokenText },
   boxes: { marginTop: tokens.space3xl },
+  notOn: {
+    marginTop: tokens.spaceLg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    backgroundColor: tokens.colorInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+  },
+  notOnWords: { flex: 1, minWidth: 0 },
   ways: { marginTop: tokens.spaceLg, alignItems: 'flex-start' },
   inFoot: { gap: tokens.spaceXl },
   providers: { gap: tokens.spaceLg },

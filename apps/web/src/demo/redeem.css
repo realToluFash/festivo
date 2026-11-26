@@ -75,6 +75,44 @@
   font: 400 17px/1.45 var(--fontFamily);
 }
 
+.rd-not-on {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  padding: var(--spaceMd) var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.rd-not-on > svg,
+.rd-not-on-full {
+  flex: none;
+  margin-top: 1px;
+  color: var(--colorInkSecondary);
+}
+
+/* A ring with a bar, in grey: the shift had no free place */
+.rd-not-on-full {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px currentcolor;
+}
+
+.rd-not-on-full span {
+  width: 9px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
 .rd-signed-out {
   display: flex;
   align-items: center;

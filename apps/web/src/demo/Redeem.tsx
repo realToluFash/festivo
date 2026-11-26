@@ -46,6 +46,7 @@ import {
   rightPhoneCode,
   sendNewIn,
   shownNumber,
+  SHIFT_JOB,
 } from './redeem.ts';
 import { codeChoice, COUNTRIES, TRIES } from './rules.ts';
 import './today.css';
@@ -372,6 +373,18 @@ function RedeemPage({ state }: { state: RedeemState }) {
             <Tile />
             <Title titleRef={title}>{R.inTitle}</Title>
             <p className="rd-intro">{R.endsLine}</p>
+            {step.notOn != null && (
+              <p className="rd-not-on">
+                {step.notOn === 'full' ? (
+                  <span className="rd-not-on-full" aria-hidden="true">
+                    <span />
+                  </span>
+                ) : (
+                  <Glyph name="clock" size={20} weight={2.2} />
+                )}
+                <span>{R.notOn(SHIFT_JOB, step.notOn)}</span>
+              </p>
+            )}
             {step.checks ? (
               <div className="rd-pair">
                 <Link className="rd-primary" to="/demo/check-in?state=list&holder=code">

@@ -5,6 +5,7 @@ import {
   DOOR_EVENT,
   DOOR_EVENT_ID,
   DOOR_ORG,
+  DOOR_SHIFT,
   EVENT_ENDS,
   clockOf,
   dayOf,
@@ -84,7 +85,15 @@ export const R = {
     'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
   eventLater: 'The event in the browser has its own design.',
   eventsLater: 'Events has its own design.',
+  notOn: (job: string, why: NotOn) =>
+    why === 'full'
+      ? `The ${job} shift is full, so you’re not on it. Tell whoever gave you the code.`
+      : `The ${job} shift has ended, so you’re not on it. Tell whoever gave you the code.`,
 } as const;
+
+/** The code's shift was not joined: full, or past its scheduled end; the code still lets them in at its level (sc-234). */
+export type NotOn = 'full' | 'over';
+export const SHIFT_JOB = DOOR_SHIFT.job;
 
 export const EVENT_LINE = [dayOf(EVENT_ENDS), DOOR_ORG, BAR.role, BAR.label].join(' · ');
 
@@ -170,7 +179,7 @@ export type Step =
       busy: Busy;
       wrongs: number;
     }
-  | { kind: 'in'; name: string; checks: boolean; held: boolean }
+  | { kind: 'in'; name: string; checks: boolean; held: boolean; notOn?: NotOn }
   /** After the right phone code, the number's account is a member of an organisation that signs in with Google or Apple only (sc-94849). */
   | { kind: 'providerOnly'; providers: readonly Provider[]; busy: Busy };
 
@@ -217,6 +226,8 @@ export const REDEEM_STATES = [
   'browser-in',
   'browser-in-view',
   'browser-in-account',
+  'browser-in-shift-full',
+  'browser-in-shift-over',
   'from-check-in',
   'signed-out',
 ] as const;
@@ -372,6 +383,16 @@ function startOf(state: RedeemState): { step: Step; number: string; name: string
     case 'browser-in':
     case 'from-check-in':
       return { step: { kind: 'in', name: HUGO.name, checks: true, held: true }, ...hugo };
+    case 'browser-in-shift-full':
+      return {
+        step: { kind: 'in', name: HUGO.name, checks: true, held: true, notOn: 'full' },
+        ...hugo,
+      };
+    case 'browser-in-shift-over':
+      return {
+        step: { kind: 'in', name: HUGO.name, checks: true, held: true, notOn: 'over' },
+        ...hugo,
+      };
     case 'browser-in-view':
       return { step: { kind: 'in', name: HUGO.name, checks: false, held: true }, ...hugo };
     case 'browser-in-account':
@@ -468,6 +489,8 @@ export const REDEEM_PAGES: readonly { name: string; states: readonly DemoLink[] 
       redeem('browser-in', 'You’re in, Check-in first (sc-28230)'),
       redeem('browser-in-view', 'You’re in at Can view: no Check-in (sc-28230)'),
       redeem('browser-in-account', 'You’re in with your own account: no sign-out time'),
+      redeem('browser-in-shift-full', 'You’re in, the Door shift full: not on it (sc-234)'),
+      redeem('browser-in-shift-over', 'You’re in, the Door shift over: not on it (sc-234)'),
       redeem('from-check-in', 'You’re in, back from check-in: nothing redeemed again (sc-28230)'),
       redeem('signed-out', 'Signed out'),
     ],

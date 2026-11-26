@@ -79,6 +79,8 @@ describe('joining, every state (spec §5)', () => {
       'provider-only-apple': 'providerOnly',
       'provider-only-both': 'providerOnly',
       in: 'in',
+      'in-shift-full': 'in',
+      'in-shift-over': 'in',
       'event-in': 'inside',
       'event-in-view': 'inside',
       'people-in': 'peopleIn',

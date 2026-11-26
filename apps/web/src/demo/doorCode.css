@@ -33,6 +33,23 @@
   gap: var(--spaceLg);
 }
 
+.dc-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.dc-card-shift {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.dc-card-shift .desk-glass svg {
+  flex: none;
+}
+
 .dc-code-big {
   font: 700 30px/1.1 var(--fontFamily);
   letter-spacing: 0.04em;
@@ -107,6 +124,20 @@
 .dc-ends-chev {
   flex: none;
   color: var(--colorAccent);
+}
+
+.dc-ends-chev.is-off {
+  color: var(--colorInkTertiary);
+}
+
+/* Their role, set by the shift: the level with a lock where the radio was */
+.dc-locked {
+  cursor: default;
+}
+
+.dc-lock {
+  flex: none;
+  color: var(--colorInkSecondary);
 }
 
 .dc-ends-menu {

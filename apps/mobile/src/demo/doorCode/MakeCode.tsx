@@ -39,14 +39,19 @@ import {
   formProblems,
   JOB_MOST,
   type MakeStart,
+  placesFree,
+  type Shift,
+  shiftOf,
+  shiftWords,
 } from './DoorCodeModel.ts';
-import { jobCount, W } from './DoorCodeWords.ts';
+import { jobCount, setBy, W } from './DoorCodeWords.ts';
 import { SEND_MS } from './HoldItUp.tsx';
 
 /** Make a door code: Cancel · Door code · Make, a whole screen on a phone and the 540 sheet on an iPad; checked before it is sent. */
 export function MakeCode({
   open,
   start,
+  shifts,
   locale,
   opener,
   onClose,
@@ -54,6 +59,8 @@ export function MakeCode({
 }: {
   open: boolean;
   start: MakeStart;
+  /** The shifts a code may name, by scheduled start. */
+  shifts: readonly Shift[];
   locale: string;
   opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
@@ -66,6 +73,9 @@ export function MakeCode({
   const [sending, setSending] = useState(start.sending !== 'idle');
   const [draft, setDraft] = useState<Ends | null>(start.endsDraft);
   const [picking, setPicking] = useState<Picking | null>(null);
+  const [shiftDraft, setShiftDraft] = useState<{ id: string | null } | null>(
+    start.shiftsOpen === true ? { id: start.form.shift } : null,
+  );
   const held = useRef(start.sending === 'held');
   const capField = useRef<TextInputInstance>(null);
   const endsRow = useRef<ViewInstance>(null);
@@ -108,6 +118,13 @@ export function MakeCode({
     setDraft(null);
   }
 
+  function closeShift(): void {
+    if (shiftDraft == null) return;
+    setForm((now) => ({ ...now, shift: shiftDraft.id }));
+    setShiftDraft(null);
+  }
+
+  const picked = shiftOf(form.shift, shifts);
   const take = (next: { date: string; time: string }) =>
     setDraft(earlierEnds(next.date, next.time));
   const earlier = draft != null && draft.kind === 'earlier' ? draft : null;
@@ -115,8 +132,51 @@ export function MakeCode({
     const at = earlier ?? endMoment({ kind: 'event' });
     pick({ title: mode === 'date' ? W.day : W.time, mode, field: at, take }, setPicking);
   };
+  const shiftLayer: Layer | null =
+    shiftDraft == null
+      ? null
+      : {
+          layer: (
+            <RoleLayer closeLabel="Close" onClose={closeShift}>
+              <View style={styles.layerHead}>
+                <Text size={18} weight="bold" accessibilityRole="header" style={styles.grow}>
+                  {W.shift}
+                </Text>
+                <DoneAction label="Done" onPress={closeShift} testID="door.make.shift.done" />
+              </View>
+              <View accessibilityRole="radiogroup">
+                <RowList
+                  items={[
+                    { id: null, title: W.noShift, line: undefined },
+                    ...shifts.map((one) => ({
+                      id: one.id,
+                      title: shiftWords(one, locale),
+                      line: placesFree(one),
+                    })),
+                  ].map(({ id, title, line }) => ({
+                    key: id ?? 'none',
+                    row: (
+                      <Row
+                        title={title}
+                        line={line}
+                        accent={shiftDraft.id === id}
+                        trail={<RadioMark on={shiftDraft.id === id} />}
+                        onPress={() => setShiftDraft({ id })}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: shiftDraft.id === id }}
+                        testID={`door.make.shift.${id ?? 'none'}`}
+                      />
+                    ),
+                  }))}
+                />
+              </View>
+            </RoleLayer>
+          ),
+          onClose: closeShift,
+        };
   const over: Layer | null =
-    draft == null
+    shiftLayer ??
+    (draft == null
       ? null
       : {
           layer: (
@@ -206,7 +266,7 @@ export function MakeCode({
             </>
           ),
           onClose: picking != null ? () => setPicking(null) : closeEnds,
-        };
+        });
 
   return (
     <FocusedScreen
@@ -234,19 +294,52 @@ export function MakeCode({
         </View>
       )}
       <View>
-        <SectionHead title={W.theirRole} />
-        <View accessibilityRole="radiogroup">
-          <RoleChoices
-            roles={CODE_ROLES}
-            picked={form.role}
-            lines={LEVEL_LINES}
-            off={{ roles: ['Can edit'], line: W.noEdit }}
-            onPick={(role) => {
-              if (role !== 'Can edit') setForm((now) => ({ ...now, role: role as CodeRole }));
-            }}
-            testID="door.make.role"
+        <SectionHead title={W.shift} />
+        {shifts.length === 0 ? (
+          <Row
+            title={W.noShift}
+            line={W.noShiftRoom}
+            off
+            onPress={() => undefined}
+            accessibilityLabel={`${W.shift}. ${W.noShift}. ${W.noShiftRoom}`}
+            testID="door.make.shift"
           />
-        </View>
+        ) : (
+          <Row
+            title={
+              picked == null ? W.noShift : `${shiftWords(picked, locale)} · ${placesFree(picked)}`
+            }
+            line={picked == null ? W.noShiftLine : W.shiftLine}
+            trail={<Glyph name="down" size={18} ink={tokens.colorAccentText} weight={2.3} />}
+            onPress={() => setShiftDraft({ id: form.shift })}
+            testID="door.make.shift"
+          />
+        )}
+      </View>
+      <View>
+        <SectionHead title={W.theirRole} />
+        {picked == null ? (
+          <View accessibilityRole="radiogroup">
+            <RoleChoices
+              roles={CODE_ROLES}
+              picked={form.role}
+              lines={LEVEL_LINES}
+              off={{ roles: ['Can edit'], line: W.noEdit }}
+              onPick={(role) => {
+                if (role !== 'Can edit') setForm((now) => ({ ...now, role: role as CodeRole }));
+              }}
+              testID="door.make.role"
+            />
+          </View>
+        ) : (
+          <Row
+            title={picked.level}
+            line={setBy(picked.job)}
+            lead={<Glyph name="lock" size={16} ink={tokens.colorInkSecondary} weight={2.3} />}
+            accessibilityLabel={`${W.theirRoleSaid}: ${picked.level}. ${setBy(picked.job)}`}
+            testID="door.make.role.set"
+          />
+        )}
       </View>
       <Field label={W.jobLabel} help={jobCount(form.job)}>
         <TextField

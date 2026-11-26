@@ -19,6 +19,13 @@ const PEOPLE: Record<PeopleDoorState | Shared, readonly [string, string]> = {
   'code-remove': ['People · remove João?', 'Their access ends on their next request.'],
   'code-removing': ['People · removing', 'Removing… held, then he is off'],
   'code-removed': ['People · removed', 'The toast, 17 on the event'],
+  'code-shift': ['People · a code naming a shift (sc-234)', 'Waiter · Saturday 18:00 to 01:00'],
+  'code-shift-full': ['People · its shift full (sc-234)', 'Shift full, nobody new put on it'],
+  'code-shift-over': ['People · its shift over (sc-234)', 'Shift over, the code still works'],
+  new_code_shift_kept: [
+    'People · make a new code, shift kept (sc-234)',
+    'Waiter picked, Can work the floor locked',
+  ],
 };
 
 const MAKING: Record<MakeState, readonly [string, string]> = {
@@ -30,6 +37,9 @@ const MAKING: Record<MakeState, readonly [string, string]> = {
   making: ['Making · making', 'Making… held, then the card'],
   failed: ['Making · failed', 'The line at the top, and Try again'],
   refused: ['Making · refused at Can run the floor', 'sc-4002’s level_not_allowed_for_code'],
+  'shift-list': ['Making · the shifts (sc-234)', 'No shift, then each with free places'],
+  'shift-picked': ['Making · a shift picked (sc-234)', 'Their role set by the Waiter shift'],
+  'shift-none': ['Making · no shift to offer (sc-234)', 'No shift has a place a code can fill'],
 };
 
 const HOLDING: Record<HoldState, readonly [string, string]> = {
@@ -95,6 +105,8 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
     'Each linked provider, in the app’s order',
   ],
   in: ['Joining · you’re in', 'Open the event'],
+  'in-shift-full': ['Joining · you’re in, the shift full (sc-234)', 'The Door shift is full'],
+  'in-shift-over': ['Joining · you’re in, the shift over (sc-234)', 'The Door shift has ended'],
   'event-in': ['Inside the event · can check guests in', 'Check guests in on its card'],
   'event-in-view': ['Inside the event · can view', 'The same card with no step'],
   'people-in': ['Inside the event · People', 'Read only, as João reads it'],

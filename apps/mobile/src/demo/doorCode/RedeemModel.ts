@@ -1,7 +1,14 @@
 import type { Provider } from '@soirely/api-client';
 
 import { type EventPlace, EVENT_PLACES } from '../../kit/eventNav.ts';
-import { BAR, type CodeChoice, type CodeRole, EVENT, type Redeemable } from './DoorCodeModel.ts';
+import {
+  BAR,
+  type CodeChoice,
+  type CodeRole,
+  DOOR,
+  EVENT,
+  type Redeemable,
+} from './DoorCodeModel.ts';
 import { tooShortFor, W } from './DoorCodeWords.ts';
 
 export const REDEEM_STATES = [
@@ -39,6 +46,8 @@ export const REDEEM_STATES = [
   'provider-only-apple',
   'provider-only-both',
   'in',
+  'in-shift-full',
+  'in-shift-over',
   'event-in',
   'event-in-view',
   'people-in',
@@ -87,6 +96,8 @@ export interface Flow {
   more: boolean;
   /** The providers linked to the number's account, when its organisation signs in with Google or Apple only (sc-94849). */
   providers: readonly Provider[] | null;
+  /** The code's shift was not joined: You're in says why (sc-234). */
+  notOn: 'full' | 'over' | null;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
@@ -141,6 +152,7 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     tries: 0,
     more: false,
     providers: null,
+    notOn: null,
   };
 }
 
@@ -236,6 +248,10 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'providerOnly', providers: linkedIn(state) };
     case 'in':
       return { ...joao, step: 'in' };
+    case 'in-shift-full':
+      return { ...joao, step: 'in', code: DOOR, role: DOOR.role, notOn: 'full' };
+    case 'in-shift-over':
+      return { ...joao, step: 'in', code: DOOR, role: DOOR.role, notOn: 'over' };
     case 'event-in':
       return { ...joao, step: 'inside' };
     case 'event-in-view':

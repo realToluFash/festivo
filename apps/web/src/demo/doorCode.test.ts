@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BAR,
+  BLANK_FORM,
   capLine,
   clockOf,
   countLine,
@@ -72,7 +73,7 @@ describe('the door code’s words and checks (sc-72)', () => {
     ]);
     expect(endTimes('2026-11-14').at(-1)).toBe('23:00');
     expect(endTimes('2026-11-13').at(-1)).toBe('23:30');
-    expect(makeLines({ role: 'Can view', label: '', cap: '', ends: { kind: 'event' } })).toEqual({
+    expect(makeLines(BLANK_FORM)).toEqual({
       cap: 'Enter how many people can use this code.',
     });
   });

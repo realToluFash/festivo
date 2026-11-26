@@ -206,7 +206,13 @@ describe('who is on People, and how they are there', () => {
 
 describe('making a code (spec §2.2)', () => {
   it('starts on Can view with no number and the event’s end', () => {
-    expect(formFrom(null)).toEqual({ role: 'Can view', job: '', cap: '', ends: { kind: 'event' } });
+    expect(formFrom(null)).toEqual({
+      role: 'Can view',
+      shift: null,
+      job: '',
+      cap: '',
+      ends: { kind: 'event' },
+    });
     expect(endsRowLine({ kind: 'event' }, LOCALE)).toBe('When the event ends · Sat, Nov 14, 23:30');
   });
 
@@ -242,6 +248,7 @@ describe('making a code (spec §2.2)', () => {
       firstProblem(
         formProblems({
           role: 'Can view',
+          shift: null,
           job: '',
           cap: '30',
           ends: { kind: 'earlier', date: '2026-11-01', time: '10:00' },
@@ -266,7 +273,13 @@ describe('making a code (spec §2.2)', () => {
 
   it('makes the next code nobody has had, at nought used', () => {
     const code = madeCode(
-      { role: 'Can check guests in', job: ' Bar and drinks ', cap: '30', ends: { kind: 'event' } },
+      {
+        role: 'Can check guests in',
+        shift: null,
+        job: ' Bar and drinks ',
+        cap: '30',
+        ends: { kind: 'event' },
+      },
       [],
     );
 
@@ -399,7 +412,7 @@ describe('the demo home’s Door code group', () => {
       ]),
     );
     expect(new Set(hrefs).size).toBe(hrefs.length);
-    expect(hrefs).toHaveLength(14 + 8 + 7 + 38);
+    expect(hrefs).toHaveLength(18 + 11 + 7 + 40);
   });
 
   it('titles each one apart', () => {
