@@ -19,11 +19,12 @@ import { atWords, inMadeOrder, shownCode } from '../kit/doorCodes.ts';
 import {
   JOB_LABEL_MOST,
   addRefused,
-  firstNameOf,
   holderOf,
   inListOrder,
   joinedLine,
+  keepWord,
   managesPeople,
+  notChangedLine,
   nowCan,
   offerLine,
   offered,
@@ -118,7 +119,6 @@ function sheetWords(
   organisation: string,
 ): RoleSheetWords<EventRole> {
   const name = nameOf(t, person);
-  const first = firstNameOf(person);
 
   return {
     ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
@@ -129,16 +129,12 @@ function sheetWords(
     removeLine: person.outside
       ? t('eventPeople.removeLineOutside')
       : t('eventPeople.removeLine', { organisation }),
-    keep: first == null ? t('eventPeople.keepThem') : t('eventPeople.keep', { name: first }),
+    keep: keepWord(t, person),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
     savedHeard: (role) =>
       t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
-    notChanged: (held) =>
-      t('eventPeople.changeFailed', {
-        name: first ?? name,
-        role: t(`eventPeople.role.${held}`),
-      }),
+    notChanged: (held) => notChangedLine(t, person, name, held),
     removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
   };
 }

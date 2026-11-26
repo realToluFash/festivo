@@ -61,6 +61,26 @@ export function firstNameOf(person: EventPerson): string | null {
   return person.user == null ? null : firstName(person.user.name);
 }
 
+/** Remove's keep button: Keep and a first name, or Keep them when there is no account name (sc-91678). */
+export function keepWord(t: TFunction, person: EventPerson): string {
+  const first = firstNameOf(person);
+
+  return first == null ? t('eventPeople.keepThem') : t('eventPeople.keep', { name: first });
+}
+
+/** A role change that did not land names the person whole unless they have an account name (sc-91678). */
+export function notChangedLine(
+  t: TFunction,
+  person: EventPerson,
+  name: string,
+  held: EventRole,
+): string {
+  return t('eventPeople.changeFailed', {
+    name: firstNameOf(person) ?? name,
+    role: t(`eventPeople.role.${held}`),
+  });
+}
+
 /** Owners, Admins and the Lead change People: the API says so in the event's own permissions. */
 export function managesPeople(event: { permissions: readonly string[] }): boolean {
   return event.permissions.includes('people.manage');
