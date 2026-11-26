@@ -1,0 +1,19 @@
+# sc-4235: in the app, a new number at a door code that is at its cap (CAP): the event shows, Send code answers, and after the right code sc-72's one refusal, not signed in. Signs the session out.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CAP}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- takeScreenshot: 01-full-event
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'New Person', NUMBER: '08034440742' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440742' }
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: 02-refused

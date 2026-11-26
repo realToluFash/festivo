@@ -1,0 +1,45 @@
+# sc-4235: in the app, a code at its cap (CAP) lets its holder (08034440721, already in) back in with no use taken, and refuses a new number after the right code. Run over 60 s after sc4235-app-again. Signs the session out.
+appId: host.exp.Exponent
+---
+- runFlow: ../batch/sign-out.yaml
+- openLink: ${METRO_URL}/--/d/${CAP}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- hideKeyboard
+- takeScreenshot: 04-cap-full-event
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'Cap Holder', NUMBER: '08034440721' }
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: 05-cap-holder-send
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440721' }
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.in.open'
+    timeout: 20000
+- takeScreenshot: 06-cap-holder-back-in
+- tapOn:
+    id: 'redeem.in.signOut'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.enter.code'
+    timeout: 20000
+- openLink: ${METRO_URL}/--/d/${CAP}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.send'
+    timeout: 30000
+- runFlow:
+    file: sc4235/fill.yaml
+    env: { NAME: 'New Person', NUMBER: '08034440722' }
+- runFlow:
+    file: sc4235/code.yaml
+    env: { DIGITS: '4440722' }
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: 07-cap-new-refused
