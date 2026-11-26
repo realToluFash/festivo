@@ -4,7 +4,15 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
-import { type Action, MESSAGES_STATES, messagesStateOf, reduce, startOf } from './MessagesModel.ts';
+import {
+  type Action,
+  MESSAGES_STATES,
+  blankDraft,
+  matchesNobody,
+  messagesStateOf,
+  reduce,
+  startOf,
+} from './MessagesModel.ts';
 import { TOKENS, piecesOf } from './MessagesSample.ts';
 import { W } from './MessagesWords.ts';
 import {
@@ -36,6 +44,7 @@ const SC_3960 = [
   'previewFailed',
   'previewGone',
   'previewGoneLast',
+  'previewNobody',
   'previewMarkup',
   'typedBraces',
   'previewBraces',
@@ -75,8 +84,9 @@ describe('sc-3960’s states', () => {
     });
     expect(startOf('typedBraces', false).draft).toMatchObject({ step: 'write', body: BRACED_BODY });
     expect(startOf('previewGoneLast', false).draft?.step).toBe('write');
+    expect(startOf('previewNobody', false).draft?.step).toBe('write');
     for (const state of SC_3960.filter(
-      (one) => !['insert', 'typedBraces', 'previewGoneLast'].includes(one),
+      (one) => !['insert', 'typedBraces', 'previewGoneLast', 'previewNobody'].includes(one),
     ))
       expect(opened(state).m.draft?.step).toBe('preview');
   });
@@ -227,6 +237,19 @@ describe('Preview as (sc-3960)', () => {
       'Kwame Mensah',
     );
     expect(previewOffOf(opened('previewGone').m)).toBeUndefined();
+  });
+
+  it('offers no Preview while To matches nobody, with no second line, until To matches someone', () => {
+    const { m, body } = opened('previewNobody');
+
+    expect(m.draft).toMatchObject({ step: 'write', to: 'coming' });
+    expect(matchesNobody(m.draft ?? blankDraft())).toBe(true);
+    expect(body).toBe(DATED_BODY);
+    expect(previewOffOf(m)).toBeUndefined();
+    expect(reduce(m, { type: 'preview' })).toBe(m);
+    expect(
+      reduce(reduce(m, { type: 'chooseTo', to: 'all' }), { type: 'preview' }).draft?.step,
+    ).toBe('preview');
   });
 
   it('holds previewLoading still, filling it in for Camille Dubois', () => {

@@ -330,7 +330,7 @@ export function NewComposer({
             label={W.preview}
             glyph="eye"
             onPress={onPreview ?? (() => undefined)}
-            off={!on || previewOff != null}
+            off={!on || previewOff != null || matchesNobody(draft)}
             testID="messages.preview"
           />
           {editing == null ? (
