@@ -576,8 +576,8 @@ function AreaPills({
         ref={strip}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.pillsBar}
-        contentContainerStyle={styles.pills}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
         onLayout={(event: LayoutChangeEvent) => {
           shown.current = event.nativeEvent.layout.width;
@@ -601,7 +601,7 @@ function AreaPills({
                 ends.current[one] = event.nativeEvent.layout.x + event.nativeEvent.layout.width;
                 if (on) reveal(one);
               }}
-              style={[styles.pill, on && styles.pillOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={counted ? badge.name : AREA_WORDS[one]}
@@ -808,6 +808,28 @@ const AREA_TITLE = {
   landscape: {},
 };
 
+/** The upright event track, shared with the service level's tabs in `doorCode/Inside.tsx` so the two cannot drift (sc-96279). */
+export const areaTrack = StyleSheet.create({
+  bar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
+  row: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceHair,
+    paddingHorizontal: tokens.spaceXxs,
+  },
+  tab: {
+    minHeight: tokens.sizeHit,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 14,
+    paddingRight: tokens.spaceXl,
+    borderRadius: 22,
+  },
+  on: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
+});
+
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   figures: { fontVariant: ['tabular-nums'] },
@@ -898,23 +920,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   pillsAt: { paddingHorizontal: tokens.space5xl, paddingTop: tokens.spaceSm },
-  pillsBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
-  pills: {
-    minHeight: 52,
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-  },
-  pill: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 14,
-    paddingRight: tokens.spaceXl,
-    borderRadius: 22,
-  },
-  pillOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
   areaTitle: { lineHeight: 30 * 1.12 },
   strip: {
     minHeight: 64,

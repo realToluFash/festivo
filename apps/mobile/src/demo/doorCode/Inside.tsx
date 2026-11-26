@@ -12,6 +12,7 @@ import { TabBar } from '../../components/TodayCover.tsx';
 import { meshFor } from '../../kit/today.ts';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
+import { areaTrack } from '../events/EventFrame.tsx';
 import { Face } from '../people/PeopleRole.tsx';
 import {
   listed,
@@ -712,8 +713,8 @@ function Capsule({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.capsuleBar}
-        contentContainerStyle={styles.capsule}
+        style={areaTrack.bar}
+        contentContainerStyle={areaTrack.row}
         accessibilityRole="tablist"
       >
         {tabs.map((tab) => {
@@ -725,7 +726,7 @@ function Capsule({
             <Pressable
               key={tab}
               onPress={() => (tab === 'more' ? onMore?.() : onArea(tab))}
-              style={[styles.capsuleTab, on && styles.capsuleOn]}
+              style={[areaTrack.tab, on && areaTrack.on]}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               accessibilityLabel={label}
@@ -813,22 +814,4 @@ const styles = StyleSheet.create({
     right: tokens.space5xl,
     zIndex: 2,
   },
-  capsuleBar: { flexGrow: 0, borderRadius: 26, backgroundColor: tokens.colorInset },
-  capsule: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceHair,
-    paddingHorizontal: tokens.spaceXxs,
-  },
-  capsuleTab: {
-    minHeight: tokens.sizeHit,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    paddingLeft: 14,
-    paddingRight: tokens.spaceXl,
-    borderRadius: tokens.sizeHit / 2,
-  },
-  capsuleOn: { backgroundColor: tokens.colorCard, ...tokens.elevationNative.raised.ios },
 });
