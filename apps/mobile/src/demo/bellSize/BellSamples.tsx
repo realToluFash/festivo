@@ -17,6 +17,8 @@ import {
   emptySentenceSize,
   emptyStart,
   emptyTileAbove,
+  settingsSize,
+  settingsStart,
 } from './bellSizeRules.ts';
 
 interface Sample {
@@ -91,16 +93,7 @@ export function BellSampleBody({
   const { t } = useTranslation();
 
   if (empty != null)
-    return (
-      <View testID="demo.bellSize.body">
-        <EmptySentence scale={empty.scale} onDrawn={empty.onDrawn} />
-        <TextAction
-          label={t('notifications.settings')}
-          onPress={onSettings}
-          testID="demo.bellSize.body.settings"
-        />
-      </View>
-    );
+    return <EmptyBody scale={empty.scale} onDrawn={empty.onDrawn} onSettings={onSettings} />;
 
   const rows: BellRowData[] = SAMPLES.map((one) => ({
     id: one.id,
@@ -134,6 +127,96 @@ export function BellSampleBody({
       onSettings={onSettings}
       testID="demo.bellSize.body"
     />
+  );
+}
+
+/** The empty body: the sentence, then Notification settings at its foot, both at the stand-in size by the same rule; one demo line gives both sizes. */
+function EmptyBody({
+  scale,
+  onDrawn,
+  onSettings,
+}: {
+  scale: number;
+  onDrawn: (drawn: string) => void;
+  onSettings: () => void;
+}) {
+  const [sentenceAt, setSentenceAt] = useState<string | null>(null);
+  const [settingsAt, setSettingsAt] = useState<string | null>(null);
+  const report = sentenceAt == null || settingsAt == null ? null : `${sentenceAt} ${settingsAt}`;
+
+  useEffect(() => {
+    if (report != null) onDrawn(report);
+  }, [report, onDrawn]);
+
+  return (
+    <View testID="demo.bellSize.body">
+      <EmptySentence scale={scale} onDrawn={setSentenceAt} />
+      <SettingsLink scale={scale} onDrawn={setSettingsAt} onPress={onSettings} />
+    </View>
+  );
+}
+
+/** Main's Notification settings (BellBody) at the stand-in size, by the sentence's rule: whole words, one size, and from AX1 stepped down only until its widest word fits the body's line, never under 15. */
+function SettingsLink({
+  scale,
+  onDrawn,
+  onPress,
+}: {
+  scale: number;
+  onDrawn: (drawn: string) => void;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = t('notifications.settings');
+  const pieces = piecesOfLine(label);
+  const start = settingsStart(scale);
+  const key = `${start}|${label}`;
+  const [room, setRoom] = useState(0);
+  const [measured, setMeasured] = useState<{ key: string; widths: Record<string, number> }>({
+    key: '',
+    widths: {},
+  });
+  const widths = measured.key === key ? measured.widths : {};
+  const widest = pieces.every((piece) => widths[piece] != null)
+    ? Math.max(...pieces.map((piece) => widths[piece] ?? 0))
+    : null;
+  const pending = atAccessibilitySizes(scale) && (widest == null || room === 0);
+  const ready = !pending && widest != null && room > 0;
+  const drawn = ready ? settingsSize(scale, widest, room) : start;
+  const report = ready ? `Notification settings draws at ${tenths(drawn)}.` : null;
+
+  useEffect(() => {
+    if (report != null) onDrawn(report);
+  }, [report, onDrawn]);
+
+  return (
+    <View
+      style={pending && styles.waiting}
+      onLayout={(event) => setRoom(Math.floor(event.nativeEvent.layout.width))}
+    >
+      <MeasuredWords
+        words={pieces}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        onWidth={(piece, width) =>
+          setMeasured((now) => {
+            const kept = now.key === key ? now.widths : {};
+
+            return kept[piece] === width ? now : { key, widths: { ...kept, [piece]: width } };
+          })
+        }
+      />
+      <TextAction
+        // A new size mounts a new label, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawn}
+        label={label}
+        wraps
+        drawnAt={drawn}
+        onPress={onPress}
+        testID="demo.bellSize.body.settings"
+      />
+    </View>
   );
 }
 

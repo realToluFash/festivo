@@ -15,6 +15,9 @@ import {
   markAllUnder,
   PHONE_TITLE,
   phoneTitleSize,
+  SETTINGS_LINK,
+  settingsSize,
+  settingsStart,
 } from './bellSizeRules.ts';
 
 const DEFAULT = 1;
@@ -111,5 +114,29 @@ describe('the bell’s empty sentence at the accessibility sizes (sc-94028)', ()
 
   it('below AX1 draws as on main, whatever its widest word', () => {
     expect(emptySentenceSize(SEVENTH, 5000, ROOM)).toBeCloseTo(EMPTY_SENTENCE * SEVENTH);
+  });
+});
+
+describe('Notification settings at the panel’s foot, by the sentence’s rule (sc-94028)', () => {
+  // The iPad's body line, measured on the boards; Configuración at 15 × AX5 in Instrument Sans SemiBold.
+  const IPAD_LINE = 346;
+  const CONFIGURACION = 359.0;
+
+  it('grows as main does, with no cap', () => {
+    expect(settingsStart(DEFAULT)).toBe(SETTINGS_LINK);
+    expect(settingsStart(AX5)).toBeCloseTo(SETTINGS_LINK * AX5);
+  });
+
+  it('keeps its grown size where its widest word fits the line', () => {
+    expect(settingsSize(AX5, IPAD_LINE, IPAD_LINE)).toBeCloseTo(SETTINGS_LINK * AX5);
+  });
+
+  it('steps down to 51 at AX5 in Spanish on the iPad, so Configuración is whole', () => {
+    expect(settingsSize(AX5, CONFIGURACION, IPAD_LINE)).toBe(51);
+  });
+
+  it('never draws under 15, and below AX1 draws as on main', () => {
+    expect(settingsSize(AX5, 5000, IPAD_LINE)).toBe(SETTINGS_LINK);
+    expect(settingsSize(SEVENTH, 5000, IPAD_LINE)).toBeCloseTo(SETTINGS_LINK * SEVENTH);
   });
 });
