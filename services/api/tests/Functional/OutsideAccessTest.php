@@ -545,6 +545,9 @@ final class OutsideAccessTest extends ApiTestCase
         $jollof = $this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Jollof rice', 'allergens' => ['celery']]);
         self::assertSame(201, $this->statusCode(), Json\encode($jollof));
         $libraryDishId = Type\shape(['dish' => Type\shape(['id' => Type\string()], true)], true)->coerce($jollof)['dish']['id'];
+        $egusi = Type\shape(['dish' => Type\shape(['id' => Type\string()], true)], true)->coerce($this->as($this->owner, 'POST', $organisation . '/dishes', ['name' => 'Egusi soup', 'allergens' => ['fish']]))['dish']['id'];
+        $this->as($this->owner, 'POST', $organisation . '/dishes/' . $egusi . '/archive', []);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         $menu = '/api/events/' . $this->owambe . '/menu';
         $course = Type\shape(['courseId' => Type\string()], true)->coerce($this->as($this->owner, 'POST', $menu . '/courses', ['name' => 'Main']))['courseId'];
         $dishes = $menu . '/courses/' . $course . '/dishes';
@@ -560,13 +563,15 @@ final class OutsideAccessTest extends ApiTestCase
 
         $this->as($caterer, 'POST', $dishes, ['name' => 'Jollof rice', 'allergens' => ['celery'], 'onlyForEvent' => true]);
         self::assertSame(201, $this->statusCode(), 'a name the library holds is no question from outside: ' . Json\encode($this->last()));
+        $this->as($caterer, 'POST', $dishes, ['name' => 'Egusi soup', 'allergens' => ['fish'], 'onlyForEvent' => true]);
+        self::assertSame(201, $this->statusCode(), 'nor is a name an archived dish holds: ' . Json\encode($this->last()));
         $this->as($caterer, 'POST', $dishes, ['name' => 'Suya bites', 'allergens' => ['peanuts'], 'onlyForEvent' => true]);
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
 
         $onMenu = Type\shape(['menu' => Type\shape(['courses' => Type\vec(Type\shape(['dishes' => Type\vec(Type\shape(['name' => Type\string()], true))], true))], true)], true)->coerce($this->as($this->owner, 'GET', $menu));
-        self::assertSame(['Jollof rice', 'Suya bites'], Vec\map($onMenu['menu']['courses'][0]['dishes'], static fn (array $dish): string => $dish['name']));
+        self::assertSame(['Jollof rice', 'Egusi soup', 'Suya bites'], Vec\map($onMenu['menu']['courses'][0]['dishes'], static fn (array $dish): string => $dish['name']));
         $library = Type\shape(['dishes' => Type\vec(Type\shape(['name' => Type\string()], true))], true)->coerce($this->as($this->owner, 'GET', $organisation . '/dishes'));
-        self::assertSame(['Jollof rice'], Vec\map($library['dishes'], static fn (array $dish): string => $dish['name']));
+        self::assertSame(['Jollof rice', 'Egusi soup'], Vec\map($library['dishes'], static fn (array $dish): string => $dish['name']));
     }
 
     /** @return iterable<string, array{0: string, 1: EventRole}> */

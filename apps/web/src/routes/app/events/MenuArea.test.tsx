@@ -47,7 +47,7 @@ const OUTSIDE_EDIT: OutsideEvent[] = [
   },
 ];
 
-function signedIn(organisation = IRE, outsideEvents: OutsideEvent[] = []): void {
+function signedIn(organisation: typeof IRE | null = IRE, outsideEvents: OutsideEvent[] = []): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -59,7 +59,7 @@ function signedIn(organisation = IRE, outsideEvents: OutsideEvent[] = []): void 
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: organisation == null ? [] : [organisation],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -141,7 +141,7 @@ async function onMenu(
     roleOnEvent = null,
     outsideEvents,
   }: {
-    organisation?: typeof IRE;
+    organisation?: typeof IRE | null;
     roleOnEvent?: string | null;
     outsideEvents?: OutsideEvent[];
   } = {},
@@ -560,44 +560,50 @@ describe('The event’s Menu (sc-3902)', () => {
     );
   });
 
-  it('opens Add dish from outside on the new dish form, never reading a library, and keeps the dish to the event (sc-95116)', async () => {
-    let menu = menuOf(LATE);
-    const sent = await onMenu(
-      {
-        'GET /api/events/ev_1/menu': () => menu(),
-        'POST /api/events/ev_1/menu/courses/c_late/dishes': () => {
-          menu = menuOf({ ...LATE, dishes: [dish('d_suya', 'Suya bites')] });
-          return menu();
+  it.each([
+    ['a member of another organisation', membership({ id: 'org_2', name: 'Lagos Lights' })],
+    ['an account in no organisation', null],
+  ])(
+    'opens Add dish from outside, as %s, on the new dish form, never reading a library, and keeps the dish to the event (sc-95116)',
+    async (_who, organisation) => {
+      let menu = menuOf(LATE);
+      const sent = await onMenu(
+        {
+          'GET /api/events/ev_1/menu': () => menu(),
+          'POST /api/events/ev_1/menu/courses/c_late/dishes': () => {
+            menu = menuOf({ ...LATE, dishes: [dish('d_suya', 'Suya bites')] });
+            return menu();
+          },
         },
-      },
-      OWNER_PERMISSIONS,
-      {
-        organisation: membership({ id: 'org_2', name: 'Lagos Lights' }),
-        outsideEvents: OUTSIDE_EDIT,
-      },
-    );
+        OWNER_PERMISSIONS,
+        {
+          organisation,
+          outsideEvents: OUTSIDE_EDIT,
+        },
+      );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
-    const panel = await screen.findByRole('complementary', { name: 'Add dish' });
+      fireEvent.click(await screen.findByRole('button', { name: 'Add dish' }));
+      const panel = await screen.findByRole('complementary', { name: 'Add dish' });
 
-    expect(within(panel).queryByRole('tab')).toBeNull();
-    expect(within(panel).queryByRole('checkbox', { name: 'Only for this event' })).toBeNull();
-    expect(within(panel).queryByText('Loading the menu library…')).toBeNull();
-    expect(
-      within(panel).getByText('Not saved to the menu library. It stays on this event only.'),
-    ).toBeDefined();
-    fireEvent.change(within(panel).getByLabelText('Name'), { target: { value: 'Suya bites' } });
-    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Peanuts' }));
-    fireEvent.click(within(panel).getByRole('button', { name: 'Add dish' }));
+      expect(within(panel).queryByRole('tab')).toBeNull();
+      expect(within(panel).queryByRole('checkbox', { name: 'Only for this event' })).toBeNull();
+      expect(within(panel).queryByText('Loading the menu library…')).toBeNull();
+      expect(
+        within(panel).getByText('Not saved to the menu library. It stays on this event only.'),
+      ).toBeDefined();
+      fireEvent.change(within(panel).getByLabelText('Name'), { target: { value: 'Suya bites' } });
+      fireEvent.click(within(panel).getByRole('checkbox', { name: 'Peanuts' }));
+      fireEvent.click(within(panel).getByRole('button', { name: 'Add dish' }));
 
-    expect(await screen.findByText('Suya bites added to Late-night bites.')).toBeDefined();
-    expect(sent.some((one) => one.line.includes('/dishes') && one.line.startsWith('GET'))).toBe(
-      false,
-    );
-    expect(
-      sent.find((one) => one.line === 'POST /api/events/ev_1/menu/courses/c_late/dishes')?.body,
-    ).toMatchObject({ name: 'Suya bites', onlyForEvent: true });
-  });
+      expect(await screen.findByText('Suya bites added to Late-night bites.')).toBeDefined();
+      expect(sent.some((one) => one.line.includes('/dishes') && one.line.startsWith('GET'))).toBe(
+        false,
+      );
+      expect(
+        sent.find((one) => one.line === 'POST /api/events/ev_1/menu/courses/c_late/dishes')?.body,
+      ).toMatchObject({ name: 'Suya bites', onlyForEvent: true });
+    },
+  );
 
   it('offers Everyone gets the same only with exactly one dish', async () => {
     await onMenu({ 'GET /api/events/ev_1/menu': menuOf(STARTER, MAIN) });
