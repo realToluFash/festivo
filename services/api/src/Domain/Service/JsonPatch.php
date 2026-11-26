@@ -20,8 +20,8 @@ final class JsonPatch
             return [];
         }
 
-        if (\is_array($from) && \is_array($to) && array_is_list($from) === array_is_list($to) && ([] !== $from || [] !== $to)) {
-            if (array_is_list($from) && array_is_list($to)) {
+        if (\is_array($from) && \is_array($to) && \array_is_list($from) === \array_is_list($to) && ([] !== $from || [] !== $to)) {
+            if (\array_is_list($from) && \array_is_list($to)) {
                 return self::lists($from, $to, $path);
             }
 
@@ -34,6 +34,7 @@ final class JsonPatch
     /**
      * @param list<mixed> $from
      * @param list<mixed> $to
+     *
      * @return list<array{op: string, path: string, value?: mixed}>
      */
     private static function lists(array $from, array $to, string $path): array
@@ -59,6 +60,7 @@ final class JsonPatch
     /**
      * @param array<array-key, mixed> $from
      * @param array<array-key, mixed> $to
+     *
      * @return list<array{op: string, path: string, value?: mixed}>
      */
     private static function objects(array $from, array $to, string $path): array

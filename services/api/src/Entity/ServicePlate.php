@@ -20,6 +20,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * An order sent back is owed as itself, so it is not Served until it is served again (sc-4005).
+ *
  * @phpstan-type Item array{key: string, name: ?string}
  * @phpstan-type Step array{stage: string, at: string, by: string}
  * @phpstan-type SentBack array{reason: string, at: string, by: string, stage: string, steps: list<Step>}

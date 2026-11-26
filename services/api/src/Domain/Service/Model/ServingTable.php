@@ -11,8 +11,8 @@ use App\Entity\SeatingSection;
 final readonly class ServingTable
 {
     /**
-     * @param 'table'|'row'|'block'                    $kind
-     * @param list<string>                             $seats  a block's seat names, in label order
+     * @param 'table'|'row'|'block'                   $kind
+     * @param list<string>                            $seats  a block's seat names, in label order
      * @param list<array{guest: Guest, seat: string}> $guests in seat order
      */
     public function __construct(

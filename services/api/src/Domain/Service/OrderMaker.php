@@ -50,7 +50,7 @@ final readonly class OrderMaker
             $this->entityManager->persist(new ServiceFiring($course, $table->key, $at, $by));
         }
 
-        return $this->ordersFor($course, $table, Vec\filter(Vec\map($table->guests, static fn (array $one): Guest => $one['guest']), static fn (Guest $guest): bool => $guest->hasArrived()), $at, $by);
+        return $this->ordersFor($course, $table, $at, $by, ...Vec\filter(Vec\map($table->guests, static fn (array $one): Guest => $one['guest']), static fn (Guest $guest): bool => $guest->hasArrived()));
     }
 
     public function isFiredFor(Guest $guest): bool
@@ -71,16 +71,15 @@ final readonly class OrderMaker
 
         return Vec\flat_map(
             $this->serviceFiringRepository->findAtTable($guest->getEvent(), $table->key),
-            fn (ServiceFiring $firing): array => $this->ordersFor($firing->getCourse(), $table, [$guest], $at, $by),
+            fn (ServiceFiring $firing): array => $this->ordersFor($firing->getCourse(), $table, $at, $by, $guest),
         );
     }
 
-    /**
-     * @param list<Guest> $guests
-     * @return list<ServicePlate>
-     */
-    private function ordersFor(MenuCourse $course, ServingTable $table, array $guests, DateTimeImmutable $at, User $by): array
+    /** @return list<ServicePlate> */
+    private function ordersFor(MenuCourse $course, ServingTable $table, DateTimeImmutable $at, User $by, Guest ...$guests): array
     {
+        $guests = Vec\values($guests);
+
         if ([] === $guests) {
             return [];
         }
@@ -115,6 +114,7 @@ final readonly class OrderMaker
 
     /**
      * @param list<string> $options the option ids the guest picked
+     *
      * @return list<array{key: string, name: ?string}> the dish's, then the course's own, each once
      */
     private function items(MenuCourse $course, ?MenuDish $dish, ?string $variant, array $options): array
@@ -135,6 +135,7 @@ final readonly class OrderMaker
 
     /**
      * @param list<string> $options
+     *
      * @return list<?string> null where the guest has no answer to a choice or a variant: Chef's choice
      */
     private function dishItems(MenuCourse $course, MenuDish $dish, ?string $variant, array $options): array

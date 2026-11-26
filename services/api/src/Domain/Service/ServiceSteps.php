@@ -15,7 +15,6 @@ use App\Entity\Guest;
 use App\Entity\MenuCourse;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePlate;
-use App\Entity\ServiceStep;
 use App\Entity\ServiceTray;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -33,8 +32,6 @@ use App\Http\Exception\ApiException;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePlateRepository;
 use App\Repository\ServiceStepRepository;
-use App\Repository\ServiceTrayRepository;
-use App\Repository\UserRepository;
 use Closure;
 use DateTimeImmutable;
 use Doctrine\DBAL\LockMode;
@@ -43,13 +40,8 @@ use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * @phpstan-import-type Before from ServiceStep
- * @phpstan-import-type Made from ServiceStep
- */
 final readonly class ServiceSteps implements ArrivalFollowerInterface
 {
     public function __construct(
@@ -64,10 +56,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         private GuestNeedsRecord $guestNeedsRecord,
         private ServiceItemRepository $serviceItemRepository,
         private ServicePlateRepository $servicePlateRepository,
-        private ServiceTrayRepository $serviceTrayRepository,
         private ServiceStepRepository $serviceStepRepository,
-        private UserRepository $userRepository,
         private TranslatorInterface $translator,
+        private ServiceUndo $serviceUndo,
     ) {
     }
 
@@ -103,8 +94,8 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             }
 
             $item = $this->serviceItemRepository->findOneOf($course, $itemKey);
-            $before = null === $item ? self::nothing() : self::before(items: [$item]);
-            $made = self::none();
+            $before = null === $item ? ServiceUndo::nothing() : ServiceUndo::before(items: [$item]);
+            $made = ServiceUndo::none();
 
             if (null === $item) {
                 $item = new ServiceItem($course, $itemKey);
@@ -113,7 +104,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             }
 
             $item->mark($state, $readyIn, $now, $by);
-            $this->recorded($course->getEvent(), 'item', $before, $made, $by, $now);
+            $this->serviceUndo->recorded($course->getEvent(), 'item', $before, $made, $by, $now);
         });
     }
 
@@ -131,9 +122,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw new ApiException(ErrorCode::PlateEmpty, 'service.plate_empty');
             }
 
-            $before = self::before(plates: [$order]);
+            $before = ServiceUndo::before(plates: [$order]);
             $order->choose($choice);
-            $this->recorded($order->getEvent(), 'choose', $before, self::none(), $by, $now);
+            $this->serviceUndo->recorded($order->getEvent(), 'choose', $before, ServiceUndo::none(), $by, $now);
         });
     }
 
@@ -150,7 +141,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw new ApiException(ErrorCode::TableNothingToServe, 'service.table_nothing_to_serve');
             }
 
-            $before = self::before(plates: $plates);
+            $before = ServiceUndo::before(plates: $plates);
             $tray = new ServiceTray($course, $table->key, $by, $now);
             $this->entityManager->persist($tray);
 
@@ -159,7 +150,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 $plate->putOn($tray, $toFollow, $now, $by);
             }
 
-            $this->recorded($course->getEvent(), 'start', $before, [...self::none(), 'trays' => [$tray->getId()->toRfc4122()]], $by, $now);
+            $this->serviceUndo->recorded($course->getEvent(), 'start', $before, [...ServiceUndo::none(), 'trays' => [$tray->getId()->toRfc4122()]], $by, $now);
 
             return $tray;
         });
@@ -185,9 +176,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw new ApiException(ErrorCode::PlateEmpty, 'service.plate_empty');
             }
 
-            $before = self::before(plates: [$plate]);
+            $before = ServiceUndo::before(plates: [$plate]);
             $plate->mark($itemKey, $mark);
-            $this->recorded($tray->getEvent(), 'mark', $before, self::none(), $by, $now);
+            $this->serviceUndo->recorded($tray->getEvent(), 'mark', $before, ServiceUndo::none(), $by, $now);
         });
     }
 
@@ -229,9 +220,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw self::stageInvalid();
             }
 
-            $before = self::before(plates: [$plate]);
+            $before = ServiceUndo::before(plates: [$plate]);
             $plate->takeOff($now, $by);
-            $this->recorded($tray->getEvent(), 'takeOff', $before, self::none(), $by, $now);
+            $this->serviceUndo->recorded($tray->getEvent(), 'takeOff', $before, ServiceUndo::none(), $by, $now);
         });
     }
 
@@ -257,9 +248,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw self::stageInvalid();
             }
 
-            $before = self::before(plates: [$plate]);
+            $before = ServiceUndo::before(plates: [$plate]);
             $made = $this->served($plate, $by, $now);
-            $this->recorded($tray->getEvent(), 'serve', $before, [...self::none(), 'plates' => $made], $by, $now);
+            $this->serviceUndo->recorded($tray->getEvent(), 'serve', $before, [...ServiceUndo::none(), 'plates' => $made], $by, $now);
         });
     }
 
@@ -279,10 +270,10 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             $ticking = Vec\filter($onItsWay, static fn (ServicePlate $plate): bool => !ServiceRules::isFlagged($needs[$plate->getGuest()->getId()->toRfc4122()] ?? GuestNeeds::none()));
 
             if ([] !== $ticking) {
-                $before = self::before(plates: $ticking, trays: [$tray]);
+                $before = ServiceUndo::before(plates: $ticking, trays: [$tray]);
                 $made = Vec\flat_map($ticking, fn (ServicePlate $plate): array => $this->served($plate, $by, $now));
                 $tray->stepped(PlateStep::Serve, $now, $by);
-                $this->recorded($tray->getEvent(), 'allServed', $before, [...self::none(), 'plates' => $made], $by, $now);
+                $this->serviceUndo->recorded($tray->getEvent(), 'allServed', $before, [...ServiceUndo::none(), 'plates' => $made], $by, $now);
             }
 
             return ['ticked' => Iter\count($ticking), 'left' => Iter\count($onItsWay) - Iter\count($ticking)];
@@ -297,9 +288,9 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 throw self::stageInvalid();
             }
 
-            $before = self::before(plates: [$plate]);
+            $before = ServiceUndo::before(plates: [$plate]);
             $plate->sendBack($reason, $now, $by);
-            $this->recorded($plate->getEvent(), 'sendBack', $before, self::none(), $by, $now);
+            $this->serviceUndo->recorded($plate->getEvent(), 'sendBack', $before, ServiceUndo::none(), $by, $now);
         });
 
         if (SentBackReason::AllergyConcern === $reason) {
@@ -327,15 +318,17 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
                 }
             }
 
-            $this->restore($step);
+            $this->serviceUndo->restore($step);
             $step->undo();
         });
     }
 
     /**
      * @template T
+     *
      * @param list<object>                  $fresh what the caller loaded before the lock, read again under it
      * @param Closure(DateTimeImmutable): T $work
+     *
      * @return T
      */
     private function write(Event $event, array $fresh, Closure $work): mixed
@@ -376,14 +369,14 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
     /** @param list<ServicePlate> $plates */
     private function stepTray(ServiceTray $tray, array $plates, PlateStep $step, User $by, DateTimeImmutable $now): void
     {
-        $before = self::before(plates: $plates, trays: [$tray]);
+        $before = ServiceUndo::before(plates: $plates, trays: [$tray]);
 
         foreach ($plates as $plate) {
             $plate->moved($step, $now, $by);
         }
 
         $tray->stepped($step, $now, $by);
-        $this->recorded($tray->getEvent(), $step->value, $before, self::none(), $by, $now);
+        $this->serviceUndo->recorded($tray->getEvent(), $step->value, $before, ServiceUndo::none(), $by, $now);
     }
 
     /** @return list<string> the owed plates it made: the items Brought after, and those left To follow */
@@ -412,85 +405,6 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         $entry = Iter\search($this->servingStations->of($course->getEvent())['courses'], static fn (array $one): bool => $one['course']->getId()->equals($course->getId()));
 
         return [...Vec\map($entry['items'] ?? [], static fn (array $item): string => $item['key']), OrderMaker::CHEFS_CHOICE];
-    }
-
-    /**
-     * @param Before $before
-     * @param Made   $made
-     */
-    private function recorded(Event $event, string $kind, array $before, array $made, User $by, DateTimeImmutable $now): void
-    {
-        $subjects = Vec\unique([
-            ...Vec\keys($before['plates']), ...Vec\keys($before['trays']), ...Vec\keys($before['items']),
-            ...$made['plates'], ...$made['trays'], ...$made['items'],
-        ]);
-        $this->entityManager->persist(new ServiceStep($event, $kind, Vec\map($subjects, static fn (int|string $id): string => (string) $id), $before, $made, $by, $now));
-    }
-
-    private function restore(ServiceStep $step): void
-    {
-        $before = $step->getBefore();
-        $made = $step->getMade();
-
-        foreach ($before['plates'] as $id => $snapshot) {
-            $plate = $this->servicePlateRepository->find(Uuid::fromString($id));
-            /** @var array{stage: string, tray: ?string, marks: array<string, string>, choice: ?string, toFollow: list<string>, steps: list<array{stage: string, at: string, by: string}>, owedReason: ?string, owedAt: ?string, sentBack: list<array{reason: string, at: string, by: string, stage: string, steps: list<array{stage: string, at: string, by: string}>}>} $snapshot */
-            $plate?->restore($snapshot, null === $snapshot['tray'] ? null : $this->serviceTrayRepository->find(Uuid::fromString($snapshot['tray'])));
-        }
-
-        foreach ($before['trays'] as $id => $snapshot) {
-            /** @var list<array{step: string, at: string, by: string}> $snapshot */
-            $this->serviceTrayRepository->find(Uuid::fromString($id))?->restore($snapshot);
-        }
-
-        foreach ($before['items'] as $id => $snapshot) {
-            /** @var array{state: string, readyIn: ?int, changedAt: ?string, changedBy: ?string} $snapshot */
-            $changedBy = null === $snapshot['changedBy'] ? null : $this->userRepository->find(Uuid::fromString($snapshot['changedBy']));
-            $this->serviceItemRepository->find(Uuid::fromString($id))?->restore($snapshot, $changedBy);
-        }
-
-        foreach ($made['plates'] as $id) {
-            $plate = $this->servicePlateRepository->find(Uuid::fromString($id));
-
-            if (null !== $plate) {
-                $this->entityManager->remove($plate);
-            }
-        }
-
-        $this->entityManager->flush();
-
-        foreach ([...Vec\map($made['trays'], fn (string $id): ?object => $this->serviceTrayRepository->find(Uuid::fromString($id))), ...Vec\map($made['items'], fn (string $id): ?object => $this->serviceItemRepository->find(Uuid::fromString($id)))] as $entity) {
-            if (null !== $entity) {
-                $this->entityManager->remove($entity);
-            }
-        }
-    }
-
-    /**
-     * @param list<ServicePlate> $plates
-     * @param list<ServiceTray>  $trays
-     * @param list<ServiceItem>  $items
-     * @return Before
-     */
-    private static function before(array $plates = [], array $trays = [], array $items = []): array
-    {
-        return [
-            'plates' => Dict\from_entries(Vec\map($plates, static fn (ServicePlate $plate): array => [$plate->getId()->toRfc4122(), $plate->snapshot()])),
-            'trays' => Dict\from_entries(Vec\map($trays, static fn (ServiceTray $tray): array => [$tray->getId()->toRfc4122(), $tray->snapshot()])),
-            'items' => Dict\from_entries(Vec\map($items, static fn (ServiceItem $item): array => [$item->getId()->toRfc4122(), $item->snapshot()])),
-        ];
-    }
-
-    /** @return Before */
-    private static function nothing(): array
-    {
-        return ['plates' => [], 'trays' => [], 'items' => []];
-    }
-
-    /** @return Made */
-    private static function none(): array
-    {
-        return ['plates' => [], 'trays' => [], 'items' => []];
     }
 
     private function invalid(string $field, string $message): ApiException

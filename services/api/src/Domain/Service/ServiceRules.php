@@ -22,6 +22,7 @@ final class ServiceRules
 
     /**
      * @param array<string, ItemState> $states the course's items by key; one not there is Ready
+     *
      * @return list<string> the keys of the plate's items that are Preparing
      */
     public static function preparing(ServicePlate $plate, array $states): array
@@ -48,10 +49,7 @@ final class ServiceRules
         return !(HeldChoice::WhatsReadyNow === $plate->getChoice() && Iter\count($preparing) < Iter\count($plate->getItems()));
     }
 
-    /**
-     * Whether the plate goes on the next tray to its table: an owed plate once nothing on it is Preparing, an order once its guest isn't held.
-     * @param array<string, ItemState> $states
-     */
+    /** @param array<string, ItemState> $states */
     public static function isWaiting(ServicePlate $plate, array $states): bool
     {
         if (PlateStage::ToServe !== $plate->getStage() || null !== $plate->getTray()) {

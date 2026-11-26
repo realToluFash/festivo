@@ -83,6 +83,7 @@ final readonly class ServingTables
     /**
      * @param list<SeatingSeat>                   $seats
      * @param array<string, list<SeatAssignment>> $at    by place id
+     *
      * @return list<ServingTable>
      */
     public static function blocks(array $seats, array $at): array

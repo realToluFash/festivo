@@ -79,7 +79,7 @@ final readonly class ServiceRead
                 'seats' => $table->seats,
                 'section' => null === $table->section ? null : ['id' => $table->section->getId()->toRfc4122(), 'name' => $table->section->getName()],
                 'people' => Vec\map($people, static fn (StaffMember $one): array => ['id' => $one->getId()->toRfc4122(), 'name' => $one->getFullName()]),
-                'firedAt' => $firing?->getFiredAt()->format(DATE_RFC3339_EXTENDED),
+                'firedAt' => $firing?->getFiredAt()->format(\DATE_RFC3339_EXTENDED),
                 'guests' => Vec\map($table->guests, function (array $at) use ($viewer, $namesHere, $states, $firing, $needs, $ordersByGuest, $owedByGuest, $carriedBy): array {
                     $guest = $at['guest'];
                     $id = $guest->getId()->toRfc4122();
@@ -119,9 +119,9 @@ final readonly class ServiceRead
 
     /**
      * @param list<array{course: MenuCourse, items: list<array{name: string, key: string, stop: string}>}> $courses
-     * @param array<string, array{id: string, name: string}>                                                $stops
-     * @param array<string, ItemState>                                                                        $states
-     * @param list<ServicePlate>                                                                              $plates
+     * @param array<string, array{id: string, name: string}>                                               $stops
+     * @param array<string, ItemState>                                                                     $states
+     * @param list<ServicePlate>                                                                           $plates
      */
     private function items(MenuCourse $course, array $courses, array $stops, string $passId, array $states, array $plates): array
     {
@@ -143,7 +143,7 @@ final readonly class ServiceRead
                 'station' => $stops[$item['stop']] ?? null,
                 'state' => ($states[$item['key']] ?? ItemState::Ready)->value,
                 'readyIn' => $row?->getReadyIn(),
-                'changedAt' => $row?->getChangedAt()?->format(DATE_RFC3339_EXTENDED),
+                'changedAt' => $row?->getChangedAt()?->format(\DATE_RFC3339_EXTENDED),
                 'changedBy' => $row?->getChangedBy()?->getId()->toRfc4122(),
             ];
         });
@@ -181,7 +181,7 @@ final readonly class ServiceRead
             'trayId' => $plate->getTray()?->getId()->toRfc4122(),
             'steps' => $plate->getSteps(),
             'owedReason' => $plate->getOwedReason()?->value,
-            'owedAt' => $plate->getOwedAt()?->format(DATE_RFC3339_EXTENDED),
+            'owedAt' => $plate->getOwedAt()?->format(\DATE_RFC3339_EXTENDED),
             'sentBack' => Vec\map($plate->getSentBack(), static fn (array $one): array => ['reason' => $one['reason'], 'at' => $one['at'], 'by' => $one['by']]),
         ];
     }
@@ -197,6 +197,7 @@ final readonly class ServiceRead
 
     /**
      * @param array<string, ItemState> $states
+     *
      * @return list<ServicePlate>
      */
     public function waiting(MenuCourse $course, ServingTable $table, array $states): array

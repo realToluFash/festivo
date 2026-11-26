@@ -55,7 +55,7 @@ final readonly class ServiceChanges
             'courseId' => $plate->getCourse()->getId()->toRfc4122(),
             'guestId' => $plate->getGuest()->getId()->toRfc4122(),
             'table' => $plate->getTableKey(),
-            'at' => $this->clock->now()->format(DATE_RFC3339_EXTENDED),
+            'at' => $this->clock->now()->format(\DATE_RFC3339_EXTENDED),
         ]]);
     }
 }

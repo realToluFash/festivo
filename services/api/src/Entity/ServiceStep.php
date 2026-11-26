@@ -11,6 +11,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * One step of a service as undo sees it (sc-4005): what it touched as it was before, and what it made, so a step that moved a tray's plates together is undone as one.
+ *
  * @phpstan-type Before array{plates: array<string, array<array-key, mixed>>, trays: array<string, array<array-key, mixed>>, items: array<string, array<array-key, mixed>>}
  * @phpstan-type Made array{plates: list<string>, trays: list<string>, items: list<string>}
  */
