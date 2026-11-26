@@ -1,4 +1,5 @@
-# sc-95416: sc95416-door-seat with the tablet on its side, then upright again. Vars: METRO_URL, EV.
+# sc-95416: sc95416-door-seat with the tablet on its side, then upright again, on a tablet whose natural orientation is portrait.
+# A landscape-natural tablet (Soirely_QA4_Tablet) stays upright here: use sc95416-door-seat-side-landscape-natural.yaml. Vars: METRO_URL, EV.
 appId: host.exp.Exponent
 ---
 - setOrientation: LANDSCAPE_LEFT
