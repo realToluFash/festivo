@@ -4,6 +4,7 @@ import type { ViewInstance } from 'react-native';
 const keys = vi.hoisted(() => ({ top: null as number | null }));
 const brought = vi.hoisted(() => vi.fn());
 const cleanups = vi.hoisted(() => [] as (() => void)[]);
+const keyboard = vi.hoisted(() => new Map<string, () => void>());
 
 vi.mock('react', () => ({
   useRef: <T>(current: T) => ({ current }),
@@ -14,7 +15,12 @@ vi.mock('react', () => ({
   },
 }));
 vi.mock('react-native', () => ({
-  Keyboard: { addListener: () => ({ remove: () => {} }) },
+  Keyboard: {
+    addListener: (event: string, listener: () => void) => {
+      keyboard.set(event, listener);
+      return { remove: () => keyboard.delete(event) };
+    },
+  },
 }));
 vi.mock('./keyboardWatch.ts', () => ({ keyboardTopNow: () => keys.top }));
 vi.mock('./intoView.ts', () => ({ SETTLED_MS: 500, bringIntoView: brought }));
@@ -61,6 +67,17 @@ describe('the focused field after Save is answered with a notice (sc-74540)', ()
     expect(brought).toHaveBeenCalledOnce();
     fieldReshaped(field);
     expect(brought).toHaveBeenCalledTimes(2);
+  });
+
+  it('comes back above the keys as they rise again after being dropped during the hold', () => {
+    holdField();
+    keys.top = null;
+    keyboard.get('keyboardDidHide')?.();
+    keys.top = 600;
+    keyboard.get('keyboardDidShow')?.();
+
+    expect(brought).toHaveBeenCalledOnce();
+    expect(brought.mock.calls[0]?.[1]).toBe(field);
   });
 
   it('follows the field again as it reshapes once typed in after the hold', () => {
