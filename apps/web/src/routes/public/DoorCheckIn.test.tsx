@@ -231,6 +231,44 @@ describe('check-in in the browser (sc-28230)', () => {
     expect(screen.queryByText('Amara Eze')).toBeNull();
   });
 
+  it('shows a door code’s holder the not-signed-in page once the grant has ended, by any route', async () => {
+    signedIn([HELD]);
+    let ended = false;
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => (ended ? json(REFUSED(404), 404) : json(list())),
+      'GET /api/events/ev_1/my-night': () => json(REFUSED(404), 404),
+    });
+    await screen.findByRole('link', { name: /Joana & Rui’s wedding/ });
+
+    ended = true;
+    expect(
+      await screen.findByRole(
+        'heading',
+        { name: 'Sign in from your link or code' },
+        { timeout: 7_000 },
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('Amara Eze')).toBeNull();
+    expect(screen.queryByText('This link does not work.')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  }, 10_000);
+
+  it('keeps the link page for a staff link once the grant has ended', async () => {
+    signedIn([HELD]);
+    let ended = false;
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => (ended ? json(REFUSED(404), 404) : json(list())),
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+    });
+    await screen.findByRole('link', { name: /Your shift/ });
+
+    ended = true;
+    expect(
+      await screen.findByText('This link does not work.', {}, { timeout: 7_000 }),
+    ).toBeTruthy();
+    expect(screen.queryByText('Amara Eze')).toBeNull();
+  }, 10_000);
+
   it('goes back to the shift page once the job is moved to Can view', async () => {
     signedIn();
     at('/door/ev_1', {
