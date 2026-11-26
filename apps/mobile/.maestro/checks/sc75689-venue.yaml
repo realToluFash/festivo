@@ -1,0 +1,48 @@
+# sc-75689: ${EVENT_ID}'s venue part opened as Can edit, then taken off the event: Save says the event is no longer available, no Try again, what was changed stays, and a second Save says the same.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.venue'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.venue'
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.venue.note'
+    timeout: 20000
+- tapOn:
+    id: 'event.edit.venue.note'
+- inputText: ' Gate B'
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: remove
+- tapOn:
+    id: 'event.edit.venue.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: forbidden
+- tapOn:
+    id: 'event.edit.venue.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: forbidden-again
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add
