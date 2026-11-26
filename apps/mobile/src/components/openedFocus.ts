@@ -52,3 +52,41 @@ export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 
 
   return at.focused ? 'hold' : 'focus';
 }
+
+export interface MountedKeys {
+  os: string;
+  opened: OpenedFocus;
+  autoFocus: boolean | undefined;
+  /** The field has input focus now, by its own focus and blur events. */
+  focused: boolean;
+  /** The keys have been raised on the field once already. Android reads the keys as down over a Modal, as a tablet's screens are, so whether they are up is no stop: a second raise would undo the back key putting them down (lead, PR #3899). */
+  raised: boolean;
+  /** As `ArrivedFocus.readerOn`: with a reader on, the field takes its focus at mount and nothing more, as at main before sc-92467. */
+  readerOn: boolean | null;
+  ticks: number;
+}
+
+/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does on this tick: Android gives it the caret but leaves the keys down, so they are raised on it once, a tick after mount so the keyboard is bound to it, once it has the focus (sc-92467). */
+export function mountedKeysStep(at: MountedKeys): 'wait' | 'raise' | 'done' {
+  if (at.os !== 'android' || at.opened !== 'mount' || at.autoFocus !== true) return 'done';
+  if (at.readerOn === true || at.raised || at.ticks >= ARRIVED_FOCUS_TICKS) return 'done';
+  if (at.ticks < 1 || at.readerOn == null || !at.focused) return 'wait';
+
+  return 'raise';
+}
+
+/** `mountedKeysStep` for one field, keeping whether the keys have been raised on it: a blur and a focus after the raise, as the back key and a tap make, raise nothing more (lead, PR #3899). */
+export function mountedKeys(
+  os: string,
+  opened: OpenedFocus,
+  autoFocus: boolean | undefined,
+): (at: Pick<MountedKeys, 'focused' | 'readerOn' | 'ticks'>) => 'wait' | 'raise' | 'done' {
+  let raised = false;
+
+  return (at) => {
+    const step = mountedKeysStep({ ...at, os, opened, autoFocus, raised });
+    if (step === 'raise') raised = true;
+
+    return step;
+  };
+}
