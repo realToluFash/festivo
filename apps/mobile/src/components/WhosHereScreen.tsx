@@ -126,12 +126,12 @@ export function WhosHereScreen({ eventId, onBack }: { eventId: string; onBack: (
   const backTo = useRef<string>('door');
 
   function shown(next: WhosHere): void {
-    const arrived = newlyIn(latest.current, next)[0];
+    const arrived = newlyIn(latest.current, next).map((row) => clockedInWords(t, row, locale));
     latest.current = next;
     setSeen({ kind: 'shown', read: next });
     setStale(false);
     setLastAt(next.now);
-    if (arrived != null) setToast(clockedInWords(t, arrived, locale));
+    if (arrived.length > 0) setToast(arrived.join(' '));
   }
 
   function read(): void {
