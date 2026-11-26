@@ -1,13 +1,34 @@
 import { type Milestone, wallDay } from '@soirely/domain';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createInstance } from 'i18next';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { sayIn } from '../today.ts';
-import { dueOf, headLabel, needsOf, rowLabel, type YouEvent } from './needsYou.ts';
+import en from '../i18n/locales/en.json';
+import { dayWords } from './todayMoment.ts';
+import { dueWords, needsOf as needsOfWith, type YouEvent } from './todayNeeds.ts';
+
+const i18n = createInstance();
+beforeAll(() =>
+  i18n.init({
+    resources: { en: { translation: en } },
+    lng: 'en',
+    interpolation: { escapeValue: false },
+  }),
+);
 
 const LONDON = 'Europe/London';
-const us = sayIn('en-US');
-const gb = sayIn('en-GB');
-const day = us.day;
+const dayIn =
+  (locale: string) =>
+  (date: string, withYear: boolean): string =>
+    dayWords(date, locale, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      ...(withYear ? { year: 'numeric' } : {}),
+    });
+const day = dayIn('en-US');
+
+const needsOf = (events: YouEvent[], now: Date, day: (date: string, withYear: boolean) => string) =>
+  needsOfWith(events, now, day, i18n.t);
 
 function milestone(at: string, overrides: Partial<Milestone> = {}): Milestone {
   return {
@@ -71,7 +92,7 @@ describe('who a row is for', () => {
 });
 
 describe('the due words', () => {
-  const due = (at: string, now: string) => dueOf(at, LONDON, new Date(now), day);
+  const due = (at: string, now: string) => dueWords(at, LONDON, new Date(now), day, i18n.t);
 
   it('before the moment: today, tomorrow, then the date', () => {
     expect(due('2026-11-10T23:59:00Z', '2026-11-10T09:00:00Z')).toEqual({
@@ -90,14 +111,22 @@ describe('the due words', () => {
     // 01:00 on New Year's Day in Auckland, still noon on the 31st in London.
     const newYear = new Date('2026-12-31T12:00:00Z');
 
-    expect(dueOf('2027-01-04T10:59:00Z', 'Pacific/Auckland', newYear, day).words).toBe(
+    expect(dueWords('2027-01-04T10:59:00Z', 'Pacific/Auckland', newYear, day, i18n.t).words).toBe(
       'Due Mon, Jan 4',
     );
-    expect(dueOf('2027-01-04T23:59:00Z', LONDON, newYear, day).words).toBe('Due Mon, Jan 4, 2027');
+    expect(dueWords('2027-01-04T23:59:00Z', LONDON, newYear, day, i18n.t).words).toBe(
+      'Due Mon, Jan 4, 2027',
+    );
   });
 
   it('writes the date the reader’s way, in one format', () => {
-    const written = dueOf('2026-11-13T23:59:00Z', LONDON, new Date('2026-11-10T09:00:00Z'), gb.day);
+    const written = dueWords(
+      '2026-11-13T23:59:00Z',
+      LONDON,
+      new Date('2026-11-10T09:00:00Z'),
+      dayIn('en-GB'),
+      i18n.t,
+    );
 
     expect(written.words).toBe('Due Fri 13 Nov');
   });
@@ -130,7 +159,9 @@ describe('a device in another zone than the event', () => {
 
     expect(acrossMidnight.getDate()).toBe(12);
     expect(wallDay(acrossMidnight, lagos)).toBe('2026-11-13');
-    expect(dueOf('2026-11-13T23:59:00+01:00', lagos, acrossMidnight, day).words).toBe('Due today');
+    expect(dueWords('2026-11-13T23:59:00+01:00', lagos, acrossMidnight, day, i18n.t).words).toBe(
+      'Due today',
+    );
   });
 });
 
@@ -173,24 +204,5 @@ describe('the order', () => {
       'Zainab at 30',
       'Ade at 60',
     ]);
-  });
-});
-
-describe('what a screen reader says', () => {
-  it('reads the heading with its count', () => {
-    expect(headLabel(1)).toBe('Needs you, 1 thing');
-    expect(headLabel(4)).toBe('Needs you, 4 things');
-  });
-
-  it('reads a row as one button, the due words saying it is overdue', () => {
-    const [row] = needsOf(
-      [event('Ade’s 40th', { milestones: [milestone('2026-11-08T23:59:00Z')] })],
-      NOW,
-      day,
-    );
-
-    expect(row == null ? '' : rowLabel(row)).toBe(
-      'Give final numbers to the kitchen, Ade’s 40th, 2 days overdue',
-    );
   });
 });

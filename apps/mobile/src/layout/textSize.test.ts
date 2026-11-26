@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  dayLineShares,
   bandPlace,
   capChipInDisc,
   capInDisc,
@@ -221,6 +222,29 @@ describe('fitWidest', () => {
 
   it('never steps below the default size', () => {
     expect(fitWidest(12, 25.7, 400, 118)).toBe(12);
+  });
+});
+
+describe("fitWidest with tracking, This week's strip on an iPhone 17 Pro (sc-94682)", () => {
+  // A day's column, a seventh of the strip less 10 a side; TODAY at the seventh step, 11 × 1.353, its five letters tracked 0.66 each.
+  const column = 48.9;
+  const start = 11 * 1.353;
+  const tracking = 5 * 0.66;
+
+  it("keeps the step's size for a label that fits its column", () => {
+    expect(fitWidest(11, start, 34, column, 3 * 0.66)).toBe(start);
+  });
+
+  it('steps TODAY down to the largest whole size at which it fits, its tracking kept', () => {
+    expect(fitWidest(11, start, 54.2, column, tracking)).toBe(13);
+  });
+
+  it('never steps under the default size', () => {
+    expect(fitWidest(11, start, 120, column, tracking)).toBe(11);
+  });
+
+  it('leaves a label at or under the default size as it is, even when it is too wide', () => {
+    expect(fitWidest(11, 11, 60, column, tracking)).toBe(11);
   });
 });
 
@@ -533,5 +557,15 @@ describe('wordsPending', () => {
   it('holds a text until every word is measured, then draws it', () => {
     expect(wordsPending(120, 120, 2, 3)).toBe(true);
     expect(wordsPending(120, 120, 3, 3)).toBe(false);
+  });
+});
+
+describe('dayLineShares, a This week day line (sc-92250)', () => {
+  it('keeps the name and its dotted date on one line while both fit', () => {
+    expect(dayLineShares(120, 110, 4, 234)).toBe(true);
+  });
+
+  it('sends the date to the line under once one pixel short', () => {
+    expect(dayLineShares(120, 110, 4, 233)).toBe(false);
   });
 });

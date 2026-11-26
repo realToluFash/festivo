@@ -1,4 +1,4 @@
-import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
+import { type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
 import {
   EVENT_NAME_MAXIMUM,
   type EventDraft,
@@ -13,6 +13,7 @@ import {
   draftOf,
   eventChanges,
   eventSaveRefusal,
+  eventSaveStoppedWords,
   eventFormErrors,
   eventNameLength,
   formatWallDay,
@@ -168,6 +169,7 @@ const ANSWER = {
   changed: 'changedElsewhere',
   failed: 'notSaved',
   forbidden: 'forbidden',
+  gone: 'eventGone',
 } as const satisfies Record<Exclude<Saving['kind'], 'saved' | 'refused'>, SaveAnswer>;
 
 export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
@@ -721,11 +723,7 @@ export function CoverPart({
             description: change.description,
           });
     } catch (error) {
-      throw new Error(
-        error instanceof ApiError && error.is('permission_required')
-          ? t('eventEdit.forbidden')
-          : refusalOf(error, t),
-      );
+      throw new Error(eventSaveStoppedWords(error, t) ?? refusalOf(error, t));
     }
   }
 

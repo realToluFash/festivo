@@ -64,7 +64,7 @@ final readonly class StaffPlanController
         return $this->answered($job->getEvent(), Response::HTTP_OK);
     }
 
-    /** Refused 409 `staff_job_staffed` while anyone is on its shifts. */
+    /** Refused 409 `staff_job_worked` once anyone has clocked in on one of its shifts, else `staff_job_staffed` while anyone is on them. */
     #[Route('/api/events/{eventId}/staff/jobs/{jobId}', name: 'staff_job_remove', methods: ['DELETE'])]
     #[InEvent(Permission::StaffManage)]
     public function removeJob(#[InThisEvent('jobId')] StaffJob $job): JsonResponse
@@ -123,6 +123,7 @@ final readonly class StaffPlanController
         return $this->answered($shift->getJob()->getEvent(), Response::HTTP_OK);
     }
 
+    /** Refused 409 `staff_shift_worked` once they have clocked in on it. */
     #[Route('/api/events/{eventId}/staff/shifts/{shiftId}/people/{staffId}', name: 'staff_shift_unassign', methods: ['DELETE'])]
     #[InEvent(Permission::StaffManage)]
     public function unassign(#[InThisEvent('shiftId')] StaffShift $shift, #[InThisEvent('staffId')] StaffMember $person): JsonResponse

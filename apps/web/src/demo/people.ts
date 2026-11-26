@@ -195,13 +195,16 @@ function onEventAs(id: string, role: EventRole): OnEvent {
   return { id, name, initials, tone, role, outside: false, label: null };
 }
 
+/** Joined from outside, so her account name is cut to its first word on a button. */
+const KEMI = 'kemi.okafor@example.com';
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
     onEventAs(ANA, 'Can edit'),
     onEventAs(TOM, 'Can check guests in'),
     {
-      id: 'kemi.okafor@example.com',
+      id: KEMI,
       name: 'Kemi Okafor',
       initials: 'KO',
       tone: 3,
@@ -326,6 +329,38 @@ export function removeLine(person: Pick<OnEvent, 'outside'>, org: string = ORGAN
 
 export function savedWords(person: OnEvent, role: Level): string {
   return `Saved. ${person.name} ${NOW_CAN[role].one}`;
+}
+
+export interface AskWords {
+  title: (name: string) => string;
+  line: string;
+  keep: string;
+  go: string;
+}
+
+/** The Remove ask in English, or in French from the product's fr strings for People (sc-91678). */
+export function askWords(
+  person: OnEvent,
+  french: boolean,
+  organisation: string = ORGANISATION,
+): AskWords {
+  if (!french) {
+    return {
+      title: removeTitle,
+      line: removeLine(person, organisation),
+      keep: keepWords(person),
+      go: 'Remove',
+    };
+  }
+
+  return {
+    title: (name) => `Retirer ${name} de cet événement\u00A0?`,
+    line: person.outside
+      ? 'Cette personne perdra l’accès à sa prochaine action.'
+      : `Cette personne perdra l’accès à cet événement à sa prochaine action. Elle reste dans ${organisation}.`,
+    keep: unnamed(person) ? 'Ne pas retirer' : `Garder ${firstName(person)}`,
+    go: 'Retirer',
+  };
 }
 
 export function notChangedLine(person: OnEvent): string {
@@ -493,6 +528,10 @@ export const PEOPLE_STATES = [
   'addressDots',
   'addressUnbroken',
   'addressRemove',
+  'mobileRemove',
+  'joinedRemove',
+  'mobileRoleFails',
+  'addressRemoveFr',
 ] as const;
 
 export type PeopleState = (typeof PEOPLE_STATES)[number];
@@ -514,6 +553,8 @@ export interface PeopleStart {
   adding?: { typed: string; role: Level };
   /** The row whose role dialog is open, and whether its Remove ask is too. */
   open?: { id: string; asking: boolean };
+  /** The Remove ask in French, to see it fit at 320 CSS px (sc-91678). */
+  french?: boolean;
 }
 
 export function peopleStateOf(name: string | null): PeopleState {
@@ -598,6 +639,21 @@ export function peopleStart(state: PeopleState): PeopleStart {
       return withAddress(start, LONG_ADDRESSES[state], false);
     case 'addressRemove':
       return withAddress(start, LONG_ADDRESSES.addressUnbroken, true);
+    case 'mobileRemove':
+      return {
+        ...withAddress(start, LONG_ADDRESSES.addressShort, false),
+        open: { id: MOBILE_ON.id, asking: true },
+      };
+    case 'joinedRemove':
+      return { ...start, open: { id: KEMI, asking: true } };
+    case 'mobileRoleFails':
+      return {
+        ...withAddress(start, LONG_ADDRESSES.addressShort, false),
+        roleFails: true,
+        open: { id: MOBILE_ON.id, asking: false },
+      };
+    case 'addressRemoveFr':
+      return { ...withAddress(start, LONG_ADDRESSES.addressShort, true), french: true };
     default:
       return start;
   }
@@ -630,6 +686,10 @@ export const PEOPLE_PAGES: readonly { name: string; states: readonly DemoLink[] 
       people('addressDots', 'An address wider than a line, broken before its dots'),
       people('addressUnbroken', 'An address with no dot before its @, cut at the line’s end'),
       people('addressRemove', 'Remove asked for that address'),
+      people('mobileRemove', 'Remove asked for a mobile number not joined: Keep them (sc-91678)'),
+      people('joinedRemove', 'Remove asked for Kemi, joined from outside: Keep Kemi'),
+      people('mobileRoleFails', 'A mobile number’s role change that does not save, named whole'),
+      people('addressRemoveFr', 'Remove asked for an address, in French: Ne pas retirer'),
     ],
   },
 ];

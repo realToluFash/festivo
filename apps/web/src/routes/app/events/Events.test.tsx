@@ -2359,6 +2359,26 @@ describe("An event's venue (sc-3589)", () => {
       expect(within(details).queryByText(/Try again/u)).toBeNull();
     });
 
+    it('says an event no longer available where Not saved sits, keeps the note typed and the edit open, and offers no retry (sc-75689)', async () => {
+      const GONE = 'Nothing was changed. This event is no longer available.';
+      const { sent, details } = await typedNote({
+        'PATCH /api/events/ev_1': () => problem(404, 'not_found'),
+      });
+
+      expect((await within(details).findByRole('alert')).textContent).toContain(GONE);
+      expect(within(details).queryByText(/Not saved|Try again/u)).toBeNull();
+      expect(within(details).getByLabelText<HTMLTextAreaElement>(/Arrival note/u).value).toBe(
+        'Doors close at 23:00.',
+      );
+
+      fireEvent.click(within(details).getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+      );
+      expect(within(details).getAllByText(GONE)).toHaveLength(1);
+      expect(screen.getByRole('group', { name: 'Venue' })).toBeDefined();
+    });
+
     it('keeps Not saved for a save that failed for another reason', async () => {
       const { details } = await typedNote({
         'PATCH /api/events/ev_1': () => problem(500, 'internal_error'),
@@ -4562,6 +4582,48 @@ describe('The cover (sc-3590)', () => {
       expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
     });
 
+    it('a save to an event no longer available says so, with no Try again (sc-75689)', async () => {
+      await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+
+      expect((await within(part()).findByRole('alert')).textContent).toContain(
+        'Nothing was changed. This event is no longer available.',
+      );
+      expect(within(part()).queryByText(/Try again/u)).toBeNull();
+      expect(part().querySelector('.ev-preview.is-photo')).not.toBeNull();
+    });
+
+    it('brings the refusal into view on every press of Use this photo (sc-75689)', async () => {
+      const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+      const { sent } = await opened(null, {
+        'PUT /api/events/ev_1/cover': () => problem(404, 'not_found'),
+      });
+
+      pick(file());
+      await within(part()).findByLabelText('Photo position');
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      const notice = await within(part()).findByRole('alert');
+
+      expect(scrolled.mock.contexts).toContain(notice);
+      const first = scrolled.mock.contexts.filter((shown) => shown === notice).length;
+
+      fireEvent.click(within(part()).getByRole('button', { name: 'Use this photo' }));
+      await waitFor(() =>
+        expect(sent.filter(({ line }) => line === 'PUT /api/events/ev_1/cover')).toHaveLength(2),
+      );
+      await waitFor(() =>
+        expect(scrolled.mock.contexts.filter((shown) => shown === notice).length).toBeGreaterThan(
+          first,
+        ),
+      );
+      expect(within(part()).getAllByRole('alert')).toHaveLength(1);
+    });
+
     it('a photo that uploads after a refused save keeps the refusal at the top (sc-53442)', async () => {
       const { sent } = await opened(null, {
         'PUT /api/events/ev_1/cover': () => problem(403, 'permission_required'),
@@ -5381,6 +5443,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     );
   });
 
+  it('puts a You milestone that is Next up on the card, marked You and Overdue once passed, with its action as the step (sc-30812)', async () => {
+    clockAt('2026-10-21T08:00:00Z');
+    signedIn();
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            startsAt: '2026-10-24T18:00:00+02:00',
+            endsAt: '2026-10-25T02:00:00+02:00',
+            status: 'live',
+            phase: 'live',
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/Madrid',
+          milestones: [
+            {
+              ...milestone('2026-10-20T23:59:00+02:00', 'Give final numbers to the kitchen', 'you'),
+              area: 'menu',
+              action: { label: 'Open the kitchen sheet', link: '/app/events/ev_1/menu/kitchen' },
+            },
+            milestone('2026-10-24T18:00:00+02:00', 'Boda starts'),
+          ],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    const steps = await screen.findAllByRole('link', { name: 'Open the kitchen sheet' });
+    const step = steps.find((link) => link.closest('.ev-card-foot') != null) as HTMLElement;
+    const foot = step.closest('.ev-card-foot') as HTMLElement;
+    expect(within(foot).getByText('Next up: Give final numbers to the kitchen')).toBeDefined();
+    expect(within(foot).getByText('You')).toBeDefined();
+    expect(within(foot).getByText('Overdue')).toBeDefined();
+    expect(step.getAttribute('href')).toBe('/app/events/ev_1/menu/kitchen');
+  });
+
   it('names the year on a row whose date is not in the current year (sc-30413)', async () => {
     clockAt('2025-12-31T22:30:00Z');
     signedIn();
@@ -5450,6 +5550,44 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
     ).toBeDefined();
     expect(within(panel).queryByRole('listitem')).toBeNull();
     expect(within(panel).getByRole('link', { name: 'All dates' })).toBeDefined();
+  });
+
+  it('says when a one-day event ends while it is on with nothing ahead, and its card offers no step (sc-93858)', async () => {
+    clockAt('2026-11-03T20:40:00Z');
+    signedIn();
+    const finished = 'Nothing coming up. Every date on this event has passed.';
+    answering({
+      'GET /api/events/ev_1': () =>
+        json({
+          event: event({
+            status: 'live',
+            phase: 'happening_now',
+            startsAt: '2026-11-03T19:00:00+00:00',
+            endsAt: '2026-11-03T23:30:00+00:00',
+            timeZone: 'Europe/London',
+            dayCount: 1,
+          }),
+        }),
+      'GET /api/events/ev_1/timeline': () =>
+        json({
+          timeZone: 'Europe/London',
+          milestones: [milestone('2026-11-03T19:00:00+00:00', 'Adaeze and Tunde starts')],
+        }),
+    });
+    at('/app/events/ev_1');
+
+    const panel = await comingUp();
+
+    expect(await within(panel).findByText('Ends today at 23:30')).toBeDefined();
+    expect(within(panel).queryByText(finished)).toBeNull();
+    expect(within(panel).queryByText('✓')).toBeNull();
+    expect(within(panel).queryByRole('listitem')).toBeNull();
+    const card = document.querySelector<HTMLElement>('.ev-card')!;
+
+    expect(within(card).getByText('Happening now')).toBeDefined();
+    expect(within(card).queryByRole('button', { name: 'Duplicate' })).toBeNull();
+    expect(within(card).getByText(finished).closest('.ev-card-foot.is-unseen')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate' }).className).toBe('ev-manage-do');
   });
 
   it('shows no rows and no All dates link while it fails, until Try again loads it', async () => {
@@ -5973,6 +6111,11 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       () => problem(412, 'precondition_failed'),
       'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
     ],
+    [
+      'an event no longer available',
+      () => problem(404, 'not_found'),
+      'Nothing was changed. This event is no longer available.',
+    ],
   ] as const;
 
   async function pickedLastCurrency(saving: () => Response) {
@@ -6175,6 +6318,34 @@ describe('A part’s save notices show directly above Cancel and Save (sc-74398)
       directlyAboveSave(part, ROLE);
       expect(field.value).toBe(day);
     });
+
+    it.each([
+      ['Save', '2026-11-12'],
+      ['Close replies sooner', '2026-11-05'],
+      ['Close replies now', '2026-10-30'],
+    ])(
+      'says the event is no longer available after %s, keeps the date, and offers no retry (sc-75689)',
+      async (go, day) => {
+        const GONE = ANSWERS[3][2];
+        const { sent, part, field, save } = await pickedReplyBy(day, ANSWERS[3][1]);
+
+        save.focus();
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+
+        expect((await within(part).findByRole('alert')).textContent).toContain(GONE);
+        directlyAboveSave(part, GONE);
+        expect(within(part).queryByText(/Not saved|Try again/u)).toBeNull();
+        expect(field.value).toBe(day);
+
+        fireEvent.click(save);
+        if (go !== 'Save') fireEvent.click(await screen.findByRole('button', { name: go }));
+        await waitFor(() =>
+          expect(sent.filter((line) => line === 'PATCH /api/events/ev_1')).toHaveLength(2),
+        );
+        expect(within(part).getAllByText(GONE)).toHaveLength(1);
+      },
+    );
 
     it('keeps Not saved for a save that failed for another reason', async () => {
       const { part } = await pickedReplyBy('2026-11-12', ANSWERS[0][1]);

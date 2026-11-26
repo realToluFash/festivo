@@ -9,7 +9,8 @@ import {
   moved,
   myNightStateOf,
   nightOf,
-  signedOutAt,
+  rowLineOf,
+  signedInUntil,
 } from './myNightModel.ts';
 
 describe('a staff member’s night (sc-3915)', () => {
@@ -30,8 +31,8 @@ describe('a staff member’s night (sc-3915)', () => {
     const night = nightOf('night');
 
     expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
-    expect(MN.yoursAlone(signedOutAt(night))).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
+    expect(MN.yoursAlone(signedInUntil(night))).toBe(
+      'This link is yours alone. You are signed in until Sun, Nov 29, 02:00. Nothing stays on this device.',
     );
   });
 
@@ -79,5 +80,11 @@ describe('a staff member’s night (sc-3915)', () => {
     expect(
       sparse.tables?.flatMap((table) => table.guests).every((guest) => guest.diet == null),
     ).toBe(true);
+  });
+
+  it('names where they are and the shift on the event’s Your night row, the job with no station', () => {
+    expect(rowLineOf(nightOf('app_event'))).toBe('Section B · 17:00 to 01:00');
+    expect(rowLineOf({ ...nightOf('app_event'), station: null })).toBe('Waiter · 17:00 to 01:00');
+    expect(nightOf('app_event').inApp).toBe(true);
   });
 });

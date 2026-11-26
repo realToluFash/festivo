@@ -126,7 +126,7 @@ final readonly class MenuController
         return $this->menu($event);
     }
 
-    /** `libraryDishId` copies that library dish; otherwise a new dish, saved to the library too unless `onlyForEvent`. A choosing course's first dish asks everyone coming (sc-3913). */
+    /** `libraryDishId` copies that library dish; otherwise a new dish, saved to the library too unless `onlyForEvent`. From outside the organisation the library is not theirs (sc-95116): anything but `onlyForEvent` is refused 403. A choosing course's first dish asks everyone coming (sc-3913). */
     #[Route('/api/events/{eventId}/menu/courses/{courseId}/dishes', name: 'menu_dishes_add', methods: ['POST'])]
     #[InEvent(Permission::MenuManage)]
     public function addDish(Request $request, string $eventId, #[InThisEvent('courseId')] MenuCourse $course): JsonResponse
@@ -147,6 +147,12 @@ final readonly class MenuController
             'allowShared' => Type\optional(Type\bool()),
         ]));
 
+        $onlyHere = $body['onlyForEvent'] ?? false;
+
+        if ((Iter\contains_key($body, 'libraryDishId') || !$onlyHere) && null === $this->membershipDirectory->grantsIn($this->user(), $event->getOrganisation()->getId())) {
+            throw ApiException::permissionRequired(Permission::MenuManage);
+        }
+
         if (Iter\contains_key($body, 'libraryDishId')) {
             $id = $body['libraryDishId'];
             $dish = Uuid::isValid($id) ? $this->dishRepository->findOneInOrganisation($event->getOrganisation(), Uuid::fromString($id)) : null;
@@ -157,8 +163,6 @@ final readonly class MenuController
 
             return $this->menu($event, Response::HTTP_CREATED, ['dishId' => $added->getId()->toRfc4122()]);
         }
-
-        $onlyHere = $body['onlyForEvent'] ?? false;
 
         if (Iter\contains_key($body, 'lastPrice') && !$this->seesPrices($event)) {
             throw ApiException::permissionRequired(Permission::BudgetRead);
@@ -281,10 +285,15 @@ final readonly class MenuController
 
     /** The people a menu change asked to pick again who have not answered yet, for Messaging to tell (epic 36). Nothing is sent from here (sc-3913). */
     #[Route('/api/events/{eventId}/menu/asked-again', name: 'menu_asked_again', methods: ['GET'])]
-    #[InEvent(Permission::GuestsRead)]
+    #[InEvent(Permission::MenuRead)]
     public function askedAgain(string $eventId): JsonResponse
     {
-        return new JsonResponse(['people' => $this->menuReasks->toTell($this->event($eventId))]);
+        $event = $this->event($eventId);
+        if (true !== $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId())?->holds(Permission::GuestsRead)) {
+            throw ApiException::permissionRequired(Permission::GuestsRead);
+        }
+
+        return new JsonResponse(['people' => $this->menuReasks->toTell($event)]);
     }
 
     #[Route('/api/events/{eventId}/menu/subscriptions', name: 'menu_subscribe', methods: ['POST'])]

@@ -21,6 +21,7 @@ const OPENED = {
     endsAt: '2030-11-14T23:30:00+00:00',
     timeZone: 'Europe/Lisbon',
     organisation: 'Lumen Feiras',
+    country: 'PT',
   },
   standing: null,
 };
@@ -67,7 +68,7 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
   });
 }
 
-function signedIn(): void {
+function signedIn(outsideEvents: unknown[] = [], signedOutAt: string | null = null): void {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
   const ire = membership({ id: 'org_2', name: 'Ìrè Events' });
   __setSessionState({
@@ -87,8 +88,10 @@ function signedIn(): void {
       organisationCountry: null,
       timezone: null,
       waitingFor: null,
+      outsideEvents,
+      signedOutAt,
     },
-  });
+  } as never);
 }
 
 function signedOut(): void {
@@ -266,6 +269,22 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
   });
 
+  it('ends on My night when the code put them on its shift (sc-234)', async () => {
+    signedIn();
+    const sent = at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () =>
+        json({ ...IN, shift: { landsOn: 'night' } }, 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    await waitFor(() =>
+      expect(sent.some((one) => one.line === 'GET /api/events/ev_1/my-night')).toBe(true),
+    );
+    expect(screen.queryByRole('heading', { name: /You’re in for/ })).toBeNull();
+  });
+
   it('signed out, asks a name and a mobile, sends a code to it, and joins on the right one', async () => {
     signedOut();
     const sent = at('/d/K7P2QX9M', {
@@ -283,7 +302,12 @@ describe('the browser’s redeem pages (sc-72)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Send code' }));
     expect(screen.getByText('Enter your full name.')).toBeDefined();
-    expect(screen.getByText('Enter your mobile number.')).toBeDefined();
+    const numberLine = screen.getByText('Enter your mobile number.');
+    expect(numberLine.closest('.rd-phone')).toBeNull();
+    expect(numberLine.previousElementSibling?.classList.contains('rd-phone')).toBe(true);
+    expect(screen.getByLabelText('Mobile number').getAttribute('aria-describedby')).toBe(
+      numberLine.id,
+    );
     expect(document.activeElement).toBe(screen.getByLabelText('Your name'));
     expect(sent.some((one) => one.line.startsWith('POST'))).toBe(false);
 
@@ -328,6 +352,36 @@ describe('the browser’s redeem pages (sc-72)', () => {
     expect((screen.getByLabelText('Mobile number') as HTMLInputElement).value).toBe('912 344 512');
   });
 
+  it('puts the API’s refusal of the number under the number, and clears it once it is retyped', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Validation failed',
+            status: 422,
+            violations: [
+              { propertyPath: 'number', message: 'That is not a mobile number for Portugal.' },
+            ],
+          },
+          422,
+        ),
+    });
+
+    await sendTo('Hugo Brandão');
+
+    expect(await screen.findByText('That is not a mobile number for Portugal.')).toBeDefined();
+    const number = screen.getByLabelText('Mobile number');
+    expect(number.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(number);
+    expect(screen.queryByText(/Something went wrong/u)).toBeNull();
+
+    fireEvent.change(number, { target: { value: '912 344 513' } });
+    expect(screen.queryByText('That is not a mobile number for Portugal.')).toBeNull();
+  });
+
   it('says an alternative number cannot sign in, back on the number', async () => {
     signedOut();
     at('/d/K7P2QX9M', {
@@ -353,6 +407,48 @@ describe('the browser’s redeem pages (sc-72)', () => {
       await screen.findByText(/^This is an alternative number on a Soirely account/u),
     ).toBeDefined();
     expect(screen.getByLabelText('Mobile number').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('refuses a Google-or-Apple-only member after the right code, forgetting the name (sc-94849)', async () => {
+    signedOut();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/sign-in/send': () =>
+        json({ handle: 'h1', cooldownSeconds: 60 }),
+      'POST /api/auth/phone-sign-in/state': () => json(OPENING),
+      'POST /api/door-codes/K7P2QX9M/sign-in': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/oauth_only',
+            title: 'No',
+            status: 403,
+            organisation: 'Ìrè Events',
+            email: 'bisi@ire.events',
+            providers: ['apple', 'google'],
+          },
+          403,
+        ),
+    });
+
+    await sendTo('Bisi');
+    await typeCode();
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Ìrè Events signs in with Google or Apple only',
+      }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(/^A code sent to your phone cannot sign you in to this account\./u),
+    ).toBeDefined();
+    const buttons = screen.getAllByRole('button', { name: /^Continue with/u });
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      'Continue with Google',
+      'Continue with Apple',
+    ]);
+    expect(screen.queryByLabelText('Mobile number')).toBeNull();
+    expect(screen.queryByDisplayValue('Bisi')).toBeNull();
   });
 
   it('asks two-factor before the grant, on the code screen', async () => {
@@ -510,6 +606,7 @@ describe('the browser’s redeem pages (sc-72)', () => {
                 jobLabel: 'Bar and drinks',
                 startsAt: OPENED.event.startsAt,
                 endsAt: OPENED.event.endsAt,
+                timeZone: 'Europe/Lisbon',
               },
             ],
           }),
@@ -547,5 +644,111 @@ describe('the browser’s redeem pages (sc-72)', () => {
     );
     expect(screen.queryByText(/That code does not work/u)).toBeNull();
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Hugo Brandão');
+  });
+});
+
+describe('"You’re in for…" leads to check-in (sc-28230)', () => {
+  const REDEEMED = (role: string) => ({
+    eventId: 'ev_1',
+    name: 'Kemi Okafor',
+    role,
+    jobLabel: 'Bar and drinks',
+    endsAt: '2030-11-14T23:30:00+00:00',
+    again: false,
+  });
+
+  it('offers Check-in to a code that checks guests in', async () => {
+    signedIn();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_check_in'), 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect((await screen.findByRole('link', { name: 'Check-in' })).getAttribute('href')).toBe(
+      '/door/ev_1',
+    );
+    expect(screen.getByRole('button', { name: 'Open the event' })).toBeDefined();
+  });
+
+  it('offers no Check-in to a code that can only view', async () => {
+    signedIn();
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json({ ...OPENED, role: 'can_view' }),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_view'), 201),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect(await screen.findByRole('button', { name: 'Open the event' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
+  });
+
+  it('says when a session signed in at the door ends after it redeems another code, as /d/in/:eventId does', async () => {
+    signedIn([], '2030-11-14T18:00:00+00:00');
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_check_in'), 201),
+      'GET /api/auth/me': () =>
+        json(account({ needsOrganisation: false, signedOutAt: '2030-11-14T18:00:00+00:00' })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect(await screen.findByText(/^You’ll be signed out at .*18:00\.$/u)).toBeDefined();
+  });
+
+  it('reads /d/in/:eventId as after redeeming, and redeems nothing again', async () => {
+    signedIn([
+      {
+        id: 'ev_1',
+        name: 'Joana & Rui’s wedding',
+        organisationName: 'Lumen Feiras',
+        role: 'can_check_in',
+        jobLabel: 'Bar and drinks',
+        startsAt: '2030-11-14T15:00:00+00:00',
+        endsAt: '2030-11-14T23:30:00+00:00',
+        timeZone: 'Europe/Lisbon',
+      },
+    ]);
+    const sent = at('/d/in/ev_1', {});
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
+      }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Check-in' }).getAttribute('href')).toBe('/door/ev_1');
+    expect(sent.filter((one) => one.line.includes('/redeem'))).toEqual([]);
+    expect(screen.queryByText(/^You’ll be signed out at/u)).toBeNull();
+  });
+
+  it('reads when a session signed in at the door ends on /d/in/:eventId, as after redeeming, on the event’s clock', async () => {
+    signedIn(
+      [
+        {
+          id: 'ev_1',
+          name: 'Joana & Rui’s wedding',
+          organisationName: 'Lumen Feiras',
+          role: 'can_check_in',
+          jobLabel: 'Bar and drinks',
+          startsAt: '2030-11-14T15:00:00+00:00',
+          endsAt: '2030-11-14T23:30:00+00:00',
+          timeZone: 'Africa/Lagos',
+        },
+      ],
+      '2030-11-14T18:00:00+00:00',
+    );
+    at('/d/in/ev_1', {});
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'You’re in for Joana & Rui’s wedding · Bar and drinks',
+      }),
+    ).toBeDefined();
+    expect(screen.getByText(/^You’ll be signed out at .*19:00\.$/u)).toBeDefined();
   });
 });

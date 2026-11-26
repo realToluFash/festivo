@@ -42,6 +42,7 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
   const [menu, setMenu] = useState<string | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const [drawnAt, setDrawnAt] = useState<number | null>(null);
+  const [emptyAt, setEmptyAt] = useState<string | null>(null);
   const words = useMemo(
     () => i18n.cloneInstance({ lng: language, initAsync: false }),
     [i18n, language],
@@ -62,6 +63,7 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
     <I18nextProvider i18n={words}>
       <BellPage
         scale={scale}
+        empty={read === 'none' ? { scale, onDrawn: setEmptyAt } : null}
         unread={unread}
         refreshing={refreshing}
         menu={menu}
@@ -80,8 +82,9 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
         foot={
           <DemoOnly
             title={[
-              'Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the title draws at the size chosen; the row with ‹ and Mark all read, and the list, are main’s at this device’s size. The title grows as on main and, from AX1, steps down only to the largest size at which its own word fits the screen’s width, never under 30. The refreshing mark sits beside it or on the line under it and never makes it smaller. Nothing is sent and no string is added.',
+              'Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the title draws at the size chosen; the row with ‹ and Mark all read, and the list, are main’s at this device’s size. The title grows as on main and, from AX1, steps down only to the largest size at which its own word fits the screen’s width, never under 30. The refreshing mark sits beside it or on the line under it and never makes it smaller. With nothing yet, the empty sentence draws at the size chosen too, by the panel’s rule: whole words, one size, stepped down from AX1 only for its widest word, never under 15, the bell tile above it where that word cannot fit beside it, and Notification settings under it by the same rule. Nothing is sent and no string is added.',
               drawnAt == null ? null : `The title draws at ${tenths(drawnAt)}.`,
+              read === 'none' ? emptyAt : null,
               told == null ? null : `Said: ${told}`,
             ]
               .filter((line) => line != null)
@@ -129,6 +132,7 @@ export function PhoneBellScreen({ start }: { start: BellSizeStart }) {
 /** Main's bell screen (BellParts' BellFrame, `screen`): ‹ and Mark all read on one row, then the page that scrolls, its title over the list. */
 function BellPage({
   scale,
+  empty,
   unread,
   refreshing,
   menu,
@@ -140,6 +144,7 @@ function BellPage({
   foot,
 }: {
   scale: number;
+  empty: { scale: number; onDrawn: (drawn: string) => void } | null;
   unread: ReadonlySet<string>;
   refreshing: boolean;
   menu: string | null;
@@ -180,6 +185,7 @@ function BellPage({
       >
         <PageTitle heading={heading} scale={scale} refreshing={refreshing} onDrawn={onDrawn} />
         <BellSampleBody
+          empty={empty}
           unread={unread}
           menu={menu}
           onMenu={onMenu}

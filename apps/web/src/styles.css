@@ -395,8 +395,8 @@ span {
     padding: 0;
   }
 
-  /* Seating fills its card edge to edge, as its demo's desk-main does (sc-58064): the room is the card's, not a band inside it. */
-  .shell-content.is-card:has(> .st) {
+  /* Seating and Messages fill their card edge to edge, as their demos' desk-main does (sc-58064, sc-3942): the room is the card's, not a band inside it. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) {
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -407,16 +407,24 @@ span {
     min-height: 0;
   }
 
-  /* What the shell puts above Seating keeps the card's padding the room gave up. */
-  .shell-content.is-card:has(> .st) > :not(.st) {
+  .shell-content.is-card > .ev-msgs {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* What the shell puts above Seating or Messages keeps the card's padding the room gave up. */
+  .shell-content.is-card:has(> :is(.st, .ev-msgs)) > :not(.st, .ev-msgs) {
     flex-shrink: 0;
     margin-inline: var(--space6xl);
   }
 
   /* The offline band's wrapper stays in the page while online, holding only its hidden announcer: it takes no room, so the first notice after it does. */
-  .shell-content.is-card:has(> .st)
-    > :not(.st):first-child:not(:has(> .visually-hidden:only-child)),
-  .shell-content.is-card:has(> .st) > :first-child:has(> .visually-hidden:only-child) + :not(.st) {
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :not(.st, .ev-msgs):first-child:not(:has(> .visually-hidden:only-child)),
+  .shell-content.is-card:has(> :is(.st, .ev-msgs))
+    > :first-child:has(> .visually-hidden:only-child)
+    + :not(.st, .ev-msgs) {
     margin-top: var(--space3xl);
   }
 }
@@ -2379,10 +2387,16 @@ span {
   margin-bottom: var(--space3xl);
 }
 
-/* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
+}
+
+/* A click on Close rings where focus lands as a key does. A click on the words themselves does not.
+   Important, because a page heading's own :focus { outline: none } would otherwise hide it (sc-74701);
+   a scope whose ring is another colour sets --noticeRing. */
 [data-notice-landing]:focus {
-  outline: 2px solid var(--colorAccent);
-  outline-offset: 2px;
+  outline: 2px solid var(--noticeRing, var(--colorAccent)) !important;
+  outline-offset: 2px !important;
 }
 
 .two-factor-overdue {

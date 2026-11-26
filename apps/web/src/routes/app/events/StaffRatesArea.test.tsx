@@ -435,6 +435,69 @@ describe('Budget / Staff rates (sc-101)', () => {
     );
   });
 
+  it('after the event sets Worked under Scheduled on each row, the headline still scheduled (sc-234)', async () => {
+    signedIn();
+    const worked = (minutes: number, cost: string | null, more: Record<string, unknown> = {}) => ({
+      minutes,
+      assumedMinutes: 0,
+      noAttendance: 0,
+      people: 0,
+      cost,
+      ...more,
+    });
+    serve({
+      'GET /api/events/ev_1/budget/staff-rates': () =>
+        json(
+          rates({
+            worked: {
+              total: '1410.50',
+              minutes: 5210,
+              scheduledMinutes: 5490,
+              assumedMinutes: 548,
+              noAttendance: 1,
+            },
+            jobs: [
+              {
+                ...WAITER,
+                worked: worked(2042, '476.47', { assumedMinutes: 548, noAttendance: 1 }),
+              },
+              { ...BAR, worked: worked(640, null) },
+              { ...DOOR, worked: worked(450, '120.00', { people: 1 }) },
+              { ...SECURITY, worked: worked(0, '0.00') },
+            ],
+            own: [
+              {
+                ...rates().own[0],
+                worked: { minutes: 342, cost: '91.20' },
+              },
+            ],
+          }),
+        ),
+    });
+
+    await screen.findByText('£1,502');
+    expect(
+      screen.getByText('Worked 86 h 50 min of 91 h 30 min scheduled: £1,410.50.'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Of the hours worked, 9 h 8 min are assumed: a missing clock-out counts to the scheduled end.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Bar’s 10 h 45 min not counted until it has a rate.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        '34 h 2 min · of which 9 h 8 min assumed (not clocked out) · 1 shift with no attendance recorded',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('7 h 30 min · 1 person worked')).toBeTruthy();
+    expect(screen.getByText('Worked 5 h 42 min as Waiter · £91.20')).toBeTruthy();
+    expect(
+      screen.getByText('Worked hours are the clock-ins and clock-outs on Staff, Hours worked.'),
+    ).toBeTruthy();
+    expect(screen.getAllByText('Worked')).toHaveLength(4);
+  });
+
   it('puts the same figure on the Budget’s Staff line, which opens Staff rates', async () => {
     signedIn();
     const staffLine = {

@@ -97,6 +97,7 @@ import { StreamItems } from './MessagesStream.tsx';
 import { TapLines } from './MessagesTap.tsx';
 import { MessagesBell } from './MessagesBell.tsx';
 import { AskOwner } from './MessagesWaits.tsx';
+import { newestInView } from './newestInView.ts';
 
 const SHARERS = [
   { name: 'Kwame Mensah', line: SHARED_NUMBER },
@@ -416,7 +417,7 @@ function GuestThread({
         }
       />
       {stop.inset}
-      <ol className="mg-stream" role="log" aria-label={name}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={name}>
         {id === 'ines' && (
           <>
             <DayRule>Oct 12</DayRule>
@@ -790,7 +791,7 @@ function ManyThread({ id }: { id: ConvoId }) {
   return (
     <div className="mg-in">
       <Head lead={<LeadMark lead={{ kind: 'many' }} size={44} />} title={title} line={line} />
-      <ol className="mg-stream" role="log" aria-label={title}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={title}>
         <StreamItems thread={id} />
         {resending && (
           <li className="mg-said is-host">
@@ -859,7 +860,7 @@ function ScheduledThread({ sched, state }: { sched: Sched; state: MessagesState 
         title={title}
         line={[toLine(sched.to, event.book.groups), count, statusWord(sched)].join(' · ')}
       />
-      <ol className="mg-stream" role="log" aria-label={title}>
+      <ol className="mg-stream" role="log" ref={newestInView} aria-label={title}>
         <DayRule>{sched.day === CLOCK.slice(0, 10) ? NW.today : when.date}</DayRule>
         <HostBubble
           subject={sched.subject}

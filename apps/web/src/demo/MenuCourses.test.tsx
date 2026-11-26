@@ -193,6 +193,54 @@ describe('the event Menu (sc-3902)', () => {
     expect(said()).toBe('Suya bites added to Main.');
   });
 
+  it(
+    'opens Add dish on the new dish form from outside, never the library (sc-95116)',
+    SLOW,
+    async () => {
+      await menu('menuOutside');
+
+      fireEvent.click(within(card('Main')).getByRole('button', { name: CW.addDish }));
+      expect(within(panel()).queryByRole('tab')).toBeNull();
+      expect(within(panel()).queryByRole('checkbox', { name: CW.onlyEvent })).toBeNull();
+      expect(within(panel()).queryByText('Moi moi')).toBeNull();
+      expect(within(panel()).queryByText(CW.libraryLoading)).toBeNull();
+      expect(within(panel()).queryByText(LW.price)).toBeNull();
+      expect(within(panel()).getByText(CW.notLibrary)).toBeTruthy();
+      fireEvent.change(within(panel()).getByLabelText(LW.name), {
+        target: { value: 'Suya bites' },
+      });
+      fireEvent.click(within(panel()).getByRole('checkbox', { name: 'Peanuts' }));
+      fireEvent.click(within(panel()).getByRole('button', { name: CW.addDish }));
+      expect(said()).toBe('Suya bites added to Main.');
+    },
+  );
+
+  it(
+    'sits in the outsider’s shell from outside: no organisation, Search, Events, Budget or bell',
+    SLOW,
+    async () => {
+      await menu('menuOutside');
+
+      const side = screen.getByRole('navigation', { name: 'Adaeze & Tunde’s wedding' });
+      expect(within(side).getByRole('button', { name: 'Menu' }).getAttribute('aria-current')).toBe(
+        'page',
+      );
+      expect(within(side).queryByRole('button', { name: /Budget/ })).toBeNull();
+      expect(within(side).queryByRole('link', { name: /Events/ })).toBeNull();
+      expect(screen.queryByRole('searchbox')).toBeNull();
+      expect(screen.queryByRole('navigation', { name: CW.crumb })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Notifications/ })).toBeNull();
+    },
+  );
+
+  it('refuses a blank new dish from outside as it does a member’s', SLOW, async () => {
+    await menu('addDishOutsideBlank');
+
+    expect(within(panel()).queryByRole('tab')).toBeNull();
+    expect(within(panel()).getByText(LW.nameBlank)).toBeTruthy();
+    expect(within(panel()).getByText(LW.containsBlank)).toBeTruthy();
+  });
+
   it('refuses a blank new dish', SLOW, async () => {
     await menu('addDishNewBlank');
 

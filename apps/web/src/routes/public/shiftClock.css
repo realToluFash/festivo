@@ -1,0 +1,139 @@
+.sk {
+  background: var(--colorPage);
+}
+
+.sk-title {
+  margin: 0;
+  color: var(--colorInk);
+  font: 700 24px/1.2 var(--fontFamily);
+}
+
+.sk-help {
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.sk-help.is-strong {
+  font-weight: 600;
+}
+
+.sk-strong {
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 15px/1.45 var(--fontFamily);
+}
+
+.sk-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardPhone);
+  background: var(--colorCard);
+}
+
+.sk-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--sizeHitPhoneHero);
+  padding: 0 var(--spaceXl);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font: 600 17px/1.2 var(--fontFamily);
+  text-align: center;
+}
+
+.sk-primary:hover {
+  background: var(--colorPrimaryHover);
+}
+
+.sk-primary:disabled {
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+.sk-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorInk);
+  font: 600 17px/1.35 var(--fontFamily);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-shape {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--colorInkSecondary);
+  border-radius: 50%;
+}
+
+.sk-shape.is-done {
+  border: 0;
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.sk-live:empty {
+  display: none;
+}
+
+.sk-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+}
+
+.sk-line.is-attention {
+  border-color: var(--colorAttentionBorder);
+  background: var(--colorAttentionTint);
+}
+
+.sk-ring {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 2px solid var(--colorInkSecondary);
+  border-radius: 50%;
+  color: var(--colorInkSecondary);
+  font: 700 12px/1 var(--fontFamily);
+}
+
+.sk-line.is-attention .sk-ring {
+  border-color: var(--colorAttentionText);
+  color: var(--colorAttentionText);
+}
+
+.sk-inset {
+  margin: 0;
+  padding: var(--spaceLg);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+  color: var(--colorInk);
+  font: 500 15px/1.45 var(--fontFamily);
+}

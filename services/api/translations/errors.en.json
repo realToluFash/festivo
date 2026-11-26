@@ -42,6 +42,8 @@
     "check_in_closed": "Arrivals can’t be recorded now.",
     "staff_number_shared": "That number is already on the roster.",
     "staff_job_staffed": "People are on this job’s shifts.",
+    "staff_job_worked": "Someone has worked a shift in this job.",
+    "staff_shift_worked": "They have worked this shift.",
     "staff_shift_full": "Every place on this shift is filled.",
     "staff_works_as": "This person works another job on this event.",
     "staff_shift_overlap": "This person is on another shift at that time.",
@@ -160,5 +162,17 @@
     "invitation_needs_email": "Add the invitation’s email address to your account and verify it, then accept the invitation.",
     "plan_sold_by_contract": "This plan is sold by contract, not through checkout. Contact Soirely to arrange it.",
     "plan_not_priced": "This plan has no price in your billing currency.",
-    "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for."
+    "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for.",
+    "audience_name_taken": "That name is already used by a saved audience.",
+    "audiences_full": "This event has as many saved audiences as it can have.",
+    "table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
+    "level_not_allowed_for_code": "A join code cannot let people run the floor. Give Can run the floor to one person, with their own link from the roster.",
+    "tray_not_yours": "This tray is {name}’s. Ask them or the floor lead.",
+    "plate_stage_invalid": "This plate cannot take that step from where it is now.",
+    "plate_empty": "A plate with nothing on it is not taken to a guest. Take it off the tray instead.",
+    "table_nothing_to_serve": "There is nothing to put on a tray for this table yet.",
+    "tray_check_incomplete": "Mark every item On, or Not on and Bring after, before checking the tray.",
+    "undo_expired": "It is more than 2 minutes since that step, so it cannot be undone.",
+    "service_changed": "Someone else changed this while you were offline. Nothing was saved.",
+    "expected_required": "Send what the tap saw with each service step."
 }

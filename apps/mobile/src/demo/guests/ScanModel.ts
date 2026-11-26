@@ -128,9 +128,25 @@ export function tell(before: Told | null, words: string): Told {
   return { words, tap: (before?.tap ?? 0) + 1 };
 }
 
+/** Where Check-in was opened from, so its back reads ‹ Your night or ‹ Guests. */
+export type DoorFrom = 'guests' | 'night';
+
+export function doorFromOf(param: string | undefined): DoorFrom {
+  return param === 'night' ? 'night' : 'guests';
+}
+
+/** Check-in at the door, keeping &from=night through the scanner and back. */
+export function doorHref(from: DoorFrom): string {
+  return `/demo/guests/check-in?state=door${from === 'night' ? '&from=night' : ''}`;
+}
+
+export function scanHref(from: DoorFrom): string {
+  return `/demo/guests/scan?state=scanning${from === 'night' ? '&from=night' : ''}`;
+}
+
 /** Search by name's way back to Check-in: each tap its own ask, so a second tap focuses the search again. */
-export function searchHref(tap: number): string {
-  return `/demo/guests/check-in?state=door&focus=search&tap=${tap}`;
+export function searchHref(tap: number, from: DoorFrom): string {
+  return `${doorHref(from)}&focus=search&tap=${tap}`;
 }
 
 export function searchAskOf(params: { focus?: string; tap?: string }): string | null {

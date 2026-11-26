@@ -59,11 +59,11 @@ import { EDGE_SWIPE_WIDTH, headerDrawsBack, stackSwipes } from '../kit/systemBac
 import { EVENT_PLACES, type EventPlace, MORE_PLACES, eventHref } from '../kit/eventNav.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import {
-  OUTSIDE_TABS,
   outsideGroups,
   outsideHref,
   outsideMore,
   outsidePlaces,
+  outsideTabs,
   switcherOutside,
 } from '../kit/outsideEvent.ts';
 import { leaveThen } from '../leaveHeld.ts';
@@ -1623,12 +1623,14 @@ const PHONE_EVENT_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
   ['more', 'dots'],
 ];
 
-const OUTSIDE_BAR: readonly (readonly [PhoneEventTab, GlyphName])[] = [
-  ...(OUTSIDE_TABS as readonly PhoneEventTab[]).map(
-    (area) => [area, AREA_GLYPH[area as EventPlace]] as const,
-  ),
-  ['more', 'dots'],
-];
+function outsideBar(role: OutsideEvent['role']): readonly (readonly [PhoneEventTab, GlyphName])[] {
+  return [
+    ...(outsideTabs(role) as readonly PhoneEventTab[]).map(
+      (area) => [area, AREA_GLYPH[area as EventPlace]] as const,
+    ),
+    ['more', 'dots'],
+  ];
+}
 
 const PHONE_EVENT_IDS: Record<PhoneEventTab, string> = {
   overview: 'event.nav.overview',
@@ -1645,7 +1647,7 @@ function TabBar({ inEvent }: { inEvent: InsideEvent }) {
   const [more, setMore] = useState(false);
   const moreTab = useRef<ViewInstance>(null);
   const { outside } = inEvent;
-  const tabs = outside == null ? PHONE_EVENT_BAR : OUTSIDE_BAR;
+  const tabs = outside == null ? PHONE_EVENT_BAR : outsideBar(outside.role);
   const inMore = outside == null ? MORE_PLACES : outsideMore(outside.role);
   const at: PhoneEventTab = tabs.some(([tab]) => tab === inEvent.area)
     ? (inEvent.area as PhoneEventTab)

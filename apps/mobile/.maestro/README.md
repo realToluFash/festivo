@@ -128,6 +128,9 @@ A check is written like a flow, and also:
   A flow run alone with `qa-env.mjs maestro` has no batch language: every file in it, subflows
   in `checks/<story>/` included, matches `{{t:key}}` in any language and fills `|email` from
   `EMAIL=` (any address without it). So a subflow's `{{t:}}` passing alone still fails in a batch.
+- **A wait or an assertion before every screenshot**, on what that screen shows (an id or
+  `{{t:}}` text), never a screenshot alone: a renamed, missing or blank screen would still pass.
+  The rule on conditional taps above is one case of this.
 - **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
   `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
 
@@ -181,6 +184,11 @@ for the batch, with the account an administrator in it, and answers its id (`swi
 Then `change=pause` (through the domain, written in the database), `suspend`, `remove` or `delete`
 with the same `org`. Before each check `batch/reset.yaml` deletes what the last one joined, so
 Access paused never outlives its check. sc-28178's checks are the example.
+
+sc-95859's day sheet checks need an account no fresh `qa-account.mjs` gives: a QA Organisation
+with 12 or more events on 25 Nov (the long day) and one on 27 Nov, made through
+`POST /api/orgs/{org}/events`. On a fresh account the long day's sheet has one row and never
+scrolls, so `sc95859-day-foot` and `sc95859-day-scroll` fail without saying why.
 
 A check that must prove what reached the server, not what the screen draws, asks
 `ASK: /schedule?event=<id>&place=<place>&done=<n>`. The harness reads the event's schedule as the

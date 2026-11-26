@@ -64,6 +64,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
   const [menu, setMenu] = useState<string | null>(null);
   const [told, setTold] = useState<string | null>(null);
   const [drawnAt, setDrawnAt] = useState<string | null>(null);
+  const [emptyAt, setEmptyAt] = useState<string | null>(null);
   const [unread, setUnread] = useState<ReadonlySet<string>>(() => unreadAt(start.read));
   const bellRef = useRef<ViewInstance>(null);
   const heading = useRef<TextHandle>(null);
@@ -105,7 +106,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
             setOpen(true);
           }}
         />
-        <DemoOnly title="Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the panel’s top draws at the size chosen; its list is main’s at this device’s size. The heading grows as on main and, from AX1, steps down only to the largest size at which its own word fits the panel, never under 18. Mark all read grows as on main, breaks only between its words, and steps down only for its widest word, never under 15. Where the two cannot each be whole on one line side by side, Mark all read moves onto its own line under the heading, at its start. Close the panel to change these; the bell opens it again. Nothing is sent and no string is added.">
+        <DemoOnly title="Stand-ins for the device’s text size, its language, whether anything is unread, and the refreshing mark. Only the panel’s top draws at the size chosen; its list is main’s at this device’s size. The heading grows as on main and, from AX1, steps down only to the largest size at which its own word fits the panel, never under 18. Mark all read grows as on main, breaks only between its words, and steps down only for its widest word, never under 15. Where the two cannot each be whole on one line side by side, Mark all read moves onto its own line under the heading, at its start. With nothing yet, the empty sentence draws at the size chosen too: it grows as on main, breaks only between its words and, from AX1, steps down only to the largest size at which its widest word fits, never under 15; where that word cannot fit beside the bell tile, the tile moves onto its own line above it. Notification settings at its foot draws at the size chosen by the same rule, stepped down from AX1 only for its widest word, never under 15. Close the panel to change these; the bell opens it again. Nothing is sent and no string is added.">
           <Choices
             heading="Text size"
             options={FILTER_SIZES}
@@ -163,6 +164,7 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
         >
           <View style={styles.popover}>
             <BellSampleBody
+              empty={read === 'none' ? { scale, onDrawn: setEmptyAt } : null}
               unread={unread}
               menu={menu}
               onMenu={setMenu}
@@ -174,7 +176,11 @@ export function BellSizeScreen({ start }: { start: BellSizeStart }) {
             />
             <View style={styles.told}>
               <DemoOnly
-                title={[drawnAt, told == null ? null : `Said: ${told}`]
+                title={[
+                  drawnAt,
+                  read === 'none' ? emptyAt : null,
+                  told == null ? null : `Said: ${told}`,
+                ]
                   .filter((line) => line != null)
                   .join(' ')}
               >

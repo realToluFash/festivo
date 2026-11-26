@@ -15,6 +15,17 @@ import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.
 import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
+import {
+  BAND_CLEAR,
+  BAND_TITLE,
+  type BandRow,
+  bandLine,
+  bandLiveRoom,
+  bandLiveSize,
+  bandRoom,
+  bandStart,
+  bandTitle,
+} from '../layout/bandTitle.ts';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
 import {
   atAccessibilitySizes,
@@ -23,13 +34,15 @@ import {
   wordsIn,
 } from '../layout/textSize.ts';
 import { CAPSULE_HEIGHT, CAPSULE_LABEL, openerRoom } from '../layout/capsuleFit.ts';
-import { CAPSULE_TOP } from '../layout/bandLive.ts';
+import { CAPSULE_TOP, LIVE_FOOT, liveLineHeight } from '../layout/bandLive.ts';
+import { OPEN_ABOVE_SHEET, TAB_FADE } from '../layout/todayFold.ts';
 import { capsuleLabelMultiplier, useCapsuleLabels } from './CapsuleLabels.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import type { Box } from '../kit/confettiClearance.ts';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
@@ -578,8 +591,8 @@ function NextAndArrived({ now }: { now: Now }) {
   );
 }
 
-/** The live cover on its side from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312). */
-function WholeNowBlock({ now }: { now: Now }) {
+/** The live cover on the iPad from AX1: every word whole, the name stepping until its widest word fits, nothing under it larger than it, and Open the event on the line under the end line (sc-92312 on its side, sc-93578 upright). Upright, the chips keep main's size and grow to hold their words (sc-93211), as they do on the phone (sc-93855). */
+function WholeNowBlock({ now, upright }: { now: Now; upright: boolean }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
   const [column, setColumn] = useState(0);
@@ -598,7 +611,7 @@ function WholeNowBlock({ now }: { now: Now }) {
       style={[styles.grow, styles.gapMd]}
       onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
     >
-      <WholeChips now={now} column={column} under={under} />
+      {upright ? <Chips now={now} grows /> : <WholeChips now={now} column={column} under={under} />}
       <CoverLine
         size={48}
         line={1.06}
@@ -644,17 +657,20 @@ export function NowBlock({
 }: {
   moment: Moment;
   wide: boolean;
-  /** On the iPad's side banner, where from AX1 the live cover keeps every word whole (sc-92312). */
+  /** On the iPad's side banner rather than upright (sc-92312). */
   side?: boolean;
 }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
   const whole = useAccessibilitySizes();
+  const [column, setColumn] = useState(0);
+  const [name, setName] = useState<number | null>(null);
   const { now, run } = moment;
 
   if (now == null) return null;
 
-  if (side && whole && run == null && !moment.full) return <WholeNowBlock now={now} />;
+  if (wide && whole && run == null && !moment.full)
+    return <WholeNowBlock now={now} upright={!side} />;
 
   if (run != null)
     return (
@@ -673,29 +689,58 @@ export function NowBlock({
   if (!moment.full) {
     const words = (
       <>
-        <Chips now={now} grows={wide && whole} />
-        <Text
-          size={wide ? 48 : 36}
-          weight="bold"
-          accessibilityRole="header"
-          style={[
-            styles.white,
-            { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
-          ]}
-        >
-          {now.name}
-        </Text>
-        <Text size={16} weight="semibold" style={styles.white}>
-          {now.ends}
-        </Text>
+        <Chips now={now} grows={whole} />
+        {!wide && whole ? (
+          <CoverLine
+            size={36}
+            line={1.06}
+            weight="bold"
+            accessibilityRole="header"
+            room={column}
+            onDrawn={setName}
+            style={[styles.white, { letterSpacing: 36 * -0.02 }]}
+          >
+            {now.name}
+          </CoverLine>
+        ) : (
+          <Text
+            size={wide ? 48 : 36}
+            weight="bold"
+            accessibilityRole="header"
+            style={[
+              styles.white,
+              { letterSpacing: (wide ? 48 : 36) * -0.02, lineHeight: (wide ? 48 : 36) * 1.06 },
+            ]}
+          >
+            {now.name}
+          </Text>
+        )}
+        {!wide && whole ? (
+          <CoverLine
+            size={16}
+            line={1.3}
+            weight="semibold"
+            room={column}
+            under={name ?? Infinity}
+            style={styles.white}
+          >
+            {now.ends}
+          </CoverLine>
+        ) : (
+          <Text size={16} weight="semibold" style={styles.white}>
+            {now.ends}
+          </Text>
+        )}
       </>
     );
-    const open = (
-      <WhiteButton
-        label={t('todayScreen.openEvent')}
-        onPress={() => go({ to: 'event', id: now.event.id, name: now.name })}
-      />
-    );
+    const label = t('todayScreen.openEvent');
+    const onOpen = () => go({ to: 'event', id: now.event.id, name: now.name });
+    const open =
+      !wide && whole ? (
+        <WholeWhiteButton label={label} onPress={onOpen} column={column} under={name ?? Infinity} />
+      ) : (
+        <WhiteButton label={label} onPress={onOpen} />
+      );
 
     return wide ? (
       <View style={styles.wideRow}>
@@ -710,7 +755,7 @@ export function NowBlock({
         )}
       </View>
     ) : (
-      <View style={styles.gapLg}>
+      <View style={styles.gapLg} onLayout={(event) => setColumn(event.nativeEvent.layout.width)}>
         {words}
         {now.arrived != null && <ArrivedFigure figure={now.arrived} />}
         <View style={styles.hair} />
@@ -983,20 +1028,35 @@ export function Band({
   const grown = !phone && named != null && atAccessibilitySizes(fontScale);
   const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
   const tall = capsule > CAPSULE_HEIGHT;
+  const [tileEnd, setTileEnd] = useState<number>();
+  const [searchStart, setSearchStart] = useState<number>();
+  const [rowMiddle, setRowMiddle] = useState<number>();
+  const height = top + bandBody(moment, layout);
+  const underTitle = phone && atAccessibilitySizes(fontScale);
+  const [rowAt, setRowAt] = useState<{ x: number; y: number }>();
+  const [titleBox, setTitleBox] = useState<Box | null>(null);
+  const titleOnBand =
+    rowAt == null || titleBox == null
+      ? null
+      : { ...titleBox, x: rowAt.x + titleBox.x, y: rowAt.y - top + titleBox.y };
+  const liveSize =
+    underTitle && rowMiddle != null
+      ? bandLiveSize(fontScale, bandLiveRoom(rowMiddle, height, LIVE_FOOT))
+      : undefined;
 
   return (
     <View
-      style={[
-        styles.band,
-        { [grown || tall ? 'minHeight' : 'height']: top + bandBody(moment, layout) },
-      ]}
+      style={[styles.band, { [grown || tall ? 'minHeight' : 'height']: height }]}
       onLayout={(event) => setRow(event.nativeEvent.layout.width)}
     >
       {now == null ? (
         <>
           <Cover pieces={[]} shade="foot" />
           <View style={[styles.pieces, { top, bottom: 0 }]}>
-            <Confetti pieces={phone ? BAND_PIECES : TABLET_BAND_PIECES} />
+            <Confetti
+              pieces={phone ? BAND_PIECES : TABLET_BAND_PIECES}
+              words={underTitle ? (titleOnBand == null ? null : [titleOnBand]) : undefined}
+            />
           </View>
         </>
       ) : (
@@ -1008,24 +1068,41 @@ export function Band({
           { marginTop: top },
           tall && { minHeight: CAPSULE_TOP + capsule },
         ]}
+        onLayout={({ nativeEvent: { layout } }) => {
+          // The middle under its top padding, where the tile and the title are centred.
+          setRowMiddle(layout.y + (layout.height + styles.topPhone.paddingTop) / 2);
+          setRowAt({ x: layout.x, y: layout.y });
+        }}
       >
         {!phone && measure}
-        <OrgButton compact />
+        <View onLayout={({ nativeEvent: { layout } }) => setTileEnd(layout.x + layout.width)}>
+          <OrgButton compact />
+        </View>
         <View style={styles.grow} />
-        <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+        <View
+          onLayout={({ nativeEvent: { layout } }) => {
+            setEnd(layout.width);
+            setSearchStart(layout.x);
+          }}
+        >
           <SearchAndBell />
         </View>
-        <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
-          {phone ? (
-            <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
-              {t('todayScreen.today')}
-            </Text>
-          ) : (
+        {phone ? (
+          <BandTitleText
+            row={
+              row == null || tileEnd == null || searchStart == null
+                ? undefined
+                : { width: row, tileEnd, searchStart }
+            }
+            onTitle={setTitleBox}
+          />
+        ) : (
+          <View style={styles.capsuleAt} pointerEvents="box-none">
             <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
               {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
       {grown ? (
         <BandLiveLine scale={fontScale} said={named} width={row} />
@@ -1033,7 +1110,19 @@ export function Band({
         now != null && (
           <View style={[styles.bandNow, phone && pastSides(tokens.spaceXl, insets)]}>
             <View style={styles.liveDot} />
-            <Text size={13.5} weight="semibold" numberOfLines={1} style={styles.white}>
+            <Text
+              key={liveSize}
+              size={liveSize ?? 13.5}
+              weight="semibold"
+              numberOfLines={1}
+              allowFontScaling={!underTitle}
+              // From AX1 hidden until the row is measured, so no frame draws it over the title.
+              style={[
+                styles.white,
+                liveSize != null && { lineHeight: liveLineHeight(liveSize) },
+                underTitle && liveSize == null && styles.waiting,
+              ]}
+            >
               {moment.run != null
                 ? moment.run.band
                 : (named ??
@@ -1043,6 +1132,77 @@ export function Band({
         )
       )}
     </View>
+  );
+}
+
+/** The phone's band title: main's below AX1; from AX1 whole on one line, 8 clear of the tile and Search, in the row's height (sc-92248). */
+function BandTitleText({
+  row,
+  onTitle,
+}: {
+  row: BandRow | undefined;
+  /** From AX1, the title's box in the row once it draws at its fitted size; null until then. */
+  onTitle: (box: Box | null) => void;
+}) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const title = t('todayScreen.today');
+  const large = atAccessibilitySizes(fontScale);
+  const start = bandStart(fontScale);
+  const { widths, measure } = useMeasuredAt(start, [title]);
+  const [wide] = widths;
+  const fitted = row == null || wide == null ? undefined : bandTitle(fontScale, wide, row);
+  const drawn = fitted?.size ?? start;
+  const [placed, setPlaced] = useState<{ x: number; y: number }>();
+  const [text, setText] = useState<{ size: number; box: Box }>();
+  const ready = large && fitted != null && text?.size === drawn;
+
+  useEffect(() => {
+    onTitle(
+      !ready || placed == null || text == null
+        ? null
+        : { ...text.box, x: placed.x + text.box.x, y: placed.y + text.box.y },
+    );
+  }, [onTitle, ready, placed, text]);
+
+  if (!large) {
+    return (
+      <View style={styles.bandTitle} pointerEvents="box-none">
+        <Text size={BAND_TITLE} weight="semibold" accessibilityRole="header" style={styles.white}>
+          {title}
+        </Text>
+      </View>
+    );
+  }
+
+  const inRoom = fitted?.centred === 'room' && row != null;
+
+  return (
+    <>
+      {measure}
+      <View
+        style={[
+          styles.bandTitle,
+          inRoom && { left: row.tileEnd + BAND_CLEAR, right: undefined, width: bandRoom(row) },
+        ]}
+        pointerEvents="box-none"
+        onLayout={({ nativeEvent: { layout } }) => setPlaced({ x: layout.x, y: layout.y })}
+      >
+        <Text
+          key={drawn}
+          onLayout={({ nativeEvent: { layout } }) => setText({ size: drawn, box: layout })}
+          size={drawn}
+          weight="semibold"
+          allowFontScaling={false}
+          accessibilityRole="header"
+          numberOfLines={1}
+          // Hidden until it is measured, so no frame draws it under Search.
+          style={[styles.white, { lineHeight: bandLine(drawn) }, fitted == null && styles.waiting]}
+        >
+          {title}
+        </Text>
+      </View>
+    </>
   );
 }
 
@@ -1273,7 +1433,7 @@ export function PhoneTabBar({
 const styles = StyleSheet.create({
   grow: { flex: 1, minWidth: 0 },
   ends: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: TAB_FADE },
   whiteCapsule: {
     minHeight: CAPSULE_HEIGHT,
     flexDirection: 'row',
@@ -1439,7 +1599,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
   },
   topTabletTall: { alignItems: 'flex-start' },
-  footPhone: { marginBottom: SHEET_RISE + 22 },
+  footPhone: { marginBottom: SHEET_RISE + OPEN_ABOVE_SHEET },
   footTablet: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + 30, maxWidth: 620 },
   footTabletNow: { marginHorizontal: tokens.space5xl, marginBottom: SHEET_RISE + tokens.space4xl },
   banner: { borderRadius: tokens.space4xl, overflow: 'hidden' },
@@ -1454,6 +1614,7 @@ const styles = StyleSheet.create({
   bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },
   bandTitle: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  waiting: { opacity: 0 },
   bandNow: {
     position: 'absolute',
     left: tokens.spaceXl,

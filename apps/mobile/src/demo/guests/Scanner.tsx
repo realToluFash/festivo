@@ -40,6 +40,8 @@ import {
   scannedOf,
   searchHref,
   tell,
+  type DoorFrom,
+  doorHref,
   type Told,
 } from './ScanModel.ts';
 
@@ -48,14 +50,14 @@ const UP_PANEL = 540;
 /** The held code the stand-in camera shows: a code holds nothing a camera could read out, so the drawn one is a pattern. */
 const HELD = 'K7Q2-M9XR';
 
-function leave(): void {
+function leave(from: DoorFrom): void {
   if (router.canGoBack()) router.back();
-  else router.replace('/demo/guests/check-in?state=door' as Href);
+  else router.replace(doorHref(from) as Href);
 }
 
 /** Search by name: back on Check-in, in its search, as sc-1301's not-on-list answer says; each tap a new ask. */
-function toSearch(): void {
-  router.dismissTo(searchHref(Date.now()) as Href);
+function toSearch(from: DoorFrom): void {
+  router.dismissTo(searchHref(Date.now(), from) as Href);
 }
 
 function lineOf(p: Scanned, locale: string, twice: boolean): string {
@@ -136,6 +138,7 @@ function Result({
   onArrive,
   onUndo,
   onNext,
+  onSearch,
 }: {
   result: ScanResult;
   locale: string;
@@ -144,6 +147,7 @@ function Result({
   onArrive: (key: string) => void;
   onUndo: (key: string) => void;
   onNext: () => void;
+  onSearch: () => void;
 }) {
   const buttonHeight = big ? tokens.sizeHitPhoneHero : 48;
   const next = (
@@ -174,7 +178,7 @@ function Result({
           label={W.searchByName}
           glyph="search"
           height={buttonHeight}
-          onPress={toSearch}
+          onPress={onSearch}
           testID="scan.searchByName"
         />
         {next}
@@ -214,7 +218,7 @@ function Result({
               kind="secondary"
               glyph="search"
               height={buttonHeight}
-              onPress={toSearch}
+              onPress={onSearch}
               testID="scan.searchByName"
             />
           </>
@@ -367,12 +371,12 @@ function Hint() {
 }
 
 /** ‹ Check-in on the camera: the house's back, in glass and white. */
-function GlassBack() {
+function GlassBack({ from }: { from: DoorFrom }) {
   const { t } = useTranslation();
 
   return (
     <Pressable
-      onPress={leave}
+      onPress={() => leave(from)}
       style={({ pressed }) => [styles.glassBack, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={t('frame.backTo', { place: W.checkIn })}
@@ -388,10 +392,10 @@ function GlassBack() {
   );
 }
 
-function CameraTop({ landscape }: { landscape: boolean }) {
+function CameraTop({ landscape, from }: { landscape: boolean; from: DoorFrom }) {
   return (
     <View style={[styles.top, landscape && styles.topWide]}>
-      <GlassBack />
+      <GlassBack from={from} />
       <View style={styles.title} pointerEvents="none">
         <Text size={17} weight="bold" accessibilityRole="header" style={styles.white}>
           {W.scanCode}
@@ -406,10 +410,12 @@ export function ScannerScreen({
   state,
   waiting,
   seating,
+  from,
 }: {
   state: ScanState | null;
   waiting: number;
   seating: Seating;
+  from: DoorFrom;
 }) {
   useCoverStatusBar('light', false);
   const { layout } = useShell();
@@ -475,6 +481,7 @@ export function ScannerScreen({
         onArrive={(key) => change(key, 1)}
         onUndo={(key) => change(key, -1)}
         onNext={onNext}
+        onSearch={() => toSearch(from)}
       />
     );
   const strip =
@@ -492,7 +499,7 @@ export function ScannerScreen({
             { paddingTop: insets.top },
           ]}
         >
-          <CameraTop landscape />
+          <CameraTop landscape from={from} />
           {camera && (
             <View style={styles.room}>
               <Viewfinder side={360} onRead={onRead} open={result == null} />
@@ -536,7 +543,7 @@ export function ScannerScreen({
       style={[styles.camera, camera ? null : styles.closed, { paddingTop: insets.top }]}
       testID="scan.screen"
     >
-      <CameraTop landscape={false} />
+      <CameraTop landscape={false} from={from} />
       <View style={[styles.under, portrait && [styles.underWide, { top: insets.top + 10 }]]}>
         {showChip && <CountChip {...count} />}
         {strip}

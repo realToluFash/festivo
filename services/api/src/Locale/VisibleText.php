@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Locale;
 
+use Psl\Regex;
 use Psl\Str;
 use Psl\Str\Grapheme;
 
@@ -12,6 +13,14 @@ final class VisibleText
 {
     /** Code points a visible character may take before marks stacked without end stop passing as a few letters. */
     private const int CODE_POINTS_EACH = 4;
+
+    /** The spaces a browser's String.prototype.trim takes from each end, so the web's counter and the API trim one text alike. */
+    private const string SPACES = '[\t\n\x0B\f\r\p{Zs}\x{FEFF}\x{2028}\x{2029}]++';
+
+    public static function trim(string $text): string
+    {
+        return Regex\replace($text, '/^' . self::SPACES . '|' . self::SPACES . '$/uD', '');
+    }
 
     public static function length(string $text): int
     {

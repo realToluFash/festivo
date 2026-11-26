@@ -6,6 +6,7 @@ namespace App\Domain\Organisation;
 
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\Staff\Link\OutsideEvent;
 use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Entity\Membership;
 use App\Entity\User;
@@ -16,6 +17,8 @@ use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
+use Psl\Iter;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -83,6 +86,27 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         }
 
         return new EventScope($membership, $grants, $byEvent);
+    }
+
+    public function isOutsideIn(User $user, Uuid $organisationId): bool
+    {
+        return Iter\any($this->outsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
+    }
+
+    /**
+     * The account's live grants from outside, less those on an organisation it is an active member of: there its role wins (sc-94843).
+     * An event held both ways is listed once, at the grant from outside's level, as grantsOnEvent reads it.
+     *
+     * @return list<OutsideEvent>
+     */
+    public function outsideEvents(User $user): array
+    {
+        $memberOf = Vec\map($this->membershipRepository->findActiveFor($user), static fn (Membership $membership): Uuid => $membership->getOrganisation()->getId());
+
+        return Vec\filter(
+            Vec\unique_by($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): string => $outside->event->getId()->toRfc4122()),
+            static fn (OutsideEvent $outside): bool => !Iter\any($memberOf, static fn (Uuid $id): bool => $id->equals($outside->event->getOrganisation()->getId())),
+        );
     }
 
     /** @return list<PlanFeature> */

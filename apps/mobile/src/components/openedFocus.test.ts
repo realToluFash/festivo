@@ -4,6 +4,11 @@ import {
   ARRIVED_FOCUS_TICKS,
   type ArrivedFocus,
   arrivedFocusStep,
+  type MountedKeys,
+  KEY_RAISES,
+  KEYS_RAISED_AGAIN_TICKS,
+  mountedKeys,
+  mountedKeysStep,
   openedFocus,
   settledFocus,
   windowArrival,
@@ -90,5 +95,67 @@ describe('a field sends no focus before the device says whether a screen reader 
     expect(arrivedFocusStep({ ...waiting, readerOn: null })).toBe('wait');
     expect(arrivedFocusStep({ ...waiting, readerOn: true })).toBe('done');
     expect(arrivedFocusStep({ ...waiting, readerOn: false })).toBe('focus');
+  });
+});
+
+describe('on an Android tablet, a field that opens focused puts its keys up with no tap (sc-92467)', () => {
+  const mounted: MountedKeys = {
+    os: 'android',
+    opened: 'mount',
+    autoFocus: true,
+    focused: true,
+    raises: 0,
+    raisedAt: 0,
+    readerOn: false,
+    ticks: 1,
+  };
+
+  it('raises the keys on the field once it has the focus, a tick after mount', () => {
+    expect(mountedKeysStep({ ...mounted, ticks: 0 })).toBe('tick');
+    expect(mountedKeysStep({ ...mounted, focused: false })).toBe('wait');
+    expect(mountedKeysStep(mounted)).toBe('raise');
+  });
+
+  it('waits for the focus however late it comes (qa #97238)', () => {
+    expect(mountedKeysStep({ ...mounted, focused: false, ticks: ARRIVED_FOCUS_TICKS })).toBe(
+      'wait',
+    );
+    expect(mountedKeysStep({ ...mounted, ticks: ARRIVED_FOCUS_TICKS })).toBe('raise');
+  });
+
+  it('raises them once more soon after, as Android can drop the first (qa #97238), and then no more', () => {
+    const raised = { ...mounted, raises: 1, raisedAt: 1 };
+    expect(mountedKeysStep({ ...raised, ticks: 1 + KEYS_RAISED_AGAIN_TICKS - 1 })).toBe('tick');
+    expect(mountedKeysStep({ ...raised, ticks: 1 + KEYS_RAISED_AGAIN_TICKS })).toBe('raise');
+    expect(mountedKeysStep({ ...mounted, raises: KEY_RAISES, ticks: 9 })).toBe('done');
+  });
+
+  it('raises nothing more after a blur and a focus, as the back key and a tap make', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: false, readerOn: false, ticks: 1 };
+    expect(step(now)).toBe('wait');
+    expect(step({ ...now, focused: true })).toBe('raise');
+    expect(step({ ...now, ticks: 2 })).toBe('done');
+    expect(step({ ...now, focused: true, ticks: 3 })).toBe('done');
+  });
+
+  it('sends the second raise through the tracker, then stops', () => {
+    const step = mountedKeys('android', 'mount', true);
+    const now = { focused: true, readerOn: false, ticks: 1 };
+    expect(step(now)).toBe('raise');
+    expect(step({ ...now, ticks: 2 })).toBe('tick');
+    expect(step({ ...now, ticks: 3 })).toBe('raise');
+    expect(step({ ...now, ticks: 4 })).toBe('done');
+  });
+
+  it('waits for the screen reader to be known, and with one on leaves focus as it was', () => {
+    expect(mountedKeysStep({ ...mounted, readerOn: null })).toBe('wait');
+    expect(mountedKeysStep({ ...mounted, readerOn: true })).toBe('done');
+  });
+
+  it('moves nothing on an iPhone or iPad, for a field that waited for its window, or one that does not open focused', () => {
+    expect(mountedKeysStep({ ...mounted, os: 'ios' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, opened: 'arrived' })).toBe('done');
+    expect(mountedKeysStep({ ...mounted, autoFocus: undefined })).toBe('done');
   });
 });

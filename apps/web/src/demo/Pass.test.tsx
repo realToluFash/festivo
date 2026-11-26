@@ -21,8 +21,8 @@ const panel = () => screen.getByRole('dialog');
 describe('/demo/pass (sc-4018)', () => {
   it('shows the strip as sc-4028’s Connected state alone, with no line under it', async () => {
     await open('ticket');
-    expect(screen.getByText('Connected · up to date 20:09').parentElement?.textContent).toBe(
-      'Connected · up to date 20:09',
+    expect(screen.getByText('Connected · up to date at 20:09').parentElement?.textContent).toBe(
+      'Connected · up to date at 20:09',
     );
   });
 

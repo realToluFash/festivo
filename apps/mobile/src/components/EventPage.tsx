@@ -65,8 +65,10 @@ import { ScreenScroll, type ScreenScrollView } from './Screen.tsx';
 import { useKeysUp } from './keyboardWatch.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
-import { TextAction } from './Summary.tsx';
+import { RowList, TextAction } from './Summary.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
+import { useStationRowItem } from './StationWayIn.tsx';
+import { useYourNightItem } from './YourNight.tsx';
 
 /** An event's Overview as the design demo draws it (sc-30413): its card, then Details, Coming up, Name and cover, Just for you and Manage. */
 export function EventPage({
@@ -133,6 +135,8 @@ export function EventPage({
   const phase = useShownPhase(event, now);
   const said = useRef({ id: event.id, phase });
   const timeline = useTimeline(event.id, now, event);
+  const night = useYourNightItem(event.id);
+  const station = useStationRowItem(event);
   const milestones = timeline.load.kind === 'loaded' ? timeline.load.timeline.milestones : null;
   const shown = shownEvent(listEventOf({ ...event, milestones }), phase);
   const cardOpener = useRef<ViewInstance>(null);
@@ -340,6 +344,8 @@ export function EventPage({
       onOpen={() => setThanking(true)}
     />
   );
+  const tonight = [night, station].filter((item) => item != null);
+  const yourNight = tonight.length === 0 ? null : <RowList items={tonight} />;
   const numbers = <EventGuestNumbers event={event} onOpen={onGuests} />;
   const people = <EventPeopleCard event={event} onOpen={onPeople} />;
   const forYou = (
@@ -409,6 +415,7 @@ export function EventPage({
         }
         right={
           <>
+            {yourNight}
             {numbers}
             {people}
             {forYou}
@@ -419,6 +426,7 @@ export function EventPage({
           <>
             {notice}
             {thankYou}
+            {yourNight}
             {numbers}
             {people}
             {details}

@@ -22,6 +22,7 @@ import {
   EventRun,
   EventStaff,
   EventStations,
+  EventHoursWorked,
   EventKitchenSheet,
   EventMessages,
   EventMenuPicks,
@@ -44,7 +45,9 @@ import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { MealPreview } from './guest/MealPreview.tsx';
 import { RoomScreenPage } from './screen/RoomScreen.tsx';
+import { DoorCheckInPage } from './public/DoorCheckIn.tsx';
 import { RedeemPage } from './public/Redeem.tsx';
+import { ShiftNightPage } from './public/ShiftNight.tsx';
 import { StaffLinkPage } from './public/StaffLink.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
@@ -72,6 +75,7 @@ import { Status } from './public/Status.tsx';
  *   /app     the product — signed in, scoped to an organisation
  *   /i/:tok  a guest — reached by an invitation, will never install anything
  *   /s/:tok  a room screen — a TV or projector, shown what guests see (sc-3897)
+ *   /door/:id, /night/:id  the night in a staff account's browser: check-in and the shift page (sc-28230)
  *
  * Separated structurally because the alternative is one tree with conditions in
  * it, and a condition is something that can be forgotten on a new route. A
@@ -119,6 +123,7 @@ export const routes = [
           { path: 'events/:eventId/staff/roster', element: <EventRoster /> },
           { path: 'events/:eventId/staff/jobs', element: <EventJobsShifts /> },
           { path: 'events/:eventId/staff/stations', element: <EventStations /> },
+          { path: 'events/:eventId/staff/hours', element: <EventHoursWorked /> },
           { path: 'events/:eventId/run', element: <EventRun /> },
           { path: 'events/:eventId/menu/picks', element: <EventMenuPicks /> },
           { path: 'events/:eventId/menu/kitchen', element: <EventKitchenSheet /> },
@@ -162,6 +167,9 @@ export const routes = [
       { path: '/w/:token', element: <StaffLinkPage /> },
       { path: '/d', element: <RedeemPage /> },
       { path: '/d/:code', element: <RedeemPage /> },
+      { path: '/d/in/:eventId', element: <RedeemPage /> },
+      { path: '/door/:eventId', element: <DoorCheckInPage /> },
+      { path: '/night/:eventId', element: <ShiftNightPage /> },
       { path: '/demo/*', element: <DemoRoute /> },
       { path: '*', element: <NotFound /> },
     ],

@@ -1,4 +1,9 @@
-import { ApiError, type OpenStaffLink, type SignInOutcome } from '@soirely/api-client';
+import {
+  ApiError,
+  type OpenStaffLink,
+  type SignInOutcome,
+  type TwoFactorChallenge,
+} from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt, maskedPhone } from '@soirely/domain';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,13 +12,17 @@ import { useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
+import { providerList } from '../../providerList.ts';
 import { holdReturn } from '../../heldReturn.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
-import { adoptAccount, useSessionState } from '../../session.ts';
+import { type ProviderOnly, adoptAccount, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
-import { atWords } from '../app/events/doorCodes.ts';
+import { codePassed } from '../../providerSignIn.ts';
+import { MyNightPage } from './MyNight.tsx';
 import { PhoneCodeStep, Primary, SignOutLine, Title } from './RedeemPhone.tsx';
+import { StaffTwoFactor } from './StaffTwoFactor.tsx';
 import '../../components/desk.css';
 import './redeem.css';
 import './staffSignIn.css';
@@ -21,7 +30,9 @@ import './staffSignIn.css';
 type Step =
   | { kind: 'confirm'; busy: boolean; told: boolean; signedOut: boolean; failed: boolean }
   | { kind: 'code'; handle: string }
+  | { kind: 'twoFactor'; challenge: TwoFactorChallenge }
   | { kind: 'alternative' }
+  | { kind: 'providerOnly'; refusal: ProviderOnly }
   | { kind: 'tooMany'; when: string | null; words: string };
 
 type Confirm = Extract<Step, { kind: 'confirm' }>;
@@ -65,14 +76,18 @@ export function StaffLinkSignIn({
     setFocus((was) => ({ to, n: was.n + 1 }));
   };
 
-  const { signOut } = useSignOut(() => {
+  const { signOut, unreached } = useSignOut(() => {
     setSignedOut(true);
     go({ ...CONFIRM, signedOut: true });
   });
 
   async function signedIn(outcome: SignInOutcome): Promise<void> {
     if ('challenge' in outcome) {
-      // Two-factor next: its code screen, then back to this link signed in.
+      // An authenticator alone is asked here; a passkey is sign-in's, then back to this link signed in.
+      if (outcome.factors.app && !outcome.factors.passkeys) {
+        go({ kind: 'twoFactor', challenge: outcome }, 'field');
+        return;
+      }
       holdReturn(`/w/${token}`);
       void navigate('/sign-in/code', { replace: true, state: outcome });
       return;
@@ -102,37 +117,20 @@ export function StaffLinkSignIn({
   const masked = link.mobile == null ? '' : maskedPhone(link.mobile);
   const name = session.status === 'signedIn' ? session.session.name : '';
 
+  if (reader === 'yours')
+    return (
+      <MyNightPage
+        source={token}
+        read={() => api.staffLinkNight(token)}
+        clockTap={(action) => api.staffLinkClock(token, action)}
+        name={name}
+        onSignOut={() => void signOut()}
+        stillSignedIn={unreached}
+        onLost={() => void onSignedIn()}
+      />
+    );
+
   function body(): ReactNode {
-    if (reader === 'yours')
-      return (
-        <>
-          <Title titleRef={title}>{link.event}</Title>
-          <LinkCard link={link} named={false} />
-          <div className="rd-you">
-            <p className="rd-you-name">{t('redeem.signedInAs', { name })}</p>
-            {link.signedOutAt != null && link.timeZone != null && (
-              <p className="rd-you-line">
-                {t('redeem.signedOutAt', {
-                  time: atWords(
-                    link.signedOutAt,
-                    {
-                      endsAt: link.signedOutAt,
-                      timeZone: link.timeZone,
-                      locale: dateLocale(),
-                      now: new Date(),
-                    },
-                    t,
-                  ),
-                })}
-              </p>
-            )}
-            <button type="button" className="rd-out" onClick={() => void signOut()}>
-              <SignOutLine />
-              {t('redeem.signOut')}
-            </button>
-          </div>
-        </>
-      );
     if (reader === 'other')
       return (
         <>
@@ -198,8 +196,27 @@ export function StaffLinkSignIn({
             action={{ idle: t('staffLink.signIn.signIn'), busy: t('staffLink.signIn.signingIn') }}
             onLeave={(leave) => {
               if (leave.kind === 'alternative') go({ kind: 'alternative' });
+              else if (leave.kind === 'providerOnly')
+                go({ kind: 'providerOnly', refusal: leave.refusal });
               else if (leave.kind === 'refused') refused(leave.error);
               else void signedIn(leave.signedIn);
+            }}
+          />
+        );
+      case 'twoFactor':
+        return (
+          <StaffTwoFactor
+            challenge={step.challenge}
+            titleRef={title}
+            fieldRef={field}
+            onPassed={(passed) => signedIn(codePassed(passed))}
+            onExpired={() => go(CONFIRM)}
+            onRecovery={() => {
+              holdReturn(`/w/${token}`);
+              void navigate('/sign-in/code', {
+                replace: true,
+                state: { ...step.challenge, opensOn: 'recovery' },
+              });
             }}
           />
         );
@@ -209,6 +226,22 @@ export function StaffLinkSignIn({
             <Title titleRef={title}>{t('staffLink.signIn.confirm')}</Title>
             <LinkCard link={link} />
             <p className="ss-told">{t('staffLink.signIn.alternative')}</p>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Title titleRef={title}>
+              {t('signIn.providerOnlyTitle', { organisation: step.refusal.organisation })}
+            </Title>
+            <LinkCard link={link} />
+            <p className="ss-told">
+              {t('signIn.providerOnlyCode', {
+                organisation: step.refusal.organisation,
+                providers: providerList(step.refusal.providers),
+              })}
+            </p>
+            <ProviderSignIn only={step.refusal.providers} returnTo={`/w/${token}`} />
           </>
         );
       case 'tooMany':

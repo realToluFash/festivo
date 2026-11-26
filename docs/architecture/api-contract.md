@@ -206,21 +206,48 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
   `409 phone_alternative` after the right code, with nothing made, released or granted,
   and an unverified number on another account is released.
 - **A door code's use cap counts people.** A full code still opens. After the right code,
-  an account already in by it is signed in with `again: true` and takes no use, and any
-  other number gets the one `404 door_code_invalid`, with no account made. With two-factor
+  an account already on its event, by it or another way in, is signed in with
+  `again: true` and takes no use, and any other number gets the one
+  `404 door_code_invalid`, with no account made. With two-factor
   on, nothing is granted until it is passed; the signed-in `POST
 /api/door-codes/{code}/redeem` then takes the use. Signed out, that route is
   `401 unauthenticated`: the device-held account is no longer made.
 - Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
-  an hour per code, on top of the number's cooldown: `429` with `Retry-After`.
+  an hour per code, on top of the number's cooldown: `429` with `Retry-After`, the code's
+  `Retry-After` being when its oldest send in the hour leaves it.
+- The name typed at a door code is forgotten once the code is right, whether it signs in
+  or is refused. A `PhoneSignIn` lives 24 hours: `app:prune-phone-sign-ins` then deletes
+  it, with its number and its codes.
 - In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
   account's last live grant, checked on each refresh; with none live yet (a door code
   behind two-factor) the access token keeps its usual life for the signed-in redeem. In the
   app it keeps the usual life. A link read by the entry's own account names `signedOutAt`
   and the event's `timeZone`, `signedOutAt` null for a session that does not end so.
+  Every read of the account names `signedOutAt` the same way, for the session it is read
+  in (the one a sign-in has just begun, else the caller's), whatever addresses it holds.
 - A phone-only account is refused an invitation with `409 invitation_needs_email` until
   the invited address is on it and verified. The invitation's preview carries
   `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.
+
+## A staff member's own night
+
+A person on the roster reads their whole night (sc-3915) as their own account alone: at
+their link with `POST /api/staff-links/night` (`token` in the body), and in the app with
+`GET /api/events/{eventId}/my-night`. Both answer only inside the link's window, to the
+account the roster entry is linked to; every other caller, the organiser included, gets the
+one `404 not_found` a link that does not exist gets.
+
+- It answers `event` (`name`, `timeZone`), `endsAt` (the window's end), `station`, `job`,
+  `shift` (the one under way, else the next, else the last), `later` (the shift after it),
+  `lead`, `timing`, `doorsAt` and `tables`, every time in the event's offset.
+- `lead` is the station's lead, else the floor lead with `floor: true`, never the person
+  themself, with `phone` in E.164 or null; null with neither.
+- `timing` is the run of show's moments not skipped, at their planned times, each `for`
+  `guests` when shown to guests and `staff` otherwise.
+- `doorsAt` is the event's start. `tables` is null with no section station, empty until
+  then, and after it each table in the section with its guests' `name`, `allergens`,
+  `diets`, `otherAllergy` and `otherDiet` alone: never a contact detail, never another
+  table.
 
 ## Alternative addresses and numbers
 

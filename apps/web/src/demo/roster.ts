@@ -1,5 +1,6 @@
 import { emailProblem, phoneE164, phoneFields, phoneLengthProblem } from '@soirely/domain';
 
+import type { BriefingStart } from './briefing.ts';
 import { countryName } from './rules.ts';
 import type { DemoLink } from './settings.ts';
 import { type Trail, NOW_AT, SAMPLE_LINK, YOU } from './staffLink.ts';
@@ -465,6 +466,8 @@ export interface RosterStart {
   /** The check before sending, for one person's id or 'all'. */
   checking: string | null;
   checkFailed: boolean;
+  /** The Briefing card above the Roster and its column (sc-3917), on the briefing's states only. */
+  briefing: BriefingStart | null;
 }
 
 function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): RosterStart {
@@ -488,9 +491,12 @@ function start(o: Partial<RosterStart> & Pick<RosterStart, 'name' | 'note'>): Ro
     sms: null,
     checking: null,
     checkFailed: false,
+    briefing: null,
     ...o,
   };
 }
+
+export const rosterWith = start;
 
 const FRENCH = { lang: 'fr', noShift: 'Aucun service pour l’instant' } as const;
 const SPANISH = { lang: 'es', noShift: 'Aún sin turno' } as const;

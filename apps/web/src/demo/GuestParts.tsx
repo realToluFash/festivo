@@ -392,11 +392,14 @@ export function AnswerRows({
   words,
   current = null,
   busy = null,
+  goesOn = true,
   onAnswer,
 }: {
   words: Words;
   current?: Answer | null;
   busy?: Answer | null;
+  /** sc-1291: false where none of Yes's steps applies, so Yes records at once and has no chevron. */
+  goesOn?: boolean;
   onAnswer: (answer: Answer) => void;
 }) {
   const changing = current != null;
@@ -424,7 +427,8 @@ export function AnswerRows({
               {words.answerNow}
             </span>
           ) : (
-            answer === 'coming' && (
+            answer === 'coming' &&
+            goesOn && (
               <span className="gp-chev">
                 <Glyph name="chevron" size={18} weight={2.2} />
               </span>

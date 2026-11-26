@@ -8,7 +8,13 @@ import {
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
-import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  fitWidest,
+  labelStart,
+  piecesIn,
+  wholeLineHeight,
+} from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type TodayName = 'qa' | 'long';
@@ -173,19 +179,26 @@ export function sizeEvents(name: TodayEventName): SizeEvent[] {
   );
 }
 
-export type TodayWeek = 'quiet' | 'days';
+export type TodayWeek = 'quiet' | 'days' | 'starts';
 
 export const TODAY_WEEKS: readonly { key: TodayWeek; label: string }[] = [
   { key: 'quiet', label: 'Nothing on' },
   { key: 'days', label: 'Days with events' },
+  { key: 'starts', label: 'Two events starting' },
 ];
 
 export const DAY_NAME = 14;
 export const DAY_DATE = 13.5;
 
+/** A row's event: one of the sample events, or the Garden party QA starts this week (sc-94683). */
+export type WeekRowEvent = SizeEvent['key'] | 'garden';
+
+export const GARDEN_PARTY = { name: 'Garden party', mesh: 'teal' } as const;
+
 export interface WeekDay {
   date: string;
-  rows: readonly { time: string; title: string; key: SizeEvent['key']; note: string }[];
+  /** A row with no title is its event's start, titled by the product's own `todayScreen.starts`. */
+  rows: readonly { time: string; title?: string; key: WeekRowEvent; note: string }[];
 }
 
 /** This week from Wednesday 25 November: today, tomorrow and the party's Sunday, each with an item on it as main's agenda draws one; the last has no note. */
@@ -204,14 +217,54 @@ export const WEEK_DAYS: readonly WeekDay[] = [
   },
 ];
 
-/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
-export function dayLineShares(
-  name: number,
-  dottedDate: number,
-  gap: number,
-  room: number,
-): boolean {
-  return name + gap + dottedDate <= room;
+/** This week with two events starting, the Garden party on Friday and the party on Sunday, each row titled Début : {name} in French as main titles a start (sc-94683). */
+export const STARTS_DAYS: readonly WeekDay[] = [
+  {
+    date: SIZE_TODAY,
+    rows: [{ time: '19:00', title: 'Replies close', key: 'ireti', note: 'Automatic' }],
+  },
+  { date: '2026-11-27', rows: [{ time: '12:00', key: 'garden', note: '' }] },
+  { date: '2026-11-29', rows: [{ time: '20:00', key: 'party', note: '' }] },
+];
+
+/** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
+export function titleOnOneLine(width: number, room: number): boolean {
+  return room > 0 && width <= room;
+}
+
+/** Main's strip label, `TYPE.label` in semibold capitals, tracked by a fixed 6% of it at every size. */
+export const STRIP_LABEL = 11;
+export const STRIP_TRACKING = STRIP_LABEL * 0.06;
+
+/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size, and below it as main draws it. */
+export function stripLabelSize(
+  start: number,
+  width: number,
+  letters: number,
+  column: number,
+): number {
+  if (width <= column || start <= STRIP_LABEL) return start;
+  const tracking = letters * STRIP_TRACKING;
+
+  return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));
+}
+
+/** sc-94682: a day's label keeps the room of this step's line whatever size it is drawn at, so today's circle stays in line with the other six. */
+export function stripLabelRoom(start: number): number {
+  return wholeLineHeight(start, start);
+}
+
+/** The strip's seven days from today, a dot for each event with a row that day. */
+export function stripDays(week: TodayWeek): { date: string; dots: WeekRowEvent[] }[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.parse(`${SIZE_TODAY}T00:00Z`) + index * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const days = week === 'starts' ? STARTS_DAYS : week === 'days' ? WEEK_DAYS : [];
+    const rows = days.find((day) => day.date === date)?.rows ?? [];
+
+    return { date, dots: [...new Set(rows.map((row) => row.key))] };
+  });
 }
 
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
@@ -334,6 +387,8 @@ export function liveName(live: TodayLive): string | null {
 
 /** Main's live cover on its side (NowBlock, wide): the name at 48, the end line and Open the event at 16, the chips at 13. */
 export const LIVE_NAME = 48;
+/** The name on the phone's cover, as main's narrow NowBlock draws it. */
+export const LIVE_NAME_PHONE = 36;
 export const LIVE_ENDS = 16;
 export const LIVE_CHIP = 13;
 export const LIVE_OPEN = 16;
@@ -388,4 +443,55 @@ export function piecesKeepingDot(line: string): string[] {
   }
 
   return [...new Set(pieces)];
+}
+
+export type TodayArrived = 'none' | 'one' | 'many' | 'live';
+
+/** Guests arrived at the live event: nobody, 1 of 12, 141 of 152, or the first arriving and undone again while Today is open (sc-94022). */
+export const TODAY_ARRIVEDS: readonly { key: TodayArrived; label: string }[] = [
+  { key: 'none', label: 'Nobody arrived' },
+  { key: 'one', label: '1 of 12' },
+  { key: 'many', label: '141 of 152' },
+  { key: 'live', label: 'The first arriving' },
+];
+
+export interface ArrivedCount {
+  arrived: number;
+  expected: number;
+}
+
+const ARRIVED_COUNTS: Record<Exclude<TodayArrived, 'live'>, ArrivedCount | null> = {
+  none: null,
+  one: { arrived: 1, expected: 12 },
+  many: { arrived: 141, expected: 152 },
+};
+
+/** While arrivals come in, the first guest arrives and is undone again, each step this long apart: inside the 10 seconds the AC allows. */
+export const ARRIVING_EVERY = 4000;
+
+/** The count at `step` of the live state: nobody, then 1 of 12, then nobody again. */
+export function arrivedCount(arrived: TodayArrived, step: number): ArrivedCount | null {
+  if (arrived === 'live') return step % 2 === 0 ? null : ARRIVED_COUNTS.one;
+
+  return ARRIVED_COUNTS[arrived];
+}
+
+/** Main's arrived figure: its numbers at 18, arrived at 12.5, beside a 44 ring (sc-29978). */
+export const FIGURE_NUMBERS = 18;
+export const FIGURE_LABEL = 12.5;
+export const FIGURE_RING = 44;
+export const FIGURE_NUMBERS_LINE = 1.2;
+export const FIGURE_LABEL_LINE = 1.3;
+
+/** From AX1 the ring is as tall as the two lines beside it, never under main's 44, so it grows with the words and never sits over them. */
+export function figureRing(numbers: number, label: number): number {
+  return Math.max(
+    FIGURE_RING,
+    Math.ceil(numbers * FIGURE_NUMBERS_LINE) + Math.ceil(label * FIGURE_LABEL_LINE),
+  );
+}
+
+/** The figure's words beside its ring, `gap` from it, in a column `column` wide. */
+export function figureRoom(column: number, ring: number, gap: number): number {
+  return Math.max(column - ring - gap, 0);
 }

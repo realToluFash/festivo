@@ -241,8 +241,10 @@ export interface DemoLink {
   name: string;
 }
 
+export const billingAt = (state: BillingState) => `/demo/settings/plan-and-billing?state=${state}`;
+
 const at = (state: BillingState, name: string, more = ''): DemoLink => ({
-  to: `/demo/settings/plan-and-billing?state=${state}${more}`,
+  to: `${billingAt(state)}${more}`,
   name,
 });
 

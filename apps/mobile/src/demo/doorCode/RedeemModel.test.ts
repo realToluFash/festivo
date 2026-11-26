@@ -12,18 +12,31 @@ import {
   plainCode,
   redeemed,
 } from './DoorCodeModel.ts';
-import { joinAs, memberTitle, tryAgainAt, W, wrongCode, youreIn } from './DoorCodeWords.ts';
+import {
+  joinAs,
+  memberTitle,
+  providerOnlyLine,
+  providerOnlyTitle,
+  tryAgainAt,
+  W,
+  wrongCode,
+  youreIn,
+} from './DoorCodeWords.ts';
 import {
   afterPhoneCode,
   flowAt,
   freshFlow,
+  signedOut,
+  JOAO,
   phoneTitle,
   REDEEM_STATES,
   type RedeemStep,
   redeemStateOf,
   refusalOf,
   areasFor,
+  isServiceLevel,
   moreAreas,
+  SERVICE_LEVELS,
 } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -36,6 +49,7 @@ describe('joining, every state (spec §5)', () => {
       welcome: 'welcome',
       camera: 'camera',
       enter: 'enter',
+      'signed-out': 'enter',
       'enter-blank': 'enter',
       'enter-short': 'enter',
       checking: 'enter',
@@ -58,14 +72,44 @@ describe('joining, every state (spec §5)', () => {
       'code-exhausted': 'code',
       'code-failed': 'code',
       'used-up': 'event',
+      'event-keys': 'event',
+      'event-keys-number': 'event',
+      'event-keys-refused': 'event',
+      'event-keys-failed': 'event',
       'code-second-number': 'code',
       'second-number': 'event',
+      'code-provider-only': 'code',
+      'code-provider-only-apple': 'code',
+      'code-provider-only-both': 'code',
+      'provider-only': 'providerOnly',
+      'provider-only-apple': 'providerOnly',
+      'provider-only-both': 'providerOnly',
       in: 'in',
       'event-in': 'inside',
       'event-in-view': 'inside',
       'people-in': 'peopleIn',
       'more-in': 'inside',
     } satisfies Record<string, RedeemStep>);
+  });
+
+  it('opens the keys-up states on the field and the refusal each names (sc-97734)', () => {
+    expect(flowAt('event-keys')).toMatchObject({ name: '', keys: 'name', usedUp: false });
+    expect(flowAt('event-keys-number')).toMatchObject({
+      name: JOAO.name,
+      number: '',
+      keys: 'number',
+    });
+    expect(flowAt('event-keys-refused')).toMatchObject({
+      usedUp: true,
+      failed: false,
+      keys: 'name',
+    });
+    expect(flowAt('event-keys-failed')).toMatchObject({
+      usedUp: false,
+      failed: true,
+      keys: 'name',
+    });
+    expect(freshFlow()).toMatchObject({ failed: false, keys: null });
   });
 
   it('opens on the welcome for anything else', () => {
@@ -202,8 +246,62 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     );
   });
 
+  it('refuses a member of a Google-or-Apple-only organisation after the right code, nothing typed kept (sc-94849)', () => {
+    expect(afterPhoneCode(flowAt('code-provider-only'))).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+      name: '',
+      number: '',
+    });
+    expect(afterPhoneCode(flowAt('code-provider-only-apple')).providers).toEqual(['apple']);
+    expect(afterPhoneCode(flowAt('code-provider-only-both')).providers).toEqual([
+      'apple',
+      'google',
+    ]);
+    expect(afterPhoneCode({ ...flowAt('code'), name: 'Bisi', number: '915604117' })).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+    });
+    expect(flowAt('code-provider-only').name).toBe('Bisi');
+  });
+
+  it('signs in any other number typed after a provider-only state, its providers left behind (sc-94849)', () => {
+    const joao = { ...flowAt('code-provider-only-apple'), ...JOAO, step: 'code' as const };
+    expect(afterPhoneCode(joao)).toMatchObject({ step: 'in', who: JOAO.name });
+    expect(afterPhoneCode({ ...flowAt('code-provider-only-both'), ...JOAO }).step).toBe('in');
+  });
+
+  it('names the member’s organisation and the linked providers, and no password', () => {
+    expect(providerOnlyTitle('Ìrè Events')).toBe('Ìrè Events signs in with Google or Apple only');
+    expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
+    );
+    expect(providerOnlyLine('Ìrè Events', ['apple'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Apple.',
+    );
+    for (const both of [
+      ['apple', 'google'],
+      ['google', 'apple'],
+    ] as const)
+      expect(providerOnlyLine('Ìrè Events', both)).toBe(
+        'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
+      );
+  });
+
   it('starts again signed out with nothing kept', () => {
     expect(freshFlow()).toMatchObject({ step: 'welcome', name: '', number: '', typed: '' });
+  });
+
+  it('signs out to an empty Enter a door code that says Signed out. (sc-4235)', () => {
+    expect(signedOut()).toMatchObject({
+      step: 'enter',
+      signedOut: true,
+      typed: '',
+      name: '',
+      number: '',
+    });
+    expect(flowAt('signed-out')).toEqual(signedOut());
+    expect(flowAt('enter').signedOut).toBe(false);
   });
 });
 
@@ -244,6 +342,15 @@ describe('inside the event, by role (pm, 7 Nov, sc-72)', () => {
     ]);
     expect(moreAreas('Can view', true)).toEqual(['schedule', 'seating', 'people']);
     expect(moreAreas('Can view', false)).toEqual([]);
+  });
+
+  it('opens Overview alone at every service level, however it is carried (sc-96279)', () => {
+    for (const level of SERVICE_LEVELS) {
+      expect(areasFor(level)).toEqual(['overview']);
+      expect(moreAreas(level, true)).toEqual([]);
+      expect(isServiceLevel(level)).toBe(true);
+    }
+    expect(isServiceLevel('Can check guests in')).toBe(false);
   });
 });
 

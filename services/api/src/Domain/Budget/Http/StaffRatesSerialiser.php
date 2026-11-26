@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Budget\Http;
 
 use App\Domain\Budget\Model\JobCost;
+use App\Domain\Budget\Model\JobWorked;
 use App\Domain\Budget\Model\OwnCost;
+use App\Domain\Budget\Model\OwnWorked;
 use App\Domain\Budget\Model\PayRate;
 use App\Domain\Budget\Model\StaffCost;
 use App\Domain\Budget\StaffCosts;
@@ -13,12 +15,14 @@ use App\Entity\Event;
 use App\Entity\StaffJob;
 use App\Entity\StaffMember;
 use App\Entity\StaffRate;
+use App\Enum\EventPhase;
 use App\Locale\Money;
 use App\Repository\StaffJobRepository;
 use App\Repository\StaffMemberRepository;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 
 /**
  * Budget / Staff rates (sc-101), worked out on every read because a shift moving moves it. `changed.by` is null once the member who set it is gone.
@@ -27,9 +31,13 @@ use Psl\Vec;
  * @phpstan-type Rate array{kind: string, amount: string}
  * @phpstan-type Changed array{by: ?string, at: string}
  * @phpstan-type Headline array{total: string, countedMinutes: int, scheduledMinutes: int, unrated: list<array{job: Named, minutes: int}>}
- * @phpstan-type Job array{id: string, name: string, rate: ?Rate, changed: ?Changed, scheduledMinutes: int, shifts: int, openPlaces: int, people: int, cost: ?string, rateMinutes: int, fees: int, paidOnce: list<string>, keepOwn: list<string>}
- * @phpstan-type Own array{member: Named, job: Named, rate: Rate, changed: ?Changed, minutes: int, cost: string}
- * @phpstan-type Page array{currency: string, headline: Headline, jobs: list<Job>, own: list<Own>, candidates: list<array{member: Named, job: Named, minutes: int}>}
+ * @phpstan-type JobWorkedShape array{minutes: int, assumedMinutes: int, noAttendance: int, people: int, cost: ?string}
+ * @phpstan-type Job array{id: string, name: string, rate: ?Rate, changed: ?Changed, scheduledMinutes: int, shifts: int, openPlaces: int, people: int, cost: ?string, rateMinutes: int, fees: int, paidOnce: list<string>, keepOwn: list<string>, worked: ?JobWorkedShape}
+ * @phpstan-type Own array{member: Named, job: Named, rate: Rate, changed: ?Changed, minutes: int, cost: string, worked: ?array{minutes: int, cost: string}}
+ * @phpstan-type Worked array{total: string, minutes: int, scheduledMinutes: int, assumedMinutes: int, noAttendance: int}
+ * @phpstan-type Page array{currency: string, headline: Headline, worked: ?Worked, jobs: list<Job>, own: list<Own>, candidates: list<array{member: Named, job: Named, minutes: int}>}
+ *
+ * Once the event has ended, `worked` and each row's `worked` give the hours clocked beside the scheduled ones (sc-234); the headline stays the scheduled cost.
  */
 final readonly class StaffRatesSerialiser
 {
@@ -37,6 +45,7 @@ final readonly class StaffRatesSerialiser
         private StaffCosts $staffCosts,
         private StaffJobRepository $staffJobRepository,
         private StaffMemberRepository $staffMemberRepository,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -64,10 +73,22 @@ final readonly class StaffRatesSerialiser
         $name = static fn (string $person): string => ($people[$person] ?? null)?->getFullName() ?? '';
         $named = static fn (string $id, string $label): array => ['id' => $id, 'name' => $label];
         $onShifts = Vec\unique(Vec\flat_map($staff->jobs, static fn (JobCost $job): array => $job->people));
+        $now = $this->clock->now();
+        $ended = EventPhase::Finished === EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $now) || $now >= $event->getEndsAt();
+        $worked = $ended ? $this->staffCosts->workedOf($event, $now) : null;
+        $jobWorked = null === $worked ? [] : Dict\from_entries(Vec\map($worked->jobs, static fn (JobWorked $job): array => [$job->job, $job]));
+        $ownWorked = null === $worked ? [] : Dict\from_entries(Vec\map($worked->own, static fn (OwnWorked $own): array => [$own->person . ':' . $own->job, $own]));
 
         return [
             'currency' => $currency,
             'headline' => $this->headline($event, $staff),
+            'worked' => null === $worked ? null : [
+                'total' => Money::written($worked->totalMinor, $currency),
+                'minutes' => $worked->minutes,
+                'scheduledMinutes' => $staff->scheduledMinutes,
+                'assumedMinutes' => $worked->assumedMinutes,
+                'noAttendance' => $worked->noAttendance,
+            ],
             'jobs' => Vec\map($staff->jobs, static fn (JobCost $job): array => [
                 'id' => $job->job,
                 'name' => ($jobs[$job->job] ?? null)?->getName() ?? '',
@@ -82,6 +103,7 @@ final readonly class StaffRatesSerialiser
                 'fees' => $job->fees,
                 'paidOnce' => Vec\map($job->paidOnce, $name),
                 'keepOwn' => Vec\map($job->keepOwn, $name),
+                'worked' => null === $worked ? null : self::jobWorked($jobWorked[$job->job] ?? null, $currency),
             ]),
             'own' => Vec\map($staff->own, static fn (OwnCost $own): array => [
                 'member' => $named($own->person, $name($own->person)),
@@ -90,6 +112,10 @@ final readonly class StaffRatesSerialiser
                 'changed' => null === ($ownRates[$own->person] ?? null) ? null : self::changed($ownRates[$own->person]),
                 'minutes' => $own->minutes,
                 'cost' => Money::written($own->costMinor, $currency),
+                'worked' => null === $worked ? null : [
+                    'minutes' => ($ownWorked[$own->person . ':' . $own->job] ?? null)?->minutes ?? 0,
+                    'cost' => Money::written(($ownWorked[$own->person . ':' . $own->job] ?? null)?->costMinor ?? 0, $currency),
+                ],
             ]),
             'candidates' => Vec\filter_nulls(Vec\map($onShifts, static function (string $person) use ($people, $ownRates, $named, $staff): ?array {
                 $who = $people[$person] ?? null;
@@ -115,6 +141,18 @@ final readonly class StaffRatesSerialiser
                 'job' => ['id' => $job->job, 'name' => $jobs[$job->job] ?? ''],
                 'minutes' => $job->scheduledMinutes,
             ]),
+        ];
+    }
+
+    /** @return JobWorkedShape */
+    private static function jobWorked(?JobWorked $job, string $currency): array
+    {
+        return [
+            'minutes' => $job?->minutes ?? 0,
+            'assumedMinutes' => $job?->assumedMinutes ?? 0,
+            'noAttendance' => $job?->noAttendance ?? 0,
+            'people' => $job?->people ?? 0,
+            'cost' => null === $job?->costMinor ? null : Money::written($job->costMinor, $currency),
         ];
     }
 

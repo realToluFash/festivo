@@ -48,6 +48,7 @@ const SHARED: readonly Family[] = [
     sheets: [
       REFLOW,
       'arrivalNote.css',
+      'briefing.css',
       'budget.css',
       'budgetHome.css',
       'dataControl.css',
@@ -101,6 +102,7 @@ const SHARED: readonly Family[] = [
       'guests.css',
       'guestsMany.css',
       'kitchen.css',
+      'liveOneDay.css',
       'menuCourses.css',
       NARROW,
       'overviewReflow.css',
@@ -132,6 +134,7 @@ const SHARED: readonly Family[] = [
       'guestCompanions.css',
       'guestDay.css',
       'guestKitchen.css',
+      'guestLink.css',
       'guestProgramme.css',
       'guestTable.css',
       'share.css',
@@ -142,6 +145,7 @@ const SHARED: readonly Family[] = [
   {
     prefix: 'gs',
     sheets: [
+      'briefing.css',
       'guestGroups.css',
       'guests.css',
       'guestsMany.css',
@@ -195,6 +199,7 @@ const SHARED: readonly Family[] = [
     prefix: 'mn',
     sheets: [
       REFLOW,
+      'briefing.css',
       'dishChoices.css',
       'dishVariants.css',
       'menu.css',
@@ -207,6 +212,11 @@ const SHARED: readonly Family[] = [
       WIDE,
     ],
     part: 'the menu (MenuCourses, MenuCoursesParts), whose side panel the Schedule and Roster reuse',
+  },
+  {
+    prefix: 'myn',
+    sheets: ['briefing.css', 'myNight.css'],
+    part: "a person's My night (MyNight), which the briefing's Preview as shows",
   },
   {
     prefix: 'queue-initials',
@@ -225,7 +235,7 @@ const SHARED: readonly Family[] = [
   },
   {
     prefix: 'rs',
-    sheets: ['roster.css', WIDE],
+    sheets: ['briefing.css', 'roster.css', WIDE],
     part: 'the Roster (Roster) from 961 to 1279 px',
   },
   {

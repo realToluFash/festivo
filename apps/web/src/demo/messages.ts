@@ -220,6 +220,9 @@ export const MESSAGE_STATES = [
   { key: 'trySmsSent', name: 'Then Send by SMS' },
   { key: 'closedReached', name: 'Who it reached, the sends off' },
   { key: 'reachedQuiet', name: 'A text waiting for the morning' },
+  { key: 'unbrokenSubject', name: 'A subject of 150 with no spaces' },
+  { key: 'tallMessage', name: 'A message taller than the pane' },
+  { key: 'tallFollowUp', name: 'A follow-up under a tall message' },
   ...WAITS_STATES,
   ...NOTICE_STATES,
   ...INVITE_STATES,
@@ -2493,6 +2496,18 @@ export function inviteCheck(
   );
 }
 
+/** QA's edge case on sc-3942 (#93537): the longest Subject the API takes, with nowhere to break. */
+export const UNBROKEN_SUBJECT = 'ThursdayDinnerAtTheWren'.repeat(7).slice(0, 150);
+
+/** QA's edge case on sc-3942 (#94879): a message taller than the pane, well under the Message's 10,000. */
+export const TALL_BODY = Array.from(
+  { length: 24 },
+  () =>
+    'Thursday at 18:00 the ceremony begins at The Landmark; the doors open at 17:30, and the shuttle leaves Baker Street every fifteen minutes from 17:00.',
+).join('\n\n');
+
+const TALL: readonly Segment[] = [...NEW_MESSAGE.body, { kind: 'text', text: `\n\n${TALL_BODY}` }];
+
 function outOf(stage: Stage, extra: Partial<Out> = {}): Out {
   return {
     thread: 'new',
@@ -2834,6 +2849,24 @@ export function seedOf(state: MessagesState | null): Inbox {
       return { ...base, pane: open('new'), outs: [outOf(state)] };
     case 'noSubject':
       return { ...base, pane: open('new'), outs: [outOf('sent', { subject: '', seen: 12 })] };
+    case 'unbrokenSubject':
+      return { ...base, pane: open('new'), outs: [outOf('sent', { subject: UNBROKEN_SUBJECT })] };
+    case 'tallMessage':
+      return { ...base, pane: open('new'), outs: [outOf('sent', { body: TALL })] };
+    case 'tallFollowUp':
+      return {
+        ...base,
+        pane: open('new'),
+        outs: [
+          outOf('sent', { body: TALL, seen: 41 }),
+          outOf('sending', {
+            subject: '',
+            body: [{ kind: 'text', text: FOLLOW_UP }],
+            at: '10:05',
+            soFar: 20,
+          }),
+        ],
+      };
     case 'followUp':
       return {
         ...base,

@@ -12,6 +12,9 @@ import {
   BELL_UNDER_GAP,
   markAllSize,
   markAllUnder,
+  PHONE_TITLE,
+  PHONE_TITLE_LINE,
+  PHONE_TITLE_TRACKING,
 } from './bellTop.ts';
 import { ConfettiSwitch } from './ConfettiSwitch.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -113,21 +116,43 @@ export function BellFrame({
           { paddingBottom: insets.bottom + tokens.space6xl },
         ]}
       >
-        <View style={styles.titleLine}>
-          <Text
-            ref={heading}
-            size={30}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.pageTitle}
-          >
-            {t('notifications.heading')}
-          </Text>
-          {refreshing}
-        </View>
+        <PageTitle heading={heading} refreshing={refreshing} />
         {children}
       </ScrollView>
       {where.over}
+    </View>
+  );
+}
+
+/** The phone screen's title: main's 30, grown with the text and, from AX1, stepped down only until its own word fits the page whole, never under 30; the refreshing mark wraps under it rather than shrinking it (sc-92959). */
+function PageTitle({
+  heading,
+  refreshing,
+}: {
+  heading: RefObject<TextHandle | null>;
+  refreshing: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const [room, setRoom] = useState(0);
+
+  return (
+    <View
+      style={styles.titleLine}
+      onLayout={(event) => setRoom(Math.floor(event.nativeEvent.layout.width))}
+    >
+      <WholeWords
+        ref={heading}
+        size={PHONE_TITLE}
+        start={PHONE_TITLE * fontScale}
+        room={atAccessibilitySizes(fontScale) ? room : undefined}
+        weight="bold"
+        accessibilityRole="header"
+        style={styles.pageTitle}
+      >
+        {t('notifications.heading')}
+      </WholeWords>
+      {refreshing}
     </View>
   );
 }
@@ -620,7 +645,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     paddingTop: 14,
     paddingBottom: tokens.spaceXs,
-    letterSpacing: -0.6,
-    lineHeight: 30 * 1.12,
+    letterSpacing: PHONE_TITLE * PHONE_TITLE_TRACKING,
+    lineHeight: PHONE_TITLE * PHONE_TITLE_LINE,
   },
 });

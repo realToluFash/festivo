@@ -6,6 +6,7 @@ namespace App\Domain\Event\DoorCode;
 
 use App\Audit\Auditor;
 use App\Domain\Event\People\EventPeople;
+use App\Domain\Staff\Attendance\JoinCodeShift;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\DoorCode;
 use App\Entity\DoorCodeRedemption;
@@ -38,6 +39,7 @@ final readonly class DoorCodeRedeemer
         private EventPersonRepository $eventPersonRepository,
         private MembershipRepository $membershipRepository,
         private DoorCodes $doorCodes,
+        private JoinCodeShift $joinCodeShift,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
@@ -102,7 +104,7 @@ final readonly class DoorCodeRedeemer
 
         $doorCode = $this->open($typed, $reader, $request);
         $this->refuseAMember($doorCode, $reader);
-        $already = $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $reader, $this->clock->now());
+        $already = $this->heldBy($doorCode, $reader);
 
         if (null !== $already) {
             return ['person' => $already, 'again' => true];
@@ -111,13 +113,9 @@ final readonly class DoorCodeRedeemer
         return ['person' => $this->admit($doorCode, $reader, $request), 'again' => false];
     }
 
-    /** The account already in by this code, still on the event through it: it signs back in at a full code and takes no use. */
+    /** The account already on the event, by this code or another way in: it lands on You're in again, takes no use, and signs back in at a full code. */
     public function heldBy(DoorCode $doorCode, User $user): ?EventPerson
     {
-        if (null === $this->doorCodeRedemptionRepository->findOneFor($doorCode, $user)) {
-            return null;
-        }
-
         return $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $user, $this->clock->now());
     }
 
@@ -140,7 +138,7 @@ final readonly class DoorCodeRedeemer
         }
     }
 
-    /** Takes one use, under the account's own name: a name typed at the door is never kept on an account (sc-4235). */
+    /** Takes one use, under the account's own name: a name typed at the door is never kept on an account (sc-4235). A code that names a shift also puts them on it and clocks them in (sc-234). */
     public function admit(DoorCode $doorCode, User $user, Request $request, bool $signedIn = true): EventPerson
     {
         return $this->entityManager->wrapInTransaction(function () use ($doorCode, $user, $request, $signedIn): EventPerson {
@@ -159,6 +157,12 @@ final readonly class DoorCodeRedeemer
                 'signedIn' => [null, $signedIn],
             ]);
             $this->entityManager->flush();
+            $shift = $doorCode->getShift();
+
+            if (null !== $shift) {
+                $this->joinCodeShift->place($shift, $user, $doorCode->getMadeBy() ?? $user);
+                $this->entityManager->flush();
+            }
 
             return $person;
         });

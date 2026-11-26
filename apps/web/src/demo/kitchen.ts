@@ -8,6 +8,7 @@ import {
 } from '@soirely/domain';
 
 import { milestonesOf } from './calendar.ts';
+import { runOfShowOf } from './liveOneDay.ts';
 import { writtenTime } from './clock.ts';
 import { demoWords } from './demoWords.ts';
 import { CLOCKS, type SampleEvent, instantOf, localDay, shownOf } from './events.ts';
@@ -492,7 +493,12 @@ export function timelineOf(event: SampleEvent, now: Date): Milestone[] {
   const before = !ended(event, now) && now.getTime() < Date.parse(event.startsAt);
   const owed = event.id === KITCHEN_EVENT && before ? heldNeeds() : [];
 
-  return [...milestonesOf(event), ...(kitchen == null ? [] : [kitchen]), ...owed];
+  return [
+    ...milestonesOf(event),
+    ...runOfShowOf(event.id),
+    ...(kitchen == null ? [] : [kitchen]),
+    ...owed,
+  ];
 }
 
 export function ended(event: SampleEvent, now: Date): boolean {

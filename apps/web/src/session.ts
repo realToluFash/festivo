@@ -61,6 +61,8 @@ export interface Session {
   outsideEvents?: readonly OutsideEvent[];
   /** A door code's account (sc-72): no address to prove, so no gate, and nothing but its events and itself to read. */
   heldByDevice?: boolean;
+  /** When this browser's session ends with the account's grants (sc-4235); null for one that does not. */
+  signedOutAt?: string | null;
 }
 
 export type SessionState =
@@ -199,12 +201,13 @@ export async function refreshAccount(): Promise<void> {
 }
 
 /** The events held from outside, read again: one whose grant ended or was revoked is gone from the list (sc-68438). */
-export async function rereadOutsideEvents(): Promise<void> {
+export async function rereadOutsideEvents(): Promise<string | null> {
   const asked = generation;
-  const { outsideEvents } = await api.me();
-  if (generation !== asked || state.status !== 'signedIn') return;
+  const { outsideEvents, signedOutAt = null } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return signedOutAt;
 
-  set({ status: 'signedIn', session: { ...state.session, outsideEvents } });
+  set({ status: 'signedIn', session: { ...state.session, outsideEvents, signedOutAt } });
+  return signedOutAt;
 }
 
 /** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
@@ -413,6 +416,7 @@ function sessionFrom(
     timezone: account.timezone,
     waitingFor: account.waitingFor,
     outsideEvents: account.outsideEvents,
+    signedOutAt: account.signedOutAt,
     organisation: chooseOrganisation(organisations, remembered),
     pausedIn: choosePaused(paused, remembered, organisations.length),
   };

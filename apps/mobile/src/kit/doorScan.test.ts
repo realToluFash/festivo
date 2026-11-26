@@ -32,6 +32,7 @@ function guest(id: string, more: Partial<CheckInGuest> = {}): CheckInGuest {
     code: null,
     walkIn: false,
     arrival: null,
+    seat: null,
     companions: [],
     ...more,
   };
@@ -40,8 +41,8 @@ function guest(id: string, more: Partial<CheckInGuest> = {}): CheckInGuest {
 const ADAEZE = guest('adaeze', {
   code: CODE_DIGEST,
   companions: [
-    { id: 'obi', fullName: 'Obi', state: 'coming', arrival: null },
-    { id: 'held', fullName: null, state: 'held', arrival: null },
+    { id: 'obi', fullName: 'Obi', state: 'coming', arrival: null, seat: null },
+    { id: 'held', fullName: null, state: 'held', arrival: null, seat: null },
   ],
 });
 
@@ -49,6 +50,7 @@ const LIST: CheckIn = {
   state: 'open',
   opensAt: '2030-11-14T14:00:00+01:00',
   timeZone: 'Africa/Lagos',
+  seated: false,
   count: { attended: 0, expected: 3 },
   guests: [ADAEZE, guest('musa', { code: 'b'.repeat(64) })],
 };

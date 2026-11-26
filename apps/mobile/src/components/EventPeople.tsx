@@ -1,12 +1,13 @@
 import {
   type AddableMember,
   type DoorCodeCard,
+  EVENT_LEVELS,
   EVENT_ROLES,
   type EventPerson,
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { firstName, initials, numberFormat } from '@soirely/domain';
+import { initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +22,9 @@ import {
   holderOf,
   inListOrder,
   joinedLine,
+  keepWord,
   managesPeople,
+  notChangedLine,
   nowCan,
   offerLine,
   offered,
@@ -100,9 +103,9 @@ function nameOf(t: TFunction, person: EventPerson): string {
   return shown.kind === 'notJoined' ? t('eventPeople.notJoined') : shown.name;
 }
 
-function roleWords(t: TFunction): RoleWords<EventRole> {
+function roleWords(t: TFunction, roles: readonly EventRole[] = EVENT_ROLES): RoleWords<EventRole> {
   return {
-    roles: EVENT_ROLES,
+    roles,
     name: (role) => t(`eventPeople.role.${role}`),
     means: (role) => t(`eventPeople.roleMeans.${role}`),
     saving: t('eventPeople.saving'),
@@ -118,7 +121,7 @@ function sheetWords(
   const name = nameOf(t, person);
 
   return {
-    ...roleWords(t),
+    ...roleWords(t, person.outside ? EVENT_LEVELS : EVENT_ROLES),
     title: t('eventPeople.roleTitle'),
     done: t('eventPeople.done'),
     remove: t('eventPeople.remove'),
@@ -126,16 +129,12 @@ function sheetWords(
     removeLine: person.outside
       ? t('eventPeople.removeLineOutside')
       : t('eventPeople.removeLine', { organisation }),
-    keep: t('eventPeople.keep', { name: firstName(name) }),
+    keep: keepWord(t, person),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
     savedHeard: (role) =>
       t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
-    notChanged: (held) =>
-      t('eventPeople.changeFailed', {
-        name: firstName(name),
-        role: t(`eventPeople.role.${held}`),
-      }),
+    notChanged: (held) => notChangedLine(t, person, name, held),
     removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
   };
 }
@@ -477,9 +476,15 @@ export function EventPeople({
                   size={14}
                 />
                 <Line text={t('eventPeople.outsideEnds')} size={14} />
+                <Line text={t('eventPeople.serviceClosing')} size={14} />
               </>
             ) : (
-              person.outside && <Line text={t('eventPeople.outsideEnds')} size={14} />
+              person.outside && (
+                <>
+                  <Line text={t('eventPeople.outsideEnds')} size={14} />
+                  <Line text={t('eventPeople.serviceClosing')} size={14} />
+                </>
+              )
             )
           }
           start={person.role}

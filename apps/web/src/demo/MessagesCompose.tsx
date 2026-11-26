@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { currentLocale } from '../i18n/index.ts';
+import { newestInView } from './newestInView.ts';
 import { offButton } from '../offButton.ts';
 import { Glyph } from '../components/Glyph.tsx';
 import {
@@ -208,7 +209,7 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
         </header>
       )}
       {draft.step !== 'preview' && following ? (
-        <ol className="mg-stream" role="log" aria-label={MW.writeFollowUp}>
+        <ol className="mg-stream" role="log" ref={newestInView} aria-label={MW.writeFollowUp}>
           <StreamItems thread={draft.thread} />
           {draft.step === 'check' && (
             <li className="mg-said is-host">

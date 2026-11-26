@@ -1,0 +1,88 @@
+# sc-96279: ${EVENT_ID}'s shell held from outside: Overview from the top and at its foot, which areas the tabs, capsule or sidebar list, More (or the sidebar's person), then a link to Guests and to People. P prefixes the screenshots. LAND=1 turns the tablet to landscape first. Needs ${METRO_URL}, ${EVENT_ID}, ${P}.
+appId: host.exp.Exponent
+---
+- evalScript: "${typeof LAND !== 'undefined' && LAND ? http.get(HELPER_URL + '/landscape').body : ''}"
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'outside.overview' }, timeout: 30000 }
+- extendedWaitUntil: { visible: { id: 'events.station' }, timeout: 6000, optional: true }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: ${P}-overview
+- runFlow:
+    {
+      when: { visible: { id: 'event.nav.guests' } },
+      commands: [{ takeScreenshot: '${P}-HAS-guests' }],
+    }
+- runFlow:
+    {
+      when: { visible: { id: 'event.nav.schedule' } },
+      commands: [{ takeScreenshot: '${P}-HAS-schedule' }],
+    }
+- runFlow:
+    {
+      when: { visible: { id: 'event.nav.seating' } },
+      commands: [{ takeScreenshot: '${P}-HAS-seating' }],
+    }
+- runFlow:
+    {
+      when: { visible: { id: 'event.nav.people' } },
+      commands: [{ takeScreenshot: '${P}-HAS-people' }],
+    }
+- runFlow:
+    {
+      when: { visible: { id: 'outside.people' } },
+      commands: [{ takeScreenshot: '${P}-HAS-peoplerow' }],
+    }
+- runFlow:
+    {
+      when: { visible: { id: 'outside.guests' } },
+      commands: [{ takeScreenshot: '${P}-HAS-guestsrow' }],
+    }
+- scroll
+- waitForAnimationToEnd: { timeout: 2000 }
+- takeScreenshot: ${P}-foot
+- runFlow:
+    when: { visible: { id: 'event.nav.more' } }
+    commands:
+      - tapOn: { id: 'event.nav.more' }
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: ${P}-more
+      - runFlow:
+          {
+            when: { visible: { id: 'event.nav.more.guests' } },
+            commands: [{ takeScreenshot: '${P}-HAS-more-guests' }],
+          }
+      - runFlow:
+          {
+            when: { visible: { id: 'event.nav.more.schedule' } },
+            commands: [{ takeScreenshot: '${P}-HAS-more-schedule' }],
+          }
+      - runFlow:
+          {
+            when: { visible: { id: 'event.nav.more.seating' } },
+            commands: [{ takeScreenshot: '${P}-HAS-more-seating' }],
+          }
+      - runFlow:
+          {
+            when: { visible: { id: 'event.nav.more.people' } },
+            commands: [{ takeScreenshot: '${P}-HAS-more-people' }],
+          }
+      - tapOn: { id: 'event.nav.moreSheet.close' }
+      - waitForAnimationToEnd: { timeout: 2000 }
+- runFlow:
+    when: { visible: { id: 'frame.side.you' } }
+    commands:
+      - tapOn: { id: 'frame.side.you' }
+      - waitForAnimationToEnd: { timeout: 3000 }
+      - takeScreenshot: ${P}-you
+      - tapOn: { id: 'frame.side.you.close', optional: true }
+      - waitForAnimationToEnd: { timeout: 2000 }
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    { visible: { id: 'outside\.overview|events\.guests.*|guests\..*' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: ${P}-link-guests
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=people
+- extendedWaitUntil: { visible: { id: 'outside\.overview|people\..*' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: ${P}-link-people

@@ -77,6 +77,7 @@ const CHIDI_ACCOUNT: Account = {
   emailAddresses: [],
   phoneNumbers: [],
   outsideEvents: [],
+  signedOutAt: null,
 };
 
 const PRODUCT_LINKS = ['Today', 'Events', 'Calendar', 'Settings'];

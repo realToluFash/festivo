@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Pressable,
@@ -11,9 +11,16 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { Text } from './Text.tsx';
-import { CappedWholeWords, MenuWords } from './Title.tsx';
-import { atAccessibilitySizes, capUnderTitle, wholeLineHeight } from '../layout/textSize.ts';
+import { Text, TitleCap } from './Text.tsx';
+import { CappedWholeWords, MeasuredWords, MenuWords } from './Title.tsx';
+import {
+  atAccessibilitySizes,
+  capUnderTitle,
+  dayLineShares,
+  drawnSize,
+  fitWidest,
+  wholeLineHeight,
+} from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -164,37 +171,6 @@ export function EventThumb({
   );
 }
 
-function ActionButton({
-  label,
-  filled,
-  onPress,
-}: {
-  label: string;
-  filled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={{ top: 4, bottom: 4 }}
-      style={({ pressed }) => [
-        styles.action,
-        filled ? styles.actionFilled : styles.actionSoft,
-        pressed && styles.pressed,
-      ]}
-      accessibilityRole="button"
-    >
-      <Text
-        size={tokens.typeButton.size}
-        weight="semibold"
-        style={filled ? styles.onAccent : undefined}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function NeedRow({
   need,
   first,
@@ -206,6 +182,7 @@ function NeedRow({
   last: boolean;
   wide: boolean;
 }) {
+  const { t } = useTranslation();
   const { open } = useTodayShell();
   const { id, name } = need.event;
   const due = (
@@ -214,8 +191,8 @@ function NeedRow({
       <Text
         size={wide ? 14 : TYPE.sub}
         weight={need.late || first ? 'semibold' : 'medium'}
+        accessible={false}
         style={need.late ? styles.late : first ? undefined : styles.secondary}
-        numberOfLines={1}
       >
         {need.due}
       </Text>
@@ -223,34 +200,45 @@ function NeedRow({
   );
 
   return (
-    <View style={[styles.needRow, !last && styles.ruled]}>
+    <Pressable
+      onPress={() => open({ to: 'event', id, name })}
+      style={({ pressed }) => [styles.needRow, !last && styles.ruled, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={t('todayScreen.needRow', {
+        title: need.title,
+        event: name,
+        due: need.due,
+      })}
+    >
       <EventThumb event={need.event} side={wide ? 46 : 44} />
       <View style={styles.words}>
-        <Text size={TYPE.row} weight="semibold">
+        <Text size={TYPE.row} weight="semibold" accessible={false}>
           {need.title}
         </Text>
         {wide ? (
-          <View style={styles.inline}>
+          <View style={styles.inlineNeed}>
             {due}
-            <Text size={14} weight="medium" style={styles.secondary} numberOfLines={1}>
+            <Text
+              size={14}
+              weight="medium"
+              numberOfLines={2}
+              accessible={false}
+              style={styles.inlineName}
+            >
               {` · ${name}`}
             </Text>
           </View>
         ) : (
           <>
-            <Text size={TYPE.sub} weight="medium" style={styles.secondary} numberOfLines={1}>
+            <Text size={TYPE.sub} weight="medium" accessible={false} style={styles.secondary}>
               {name}
             </Text>
             {due}
           </>
         )}
       </View>
-      <ActionButton
-        label={need.action}
-        filled={first}
-        onPress={() => open({ to: 'event', id, name })}
-      />
-    </View>
+      <Glyph name="chevron" ink={tokens.colorInkTertiary} />
+    </Pressable>
   );
 }
 
@@ -284,11 +272,17 @@ export function NeedsYou({ moment, wide, top }: { moment: Moment; wide: boolean;
 
   return (
     <>
-      <SectionHead title={t('todayScreen.needsYou')} count={needs.length} top={top} />
+      <View
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={t('todayScreen.needsHead', { count: needs.length })}
+      >
+        <SectionHead title={t('todayScreen.needsYou')} count={needs.length} top={top} />
+      </View>
       <Panel style={wide && styles.panelWide}>
         {needs.map((need, index) => (
           <NeedRow
-            key={need.title}
+            key={`${need.event.id}:${need.title}`}
             need={need}
             first={index === 0}
             last={index === needs.length - 1}
@@ -369,14 +363,10 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
               day.dots.length > 0 ? `, ${day.dots.map((event) => event.name).join(', ')}` : ''
             }`}
           >
-            <Text
-              size={TYPE.label}
-              weight="semibold"
-              accessible={false}
-              style={[styles.weekday, day.today ? styles.accent : styles.secondary]}
-            >
-              {(day.today ? todayShort : day.weekday).toLocaleUpperCase()}
-            </Text>
+            <StripLabel
+              text={(day.today ? todayShort : day.weekday).toLocaleUpperCase()}
+              today={day.today}
+            />
             <View
               style={[
                 styles.dayCircle,
@@ -424,6 +414,120 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
   );
 }
 
+const STRIP_TRACKING = TYPE.label * 0.06;
+
+/** A day's label in the strip: main's text up to the default size; above it, hidden until measured, it steps down alone to the largest whole size at which it fits its column, never under the default size, keeping the step's line so the circles stay in line (sc-94682). */
+function StripLabel({ text, today }: { text: string; today: boolean }) {
+  const { fontScale } = useWindowDimensions();
+  const cap = useContext(TitleCap);
+  const start = drawnSize(
+    TYPE.label,
+    fontScale,
+    cap == null ? undefined : capUnderTitle(cap, TYPE.label),
+  );
+  const key = `${start}|${text}`;
+  const [column, setColumn] = useState<{ key: string; width: number } | null>(null);
+  const [measured, setMeasured] = useState<{ key: string; width: number } | null>(null);
+  const look = [styles.weekday, today ? styles.accent : styles.secondary];
+
+  if (start <= TYPE.label)
+    return (
+      <Text size={TYPE.label} weight="semibold" accessible={false} style={look}>
+        {text}
+      </Text>
+    );
+
+  const width = measured?.key === key ? measured.width : undefined;
+  // A column's onLayout does not fire again when only the text size changes, so its width is kept per word and size, read again by a new key.
+  const room = column?.key === key ? column.width : undefined;
+  const known = width != null && room != null && room > 0;
+  const drawn = known
+    ? fitWidest(TYPE.label, start, width, room, [...text].length * STRIP_TRACKING)
+    : start;
+
+  return (
+    <View
+      key={key}
+      style={[styles.labelRoom, { minHeight: wholeLineHeight(start, start) }]}
+      onLayout={(event) => setColumn({ key, width: event.nativeEvent.layout.width })}
+    >
+      <MeasuredWords
+        words={[text]}
+        size={start}
+        weight="semibold"
+        allowFontScaling={false}
+        style={styles.weekday}
+        onWidth={(_, measuredWidth) =>
+          setMeasured((now) =>
+            now?.key === key && now.width === measuredWidth ? now : { key, width: measuredWidth },
+          )
+        }
+      />
+      <Text
+        // A new size mounts a new Text, so iOS never draws one size in the box laid out for another (sc-69816).
+        key={drawn}
+        size={drawn}
+        weight="semibold"
+        allowFontScaling={false}
+        accessible={false}
+        style={[look, !known && styles.waiting]}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/** From AX1: hidden until it knows whether the dotted date fits beside the name whole; if not, the date takes the line under without its dot (sc-92250). */
+function FittedDayLine({ day }: { day: AgendaDay }) {
+  const { fontScale } = useWindowDimensions();
+  const dotted = `· ${day.when}`;
+  const key = `${fontScale}|${day.day}|${dotted}`;
+  const [room, setRoom] = useState(0);
+  const [measured, setMeasured] = useState<{ key: string; name?: number; date?: number }>({
+    key: '',
+  });
+  const widths = measured.key === key ? measured : { key };
+  const known = widths.name != null && widths.date != null && room > 0;
+  const shares = !known || dayLineShares(widths.name ?? 0, widths.date ?? 0, tokens.spaceXs, room);
+  const keep = (which: 'name' | 'date') => (_: string, width: number) =>
+    setMeasured((now) => {
+      const kept = now.key === key ? now : { key };
+
+      return kept[which] === width ? now : { ...kept, [which]: width };
+    });
+  const nameStyle = day.today ? styles.accent : undefined;
+
+  return (
+    <View
+      style={[styles.dayLineStacked, !known && styles.waiting]}
+      onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <MeasuredWords words={[day.day]} size={14} weight="bold" onWidth={keep('name')} />
+      <MeasuredWords words={[dotted]} size={TYPE.sub} weight="medium" onWidth={keep('date')} />
+      {shares ? (
+        <View style={styles.dayLineShared}>
+          <Text size={14} weight="bold" style={nameStyle}>
+            {day.day}
+          </Text>
+          <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
+            {dotted}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <CappedWholeWords size={14} weight="bold" room={room} style={nameStyle}>
+            {day.day}
+          </CappedWholeWords>
+          <CappedWholeWords size={TYPE.sub} weight="medium" room={room} style={styles.secondary}>
+            {day.when}
+          </CappedWholeWords>
+        </>
+      )}
+    </View>
+  );
+}
+
 function AgendaDays({
   days,
   nothing,
@@ -442,14 +546,18 @@ function AgendaDays({
 
         return (
           <View key={day.date}>
-            <View style={styles.dayLine}>
-              <Text size={14} weight="bold" style={day.today ? styles.accent : undefined}>
-                {day.day}
-              </Text>
-              <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
-                {`· ${day.when}`}
-              </Text>
-            </View>
+            {stacked ? (
+              <FittedDayLine day={day} />
+            ) : (
+              <View style={styles.dayLine}>
+                <Text size={14} weight="bold" style={day.today ? styles.accent : undefined}>
+                  {day.day}
+                </Text>
+                <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
+                  {`· ${day.when}`}
+                </Text>
+              </View>
+            )}
             {day.items.length === 0 ? (
               <Text
                 size={14}
@@ -1006,24 +1114,16 @@ const styles = StyleSheet.create({
     minHeight: tokens.sizeHit,
   },
   thumb: { overflow: 'hidden', flex: 0 },
-  action: {
-    minHeight: tokens.sizeControlDense,
-    paddingVertical: tokens.spaceXxs,
-    paddingHorizontal: 15,
-    borderRadius: tokens.sizeControlDense / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 0,
-  },
-  actionFilled: { backgroundColor: tokens.colorAccent },
-  actionSoft: { backgroundColor: tokens.colorCard },
   due: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs, flexShrink: 0 },
   needRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.spacePillEnd,
+    minHeight: tokens.sizeHit,
     paddingVertical: tokens.spaceLg,
   },
+  inlineNeed: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 1 },
+  inlineName: { flexShrink: 1, color: tokens.colorInkSecondary },
   clear: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1046,7 +1146,8 @@ const styles = StyleSheet.create({
   stripWithBars: { paddingBottom: tokens.spacePillEnd },
   days: { flexDirection: 'row' },
   dayColumn: { flex: 1, alignItems: 'center', gap: 5 },
-  weekday: { letterSpacing: TYPE.label * 0.06 },
+  weekday: { letterSpacing: STRIP_TRACKING },
+  labelRoom: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   dayCircle: { alignItems: 'center', justifyContent: 'center' },
   dayToday: { backgroundColor: tokens.colorAccent },
   dots: { height: tokens.spaceXs, flexDirection: 'row', gap: 3 },
@@ -1075,6 +1176,9 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spacePillEnd,
     paddingBottom: tokens.spaceXxs,
   },
+  dayLineStacked: { paddingTop: tokens.spacePillEnd, paddingBottom: tokens.spaceXxs },
+  dayLineShared: { flexDirection: 'row', alignItems: 'baseline', columnGap: tokens.spaceXs },
+  waiting: { opacity: 0 },
   nothing: { paddingTop: tokens.spaceXxs, paddingBottom: tokens.spacePillEnd },
   item: { paddingVertical: 7 },
   itemStacked: { paddingVertical: 7, gap: tokens.spaceXs },

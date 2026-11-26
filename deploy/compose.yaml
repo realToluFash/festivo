@@ -105,6 +105,8 @@ services:
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:?}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:?}
+      # History capped as on the local stack: the service heartbeat (sc-4028) adds six updates a minute per live event.
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db?size=1000
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins https://${APP_HOST}
         subscriptions
@@ -168,6 +170,37 @@ services:
         - CMD-SHELL
         - >-
           test $$(( $$(date +%s) - $$(stat -c %Y /app/var/notifications-worker.heartbeat) )) -lt 30
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    logging: *logging
+    restart: unless-stopped
+
+  # Beats on each service topic while service is on (sc-4028), so a station's strip knows it is connected.
+  service-heartbeat:
+    image: soirely-api:${DEPLOY_SHA:?}
+    env_file: ${DEPLOY_ENV_FILE:-.env}
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        exec php bin/console app:service:heartbeat --time-limit=3600 --memory-limit=128
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "tr '\\0' ' ' < /proc/1/cmdline | grep -q '^php bin/console app:service:heartbeat'",
+        ]
       interval: 10s
       timeout: 3s
       retries: 3

@@ -168,6 +168,12 @@ final readonly class TokenIssuer
         return $this->staffLinkGrants->lastEndFor($user) ?? new DateTimeImmutable('-1 second');
     }
 
+    /** When a session ends, if it is one that ends with its account's grants; null for one that does not, as the app's. */
+    public function endsAt(?RefreshToken $session, User $user): ?DateTimeImmutable
+    {
+        return true === $session?->endsWithGrants() ? $this->grantsEndFor($user) : null;
+    }
+
     private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith, bool $endsWithGrants): IssuedTokens
     {
         $plain = \bin2hex(SecureRandom\bytes(self::REFRESH_BYTES));

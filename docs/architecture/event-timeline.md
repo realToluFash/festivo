@@ -18,6 +18,7 @@ The code is `App\Domain\Event\Timeline`, served at `GET /api/events/<id>/timelin
 | `ReplyByDates`             | **Replies close**, at the end of the event's Reply by, owner Automatic (sc-3780)             |
 | `RunOfShowDates`           | each event day's **Run of show begins** and every fixed-time item, owner Event (sc-3893)     |
 | `TableSharingDates`        | **Share tables** at the end of a saved Share by, then **Tables shared**, owner You (sc-4022) |
+| `FinalNumbersDates`        | **Give final numbers to the kitchen** at 23:59 on Final numbers due, owner You (sc-30812)    |
 | `nextUp()`                 | `packages/domain`: the one rule for which milestone is **Next up**, on every client          |
 
 ## Adding an area's milestones
@@ -50,7 +51,8 @@ and the timeline, the route and the clients do not change.
   changes: `<area>.<what>`, such as `event.starts`. The calendar feed builds each
   milestone's `UID` from it, so a subscribed calendar moves the entry rather than adding a
   second one (sc-3626). Its `SEQUENCE` is the event's version, so a source whose dates can
-  change without the event's row changing has to give the feed another way to see it.
+  change without the event's row changing has to give the feed another way to see it: a
+  milestone's `revision`, added to the version, as `FinalNumbersDates` does (sc-30812).
 
 `EventDates` is the worked example: the start, titled "{name} starts", unless the event was
 called off, and the end, "{name} ends", only when `EventDayCount` says the event touches more

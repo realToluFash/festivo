@@ -1,0 +1,61 @@
+# sc-96668: the right phone code on the door code screen, for a both-linked member of a Google-or-Apple-only organisation, names Google first in the line under the heading, in every language. Pass ORIENT (PORTRAIT or LANDSCAPE_LEFT), CODE, NUMBER, COUNTRY, COUNTRY_NAME, DIGITS as sc95675-provider-only-code. It signs the batch's session out: run it alone with --cold.
+appId: host.exp.Exponent
+---
+- runFlow: ../sign-out.yaml
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/d/${CODE}
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.name.field'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: 01-event
+- tapOn:
+    id: 'redeem.name.field'
+- eraseText: 60
+- inputText: 'Ada Member'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'redeem.event.country'
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.country.search'
+- inputText: ${COUNTRY_NAME}
+- tapOn:
+    id: 'redeem.event.country.${COUNTRY}'
+- extendedWaitUntil:
+    notVisible:
+      id: 'redeem.event.country.search'
+    timeout: 10000
+- tapOn:
+    id: 'redeem.event.number'
+- eraseText: 30
+- inputText: ${NUMBER}
+- takeScreenshot: number
+- tapOn:
+    id: 'redeem.event.send'
+- extendedWaitUntil:
+    visible:
+      id: 'redeem.code.text'
+    timeout: 20000
+- runScript: ../scripts/latest-sms-code.js
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible: '.*{{t:signIn.providerOnlyTitle}}.*'
+    timeout: 20000
+- assertVisible: '.*(use Google or Apple\.|que usen Google o Apple\.|d’utiliser Google ou Apple\.|que utilizem Google ou Apple\.)'
+- assertNotVisible: '.*use(n)? Apple (or|o) Google.*|.*utiliser Apple ou Google.*|.*utilizem Apple ou Google.*'
+- waitForAnimationToEnd
+- takeScreenshot: code-both

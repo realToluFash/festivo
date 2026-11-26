@@ -65,6 +65,7 @@ import { GUEST_DAY_PAGES } from './guestDay.ts';
 import { GUEST_PROGRAMME_PAGES } from './guestProgramme.ts';
 import { GUEST_TABLE_PAGES } from './guestTable.ts';
 import { GUEST_NOTE_PAGES } from './guestNote.ts';
+import { GUEST_LINK_PAGES } from './guestLink.ts';
 import { GUEST_CHANGE_PAGES } from './guestChange.ts';
 import { Guests } from './Guests.tsx';
 import { GUESTS_PAGES } from './guests.ts';
@@ -101,6 +102,7 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
+import { BRIEFING_PAGES, NOTICE_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
 import { JOBS_PAGES } from './shifts.ts';
@@ -469,6 +471,10 @@ function DemoHome({ from }: { from: string }) {
         <h3>Who’s coming with you, on the guest’s page · sc-3779 · phone, tablet and desk</h3>
         <BoardPages pages={GUEST_PARTY_PAGES} />
         <h3>
+          An answer link from the invitation, on the guest’s page · sc-1291 · phone, tablet and desk
+        </h3>
+        <BoardPages pages={GUEST_LINK_PAGES} />
+        <h3>
           Not sure yet, when to ask again, on the guest’s page · sc-1363 · phone, tablet and desk
         </h3>
         <BoardPages pages={GUEST_ASK_PAGES} />
@@ -568,6 +574,16 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-34">34 · Staffing</h2>
         <h3>The roster: who works the event, without making them members (sc-3906) · desktop</h3>
         <BoardPages pages={ROSTER_PAGES} />
+        <h3>
+          The briefing: house rules and everyone’s shift, sent with one tap (sc-3917) · desktop and
+          narrow web
+        </h3>
+        <BoardPages pages={BRIEFING_PAGES} />
+        <h3>
+          A person on the staff is told when their shift changes, and reminded the day before
+          (sc-4333) · desktop
+        </h3>
+        <BoardPages pages={NOTICE_PAGES} />
         <h3>Jobs and shifts, and where it’s short-handed (sc-3908) · desktop</h3>
         <BoardPages pages={JOBS_PAGES} />
         <h3>Stations and leads, what each station serves, the walking order (sc-3910) · desktop</h3>

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Event\DoorCode;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\ShiftClock;
 use App\Entity\DoorCode;
 use App\Entity\Event;
 use App\Entity\EventPerson;
+use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -40,9 +42,9 @@ final readonly class DoorCodes
     }
 
     /** A code never lives past its event: an end later than the event's is the event's. The code it replaces stops, in the same write. */
-    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?DoorCode $replaces = null): DoorCode
+    public function make(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?DoorCode $replaces = null, ?StaffShift $shift = null): DoorCode
     {
-        $code = $this->built($event, $role, $jobLabel, $useCap, $expiresAt, $by);
+        $code = $this->built($event, $role, $jobLabel, $useCap, $expiresAt, $by, $shift);
 
         if (null !== $replaces) {
             $this->stopping($replaces, $by);
@@ -54,10 +56,11 @@ final readonly class DoorCodes
         return $code;
     }
 
-    private function built(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by): DoorCode
+    private function built(Event $event, EventRole $role, ?string $jobLabel, ?int $useCap, ?string $expiresAt, User $by, ?StaffShift $shift): DoorCode
     {
         $violations = [
             ...$this->roleViolations($role),
+            ...$this->shiftViolations($shift, $role),
             ...$this->labelViolations($jobLabel),
             ...$this->capViolations($useCap),
             ...$this->expiryViolations($expiresAt),
@@ -79,13 +82,14 @@ final readonly class DoorCodes
         }
 
         $label = Str\trim($jobLabel ?? '');
-        $code = new DoorCode($event, $this->unusedCode(), $role, '' === $label ? null : $label, $useCap, $expires, $by);
+        $code = new DoorCode($event, $this->unusedCode(), $role, '' === $label ? null : $label, $useCap, $expires, $by, $shift);
         $this->entityManager->persist($code);
         $this->record('door_code.made', $code, $by, [
             'role' => [null, $role->value],
             'jobLabel' => [null, $code->getJobLabel()],
             'useCap' => [null, $useCap],
             'expiresAt' => [null, $expires->format(\DATE_ATOM)],
+            'shift' => [null, $shift?->getId()->toRfc4122()],
         ]);
 
         return $code;
@@ -131,10 +135,41 @@ final readonly class DoorCodes
         throw new ApiException(ErrorCode::Conflict, 'door_codes.not_made');
     }
 
-    /** @return list<array{propertyPath: string, message: string, code: string}> */
+    /**
+     * A code read out across a room reaches whoever hears it, so it never runs the floor (sc-4002): that is its own 422, before anything else is checked.
+     *
+     * @return list<array{propertyPath: string, message: string, code: string}>
+     */
     private function roleViolations(EventRole $role): array
     {
-        return Iter\contains([EventRole::CanView, EventRole::CanCheckIn], $role) ? [] : [$this->violation('role', 'door_codes.role')];
+        if (EventRole::CanRunFloor === $role) {
+            throw new ApiException(ErrorCode::LevelNotAllowedForCode, 'door_codes.run_floor');
+        }
+
+        return Iter\contains(DoorCode::ROLES, $role) ? [] : [$this->violation('role', 'door_codes.role')];
+    }
+
+    /**
+     * A named shift sets the code's level to its job's (sc-234), so the issuer sees the one level everyone on that shift holds; room is checked at redemption.
+     *
+     * @return list<array{propertyPath: string, message: string, code: string}>
+     */
+    private function shiftViolations(?StaffShift $shift, EventRole $role): array
+    {
+        if (null === $shift) {
+            return [];
+        }
+
+        $level = $shift->getJob()->getAccess()->eventRole();
+
+        if (EventRole::CanRunFloor === $level) {
+            throw new ApiException(ErrorCode::LevelNotAllowedForCode, 'door_codes.run_floor');
+        }
+
+        return [
+            ...($level === $role ? [] : [$this->violation('role', 'door_codes.shift_level')]),
+            ...(ShiftClock::instant($shift->getEndsAt(), $shift->getJob()->getEvent()) > $this->clock->now() ? [] : [$this->violation('shiftId', 'door_codes.shift_over')]),
+        ];
     }
 
     /** @return list<array{propertyPath: string, message: string, code: string}> */

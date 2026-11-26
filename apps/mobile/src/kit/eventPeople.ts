@@ -1,12 +1,13 @@
 import {
   type AddableMember,
-  EVENT_ROLES,
+  EVENT_LEVELS,
   type EventPeople,
   type EventPerson,
   type EventRole,
 } from '@soirely/api-client';
 import {
   emailProblem,
+  firstName,
   formatPhone,
   listFormat,
   phoneE164,
@@ -34,7 +35,7 @@ export function inRoleOrder<P, R>(
 export function inListOrder(people: readonly EventPerson[], locale: string): EventPerson[] {
   return inRoleOrder(
     people,
-    EVENT_ROLES,
+    EVENT_LEVELS,
     (one) => ({ role: one.role, name: one.user?.name ?? one.address ?? '' }),
     locale,
   );
@@ -53,6 +54,31 @@ export function personShown(person: EventPerson): PersonShown {
   return person.addressKind === 'mobile'
     ? { kind: 'address', name: formatPhone(person.address), mark: 'phone' }
     : { kind: 'address', name: person.address, mark: 'mail' };
+}
+
+/** Only an account name is cut to its first word: an address or a number is no name (sc-91678). */
+export function firstNameOf(person: EventPerson): string | null {
+  return person.user == null ? null : firstName(person.user.name);
+}
+
+/** Remove's keep button: Keep and a first name, or Keep them when there is no account name (sc-91678). */
+export function keepWord(t: TFunction, person: EventPerson): string {
+  const first = firstNameOf(person);
+
+  return first == null ? t('eventPeople.keepThem') : t('eventPeople.keep', { name: first });
+}
+
+/** A role change that did not land names the person whole unless they have an account name (sc-91678). */
+export function notChangedLine(
+  t: TFunction,
+  person: EventPerson,
+  name: string,
+  held: EventRole,
+): string {
+  return t('eventPeople.changeFailed', {
+    name: firstNameOf(person) ?? name,
+    role: t(`eventPeople.role.${held}`),
+  });
 }
 
 /** Owners, Admins and the Lead change People: the API says so in the event's own permissions. */

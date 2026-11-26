@@ -35,6 +35,10 @@ import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
 import { navSide, titleBeside } from './DoorNav.ts';
+import { type DoorFrom, scanHref } from './ScanModel.ts';
+import { MN } from '../myNight/myNightModel.ts';
+import { arrivedUnder } from '../../kit/doorRow.ts';
+import { wordsIn } from '../../layout/textSize.ts';
 
 type Phase = 'open' | 'before' | 'ended';
 
@@ -130,18 +134,25 @@ function cardOf(
   };
 }
 
-function leave(): void {
-  if (router.canGoBack()) router.back();
-  else router.replace('/demo/guests?state=onTheDay' as Href);
+function leaveTo(from: DoorFrom): () => void {
+  return () => {
+    if (router.canGoBack()) router.back();
+    else
+      router.replace((from === 'night' ? '/demo/my-night' : '/demo/guests?state=onTheDay') as Href);
+  };
 }
 
 export function ArrivedButton({
   name,
   big,
+  under = false,
+  onWidth,
   onPress,
 }: {
   name: string;
   big: boolean;
+  under?: boolean;
+  onWidth?: (width: number) => void;
   onPress: () => void;
 }) {
   const height = big ? 52 : tokens.sizeHit;
@@ -149,9 +160,11 @@ export function ArrivedButton({
   return (
     <Pressable
       onPress={onPress}
+      onLayout={onWidth && ((event) => onWidth(event.nativeEvent.layout.width))}
       style={({ pressed }) => [
         styles.arrived,
         { minHeight: height, borderRadius: height / 2 },
+        under && styles.arrivedUnder,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
@@ -171,11 +184,15 @@ export function CheckInScreen({
   state,
   seating = 'seated',
   searchAsk = null,
+  from = 'guests',
 }: {
   state: DoorState | null;
   seating?: Seating;
   searchAsk?: string | null;
+  from?: DoorFrom;
 }) {
+  const leave = leaveTo(from);
+  const backWord = from === 'night' ? MN.title : W.guests;
   const shell = useShell();
   const layout: Layout = shell.layout;
   const insets = useSafeAreaInsets();
@@ -209,6 +226,9 @@ export function CheckInScreen({
           : null,
   );
   const [more, setMore] = useState(false);
+  const [rowWidths, setRowWidths] = useState({ guest: 0, companion: 0 });
+  const [buttonWidth, setButtonWidth] = useState(0);
+  const [wordWidths, setWordWidths] = useState<Readonly<Record<string, number>>>({});
   const opener = useRef(null);
   const search = useRef<TextInputInstance>(null);
 
@@ -261,75 +281,115 @@ export function CheckInScreen({
   };
 
   const rows = (
-    <RowList
-      items={shown.map((p) => {
-        const word = REPLY_WORD[p.kind];
-        const line =
-          p.arrivedAt != null ? `${word} · ${say.arrivedAt(p.arrivedAt, p.by ?? '')}` : word;
-        const seat = seatLineOf(p.key, seating);
-        const trail =
-          p.arrivedAt != null ? (
-            open ? (
-              <TextAction
-                label={W.undoArrival}
-                plain
-                onPress={() => undo(p.key)}
-                accessibilityLabel={`${W.undoArrival}, ${p.name}`}
-                testID={`door.undo.${p.key}`}
-              />
-            ) : null
-          ) : open ? (
-            <ArrivedButton name={p.name} big={big} onPress={() => arrive(p.key)} />
-          ) : null;
-        const row = (
-          <Row
-            title={p.name}
-            line={seat == null ? line : undefined}
-            below={
-              seat == null ? undefined : (
-                <>
-                  <Text
-                    size={14}
-                    weight="semibold"
-                    accessible={false}
-                    style={styles.seat}
-                    testID={`door.seat.${p.key}`}
-                  >
-                    {seat}
-                  </Text>
-                  <Text size={14} weight="medium" accessible={false} style={styles.below}>
-                    {line}
-                  </Text>
-                </>
-              )
-            }
-            lead={
-              <MarkSlot
-                kind={p.arrivedAt != null ? (p.kind === 'walkin' ? 'walkin' : 'arrived') : p.kind}
-              />
-            }
-            trail={trail}
-            pad={10}
-            accessibilityLabel={[p.name, seat, line].filter((one) => one != null).join('. ')}
-            testID={`door.row.${p.key}`}
-          />
-        );
-        return {
-          key: p.key,
-          inset: p.companion ? 80 : 40,
-          row: (
-            <View style={p.companion && styles.indent}>
-              {row}
-              {p.failed && (
-                <View style={styles.failedAt}>
-                  <AlertLine text={W.notRecorded} small />
+    <>
+      <MeasuredWords
+        words={wordsIn(shown.map((p) => p.name))}
+        size={16}
+        weight="semibold"
+        onWidth={(word, drawn) =>
+          setWordWidths((now) => (now[word] === drawn ? now : { ...now, [word]: drawn }))
+        }
+      />
+      <RowList
+        items={shown.map((p) => {
+          const word = REPLY_WORD[p.kind];
+          const side = p.companion ? 'companion' : 'guest';
+          const under =
+            p.arrivedAt == null &&
+            open &&
+            arrivedUnder({
+              row: rowWidths[side],
+              button: buttonWidth,
+              widest: Math.max(0, ...wordsIn([p.name]).map((one) => wordWidths[one] ?? 0)),
+            });
+          const arrivedButton = (
+            <ArrivedButton
+              name={p.name}
+              big={big}
+              under={under}
+              onWidth={setButtonWidth}
+              onPress={() => arrive(p.key)}
+            />
+          );
+          const line =
+            p.arrivedAt != null ? `${word} · ${say.arrivedAt(p.arrivedAt, p.by ?? '')}` : word;
+          const seat = seatLineOf(p.key, seating);
+          const trail =
+            p.arrivedAt != null ? (
+              open ? (
+                <TextAction
+                  label={W.undoArrival}
+                  plain
+                  onPress={() => undo(p.key)}
+                  accessibilityLabel={`${W.undoArrival}, ${p.name}`}
+                  testID={`door.undo.${p.key}`}
+                />
+              ) : null
+            ) : open && !under ? (
+              arrivedButton
+            ) : null;
+          const row = (
+            <Row
+              title={p.name}
+              line={seat == null ? line : undefined}
+              below={
+                seat == null ? (
+                  under ? (
+                    arrivedButton
+                  ) : undefined
+                ) : (
+                  <>
+                    <Text
+                      size={14}
+                      weight="semibold"
+                      accessible={false}
+                      style={styles.seat}
+                      testID={`door.seat.${p.key}`}
+                    >
+                      {seat}
+                    </Text>
+                    <Text size={14} weight="medium" accessible={false} style={styles.below}>
+                      {line}
+                    </Text>
+                    {under && arrivedButton}
+                  </>
+                )
+              }
+              lead={
+                <MarkSlot
+                  kind={p.arrivedAt != null ? (p.kind === 'walkin' ? 'walkin' : 'arrived') : p.kind}
+                />
+              }
+              trail={trail}
+              pad={10}
+              accessibilityLabel={[p.name, seat, line].filter((one) => one != null).join('. ')}
+              testID={`door.row.${p.key}`}
+            />
+          );
+          return {
+            key: p.key,
+            inset: p.companion ? 80 : 40,
+            row: (
+              <View style={p.companion && styles.indent}>
+                <View
+                  onLayout={(event) => {
+                    const drawn = event.nativeEvent.layout.width;
+                    setRowWidths((now) => (now[side] === drawn ? now : { ...now, [side]: drawn }));
+                  }}
+                >
+                  {row}
                 </View>
-              )}
-            </View>
-          ),
-        };
-      })}
-    />
+                {p.failed && (
+                  <View style={styles.failedAt}>
+                    <AlertLine text={W.notRecorded} small />
+                  </View>
+                )}
+              </View>
+            ),
+          };
+        })}
+      />
+    </>
   );
 
   const noOne = looking && shown.length === 0 && phase !== 'ended';
@@ -340,7 +400,7 @@ export function CheckInScreen({
           event={event}
           words={cardOf(phase, count, state === 'doorEmpty')}
           layout={layout}
-          onStep={() => router.push('/demo/guests/scan?state=scanning' as Href)}
+          onStep={() => router.push(scanHref(from) as Href)}
           stepLabel={open ? W.scanCode : null}
         />
       ) : null}
@@ -414,7 +474,7 @@ export function CheckInScreen({
   if (layout === 'phone')
     return (
       <View style={[styles.page, { paddingTop: insets.top }]}>
-        <DoorNav onBack={leave} />
+        <DoorNav label={backWord} onBack={leave} />
         <ScrollView
           style={styles.grow}
           contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 120 }]}
@@ -496,7 +556,7 @@ export function CheckInScreen({
       onArea={toGuests}
       more={more}
       onMore={setMore}
-      back={{ label: W.guests, onPress: leave }}
+      back={{ label: backWord, onPress: leave }}
       overlay={
         <>
           {walkIn != null && (
@@ -517,7 +577,7 @@ export function CheckInScreen({
 }
 
 /** The phone's top: the title centred between the back pill and its mirror while it fits there, and on its own row under the pill once a large text size leaves it no room. */
-function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
+function DoorNav({ label, onBack }: { label: string; onBack: () => void }): ReactNode {
   const [width, setWidth] = useState(0);
   const [back, setBack] = useState(0);
   const [title, setTitle] = useState(0);
@@ -539,7 +599,7 @@ function DoorNav({ onBack }: { onBack: () => void }): ReactNode {
       />
       <View style={styles.nav}>
         <View onLayout={(event) => setBack(event.nativeEvent.layout.width)}>
-          <Back label={W.guests} onPress={onBack} />
+          <Back label={label} onPress={onBack} />
         </View>
         {beside && (
           <View
@@ -696,6 +756,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     backgroundColor: tokens.colorAccentTint,
   },
+  arrivedUnder: { alignSelf: 'flex-start', marginTop: tokens.spaceSm },
   failedAt: { paddingLeft: 40, paddingBottom: tokens.spaceSm },
   noOne: { gap: 14 },
   panes: { flex: 1, flexDirection: 'row' },

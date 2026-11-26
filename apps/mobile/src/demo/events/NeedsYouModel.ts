@@ -1,7 +1,8 @@
 import type { Milestone } from '@soirely/domain';
 
 import { sayIn } from '../today.ts';
-import { dueOf, headLabel, isYours } from '../today/needsYou.ts';
+import { dueWords, isYours } from '../../kit/todayNeeds.ts';
+import { demoT } from '../today/needsYou.ts';
 import type { EventDemoState } from './EventsModel.ts';
 
 export type NeedsState = Extract<EventDemoState, `needsYou${string}`>;
@@ -20,7 +21,7 @@ export const NEEDS_WORDS = {
 
 /** Today's heading key, and the heading alone with no row. */
 export function headingLabel(count: number): string {
-  return count === 0 ? NEEDS_WORDS.heading : headLabel(count);
+  return count === 0 ? NEEDS_WORDS.heading : demoT('todayScreen.needsHead', { count });
 }
 
 export interface NeedRow {
@@ -50,7 +51,7 @@ export function needRows(
     .filter((one) => isYours(one, permissions))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title))
     .map((one) => {
-      const { words, late } = dueOf(one.at, timeZone, now, day);
+      const { words, late } = dueWords(one.at, timeZone, now, day, demoT);
 
       return { key: `${one.area}|${one.at}|${one.title}`, title: one.title, due: words, late };
     });

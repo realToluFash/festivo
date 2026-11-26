@@ -57,7 +57,7 @@ final class RegisterController
                 $result->tokens,
                 $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
                 $request,
-                ['account' => $this->accountSerialiser->serialise($result->user)],
+                ['account' => $this->accountSerialiser->serialise($result->user, $result->tokens)],
                 Response::HTTP_CREATED,
             );
         }
@@ -87,7 +87,7 @@ final class RegisterController
             $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
-            ['account' => $this->accountSerialiser->serialise($result->user)],
+            ['account' => $this->accountSerialiser->serialise($result->user, $result->tokens)],
             Response::HTTP_CREATED,
         );
     }

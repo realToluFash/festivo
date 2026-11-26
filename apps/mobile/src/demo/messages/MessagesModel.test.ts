@@ -67,15 +67,15 @@ const nameOf = (id: RowId) => (id.kind === 'draft' ? id.id : id.key);
 
 describe('the states', () => {
   it('are the spec’s 42, the notice’s three, Who it reached’s eight, sc-32077’s nine, sc-3960’s, sc-3963’s, sc-3976’s 17, sc-46343’s 12, sc-3978’s, sc-3946’s, sc-3966’s seven, sc-4330’s, sc-83081’s eleven and sc-84143’s one, by both demos’ names', () => {
-    expect(MESSAGES_STATES).toHaveLength(195);
+    expect(MESSAGES_STATES).toHaveLength(197);
     expect(MESSAGES_STATES.slice(-12)).toEqual([...BELL_STATES]);
     const reasonsAt = MESSAGES_STATES.indexOf('reasons');
     expect(MESSAGES_STATES.slice(reasonsAt, reasonsAt + 7)).toEqual([...REASON_STATES]);
     expect(MESSAGES_STATES.slice(MESSAGES_STATES.indexOf('sendWithout') + 1).slice(0, 17)).toEqual([
       ...NOTICE_STATES,
     ]);
-    expect(MESSAGES_STATES.slice(126, 132)).toEqual([...SMS_STATES]);
-    expect(MESSAGES_STATES.slice(78, 81)).toEqual([
+    expect(MESSAGES_STATES.slice(127, 133)).toEqual([...SMS_STATES]);
+    expect(MESSAGES_STATES.slice(79, 82)).toEqual([
       'whatsAppLine',
       'checkWhatsApp',
       'whatsAppRead',

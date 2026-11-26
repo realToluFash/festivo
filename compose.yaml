@@ -52,6 +52,9 @@ services:
       # service-floor update.
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:-dev-publisher-key-change-me-in-production}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:-dev-subscriber-key-change-me-in-production}
+      # The hub keeps every update for Last-Event-ID replays, and the service heartbeat (sc-4028) adds
+      # six a minute per live event: history is capped at a fixed size. A device that misses more reads again.
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db?size=1000
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins ${MERCURE_CORS_ORIGINS:-http://localhost:5173 http://localhost:8081 http://localhost:19006}
         subscriptions
@@ -209,6 +212,39 @@ services:
         - CMD-SHELL
         - >-
           test $$(( $$(date +%s) - $$(stat -c %Y /app/var/notifications-worker.heartbeat) )) -lt 30
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  # Beats on each service topic while service is on (sc-4028), so a station's strip knows it is connected.
+  service-heartbeat:
+    build: *api-build
+    environment: *api-environment
+    volumes: *api-volumes
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'exit 0' TERM INT;
+        until php bin/console doctrine:migrations:up-to-date --quiet; do sleep 2; done;
+        exec php bin/console app:service:heartbeat --time-limit=3600 --memory-limit=128
+    labels:
+      soirely.after-migrations: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      # Healthy once the worker has replaced the shell that waits for migrations.
+      test:
+        [
+          'CMD-SHELL',
+          "tr '\\0' ' ' < /proc/1/cmdline | grep -q '^php bin/console app:service:heartbeat'",
+        ]
       interval: 10s
       timeout: 3s
       retries: 3

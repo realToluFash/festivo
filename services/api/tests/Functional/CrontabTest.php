@@ -50,6 +50,18 @@ final class CrontabTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function serviceTapKeysExpireEveryHour(): void
+    {
+        $application = new Application(self::$kernel ?? throw new LogicException('No kernel.'));
+
+        self::assertTrue($application->has('app:service-taps:expire'));
+        self::assertContains(
+            '35 * * * * php /app/bin/console app:service-taps:expire --no-interaction',
+            Str\split(File\read(__DIR__ . '/../../config/crontab'), "\n"),
+        );
+    }
+
+    #[Test]
     public function unansweredRecoveriesExpireEveryFiveMinutes(): void
     {
         $application = new Application(self::$kernel ?? throw new LogicException('No kernel.'));

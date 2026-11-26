@@ -62,7 +62,7 @@ final readonly class CheckInController
             throw new ShapeRefusal('arrivedAt', ShapeRefusal::FIELD);
         }
 
-        $this->arrivals->arrive($event, $body['guestId'], $this->user(), DeviceIdentity::of($request), $at?->setTimezone(new DateTimeZone('UTC')));
+        $this->arrivals->arrive($event, $body['guestId'], $this->user(), DeviceIdentity::of($request), DeviceIdentity::clientOf($request), $at?->setTimezone(new DateTimeZone('UTC')));
 
         return $this->read($event);
     }
@@ -72,7 +72,7 @@ final readonly class CheckInController
     public function undo(Request $request, string $eventId, string $guestId): JsonResponse
     {
         $event = $this->event($eventId);
-        $this->arrivals->undo($event, $guestId, $this->user(), DeviceIdentity::of($request));
+        $this->arrivals->undo($event, $guestId, $this->user(), DeviceIdentity::of($request), DeviceIdentity::clientOf($request));
 
         return $this->read($event);
     }
@@ -88,7 +88,7 @@ final readonly class CheckInController
             'allowDuplicate' => Type\optional(Type\bool()),
         ]));
         $new = $this->guestRules->guest($body['fullName'], null, null, []);
-        $guest = $this->arrivals->walkIn($event, $new, $this->user(), DeviceIdentity::of($request), $body['allowDuplicate'] ?? false);
+        $guest = $this->arrivals->walkIn($event, $new, $this->user(), DeviceIdentity::of($request), DeviceIdentity::clientOf($request), $body['allowDuplicate'] ?? false);
 
         return new JsonResponse(['walkIn' => ['id' => $guest->getId()->toRfc4122()], ...$this->checkInSerialiser->read($event, $this->now())], Response::HTTP_CREATED);
     }

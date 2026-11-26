@@ -14,9 +14,11 @@ use App\Entity\StaffMember;
 use App\Entity\StaffStation;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\RealtimeTopic;
 use App\Enum\StationKind;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Realtime\RealtimePublisher;
 use App\Repository\SeatingSectionRepository;
 use App\Repository\StaffItemStationRepository;
 use App\Repository\StaffMemberRepository;
@@ -60,6 +62,7 @@ final readonly class StationPlan
         private StationRules $stationRules,
         private Auditor $auditor,
         private StaffRosterPublisher $staffRosterPublisher,
+        private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
     ) {
     }
@@ -313,6 +316,8 @@ final readonly class StationPlan
     }
 
     /**
+     * Told on the roster's topic, and on the service's, where a kitchen station's screen follows who is on it (sc-4015).
+     *
      * @template T
      *
      * @param callable(): T $change false when it changed nothing, so nobody is told
@@ -331,6 +336,7 @@ final readonly class StationPlan
 
         if (false !== $done) {
             $this->staffRosterPublisher->publish($event);
+            $this->realtimePublisher->publish(RealtimeTopic::EventService, $event->getId()->toRfc4122(), ['type' => 'stations']);
         }
 
         return $done;

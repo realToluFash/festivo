@@ -7,6 +7,7 @@ import {
 } from '../../src/demo/filterSize/filterSizeRules.ts';
 import { TodaySizeScreen } from '../../src/demo/todaySize/TodaySizeScreen.tsx';
 import {
+  TODAY_ARRIVEDS,
   TODAY_EVENT_NAMES,
   TODAY_GREETINGS,
   TODAY_INVITES,
@@ -18,7 +19,7 @@ import {
 } from '../../src/demo/todaySize/todaySizeRules.ts';
 
 export default function DemoTodaySize() {
-  const { size, lang, name, greeting, event, org, invite, live, venue, week, switcher } =
+  const { size, lang, name, greeting, event, org, invite, live, venue, arrived, week, switcher } =
     useLocalSearchParams<{
       size?: string;
       lang?: string;
@@ -29,6 +30,7 @@ export default function DemoTodaySize() {
       invite?: string;
       live?: string;
       venue?: string;
+      arrived?: string;
       week?: string;
       switcher?: string;
     }>();
@@ -42,6 +44,7 @@ export default function DemoTodaySize() {
     invite: keyOf(TODAY_INVITES, invite, 'none'),
     live: keyOf(TODAY_LIVES, live, 'none'),
     venue: keyOf(TODAY_VENUES, venue, 'none'),
+    arrived: keyOf(TODAY_ARRIVEDS, arrived, 'none'),
     week: keyOf(TODAY_WEEKS, week, 'quiet'),
     switcher: switcher === 'open',
   };

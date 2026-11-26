@@ -50,7 +50,7 @@ import {
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { type Previewing, previewStart } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
-import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
+import { type Refusal, TYPED_EDIT, refusalOf, reloaded, sayNobody } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
 import {
@@ -171,6 +171,7 @@ export const MESSAGES_STATES = [
   'previewFailed',
   'previewGone',
   'previewGoneLast',
+  'previewNobody',
   'previewMarkup',
   'typedBraces',
   'previewBraces',
@@ -201,6 +202,7 @@ export const MESSAGES_STATES = [
   'scheduledPausedEdit',
   'scheduledFinished',
   'scheduledTooLate',
+  'nobodyDue',
   ...REASON_STATES,
   ...TELL_KINDS,
   ...BELL_STATES,
@@ -272,7 +274,7 @@ export interface Draft {
   time: string;
   seen: number;
   soFar: number | null;
-  outcome?: 'sent' | 'tooLate';
+  outcome?: 'sent' | 'tooLate' | 'nobody';
   cancelledBy?: string;
   /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
   paused?: boolean;
@@ -529,6 +531,7 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   previewFailed: { ...sampleDraft('preview'), body: DATED_BODY },
   previewGone: { ...sampleDraft('preview'), body: DATED_BODY },
   previewGoneLast: { ...sampleDraft('write'), body: DATED_BODY },
+  previewNobody: { ...sampleDraft('write'), body: DATED_BODY, zero: ['coming'] },
   previewMarkup: { ...sampleDraft('preview'), body: DATED_BODY },
   typedBraces: { ...sampleDraft('write'), body: BRACED_BODY },
   previewBraces: { ...sampleDraft('preview'), body: BRACED_BODY },
@@ -584,6 +587,7 @@ const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
     finished: true,
   },
   scheduledTooLate: { outcome: 'tooLate', at: { date: DAYS.tooLate, time: '09:00' } },
+  nobodyDue: { outcome: 'nobody', at: { date: DAYS.nobodyDue, time: '09:00' } },
 };
 
 function scheduledStart(change: Partial<Draft>): Messages {
@@ -1125,7 +1129,9 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'body':
       return withDraft(m, (draft) => stillOver({ ...draft, body: action.text, cancelled: false }));
     case 'preview':
-      return m.preview?.nobodyLeft == null ? stepped(m, ['write'], 'preview') : m;
+      return m.preview?.nobodyLeft == null && m.draft != null && !matchesNobody(m.draft)
+        ? stepped(m, ['write'], 'preview')
+        : m;
     case 'edit': {
       const back = stepped(m, ['preview'], 'write');
       if (back.preview?.goneSaid == null) return back;
@@ -1663,6 +1669,7 @@ export function draftLine(draft: Draft, thread: Thread | null = null, locale = '
   const result = resultOf(draft);
   if (draft.step === 'cancelled')
     return say.cancelledRow(draft.cancelledBy ?? READER, draft.cancelledAt ?? CANCELLED_AT);
+  if (draft.outcome === 'nobody') return sayNobody.row(draft.at?.time ?? '');
   if (draft.at != null)
     return `${say.toGroup(TO_WORD[draft.to])} · ${say.dayTime(dayWords(draft.at.date, locale), draft.at.time)}`;
   const line = (() => {

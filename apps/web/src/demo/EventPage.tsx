@@ -70,6 +70,9 @@ import {
 import { EventNeedsYou } from './EventNeedsYou.tsx';
 import { type NeedsState, readerOf } from './needsYou.ts';
 import { EventCard, EventsShell, NotBuilt, Thumb } from './EventParts.tsx';
+import { DINER_ID, comingUpShows, seedRunOfShow } from './liveOneDay.ts';
+import { dateLocale } from '../i18n/index.ts';
+import { ComingUpPart } from './LiveOneDayParts.tsx';
 import { EventSidebar } from './EventSidebar.tsx';
 import { AllDates } from './EventDates.tsx';
 import {
@@ -366,6 +369,7 @@ function EventAt({
   const [arrival] = useState<Arrival>(() => (location.state as Arrival | null) ?? {});
   const [first] = useState(() => {
     if (raw != null) resetSample();
+    if (raw != null) seedRunOfShow(raw);
     if (raw != null && messages) resetInbox();
     seedFromEvent(raw);
 
@@ -621,6 +625,7 @@ function EventView({
                   now={now}
                   level={1}
                   milestone={cardMilestone(event, now)}
+                  dates={event.id === DINER_ID ? timelineOf(event, now) : null}
                   reads={reads}
                   onStep={(does: CardDoes) => {
                     if (does === 'makeLive') setMaking(ASK);
@@ -715,13 +720,30 @@ function EventView({
                         tell(replyBySays(next, now, event.timeZone).toast);
                       }}
                       needs={
-                        <EventNeedsYou
-                          timeline={timelineOf(event, now)}
-                          permissions={readerOf(needsStateOf(state))}
-                          state={needsStateOf(state)}
-                          now={now}
-                          timeZone={event.timeZone}
-                        />
+                        <>
+                          <EventNeedsYou
+                            timeline={timelineOf(event, now)}
+                            permissions={readerOf(needsStateOf(state))}
+                            state={needsStateOf(state)}
+                            now={now}
+                            timeZone={event.timeZone}
+                          />
+                          {event.id === DINER_ID && (
+                            <ComingUpPart
+                              eventId={event.id}
+                              shows={comingUpShows(
+                                event,
+                                eventPhase(event, now),
+                                timelineOf(event, now),
+                                now,
+                                event.status === 'ended',
+                                dateLocale(),
+                              )}
+                              timeZone={event.timeZone}
+                              now={now}
+                            />
+                          )}
+                        </>
                       }
                     />
                   </div>

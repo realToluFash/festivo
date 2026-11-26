@@ -126,6 +126,8 @@
 
 .today-banner,
 .today-now {
+  --noticeRing: var(--colorInkOnDark);
+
   position: relative;
   flex: none;
   overflow: hidden;

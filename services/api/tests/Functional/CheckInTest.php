@@ -140,6 +140,24 @@ final class CheckInTest extends ApiTestCase
     }
 
     #[Test]
+    public function eachChangeAtTheDoorSaysWhetherTheAppOrABrowserMadeIt(): void
+    {
+        $guest = $this->add(self::ADAEZE);
+        self::mockTime(new DateTimeImmutable(self::OPEN));
+        $this->arrive($guest);
+        $this->client->setServerParameter('HTTP_X_DEVICE_ID', '');
+
+        $this->as($this->owner, 'DELETE', $this->checkIn() . '/arrivals/' . $guest);
+        self::assertSame(200, $this->statusCode());
+        $this->walkIn('Kemi Olatunji');
+        self::assertSame(201, $this->statusCode());
+
+        $rows = self::em()->getConnection()->fetchAllAssociative("SELECT action, changes FROM audit_entries WHERE action IN ('guest.arrived', 'guest.arrival_undone', 'guest.walked_in') ORDER BY id");
+        $clients = Vec\map($rows, static fn (array $row): array => [$row['action'], Type\shape(['client' => Type\shape([1 => Type\string()], true)], true)->coerce(Json\decode(Type\string()->coerce($row['changes'])))['client'][1]]);
+        self::assertSame([[Arrivals::ARRIVED, 'app'], [Arrivals::ARRIVAL_UNDONE, 'browser'], [Arrivals::WALKED_IN, 'browser']], $clients);
+    }
+
+    #[Test]
     public function beforeTheDoorOpensTheListReadsAndNothingIsRecorded(): void
     {
         $guest = $this->add(self::ADAEZE);
@@ -179,7 +197,7 @@ final class CheckInTest extends ApiTestCase
         $read = $this->as($this->owner, 'GET', $this->checkIn());
 
         $row = Type\shape(['guests' => Type\vec(Type\dict(Type\string(), Type\mixed()))], true)->coerce($read)['guests'][0];
-        self::assertSame(['id', 'fullName', 'reply', 'repliedAt', 'code', 'walkIn', 'arrival', 'companions'], Vec\keys($row));
+        self::assertSame(['id', 'fullName', 'reply', 'repliedAt', 'code', 'walkIn', 'arrival', 'seat', 'companions'], Vec\keys($row));
         self::assertStringNotContainsString('adaeze@example.com', Json\encode($read));
         self::assertStringNotContainsString('Family', Json\encode($read));
     }
