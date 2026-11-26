@@ -22,7 +22,6 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * @phpstan-import-type Before from ServiceStep
- *
  * @phpstan-import-type Made from ServiceStep
  */
 final readonly class ServiceUndo

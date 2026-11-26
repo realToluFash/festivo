@@ -16,6 +16,7 @@ final class ServiceCounts
     /**
      * @param list<ServicePlate>       $orders
      * @param array<string, ItemState> $states
+     *
      * @return array{stages: array<string, int>, held: int}
      */
     public static function of(array $orders, array $states): array
@@ -42,6 +43,7 @@ final class ServiceCounts
 
     /**
      * @param list<array<string, mixed>> $tables
+     *
      * @return list<array{id: ?string, counts: array{stages: array<string, int>, held: int}}>
      */
     public static function bySection(array $tables): array

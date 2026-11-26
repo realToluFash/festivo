@@ -48,7 +48,7 @@ final class JsonPatchTest extends TestCase
     }
 
     /**
-     * @param list<string>                                       $parts
+     * @param list<string>                                   $parts
      * @param array{op: string, path: string, value?: mixed} $op
      */
     private static function at(mixed $doc, array $parts, array $op): mixed
@@ -58,17 +58,17 @@ final class JsonPatchTest extends TestCase
         }
 
         self::assertIsArray($doc);
-        $key = array_is_list($doc) && \ctype_digit($parts[0]) ? (int) $parts[0] : $parts[0];
+        $key = \array_is_list($doc) && \ctype_digit($parts[0]) ? (int) $parts[0] : $parts[0];
 
         if (1 === Iter\count($parts)) {
             if ('remove' === $op['op']) {
                 unset($doc[$key]);
 
-                return array_is_list($doc) || \is_int($key) ? Vec\values($doc) : $doc;
+                return \array_is_list($doc) || \is_int($key) ? Vec\values($doc) : $doc;
             }
 
             if ('add' === $op['op'] && \is_int($key)) {
-                array_splice($doc, $key, 0, [$op['value'] ?? null]);
+                \array_splice($doc, $key, 0, [$op['value'] ?? null]);
 
                 return $doc;
             }

@@ -287,6 +287,7 @@ final class ServiceStepsTest extends ApiTestCase
 
     /**
      * @param array<string, mixed>|null $body
+     *
      * @return array<string, mixed>
      */
     private function post(string $path, ?array $body = null): array
@@ -296,6 +297,7 @@ final class ServiceStepsTest extends ApiTestCase
 
     /**
      * @param array<string, mixed> $body
+     *
      * @return array<string, mixed>
      */
     private function put(string $path, array $body): array
@@ -313,6 +315,7 @@ final class ServiceStepsTest extends ApiTestCase
 
     /**
      * @param array<string, mixed>|null $body
+     *
      * @return array<string, mixed>
      */
     private function as(string $method, string $path, ?array $body = null): array

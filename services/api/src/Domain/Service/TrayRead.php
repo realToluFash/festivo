@@ -21,6 +21,7 @@ final readonly class TrayRead
 
     /**
      * @param list<array{course: MenuCourse, items: list<array{name: string, key: string, stop: string}>}> $courses
+     *
      * @return array<string, string> the stop id by course id and item key
      */
     public static function stopsByItem(array $courses, string $passId): array
@@ -38,6 +39,7 @@ final readonly class TrayRead
 
     /**
      * @param list<ServicePlate> $plates
+     *
      * @return list<ServiceTray> every tray with a plate of the course
      */
     public function trays(array $plates): array
@@ -46,9 +48,10 @@ final readonly class TrayRead
     }
 
     /**
-     * @param list<ServicePlate>                                                                  $onTrays
-     * @param non-empty-list<array{id: string, name: string}>                                     $stops
-     * @param array<string, string>                                                               $stopOf
+     * @param list<ServicePlate>                              $onTrays
+     * @param non-empty-list<array{id: string, name: string}> $stops
+     * @param array<string, string>                           $stopOf
+     *
      * @return array<string, mixed>
      */
     public function tray(ServiceTray $tray, array $onTrays, array $stops, array $stopOf, string $passId): array
