@@ -3782,7 +3782,7 @@
     "nobodyOn": "Ninguém no posto {{station}}",
     "openNow": "Aberto agora",
     "changesNobody": "Abrir um posto não muda o posto de ninguém. Isso faz-se em Equipa.",
-    "picked": "Abriu o posto {{station}} neste tablet. Ninguém mudou de posto.",
+    "picked": "Abriu o posto {{station}} neste dispositivo. Ninguém mudou de posto.",
     "movedTo": "Agora está no posto {{station}}.",
     "headerLine": "{{you}} · {{course}} · {{event}}",
     "noCourseFired": "Nenhum serviço avançou",
