@@ -78,7 +78,7 @@ async function measure(
   return y ?? 'stays';
 }
 
-/** With the keys up, keeps Your name and the number row both above Send code whenever they fit, a showing refusal with them, else the focused field (sc-97734). Send code stays docked: the group never tells the step it needs more room than the focused field. */
+/** Stands in for `useAboveKeyboard` (`src/components/Screen.tsx`) with a different kept rule: with the keys up, Your name and the number row both above Send code whenever they fit, a showing refusal with them, else the focused field (sc-97734). Built into the product, it is a `kept` option on `measureLift`, not a second lift group: that keeps the landing toast's cover (sc-37983), which no step of this demo shows, and `liftUnderFocus` (sc-35488), which never bites here as every kept tier holds the focused field. Send code stays docked: the group never tells the step it needs more room than the focused field. */
 function useFieldsAboveSend(refs: EventFieldRefs): () => void {
   const scroll = useContext(ScreenScroll);
   const last = useRef<EventField>('name');

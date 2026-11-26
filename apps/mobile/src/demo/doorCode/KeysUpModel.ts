@@ -1,3 +1,5 @@
+import { liftNeeded, offsetAboveKeyboard } from '../../kit/keyboard.ts';
+
 /** Where a block sits inside the scroll content. */
 export interface Placed {
   contentY: number;
@@ -43,15 +45,20 @@ export interface FieldsInScroll extends EventFields {
   margin: number;
 }
 
-/** The offset that rests what the keys leave in view `margin` above Send code, or null when it already shows. Where only the field fits, it rests there even when it shows, so the other field is never half under Send code; where not even the field fits, its top shows. */
+/** The offset that rests what the keys leave in view `margin` above Send code, or null when it already shows: the kit's lift (`offsetAboveKeyboard`, `liftNeeded`) on what `keptInView` keeps, the scroll's sight standing in for the window. Where only the field fits, it rests there even when it shows, so the other field is never half under Send code; where not even the field fits, its top shows. */
 export function offsetAboveSend(at: FieldsInScroll): number | null {
   const { room, offset, margin } = at;
   const kept = keptInView(at, room, margin);
-  const top = kept.contentY;
-  const end = kept.contentY + kept.height;
-  const y = Math.max(0, fits(kept, room, margin) ? end + margin - room : top - margin);
-  const reachesNumber = end >= at.number.contentY + at.number.height;
-  const shows = top >= offset && end + margin <= offset + room;
+  const sight = { scrollTop: offset, keyboardTop: offset + room, margin };
+  const y = offsetAboveKeyboard({ ...kept, ...sight });
+  const shows = !liftNeeded({
+    shown: sight.keyboardTop,
+    group: { y: kept.contentY, height: kept.height },
+    focusTop: kept.contentY,
+    scrollTop: offset,
+    margin,
+  });
+  const reachesNumber = kept.contentY + kept.height >= at.number.contentY + at.number.height;
   if (y === offset || (shows && reachesNumber)) return null;
 
   return y;
