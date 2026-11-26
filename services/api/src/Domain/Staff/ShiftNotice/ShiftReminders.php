@@ -56,7 +56,7 @@ final readonly class ShiftReminders
     ) {
     }
 
-    /** One already due is left for the worker, which reads it again. */
+    /** One already due is left for the worker, which reads it again. One held, through a pause say, lapses at the day's first start rather than going after it. */
     public function plan(StaffMember ...$entries): void
     {
         $now = $this->clock->now();
@@ -64,11 +64,14 @@ final readonly class ShiftReminders
         foreach ($entries as $entry) {
             $event = $entry->getEvent();
             $wanted = [];
+            $firstStart = [];
 
             if ($event->remindsStaff() && StaffBriefStatus::None !== $entry->getBriefStatus() && EventPhase::Finished !== self::phase($event, $now)) {
                 foreach ($this->staffShiftRepository->findOfPerson($entry) as $shift) {
                     $day = $shift->getStartsAt()->format('Y-m-d');
-                    $wanted[ShiftReminderNotice::key($entry, $day)] = $day;
+                    $key = ShiftReminderNotice::key($entry, $day);
+                    $wanted[$key] = $day;
+                    $firstStart[$key] = isset($firstStart[$key]) && $firstStart[$key] < $shift->getStartsAt() ? $firstStart[$key] : $shift->getStartsAt();
                 }
             }
 
@@ -91,6 +94,7 @@ final readonly class ShiftReminders
                     Audience::staffMember($event->getId(), $entry->getId()),
                     ['staffMemberId' => $entry->getId()->toRfc4122(), 'day' => $day],
                     $event,
+                    ShiftClock::instant($firstStart[$key], $event),
                 );
             }
         }

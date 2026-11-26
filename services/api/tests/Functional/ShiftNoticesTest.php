@@ -351,6 +351,24 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aReminderHeldThroughAPausePastTheShiftsStartLapsesRatherThanGoingLate(): void
+    {
+        $this->live();
+        $this->briefed($this->ada);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/pause');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-05T09:00:00Z');
+        self::assertSame([], $this->reminders());
+
+        self::mockTime(new DateTimeImmutable('2027-03-06T17:30:00Z'));
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/resume');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-06T17:30:00Z');
+
+        self::assertSame([], $this->reminders());
+    }
+
+    #[Test]
     public function twoShiftsStartingOnOneDayGetOneReminderWithTheFirstStart(): void
     {
         $this->editEvent(['endsAt' => '2027-03-08T02:00']);
