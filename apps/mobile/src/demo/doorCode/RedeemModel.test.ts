@@ -26,6 +26,7 @@ import {
   afterPhoneCode,
   flowAt,
   freshFlow,
+  signedOut,
   JOAO,
   phoneTitle,
   REDEEM_STATES,
@@ -48,6 +49,7 @@ describe('joining, every state (spec §5)', () => {
       welcome: 'welcome',
       camera: 'camera',
       enter: 'enter',
+      'signed-out': 'enter',
       'enter-blank': 'enter',
       'enter-short': 'enter',
       checking: 'enter',
@@ -264,6 +266,18 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
 
   it('starts again signed out with nothing kept', () => {
     expect(freshFlow()).toMatchObject({ step: 'welcome', name: '', number: '', typed: '' });
+  });
+
+  it('signs out to an empty Enter a door code that says Signed out. (sc-4235)', () => {
+    expect(signedOut()).toMatchObject({
+      step: 'enter',
+      signedOut: true,
+      typed: '',
+      name: '',
+      number: '',
+    });
+    expect(flowAt('signed-out')).toEqual(signedOut());
+    expect(flowAt('enter').signedOut).toBe(false);
   });
 });
 
