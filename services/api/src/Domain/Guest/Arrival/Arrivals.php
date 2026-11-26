@@ -14,9 +14,8 @@ use App\Enum\Actor;
 use App\Enum\CheckInState;
 use App\Enum\ClientKind;
 use App\Enum\ErrorCode;
-use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
-use App\Realtime\RealtimePublisher;
+use App\Realtime\CheckInSignal;
 use App\Repository\GuestRepository;
 use Closure;
 use DateTimeImmutable;
@@ -38,7 +37,7 @@ final readonly class Arrivals
         private GuestRepository $guestRepository,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
-        private RealtimePublisher $realtimePublisher,
+        private CheckInSignal $checkInSignal,
         private ClockInterface $clock,
         private ArrivalFollowerInterface $arrivalFollower,
     ) {
@@ -79,7 +78,7 @@ final readonly class Arrivals
             return $guest;
         });
 
-        $this->published($event);
+        $this->checkInSignal->send($event);
 
         return $guest;
     }
@@ -95,7 +94,7 @@ final readonly class Arrivals
         });
 
         if ($changed) {
-            $this->published($event);
+            $this->checkInSignal->send($event);
         }
 
         return $person;
@@ -174,10 +173,5 @@ final readonly class Arrivals
             'device' => [null, $device],
             'client' => [null, $client->value],
         ], $at);
-    }
-
-    private function published(Event $event): void
-    {
-        $this->realtimePublisher->publish(RealtimeTopic::EventCheckIn, $event->getId()->toRfc4122(), []);
     }
 }

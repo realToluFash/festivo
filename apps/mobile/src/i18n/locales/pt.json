@@ -3335,7 +3335,14 @@
     "single": "O acesso a eventos específicos mantém-se.",
     "change": "Alterar o seu endereço de e-mail principal"
   },
+  "guest": {
+    "table": {
+      "row": "Fila {{row}}, lugar {{seat}}",
+      "placed": "{{place}} · {{section}}"
+    }
+  },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Entradas",
     "back": "Convidados",
     "open": "Abrir registo de entradas",

@@ -1,7 +1,15 @@
 import type { CheckIn, CheckInGuest } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { countLine, doorMatch, doorRows, listedAs, sameName, walkInProblem } from './doorList.ts';
+import {
+  countLine,
+  doorMatch,
+  doorRows,
+  listedAs,
+  sameName,
+  seatWords,
+  walkInProblem,
+} from './doorList.ts';
 import { type Translate } from './eventWords.ts';
 const t = ((key: string, values?: Record<string, unknown>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as Translate;
@@ -17,6 +25,7 @@ function guest(id: string, fullName: string, more: Partial<CheckInGuest> = {}): 
     code: null,
     walkIn: false,
     arrival: null,
+    seat: null,
     companions: [],
     ...more,
   };
@@ -26,14 +35,15 @@ const LIST: CheckIn = {
   state: 'open',
   opensAt: '2026-11-21T16:00:00+01:00',
   timeZone: 'Africa/Lagos',
+  seated: false,
   count: { attended: 1, expected: 4 },
   guests: [
     guest('g_z', 'Zainab Bello'),
     guest('g_a', ADAEZE, {
       companions: [
-        { id: 'c_1', fullName: 'Rui Duarte', state: 'coming', arrival: null },
-        { id: 'c_2', fullName: null, state: 'coming', arrival: null },
-        { id: 'c_3', fullName: null, state: 'coming', arrival: null },
+        { id: 'c_1', fullName: 'Rui Duarte', state: 'coming', arrival: null, seat: null },
+        { id: 'c_2', fullName: null, state: 'coming', arrival: null, seat: null },
+        { id: 'c_3', fullName: null, state: 'coming', arrival: null, seat: null },
       ],
     }),
     guest('g_e', 'Émile Ávila', { walkIn: true, reply: 'noReply' }),
@@ -51,7 +61,9 @@ const DOOR: CheckIn = {
     guest('d_f', FOLASADE),
     guest('d_c', 'Chinedu Eze'),
     guest('d_k', 'Kemi Okafor', {
-      companions: [{ id: 'd_o', fullName: 'Olusegun Eze', state: 'coming', arrival: null }],
+      companions: [
+        { id: 'd_o', fullName: 'Olusegun Eze', state: 'coming', arrival: null, seat: null },
+      ],
     }),
   ],
 };
@@ -90,7 +102,9 @@ describe('finding a guest inside a word of their name (sc-85893)', () => {
       guests: [
         guest('d_a', 'Abiola Okeze'),
         guest('d_z', 'Zara Bello', {
-          companions: [{ id: 'd_y', fullName: 'Eze Ade', state: 'coming', arrival: null }],
+          companions: [
+            { id: 'd_y', fullName: 'Eze Ade', state: 'coming', arrival: null, seat: null },
+          ],
         }),
       ],
     };
@@ -169,8 +183,75 @@ describe('a walk-in', () => {
   });
 
   it('finds the same name on the list, ignoring case and accents', () => {
-    expect(sameName(LIST, 'chief mrs adaeze okonkwo-williams')?.id).toBe('g_a');
-    expect(sameName(LIST, 'RUI DUARTE')?.id).toBe('c_1');
-    expect(sameName(LIST, 'Kofi Asante')).toBeNull();
+    expect(sameName(t, LIST, 'chief mrs adaeze okonkwo-williams')?.id).toBe('g_a');
+    expect(sameName(t, LIST, 'RUI DUARTE')?.id).toBe('c_1');
+    expect(sameName(t, LIST, 'Kofi Asante')).toBeNull();
+  });
+});
+
+const words = ((key: string, values?: Record<string, string | number>) => {
+  const said: Record<string, string> = {
+    'guest.table.row': `Row ${values?.row}, seat ${values?.seat}`,
+    'guest.table.placed': `${values?.place} · ${values?.section}`,
+    'checkIn.noSeat': 'No seat yet',
+  };
+
+  return said[key] ?? key;
+}) as unknown as Translate;
+
+describe('the seat under each name at the door (sc-60684)', () => {
+  it('words each kind of seat by the host’s own names, with its section or none', () => {
+    expect(seatWords(words, { kind: 'table', name: 'Table 4', section: 'Main hall' })).toBe(
+      'Table 4 · Main hall',
+    );
+    expect(seatWords(words, { kind: 'table', name: 'Table 4', section: null })).toBe('Table 4');
+    expect(
+      seatWords(words, { kind: 'row', name: 'C', seat: 14, section: 'Upper balcony east' }),
+    ).toBe('Row C, seat 14 · Upper balcony east');
+    expect(seatWords(words, { kind: 'row', name: 'C', seat: 4, section: null })).toBe(
+      'Row C, seat 4',
+    );
+    expect(seatWords(words, { kind: 'seat', name: 'Seat 12', section: 'By the bar' })).toBe(
+      'Seat 12 · By the bar',
+    );
+    expect(seatWords(words, { kind: 'seat', name: 'Seat 12', section: null })).toBe('Seat 12');
+    expect(seatWords(words, { kind: 'row', name: 'C', seat: 4, section: 'Balcony' }, false)).toBe(
+      'Row C, seat 4',
+    );
+  });
+
+  it('gives each person their own line, and No seat yet to anyone without one', () => {
+    const seated: CheckIn = {
+      ...LIST,
+      seated: true,
+      guests: [
+        guest('g_a', ADAEZE, {
+          seat: { kind: 'table', name: 'Table 4', section: 'Main hall' },
+          companions: [
+            {
+              id: 'c_1',
+              fullName: 'Rui Duarte',
+              state: 'coming',
+              arrival: null,
+              seat: { kind: 'table', name: 'Table 4', section: 'Main hall' },
+            },
+            { id: 'c_2', fullName: null, state: 'held', arrival: null, seat: null },
+          ],
+        }),
+        guest('g_k', 'Kofi Asante', { walkIn: true }),
+      ],
+    };
+
+    expect(doorRows(words, seated, '', 'en').map((row) => row.seat)).toEqual([
+      'Table 4 · Main hall',
+      'Table 4 · Main hall',
+      'No seat yet',
+      'No seat yet',
+    ]);
+    expect(sameName(words, seated, 'kofi asante')?.seat).toBe('No seat yet');
+  });
+
+  it('shows no line on an event nobody is seated on', () => {
+    expect(doorRows(words, LIST, '', 'en').every((row) => row.seat == null)).toBe(true);
   });
 });

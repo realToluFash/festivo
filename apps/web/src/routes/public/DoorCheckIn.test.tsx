@@ -325,3 +325,43 @@ describe('the web shift page leads to check-in (sc-28230)', () => {
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
   });
 });
+
+describe('the seat under each name in the browser (sc-60684)', () => {
+  const seated = (): Record<string, unknown> => {
+    const read = list();
+    const [amara, bisi] = read.guests as Record<string, unknown>[];
+
+    return {
+      ...read,
+      seated: true,
+      guests: [
+        { ...amara, seat: { kind: 'table', name: 'Table 4', section: 'Main hall' } },
+        { ...bisi, seat: null },
+      ],
+    };
+  };
+
+  it('shows each person’s seat under their name, and No seat yet for one without', async () => {
+    signedIn();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(seated()),
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+    });
+
+    const seat = await screen.findByText('Table 4 · Main hall');
+    expect(seat.previousElementSibling?.textContent).toBe('Amara Eze');
+    expect(screen.getByText('No seat yet').previousElementSibling?.textContent).toBe('Bísí Adé');
+  });
+
+  it('shows no seat line on an event nobody is seated on', async () => {
+    signedIn();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(list()),
+      'GET /api/events/ev_1/my-night': () => json(NIGHT),
+    });
+
+    expect(await screen.findByText('Amara Eze')).toBeTruthy();
+    expect(screen.queryByText('No seat yet')).toBeNull();
+    expect(document.querySelector('.ci-seat')).toBeNull();
+  });
+});

@@ -7129,6 +7129,7 @@
     }
   },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Registro de llegada",
     "count_one": "Llegadas: {{count, number}} de {{expected, number}}",
     "count_other": "Llegadas: {{count, number}} de {{expected, number}}",

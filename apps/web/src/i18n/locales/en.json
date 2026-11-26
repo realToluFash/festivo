@@ -6761,6 +6761,7 @@
     }
   },
   "checkIn": {
+    "noSeat": "No seat yet",
     "title": "Check-in",
     "count_one": "{{count, number}} of {{expected, number}} arrived",
     "count_other": "{{count, number}} of {{expected, number}} arrived",
