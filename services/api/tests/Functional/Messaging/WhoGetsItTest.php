@@ -242,7 +242,7 @@ final class WhoGetsItTest extends ApiTestCase
         self::assertSame(201, $this->statusCode());
         $taken = $this->save("elodie's FRIENDS", [['type' => 'notComing']]);
         self::assertSame(409, $this->statusCode());
-        self::assertSame('There’s already a saved audience called Élodie’s friends.', $taken['detail']);
+        self::assertSame('There is already a saved audience called Élodie’s friends.', $taken['detail']);
         self::assertCount(1, $this->savedList());
     }
 
