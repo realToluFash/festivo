@@ -6,8 +6,10 @@ import {
   MY_SHIFT,
   SHIFT_MESSAGE_BOARDS,
   channelOf,
+  OVERFLOW_SAMPLE,
   messageKindOf,
   messageOf,
+  shiftLinesOf,
 } from './shiftMessagesModel.ts';
 import { SAMPLE } from '../samples.ts';
 
@@ -86,6 +88,50 @@ describe('a change to one of several shifts (S2)', () => {
     ]);
     expect(last.text).not.toContain('no longer on the staff');
     expect(messageOf('no_shift_left', 'whatsApp').button).toBe(MY_SHIFT);
+  });
+});
+
+describe('at most three shift lines (S2)', () => {
+  it('names the removal ahead of an earlier addition, prints the three in start order, and counts the rest', () => {
+    expect(messageOf('shift_overflow', 'push').lines).toEqual([
+      'You now have a shift from Friday 18:00 to 23:00.',
+      'Your shift is now Saturday 15:00 to 23:00 (was 17:00 to 23:00).',
+      'You no longer have the shift from Sunday 16:00 to 22:00.',
+      '1 more change is on your shift page.',
+    ]);
+  });
+
+  it('puts the overflow line before the link', () => {
+    expect(messageOf('shift_overflow', 'sms').text).toBe(
+      `${SAMPLE.organisation}: your shifts at Adaeze & Tunde’s wedding have changed. You now have a shift from Friday 18:00 to 23:00. Your shift is now Saturday 15:00 to 23:00 (was 17:00 to 23:00). You no longer have the shift from Sunday 16:00 to 22:00. 1 more change is on your shift page. Your shift page: ${LINK}`,
+    );
+  });
+
+  it('says how many more in the plural', () => {
+    const fifth = { removal: false, startsAt: 3000, line: 'fifth' };
+
+    expect(shiftLinesOf([...OVERFLOW_SAMPLE, fifth]).at(-1)).toBe(
+      '2 more changes are on your shift page.',
+    );
+  });
+
+  it('leaves three lines or fewer as they are', () => {
+    expect(shiftLinesOf(OVERFLOW_SAMPLE.slice(0, 3))).toHaveLength(3);
+  });
+
+  it('sends no overflow line with no shift left, naming the three soonest removals', () => {
+    const removals = [400, 100, 300, 200].map((startsAt) => ({
+      removal: true,
+      startsAt,
+      line: String(startsAt),
+    }));
+
+    expect(shiftLinesOf(removals, true)).toEqual([
+      '100',
+      '200',
+      '300',
+      'You have no shift at Adaeze & Tunde’s wedding for now. You are still on the staff.',
+    ]);
   });
 });
 

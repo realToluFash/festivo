@@ -12,6 +12,7 @@ export type MessageKind =
   | 'shift_added'
   | 'shift_removed'
   | 'shift_retimed'
+  | 'shift_overflow'
   | 'no_shift_left'
   | 'removed'
   | 'called_off'
@@ -30,6 +31,7 @@ export const MESSAGE_KINDS: readonly MessageKind[] = [
   'shift_added',
   'shift_removed',
   'shift_retimed',
+  'shift_overflow',
   'no_shift_left',
   'removed',
   'called_off',
@@ -50,6 +52,7 @@ export const KIND_NAMES: Record<MessageKind, string> = {
   shift_removed: 'A shift taken off',
   no_shift_left: 'The last shift taken off',
   shift_retimed: 'One of several shifts retimed',
+  shift_overflow: 'Four shift changes: three named, one more',
   removed: 'Removed from the event',
   called_off: 'The event is called off',
   event_ended: 'The event has ended (End now)',
@@ -111,11 +114,64 @@ const SHIFT = {
   none: `You have no shift at ${EVENT} for now. You are still on the staff.`,
 };
 
+export const MOST_SHIFT_LINES = 3;
+
+const OVERFLOW = (count: number) =>
+  count === 1
+    ? '1 more change is on your shift page.'
+    : `${count} more changes are on your shift page.`;
+
+export interface ShiftChange {
+  removal: boolean;
+  /** Minutes from the event's first midnight, of the start, or the new start of a retimed shift. */
+  startsAt: number;
+  line: string;
+}
+
+/** At most three shift lines: the removals first, then the others, each soonest first; the three are printed in start order and the rest counted in the overflow line. With no shift left there is no overflow line (pm, 26 Nov, on bm's #96358). */
+export function shiftLinesOf(changes: readonly ShiftChange[], noShiftLeft = false): string[] {
+  const soonest = (a: ShiftChange, b: ShiftChange) => a.startsAt - b.startsAt;
+  const chosen = [
+    ...changes.filter((one) => one.removal).sort(soonest),
+    ...changes.filter((one) => !one.removal).sort(soonest),
+  ]
+    .slice(0, MOST_SHIFT_LINES)
+    .sort(soonest)
+    .map((one) => one.line);
+  const left = changes.length - chosen.length;
+
+  if (noShiftLeft) return [...chosen, SHIFT.none];
+
+  return left > 0 ? [...chosen, OVERFLOW(left)] : chosen;
+}
+
+const at = (day: number, time: string) => {
+  const [hours = 0, minutes = 0] = time.split(':').map(Number);
+
+  return day * 1440 + hours * 60 + minutes;
+};
+
+/** Friday is day 0 of the event, Friday to Sunday. Four lines, the removal the latest: it is named, with the two soonest others, and Sunday's addition is left out. */
+export const OVERFLOW_SAMPLE: readonly ShiftChange[] = [
+  { removal: true, startsAt: at(2, '16:00'), line: SHIFT.removed('Sunday 16:00', '22:00') },
+  { removal: false, startsAt: at(2, '10:00'), line: SHIFT.added('Sunday 10:00', '14:00') },
+  {
+    removal: false,
+    startsAt: at(1, '15:00'),
+    line: SHIFT.retimed('Saturday 15:00', '23:00', START, '23:00'),
+  },
+  { removal: false, startsAt: at(0, '18:00'), line: SHIFT.added('Friday 18:00', '23:00') },
+];
+
 const SHIFT_LINES: Partial<Record<MessageKind, readonly string[]>> = {
   shift_added: [SHIFT.added('Sunday 12:00', '18:00')],
   shift_removed: [SHIFT.removed('Sunday 12:00', '18:00')],
   shift_retimed: [SHIFT.retimed('Sunday 12:00', '17:00', '12:00', '18:00')],
-  no_shift_left: [SHIFT.removed(`Saturday ${START}`, '23:00'), SHIFT.none],
+  shift_overflow: shiftLinesOf(OVERFLOW_SAMPLE),
+  no_shift_left: shiftLinesOf(
+    [{ removal: true, startsAt: at(1, START), line: SHIFT.removed(`Saturday ${START}`, '23:00') }],
+    true,
+  ),
 };
 
 export interface Message {
