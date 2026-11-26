@@ -25,26 +25,29 @@ import {
   LIVE_ENDS,
   LIVE_ENDS_AT,
   LIVE_NAME,
+  LIVE_NAME_PHONE,
   LIVE_OPEN,
   type ArrivedCount,
   openUnder,
   uprightChipSize,
 } from './todaySizeRules.ts';
 
-/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. With `top`, the upright cover under that row: from AX1 its chips keep main's size and grow to hold their words (sc-93211), and the name, the end line and Open the event take the cover's width by the same rule as on its side (sc-93578). */
+/** sc-92312: the live event's banner on its side, every word whole at the stand-in size; below AX1 it is main's NowBlock, wide. With `top`, the upright cover under that row: from AX1 its chips keep main's size and grow to hold their words (sc-93211), and the name, the end line and Open the event take the cover's width by the same rule as on its side (sc-93578). With `phone`, the phone's cover under its pill row: main's NowBlock, narrow, its chips growing by the same rule from AX1 (sc-93855). */
 export function LiveBanner({
   name,
   place,
   scale,
   top,
   arrived = null,
+  phone = false,
 }: {
   name: string;
   place: string | null;
   scale: number;
   top?: ReactNode;
-  /** Guests arrived, drawn as the figure: from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022). */
+  /** Guests arrived, drawn as the figure on the iPad: from AX1 under Open the event, so the first arrival moves nothing above it (sc-94022). */
   arrived?: ArrivedCount | null;
+  phone?: boolean;
 }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -52,10 +55,11 @@ export function LiveBanner({
   const [nameAt, setNameAt] = useState<number | null>(null);
   const cap = nameAt ?? Infinity;
   const big = atAccessibilitySizes(scale);
-  const under = openUnder(scale);
+  const under = openUnder(scale) || phone;
   const label = t('todayScreen.openEvent');
-  const upright = top != null;
-  const grown = upright && big;
+  const upright = top != null && !phone;
+  const grown = (upright || phone) && big;
+  const nameSize = phone ? LIVE_NAME_PHONE : LIVE_NAME;
   const dayLine = t('todayScreen.dayOfCapital', { day: 1, total: 1 });
   const day = place == null ? dayLine : t('todayScreen.dayAndPlace', { day: dayLine, place });
 
@@ -65,6 +69,7 @@ export function LiveBanner({
       style={({ pressed }) => [
         styles.open,
         big ? styles.openGrows : styles.openFixed,
+        phone && styles.openPhone,
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
@@ -86,7 +91,7 @@ export function LiveBanner({
   );
   const words = (
     <View
-      style={[styles.grow, styles.words]}
+      style={[styles.grow, phone ? styles.wordsPhone : styles.words]}
       onLayout={(event: LayoutChangeEvent) => setColumn(event.nativeEvent.layout.width)}
     >
       <View style={styles.chips}>
@@ -144,14 +149,14 @@ export function LiveBanner({
       </View>
       <FitWords
         text={name}
-        size={LIVE_NAME}
+        size={nameSize}
         scale={scale}
         cap={Infinity}
         room={column}
         weight="bold"
         line={1.06}
         role="header"
-        style={[styles.white, { letterSpacing: LIVE_NAME * -0.02 }]}
+        style={[styles.white, { letterSpacing: nameSize * -0.02 }]}
         onDrawn={setNameAt}
         testID="demo.todaySize.liveName"
       />
@@ -165,8 +170,9 @@ export function LiveBanner({
         line={1.3}
         style={styles.white}
       />
-      {under && <View style={styles.openUnder}>{open}</View>}
-      {under && arrived != null && (
+      {phone && <View style={styles.hair} />}
+      {under && <View style={phone ? styles.openFlush : styles.openUnder}>{open}</View>}
+      {under && !phone && arrived != null && (
         <View style={styles.figureUnder}>
           <SizeFigure count={arrived} scale={scale} cap={cap} column={column} />
         </View>
@@ -189,6 +195,16 @@ export function LiveBanner({
       )}
     </View>
   );
+
+  if (phone)
+    return (
+      <View style={styles.phone} testID="demo.todaySize.livePhone">
+        <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
+        <View style={styles.phoneTop}>{top}</View>
+        <View style={styles.grow} />
+        <View style={styles.phoneNow}>{block}</View>
+      </View>
+    );
 
   if (upright)
     return (
@@ -256,11 +272,25 @@ const styles = StyleSheet.create({
     marginBottom: tokens.space4xl,
     marginTop: tokens.spaceXl,
   },
+  phone: { overflow: 'hidden', minHeight: 376, paddingTop: tokens.space6xl },
+  phoneTop: {
+    marginTop: -tokens.space4xl,
+    marginBottom: tokens.space4xl,
+    marginHorizontal: tokens.spaceXxl,
+  },
+  phoneNow: {
+    marginHorizontal: tokens.spaceXxl,
+    marginBottom: tokens.space4xl,
+    marginTop: tokens.spaceXl,
+  },
+  hair: { height: tokens.spaceHair },
+  openPhone: { alignSelf: 'stretch' },
   bell: { position: 'absolute', right: tokens.spaceXxl, top: 18 },
   now: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   grow: { flex: 1, minWidth: 0 },
   words: { gap: tokens.spacePillEnd },
+  wordsPhone: { gap: tokens.spaceXl },
   white: { color: tokens.colorInkOnDark },
   shrink: { flexShrink: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
@@ -313,5 +343,6 @@ const styles = StyleSheet.create({
   openUnder: { alignItems: 'flex-start', marginTop: tokens.spaceXs },
   figureUnder: { marginTop: tokens.spaceXs },
   right: { width: RIGHT_COLUMN, gap: 18 },
+  openFlush: { alignItems: 'flex-start' },
   pressed: { opacity: 0.8 },
 });

@@ -334,6 +334,8 @@ export function liveName(live: TodayLive): string | null {
 
 /** Main's live cover on its side (NowBlock, wide): the name at 48, the end line and Open the event at 16, the chips at 13. */
 export const LIVE_NAME = 48;
+/** The name on the phone's cover, as main's narrow NowBlock draws it. */
+export const LIVE_NAME_PHONE = 36;
 export const LIVE_ENDS = 16;
 export const LIVE_CHIP = 13;
 export const LIVE_OPEN = 16;
