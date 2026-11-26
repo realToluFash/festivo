@@ -6775,7 +6775,7 @@
     "email": "E-mail",
     "toAll": "Para todos os convidados",
     "toChosen": "Para os convidados escolhidos",
-    "notSentYet": "not sent yet",
+    "notSentYet": "ainda por enviar",
     "sending": "A enviar…",
     "reached": "Chegou a {{count, number}} de {{total, number}}",
     "queued_one": "Mensagem em fila. A enviar agora a {{count, number}} pessoa.",
