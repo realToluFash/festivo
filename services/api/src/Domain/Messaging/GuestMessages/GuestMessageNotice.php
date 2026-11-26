@@ -132,6 +132,9 @@ final readonly class GuestMessageNotice implements NotificationTypeInterface
             $lines[] = $this->trans('guest_message.notice.link', ['label' => $this->trans('guest_message.notice.read', [], $locale), 'url' => $link], $locale);
         }
 
+        $lines[] = '';
+        $lines[] = $this->trans('guest_message.notice.footer', ['hosts' => $hosts], $locale);
+
         return new RenderedNotification(
             $subject,
             Str\join($lines, "\n"),
