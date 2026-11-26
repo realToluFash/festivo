@@ -1,3 +1,6 @@
+import { CAPSULE_HEIGHT } from '../../layout/capsuleFit.ts';
+import { CAPSULE_TOP } from '../../layout/bandLive.ts';
+
 /** `Event::NAME_MAXIMUM`: the longest name an event takes. */
 export const EVENT_NAME_MAXIMUM = 120;
 
@@ -24,4 +27,8 @@ export function liveEventName(event: Exclude<LiveEvent, 'none'>): string {
 
 export function liveEventOf(given: string | undefined): LiveEvent {
   return LIVE_EVENTS.find((each) => each.key === given)?.key ?? 'diner';
+}
+
+export function capsuleRoomHeight(capsule: number): number {
+  return CAPSULE_TOP + Math.max(CAPSULE_HEIGHT, capsule);
 }
