@@ -4056,7 +4056,6 @@ export class ApiClient {
     return screen;
   }
 
-  /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
   /** The person's own night at their link (sc-3915), signed in as the roster entry's account; 404 for anybody else. */
   async staffLinkNight(token: string): Promise<MyNight> {
     return this.myNightOf(await this.post<unknown>('/api/staff-links/night', { token }));
@@ -4079,6 +4078,7 @@ export class ApiClient {
     return night;
   }
 
+  /** A person's own link (sc-3912), by its token in the body. `seen` is the visible page, which records Link opened inside the window; a preview fetch sends it false and records nothing. Refused `not_found` alike for an unknown, replaced or removed token. */
   async staffLinkWindow(token: string, seen: boolean): Promise<StaffLinkWindow> {
     const window = asStaffLinkWindow(
       await this.post<unknown>(seen ? '/api/staff-links/opened' : '/api/staff-links/look', {
