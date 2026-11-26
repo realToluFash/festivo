@@ -15,4 +15,5 @@ appId: host.exp.Exponent
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000
+- assertVisible: '{{t:eventEdit.eventGone}}'
 - takeScreenshot: gone
