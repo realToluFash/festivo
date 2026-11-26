@@ -346,7 +346,8 @@ function SideBar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Initials name={who} size={12} weight="bold" style={styles.faceInk} />
+          <EventMesh event={{ mesh: 'amber', photo: null }} />
+          <Initials name={who} size={12} weight="bold" />
         </View>
         <Text size={14} weight="semibold" accessible={false} style={styles.grow}>
           {who}
@@ -751,11 +752,10 @@ const styles = StyleSheet.create({
     width: tokens.space5xl,
     height: tokens.space5xl,
     borderRadius: tokens.spaceXl,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.colorAccentTint,
   },
-  faceInk: { color: tokens.colorAccentText },
   person: {
     minHeight: 52,
     flexDirection: 'row',
