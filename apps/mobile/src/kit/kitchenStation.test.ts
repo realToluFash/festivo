@@ -25,6 +25,7 @@ import {
   stationTime,
   stationView,
   topicMessage,
+  undoCloses,
   undoOpen,
   undoPlan,
   undoWords,
@@ -561,6 +562,14 @@ describe('undo after a mark (sc-4015)', () => {
   it('is offered until two minutes have passed, by the server’s clock', () => {
     expect(undoOpen(mark, after(119_000))).toBe(true);
     expect(undoOpen(mark, after(120_000))).toBe(false);
+  });
+
+  it('closes each mark’s window two minutes after it, so the clock redraws then and not on a tick', () => {
+    expect(undoCloses([mark, { ...mark, key: 'chicken', at: marked + 30_000 }])).toEqual([
+      marked + 120_000,
+      marked + 150_000,
+    ]);
+    expect(undoCloses([])).toEqual([]);
   });
 
   it('is offered on an item’s first mark, which has no id yet', () => {

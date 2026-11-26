@@ -44,12 +44,13 @@ import {
   stationTime,
   stationView,
   topicMessage,
+  undoCloses,
   undoOpen,
   undoPlan,
   undoWords,
   withoutRefused,
 } from '../../kit/kitchenStation.ts';
-import { useServerNow } from '../../kit/serverNow.ts';
+import { useServerNow, useServerNowAt } from '../../kit/serverNow.ts';
 import { storedServiceTaps } from '../../kit/serviceTaps.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { useSignedIn } from '../../signedIn.ts';
@@ -152,6 +153,7 @@ export function KitchenStationView({
   const [notSent, setNotSent] = useState<TapRefusal[]>([]);
   const [mine, setMine] = useState<ReadonlyMap<string, Mine>>(new Map());
   const [undoable, setUndoable] = useState<ReadonlyMap<string, StationMark>>(new Map());
+  const undoNow = useServerNowAt(undoCloses(undoable.values()));
   const [choosing, setChoosing] = useState<string | null>(null);
   const opener = useRef<ViewInstance | null>(null);
   const freshRef = useRef<ServiceFreshness | null>(null);
@@ -494,7 +496,7 @@ export function KitchenStationView({
       onUndo={(line) => void undo(line)}
       undoable={(line) => {
         const one = undoable.get(slot(line.courseId, line.key));
-        return one != null && undoOpen(one, now) ? one : null;
+        return one != null && undoOpen(one, undoNow) ? one : null;
       }}
       isKept={isKept}
       time={time}
