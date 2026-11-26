@@ -38,6 +38,7 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -304,7 +305,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             $step = $this->serviceStepRepository->findLastOn($event, $subject) ?? throw ApiException::notFound('access.not_found');
 
             if ($now->getTimestamp() - $step->getAt()->getTimestamp() > ServiceRules::UNDO_SECONDS) {
-                throw new ApiException(ErrorCode::UndoExpired, 'service.undo_expired');
+                throw new ApiException(ErrorCode::UndoExpired, 'service.undo_expired', parameters: ['{minutes}' => Math\div(ServiceRules::UNDO_SECONDS, 60)]);
             }
 
             if (!$step->getBy()->getId()->equals($by->getId()) && !$grants->holds(Permission::ServiceManage)) {

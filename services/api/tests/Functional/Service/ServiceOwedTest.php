@@ -140,6 +140,8 @@ final class ServiceOwedTest extends ServiceTestCase
         self::mockTime(new DateTimeImmutable('2027-03-06T19:03:01Z'));
         $this->post('/undo', ['subject' => $plate]);
         $this->assertRefused(409, ErrorCode::UndoExpired->type());
+        self::assertStringContainsString('more than 2 minutes', Type\string()->coerce($this->last()['title'] ?? ''));
+        self::assertStringContainsString('more than 2 minutes', Type\string()->coerce($this->last()['detail'] ?? ''));
         self::assertSame('toServe', $this->orderOf('Adaeze Obi')['stage'], 'nothing changed');
     }
 

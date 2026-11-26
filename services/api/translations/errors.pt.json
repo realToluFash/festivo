@@ -168,5 +168,5 @@
     "plate_empty": "Um prato sem nada não é levado a um convidado. Retire-o do tabuleiro.",
     "table_nothing_to_serve": "Ainda não há nada para pôr num tabuleiro para esta mesa.",
     "tray_check_incomplete": "Marque cada elemento como posto, ou como não posto e a levar depois, antes de verificar o tabuleiro.",
-    "undo_expired": "Passaram mais de 2 minutos desde esse passo, por isso já não pode ser anulado."
+    "undo_expired": "Passaram mais de {minutes} minutos desde esse passo, por isso já não pode ser anulado."
 }
