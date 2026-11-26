@@ -80,6 +80,43 @@ def swap(markdown, heading, body):
     return "".join(lines[:start + 1] + old[:first] + [new] + old[last + 1:] + lines[end:])
 
 
+def add_section(markdown, heading, body, order):
+    """The text with a level 1 section added where `order` puts it, straight after the end of
+    the nearest earlier heading of `order` the text has, else before its first heading, else
+    after its text. Every byte the text had stays; only the section and its blank lines are new."""
+    lines = (markdown or "").splitlines(keepends=True)
+    if not "".join(lines).strip():
+        return f"# {heading}\n\n" + "\n".join(body.strip().splitlines()) + "\n"
+    marks, fence = [], False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and (found := HEADING.match(line)):
+            marks.append((i, len(found.group(1)), found.group(2)))
+    earlier = {h.lower() for h in order[:order.index(heading)]}
+    before = [m for m in marks if m[2].lower() in earlier]
+    if before:
+        start, level, name = max(before, key=lambda m: order.index(next(
+            h for h in order if h.lower() == m[2].lower())))
+        end = next((i for i, lv, _ in marks if i > start and lv <= level), len(lines))
+        at = next((i + 1 for i in range(end - 1, start, -1) if lines[i].strip()), start + 1)
+    elif marks:
+        at = marks[0][0]
+    else:
+        at = max(i for i, line in enumerate(lines) if line.strip()) + 1
+    eol = "\r\n" if any(line.endswith("\r\n") for line in lines) else "\n"
+    head, tail = lines[:at], lines[at:]
+    put = []
+    if head and not head[-1].endswith(("\n", "\r")):
+        put.append(eol)
+    if head and head[-1].strip():
+        put.append(eol)
+    put += [f"# {heading}{eol}", eol, eol.join(body.strip().splitlines()) + eol]
+    if tail and tail[0].strip():
+        put.append(eol)
+    return "".join(head + put + tail)
+
+
 def is_ac(heading):
     return heading.lower().startswith(("ac", "acceptance"))
 

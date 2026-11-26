@@ -2065,6 +2065,51 @@ class EditingABody(Base):
             9, BODY.replace("- the old one", "- sc-1 and sc\u201128982"))
         self.assertIn("1 mention of other stories", said)
 
+    def add(self, body, section, text="New."):
+        self.fake.add(1, "In Review", ["dev2"])
+        live = dict(self.live(), body=body)
+        with mock.patch("soirely_queue.github.live", return_value=live):
+            said = actions.pr_edit(self.as_("dev2"), args(pr=9, section=section, text=text))
+        return said, self.edited.call_args[0][1]
+
+    def test_an_empty_body_fills_in_house_order(self):
+        body = ""
+        for name in ("Next steps", "Risks", "Description"):
+            said, body = self.add(body, name)
+        self.assertIn("added Description", said)
+        self.assertEqual(body, "# Description\n\nNew.\n\n# Risks\n\nNew.\n\n# Next Steps\n\nNew.\n")
+
+    def test_a_section_goes_after_the_nearest_earlier_one_and_keeps_every_byte(self):
+        body = "Top.\r\n\r\n# Description\r\n\r\nDid.\r\n\r\n## Sub\r\n\r\nx\r\n\r\n# Next Steps\r\n\r\nNone."
+        said, new = self.add(body, "Evidence")
+        self.assertIn("added Evidence of work", said)
+        self.assertEqual(new, "Top.\r\n\r\n# Description\r\n\r\nDid.\r\n\r\n## Sub\r\n\r\nx\r\n\r\n"
+                              "# Evidence of work\r\n\r\nNew.\r\n\r\n# Next Steps\r\n\r\nNone.")
+
+    def test_with_none_before_it_the_section_precedes_the_first_heading(self):
+        _, new = self.add("Top.\n# Next Steps\n\nNone.\n", "Risks")
+        self.assertEqual(new, "Top.\n\n# Risks\n\nNew.\n\n# Next Steps\n\nNone.\n")
+
+    def test_a_body_with_text_and_no_headings_gets_it_after(self):
+        _, new = self.add("Just text.", "Description")
+        self.assertEqual(new, "Just text.\n\n# Description\n\nNew.\n")
+
+    def test_names_that_cannot_be_added_are_refused(self):
+        for body, section, why in (
+                ("", "Summary", "no heading matches Summary; the body has: no headings; pr-edit "
+                                "can add Description, Risks, References, Evidence of work or "
+                                "Next Steps"),
+                ("", "R", "R matches Risks and References"),
+                ("#### Risks\n\nx\n", "Risks", "Risks is at level 4")):
+            with self.assertRaisesRegex(actions.Refused, why):
+                self.add(body, section)
+        self.edited.assert_not_called()
+
+    def test_a_heading_already_in_the_body_is_replaced_not_added(self):
+        said, new = self.add("# Risks long\n\nold\n", "Risks")
+        self.assertIn("replaced Risks long", said)
+        self.assertEqual(new, "# Risks long\n\nNew.\n")
+
     def test_one_section_changes_and_reads_back_at_once(self):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, dict(pr("pass"), body=BODY))
