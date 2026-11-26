@@ -77,6 +77,12 @@ describe('A person’s own link (sc-3912)', () => {
     await open(() => answer({ state: 'ended' }));
 
     expect(await screen.findByRole('heading', { name: 'This link has ended.' })).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Staff links stop working 2 hours after your last shift, or when the event ends.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/stopped working/u)).toBeNull();
     expect(screen.getByText('Nothing stays on this device.')).toBeTruthy();
   });
 
