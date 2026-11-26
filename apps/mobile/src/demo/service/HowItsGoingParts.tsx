@@ -162,7 +162,7 @@ export function TabBar({
 }
 
 export function Strip({ online, refused }: { online: boolean; refused: string }) {
-  const status = online ? 'Connected · up to date 20:24' : 'No connection · as of 20:22';
+  const status = online ? 'Connected · up to date at 20:24' : 'No connection · as of 20:22';
   return (
     <View style={styles.stripWrap}>
       <ReadOut words={status} style={styles.strip} accessibilityRole="text">

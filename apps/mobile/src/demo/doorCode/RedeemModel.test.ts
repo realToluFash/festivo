@@ -12,11 +12,21 @@ import {
   plainCode,
   redeemed,
 } from './DoorCodeModel.ts';
-import { joinAs, memberTitle, tryAgainAt, W, wrongCode, youreIn } from './DoorCodeWords.ts';
+import {
+  joinAs,
+  memberTitle,
+  providerOnlyLine,
+  providerOnlyTitle,
+  tryAgainAt,
+  W,
+  wrongCode,
+  youreIn,
+} from './DoorCodeWords.ts';
 import {
   afterPhoneCode,
   flowAt,
   freshFlow,
+  JOAO,
   phoneTitle,
   REDEEM_STATES,
   type RedeemStep,
@@ -60,6 +70,12 @@ describe('joining, every state (spec §5)', () => {
       'used-up': 'event',
       'code-second-number': 'code',
       'second-number': 'event',
+      'code-provider-only': 'code',
+      'code-provider-only-apple': 'code',
+      'code-provider-only-both': 'code',
+      'provider-only': 'providerOnly',
+      'provider-only-apple': 'providerOnly',
+      'provider-only-both': 'providerOnly',
       in: 'in',
       'event-in': 'inside',
       'event-in-view': 'inside',
@@ -199,6 +215,41 @@ describe('a name and a number, then the phone code (sc-4235)', () => {
     expect(flowAt('second-number')).toMatchObject({ step: 'event', numberSaid: W.secondNumber });
     expect(W.secondNumber).toBe(
       'This is an alternative number on a Soirely account, so it cannot sign you in. Enter that account’s primary number, or make this one primary.',
+    );
+  });
+
+  it('refuses a member of a Google-or-Apple-only organisation after the right code, nothing typed kept (sc-94849)', () => {
+    expect(afterPhoneCode(flowAt('code-provider-only'))).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+      name: '',
+      number: '',
+    });
+    expect(afterPhoneCode(flowAt('code-provider-only-apple')).providers).toEqual(['apple']);
+    expect(afterPhoneCode(flowAt('code-provider-only-both')).providers).toEqual([
+      'google',
+      'apple',
+    ]);
+    expect(afterPhoneCode({ ...flowAt('code'), name: 'Bisi', number: '915604117' })).toMatchObject({
+      step: 'providerOnly',
+      providers: ['google'],
+    });
+    expect(flowAt('code-provider-only').name).toBe('Bisi');
+  });
+
+  it('signs in any other number typed after a provider-only state, its providers left behind (sc-94849)', () => {
+    const joao = { ...flowAt('code-provider-only-apple'), ...JOAO, step: 'code' as const };
+    expect(afterPhoneCode(joao)).toMatchObject({ step: 'in', who: JOAO.name });
+    expect(afterPhoneCode({ ...flowAt('code-provider-only-both'), ...JOAO }).step).toBe('in');
+  });
+
+  it('names the member’s organisation and the linked providers, and no password', () => {
+    expect(providerOnlyTitle('Ìrè Events')).toBe('Ìrè Events signs in with Google or Apple only');
+    expect(providerOnlyLine('Ìrè Events', ['google'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google.',
+    );
+    expect(providerOnlyLine('Ìrè Events', ['google', 'apple'])).toBe(
+      'A code sent to your phone cannot sign you in to this account. Ìrè Events asks everyone in it to use Google or Apple.',
     );
   });
 

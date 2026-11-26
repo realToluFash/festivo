@@ -180,7 +180,29 @@ describe('door staff check guests in from a browser (sc-28230)', () => {
     expect(screen.getByRole('heading', { name: 'Sign in from your link or code' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Enter a door code' })).toBeDefined();
     expect(screen.queryByText(/Joana|Adaeze|Bisi/)).toBeNull();
+    expect(screen.queryByText('Signed out.')).toBeNull();
   });
+
+  it(
+    'signs out of the shift page check-in leads to without leaving it, and a reload drops the line',
+    SLOW,
+    async () => {
+      const router = await open('/demo/check-in/shift');
+      fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+      const title = await screen.findByRole('heading', { name: 'Sign in from your link or code' });
+      expect(screen.getByRole('status').textContent).toBe('Signed out.');
+      expect(document.activeElement).toBe(title);
+      expect(router.state.location.pathname).toBe('/demo/check-in/shift');
+      expect(screen.getByRole('link', { name: 'Enter a door code' })).toBeDefined();
+      expect(screen.queryByText(/Bisi|Door/)).toBeNull();
+      cleanup();
+
+      await open(`${router.state.location.pathname}${router.state.location.search}`);
+      expect(screen.getByRole('heading', { name: 'Sign in from your link or code' })).toBeDefined();
+      expect(screen.queryByText('Signed out.')).toBeNull();
+    },
+  );
 
   it(
     'replaces the list once access ends, and Can view goes back to the shift page',

@@ -1,6 +1,7 @@
 import { type OrganisationEvent } from '@soirely/api-client';
 import {
-  comingUp,
+  comingUpPanel,
+  formatEventClock,
   type EventTimeline as Timeline,
   type MarkedMilestone,
   markedMilestones,
@@ -82,7 +83,7 @@ function readerZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Event View's panel: the next four, or why there are none, in rows held at one height. */
+/** Event View's panel: the next four, or why there are none, in rows held at one height; while it is on with none, when it ends, as Today's live cover says it (sc-93858). */
 export function ComingUp({
   event,
   timeline: { load, now, retried, retry },
@@ -94,8 +95,7 @@ export function ComingUp({
   heading: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
-  const shown =
-    load.kind === 'loaded' ? comingUp(load.timeline.milestones, now, event.status === 'ended') : [];
+  const panel = load.kind === 'loaded' ? comingUpPanel(event, load.timeline.milestones, now) : null;
 
   return (
     <section className="card coming-up" aria-labelledby="coming-up-title">
@@ -116,7 +116,14 @@ export function ComingUp({
       <div className="coming-up-rows">
         {load.kind === 'loading' && <DatesLoading />}
         {load.kind === 'failed' && <DatesFailed announced={retried} onRetry={retry} />}
-        {load.kind === 'loaded' && shown.length === 0 && (
+        {load.kind === 'loaded' && panel?.kind === 'endsToday' && (
+          <p className="timeline-inset arrives">
+            {t('today.endsToday', {
+              time: formatEventClock(event.endsAt, event.timeZone, dateLocale()),
+            })}
+          </p>
+        )}
+        {load.kind === 'loaded' && panel?.kind === 'finished' && (
           <p className="timeline-inset timeline-finished arrives">
             <span className="timeline-finished-mark" aria-hidden="true">
               ✓
@@ -124,9 +131,9 @@ export function ComingUp({
             {t('timeline.finished')}
           </p>
         )}
-        {load.kind === 'loaded' && shown.length > 0 && (
+        {load.kind === 'loaded' && panel?.kind === 'rows' && (
           <ol className="timeline-list arrives">
-            {shown.map((marked, index) => (
+            {panel.rows.map((marked, index) => (
               <MilestoneRow
                 key={index}
                 marked={marked}

@@ -27,6 +27,7 @@ import { messagesStateOf } from '../messages/MessagesModel.ts';
 import { seatingStateOf } from '../seating/SeatingModel.ts';
 import { guestsFromOf, guestsStateOf } from '../guests/GuestsModel.ts';
 import { budgetStateOf } from '../budget/BudgetModel.ts';
+import { briefingStateOf } from '../briefing/briefingModel.ts';
 import { rosterStateOf } from '../staffLink/StaffRosterModel.ts';
 import { cardStateOf } from '../people/PeopleCardModel.ts';
 import { areaOf, sampleEvent } from './EventsSample.ts';
@@ -186,6 +187,7 @@ export function EventRoute() {
     people?: string;
     filter?: string;
     staff?: string;
+    briefing?: string;
     link?: string;
     from?: string;
     pushed?: string;
@@ -205,6 +207,7 @@ export function EventRoute() {
   };
   const area = areaOf(params.area);
   const staff = area === 'staff' ? rosterStateOf(params.staff) : null;
+  const briefing = area === 'staff' ? briefingStateOf(params.briefing) : null;
   // Without staff.read the event has no Staff: a deep link to it opens the event page, More open without it (sc-77903).
   const noStaff = staff === 'noRead';
   const from =
@@ -245,7 +248,7 @@ export function EventRoute() {
         : {})}
     >
       <EventScreen
-        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${staff ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
+        key={`${params.id ?? ''}:${state ?? ''}:${area ?? ''}:${messages ?? ''}:${seating ?? ''}:${guests ?? ''}:${budget ?? ''}:${staff ?? ''}:${briefing ?? ''}:${people ?? ''}:${from ?? ''}:${origin ?? ''}`}
         id={params.id}
         state={state}
         area={noBudget || noStaff ? null : area}
@@ -254,6 +257,7 @@ export function EventRoute() {
         guests={guests}
         budget={budget}
         staff={staff}
+        briefing={briefing}
         people={people}
         guestsFrom={from}
         without={noBudget ? 'budget' : noStaff ? 'staff' : undefined}

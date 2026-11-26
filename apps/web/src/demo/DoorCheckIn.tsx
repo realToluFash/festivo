@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 
 import { Brand } from '../components/Brand.tsx';
 import { Glyph } from '../components/Glyph.tsx';
@@ -22,7 +22,6 @@ import {
   SHIFT_NAME,
   SHIFT_NOW,
   SHIFT_SIGNED_IN_UNTIL,
-  SIGNED_OUT_HREF,
   addWalkIn,
   arrive,
   backOf,
@@ -42,7 +41,10 @@ import {
   undo,
 } from './doorCheckIn.ts';
 import { ReplyMark } from './GuestsParts.tsx';
+import { SignOutLine } from './Redeem.tsx';
+import { R } from './redeem.ts';
 import './doorCheckIn.css';
+import './redeem.css';
 
 const LIVE_AFTER = 2500;
 
@@ -583,12 +585,26 @@ function LinkPage({ gone }: { gone: Exclude<Gone, 'level_view'> }) {
   );
 }
 
-/** Check-in's address in a browser that is not signed in: it names no guest, event or person. */
-function NotSignedIn() {
+/** Check-in's address, or the shift page's, in a browser that is not signed in: it names no guest, event or person. Right after the shift page's Sign out it says "Signed out." above its heading, and a reload drops it (pm, 26 Nov, #95183). */
+function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
+  const title = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (signedOut) title.current?.focus();
+  }, [signedOut]);
+
   return (
     <Page back={null}>
       <div className="ci-card">
-        <h1 className="ci-title">{CW.notSignedIn.title}</h1>
+        {signedOut && (
+          <p className="rd-signed-out" role="status">
+            <SignOutLine size={26} />
+            {R.signedOut}
+          </p>
+        )}
+        <h1 ref={title} className="ci-title" tabIndex={-1}>
+          {CW.notSignedIn.title}
+        </h1>
         <p>{CW.notSignedIn.body}</p>
         <Link className="ci-primary" to="/demo/redeem?state=enter">
           {CW.notSignedIn.cta}
@@ -600,9 +616,18 @@ function NotSignedIn() {
 
 /** The shift page as far as sc-28230 draws it (CheckIn.dc.html, Reaching it): Check-in under the clock card at Can check guests in, none at Can view. */
 export function ShiftPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const view = params.get('level') === 'view';
-  const navigate = useNavigate();
+  const [signedOut, setSignedOut] = useState(params.get('state') === 'signed_out');
+
+  if (signedOut || params.get('state') === 'not_signed_in') {
+    return <NotSignedIn signedOut={signedOut} />;
+  }
+
+  function signOut(): void {
+    setSignedOut(true);
+    setParams({ state: 'not_signed_in' }, { replace: true });
+  }
 
   return (
     <Page back={null}>
@@ -625,11 +650,7 @@ export function ShiftPage() {
       <div className="ci-you">
         <p>{CW.shift.signedInAs(SHIFT_NAME)}</p>
         <p>{CW.shift.signedOutAt(signedOutTime(SHIFT_SIGNED_IN_UNTIL, SHIFT_NOW))}</p>
-        <button
-          type="button"
-          className="ci-secondary"
-          onClick={() => void navigate(SIGNED_OUT_HREF)}
-        >
+        <button type="button" className="ci-secondary" onClick={signOut}>
           {CW.shift.signOut}
         </button>
       </div>
