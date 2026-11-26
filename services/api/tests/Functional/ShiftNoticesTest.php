@@ -180,6 +180,55 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function onAnEventOverMoreThanSevenDaysAShiftLineCarriesItsDate(): void
+    {
+        $this->editEvent(['endsAt' => '2027-03-14T22:00']);
+        $sunday = $this->newShift('2027-03-14T12:00', '2027-03-14T18:00');
+        $this->briefed($this->ada);
+        $this->assign($sunday, $this->ada);
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(['You now have a shift from Sunday 14 Mar, 12:00 to 18:00.'], $this->pushes()[0][1] ?? null);
+    }
+
+    #[Test]
+    public function anOldTimeOnAnotherDayThanTheStartIsNamedWithItsWeekday(): void
+    {
+        $this->editTimes($this->evening, '2027-03-06T18:00', '2027-03-07T01:00');
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T18:00', '2027-03-06T23:00');
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(['Your end time is now 23:00 (was Sunday 01:00).'], $this->pushes()[0][1] ?? null);
+    }
+
+    #[Test]
+    public function aNewDateIsToldAsTheDayWithTheOld(): void
+    {
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-13T16:00', 'endsAt' => '2027-03-14T02:00']);
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(['The date is now Saturday 13 Mar (was Saturday 6 Mar).'], $this->pushes()[0][1] ?? null);
+    }
+
+    #[Test]
+    public function theToldLineGoesOnceTheBriefingIsMarkedSentAgain(): void
+    {
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame('told', $this->row($this->ada)['notice']['state'] ?? null);
+
+        $this->at('2027-03-01T11:00:00Z');
+        $this->editTimes($this->evening, '2027-03-06T20:00', '2027-03-06T23:00');
+        $this->briefed($this->ada);
+
+        self::assertSame(['notice' => null, 'briefing' => 'sent'], $this->row($this->ada));
+    }
+
+    #[Test]
     public function theBriefingMarkedSentAgainTakesBackAChangeWaitingToGo(): void
     {
         $this->briefed($this->ada);
