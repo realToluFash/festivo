@@ -1,5 +1,5 @@
 import { ApiError, type CheckIn, type OrganisationEvent, realtimeTopic } from '@soirely/api-client';
-import { REPLY_KEY, companionShown, countLine, doorSeatLine, replyDate } from '@soirely/domain';
+import { countLine } from '@soirely/domain';
 import { type BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import { CryptoDigestAlgorithm, digestStringAsync } from 'expo-crypto';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -28,7 +28,7 @@ import {
 import { keepList, keepWaiting, keptList, keptWaiting } from '../kit/doorStore.ts';
 import { sidebarCardOf } from '../kit/eventTop.ts';
 import { cardTags } from '../kit/eventsList.ts';
-import { markOf } from '../kit/guestRows.ts';
+import { type Person, peopleOf, saidOf } from '../kit/scanPeople.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import type { LayoutKind } from '../layout/classify.ts';
 import { useSignedIn } from '../signedIn.ts';
@@ -50,17 +50,6 @@ const SIDE_PANEL = 420;
 const UP_PANEL = 540;
 
 type Shown = { kind: 'guest'; guestId: string; twice: boolean } | { kind: 'notOnList' };
-
-interface Person {
-  id: string;
-  name: string;
-  companion: boolean;
-  /** Their seat or "No seat yet", under the name; null on an event nobody is seated on (sc-60684). */
-  seat: string | null;
-  line: string;
-  mark: 'arrived' | ReturnType<typeof markOf>;
-  arrived: boolean;
-}
 
 /** The door's list on this device (sc-1301): kept for offline, read again and the waiting arrivals sent whenever the connection answers. */
 function useDoorList(eventId: string, by: string | null) {
@@ -193,66 +182,6 @@ function useDoorList(eventId: string, by: string | null) {
     arrive,
     undo,
   };
-}
-
-function peopleOf(
-  t: ReturnType<typeof useTranslation>['t'],
-  read: Extract<ScanRead, { kind: 'guest' }>,
-  checkIn: CheckIn,
-  twice: boolean,
-): Person[] {
-  const { timeZone } = checkIn;
-  const arrivedLine = (arrival: { at: string; by: string | null }) =>
-    arrival.by == null
-      ? t('checkIn.arrivedAt', { time: clockOf(arrival.at) })
-      : t('checkIn.arrivedAtBy', { time: clockOf(arrival.at), name: arrival.by });
-  const { guest } = read;
-  const word = t(REPLY_KEY[guest.reply]);
-  const hostLine =
-    guest.arrival != null
-      ? twice
-        ? arrivedLine(guest.arrival)
-        : `${word} · ${arrivedLine(guest.arrival)}`
-      : read.notComingSince != null
-        ? t('guestList.replied', {
-            reply: word,
-            date: replyDate(read.notComingSince, timeZone, currentLocale()),
-          })
-        : word;
-  const names = guest.companions.map((one) => one.fullName);
-
-  return [
-    {
-      id: guest.id,
-      name: guest.fullName,
-      companion: false,
-      seat: doorSeatLine(t, checkIn, guest.seat),
-      line: hostLine,
-      mark: guest.arrival != null ? 'arrived' : markOf(guest.reply),
-      arrived: guest.arrival != null,
-    },
-    ...guest.companions.map((one, at) => ({
-      id: one.id,
-      name: companionShown(t, guest.fullName, names, at),
-      companion: true,
-      seat: doorSeatLine(t, checkIn, one.seat),
-      line:
-        one.arrival != null
-          ? t('checkIn.scan.companionLine', { line: arrivedLine(one.arrival) })
-          : one.state === 'held'
-            ? t('checkIn.scan.companionHeld')
-            : t('checkIn.scan.companionLine', { line: t(REPLY_KEY[one.state]) }),
-      mark: one.arrival != null ? ('arrived' as const) : markOf(one.state),
-      arrived: one.arrival != null,
-    })),
-  ];
-}
-
-function saidOf(people: readonly Person[], twice: boolean, nothingNew: string): string {
-  return people
-    .map((one) => [one.name, one.seat, one.line].filter((part) => part != null).join(', '))
-    .concat(twice ? [nothingNew] : [])
-    .join('. ');
 }
 
 function NotListedMark() {
@@ -588,7 +517,7 @@ export function ScannerView({
     read?.kind === 'guest' && shownScan?.kind === 'guest'
       ? checkIn == null
         ? null
-        : peopleOf(t, read, checkIn, shownScan.twice)
+        : peopleOf(t, read, checkIn, shownScan.twice, currentLocale())
       : null;
 
   const onScanned = ({ data }: BarcodeScanningResult) => {
@@ -604,7 +533,7 @@ export function ScannerView({
       }
       const twice = found.arrived != null;
       setShownScan({ kind: 'guest', guestId: found.guest.id, twice });
-      tell(saidOf(peopleOf(t, found, checkIn, twice), twice, nothingNew));
+      tell(saidOf(peopleOf(t, found, checkIn, twice, currentLocale()), twice, nothingNew));
     };
     if (!isCheckInCode(data)) {
       answer({ kind: 'notOnList' });
