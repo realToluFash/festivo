@@ -211,3 +211,17 @@ describe('the live cover upright from AX1 (sc-93578)', () => {
     expect(chips).toMatch(/grows \? styles\.chipGrows : styles\.chipFixed/u);
   });
 });
+
+describe('the phone band’s title at the largest sizes (sc-92248)', () => {
+  it('fits the title between the tile and Search from AX1, and is main’s below', () => {
+    const title = /function BandTitleText\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(title).toMatch(/bandTitle\(fontScale, wide, row\)/u);
+    expect(title).toMatch(/numberOfLines=\{1\}/u);
+    expect(title).toMatch(/lineHeight: bandLine\(drawn\)/u);
+    expect(title).toMatch(/fitted == null && styles\.waiting/u);
+    expect(title).toMatch(/if \(!large\) \{/u);
+    const band = /export function Band\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(band).toMatch(/setTileEnd\(layout\.x \+ layout\.width\)/u);
+    expect(band).toMatch(/setSearchStart\(layout\.x\)/u);
+  });
+});

@@ -1917,6 +1917,26 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/events/evt-wed-4?state=now',
       },
       {
+        title: 'A one-day event · on, nothing ahead',
+        what: 'Dîner en direct at 20:40: no step on its card, Coming up says when it ends (sc-93858)',
+        href: '/demo/events/evt-diner-1?state=liveOneDay',
+      },
+      {
+        title: 'A one-day event · Speeches ahead',
+        what: 'At 21:15: Next up: Speeches on its card and in Coming up, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDaySpeeches',
+      },
+      {
+        title: 'A one-day event · over',
+        what: 'At 23:45: every date has passed, with Duplicate, as on main',
+        href: '/demo/events/evt-diner-1?state=liveOneDayOver',
+      },
+      {
+        title: 'Events · a one-day event happening now',
+        what: 'Dîner en direct leads Upcoming with no step on its card',
+        href: '/demo/events?state=liveOneDay',
+      },
+      {
         title: 'An event · paused',
         what: 'Resume is the step',
         href: '/demo/events/evt-party-2?state=paused',

@@ -62,3 +62,15 @@ export function emptySentenceSize(scale: number, widest: number, room: number): 
 export function emptyStart(scale: number): number {
   return wordsStart(EMPTY_SENTENCE, scale, Number.POSITIVE_INFINITY);
 }
+
+/** Notification settings at the panel's foot on main (BellBody's TextAction): 15 semibold. */
+export const SETTINGS_LINK = 15;
+
+/** sc-94028: the sentence's rule for Notification settings: main's size below AX1; from AX1 the largest at which its widest word fits the body's line, never under 15 and with no cap. */
+export function settingsSize(scale: number, widest: number, room: number): number {
+  return wordsSize(SETTINGS_LINK, scale, Number.POSITIVE_INFINITY, widest, Math.max(room, 1));
+}
+
+export function settingsStart(scale: number): number {
+  return wordsStart(SETTINGS_LINK, scale, Number.POSITIVE_INFINITY);
+}

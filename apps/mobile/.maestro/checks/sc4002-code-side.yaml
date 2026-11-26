@@ -1,0 +1,41 @@
+# sc-4002, on its side: the door code form's four levels, its blank check and the run-the-floor refusal, beside the demo. The refusal needs QA_API_URL's proxy turning the role into can_run_floor.
+appId: host.exp.Exponent
+---
+- setOrientation: LANDSCAPE_LEFT
+- runScript:
+    file: ../batch/helper.js
+    env:
+      ASK: /landscape
+- waitForAnimationToEnd: { timeout: 3000 }
+- openLink: ${METRO_URL}/--/events/01a21572-bae5-7306-a41e-377df526ef2b?area=people
+- scrollUntilVisible: { element: { id: 'door.another' }, timeout: 60000, centerElement: true }
+- tapOn: { id: 'door.another' }
+- extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 15000 }
+- waitForAnimationToEnd
+- takeScreenshot: code-open-product
+- scrollUntilVisible: { element: { id: 'door.make.cap' }, timeout: 20000 }
+- takeScreenshot: code-open-product-foot
+- tapOn: { id: 'door.make.make' }
+- waitForAnimationToEnd
+- takeScreenshot: code-blank-product
+- tapOn: { id: 'door.make.job' }
+- inputText: 'Floor, table 4'
+- hideKeyboard
+- scrollUntilVisible: { element: { id: 'door.make.cap' }, timeout: 20000, centerElement: true }
+- tapOn: { id: 'door.make.cap' }
+- inputText: '20'
+- hideKeyboard
+- waitForAnimationToEnd
+- scrollUntilVisible: { element: { id: 'door.make' }, direction: UP, timeout: 20000 }
+- tapOn: { id: 'door.make.make' }
+- waitForAnimationToEnd: { timeout: 4000 }
+- takeScreenshot: code-refused-product-at
+- extendedWaitUntil: { visible: 'A join code cannot let people run the floor.*', timeout: 15000 }
+- scrollUntilVisible: { element: { id: 'door.make' }, direction: UP, timeout: 20000 }
+- takeScreenshot: code-refused-product
+- openLink: ${METRO_URL}/--/demo/people?code=open
+- extendedWaitUntil: { visible: { id: 'door.make' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: code-open-demo
+- scrollUntilVisible: { element: { id: 'door.make.cap' }, timeout: 20000 }
+- takeScreenshot: code-open-demo-foot

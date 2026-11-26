@@ -4,8 +4,43 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312), upright (its chips sc-93211; its name, end line and Open the event sc-93578) and on the iPhone (its chips sc-93855), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312), upright (its chips sc-93211; its name, end line and Open the event sc-93578; with a guest arrived sc-94022) and on the iPhone (its chips sc-93855), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'Ouvrir l’événement · AX5, upright, a guest arrived',
+    what: 'Dîner en / direct as with nobody arrived; Ouvrir l’événement whole on its own line under the end line, never l’événem / ent; under it 1/12 on one line over arrivée, beside its ring, drawn over nothing; one tap on the button opens Dîner en direct (a toast here)',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&arrived=one',
+  },
+  {
+    title: 'Open the event · AX5, upright, a guest arrived',
+    what: 'Dîner en direct, the end line and Open the event exactly as with nobody arrived, never Open the / event beside the figure; 1/12 over arrived under the button',
+    href: '/demo/today-size?size=ax5&lang=en&live=dinner&arrived=one',
+  },
+  {
+    title: '141/152 · AX5, upright',
+    what: '141/152 on one line beside its ring, arrivées whole under it; the name and Ouvrir l’événement as with nobody arrived',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&arrived=many',
+  },
+  {
+    title: 'The first arriving · AX5, upright',
+    what: 'Every 4 seconds 1/12 over arrivée comes in under Ouvrir l’événement and goes again; the name, its breaks and the button never move',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&arrived=live',
+  },
+  {
+    title: 'Live now · AX1, upright, a guest arrived',
+    what: 'From AX1 the figure under Open the event, the button on its own line under the end line',
+    href: '/demo/today-size?size=ax1&lang=en&live=dinner&arrived=one',
+  },
+  {
+    title: 'Live now · seventh step, a guest arrived',
+    what: 'As on main, upright and on its side: 1/12 over arrived and Open the event in the column at the right of the words',
+    href: '/demo/today-size?size=seventh&lang=en&live=dinner&arrived=one',
+  },
+  {
+    title: 'En cours · AX5, on its side, a guest arrived',
+    what: 'Dîner en / direct as with nobody arrived; Ouvrir l’événement whole under the end line, 1/12 over arrivée whole under it; also arrived=many for 141/152',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&arrived=one',
+  },
   {
     title: 'Live now · AX5, iPhone',
     what: 'Live now with its dot and Day 1 of 1 at their full size, each chip grown to hold its words, Day 1 of 1 under Live now from the same left edge where both do not fit, both clear of the pill row above and the name below; never Day cut through its y',

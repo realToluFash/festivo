@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../api.ts';
 import { statusFrom } from '../../secondFactorStatus.ts';
-import { Field, Primary, Title } from './RedeemPhone.tsx';
+import { Field, Primary, Says, Title } from './RedeemPhone.tsx';
 
 /** "Enter your code" after a link's phone code, in the link's own look, as the web demo's `two-factor` state draws it (sc-4235). */
 export function StaffTwoFactor({
@@ -78,8 +78,7 @@ export function StaffTwoFactor({
             id="ss-authenticator"
             label={t('twoFactor.code')}
             value={digits}
-            said={said?.words ?? null}
-            alert={said?.alert ?? false}
+            told={said == null ? undefined : 'ss-authenticator-line'}
             inputRef={fieldRef}
             code
             autoComplete="one-time-code"
@@ -90,6 +89,9 @@ export function StaffTwoFactor({
               setSaid(null);
             }}
           />
+          <Says id="ss-authenticator-line" alert={said?.alert ?? false}>
+            {said?.words ?? null}
+          </Says>
         </div>
         <Primary submit busy={busy}>
           {busy ? t('staffLink.signIn.signingIn') : t('twoFactor.verify')}

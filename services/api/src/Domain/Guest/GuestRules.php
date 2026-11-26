@@ -94,7 +94,7 @@ final readonly class GuestRules
             $named[] = '' === $companion ? null : $companion;
         }
 
-        $greetAs = null === $greetAs ? '' : Str\trim($greetAs);
+        $greetAs = null === $greetAs ? '' : VisibleText::trim($greetAs);
 
         if (VisibleText::tooLong($greetAs, Guest::GREET_AS_MAXIMUM)) {
             $violations[] = [

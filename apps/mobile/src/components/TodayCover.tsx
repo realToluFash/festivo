@@ -15,6 +15,15 @@ import { coverRowSides, pastSides, sidePadding, tabBarSides } from './bodyEdges.
 import { BandLiveLine } from './BandLiveLine.tsx';
 import { Text, TitleCap, type TextProps } from './Text.tsx';
 import { CappedWholeWords, useMeasuredAt, useWholeWords } from './Title.tsx';
+import {
+  BAND_CLEAR,
+  BAND_TITLE,
+  type BandRow,
+  bandLine,
+  bandRoom,
+  bandStart,
+  bandTitle,
+} from '../layout/bandTitle.ts';
 import { TAB_LABEL, eventBarLabelSize, tabLabelStart } from '../layout/tabLabel.ts';
 import {
   atAccessibilitySizes,
@@ -984,6 +993,8 @@ export function Band({
   const grown = !phone && named != null && atAccessibilitySizes(fontScale);
   const [capsule, setCapsule] = useState(CAPSULE_HEIGHT);
   const tall = capsule > CAPSULE_HEIGHT;
+  const [tileEnd, setTileEnd] = useState<number>();
+  const [searchStart, setSearchStart] = useState<number>();
 
   return (
     <View
@@ -1011,22 +1022,33 @@ export function Band({
         ]}
       >
         {!phone && measure}
-        <OrgButton compact />
+        <View onLayout={({ nativeEvent: { layout } }) => setTileEnd(layout.x + layout.width)}>
+          <OrgButton compact />
+        </View>
         <View style={styles.grow} />
-        <View onLayout={(event) => setEnd(event.nativeEvent.layout.width)}>
+        <View
+          onLayout={({ nativeEvent: { layout } }) => {
+            setEnd(layout.width);
+            setSearchStart(layout.x);
+          }}
+        >
           <SearchAndBell />
         </View>
-        <View style={phone ? styles.bandTitle : styles.capsuleAt} pointerEvents="box-none">
-          {phone ? (
-            <Text size={17} weight="semibold" accessibilityRole="header" style={styles.white}>
-              {t('todayScreen.today')}
-            </Text>
-          ) : (
+        {phone ? (
+          <BandTitleText
+            row={
+              row == null || tileEnd == null || searchStart == null
+                ? undefined
+                : { width: row, tileEnd, searchStart }
+            }
+          />
+        ) : (
+          <View style={styles.capsuleAt} pointerEvents="box-none">
             <View key={labelSize} onLayout={(event) => setCapsule(event.nativeEvent.layout.height)}>
               {labelSize != null && <TabCapsule onTab={onTab} labelSize={labelSize} />}
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
       {grown ? (
         <BandLiveLine scale={fontScale} said={named} width={row} />
@@ -1044,6 +1066,57 @@ export function Band({
         )
       )}
     </View>
+  );
+}
+
+/** The phone's band title: main's below AX1; from AX1 whole on one line, 8 clear of the tile and Search, in the row's height (sc-92248). */
+function BandTitleText({ row }: { row: BandRow | undefined }) {
+  const { t } = useTranslation();
+  const { fontScale } = useWindowDimensions();
+  const title = t('todayScreen.today');
+  const large = atAccessibilitySizes(fontScale);
+  const start = bandStart(fontScale);
+  const { widths, measure } = useMeasuredAt(start, [title]);
+  const [wide] = widths;
+  const fitted = row == null || wide == null ? undefined : bandTitle(fontScale, wide, row);
+
+  if (!large) {
+    return (
+      <View style={styles.bandTitle} pointerEvents="box-none">
+        <Text size={BAND_TITLE} weight="semibold" accessibilityRole="header" style={styles.white}>
+          {title}
+        </Text>
+      </View>
+    );
+  }
+
+  const drawn = fitted?.size ?? start;
+  const inRoom = fitted?.centred === 'room' && row != null;
+
+  return (
+    <>
+      {measure}
+      <View
+        style={[
+          styles.bandTitle,
+          inRoom && { left: row.tileEnd + BAND_CLEAR, right: undefined, width: bandRoom(row) },
+        ]}
+        pointerEvents="box-none"
+      >
+        <Text
+          key={drawn}
+          size={drawn}
+          weight="semibold"
+          allowFontScaling={false}
+          accessibilityRole="header"
+          numberOfLines={1}
+          // Hidden until it is measured, so no frame draws it under Search.
+          style={[styles.white, { lineHeight: bandLine(drawn) }, fitted == null && styles.waiting]}
+        >
+          {title}
+        </Text>
+      </View>
+    </>
   );
 }
 
@@ -1455,6 +1528,7 @@ const styles = StyleSheet.create({
   bannerNow: { marginHorizontal: tokens.space4xl, marginBottom: 26, marginTop: 76 },
   band: { overflow: 'hidden' },
   bandTitle: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  waiting: { opacity: 0 },
   bandNow: {
     position: 'absolute',
     left: tokens.spaceXl,

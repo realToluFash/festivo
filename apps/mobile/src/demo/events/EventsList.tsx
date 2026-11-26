@@ -66,7 +66,9 @@ import {
   summaryLine,
   withoutTab,
 } from './EventsModel.ts';
-import { CLOCKS, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { CLOCKS, DINER, EVENTS, OFFLINE_AS_OF, READER_ZONE } from './EventsSample.ts';
+import { liveOneDayClock, seedRunOfShow, stepless } from './LiveOneDay.ts';
+import { KeepsHeight } from './LiveOneDayParts.tsx';
 import { W, say } from './EventsWords.ts';
 import { NewEventScreen } from './NewEvent.tsx';
 import { isNewState } from './NewEventModel.ts';
@@ -125,7 +127,10 @@ export function EventsList({
   const shell = useShell();
   const locale = formattingLocale('en', getLocales()[0]?.languageTag);
   const shownLocale = dateLocale();
-  const now = useMemo(() => new Date(CLOCKS.reader), []);
+  const now = useMemo(
+    () => (state === 'liveOneDay' ? liveOneDayClock(state) : new Date(CLOCKS.reader)),
+    [state],
+  );
   const start = useMemo(() => listStart(state), [state]);
   const [tab, setTab] = useState(start.tab);
   const [typed, setTyped] = useState(start.typed);
@@ -151,7 +156,8 @@ export function EventsList({
   const wide = shell.layout !== 'phone';
   const events = useMemo(() => {
     if (first) return [];
-    const all = EVENTS.filter(
+    seedRunOfShow(state);
+    const all = (state === 'liveOneDay' ? [...EVENTS, DINER] : EVENTS).filter(
       (event) => event.id !== deleted && (state !== 'eventsZero' || event.status === 'draft'),
     );
     const emptied = emptyTabOf(state);
@@ -411,16 +417,51 @@ export function EventsList({
           {tabEvents.length === 0 && <EventsEmptyTab tab={tab} />}
           {card != null && (
             <View>
-              <EventCard
-                event={card}
-                now={now}
-                locale={shownLocale}
-                wide={wide}
-                onOpen={() => openEvent(card.id)}
-                takes={() => true}
-                onStep={(step) => stepFrom(card, step, shell.tell)}
-                testID="events.card"
-              />
+              {stepless(card.phase, card.milestones ?? [], now, card.status === 'ended') ? (
+                <KeepsHeight
+                  footed={
+                    <EventCard
+                      event={{ ...card, phase: 'finished' }}
+                      now={now}
+                      locale={shownLocale}
+                      wide={wide}
+                      takes={() => true}
+                      onStep={() => undefined}
+                      testID="events.card.unseen"
+                    />
+                  }
+                >
+                  {(height) => (
+                    <EventCard
+                      event={{ ...card, milestones: null }}
+                      now={now}
+                      locale={shownLocale}
+                      wide={wide}
+                      {...(height != null && { height })}
+                      onOpen={() =>
+                        openEvent(
+                          card.id,
+                          card.id === DINER.id ? { state: 'liveOneDay' } : undefined,
+                        )
+                      }
+                      takes={() => true}
+                      onStep={(step) => stepFrom(card, step, shell.tell)}
+                      testID="events.card"
+                    />
+                  )}
+                </KeepsHeight>
+              ) : (
+                <EventCard
+                  event={card}
+                  now={now}
+                  locale={shownLocale}
+                  wide={wide}
+                  onOpen={() => openEvent(card.id)}
+                  takes={() => true}
+                  onStep={(step) => stepFrom(card, step, shell.tell)}
+                  testID="events.card"
+                />
+              )}
               {guestLine(card, 0)}
             </View>
           )}

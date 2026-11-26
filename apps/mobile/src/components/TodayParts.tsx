@@ -12,8 +12,13 @@ import {
 } from 'react-native';
 
 import { Text } from './Text.tsx';
-import { CappedWholeWords, MenuWords } from './Title.tsx';
-import { atAccessibilitySizes, capUnderTitle, wholeLineHeight } from '../layout/textSize.ts';
+import { CappedWholeWords, MeasuredWords, MenuWords } from './Title.tsx';
+import {
+  atAccessibilitySizes,
+  capUnderTitle,
+  dayLineShares,
+  wholeLineHeight,
+} from '../layout/textSize.ts';
 import { tokens } from '../theme/tokens.ts';
 import { EventMesh, eventColour } from './EventMesh.tsx';
 import { Glyph } from './Glyph.tsx';
@@ -424,6 +429,56 @@ function Strip({ moment, wide }: { moment: Moment; wide: boolean }) {
   );
 }
 
+/** From AX1: hidden until it knows whether the dotted date fits beside the name whole; if not, the date takes the line under without its dot (sc-92250). */
+function FittedDayLine({ day }: { day: AgendaDay }) {
+  const { fontScale } = useWindowDimensions();
+  const dotted = `· ${day.when}`;
+  const key = `${fontScale}|${day.day}|${dotted}`;
+  const [room, setRoom] = useState(0);
+  const [measured, setMeasured] = useState<{ key: string; name?: number; date?: number }>({
+    key: '',
+  });
+  const widths = measured.key === key ? measured : { key };
+  const known = widths.name != null && widths.date != null && room > 0;
+  const shares = !known || dayLineShares(widths.name ?? 0, widths.date ?? 0, tokens.spaceXs, room);
+  const keep = (which: 'name' | 'date') => (_: string, width: number) =>
+    setMeasured((now) => {
+      const kept = now.key === key ? now : { key };
+
+      return kept[which] === width ? now : { ...kept, [which]: width };
+    });
+  const nameStyle = day.today ? styles.accent : undefined;
+
+  return (
+    <View
+      style={[styles.dayLineStacked, !known && styles.waiting]}
+      onLayout={(event) => setRoom(event.nativeEvent.layout.width)}
+    >
+      <MeasuredWords words={[day.day]} size={14} weight="bold" onWidth={keep('name')} />
+      <MeasuredWords words={[dotted]} size={TYPE.sub} weight="medium" onWidth={keep('date')} />
+      {shares ? (
+        <View style={styles.dayLineShared}>
+          <Text size={14} weight="bold" style={nameStyle}>
+            {day.day}
+          </Text>
+          <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
+            {dotted}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <CappedWholeWords size={14} weight="bold" room={room} style={nameStyle}>
+            {day.day}
+          </CappedWholeWords>
+          <CappedWholeWords size={TYPE.sub} weight="medium" room={room} style={styles.secondary}>
+            {day.when}
+          </CappedWholeWords>
+        </>
+      )}
+    </View>
+  );
+}
+
 function AgendaDays({
   days,
   nothing,
@@ -442,14 +497,18 @@ function AgendaDays({
 
         return (
           <View key={day.date}>
-            <View style={styles.dayLine}>
-              <Text size={14} weight="bold" style={day.today ? styles.accent : undefined}>
-                {day.day}
-              </Text>
-              <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
-                {`· ${day.when}`}
-              </Text>
-            </View>
+            {stacked ? (
+              <FittedDayLine day={day} />
+            ) : (
+              <View style={styles.dayLine}>
+                <Text size={14} weight="bold" style={day.today ? styles.accent : undefined}>
+                  {day.day}
+                </Text>
+                <Text size={TYPE.sub} weight="medium" style={styles.secondary}>
+                  {`· ${day.when}`}
+                </Text>
+              </View>
+            )}
             {day.items.length === 0 ? (
               <Text
                 size={14}
@@ -1075,6 +1134,9 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spacePillEnd,
     paddingBottom: tokens.spaceXxs,
   },
+  dayLineStacked: { paddingTop: tokens.spacePillEnd, paddingBottom: tokens.spaceXxs },
+  dayLineShared: { flexDirection: 'row', alignItems: 'baseline', columnGap: tokens.spaceXs },
+  waiting: { opacity: 0 },
   nothing: { paddingTop: tokens.spaceXxs, paddingBottom: tokens.spacePillEnd },
   item: { paddingVertical: 7 },
   itemStacked: { paddingVertical: 7, gap: tokens.spaceXs },

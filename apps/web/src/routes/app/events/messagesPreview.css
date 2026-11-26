@@ -254,6 +254,11 @@
   bottom: calc(100% + var(--spaceXs));
 }
 
+.mg-insert-list[data-under] {
+  top: calc(100% + var(--spaceXs));
+  bottom: auto;
+}
+
 .mg-insert-list button {
   box-sizing: border-box;
   width: 100%;

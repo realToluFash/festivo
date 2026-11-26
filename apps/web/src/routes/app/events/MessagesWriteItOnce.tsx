@@ -28,6 +28,7 @@ import { Glyph } from '../../../components/Glyph.tsx';
 import { useSession } from '../../../session.ts';
 import { languageName, languageNameInSentence } from '../settings/organisationDetails.ts';
 import { tokenName, tokenWord } from './messageWords.ts';
+import { insertOpensUnder, shownBox } from './insertPlacement.ts';
 import './messagesPreview.css';
 
 /** A message's words with each token as its chip, for a bubble and the field alike. */
@@ -205,11 +206,23 @@ export function InsertMenu({ onPick }: { onPick: (token: MessageToken) => void }
   const into = useRef(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLUListElement>(null);
+  const [under, setUnder] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!open || button.current == null || menu.current == null) return;
+    setUnder(
+      insertOpensUnder(
+        button.current.getBoundingClientRect(),
+        shownBox(button.current),
+        menu.current.offsetHeight,
+      ),
+    );
+  }, [open]);
 
   useLayoutEffect(() => {
     if (!open || !into.current) return;
     into.current = false;
-    itemsIn(menu.current)[0]?.focus();
+    itemsIn(menu.current)[0]?.focus({ preventScroll: true });
   }, [open]);
 
   useEffect(() => {
@@ -284,6 +297,7 @@ export function InsertMenu({ onPick }: { onPick: (token: MessageToken) => void }
           role="menu"
           aria-label={t('eventMessages.insert')}
           className="mg-pop mg-insert-list"
+          data-under={under || undefined}
         >
           {INSERTABLE_TOKENS.map((token, at) => (
             <li key={token} role="none">

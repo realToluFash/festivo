@@ -5,7 +5,7 @@ import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
-import { atAccessibilitySizes } from '../../layout/textSize.ts';
+import { atAccessibilitySizes, dayLineShares } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import { FitWords } from './FitWords.tsx';
@@ -15,7 +15,6 @@ import {
   SIZE_TODAY,
   WEEK_DAYS,
   type WeekDay,
-  dayLineShares,
   daysUntil,
   wordsStart,
 } from './todaySizeRules.ts';

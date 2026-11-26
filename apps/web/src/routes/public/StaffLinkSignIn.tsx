@@ -17,8 +17,8 @@ import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
 import { adoptAccount, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
-import { atWords } from '../app/events/doorCodes.ts';
 import { codePassed } from '../../providerSignIn.ts';
+import { MyNightPage } from './MyNight.tsx';
 import { PhoneCodeStep, Primary, SignOutLine, Title } from './RedeemPhone.tsx';
 import { StaffTwoFactor } from './StaffTwoFactor.tsx';
 import '../../components/desk.css';
@@ -114,37 +114,17 @@ export function StaffLinkSignIn({
   const masked = link.mobile == null ? '' : maskedPhone(link.mobile);
   const name = session.status === 'signedIn' ? session.session.name : '';
 
+  if (reader === 'yours')
+    return (
+      <MyNightPage
+        token={token}
+        name={name}
+        onSignOut={() => void signOut()}
+        onLost={() => void onSignedIn()}
+      />
+    );
+
   function body(): ReactNode {
-    if (reader === 'yours')
-      return (
-        <>
-          <Title titleRef={title}>{link.event}</Title>
-          <LinkCard link={link} named={false} />
-          <div className="rd-you">
-            <p className="rd-you-name">{t('redeem.signedInAs', { name })}</p>
-            {link.signedOutAt != null && link.timeZone != null && (
-              <p className="rd-you-line">
-                {t('redeem.signedOutAt', {
-                  time: atWords(
-                    link.signedOutAt,
-                    {
-                      endsAt: link.signedOutAt,
-                      timeZone: link.timeZone,
-                      locale: dateLocale(),
-                      now: new Date(),
-                    },
-                    t,
-                  ),
-                })}
-              </p>
-            )}
-            <button type="button" className="rd-out" onClick={() => void signOut()}>
-              <SignOutLine />
-              {t('redeem.signOut')}
-            </button>
-          </div>
-        </>
-      );
     if (reader === 'other')
       return (
         <>
