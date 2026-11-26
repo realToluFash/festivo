@@ -25,7 +25,6 @@ import {
   SIZE_TODAY,
   WEEK_DAYS,
   chipsUnderDates,
-  dayLineShares,
   daysUntil,
   linkUnder,
   liveName,
@@ -138,14 +137,6 @@ describe('the size demo’s events', () => {
 });
 
 describe('a This week day line (sc-92250)', () => {
-  it('keeps the name and its dotted date on one line while both fit', () => {
-    expect(dayLineShares(120, 110, 4, 234)).toBe(true);
-  });
-
-  it('sends the date to the line under once one pixel short', () => {
-    expect(dayLineShares(120, 110, 4, 233)).toBe(false);
-  });
-
   it('starts every week day on a date this week', () => {
     for (const day of WEEK_DAYS) {
       expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);

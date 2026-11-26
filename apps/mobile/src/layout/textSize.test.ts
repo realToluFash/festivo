@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  dayLineShares,
   bandPlace,
   capChipInDisc,
   capInDisc,
@@ -533,5 +534,15 @@ describe('wordsPending', () => {
   it('holds a text until every word is measured, then draws it', () => {
     expect(wordsPending(120, 120, 2, 3)).toBe(true);
     expect(wordsPending(120, 120, 3, 3)).toBe(false);
+  });
+});
+
+describe('dayLineShares, a This week day line (sc-92250)', () => {
+  it('keeps the name and its dotted date on one line while both fit', () => {
+    expect(dayLineShares(120, 110, 4, 234)).toBe(true);
+  });
+
+  it('sends the date to the line under once one pixel short', () => {
+    expect(dayLineShares(120, 110, 4, 233)).toBe(false);
   });
 });
