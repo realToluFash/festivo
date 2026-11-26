@@ -15,7 +15,7 @@ import { Field, focusChecked, TextField } from '../../components/Field.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { readOut } from '../../components/ReadOut.tsx';
 import { SETTLED_MS } from '../../components/Screen.tsx';
-import { Sheet, SheetActions } from '../../components/Sheet.tsx';
+import { Sheet, SheetActions, SheetScrollView } from '../../components/Sheet.tsx';
 import { Skeleton } from '../../components/Skeleton.tsx';
 import { PageToast } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
@@ -500,7 +500,7 @@ function SheetBody({
           : W.hasLink(byId(s, sheet.id)?.name ?? '');
 
   return (
-    <View style={styles.sheet}>
+    <SheetScrollView style={styles.sheetScroll} contentContainerStyle={styles.sheet}>
       {s.role === 'station' && (
         <View style={styles.pill}>
           <Text size={14} weight="semibold">
@@ -547,7 +547,7 @@ function SheetBody({
           </SheetActions>
         </View>
       )}
-    </View>
+    </SheetScrollView>
   );
 }
 
@@ -1007,7 +1007,8 @@ const styles = StyleSheet.create({
   },
   noNumber: { gap: tokens.spaceXs, alignItems: 'flex-end' },
   stations: { gap: tokens.spaceSm },
-  sheet: { gap: tokens.spaceMd, paddingBottom: tokens.spaceLg },
+  sheetScroll: { flexShrink: 1 },
+  sheet: { gap: tokens.spaceMd, padding: tokens.spaceXl },
   sheetHead: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   form: { gap: tokens.spaceMd },
   group: { gap: tokens.spaceXs },
