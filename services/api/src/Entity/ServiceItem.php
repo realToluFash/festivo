@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\MillisecondDateTimeType;
 use App\Enum\ItemState;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -38,7 +39,7 @@ class ServiceItem
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
     private ?int $readyIn = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[ORM\Column(type: MillisecondDateTimeType::NAME, nullable: true)]
     private ?DateTimeImmutable $changedAt = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]

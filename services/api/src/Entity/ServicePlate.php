@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Type\MillisecondDateTimeType;
 use App\Enum\HeldChoice;
 use App\Enum\ItemMark;
 use App\Enum\OwedReason;
@@ -84,7 +85,7 @@ class ServicePlate
     #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: OwedReason::class)]
     private ?OwedReason $owedReason;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[ORM\Column(type: MillisecondDateTimeType::NAME, nullable: true)]
     private ?DateTimeImmutable $owedAt;
 
     /** @var list<SentBack> each time it was sent back, with the stage and steps it had */

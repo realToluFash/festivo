@@ -219,7 +219,6 @@ export function InsideEvent({
           areas={areasFor(role)}
           at={at}
           who={who}
-          role={role}
           locale={locale}
           personRef={moreOpener}
           onArea={go}
@@ -279,13 +278,12 @@ export function InsideEvent({
   );
 }
 
-/** On its side, the event's sidebar: its level's areas only, and at its foot the person, whose button holds Your account and Sign out (pm and ux, 8 Nov). */
+/** On its side, the event's sidebar: its level's areas only, and at its foot the person, named alone as the product names an account with no organisation (sc-71, sc-86077), whose button holds Your account and Sign out (pm and ux, 8 Nov). */
 function SideBar({
   shown,
   areas,
   at,
   who,
-  role,
   locale,
   personRef,
   onArea,
@@ -295,7 +293,6 @@ function SideBar({
   areas: readonly InsideArea[];
   at: 'overview' | 'people';
   who: string;
-  role: CodeChoice;
   locale: string;
   personRef: RefObject<ViewInstance | null>;
   onArea: (area: InsideArea) => void;
@@ -341,7 +338,7 @@ function SideBar({
         onPress={onPerson}
         style={({ pressed }) => [styles.person, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${who}, ${role}`}
+        accessibilityLabel={who}
         testID="inside.side.person"
       >
         <View
@@ -351,14 +348,9 @@ function SideBar({
         >
           <Initials name={who} size={12} weight="bold" style={styles.faceInk} />
         </View>
-        <View style={styles.grow}>
-          <Text size={14} weight="semibold" accessible={false}>
-            {who}
-          </Text>
-          <Text size={12} weight="medium" accessible={false} style={styles.secondary}>
-            {role}
-          </Text>
-        </View>
+        <Text size={14} weight="semibold" accessible={false} style={styles.grow}>
+          {who}
+        </Text>
         <Glyph name="updown" size={15} ink={tokens.colorInkSecondary} />
       </Pressable>
     </SidebarColumn>
@@ -676,7 +668,7 @@ function MoreSheet({
   );
 }
 
-/** Upright and on its side, the event's tabs as a capsule at the top, as the board draws it upright. */
+/** Upright, the event's tabs as a capsule at the top, each area with its glyph, as the product's sc-71 shell draws them. */
 function Capsule({
   areas,
   at,
@@ -704,6 +696,7 @@ function Capsule({
         {tabs.map((tab) => {
           const on = tab === at;
           const label = tab === 'more' ? W.more : AREA_WORDS[tab];
+          const ink = on ? tokens.colorAccentText : tokens.colorInkSecondary;
 
           return (
             <Pressable
@@ -715,11 +708,12 @@ function Capsule({
               accessibilityLabel={label}
               testID={`inside.tab.${tab}`}
             >
+              <Glyph name={tab === 'more' ? 'dots' : AREA_GLYPH[tab]} ink={ink} />
               <Text
                 size={15}
                 weight={on ? 'semibold' : 'medium'}
                 accessible={false}
-                style={{ color: on ? tokens.colorAccentText : tokens.colorInkSecondary }}
+                style={{ color: ink }}
               >
                 {label}
               </Text>
@@ -807,8 +801,11 @@ const styles = StyleSheet.create({
   capsule: { flexDirection: 'row', gap: tokens.spaceHair, padding: 3 },
   capsuleTab: {
     minHeight: tokens.sizeHit,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceSm,
+    paddingLeft: 13,
+    paddingRight: tokens.spaceXl,
     borderRadius: tokens.sizeHit / 2,
   },
   capsuleOn: { backgroundColor: tokens.colorAccentTint },
