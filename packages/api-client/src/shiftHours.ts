@@ -36,7 +36,6 @@ export interface HoursCorrection {
 
 export interface HoursRow {
   shiftId: string;
-  /** The roster entry's id, kept once they are removed from the roster. */
   staffId: string;
   name: string;
   /** Removed from the roster after clocking in on this shift: their times stay, and a correction needs the clock-out. */
