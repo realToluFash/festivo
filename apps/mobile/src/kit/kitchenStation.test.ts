@@ -640,7 +640,7 @@ describe('a mark kept offline, and its Not sent line (sc-4015)', () => {
     expect(sent.left).toEqual([]);
     expect(
       sent.refused.flatMap((one) => one.lines).map((line) => notSentLine(t, line, [jollof()])),
-    ).toEqual(['Jollof rice is preparing now, by Kemi.']);
+    ).toEqual(['Jollof rice is now Preparing, marked by Kemi.']);
   });
 });
 

@@ -310,14 +310,12 @@ export function openingStation(
   return null;
 }
 
-/** Where the station picked on this device is kept for an event: the device alone, never the roster. */
 export const pickedKey = (eventId: string) => `soirely.station.${eventId}`;
 
 export interface PickStore {
   setItem(key: string, value: string): Promise<void>;
 }
 
-/** A pick from the list is this device's view and nothing else: the roster stays as it is. */
 export function rememberPick(store: PickStore, eventId: string, station: string): Promise<void> {
   return store.setItem(pickedKey(eventId), station);
 }
@@ -341,7 +339,6 @@ export function undoOpen(mark: StationMark, now: Date): boolean {
 export type UndoPlan =
   { kind: 'drop'; tapKey: string } | { kind: 'send'; subject: string } | { kind: 'unknown' };
 
-/** A mark still kept is taken out before it is sent; a sent one is undone by the item's id, once a read carries it. */
 export function undoPlan(
   mark: StationMark,
   kept: readonly KeptServiceTap[],
@@ -355,7 +352,6 @@ export function undoPlan(
   return id == null ? { kind: 'unknown' } : { kind: 'send', subject: id };
 }
 
-/** Service times are 24-hour on these boards, whatever the device's own setting. */
 export function stationTime(at: Date | number | string, locale: string): string {
   return new Date(at).toLocaleTimeString(locale, {
     hour: 'numeric',
