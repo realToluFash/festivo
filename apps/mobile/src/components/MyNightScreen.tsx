@@ -10,6 +10,7 @@ import Svg, { Path } from 'react-native-svg';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import {
+  checkInOf,
   clockAt,
   clockOpensAt,
   crossesMidnight,
@@ -179,6 +180,7 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
   const locale = dateLocale();
   const heading = headingOf(night);
   const opens = clockOpensAt(night, new Date(now));
+  const checkIn = checkInOf(night);
 
   const left = (
     <>
@@ -211,12 +213,10 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
           </Text>
         </View>
       )}
-      {night.checksIn && (
+      {checkIn != null && (
         <PrimaryButton
           label={t('checkIn.title')}
-          onPress={() =>
-            router.push({ pathname: '/events/[id]/check-in', params: { id: night.event.id } })
-          }
+          onPress={() => router.push(checkIn)}
           testID="myNight.checkIn"
         />
       )}

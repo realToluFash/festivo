@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
 import {
+  checkInOf,
   clockOpensAt,
   crossesMidnight,
   dietaryOf,
@@ -35,6 +36,19 @@ const NIGHT: MyNight = {
   tables: null,
   checksIn: false,
 };
+
+describe('My night leads to check-in (sc-28230)', () => {
+  it('to the event’s check-in for a job that checks guests in', () => {
+    expect(checkInOf({ ...NIGHT, checksIn: true })).toEqual({
+      pathname: '/events/[id]/check-in',
+      params: { id: 'ev-1' },
+    });
+  });
+
+  it('nowhere for a job that cannot', () => {
+    expect(checkInOf(NIGHT)).toBeNull();
+  });
+});
 
 describe('a staff member’s night in the app (sc-3915)', () => {
   it('names where they are and the shift on the event’s Your night row, the job with no station', () => {
