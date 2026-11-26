@@ -496,7 +496,7 @@
     "email_domains.only_ours_unproved": "« Réservé à notre organisation » nécessite un domaine vérifié par cette organisation.",
     "validation.payment_reminder_days": "Saisissez un nombre entier de jours de 1 à 30.",
     "staff.link_needs_mobile": "Ajoutez un numéro de portable pour envoyer un lien.",
-    "door_codes.role": "Un code d’accès permet seulement de consulter l’événement ou d’accueillir les invités, jamais de le modifier.",
+    "door_codes.role": "Un code ne peut pas donner le droit de modifier, ni celui de diriger la salle. Ces droits s’accordent à une personne précise.",
     "door_codes.use_cap_required": "Indiquez combien de personnes peuvent utiliser ce code.",
     "door_codes.use_cap_range": "Saisissez un nombre entier de 1 à 500.",
     "door_codes.expiry_past": "Choisissez une heure qui n’est pas encore passée.",
@@ -532,5 +532,8 @@
     "validation.saved_audience_name_too_long": "Le nom d’un public enregistré peut compter jusqu’à {max} caractères.",
     "validation.guest_message_conditions_required": "Ajoutez d’abord une condition. Sans condition, Invités qui… ne correspond à personne : il n’y a rien à envoyer ni à enregistrer.",
     "validation.guest_message_nobody_matches": "Personne ne remplit ces conditions : il n’y a personne à qui l’envoyer.",
-    "saved_audience.name_taken": "Un public enregistré s’appelle déjà {name}."
+    "saved_audience.name_taken": "Un public enregistré s’appelle déjà {name}.",
+    "service.table_not_yours": "Cette table est dans la zone de quelqu’un d’autre. Adressez-vous à cette personne ou au maître d’hôtel.",
+    "door_codes.run_floor": "Un code d’accès ne peut pas donner le droit de diriger la salle. Accordez « Peut diriger la salle » à une seule personne, avec son propre lien depuis la liste du personnel.",
+    "people.service_level_outside_only": "Les droits pour le service sont réservés aux personnes externes qui travaillent pendant l’événement. Donnez à un membre l’un des rôles de l’événement."
 }

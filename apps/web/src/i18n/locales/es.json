@@ -3352,13 +3352,19 @@
       "lead": "Responsable",
       "can_edit": "Puede editar",
       "can_view": "Puede ver",
-      "can_check_in": "Puede registrar llegadas"
+      "can_check_in": "Puede registrar llegadas",
+      "can_work_floor": "Puede atender en sala",
+      "can_work_pass": "Puede llevar el pase",
+      "can_run_floor": "Puede dirigir la sala"
     },
     "roleMeans": {
       "lead": "Todo en este evento, incluidos el presupuesto y quién participa en él.",
       "can_edit": "Todo menos el presupuesto y quién participa en el evento.",
       "can_view": "Ve el evento sin cambiar nada. Sin datos de contacto.",
-      "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto."
+      "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto.",
+      "can_work_floor": "Marca los platos y las peticiones de sus propias mesas.",
+      "can_work_pass": "Marca los platos en el pase y en las zonas de cocina.",
+      "can_run_floor": "Inicia el servicio, marcha los platos y actúa en cualquier mesa. No accede a nada más del evento."
     },
     "memberOf": "Miembro de {{organisation}}",
     "roleFor": "Rol de {{name}} en este evento",
@@ -3393,7 +3399,10 @@
       "lead": "Ahora {{name}} es responsable de este evento.",
       "can_edit": "Ahora {{name}} puede editar el evento.",
       "can_view": "Ahora {{name}} puede ver el evento.",
-      "can_check_in": "Ahora {{name}} puede registrar llegadas."
+      "can_check_in": "Ahora {{name}} puede registrar llegadas.",
+      "can_work_floor": "Ahora {{name}} puede atender en sala.",
+      "can_work_pass": "Ahora {{name}} puede llevar el pase.",
+      "can_run_floor": "Ahora {{name}} puede dirigir la sala."
     },
     "nowMany": {
       "lead_one": "Ahora {{count, number}} persona es responsable de este evento.",
@@ -3407,7 +3416,16 @@
       "can_view_other": "Ahora {{count, number}} personas pueden ver el evento.",
       "can_check_in_one": "Ahora {{count, number}} persona puede registrar llegadas.",
       "can_check_in_many": "Ahora {{count, number}} de personas pueden registrar llegadas.",
-      "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas."
+      "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas.",
+      "can_work_floor_one": "Ahora {{count, number}} persona puede atender en sala.",
+      "can_work_floor_many": "Ahora {{count, number}} de personas pueden atender en sala.",
+      "can_work_floor_other": "Ahora {{count, number}} personas pueden atender en sala.",
+      "can_work_pass_one": "Ahora {{count, number}} persona puede llevar el pase.",
+      "can_work_pass_many": "Ahora {{count, number}} de personas pueden llevar el pase.",
+      "can_work_pass_other": "Ahora {{count, number}} personas pueden llevar el pase.",
+      "can_run_floor_one": "Ahora {{count, number}} persona puede dirigir la sala.",
+      "can_run_floor_many": "Ahora {{count, number}} de personas pueden dirigir la sala.",
+      "can_run_floor_other": "Ahora {{count, number}} personas pueden dirigir la sala."
     },
     "notJoined": "Aún no se ha unido",
     "outsideTag": "Fuera de {{organisation}}",
@@ -3424,7 +3442,11 @@
     "staffLink": "Enlace del personal · {{name}} · {{job}} · termina: {{time}}",
     "staffLinkNoJob": "Enlace del personal · {{name}} · termina: {{time}}",
     "endsOn": "{{date}}, {{time}}",
-    "notSignedIn": "Aún no ha iniciado sesión"
+    "notSignedIn": "Aún no ha iniciado sesión",
+    "serviceHead": "Para el servicio",
+    "serviceClosing": "Los permisos de servicio solo dan acceso al servicio. Con ninguno se ven los datos de contacto ni el presupuesto.",
+    "serviceNotMembers": "Solo para alguien de fuera. Desmarque a los miembros para poder darlo.",
+    "membersNotService": "Los miembros reciben uno de los cuatro roles de arriba. Elija uno para añadirlos también."
   },
   "doorCodes": {
     "doorCode": "Código de acceso",
@@ -3444,7 +3466,7 @@
     "make": "Crear",
     "making": "Creando…",
     "theirRole": "Rol en el evento",
-    "noEdit": "Un código no puede dar permiso para editar. Ese permiso se da a una persona concreta.",
+    "noEdit": "Un código no puede dar permiso para editar ni para dirigir la sala. Esos permisos se dan a una persona concreta.",
     "howMany": "Número de personas",
     "howManyHelp": "De 1 a 500.",
     "capBlank": "Indique cuántas personas pueden usar este código.",
@@ -3491,7 +3513,9 @@
     "printWhenNoVenue": "{{day}} · de {{start}} a {{end}}",
     "printLine": "Escanéelo con la cámara del móvil, o abra {{address}} e introduzca el código. Funciona hasta {{until}}.",
     "tag": "Código de acceso",
-    "joinedWith": "Se unió al evento con el código de acceso {{code}} ({{time}})."
+    "joinedWith": "Se unió al evento con el código de acceso {{code}} ({{time}}).",
+    "runRefused": "Un código de acceso no puede dar permiso para dirigir la sala.",
+    "runRefusedLine": "Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal."
   },
   "redeem": {
     "enterTitle": "Introduzca un código de acceso",
@@ -5500,9 +5524,9 @@
     "accessHint": {
       "view": "Ve el evento y sus propios turnos. No cambia nada.",
       "check_in": "Registra la llegada de los invitados en la puerta.",
-      "floor": "Atiende sus mesas y marca lo que ha salido.",
-      "pass": "Ve los pedidos en el pase y les da salida.",
-      "run": "Dirige la sala durante el evento. Solo accede con un enlace personal."
+      "floor": "Marca los platos y las peticiones de sus propias mesas.",
+      "pass": "Marca los platos en el pase y en las zonas de cocina.",
+      "run": "Inicia el servicio, marcha los platos y actúa en cualquier mesa. No accede a nada más del evento."
     }
   },
   "stations": {

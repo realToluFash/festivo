@@ -227,6 +227,22 @@ final class StaffRosterTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEntryIsWhoeverVerifiedItsNumberEvenWhenAMemberVerifiedItsEmail(): void
+    {
+        $outsider = $this->account('kunle@else.where', 'Kunle Ajayi');
+        $phone = new PhoneNumber(self::em()->find(User::class, $outsider->getId()) ?? self::fail('no user'), '+2348035550142', isPrimary: true, countryCode: 'NG');
+        $phone->setVerifiedAt(new DateTimeImmutable());
+        self::em()->persist($phone);
+        self::em()->flush();
+        $this->member('amara.obi@ire.events', 'Amara Obi', null);
+
+        $added = $this->add(['fullName' => 'Mara Obi', 'mobile' => self::number('0803 555 0142'), 'email' => 'amara.obi@ire.events']);
+
+        self::assertNull($this->last()['member']);
+        self::assertNull($this->stored($added['id'])->getMember());
+    }
+
+    #[Test]
     public function someoneOutsideTheOrganisationIsNotLinked(): void
     {
         $this->account('amara.obi@else.where', 'Amara Obi');

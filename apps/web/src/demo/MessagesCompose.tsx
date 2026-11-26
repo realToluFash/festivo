@@ -258,7 +258,13 @@ export function ComposePane({ opening, later: laterFirst }: { opening: boolean; 
           refused={refused}
           wrong={wrong}
           follows={draft.follows}
-          previewOff={(countOf(draft.to, event.book.groups) ?? 0) === 0 ? PW.nobodyToPreview : null}
+          previewOff={
+            draft.nobodyLeft?.to === draft.to
+              ? filled(PW.nobodyLeft, { name: draft.nobodyLeft.name })
+              : (countOf(draft.to, event.book.groups) ?? 0) === 0
+                ? PW.nobodyToPreview
+                : null
+          }
           onDraft={(next) => {
             if (next.subject != null) fixed('subject', next);
             if (next.body != null) fixed('body', next);

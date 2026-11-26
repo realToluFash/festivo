@@ -496,7 +496,7 @@
     "email_domains.only_ours_unproved": "«Solo nuestra organización» requiere un dominio verificado por esta organización.",
     "validation.payment_reminder_days": "Escriba un número entero de días de 1 a 30.",
     "staff.link_needs_mobile": "Añada un número de móvil para enviar un enlace.",
-    "door_codes.role": "Un código de acceso solo permite ver el evento o registrar la llegada de los invitados, nunca editar.",
+    "door_codes.role": "Un código no puede dar permiso para editar ni para dirigir la sala. Esos permisos se dan a una persona concreta.",
     "door_codes.use_cap_required": "Indique cuántas personas pueden usar este código.",
     "door_codes.use_cap_range": "Escriba un número entero del 1 al 500.",
     "door_codes.expiry_past": "Elija una hora que aún no haya pasado.",
@@ -532,5 +532,8 @@
     "validation.saved_audience_name_too_long": "El nombre de un público guardado puede tener hasta {max} caracteres.",
     "validation.guest_message_conditions_required": "Añade primero una condición. Sin ninguna, Invitados que… no incluye a nadie, así que no hay nada que enviar ni guardar.",
     "validation.guest_message_nobody_matches": "Nadie cumple estas condiciones, así que no hay a quién enviarlo.",
-    "saved_audience.name_taken": "Ya hay un público guardado llamado {name}."
+    "saved_audience.name_taken": "Ya hay un público guardado llamado {name}.",
+    "service.table_not_yours": "Esta mesa está en la zona de otra persona. Pregunte a esa persona o al responsable de sala.",
+    "door_codes.run_floor": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal.",
+    "people.service_level_outside_only": "Los permisos de servicio son para quien trabaja en un turno. Dé a un miembro uno de los roles del evento."
 }

@@ -6,6 +6,7 @@ export const PW = {
   braces:
     'Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.',
   noTokens: 'Nothing to fill in, so every guest gets exactly these words.',
+  failedLine: 'Check your connection and try again.',
 } as const;
 
 /** Each Insert row's line, under the token's word. */
@@ -23,4 +24,9 @@ export const sayPreview = {
   organisation: (language: string) =>
     `In ${language}, your organisation’s language, as no language is set for them.`,
   filling: (name: string) => `Filling it in for ${name}…`,
+  failed: (name: string) => `We could not fill it in for ${name}.`,
+  noLongerGuest: (name: string, next: string) =>
+    `${name} is no longer a guest, so it is filled in for ${next} instead.`,
+  nobodyLeft: (name: string) =>
+    `${name} is no longer a guest, so there is nobody to preview it as.`,
 };

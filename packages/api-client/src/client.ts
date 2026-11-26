@@ -650,10 +650,22 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
-/** A role on one event (sc-29912), in the order People lists them. */
+/** A role on one event (sc-29912), in the order People lists them: all a member may hold. */
 export const EVENT_ROLES = ['lead', 'can_edit', 'can_view', 'can_check_in'] as const;
 
-export type EventRole = (typeof EVENT_ROLES)[number];
+/** The levels that open the service and nothing else, for someone working a shift and never a member (sc-4002). */
+export const SERVICE_LEVELS = ['can_work_floor', 'can_work_pass', 'can_run_floor'] as const;
+
+export type ServiceLevel = (typeof SERVICE_LEVELS)[number];
+
+/** Everything a person may hold on an event, the roles before the service levels. */
+export const EVENT_LEVELS = [...EVENT_ROLES, ...SERVICE_LEVELS] as const;
+
+export type EventRole = (typeof EVENT_LEVELS)[number];
+
+export function isServiceLevel(level: EventRole): level is ServiceLevel {
+  return (SERVICE_LEVELS as readonly EventRole[]).includes(level);
+}
 
 /** Somebody with a role on an event: a member, or someone from outside the organisation (sc-71). */
 export interface EventPerson {
@@ -673,7 +685,13 @@ export interface EventPerson {
   joinedAt: string | null;
 }
 
-export const DOOR_CODE_ROLES = ['can_view', 'can_check_in'] as const;
+/** Never edit, never running the floor: a code reaches whoever hears it (sc-72, sc-4002). */
+export const DOOR_CODE_ROLES = [
+  'can_view',
+  'can_check_in',
+  'can_work_floor',
+  'can_work_pass',
+] as const;
 export type DoorCodeRole = (typeof DOOR_CODE_ROLES)[number];
 export const DOOR_CODE_STATUSES = ['working', 'full', 'stopped', 'expired'] as const;
 export type DoorCodeStatus = (typeof DOOR_CODE_STATUSES)[number];
@@ -6368,7 +6386,7 @@ function asEventPerson(raw: unknown): EventPerson | null {
     typeof id !== 'string' ||
     (membershipId != null && typeof membershipId !== 'string') ||
     (named != null && (typeof named.id !== 'string' || typeof named.name !== 'string')) ||
-    !(EVENT_ROLES as readonly unknown[]).includes(role)
+    !(EVENT_LEVELS as readonly unknown[]).includes(role)
   )
     return null;
 
@@ -6617,7 +6635,7 @@ function asOutsideEvent(raw: unknown): OutsideEvent[] {
     typeof name !== 'string' ||
     typeof organisationName !== 'string' ||
     typeof startsAt !== 'string' ||
-    !(EVENT_ROLES as readonly unknown[]).includes(role)
+    !(EVENT_LEVELS as readonly unknown[]).includes(role)
   )
     return [];
 
@@ -6800,7 +6818,9 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
   const repliesCloseAt = candidate.repliesCloseAt ?? null;
   const repliesClosedOn = candidate.repliesClosedOn ?? null;
   const roleOnEvent =
-    candidate.roleOnEvent == null ? null : (oneOf(candidate.roleOnEvent, EVENT_ROLES) ?? undefined);
+    candidate.roleOnEvent == null
+      ? null
+      : (oneOf(candidate.roleOnEvent, EVENT_LEVELS) ?? undefined);
 
   if (
     status == null ||

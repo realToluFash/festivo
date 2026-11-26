@@ -1,4 +1,4 @@
-import type { DoorCodeCard } from '@soirely/api-client';
+import { ApiError, type DoorCodeCard } from '@soirely/api-client';
 import { type RefObject, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, type TextInputInstance, View, type ViewInstance } from 'react-native';
@@ -61,6 +61,7 @@ export function MakeDoorCode({
   const [form, setForm] = useState(start);
   const [lines, setLines] = useState(NO_LINES);
   const [failed, setFailed] = useState<string | null>(null);
+  const [refused, setRefused] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState<Ends | null>(null);
   const [picking, setPicking] = useState<Picking | null>(null);
@@ -83,12 +84,14 @@ export function MakeDoorCode({
     }
     going.current = true;
     setFailed(null);
+    setRefused(false);
     setSending(true);
 
     try {
       onMade(await api.makeDoorCode(eventId, newCode(form, clock, replaces)));
     } catch (error) {
-      setFailed(refusalSaid(error, t('doorCodes.failMake')));
+      if (error instanceof ApiError && error.is('level_not_allowed_for_code')) setRefused(true);
+      else setFailed(refusalSaid(error, t('doorCodes.failMake')));
     } finally {
       going.current = false;
       setSending(false);
@@ -228,6 +231,7 @@ export function MakeDoorCode({
       over={over}
       testID="door.make"
     >
+      {refused && !sending && <Said words={t('doorCodes.runRefused')} interrupts />}
       {failed != null && (
         <View style={styles.failed}>
           <Said words={failed} interrupts />
@@ -248,6 +252,8 @@ export function MakeDoorCode({
             lines={{
               can_view: t('eventPeople.roleMeans.can_view'),
               can_check_in: t('eventPeople.roleMeans.can_check_in'),
+              can_work_floor: t('eventPeople.roleMeans.can_work_floor'),
+              can_work_pass: t('eventPeople.roleMeans.can_work_pass'),
             }}
             off={{ roles: ['can_edit'], line: t('doorCodes.noEdit') }}
             onPick={(role) => {

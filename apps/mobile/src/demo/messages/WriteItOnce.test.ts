@@ -4,7 +4,15 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { MESSAGES_BOARDS } from './MessagesBoards.ts';
-import { type Action, MESSAGES_STATES, messagesStateOf, reduce, startOf } from './MessagesModel.ts';
+import {
+  type Action,
+  MESSAGES_STATES,
+  blankDraft,
+  matchesNobody,
+  messagesStateOf,
+  reduce,
+  startOf,
+} from './MessagesModel.ts';
 import { TOKENS, piecesOf } from './MessagesSample.ts';
 import { W } from './MessagesWords.ts';
 import {
@@ -13,11 +21,15 @@ import {
   chosen,
   coverFor,
   filledAs,
+  filledIn,
   languageLine,
   noticeFor,
   optionOf,
+  previewAsLeft,
   previewLines,
   previewOf,
+  previewOffOf,
+  retried,
   typedBraces,
 } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PREVIEW_PEOPLE } from './PreviewSample.ts';
@@ -29,6 +41,10 @@ const SC_3960 = [
   'previewGreetAs',
   'previewChose',
   'previewLoading',
+  'previewFailed',
+  'previewGone',
+  'previewGoneLast',
+  'previewNobody',
   'previewMarkup',
   'typedBraces',
   'previewBraces',
@@ -67,7 +83,11 @@ describe('sc-3960’s states', () => {
       draft: { step: 'write' },
     });
     expect(startOf('typedBraces', false).draft).toMatchObject({ step: 'write', body: BRACED_BODY });
-    for (const state of SC_3960.filter((one) => one !== 'insert' && one !== 'typedBraces'))
+    expect(startOf('previewGoneLast', false).draft?.step).toBe('write');
+    expect(startOf('previewNobody', false).draft?.step).toBe('write');
+    for (const state of SC_3960.filter(
+      (one) => !['insert', 'typedBraces', 'previewGoneLast', 'previewNobody'].includes(one),
+    ))
       expect(opened(state).m.draft?.step).toBe('preview');
   });
 });
@@ -159,6 +179,77 @@ describe('Preview as (sc-3960)', () => {
     expect(chosen(as, 'kwame')).toMatchObject({ choosing: false, filling: false });
     expect(sayPreview.filling('Camille Dubois')).toBe('Filling it in for Camille Dubois…');
     expect(previewOf(actions.reduce(reduce, m)).who).toBe('camille');
+  });
+
+  it('says it could not fill it in for Camille Dubois, and Try again fills it in for her', () => {
+    const { as } = opened('previewFailed');
+
+    expect(as).toMatchObject({ who: 'camille', failed: true, filling: false });
+    expect(sayPreview.failed('Camille Dubois')).toBe('We could not fill it in for Camille Dubois.');
+    expect(PW.failedLine).toBe('Check your connection and try again.');
+    expect(W.tryAgain).toBe('Try again');
+    expect(retried(as)).toEqual({ ...as, failed: undefined, filling: true });
+    expect(retried(as).failed).toBeUndefined();
+    expect(chosen(as, 'camille')).toMatchObject({ who: 'camille', filling: true });
+    expect(chosen(as, 'bisi').failed).toBeUndefined();
+  });
+
+  it('drops someone no longer a guest from Preview as and fills it in for the first left, A to Z', () => {
+    const { m, as } = opened('previewGone');
+
+    expect(as).toMatchObject({ who: 'amaka', goneSaid: 'camille', filling: false });
+    expect(sayPreview.noLongerGuest(PREVIEW_PEOPLE.camille.name, PREVIEW_PEOPLE.amaka.name)).toBe(
+      'Camille Dubois is no longer a guest, so it is filled in for Amaka Eze instead.',
+    );
+    expect(previewAsLeft(as).map((one) => one.name)).toEqual([
+      'Amaka Eze',
+      'Bisi Adewale',
+      'Kemi Bankole',
+      'Kwame Mensah',
+      'Lucía Ortega',
+    ]);
+
+    const lucia = chosen(as, 'lucia');
+    expect(lucia.goneSaid).toBeUndefined();
+    expect(filledIn(lucia)).toMatchObject({
+      who: 'amaka',
+      filling: true,
+      goneSaid: 'lucia',
+      dropped: ['camille', 'lucia'],
+    });
+    expect(filledIn(chosen(as, 'bisi'))).toMatchObject({ who: 'bisi', filling: false });
+    expect(previewOf(reduce(m, { type: 'edit' })).goneSaid).toBeUndefined();
+    expect(previewOf(reduce(m, { type: 'edit' })).dropped).toEqual(['camille']);
+  });
+
+  it('closes the preview when nobody is left, and Preview says why beside it', () => {
+    const { m, as } = opened('previewGoneLast');
+    const last = { ...as, who: 'kwame' as const, gone: ['kwame' as const] };
+    const everyoneElse = PREVIEW_AS.filter((one) => one.key !== 'kwame').map((one) => one.key);
+
+    expect(m.draft?.step).toBe('write');
+    expect(previewOffOf(m)).toBe(
+      'Camille Dubois is no longer a guest, so there is nobody to preview it as.',
+    );
+    expect(reduce(m, { type: 'preview' })).toBe(m);
+    expect(previewOffOf(reduce(m, { type: 'chooseTo', to: 'all' }))).toBeUndefined();
+    expect(filledIn({ ...last, dropped: everyoneElse, filling: true }).nobodyLeft).toBe(
+      'Kwame Mensah',
+    );
+    expect(previewOffOf(opened('previewGone').m)).toBeUndefined();
+  });
+
+  it('offers no Preview while To matches nobody, with no second line, until To matches someone', () => {
+    const { m, body } = opened('previewNobody');
+
+    expect(m.draft).toMatchObject({ step: 'write', to: 'coming' });
+    expect(matchesNobody(m.draft ?? blankDraft())).toBe(true);
+    expect(body).toBe(DATED_BODY);
+    expect(previewOffOf(m)).toBeUndefined();
+    expect(reduce(m, { type: 'preview' })).toBe(m);
+    expect(
+      reduce(reduce(m, { type: 'chooseTo', to: 'all' }), { type: 'preview' }).draft?.step,
+    ).toBe('preview');
   });
 
   it('holds previewLoading still, filling it in for Camille Dubois', () => {

@@ -168,6 +168,10 @@ export const MESSAGES_STATES = [
   'previewGreetAs',
   'previewChose',
   'previewLoading',
+  'previewFailed',
+  'previewGone',
+  'previewGoneLast',
+  'previewNobody',
   'previewMarkup',
   'typedBraces',
   'previewBraces',
@@ -523,6 +527,10 @@ const DRAFTED: Partial<Record<MessagesState, Draft>> = {
   previewGreetAs: { ...sampleDraft('preview'), body: DATED_BODY },
   previewChose: { ...sampleDraft('preview'), body: DATED_BODY },
   previewLoading: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewFailed: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewGone: { ...sampleDraft('preview'), body: DATED_BODY },
+  previewGoneLast: { ...sampleDraft('write'), body: DATED_BODY },
+  previewNobody: { ...sampleDraft('write'), body: DATED_BODY, zero: ['coming'] },
   previewMarkup: { ...sampleDraft('preview'), body: DATED_BODY },
   typedBraces: { ...sampleDraft('write'), body: BRACED_BODY },
   previewBraces: { ...sampleDraft('preview'), body: BRACED_BODY },
@@ -1102,8 +1110,13 @@ export function reduce(m: Messages, action: Action): Messages {
     }
     case 'picking':
       return { ...m, picking: action.open };
-    case 'chooseTo':
-      return { ...withDraft(m, (draft) => ({ ...draft, to: action.to })), picking: false };
+    case 'chooseTo': {
+      const next = { ...withDraft(m, (draft) => ({ ...draft, to: action.to })), picking: false };
+      if (m.preview?.nobodyLeft == null) return next;
+      const { preview: _gone, ...rest } = next;
+
+      return rest;
+    }
     case 'channel':
       return withDraft(m, (draft) => ({
         ...draft,
@@ -1114,9 +1127,16 @@ export function reduce(m: Messages, action: Action): Messages {
     case 'body':
       return withDraft(m, (draft) => stillOver({ ...draft, body: action.text, cancelled: false }));
     case 'preview':
-      return stepped(m, ['write'], 'preview');
-    case 'edit':
-      return stepped(m, ['preview'], 'write');
+      return m.preview?.nobodyLeft == null && m.draft != null && !matchesNobody(m.draft)
+        ? stepped(m, ['write'], 'preview')
+        : m;
+    case 'edit': {
+      const back = stepped(m, ['preview'], 'write');
+      if (back.preview?.goneSaid == null) return back;
+      const { goneSaid: _said, ...kept } = back.preview;
+
+      return { ...back, preview: kept };
+    }
     case 'send': {
       const draft = m.draft;
       if (

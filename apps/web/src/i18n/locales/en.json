@@ -3200,13 +3200,19 @@
       "lead": "Lead",
       "can_edit": "Can edit",
       "can_view": "Can view",
-      "can_check_in": "Can check guests in"
+      "can_check_in": "Can check guests in",
+      "can_work_floor": "Can work the floor",
+      "can_work_pass": "Can work the pass",
+      "can_run_floor": "Can run the floor"
     },
     "roleMeans": {
       "lead": "Everything on this event, including its budget and who’s on it.",
       "can_edit": "Everything except the budget and who’s on it.",
       "can_view": "Sees the event and changes nothing. No contact details.",
-      "can_check_in": "Checks guests in on the day. Names only, no contact details."
+      "can_check_in": "Checks guests in on the day. Names only, no contact details.",
+      "can_work_floor": "Marks plates and requests at their own tables.",
+      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
+      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
     },
     "memberOf": "Member of {{organisation}}",
     "roleFor": "{{name}}’s role on this event",
@@ -3241,7 +3247,10 @@
       "lead": "{{name}} leads this event now.",
       "can_edit": "{{name}} can edit now.",
       "can_view": "{{name}} can view now.",
-      "can_check_in": "{{name}} can check guests in now."
+      "can_check_in": "{{name}} can check guests in now.",
+      "can_work_floor": "{{name}} can work the floor now.",
+      "can_work_pass": "{{name}} can work the pass now.",
+      "can_run_floor": "{{name}} can run the floor now."
     },
     "nowMany": {
       "lead_one": "{{count, number}} person leads this event now.",
@@ -3251,7 +3260,13 @@
       "can_view_one": "{{count, number}} person can view now.",
       "can_view_other": "{{count, number}} people can view now.",
       "can_check_in_one": "{{count, number}} person can check guests in now.",
-      "can_check_in_other": "{{count, number}} people can check guests in now."
+      "can_check_in_other": "{{count, number}} people can check guests in now.",
+      "can_work_floor_one": "{{count, number}} person can work the floor now.",
+      "can_work_floor_other": "{{count, number}} people can work the floor now.",
+      "can_work_pass_one": "{{count, number}} person can work the pass now.",
+      "can_work_pass_other": "{{count, number}} people can work the pass now.",
+      "can_run_floor_one": "{{count, number}} person can run the floor now.",
+      "can_run_floor_other": "{{count, number}} people can run the floor now."
     },
     "notJoined": "Not joined yet",
     "outsideTag": "Outside {{organisation}}",
@@ -3268,7 +3283,11 @@
     "staffLink": "Staff link · {{name}} · {{job}} · ends {{time}}",
     "staffLinkNoJob": "Staff link · {{name}} · ends {{time}}",
     "endsOn": "{{time}} on {{date}}",
-    "notSignedIn": "Not signed in yet"
+    "notSignedIn": "Not signed in yet",
+    "serviceHead": "For the service",
+    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget.",
+    "serviceNotMembers": "For someone from outside only. Untick the members to give it.",
+    "membersNotService": "Members take one of the four roles above. Pick one to add them as well."
   },
   "doorCodes": {
     "doorCode": "Door code",
@@ -3288,7 +3307,7 @@
     "make": "Make",
     "making": "Making…",
     "theirRole": "Their role",
-    "noEdit": "A code cannot give edit access. Give that to a named person instead.",
+    "noEdit": "A code can’t give edit access, or let anyone run the floor. Give those to a named person instead.",
     "howMany": "How many people",
     "howManyHelp": "From 1 to 500.",
     "capBlank": "Enter how many people can use this code.",
@@ -3332,7 +3351,9 @@
     "printWhenNoVenue": "{{day}} · {{start}} to {{end}}",
     "printLine": "Scan it with your phone’s camera, or open {{address}} and enter the code. It works until {{until}}.",
     "tag": "Door code",
-    "joinedWith": "Joined with the door code {{code}} at {{time}}."
+    "joinedWith": "Joined with the door code {{code}} at {{time}}.",
+    "runRefused": "A join code can’t let people run the floor.",
+    "runRefusedLine": "Give Can run the floor to one person, with their own link from the roster."
   },
   "redeem": {
     "enterTitle": "Enter a door code",
@@ -5243,9 +5264,9 @@
     "accessHint": {
       "view": "Sees the event and their own shifts. Changes nothing.",
       "check_in": "Checks guests in at the door.",
-      "floor": "Serves their tables and marks what went out.",
-      "pass": "Sees and sends the orders at the pass.",
-      "run": "Runs the floor on the night. Comes only through a personal link."
+      "floor": "Marks plates and requests at their own tables.",
+      "pass": "Marks plates at the pass and the kitchen stations.",
+      "run": "Starts service, fires courses and acts on any table. Nothing else of the event."
     }
   },
   "stations": {

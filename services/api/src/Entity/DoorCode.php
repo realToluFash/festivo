@@ -23,6 +23,9 @@ class DoorCode
 
     public const int USE_CAP_MOST = 500;
 
+    /** What a code may give (sc-72, sc-4002): never edit, never running the floor. */
+    public const array ROLES = [EventRole::CanView, EventRole::CanCheckIn, EventRole::CanWorkFloor, EventRole::CanWorkPass];
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;

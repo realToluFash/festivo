@@ -162,5 +162,7 @@
     "plan_not_priced": "This plan has no price in your billing currency.",
     "nothing_paid_through_provider": "There is no payment method to update until a plan is paid for.",
     "audience_name_taken": "That name is already used by a saved audience.",
-    "audiences_full": "This event has as many saved audiences as it can have."
+    "audiences_full": "This event has as many saved audiences as it can have.",
+    "table_not_yours": "This table is in somebody else’s section. Ask them or the floor lead.",
+    "level_not_allowed_for_code": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster."
 }

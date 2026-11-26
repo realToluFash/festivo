@@ -2363,13 +2363,19 @@
       "lead": "Responsable",
       "can_edit": "Peut modifier",
       "can_view": "Peut consulter",
-      "can_check_in": "Peut accueillir les invités"
+      "can_check_in": "Peut accueillir les invités",
+      "can_work_floor": "Peut servir en salle",
+      "can_work_pass": "Peut tenir le passe",
+      "can_run_floor": "Peut diriger la salle"
     },
     "roleMeans": {
       "lead": "Tout sur cet événement, y compris son budget et qui y participe.",
       "can_edit": "Tout sauf le budget et qui participe à l’événement.",
       "can_view": "Voit l’événement sans rien modifier. Aucune coordonnée.",
-      "can_check_in": "Accueille les invités le jour de l’événement. Les noms seulement, aucune coordonnée."
+      "can_check_in": "Accueille les invités le jour de l’événement. Les noms seulement, aucune coordonnée.",
+      "can_work_floor": "Pointe les assiettes et les demandes de ses propres tables.",
+      "can_work_pass": "Pointe les assiettes au passe et aux postes de cuisine.",
+      "can_run_floor": "Lance le service, envoie la suite et intervient sur toutes les tables. N’accède à rien d’autre de l’événement."
     },
     "memberOf": "Membre de {{organisation}}",
     "fromOutside": "En dehors de {{organisation}}",
@@ -2417,7 +2423,10 @@
       "lead": "{{name}} est désormais responsable de cet événement.",
       "can_edit": "{{name}} peut désormais modifier l’événement.",
       "can_view": "{{name}} peut désormais consulter l’événement.",
-      "can_check_in": "{{name}} peut désormais accueillir les invités."
+      "can_check_in": "{{name}} peut désormais accueillir les invités.",
+      "can_work_floor": "{{name}} peut désormais servir en salle.",
+      "can_work_pass": "{{name}} peut désormais tenir le passe.",
+      "can_run_floor": "{{name}} peut désormais diriger la salle."
     },
     "nowMany": {
       "lead_one": "{{count, number}} personne est désormais responsable de cet événement.",
@@ -2431,7 +2440,16 @@
       "can_view_other": "{{count, number}} personnes peuvent désormais consulter l’événement.",
       "can_check_in_one": "{{count, number}} personne peut désormais accueillir les invités.",
       "can_check_in_many": "{{count, number}} de personnes peuvent désormais accueillir les invités.",
-      "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités."
+      "can_check_in_other": "{{count, number}} personnes peuvent désormais accueillir les invités.",
+      "can_work_floor_one": "{{count, number}} personne peut désormais servir en salle.",
+      "can_work_floor_many": "{{count, number}} de personnes peuvent désormais servir en salle.",
+      "can_work_floor_other": "{{count, number}} personnes peuvent désormais servir en salle.",
+      "can_work_pass_one": "{{count, number}} personne peut désormais tenir le passe.",
+      "can_work_pass_many": "{{count, number}} de personnes peuvent désormais tenir le passe.",
+      "can_work_pass_other": "{{count, number}} personnes peuvent désormais tenir le passe.",
+      "can_run_floor_one": "{{count, number}} personne peut désormais diriger la salle.",
+      "can_run_floor_many": "{{count, number}} de personnes peuvent désormais diriger la salle.",
+      "can_run_floor_other": "{{count, number}} personnes peuvent désormais diriger la salle."
     },
     "failedTitle": "Impossible de charger les personnes de cet événement.",
     "failedLine": "Vérifiez votre connexion et réessayez.",
@@ -2448,7 +2466,8 @@
       "failed": "Impossible de charger les personnes de cet événement.",
       "opens": "Ouvre Personnes.",
       "leadSaid": "Responsable, {{name}}."
-    }
+    },
+    "serviceClosing": "Les droits pour le service ne donnent accès qu’au service. Aucun ne montre les coordonnées ni le budget."
   },
   "recoveryRequests": {
     "cardTitle": "Demandes pour revenir",
@@ -3560,7 +3579,7 @@
     "make": "Créer",
     "making": "Création…",
     "theirRole": "Rôle sur l’événement",
-    "noEdit": "Un code ne peut pas donner le droit de modifier. Ce droit s’accorde à une personne précise.",
+    "noEdit": "Un code ne peut pas donner le droit de modifier, ni celui de diriger la salle. Ces droits s’accordent à une personne précise.",
     "howMany": "Nombre de personnes",
     "howManyHelp": "De 1 à 500.",
     "capBlank": "Indiquez combien de personnes peuvent utiliser ce code.",
@@ -3603,6 +3622,7 @@
     "qrSaid": "Code QR du code d’accès {{code}}",
     "close": "Fermer",
     "tag": "Code d’accès",
-    "joinedWith": "A rejoint l’événement avec le code d’accès {{code}} ({{time}})."
+    "joinedWith": "A rejoint l’événement avec le code d’accès {{code}} ({{time}}).",
+    "runRefused": "Un code d’accès ne peut pas donner le droit de diriger la salle. Accordez « Peut diriger la salle » à une seule personne, avec son propre lien depuis la liste du personnel."
   }
 }

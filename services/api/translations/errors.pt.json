@@ -162,5 +162,7 @@
     "plan_not_priced": "Este plano não tem preço na sua moeda de faturação.",
     "nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até um plano ser pago.",
     "audience_name_taken": "Esse nome já é usado por um público guardado.",
-    "audiences_full": "Este evento já tem o máximo de públicos guardados."
+    "audiences_full": "Este evento já tem o máximo de públicos guardados.",
+    "table_not_yours": "Esta mesa está na zona de outra pessoa. Fale com essa pessoa ou com o chefe de sala.",
+    "level_not_allowed_for_code": "Um código de acesso não pode dar permissão para chefiar a sala. Dê «Pode chefiar a sala» a uma só pessoa, com a sua própria ligação a partir da lista da equipa."
 }

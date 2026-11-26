@@ -1,6 +1,6 @@
 import {
   type AddableMember,
-  EVENT_ROLES,
+  EVENT_LEVELS,
   type EventPeople,
   type EventPerson,
   type EventRole,
@@ -34,7 +34,7 @@ export function inRoleOrder<P, R>(
 export function inListOrder(people: readonly EventPerson[], locale: string): EventPerson[] {
   return inRoleOrder(
     people,
-    EVENT_ROLES,
+    EVENT_LEVELS,
     (one) => ({ role: one.role, name: one.user?.name ?? one.address ?? '' }),
     locale,
   );

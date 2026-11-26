@@ -131,10 +131,18 @@ final readonly class DoorCodes
         throw new ApiException(ErrorCode::Conflict, 'door_codes.not_made');
     }
 
-    /** @return list<array{propertyPath: string, message: string, code: string}> */
+    /**
+     * A code read out across a room reaches whoever hears it, so it never runs the floor (sc-4002): that is its own 422, before anything else is checked.
+     *
+     * @return list<array{propertyPath: string, message: string, code: string}>
+     */
     private function roleViolations(EventRole $role): array
     {
-        return Iter\contains([EventRole::CanView, EventRole::CanCheckIn], $role) ? [] : [$this->violation('role', 'door_codes.role')];
+        if (EventRole::CanRunFloor === $role) {
+            throw new ApiException(ErrorCode::LevelNotAllowedForCode, 'door_codes.run_floor');
+        }
+
+        return Iter\contains(DoorCode::ROLES, $role) ? [] : [$this->violation('role', 'door_codes.role')];
     }
 
     /** @return list<array{propertyPath: string, message: string, code: string}> */

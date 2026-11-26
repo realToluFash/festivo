@@ -239,6 +239,7 @@ export function NewComposer({
   onCaret,
   onInsert,
   onPreview,
+  previewOff,
   onSend,
   editing,
 }: {
@@ -255,6 +256,8 @@ export function NewComposer({
   onCaret?: (at: number) => void;
   onInsert?: () => void;
   onPreview?: () => void;
+  /** Why Preview is not offered, said beside it. */
+  previewOff?: string | undefined;
   onSend?: () => void;
   editing?: { onChangeWhen: () => void; onSave: () => void } | undefined;
 }) {
@@ -327,7 +330,7 @@ export function NewComposer({
             label={W.preview}
             glyph="eye"
             onPress={onPreview ?? (() => undefined)}
-            off={!on}
+            off={!on || previewOff != null || matchesNobody(draft)}
             testID="messages.preview"
           />
           {editing == null ? (
@@ -359,6 +362,18 @@ export function NewComposer({
               </View>
             </>
           )}
+        </View>
+      )}
+      {tools && previewOff != null && (
+        <View style={styles.previewOff} testID="messages.previewOff">
+          <Glyph name="info" size={15} ink={tokens.colorInkSecondary} weight={2.2} />
+          <Text
+            size={13.5}
+            weight="medium"
+            style={[styles.secondary, styles.grow, styles.previewOffWords]}
+          >
+            {previewOff}
+          </Text>
         </View>
       )}
     </View>
@@ -754,6 +769,8 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, lineHeight: 24, maxHeight: 220, textAlignVertical: 'top' },
   tokenRun: { color: tokens.colorAccentText, backgroundColor: tokens.colorAccentTint },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  previewOff: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceXs },
+  previewOffWords: { lineHeight: 13.5 * 1.45 },
   // A phone has no room for Insert, Preview, Change when and Save in one row, so Save goes under them whole.
   toolsWrap: { flexWrap: 'wrap', rowGap: 0 },
   saveAt: { flexShrink: 0, marginLeft: 'auto' },
