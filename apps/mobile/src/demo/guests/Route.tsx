@@ -26,13 +26,14 @@ export function GuestsRoute() {
   );
 }
 
-/** /demo/guests/check-in: the door on the day, by its ?state=, and &seats=none for an event nobody is seated on. */
+/** /demo/guests/check-in: the door on the day, by its ?state=, &seats=none for an event nobody is seated on, and &from=night when Your night opened it (‹ Your night). */
 export function CheckInRoute() {
   const params = useLocalSearchParams<{
     state?: string;
     focus?: string;
     tap?: string;
     seats?: string;
+    from?: string;
   }>();
   const state = doorStateOf(params.state);
   const seating = seatingOf(params.seats);
@@ -40,10 +41,11 @@ export function CheckInRoute() {
   return (
     <EventsShell>
       <CheckInScreen
-        key={`${state ?? ''}.${seating}`}
+        key={`${state ?? ''}.${seating}.${params.from ?? ''}`}
         state={state}
         seating={seating}
         searchAsk={searchAskOf(params)}
+        from={params.from === 'night' ? 'night' : 'guests'}
       />
     </EventsShell>
   );
