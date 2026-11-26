@@ -3691,48 +3691,48 @@
     "heldCount_many": "{{count, number}} à espera da cozinha",
     "heldCount_other": "{{count, number}} à espera da cozinha",
     "fresh": {
-      "connected": "Connected · up to date {{time}}",
-      "noConnection": "No connection · as of {{time}}",
-      "noConnectionWaiting_one": "No connection · as of {{time}} · {{count, number}} tap waiting",
-      "noConnectionWaiting_other": "No connection · as of {{time}} · {{count, number}} taps waiting",
-      "noConnectionWaiting_many": "No connection · as of {{time}} · {{count, number}} taps waiting",
-      "notStarted": "Not started yet"
+      "connected": "Com ligação · atualizado: {{time}}",
+      "noConnection": "Sem ligação · atualizado: {{time}}",
+      "noConnectionWaiting_one": "Sem ligação · atualizado: {{time}} · {{count, number}} ação por enviar",
+      "noConnectionWaiting_other": "Sem ligação · atualizado: {{time}} · {{count, number}} ações por enviar",
+      "noConnectionWaiting_many": "Sem ligação · atualizado: {{time}} · {{count, number}} de ações por enviar",
+      "notStarted": "Ainda não começou"
     },
-    "waitingToSend": "Waiting to send",
+    "waitingToSend": "Por enviar",
     "notSent": {
-      "heading": "Not sent · the floor changed while you were offline",
+      "heading": "Não enviado · a sala mudou enquanto estava sem ligação",
       "stageNow": {
-        "toServe": "{{who}} is to serve now, by {{by}}.",
-        "dishing": "{{who}} is dishing now, by {{by}}.",
-        "checked": "{{who}} is checked now, by {{by}}.",
-        "onItsWay": "{{who}} is on its way now, by {{by}}.",
-        "served": "{{who}} is served now, by {{by}}."
+        "toServe": "{{by}} marcou o prato de {{who}} como «Por servir».",
+        "dishing": "{{by}} marcou o prato de {{who}} como «A empratar».",
+        "checked": "{{by}} marcou o prato de {{who}} como «Verificado».",
+        "onItsWay": "{{by}} marcou o prato de {{who}} como «A caminho».",
+        "served": "{{by}} marcou o prato de {{who}} como «Servido»."
       },
       "stageNowUnnamed": {
-        "toServe": "{{who}} is to serve now.",
-        "dishing": "{{who}} is dishing now.",
-        "checked": "{{who}} is checked now.",
-        "onItsWay": "{{who}} is on its way now.",
-        "served": "{{who}} is served now."
+        "toServe": "O prato de {{who}} está agora «Por servir».",
+        "dishing": "O prato de {{who}} está agora «A empratar».",
+        "checked": "O prato de {{who}} está agora «Verificado».",
+        "onItsWay": "O prato de {{who}} está agora «A caminho».",
+        "served": "O prato de {{who}} está agora «Servido»."
       },
-      "offTray": "{{who}} was taken off this tray, by {{by}}.",
-      "offTrayUnnamed": "{{who}} was taken off this tray.",
+      "offTray": "{{by}} tirou {{who}} deste tabuleiro.",
+      "offTrayUnnamed": "{{who}} já não está neste tabuleiro.",
       "itemNow": {
-        "ready": "{{item}} is ready now, by {{by}}.",
-        "preparing": "{{item}} is preparing now, by {{by}}."
+        "ready": "{{by}} marcou {{item}} como «Pronto».",
+        "preparing": "{{by}} marcou {{item}} como «Em preparação»."
       },
       "itemNowUnnamed": {
-        "ready": "{{item}} is ready now.",
-        "preparing": "{{item}} is preparing now."
+        "ready": "{{item}} está agora «Pronto».",
+        "preparing": "{{item}} está agora «Em preparação»."
       },
-      "trayNotYours": "This tray is {{name}}'s now.",
-      "undoExpired_one": "Too late to undo: {{count, number}} minute had passed.",
-      "undoExpired_other": "Too late to undo: {{count, number}} minutes had passed.",
-      "undoExpired_many": "Too late to undo: {{count, number}} minutes had passed."
+      "trayNotYours": "Este tabuleiro é agora de {{name}}.",
+      "undoExpired_one": "Já não é possível anular: passou {{count, number}} minuto.",
+      "undoExpired_other": "Já não é possível anular: passaram {{count, number}} minutos.",
+      "undoExpired_many": "Já não é possível anular: passaram {{count, number}} de minutos."
     },
     "needsConnection": {
-      "startTray": "Starting a tray needs a connection.",
-      "flaggedTick": "Needs a connection: check {{name}} at the table."
+      "startTray": "É preciso Internet para começar um tabuleiro.",
+      "flaggedTick": "É preciso Internet: verifique à mesa com {{name}}."
     }
   },
   "myNight": {

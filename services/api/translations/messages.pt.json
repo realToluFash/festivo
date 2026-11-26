@@ -546,8 +546,8 @@
     "service.ready_in_invalid": "«Pronto em cerca de» pode ser 5, 10 ou 15 minutos, e só se indica enquanto o elemento está «Em preparação».",
     "service.item_not_on_course": "Esse elemento não faz parte deste serviço.",
     "service.item_not_on_plate": "Esse elemento não está neste prato.",
-    "service.changed": "This changed while you were offline. Nothing was changed.",
-    "service.expected_required": "Send what the tap saw with each service step.",
-    "service.idempotency_key_required": "Send an Idempotency-Key with each service step.",
-    "service.idempotency_key_reused": "This Idempotency-Key was already used for a different step. Nothing was changed."
+    "service.changed": "Outra pessoa alterou isto enquanto estava sem ligação. Nada foi guardado.",
+    "service.expected_required": "Envie com cada passo do serviço o estado que o dispositivo viu.",
+    "service.idempotency_key_required": "Envie o cabeçalho Idempotency-Key em cada passo do serviço.",
+    "service.idempotency_key_reused": "Esta Idempotency-Key já foi usada noutro passo. Nada foi alterado."
 }
