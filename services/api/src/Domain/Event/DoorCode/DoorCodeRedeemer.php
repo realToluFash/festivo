@@ -102,7 +102,7 @@ final readonly class DoorCodeRedeemer
 
         $doorCode = $this->open($typed, $reader, $request);
         $this->refuseAMember($doorCode, $reader);
-        $already = $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $reader, $this->clock->now());
+        $already = $this->heldBy($doorCode, $reader);
 
         if (null !== $already) {
             return ['person' => $already, 'again' => true];
@@ -111,13 +111,9 @@ final readonly class DoorCodeRedeemer
         return ['person' => $this->admit($doorCode, $reader, $request), 'again' => false];
     }
 
-    /** The account already in by this code, still on the event through it: it signs back in at a full code and takes no use. */
+    /** The account already on the event, by this code or another way in: it lands on You're in again, takes no use, and signs back in at a full code. */
     public function heldBy(DoorCode $doorCode, User $user): ?EventPerson
     {
-        if (null === $this->doorCodeRedemptionRepository->findOneFor($doorCode, $user)) {
-            return null;
-        }
-
         return $this->eventPersonRepository->findLiveOutside($doorCode->getEvent()->getId(), $user, $this->clock->now());
     }
 

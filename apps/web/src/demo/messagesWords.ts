@@ -28,6 +28,7 @@ export const MW = {
   notSentYet: 'not sent yet',
   toAll: 'To all guests',
   toAudience: 'To {{audience}}',
+  toChosen: 'To chosen guests',
   toldByChannels: 'told by {{channels}}',
   you: 'You: {{text}}',
   doneBy: 'Done by {{name}} at {{time}}. It comes back to Needs you if they write again.',

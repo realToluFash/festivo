@@ -3383,18 +3383,18 @@
       "can_edit": "Puede editar",
       "can_view": "Puede ver",
       "can_check_in": "Puede registrar llegadas",
-      "can_work_floor": "Can work the floor",
-      "can_work_pass": "Can work the pass",
-      "can_run_floor": "Can run the floor"
+      "can_work_floor": "Puede atender en sala",
+      "can_work_pass": "Puede llevar el pase",
+      "can_run_floor": "Puede dirigir la sala"
     },
     "roleMeans": {
       "lead": "Todo en este evento, incluidos el presupuesto y quién participa en él.",
       "can_edit": "Todo menos el presupuesto y quién participa en el evento.",
       "can_view": "Ve el evento sin cambiar nada. Sin datos de contacto.",
       "can_check_in": "Registra la llegada de los invitados el día del evento. Solo los nombres, sin datos de contacto.",
-      "can_work_floor": "Marks plates and requests at their own tables.",
-      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
-      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
+      "can_work_floor": "Marca los platos y las peticiones de sus propias mesas.",
+      "can_work_pass": "Marca los platos en el pase y en las zonas de cocina.",
+      "can_run_floor": "Inicia el servicio, marcha los platos y actúa en cualquier mesa. No accede a nada más del evento."
     },
     "memberOf": "Miembro de {{organisation}}",
     "roleFor": "Rol de {{name}} en este evento",
@@ -3430,9 +3430,9 @@
       "can_edit": "Ahora {{name}} puede editar el evento.",
       "can_view": "Ahora {{name}} puede ver el evento.",
       "can_check_in": "Ahora {{name}} puede registrar llegadas.",
-      "can_work_floor": "{{name}} can work the floor now.",
-      "can_work_pass": "{{name}} can work the pass now.",
-      "can_run_floor": "{{name}} can run the floor now."
+      "can_work_floor": "Ahora {{name}} puede atender en sala.",
+      "can_work_pass": "Ahora {{name}} puede llevar el pase.",
+      "can_run_floor": "Ahora {{name}} puede dirigir la sala."
     },
     "nowMany": {
       "lead_one": "Ahora {{count, number}} persona es responsable de este evento.",
@@ -3447,15 +3447,15 @@
       "can_check_in_one": "Ahora {{count, number}} persona puede registrar llegadas.",
       "can_check_in_many": "Ahora {{count, number}} de personas pueden registrar llegadas.",
       "can_check_in_other": "Ahora {{count, number}} personas pueden registrar llegadas.",
-      "can_work_floor_one": "{{count, number}} person can work the floor now.",
-      "can_work_floor_many": "{{count, number}} people can work the floor now.",
-      "can_work_floor_other": "{{count, number}} people can work the floor now.",
-      "can_work_pass_one": "{{count, number}} person can work the pass now.",
-      "can_work_pass_many": "{{count, number}} people can work the pass now.",
-      "can_work_pass_other": "{{count, number}} people can work the pass now.",
-      "can_run_floor_one": "{{count, number}} person can run the floor now.",
-      "can_run_floor_many": "{{count, number}} people can run the floor now.",
-      "can_run_floor_other": "{{count, number}} people can run the floor now."
+      "can_work_floor_one": "Ahora {{count, number}} persona puede atender en sala.",
+      "can_work_floor_many": "Ahora {{count, number}} de personas pueden atender en sala.",
+      "can_work_floor_other": "Ahora {{count, number}} personas pueden atender en sala.",
+      "can_work_pass_one": "Ahora {{count, number}} persona puede llevar el pase.",
+      "can_work_pass_many": "Ahora {{count, number}} de personas pueden llevar el pase.",
+      "can_work_pass_other": "Ahora {{count, number}} personas pueden llevar el pase.",
+      "can_run_floor_one": "Ahora {{count, number}} persona puede dirigir la sala.",
+      "can_run_floor_many": "Ahora {{count, number}} de personas pueden dirigir la sala.",
+      "can_run_floor_other": "Ahora {{count, number}} personas pueden dirigir la sala."
     },
     "notJoined": "Aún no se ha unido",
     "outsideTag": "Fuera de {{organisation}}",
@@ -3473,10 +3473,10 @@
     "staffLinkNoJob": "Enlace del personal · {{name}} · termina: {{time}}",
     "endsOn": "{{date}}, {{time}}",
     "notSignedIn": "Aún no ha iniciado sesión",
-    "serviceHead": "For the service",
-    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget.",
-    "serviceNotMembers": "For someone from outside only. Untick the members to give it.",
-    "membersNotService": "Members take one of the four roles above. Pick one to add them as well."
+    "serviceHead": "Para el servicio",
+    "serviceClosing": "Los permisos de servicio solo dan acceso al servicio. Con ninguno se ven los datos de contacto ni el presupuesto.",
+    "serviceNotMembers": "Solo para alguien de fuera. Desmarque a los miembros para poder darlo.",
+    "membersNotService": "Los miembros reciben uno de los cuatro roles de arriba. Elija uno para añadirlos también."
   },
   "doorCodes": {
     "doorCode": "Código de acceso",
@@ -3496,7 +3496,7 @@
     "make": "Crear",
     "making": "Creando…",
     "theirRole": "Rol en el evento",
-    "noEdit": "Un código no puede dar permiso para editar. Ese permiso se da a una persona concreta.",
+    "noEdit": "Un código no puede dar permiso para editar ni para dirigir la sala. Esos permisos se dan a una persona concreta.",
     "howMany": "Número de personas",
     "howManyHelp": "De 1 a 500.",
     "capBlank": "Indique cuántas personas pueden usar este código.",
@@ -3544,8 +3544,8 @@
     "printLine": "Escanéelo con la cámara del móvil, o abra {{address}} e introduzca el código. Funciona hasta {{until}}.",
     "tag": "Código de acceso",
     "joinedWith": "Se unió al evento con el código de acceso {{code}} ({{time}}).",
-    "runRefused": "A join code can’t let people run the floor.",
-    "runRefusedLine": "Give Can run the floor to one person, with their own link from the roster."
+    "runRefused": "Un código de acceso no puede dar permiso para dirigir la sala.",
+    "runRefusedLine": "Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal."
   },
   "redeem": {
     "enterTitle": "Introduzca un código de acceso",
@@ -3854,7 +3854,13 @@
       "needs": "Notas sobre alimentación actualizadas",
       "flagged": "Puede que el enlace haya llegado a otra persona",
       "failed": "No se han podido cargar los cambios."
-    }
+    },
+    "greetAs": "Greet as",
+    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
+    "greetAsCounter": "{{count, number}} of {{max, number}}",
+    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
+    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
+    "greetsByFullName": "Messages greet them by their full name."
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -5553,9 +5559,9 @@
     "accessHint": {
       "view": "Ve el evento y sus propios turnos. No cambia nada.",
       "check_in": "Registra la llegada de los invitados en la puerta.",
-      "floor": "Atiende sus mesas y marca lo que ha salido.",
-      "pass": "Ve los pedidos en el pase y les da salida.",
-      "run": "Dirige la sala durante el evento. Solo accede con un enlace personal."
+      "floor": "Marca los platos y las peticiones de sus propias mesas.",
+      "pass": "Marca los platos en el pase y en las zonas de cocina.",
+      "run": "Inicia el servicio, marcha los platos y actúa en cualquier mesa. No accede a nada más del evento."
     }
   },
   "stations": {
@@ -6781,6 +6787,7 @@
     "new": "Nuevo",
     "newMessage": "Nuevo mensaje",
     "done": "Listo",
+    "doneHeading": "Terminadas",
     "noneYet": "Aún no hay conversaciones",
     "noneLine": "Lo que escriba aparece en la página de cada invitado. Cada invitado que responda tendrá aquí su conversación.",
     "pickOne": "Elija una conversación o escriba a sus invitados aquí abajo.",
@@ -6797,7 +6804,7 @@
     "onTheirPage": "En su página",
     "email": "Correo electrónico",
     "toAll": "Para todos los invitados",
-    "toChosen": "Para: {{audience}}",
+    "toChosen": "Para los invitados elegidos",
     "sending": "Enviando…",
     "reached": "Ha llegado a {{count, number}} de {{total, number}}",
     "queued_one": "Mensaje en cola. Se está enviando a {{count, number}} persona.",
@@ -6823,7 +6830,9 @@
     "goesOnPage": "Su mensaje aparece en la página de cada invitado.",
     "toldThere": "Soirely les avisa por {{channels}} de que lo tienen ahí.",
     "byEmail": "correo electrónico",
-    "cantBeTold": "No se puede avisar a {{count, number}} · el mensaje queda en la página de cada uno, por si la abre",
+    "cantBeTold_one": "No se puede avisar a {{count, number}} invitado · el mensaje queda en la página de ese invitado, por si la abre",
+    "cantBeTold_other": "No se puede avisar a {{count, number}} invitados · el mensaje queda en la página de cada uno, por si la abre",
+    "cantBeTold_many": "No se puede avisar a {{count, number}} de invitados · el mensaje queda en la página de cada uno, por si la abre",
     "seeAll": "Ver los {{count, number}}",
     "backToCheck": "Volver a la revisión",
     "sendTo_one": "Enviar a {{count, number}} persona",
@@ -6862,11 +6871,51 @@
     "noMatch": "Ningún invitado coincide",
     "clear": "Borrar",
     "clearSearch": "Borrar la búsqueda",
-    "chosen": "Elegidos: {{count, number}}",
+    "chosen_one": "{{count, number}} elegido",
+    "chosen_other": "{{count, number}} elegidos",
+    "chosen_many": "{{count, number}} elegidos",
     "loadingGuests": "Cargando invitados…",
     "more": "{{count, number}} más",
     "remove": "Quitar a {{name}}",
     "chosenTo": "Invitados elegidos",
-    "change": "Cambiar"
+    "change": "Cambiar",
+    "insert": "Insert",
+    "token": {
+      "greeting": "Greeting",
+      "event": "Event",
+      "date": "Date",
+      "hosts": "Hosts"
+    },
+    "tokenName": "{{token}}, filled in for each guest",
+    "tokenLine": {
+      "greeting": "Their Greet as, or their full name if they have none",
+      "event": "The event’s name",
+      "date": "The event’s day, or its days",
+      "hosts": "The event’s hosts"
+    },
+    "preview": "Preview",
+    "previewOn": "Preview on",
+    "edit": "Edit",
+    "previewHeading": "As {{name}} will see it",
+    "previewAs": "Preview as",
+    "previewOption": "{{name}} · {{language}}",
+    "filling": "Filling it in for {{name}}…",
+    "previewFailed": "We could not fill it in for {{name}}.",
+    "previewFailedLine": "Check your connection and try again.",
+    "noLongerGuest": "{{name}} is no longer a guest, so it is filled in for {{next}} instead.",
+    "nobodyLeft": "{{name}} is no longer a guest, so there is nobody to preview it as.",
+    "greetedAsGreetAs": "Greeted as “{{greetAs}}”, their Greet as.",
+    "greetedAsName": "Greeted as {{name}}, their full name. They have no Greet as.",
+    "languageFrom": {
+      "chose": "In {{language}}, the language they chose on their page.",
+      "host": "In {{language}}, the language you set for them.",
+      "organisation": "In {{language}}, your organisation’s language, as no language is set for them."
+    },
+    "onlyOurs": "Only Soirely’s own words are translated. Yours show on their page exactly as you wrote them.",
+    "typedBraces": "Anything you type in braces shows exactly as typed. To fill something in for each guest, use Insert.",
+    "nothingToFill": "Nothing to fill in, so every guest gets exactly these words.",
+    "nobodyToPreview": "No guests chosen yet, so there is nobody to preview it as.",
+    "whatSoirelySends": "What Soirely sends",
+    "emailFrom": "Email · from {{organisation}} via Soirely"
   }
 }

@@ -2,6 +2,7 @@ import { visibleLength } from './visibleText.ts';
 import type { Companion, Guest, GuestList, NewGuest, Violation } from '@soirely/api-client';
 
 import { emailProblem } from './forms.ts';
+import { GREET_AS_MAXIMUM, greetAsLength } from './messageTokens.ts';
 import { nameKey } from './nameKey.ts';
 import { phoneLengthProblem } from './phone.ts';
 
@@ -56,6 +57,8 @@ export interface Typed {
   companions: readonly string[];
   /** The host's Language for them, null for Not set (sc-3790). */
   language: string | null;
+  /** As typed (sc-3960); a form without the field leaves it out, and the guest keeps theirs. */
+  greetAs?: string;
 }
 
 export type Problem =
@@ -65,10 +68,11 @@ export type Problem =
   | 'phoneTooShort'
   | 'phoneTooLong'
   | 'noCountry'
+  | 'greetAsTooLong'
   // A number of a length its country uses that the API still refuses, in the API's words.
   | { refused: string };
 
-/** Field keys in the form's order: fullName, email, mobile, then companion-0 and on. */
+/** Field keys in the form's order: fullName, greetAs, email, mobile, then companion-0 and on. */
 export type Problems = Readonly<Record<string, Problem>>;
 
 export function problemsOf(typed: Typed): Problems {
@@ -81,6 +85,8 @@ export function problemsOf(typed: Typed): Problems {
   if (phone === 'tooShort') found.mobile = 'phoneTooShort';
   else if (phone === 'tooLong') found.mobile = 'phoneTooLong';
   else if (phone === 'noCountry') found.mobile = 'noCountry';
+  if (typed.greetAs != null && greetAsLength(typed.greetAs) > GREET_AS_MAXIMUM)
+    found.greetAs = 'greetAsTooLong';
   typed.companions.forEach((name, at) => {
     if (nameLength(name) > GUEST_NAME_MAXIMUM) found[`companion-${at}`] = 'tooLong';
   });
@@ -107,6 +113,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
     else if (key === 'mobile')
       found.mobile =
         one.propertyPath === 'countryCode' ? 'noCountry' : (own.mobile ?? { refused: one.message });
+    else if (key === 'greetAs') found.greetAs = 'greetAsTooLong';
     else if (key.startsWith('companion-')) found[key] = 'tooLong';
   }
 
@@ -116,6 +123,7 @@ export function violationProblems(violations: readonly Violation[], typed: Typed
 export function firstProblem(problems: Problems, companions: number): string | null {
   const order = [
     'fullName',
+    'greetAs',
     'email',
     'mobile',
     ...Array.from({ length: companions }, (_, at) => `companion-${at}`),
@@ -136,6 +144,9 @@ export function newGuestOf(typed: Typed, allowDuplicate: boolean): NewGuest {
       fullName: name.trim() === '' ? null : name.trim(),
     })),
     language: typed.language,
+    ...(typed.greetAs == null
+      ? {}
+      : { greetAs: typed.greetAs.trim() === '' ? null : typed.greetAs.trim() }),
     ...(allowDuplicate ? { allowDuplicate: true } : {}),
   };
 }

@@ -164,7 +164,26 @@ export function GuestDetails({
   const after = guestReplyBy(guest, shown, replies, manages, timeZone, locale, t);
   const records = after.records && invitation != null;
   const recordedBy = guest.replyRecorded ?? null;
+  const greets =
+    guest.greetAs == null
+      ? t('guestList.greetsByFullName')
+      : t('guestList.greetsThemAs', { greetAs: guest.greetAs });
   const rows: { key: string; inset: number; row: ReactNode }[] = [
+    {
+      key: 'greetAs',
+      inset: 40,
+      row: (
+        <Row
+          title={greets}
+          line={t('guestList.greetAs')}
+          lead={<LineIcon name="chat" />}
+          weight={guest.greetAs == null ? 'medium' : 'semibold'}
+          off={guest.greetAs == null}
+          accessibilityLabel={`${t('guestList.greetAs')}, ${greets}`}
+          testID="guest.greetAs"
+        />
+      ),
+    },
     {
       key: 'group',
       inset: 40,

@@ -1,4 +1,9 @@
-import type { Account, OpenedDoorCode, RedeemedDoorCode } from '@soirely/api-client';
+import {
+  type Account,
+  ApiError,
+  type OpenedDoorCode,
+  type RedeemedDoorCode,
+} from '@soirely/api-client';
 import { phoneLengthProblem } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -407,7 +412,15 @@ function EventStep({
       );
       onSent(handle, shownNumber(country, number.current));
     } catch (error) {
-      refused(error);
+      const said = error instanceof ApiError && error.status === 422 ? error.fieldErrors() : {};
+      if (said.name == null && said.number == null) {
+        refused(error);
+        return;
+      }
+      setJoining(false);
+      setNameSaid(said.name ?? null);
+      setNumberSaid(said.number ?? null);
+      focusChecked(said.name == null ? numberField : field);
     }
   }
 

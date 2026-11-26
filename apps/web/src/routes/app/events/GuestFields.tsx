@@ -1,8 +1,10 @@
 import {
+  GREET_AS_MAXIMUM,
   LOCALES,
   MOST_COMPANIONS,
   callingCode,
   countryChoices,
+  greetAsLength,
   namedCount,
   ownLanguageName,
   placesTo,
@@ -197,6 +199,8 @@ export function GuestField({
   value,
   optional = false,
   error,
+  help,
+  counter,
   focusKey,
   type = 'text',
   onChange,
@@ -205,12 +209,21 @@ export function GuestField({
   value: string;
   optional?: boolean;
   error: string | undefined;
+  help?: string;
+  counter?: string;
   focusKey: string;
   type?: 'text' | 'email';
   onChange: (value: string) => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
+  const told = [
+    help == null ? null : `${id}-help`,
+    counter == null ? null : `${id}-counter`,
+    error == null ? null : `${id}-error`,
+  ]
+    .filter((one) => one != null)
+    .join(' ');
 
   return (
     <div className="desk-field">
@@ -227,12 +240,51 @@ export function GuestField({
           spellCheck={false}
           data-focus={focusKey}
           aria-invalid={error != null}
-          aria-describedby={error == null ? undefined : `${id}-error`}
+          aria-describedby={told === '' ? undefined : told}
           onChange={(event) => onChange(event.target.value)}
         />
       </div>
       {error != null && <FieldWrong id={`${id}-error`}>{error}</FieldWrong>}
+      {help != null && (
+        <p id={`${id}-help`} className="desk-help">
+          {help}
+        </p>
+      )}
+      {counter != null && (
+        <p id={`${id}-counter`} className="desk-help">
+          {counter}
+        </p>
+      )}
     </div>
+  );
+}
+
+/** Greet as (sc-3960), under Full name: counted after trimming, as the API counts it, with no maxlength to cut a paste short. */
+export function GreetAsField({
+  value,
+  error,
+  onChange,
+}: {
+  value: string;
+  error: string | undefined;
+  onChange: (greetAs: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <GuestField
+      label={t('guestList.greetAs')}
+      value={value}
+      optional
+      error={error}
+      help={t('guestList.greetAsHint')}
+      counter={t('guestList.greetAsCounter', {
+        count: greetAsLength(value),
+        max: GREET_AS_MAXIMUM,
+      })}
+      focusKey="greetAs"
+      onChange={onChange}
+    />
   );
 }
 

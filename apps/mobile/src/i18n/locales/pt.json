@@ -2364,18 +2364,18 @@
       "can_edit": "Pode editar",
       "can_view": "Pode ver",
       "can_check_in": "Pode registar entradas",
-      "can_work_floor": "Can work the floor",
-      "can_work_pass": "Can work the pass",
-      "can_run_floor": "Can run the floor"
+      "can_work_floor": "Pode servir na sala",
+      "can_work_pass": "Pode estar no passe",
+      "can_run_floor": "Pode chefiar a sala"
     },
     "roleMeans": {
       "lead": "Tudo neste evento, incluindo o orçamento e quem participa nele.",
       "can_edit": "Tudo exceto o orçamento e quem participa no evento.",
       "can_view": "Vê o evento sem alterar nada. Sem dados de contacto.",
       "can_check_in": "Regista as entradas dos convidados no dia do evento. Só os nomes, sem dados de contacto.",
-      "can_work_floor": "Marks plates and requests at their own tables.",
-      "can_work_pass": "Marks plates at the pass and the kitchen stations.",
-      "can_run_floor": "Starts service, fires courses and acts on any table. Nothing else of the event."
+      "can_work_floor": "Marca os pratos e os pedidos das suas próprias mesas.",
+      "can_work_pass": "Marca os pratos no passe e nos postos da cozinha.",
+      "can_run_floor": "Inicia o serviço, manda avançar os pratos e atua em qualquer mesa. Não acede a mais nada do evento."
     },
     "memberOf": "Membro de {{organisation}}",
     "fromOutside": "De fora de {{organisation}}",
@@ -2424,9 +2424,9 @@
       "can_edit": "{{name}} pode agora editar o evento.",
       "can_view": "{{name}} pode agora ver o evento.",
       "can_check_in": "{{name}} pode agora registar entradas.",
-      "can_work_floor": "{{name}} can work the floor now.",
-      "can_work_pass": "{{name}} can work the pass now.",
-      "can_run_floor": "{{name}} can run the floor now."
+      "can_work_floor": "{{name}} pode agora servir na sala.",
+      "can_work_pass": "{{name}} pode agora estar no passe.",
+      "can_run_floor": "{{name}} pode agora chefiar a sala."
     },
     "nowMany": {
       "lead_one": "{{count, number}} pessoa é agora responsável por este evento.",
@@ -2441,15 +2441,15 @@
       "can_check_in_one": "{{count, number}} pessoa pode agora registar entradas.",
       "can_check_in_many": "{{count, number}} de pessoas podem agora registar entradas.",
       "can_check_in_other": "{{count, number}} pessoas podem agora registar entradas.",
-      "can_work_floor_one": "{{count, number}} person can work the floor now.",
-      "can_work_floor_many": "{{count, number}} people can work the floor now.",
-      "can_work_floor_other": "{{count, number}} people can work the floor now.",
-      "can_work_pass_one": "{{count, number}} person can work the pass now.",
-      "can_work_pass_many": "{{count, number}} people can work the pass now.",
-      "can_work_pass_other": "{{count, number}} people can work the pass now.",
-      "can_run_floor_one": "{{count, number}} person can run the floor now.",
-      "can_run_floor_many": "{{count, number}} people can run the floor now.",
-      "can_run_floor_other": "{{count, number}} people can run the floor now."
+      "can_work_floor_one": "{{count, number}} pessoa pode agora servir na sala.",
+      "can_work_floor_many": "{{count, number}} de pessoas podem agora servir na sala.",
+      "can_work_floor_other": "{{count, number}} pessoas podem agora servir na sala.",
+      "can_work_pass_one": "{{count, number}} pessoa pode agora estar no passe.",
+      "can_work_pass_many": "{{count, number}} de pessoas podem agora estar no passe.",
+      "can_work_pass_other": "{{count, number}} pessoas podem agora estar no passe.",
+      "can_run_floor_one": "{{count, number}} pessoa pode agora chefiar a sala.",
+      "can_run_floor_many": "{{count, number}} de pessoas podem agora chefiar a sala.",
+      "can_run_floor_other": "{{count, number}} pessoas podem agora chefiar a sala."
     },
     "failedTitle": "Não foi possível carregar as pessoas deste evento.",
     "failedLine": "Verifique a ligação à Internet e tente novamente.",
@@ -2467,7 +2467,7 @@
       "opens": "Abre Pessoas.",
       "leadSaid": "Responsável, {{name}}."
     },
-    "serviceClosing": "The service levels open only the service. None of them sees contact details or the budget."
+    "serviceClosing": "As permissões de serviço só dão acesso ao serviço. Nenhuma mostra os dados de contacto nem o orçamento."
   },
   "recoveryRequests": {
     "cardTitle": "Pedidos para voltar a entrar",
@@ -2718,7 +2718,13 @@
       "flagged": "A ligação pode ter chegado a outra pessoa",
       "failed": "Não foi possível carregar as alterações.",
       "retry": "Tentar novamente"
-    }
+    },
+    "greetAs": "Greet as",
+    "greetAsHint": "How messages greet them, such as Auntie Bisi or Dr. Okafor. Leave it blank to use their full name.",
+    "greetAsCounter": "{{count, number}} of {{max, number}}",
+    "greetAsTooLong": "Shorten Greet as to {{count, number}} characters or fewer.",
+    "greetsThemAs": "Messages greet them as “{{greetAs}}”.",
+    "greetsByFullName": "Messages greet them by their full name."
   },
   "guestNumbers": {
     "title": "Convidados",
@@ -3579,7 +3585,7 @@
     "make": "Criar",
     "making": "A criar…",
     "theirRole": "Função no evento",
-    "noEdit": "Um código não pode dar permissão para editar. Dê essa permissão a uma pessoa concreta.",
+    "noEdit": "Um código não pode dar permissão para editar nem para chefiar a sala. Dê essas permissões a uma pessoa concreta.",
     "howMany": "Número de pessoas",
     "howManyHelp": "De 1 a 500.",
     "capBlank": "Indique quantas pessoas podem usar este código.",
@@ -3623,6 +3629,6 @@
     "close": "Fechar",
     "tag": "Código de acesso",
     "joinedWith": "Juntou-se ao evento com o código de acesso {{code}} ({{time}}).",
-    "runRefused": "A join code can’t let people run the floor. Give Can run the floor to one person, with their own link from the roster."
+    "runRefused": "Um código de acesso não pode dar permissão para chefiar a sala. Dê «Pode chefiar a sala» a uma só pessoa, com a sua própria ligação a partir da lista da equipa."
   }
 }

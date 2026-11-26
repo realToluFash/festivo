@@ -206,13 +206,18 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
   `409 phone_alternative` after the right code, with nothing made, released or granted,
   and an unverified number on another account is released.
 - **A door code's use cap counts people.** A full code still opens. After the right code,
-  an account already in by it is signed in with `again: true` and takes no use, and any
-  other number gets the one `404 door_code_invalid`, with no account made. With two-factor
+  an account already on its event, by it or another way in, is signed in with
+  `again: true` and takes no use, and any other number gets the one
+  `404 door_code_invalid`, with no account made. With two-factor
   on, nothing is granted until it is passed; the signed-in `POST
 /api/door-codes/{code}/redeem` then takes the use. Signed out, that route is
   `401 unauthenticated`: the device-held account is no longer made.
 - Sends to redeem a door code are capped at 30 an hour per IP and twice the code's use cap
-  an hour per code, on top of the number's cooldown: `429` with `Retry-After`.
+  an hour per code, on top of the number's cooldown: `429` with `Retry-After`, the code's
+  `Retry-After` being when its oldest send in the hour leaves it.
+- The name typed at a door code is forgotten once the code is right, whether it signs in
+  or is refused. A `PhoneSignIn` lives 24 hours: `app:prune-phone-sign-ins` then deletes
+  it, with its number and its codes.
 - In a browser (`refreshTokenIn: cookie`), a session from a phone code ends with the
   account's last live grant, checked on each refresh; with none live yet (a door code
   behind two-factor) the access token keeps its usual life for the signed-in redeem. In the
