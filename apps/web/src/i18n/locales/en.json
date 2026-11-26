@@ -2391,7 +2391,7 @@
       "guestCount_one": "{{count, number}} guest",
       "guestCount_other": "{{count, number}} guests",
       "updated": "Updated: you’re now on {{station}}",
-      "staleTitle": "Couldn’t reach Soirely",
+      "staleTitle": "Cannot reach Soirely",
       "staleBody": "This is your night as it was at {{time}}.",
       "tryAgain": "Try again",
       "loading": "Loading your night…",
