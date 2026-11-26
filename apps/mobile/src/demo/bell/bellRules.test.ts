@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -12,6 +9,7 @@ import {
   topScrolls,
   topSides,
 } from './bellRules.ts';
+import { TAB_FADE } from '../../layout/todayFold.ts';
 
 describe('Notifications on a phone on its side (sc-62023)', () => {
   it('reads its state from the route', () => {
@@ -66,10 +64,6 @@ describe('Notifications on a phone on its side (sc-62023)', () => {
   });
 
   it('reaches as far up as the fade TodayCover draws', () => {
-    const cover = readFileSync(join('src', 'components', 'TodayCover.tsx'), 'utf8');
-    const fade = /\bfade:\s*\{[^}]*\bheight:\s*(\d+)/.exec(cover);
-
-    expect(fade).not.toBeNull();
-    expect(Number(fade?.[1])).toBe(FADE_REACH);
+    expect(FADE_REACH).toBe(TAB_FADE);
   });
 });

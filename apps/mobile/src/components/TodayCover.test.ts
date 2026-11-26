@@ -12,6 +12,7 @@ const title = readFileSync(join('src', 'components', 'Title.tsx'), 'utf8');
 const pill = readFileSync(join('src', 'components', 'OrgPill.tsx'), 'utf8');
 const run = readFileSync(join('src', 'components', 'TodayRun.tsx'), 'utf8');
 const listTop = readFileSync(join('src', 'components', 'ListTop.tsx'), 'utf8');
+const today = readFileSync(join('src', 'components', 'TodayScreen.tsx'), 'utf8');
 
 describe('the tab bar’s labels at twice the text size (sc-37298)', () => {
   it('measures each label whole in SemiBold, capped at 20', () => {
@@ -277,5 +278,26 @@ describe('the phone band’s pieces against a French title at AX1 (sc-92248)', (
       expect(clearOfWords(pieceBounds({ x, y, shape, size, turn }, band, 1), aujourdhui)).toBe(
         true,
       );
+  });
+});
+
+describe('Open the event on the phone’s live cover from AX1 (sc-95084)', () => {
+  it('draws its words whole across the column, and main’s button below AX1', () => {
+    const block = /export function NowBlock\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(block).toMatch(
+      /!wide && whole \? \(\n\s*<WholeWhiteButton label=\{label\} onPress=\{onOpen\} column=\{column\}/u,
+    );
+    expect(block).toMatch(
+      /onLayout=\{\(event\) => setColumn\(event\.nativeEvent\.layout\.width\)\}/u,
+    );
+  });
+
+  it('rests the phone’s cover where the fold rules say, and the tablet’s where it always has', () => {
+    expect(today).toMatch(/const places = phone \? restingPlaces\(fold\) : \[0, foldAt\];/u);
+    expect(today).toMatch(
+      /const wordsFrom = phone \? wordsGoFrom\(fold\) : Math\.max\(0, bandFrom - WORDS_GO\);/u,
+    );
+    expect(today).toMatch(/snapToOffsets=\{places\}/u);
+    expect(today).toMatch(/inputRange: \[wordsFrom, bandFrom\]/u);
   });
 });

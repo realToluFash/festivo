@@ -1,13 +1,15 @@
-import { tokens } from '../../theme/tokens.ts';
+import { tokens } from '../theme/tokens.ts';
 
-/** How far the phone's tab bar fade reaches up from the screen's foot: `styles.fade` in main's `TodayCover`, held to it by this rule's test. */
+/** How far the phone's tab bar fade reaches up from the screen's foot. */
 export const TAB_FADE = 150;
 
+/** On the phone, from Open the event's foot to the top of the sheet risen over the cover. */
 export const OPEN_ABOVE_SHEET = 22;
 
-/** How far before the fold the band starts to come, as main's `TodayScreen` reads it. */
+/** How far before the fold the band starts to come. */
 export const BAND_COMES = tokens.space3xl;
-/** How long the cover's words take to go, before the band comes: main's private `WORDS_GO` in `TodayScreen`, held to it by this rule's test. */
+
+/** How long the cover's words take to go, before the band comes. */
 export const WORDS_GO = 96;
 
 export interface Fold {
@@ -30,7 +32,7 @@ export function reachAt(fold: Fold): number | null {
   return reach > 0 && reach < foldAt(fold) - BAND_COMES ? reach : null;
 }
 
-/** sc-95084: where Today comes to rest on the phone. Open at the top and folded, as on main; and where the cover is taller than the screen, between them, with Open the event whole above the tabs. */
+/** sc-95084: where Today comes to rest on the phone. Open at the top and folded; and where the cover is taller than the screen, between them, with Open the event whole above the tabs. */
 export function restingPlaces(fold: Fold): number[] {
   const reach = reachAt(fold);
   const folded = foldAt(fold);
@@ -38,7 +40,7 @@ export function restingPlaces(fold: Fold): number[] {
   return reach == null ? [0, folded] : [0, reach, folded];
 }
 
-/** Where the cover's words start to go: main's 96 before the band comes, but never before the resting place that holds Open the event, so it rests at its full ink. */
+/** Where the cover's words start to go: WORDS_GO before the band comes, but never before the resting place that holds Open the event, so it rests at its full ink. */
 export function wordsGoFrom(fold: Fold): number {
   const reach = reachAt(fold) ?? 0;
 
