@@ -281,6 +281,39 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAccountOnTheEventByAnotherCodeSignsInAtThisOneWithNoSecondGrant(): void
+    {
+        $first = $this->code('can_view');
+        $second = $this->code('can_view');
+        $this->redeem($first, 'Adébáyọ̀', '+2348031110004');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $again = $this->redeem($second, 'Adébáyọ̀', '+2348031110004');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($again));
+        self::assertTrue($again['again'], "it lands on You're in again, as the signed-in redeem does");
+        self::assertArrayHasKey('accessToken', $again);
+        self::assertSame(0, self::em()->getRepository(DoorCodeRedemption::class)->count(['doorCode' => $this->doorCode($second)->getId()]), 'no use taken');
+        self::assertSame(1, self::em()->getRepository(EventPerson::class)->count(['user' => $this->joinedAs()->getId()]), 'no second grant');
+    }
+
+    #[Test]
+    public function aCodeOverItsSendsIsToldToComeBackWhenItsOldestSendLeavesTheHour(): void
+    {
+        $code = $this->code('can_view', useCap: 1);
+        $this->sendFor($code, 'Crew', '+2348031140001');
+        $this->sendFor($code, 'Crew', '+2348031140002');
+        self::em()->getConnection()->executeStatement("UPDATE phone_sign_ins SET created_at = NOW() - INTERVAL '20 minutes'");
+
+        $this->sendFor($code, 'Crew', '+2348031140003');
+
+        self::assertSame(429, $this->statusCode(), Json\encode($this->last()));
+        $wait = (int) $this->client->getResponse()->headers->get('Retry-After');
+        self::assertGreaterThan(39 * 60, $wait, 'forty minutes, not a second');
+        self::assertLessThanOrEqual(40 * 60 + 1, $wait);
+    }
+
+    #[Test]
     public function aNumberOnAnAccountRedeemsUnderTheAccountsNameAndTheTypedNameIsKeptNowhere(): void
     {
         $code = $this->code('can_view');

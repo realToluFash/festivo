@@ -7,8 +7,10 @@ namespace App\Repository;
 use App\Entity\DoorCode;
 use App\Entity\PhoneSignIn;
 use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Psl\Vec;
 
 /** @extends ServiceEntityRepository<PhoneSignIn> */
 final class PhoneSignInRepository extends ServiceEntityRepository
@@ -23,15 +25,20 @@ final class PhoneSignInRepository extends ServiceEntityRepository
         return $this->findOneBy(['handleHash' => $handleHash]);
     }
 
-    public function countForDoorCodeSince(DoorCode $doorCode, DateTimeImmutable $since): int
+    /** @return list<DateTimeImmutable> when each send on the code since then started, oldest first */
+    public function sentForDoorCodeSince(DoorCode $doorCode, DateTimeImmutable $since): array
     {
-        return (int) $this->createQueryBuilder('s')
-            ->select('COUNT(s.id)')
+        /** @var list<array{createdAt: DateTimeImmutable}> $rows */
+        $rows = $this->createQueryBuilder('s')
+            ->select('s.createdAt')
             ->where('s.doorCode = :doorCode')
             ->andWhere('s.createdAt >= :since')
             ->setParameter('doorCode', $doorCode)
-            ->setParameter('since', $since)
+            ->setParameter('since', $since, Types::DATETIME_IMMUTABLE)
+            ->orderBy('s.createdAt', 'ASC')
             ->getQuery()
-            ->getSingleScalarResult();
+            ->getArrayResult();
+
+        return Vec\map($rows, static fn (array $row): DateTimeImmutable => $row['createdAt']);
     }
 }
