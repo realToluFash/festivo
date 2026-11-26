@@ -1,4 +1,4 @@
-import type { CheckIn, OutsideEvent } from '@soirely/api-client';
+import { ApiError, type CheckIn, type OutsideEvent } from '@soirely/api-client';
 import type { Translate } from '@soirely/domain';
 
 import { api } from '../../api.ts';
@@ -10,7 +10,7 @@ export interface DoorWay {
   line: string;
 }
 
-/** A shift on the event leads back to the shift page; a door code alone to "You're in for…"; anybody else has no way back. Decided by what the person holds, never by where they came from. */
+/** A shift on the event leads back to the shift page; a door code alone to "You're in for…"; anybody else has no way back. Decided by what the person holds, never by where they came from; a shift page that did not answer rejects, to be asked again. */
 export async function doorWayOf(
   eventId: string,
   outside: readonly OutsideEvent[] | undefined,
@@ -24,7 +24,8 @@ export async function doorWayOf(
       words: t('checkIn.yourShift'),
       line: night.job == null ? night.event.name : `${night.event.name} · ${night.job}`,
     };
-  } catch {
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 404)) throw error;
     const held = outside?.find((one) => one.id === eventId);
     if (held == null) return null;
 

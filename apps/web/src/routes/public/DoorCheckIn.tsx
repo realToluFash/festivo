@@ -101,10 +101,19 @@ function DoorCheckIn({ eventId }: { eventId: string }) {
   useEffect(() => {
     if (!signedIn) return;
     let current = true;
-    void doorWayOf(eventId, outside, t).then((found) => current && setWay(found));
+    let again: number | undefined;
+    const find = (): void =>
+      void doorWayOf(eventId, outside, t).then(
+        (found) => current && setWay(found),
+        () => {
+          if (current) again = window.setTimeout(find, EVERY_MS);
+        },
+      );
+    find();
 
     return () => {
       current = false;
+      window.clearTimeout(again);
     };
   }, [eventId, signedIn, outside, t]);
 
