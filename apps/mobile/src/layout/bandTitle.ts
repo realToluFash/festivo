@@ -1,4 +1,5 @@
-import { atAccessibilitySizes, fitWidest } from './textSize.ts';
+import { LIVE_LINE } from './bandLive.ts';
+import { LABEL_LINE, atAccessibilitySizes, fitWidest } from './textSize.ts';
 
 export const BAND_TITLE = 17;
 export const BAND_LINE = 1.2;
@@ -48,4 +49,18 @@ export function bandTitle(scale: number, wideAtStart: number, row: BandRow): Ban
   const wide = (wideAtStart * size) / start;
 
   return { size, centred: fitsOnScreen(row, wide) ? 'screen' : 'room' };
+}
+
+/** The room a phone's live line has under the title's row, down to the band's foot, given the row's middle and the band's height. */
+export function bandLiveRoom(rowMiddle: number, bandHeight: number, foot: number): number {
+  return Math.max(0, bandHeight - foot - (rowMiddle + BAND_TALLEST / 2));
+}
+
+/** The phone's live line: main's at the standard sizes; from AX1 no larger than its line fits under the title's row, never under 13.5 (sc-92248). */
+export function bandLiveSize(scale: number, room: number): number {
+  const start = LIVE_LINE * scale;
+
+  if (!atAccessibilitySizes(scale)) return start;
+
+  return Math.max(LIVE_LINE, Math.min(start, Math.floor(room / LABEL_LINE)));
 }

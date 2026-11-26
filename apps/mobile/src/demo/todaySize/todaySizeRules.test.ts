@@ -25,7 +25,9 @@ import {
   SIZE_TODAY,
   STRIP_LABEL,
   STRIP_TRACKING,
+  STARTS_DAYS,
   WEEK_DAYS,
+  titleOnOneLine,
   chipsUnderDates,
   daysUntil,
   stripDays,
@@ -143,6 +145,30 @@ describe('the size demo’s events', () => {
 describe('a This week day line (sc-92250)', () => {
   it('starts every week day on a date this week', () => {
     for (const day of WEEK_DAYS) {
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
+    }
+  });
+});
+
+describe('a This week row title (sc-94683)', () => {
+  it('holds a title that fits its room to one line, so it takes no blank second one', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+  });
+
+  it('lets a title wider than its room wrap', () => {
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+  });
+
+  it('decides nothing before the row has its room', () => {
+    expect(titleOnOneLine(120, 0)).toBe(false);
+  });
+
+  it('has two events starting this week, one of them the Garden party, each titled by the product', () => {
+    const starts = STARTS_DAYS.flatMap((day) => day.rows).filter((row) => row.title == null);
+    expect(starts.map((row) => row.key)).toEqual(['garden', 'party']);
+    for (const day of STARTS_DAYS) {
       expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
       expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
     }

@@ -4,7 +4,7 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312), upright (its chips sc-93211; its name, end line and Open the event sc-93578; with a guest arrived sc-94022) and on the iPhone (its chips sc-93855), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes, and This week's strip below them (sc-94682); open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312), upright (its chips sc-93211; its name, end line and Open the event sc-93578; with a guest arrived sc-94022) and on the iPhone (its chips sc-93855), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090), This week's day lines (sc-92250) and its rows' titles (sc-94683) at the accessibility sizes, and This week's strip below them (sc-94682); open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
   {
     title: 'Ouvrir l’événement · AX5, upright, a guest arrived',
@@ -245,6 +245,26 @@ export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
     title: 'This week’s strip · AX1',
     what: 'No strip, as on main: This week is its days alone, Today with Wed, Nov 25 beside or under it',
     href: '/demo/today-size?size=ax1&lang=en&week=days',
+  },
+  {
+    title: 'Début : Garden party · AX2, iPhone',
+    what: 'Garden party straight under Début : Garden party, no blank line; the same space under Début : Ire Events end-of-year party where it wraps, Début : whole on its first line',
+    href: '/demo/today-size?size=ax2&lang=fr&week=starts',
+  },
+  {
+    title: 'Cette semaine rows · AX5, upright',
+    what: 'Each title wraps only between words, the event’s line one space under its last line; no line starts with :',
+    href: '/demo/today-size?size=ax5&lang=fr&week=starts',
+  },
+  {
+    title: 'This week rows · AX2, English',
+    what: 'Garden party starts with Garden party right under it, as in a one-line row',
+    href: '/demo/today-size?size=ax2&lang=en&week=starts',
+  },
+  {
+    title: 'Cette semaine rows · default size',
+    what: 'As on main: the time beside the row, each title on one line',
+    href: '/demo/today-size?size=default&lang=fr&week=starts',
   },
   {
     title: 'Cette semaine · AX5, upright',

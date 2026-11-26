@@ -10,6 +10,7 @@ import { wholeLineHeight } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import {
+  GARDEN_PARTY,
   STRIP_LABEL,
   STRIP_TRACKING,
   type TodayWeek,
@@ -38,7 +39,10 @@ export function SizeStrip({
       <View style={styles.days}>
         {stripDays(week).map((day, index) => {
           const today = index === 0;
-          const dots = day.dots.map((key) => ({ key, ...EVENTS[key] }));
+          const dots = day.dots.map((key) => ({
+            key,
+            ...(key === 'garden' ? GARDEN_PARTY : EVENTS[key]),
+          }));
 
           return (
             <View
