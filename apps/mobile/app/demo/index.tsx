@@ -2799,7 +2799,7 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
     boards: STATION_BOARDS.map(({ title, what, href }) => ({ title, what, href: href as Href })),
   },
   {
-    page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382) · phone, tablet portrait and landscape',
+    page: 'Service · the way in to Kitchen station, from Overview and Your night (sc-95382), and a service level’s Overview (sc-96279) · phone, tablet portrait and landscape',
     boards: KITCHEN_WAY_IN_BOARDS.map(({ title, what, href }) => ({
       title,
       what,

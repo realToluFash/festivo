@@ -298,17 +298,31 @@ export function refusalOf(
 
 export type InsideArea = 'checkIn' | EventPlace;
 const SEEN: readonly InsideArea[] = ['overview', 'guests', 'schedule', 'seating', 'people'];
+
+/** Every level an account from outside can hold on an event: a join code's, an invite's or a job's (sc-4002, sc-4235). */
+export type InsideLevel = CodeChoice | 'Can run the floor';
+export const SERVICE_LEVELS = [
+  'Can work the floor',
+  'Can work the pass',
+  'Can run the floor',
+] as const satisfies readonly InsideLevel[];
+
+export function isServiceLevel(level: InsideLevel): boolean {
+  return SERVICE_LEVELS.some((one) => one === level);
+}
+
 /** The phone's tabs; every other area the role sees is in More. */
 export const PHONE_AREAS: readonly InsideArea[] = ['overview', 'guests'];
 
-/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order. */
-export function areasFor(role: CodeChoice): InsideArea[] {
+/** What a level reaches inside the event (pm, 7 Nov, sc-72; sc-71): Can view and Can check guests in never Budget, Menu, Messages, Staff or Reports; Can edit every area but Budget, in the member sidebar's order; a service level Overview alone (sc-96279). */
+export function areasFor(role: InsideLevel): InsideArea[] {
   if (role === 'Can edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+  if (isServiceLevel(role)) return ['overview'];
 
   return role === 'Can check guests in' ? ['checkIn', ...SEEN] : [...SEEN];
 }
 
-export function moreAreas(role: CodeChoice, phone: boolean): InsideArea[] {
+export function moreAreas(role: InsideLevel, phone: boolean): InsideArea[] {
   return phone ? areasFor(role).filter((area) => !PHONE_AREAS.includes(area)) : [];
 }
 

@@ -1,4 +1,5 @@
-import { type CodeChoice } from '../doorCode/DoorCodeModel.ts';
+import { type InsideLevel } from '../doorCode/RedeemModel.ts';
+import { type MyNightState } from '../myNight/myNightModel.ts';
 import {
   type EventDay,
   KS,
@@ -21,6 +22,10 @@ const ROW_STATES = [
   'finished',
   'floor',
   'view',
+  'floor_alone',
+  'pass_alone',
+  'run_floor',
+  'run_floor_alone',
 ] as const;
 
 const ORGANISER_STATES = ['org_night', 'org_no_night', 'org_day_before'] as const;
@@ -51,10 +56,11 @@ const ORGANISER_DAY: EventDay = {
 };
 
 interface Sample {
-  role: CodeChoice;
+  role: InsideLevel;
   who: string;
   /** On the event's roster, so Your night heads Overview (sc-3915). */
   rostered: boolean;
+  night: MyNightState;
   now: Date;
   finished: boolean;
   where: Where;
@@ -70,6 +76,7 @@ const GBENGA: Sample = {
   role: 'Can work the pass',
   who: 'Gbenga Salami',
   rostered: true,
+  night: 'kitchen',
   now: TONIGHT,
   finished: false,
   where: { own: 'Fryer', lastPick: null, course: 'Mains' },
@@ -85,6 +92,18 @@ const ADA: Sample = {
   opens: 'picked-grill',
 };
 
+const DAY_BEFORE = new Date('2026-11-27T22:59:00Z');
+
+const FUNMI: Sample = {
+  ...GBENGA,
+  role: 'Can work the floor',
+  who: 'Funmi Bakare',
+  rostered: false,
+  night: 'night',
+};
+
+const KUNLE: Sample = { ...ADA, role: 'Can run the floor', who: 'Kunle Adeyemi' };
+
 const SAMPLES: Record<RowState, Sample> = {
   own_course: GBENGA,
   own_before: {
@@ -97,10 +116,14 @@ const SAMPLES: Record<RowState, Sample> = {
   past_midnight: { ...GBENGA, now: new Date('2026-11-28T23:30:00Z') },
   last_pick: ADA,
   pick: { ...ADA, where: { ...ADA.where, lastPick: null }, opens: 'none' },
-  day_before: { ...GBENGA, now: new Date('2026-11-27T22:59:00Z') },
+  day_before: { ...GBENGA, now: DAY_BEFORE },
   finished: { ...GBENGA, now: new Date('2026-11-29T01:10:00Z'), finished: true },
-  floor: { ...GBENGA, role: 'Can work the floor', who: 'Funmi Bakare' },
+  floor: { ...FUNMI, rostered: true },
   view: { ...ADA, role: 'Can view', who: 'Ngozi Obi' },
+  floor_alone: FUNMI,
+  pass_alone: { ...ADA, now: DAY_BEFORE },
+  run_floor: KUNLE,
+  run_floor_alone: { ...KUNLE, now: DAY_BEFORE },
 };
 
 /** An Owner, an Admin, anyone else in the organisation, or Can edit: the organiser's page of cards. */
@@ -141,7 +164,14 @@ export const READ_ANSWERS_IN = 1500;
 type StationLink = { line: string; href: string; answersIn?: number } | null;
 
 export type WayInOverview =
-  | { page: 'rows'; role: CodeChoice; who: string; rostered: boolean; station: StationLink }
+  | {
+      page: 'rows';
+      role: InsideLevel;
+      who: string;
+      rostered: boolean;
+      night: MyNightState;
+      station: StationLink;
+    }
   | {
       page: 'organiser';
       role: OrganiserSample['role'];
@@ -201,6 +231,7 @@ export function overviewOf(state: WayInState): WayInOverview {
     role: sample.role,
     who: sample.who,
     rostered: sample.rostered,
+    night: sample.night,
     station: shows ? sampleLink(sample) : null,
   };
 }
@@ -221,8 +252,24 @@ const WHAT: Record<WayInState, readonly [string, string]> = {
   pick: ['A join code, nothing picked', 'Kitchen station · Pick a station, first, opens the list'],
   day_before: ['23:59 the day before', 'Your night only: the row shows from 00:00 on the day'],
   finished: ['Finished', 'Your night only: the row goes once the event is Finished'],
-  floor: ['Can work the floor', 'Your night only: Overview as it is today'],
-  view: ['Can view', 'No row: Overview as it is today'],
+  floor: ['Can work the floor', 'The card and Your night: no Kitchen station, Guests or People'],
+  view: ['Can view', 'No row: Guests and People as today, Guests a tab on the phone'],
+  floor_alone: [
+    'Can work the floor, no shift',
+    'The card alone: no row, no placeholder, and only Overview and More in the tabs',
+  ],
+  pass_alone: [
+    'Can work the pass, no shift, the day before',
+    'The card alone: Kitchen station shows from 00:00 on the day',
+  ],
+  run_floor: [
+    'Can run the floor, invited, no shift',
+    'The card, then Kitchen station · Grill · Mains: no Your night, Guests or People',
+  ],
+  run_floor_alone: [
+    'Can run the floor, no shift, the day before',
+    'The card alone, its level line with no job',
+  ],
   org_night: [
     'The organiser’s Overview, a Lead on the Pass',
     'Kitchen station · Pass · Mains directly under Your night, above the guest numbers card; first in the right-hand column on its side',

@@ -6,6 +6,7 @@ import {
   KITCHEN_WAY_IN_BOARDS,
   READ_ANSWERS_IN,
   WAY_IN_STATES,
+  type WayInState,
   overviewOf,
 } from './wayInBoards.ts';
 import { stationIdOf, wayBackOf } from './wayInRoute.ts';
@@ -104,6 +105,10 @@ describe('the way in’s demo states (sc-95382)', () => {
       finished: null,
       floor: null,
       view: null,
+      floor_alone: null,
+      pass_alone: null,
+      run_floor: 'Grill · Mains',
+      run_floor_alone: null,
       org_night: 'Pass · Mains',
       org_no_night: 'Grill · Mains',
       org_day_before: null,
@@ -190,5 +195,29 @@ describe('Open {station} on Your night (sc-95382)', () => {
       href: '/demo/kitchen-station?from=night&on=grill',
       primary: true,
     });
+  });
+});
+
+describe('a service level’s Overview (sc-96279)', () => {
+  const rows = (state: WayInState) => {
+    const shown = overviewOf(state);
+
+    return shown.page === 'rows'
+      ? [shown.role, shown.rostered, shown.night, shown.station != null]
+      : null;
+  };
+
+  it('draws the card alone with no shift and no station that day', () => {
+    expect(rows('floor_alone')).toEqual(['Can work the floor', false, 'night', false]);
+    expect(rows('pass_alone')).toEqual(['Can work the pass', false, 'kitchen', false]);
+    expect(rows('run_floor_alone')).toEqual(['Can run the floor', false, 'kitchen', false]);
+  });
+
+  it('gives Can run the floor with no shift its Kitchen station on the day', () => {
+    expect(rows('run_floor')).toEqual(['Can run the floor', false, 'kitchen', true]);
+  });
+
+  it('opens a waiter’s night for Can work the floor on the roster', () => {
+    expect(rows('floor')).toEqual(['Can work the floor', true, 'night', false]);
   });
 });
