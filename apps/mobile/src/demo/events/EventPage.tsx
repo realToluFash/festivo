@@ -165,6 +165,7 @@ import { type OriginState, draftFromEnquiry } from '../enquiries/EnquiryToEventM
 import { FromEnquiryLine } from '../enquiries/FromEnquiryParts.tsx';
 import { EventsFailed } from '../../components/Events.tsx';
 import { SwitchedNotice } from '../../components/SwitchedNotice.tsx';
+import { type TonightRow, TonightRows } from '../station/TonightRows.tsx';
 import { isBellState } from '../messages/BellStates.ts';
 
 type Mute = 'ok' | 'notLoaded' | 'notSaved';
@@ -251,6 +252,8 @@ export function EventScreen({
   failed = null,
   opened: openedOver,
   clock,
+  night,
+  station,
 }: {
   id: string | undefined;
   state: EventDemoState | null;
@@ -280,6 +283,10 @@ export function EventScreen({
   opened?: Opened | undefined;
   /** The moment the frame reads as now, when what it holds runs on its own sample's clock (sc-72). */
   clock?: Date | undefined;
+  /** Your night, for a member of the organisation with a shift (sc-3915). */
+  night?: TonightRow | undefined;
+  /** Kitchen station, under Your night or in its place, on the event's day (sc-95382). */
+  station?: TonightRow | undefined;
 }) {
   const shell = useShell();
   const top = useBehind(openedOver);
@@ -603,6 +610,7 @@ export function EventScreen({
       else setAt('overview');
     },
   });
+  const tonight = <TonightRows night={night} station={station} />;
   const numbers = (
     <GuestNumbers
       state={guests != null && isIn(OVERVIEW_STATES, guests) ? guests : 'overview'}
@@ -918,6 +926,7 @@ export function EventScreen({
         }
         right={
           <>
+            {tonight}
             {numbers}
             {peopleCard}
             {guestsPage}
@@ -931,6 +940,7 @@ export function EventScreen({
             {banner}
             {demoNote}
             {thankYou}
+            {tonight}
             {numbers}
             {peopleCard}
             {details}
