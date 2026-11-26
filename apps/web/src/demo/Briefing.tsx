@@ -22,6 +22,7 @@ import {
   noteOf,
   onShift,
   resultLines,
+  stoppedFor,
   sendTo,
   tallyOf,
 } from './briefing.ts';
@@ -30,6 +31,7 @@ import { Pill } from './GuestsParts.tsx';
 import { MN } from './myNight.ts';
 import { type Entry, sorted } from './roster.ts';
 import { ISSUE_MS, SAMPLE_LINK, copyIssued, plainItem } from './staffLink.ts';
+import { QUIET_ENDS } from './staffText.ts';
 import { Select } from './Stations.tsx';
 import './guests.css';
 import './menu.css';
@@ -217,7 +219,12 @@ export function useBriefing({
           ? changed
           : people.filter((one) => one.id === check);
   const costs: Check | null =
-    check == null ? null : checkOf(due, noMobileFor(people, check), credits);
+    check == null
+      ? null
+      : checkOf(due, noMobileFor(people, check), credits, {
+          stopped: stoppedFor(people, check),
+          quiet: first.quiet,
+        });
 
   function closeCheck() {
     focus(
@@ -242,7 +249,13 @@ export function useBriefing({
       setEntries(sent.people);
       spend(costs.credits);
       setCheck(null);
-      const lines = resultLines(sent.sent, costs.noMobile, sent.held.length);
+      const lines = resultLines(
+        sent.sent,
+        costs.noMobile,
+        sent.held.length,
+        costs.stopped,
+        sent.waits.length,
+      );
       setResult({ lines, held: sent.held });
       announce(lines.join(' '));
       focus('bf-result');
@@ -569,7 +582,7 @@ function BriefCell({
   return (
     <span className="rs-link-cell">
       <BriefWord brief={one.brief} />
-      {note != null && <span className="rs-trail">{note}</span>}
+      <NoteLine one={one} note={note} />
       {one.briefCopy != null && one.brief === 'changed' && <CopiedLine one={one} />}
       {missed && one.brief === 'changed' && (
         <span className="rs-missed">
@@ -579,7 +592,7 @@ function BriefCell({
       )}
       {changedActs && (
         <span className="rs-link-acts">
-          {sends && !one.heldText && (
+          {sends && !one.heldText && !one.waitText && one.stopped !== true && (
             <button
               id={`bf-again-${one.id}`}
               type="button"
@@ -597,6 +610,20 @@ function BriefCell({
           )}
         </span>
       )}
+    </span>
+  );
+}
+
+/** A text held, waiting or stopped reads as sc-77904's Link column does: a clock or a slash with the words. */
+function NoteLine({ one, note }: { one: Person; note: string | null }) {
+  if (note == null) return null;
+  const stopped = note === BW.stopped;
+  if (!stopped && !one.heldText && !one.waitText) return <span className="rs-trail">{note}</span>;
+
+  return (
+    <span className={stopped ? 'rs-note is-stopped' : 'rs-note'}>
+      <Glyph name={stopped ? 'slash' : 'clock'} size={15} weight={2.2} />
+      {note}
     </span>
   );
 }
@@ -712,7 +739,7 @@ function CopyRow({
         {brief && (
           <span className="bf-copy-state">
             <BriefWord brief={one.brief} />
-            {note != null && <span className="rs-trail">{note}</span>}
+            <NoteLine one={one} note={note} />
           </span>
         )}
         <CopiedLine one={one} />
@@ -1068,6 +1095,7 @@ function CheckBody({
               </button>
             </div>
           )}
+          {costs.quiet > 0 && <p className="rs-check-hint">{BW.quiet(costs.quiet, QUIET_ENDS)}</p>}
           <p className="rs-check-hint">{BW.usage}</p>
           {failed && (
             <p className="rs-missed" role="alert">

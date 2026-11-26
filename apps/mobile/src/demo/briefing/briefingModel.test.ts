@@ -19,6 +19,7 @@ import {
   people,
   resultLines,
   sendTo,
+  stoppedFor,
   tallyOf,
 } from './briefingModel.ts';
 
@@ -160,5 +161,50 @@ describe('the check’s lines', () => {
     expect(check.sms).toEqual({ n: 1, credits: 62 });
     expect(check.whatsApp).toEqual({ n: 0, credits: 0 });
     expect(check.credits).toBe(62);
+  });
+});
+
+describe('stopped numbers and quiet hours on the tablet (sc-95657)', () => {
+  const stopped = (...ids: string[]) =>
+    people().map((p) => (ids.includes(p.id) ? { ...p, stopped: true } : p));
+
+  it('never owes a text to a stopped number, and says so under its state', () => {
+    const list = stopped('tolu', 'sade');
+    expect(dueAll(list).map((p) => p.id)).toEqual(['amina', 'emeka']);
+    expect(dueChanged(list).map((p) => p.id)).toEqual(['kunle']);
+    expect(stoppedFor(list, 'all')).toBe(1);
+    expect(stoppedFor(list, 'changed')).toBe(1);
+    expect(noteOf(list.find((p) => p.id === 'tolu')!)).toBe('Stopped texts');
+  });
+
+  it('leaves a waiting person out of {n}, and Mark as sent withdraws the waiting text', () => {
+    const waiting = { ...one('amina'), waitText: true };
+    expect(noteOf(waiting)).toBe('Text waits until 09:00, their time');
+    expect(dueAll([waiting])).toHaveLength(0);
+    expect(afterBriefMark(afterBriefCopy(waiting)).waitText).toBe(false);
+  });
+
+  it('at night pays each text and keeps it waiting, with sc-3946’s wait line', () => {
+    const list = people();
+    const due = dueAll(list);
+    const check = checkOf(due, 1, 1500, { quiet: true });
+    expect(BW.quiet(check.quiet, '09:00')).toBe('Texts to 3 people wait until 09:00, their time.');
+    const sent = sendTo(list, due, check);
+    expect(sent.sent).toBe(0);
+    expect(sent.waits).toEqual(['tolu', 'amina', 'emeka']);
+    expect(sent.people.find((p) => p.id === 'tolu')!.brief).toBe('none');
+  });
+
+  it('words the stopped and waiting lines as plurals, and leaves Sent to out at 0', () => {
+    expect(resultLines(0, 1, 0, 1, 2)).toEqual([
+      '1 has no mobile number.',
+      '1 has stopped texts.',
+      '2 wait until 09:00, their time.',
+    ]);
+    expect(resultLines(2, 0, 0, 3, 1)).toEqual([
+      'Sent to 2.',
+      '3 have stopped texts.',
+      '1 waits until 09:00, their time.',
+    ]);
   });
 });

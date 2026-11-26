@@ -1,7 +1,7 @@
 import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
-import { texting } from './staffText.ts';
+import { QUIET_ENDS, TW, texting } from './staffText.ts';
 import { STATIONS_EVENT } from './stations.ts';
 
 /** The briefing on the event's Staff page (sc-3917, Staffing.dc.html › Tweaks › Briefing on page e34): house rules and everyone's shift, sent with one tap. */
@@ -11,6 +11,8 @@ export interface Person extends Entry {
   brief: Brief;
   /** A briefing text waiting for credits (sc-3932): it goes by itself once there are credits. */
   heldText: boolean;
+  /** A briefing text waiting for 09:00 in their time (sc-3946's quiet hours): it goes by itself then. */
+  waitText: boolean;
   /** How the briefing reaches them when it goes; push is free and is never counted. */
   channel: 'sms' | 'whatsApp';
   /** A copy from the briefing (the copy list, a changed row or the held result), and whether it was then marked as sent. */
@@ -48,6 +50,8 @@ export const BW = {
   noMobile: 'No mobile number',
   noShift: 'No shift, so nothing to send',
   held: 'Held: no credits',
+  stopped: TW.stopped,
+  waits: TW.waits,
   copyTitle: 'Copy a person’s link',
   copySub: 'Everyone with a shift. Copy a link to send it yourself, by any app.',
   copied: 'Link copied.',
@@ -103,6 +107,13 @@ export const BW = {
   tryAgain: 'Try again',
   sentTo: (n: number) => `Sent to ${n0(n)}.`,
   heldCount: (h: number) => plural(h, '{n} held: no credits.', '{n} held: no credits.'),
+  stoppedCount: TW.stoppedCount,
+  waitCount: (w: number, time: string) =>
+    plural(w, '{n} waits until TIME, their time.', '{n} wait until TIME, their time.').replace(
+      'TIME',
+      time,
+    ),
+  quiet: TW.quiet,
   sendFailed: '[Not sent. Nothing went, and no credits were used. Try again in a moment.]',
   refusedPage: '[You cannot see this event’s staff.]',
   backToEvent: '[Back to the event]',
@@ -134,20 +145,23 @@ export function countLine(text: string): { words: string; limit: boolean } | nul
 export function noteOf(one: Person): string | null {
   if (one.shift == null) return BW.noShift;
   if (one.mobile == null) return BW.noMobile;
+  if (one.stopped === true) return BW.stopped;
   if (one.heldText) return BW.held;
+  if (one.waitText) return BW.waits(QUIET_ENDS);
 
   return null;
 }
 
+/** A text is owed nobody whose number stopped texts (sc-3946), and nobody with a text already held or waiting: that one goes by itself. */
+const textable = (one: Person) =>
+  one.mobile != null && one.stopped !== true && !one.heldText && !one.waitText;
+
 export function dueAll(people: readonly Person[]): Person[] {
-  return people.filter(
-    (one) => one.mobile != null && one.shift != null && one.brief === 'none' && !one.heldText,
-  );
+  return people.filter((one) => textable(one) && one.shift != null && one.brief === 'none');
 }
 
-/** Send to {n} changed: held people are left out, since their text goes by itself once there are credits. */
 export function dueChanged(people: readonly Person[]): Person[] {
-  return people.filter((one) => one.brief === 'changed' && one.mobile != null && !one.heldText);
+  return people.filter((one) => textable(one) && one.brief === 'changed');
 }
 
 export function tallyOf(people: readonly Person[]): Record<Brief, number> {
@@ -169,6 +183,7 @@ export function asPerson(made: Entry, before: Entry | null): Person {
   return {
     channel: was?.channel ?? 'sms',
     heldText: was?.heldText ?? false,
+    waitText: was?.waitText ?? false,
     briefCopy: was?.briefCopy ?? null,
     ...made,
     brief: moved && (brief === 'sent' || brief === 'read') ? 'changed' : brief,
@@ -189,6 +204,7 @@ export function afterBriefMark(one: Person): Person {
     ...one,
     brief: one.brief === 'read' ? 'read' : 'sent',
     heldText: false,
+    waitText: false,
     link,
     trail: link === 'opened' ? (one.trail ?? null) : trail,
     briefCopy: { trail, marked: true },
@@ -208,6 +224,10 @@ export interface Check {
   after: number;
   smsWaits: number;
   whatsAppWaits: number;
+  /** The paid texts that wait for 09:00, their time; at 0 the wait line is left out. */
+  quiet: number;
+  /** Whose number stopped texts: never texted, and counted in the result only. */
+  stopped: number;
   paid: readonly string[];
 }
 
@@ -225,8 +245,24 @@ export function noMobileFor(people: readonly Person[], target: Target): number {
   return 0;
 }
 
+export function stoppedFor(people: readonly Person[], target: Target): number {
+  const stopped = people.filter(
+    (one) => one.mobile != null && one.stopped === true && !one.heldText && !one.waitText,
+  );
+  if (target === 'all')
+    return stopped.filter((one) => one.shift != null && one.brief === 'none').length;
+  if (target === 'changed') return stopped.filter((one) => one.brief === 'changed').length;
+
+  return 0;
+}
+
 /** sc-3931 on sc-3929's reservation preview: a text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
-export function checkOf(due: readonly Person[], noMobile: number, balance: number): Check {
+export function checkOf(
+  due: readonly Person[],
+  noMobile: number,
+  balance: number,
+  at: { stopped?: number; quiet?: boolean } = {},
+): Check {
   let left = balance;
   const paid: Person[] = [];
   for (const one of due) {
@@ -254,6 +290,8 @@ export function checkOf(due: readonly Person[], noMobile: number, balance: numbe
     after: balance - credits,
     smsWaits: by('sms', due).length - by('sms', paid).length,
     whatsAppWaits: whatsApp.length - by('whatsApp', paid).length,
+    quiet: at.quiet === true ? paid.length : 0,
+    stopped: at.stopped ?? 0,
     paid: paid.map((one) => one.id),
   };
 }
@@ -262,15 +300,20 @@ export function sendTo(
   people: readonly Person[],
   due: readonly Person[],
   check: Check,
-): { people: Person[]; sent: number; held: string[] } {
+): { people: Person[]; sent: number; held: string[]; waits: string[] } {
   const ids = new Set(due.map((one) => one.id));
   const paid = new Set(check.paid);
   const held: string[] = [];
+  const waits: string[] = [];
   const next = people.map((one): Person => {
     if (!ids.has(one.id)) return one;
     if (!paid.has(one.id)) {
       held.push(one.id);
       return { ...one, heldText: true };
+    }
+    if (check.quiet > 0) {
+      waits.push(one.id);
+      return { ...one, waitText: true };
     }
     const opened = one.link === 'opened';
 
@@ -282,14 +325,23 @@ export function sendTo(
     };
   });
 
-  return { people: next, sent: paid.size, held };
+  return { people: next, sent: paid.size - waits.length, held, waits };
 }
 
-export function resultLines(sent: number, noMobile: number, held: number): string[] {
+/** Sent to {n} counts only who was reached, and is left out at 0; a held or waiting person is counted in their own line alone. */
+export function resultLines(
+  sent: number,
+  noMobile: number,
+  held: number,
+  stopped = 0,
+  waits = 0,
+): string[] {
   return [
-    BW.sentTo(sent),
+    ...(sent > 0 ? [BW.sentTo(sent)] : []),
     ...(noMobile > 0 ? [BW.noMobileCount(noMobile)] : []),
+    ...(stopped > 0 ? [BW.stoppedCount(stopped)] : []),
     ...(held > 0 ? [BW.heldCount(held)] : []),
+    ...(waits > 0 ? [BW.waitCount(waits, QUIET_ENDS)] : []),
   ];
 }
 
@@ -310,6 +362,7 @@ export function people(): Person[] {
     brief: BRIEFS[one.id]?.brief ?? 'none',
     channel: BRIEFS[one.id]?.channel ?? 'sms',
     heldText: false,
+    waitText: false,
     briefCopy: null,
   }));
 }
@@ -348,6 +401,8 @@ export interface BriefingStart {
   balance: number;
   billing: boolean;
   sendFails: boolean;
+  /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
+  quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
   said: string | null;
 }
@@ -373,6 +428,7 @@ function start(o: Partial<BriefingStart> & Pick<BriefingStart, 'name' | 'note'>)
     balance: BALANCE,
     billing: true,
     sendFails: false,
+    quiet: false,
     result: null,
     said: null,
     ...o,
@@ -391,6 +447,18 @@ const afterShortSend = () => {
   const sent = sendTo(list, due, checkOf(due, noMobileFor(list, 'all'), 70));
 
   return sent.people;
+};
+const stoppedOn = (ids: readonly string[]) => (list: Person[]) =>
+  list.map((one) => (ids.includes(one.id) ? { ...one, stopped: true } : one));
+const STOPPED = ['tolu', 'sade'];
+const afterSendAt = (list: Person[], quiet: boolean) => {
+  const due = dueAll(list);
+
+  return sendTo(
+    list,
+    due,
+    checkOf(due, noMobileFor(list, 'all'), BALANCE, { stopped: stoppedFor(list, 'all'), quiet }),
+  ).people;
 };
 const SAMPLE_URL = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
 
@@ -654,6 +722,40 @@ const STATES = {
       handHeld: { id: 'amina', url: SAMPLE_URL },
       said: BW.refused,
     }),
+  stoppedRow: () =>
+    start({
+      name: 'Rows whose number stopped texts',
+      note: 'Tolu Bello and Sade Lawal replied STOP: Stopped texts under Not sent and Changed since sent. Sade keeps Copy link and loses Send again. Send the briefing to 2, Send to 1 changed.',
+      people: stoppedOn(STOPPED)(people()),
+    }),
+  waitingRow: () =>
+    start({
+      name: 'A row whose text waits until 09:00',
+      note: 'Amina Yusuf’s text waits for 09:00, her time: Not sent with Text waits until 09:00, their time under it. Out of Send the briefing to 2. Copy it from Copy link, then Mark as sent, and the waiting text is withdrawn.',
+      people: people().map((one) => (one.id === 'amina' ? { ...one, waitText: true } : one)),
+    }),
+  checkQuiet: () =>
+    start({
+      name: 'The check at 22:40 the night before',
+      note: 'Every shift starts after 09:00 and the event is not Happening now, so sc-3946’s wait line shows: Texts to 3 people wait until 09:00, their time. Press Send the briefing to 3.',
+      check: 'all',
+      quiet: true,
+    }),
+  resultStopped: () =>
+    start({
+      name: 'Sent, with the stopped count',
+      note: 'Sent to 2. 1 has no mobile number. 1 has stopped texts. Tolu Bello is not texted, and keeps Not sent with Stopped texts.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), false),
+      result: { lines: resultLines(2, 1, 0, 1, 0), held: [] },
+    }),
+  resultWaiting: () =>
+    start({
+      name: 'Sent at 22:40: the waiting count',
+      note: '1 has no mobile number. 1 has stopped texts. 2 wait until 09:00, their time. Sent to is left out at 0; Amina and Emeka read Text waits until 09:00, their time.',
+      people: afterSendAt(stoppedOn(['tolu'])(people()), true),
+      quiet: true,
+      result: { lines: resultLines(0, 1, 0, 1, 2), held: [] },
+    }),
   sendFailed: () =>
     start({
       name: 'The send failed outright',
@@ -689,7 +791,13 @@ export function briefingRosterStart(raw: string | null): RosterStart | null {
     manage: b.access === 'manage',
     finished: b.finished,
     copy: b.copy === 'slow' ? 'works' : b.copy,
-    sms: b.live ? texting({ credits: b.balance, billing: b.billing }) : null,
+    sms: b.live
+      ? texting({
+          credits: b.balance,
+          billing: b.billing,
+          ...(b.quiet ? { quiet: true, clock: '22:40' } : {}),
+        })
+      : null,
     briefing: b,
   });
 }
@@ -711,6 +819,8 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'populated',
         'changedRow',
         'changedRefused',
+        'stoppedRow',
+        'waitingRow',
         'notLive',
         'finished',
         'readOnly',
@@ -761,11 +871,21 @@ export const BRIEFING_PAGES: readonly { name: string; states: readonly DemoLink[
         'checkShortAsk',
         'checkFailed',
         'checkChanged',
+        'checkQuiet',
       ] as const
     ).map(link),
   },
   {
     name: 'The result',
-    states: (['resultSent', 'resultHeld', 'resultHeldRefused', 'sendFailed'] as const).map(link),
+    states: (
+      [
+        'resultSent',
+        'resultStopped',
+        'resultWaiting',
+        'resultHeld',
+        'resultHeldRefused',
+        'sendFailed',
+      ] as const
+    ).map(link),
   },
 ];
