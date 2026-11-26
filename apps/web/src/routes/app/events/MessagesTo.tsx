@@ -241,9 +241,9 @@ export function SavedRow({
   const moreLabel = t('eventMessages.moreActions', { name: audience.name });
 
   function rename(typed: string): void {
-    focusLater(more);
     if (typed.trim() === audience.name) {
       setRenaming(null);
+      focusLater(more);
       return;
     }
 
@@ -261,6 +261,7 @@ export function SavedRow({
           audiences: was.audiences.map((one) => (one.id === renamed.id ? renamed : one)),
         }));
         setRenaming(null);
+        focusLater(more);
         say(t('eventMessages.renamedSaid', { name: renamed.name }));
       },
       (error: unknown) => {

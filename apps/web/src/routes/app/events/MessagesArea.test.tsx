@@ -487,6 +487,18 @@ describe('Who gets it (sc-3957)', () => {
     );
   });
 
+  it('names the group in the draft row of a message to conditions', async () => {
+    await openTo();
+    quick('Hasn’t replied');
+    add('Is in group', 'Family');
+
+    expect(
+      await screen.findByRole('button', {
+        name: /^New message, To Guests who… Hasn’t replied · Is in group: Family · not sent yet, /,
+      }),
+    ).toBeTruthy();
+  });
+
   it('refuses Save and Send with no condition, saying why beside each', async () => {
     const { sent } = await openTo();
     fireEvent.click(screen.getByRole('radio', { name: 'Guests who…' }));
@@ -655,7 +667,7 @@ describe('Who gets it (sc-3957)', () => {
     );
   });
 
-  it('renames a saved audience in place', async () => {
+  it('renames a saved audience in place, focus back on its More actions', async () => {
     const { sent } = await openTo({
       'PATCH /api/events/ev_1/messages/audiences/a_cm': (body) =>
         json({ audience: { ...COMING_MOBILE, ...(body as object) } }),
@@ -671,6 +683,11 @@ describe('Who gets it (sc-3957)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByRole('radio', { name: 'Coming, mobiles' })).toBeTruthy();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'More actions for Coming, mobiles' }),
+      ),
+    );
     expect(
       sent.find(({ line }) => line === 'PATCH /api/events/ev_1/messages/audiences/a_cm')?.body,
     ).toEqual({ name: 'Coming, mobiles' });

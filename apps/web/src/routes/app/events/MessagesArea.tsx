@@ -128,6 +128,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
       : { kind: 'idle' },
   );
   const [draftTo, setDraftTo] = useState<Who>({ kind: 'all' });
+  const [draftBook, setDraftBook] = useState<AudienceBook>(NO_BOOK);
   const [ask, setAsk] = useState(0);
   const [said, setSaid] = useState('');
   const root = useRef<HTMLDivElement>(null);
@@ -201,7 +202,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
           line: `${
             draftTo.kind === 'conditions'
               ? t('eventMessages.toAudience', {
-                  audience: `${t('eventMessages.guestsWho')} ${conditionsWords(draftTo.conditions, groupsOf(null, []), t)}`,
+                  audience: `${t('eventMessages.guestsWho')} ${conditionsWords(draftTo.conditions, groupsOf(draftBook, []), t)}`,
                 })
               : audienceWords({ audience: draftTo.kind, conditions: null }, t)
           } · ${t('eventMessages.notSentYet')}`,
@@ -269,6 +270,7 @@ export function MessagesArea({ event }: { event: OrganisationEvent }) {
               desk={desk}
               first={pane}
               onWho={setDraftTo}
+              onBook={setDraftBook}
               onSent={(id, count) => {
                 say(t('eventMessages.queued', { count }));
                 setPane({ kind: 'message', id: pane.follows?.id ?? id });
@@ -636,11 +638,13 @@ function ComposePane({
   desk,
   first,
   onWho,
+  onBook,
   onSent,
 }: {
   desk: Desk;
   first: Draft;
   onWho: (who: Who) => void;
+  onBook: (book: AudienceBook) => void;
   onSent: (id: string, count: number) => void;
 }) {
   const { t } = useTranslation();
@@ -655,6 +659,7 @@ function ComposePane({
   const [step, setStep] = useState<Step>({ kind: 'write' });
   const [guests, setGuests] = useState<PickableGuest[] | null>(null);
   const [book, setBook] = useState<AudienceBook>(NO_BOOK);
+  useEffect(() => onBook(book), [book, onBook]);
   const counted = useAudienceMatch(
     desk.event.id,
     who.kind === 'conditions' ? who.conditions : null,
