@@ -37,7 +37,7 @@ import { KitchenSheetArea, KitchenSheetRefused } from './KitchenSheetArea.tsx';
 import { ScheduleOrNight } from './NightArea.tsx';
 import { SeatingArea } from './SeatingArea.tsx';
 import { JobsShiftsArea } from './JobsShiftsArea.tsx';
-import { RosterArea } from './RosterArea.tsx';
+import { RosterArea, StaffRefused } from './RosterArea.tsx';
 import { StationsArea } from './StationsArea.tsx';
 import { PAGE_NEEDS } from './handoff.ts';
 import { MessagesArea } from './MessagesArea.tsx';
@@ -387,7 +387,11 @@ function EventOf({
     return canOn(load.event, PAGE_NEEDS.run) ? <RunArea event={load.event} /> : <Withheld />;
 
   if (page === 'staff' && load.kind === 'loaded')
-    return canOn(load.event, PAGE_NEEDS.staff) ? <RosterArea event={load.event} /> : <Withheld />;
+    return canOn(load.event, PAGE_NEEDS.staff) ? (
+      <RosterArea event={load.event} />
+    ) : (
+      <StaffRefused event={load.event} />
+    );
 
   if (page === 'staffJobs' && load.kind === 'loaded')
     return canOn(load.event, PAGE_NEEDS.staff) ? (

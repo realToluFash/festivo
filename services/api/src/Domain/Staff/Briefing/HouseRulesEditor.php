@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\LocaleNumbers;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -25,6 +26,7 @@ final readonly class HouseRulesEditor
         private StaffRosterPublisher $staffRosterPublisher,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private LocaleNumbers $localeNumbers,
     ) {
     }
 
@@ -36,7 +38,7 @@ final readonly class HouseRulesEditor
         if (Str\length($rules) > Event::STAFF_RULES_MAXIMUM) {
             throw ApiException::validation([[
                 'propertyPath' => 'rules',
-                'message' => $this->translator->trans('validation.staff_rules_too_long', ['{max}' => (string) Event::STAFF_RULES_MAXIMUM]),
+                'message' => $this->translator->trans('validation.staff_rules_too_long', ['{max}' => $this->localeNumbers->decimal(Event::STAFF_RULES_MAXIMUM)]),
                 'code' => ErrorCode::ValidationFailed->value,
             ]]);
         }

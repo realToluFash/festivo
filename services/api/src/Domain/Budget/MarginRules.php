@@ -6,6 +6,7 @@ namespace App\Domain\Budget;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\LocaleNumbers;
 use App\Locale\Money;
 use NumberFormatter;
 use Psl\Math;
@@ -30,6 +31,7 @@ final readonly class MarginRules
     public function __construct(
         private TranslatorInterface $translator,
         private Money $money,
+        private LocaleNumbers $localeNumbers,
     ) {
     }
 
@@ -123,11 +125,11 @@ final readonly class MarginRules
     private function markupRefusal(string $typed): ?array
     {
         if (Regex\matches($typed, '/^[-−]/')) {
-            return $this->violation('markup', 'validation.budget_markup_negative', ['min' => $this->decimal(0, 0)], self::MARKUP_NEGATIVE);
+            return $this->violation('markup', 'validation.budget_markup_negative', ['min' => $this->localeNumbers->decimal(0)], self::MARKUP_NEGATIVE);
         }
 
         if (!Regex\matches($typed, '/^\d{1,6}(\.\d+)?$/')) {
-            return $this->violation('markup', 'validation.budget_markup_invalid', ['example' => $this->decimal(12.5, 1)]);
+            return $this->violation('markup', 'validation.budget_markup_invalid', ['example' => $this->localeNumbers->decimal(12.5, 1)]);
         }
 
         if (Str\length(Str\split($typed, '.')[1] ?? '') > 1) {
@@ -148,16 +150,7 @@ final readonly class MarginRules
             return $this->violation('price', 'validation.budget_client_price_too_many_decimals', ['example' => $this->money->example($currency)]);
         }
 
-        return $this->violation('price', 'validation.budget_client_price_invalid', ['min' => $this->decimal(0, 0)]);
-    }
-
-    private function decimal(float $number, int $digits): string
-    {
-        $formatter = new NumberFormatter($this->translator->getLocale(), NumberFormatter::DECIMAL);
-        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, $digits);
-        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, $digits);
-
-        return (string) $formatter->format($number);
+        return $this->violation('price', 'validation.budget_client_price_invalid', ['min' => $this->localeNumbers->decimal(0)]);
     }
 
     private function percent(int $tenths): string

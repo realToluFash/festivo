@@ -4442,6 +4442,8 @@
   },
   "briefing": {
     "card": "Briefing",
+    "refused": "You cannot see this event’s staff.",
+    "backToEvent": "Back to the event",
     "cardSub": "Les consignes et le service de chacun, sur une page personnelle.",
     "tally": "Où en est le briefing",
     "read": "Lu",
