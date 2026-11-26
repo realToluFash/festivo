@@ -354,6 +354,11 @@ final class StaffLinkSignInTest extends ApiTestCase
         self::assertSame('can_work_pass', $this->outsideRole($user));
         $this->as($user, 'GET', '/api/events/' . $this->eventId . '/service/stations');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['events.read', 'service.work'], $this->as($user, 'GET', '/api/events/' . $this->eventId)['event']['permissions'] ?? null, "the event's card opens Overview (sc-95382)");
+        foreach (['/guests', '/schedule', '/seating-plan', '/people'] as $rest) {
+            $this->as($user, 'GET', '/api/events/' . $this->eventId . $rest);
+            self::assertSame(403, $this->statusCode(), $rest);
+        }
 
         $this->jobAccess('run');
 

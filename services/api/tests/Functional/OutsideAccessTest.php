@@ -586,16 +586,20 @@ final class OutsideAccessTest extends ApiTestCase
 
     #[Test]
     #[DataProvider('serviceLevels')]
-    public function someoneFromOutsideWorksTheServiceAtALevelAndReadsNothingElseOfTheEvent(string $level, EventRole $role): void
+    public function someoneFromOutsideWorksTheServiceAtALevelAndReadsNothingElseOfTheEventButItsCard(string $level, EventRole $role): void
     {
         $waiter = $this->account('bisi@lagoslights.example', 'Bisi');
         $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', $level, 'Waiter');
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
         self::assertSame($role, $this->outsider($this->owambe, $waiter)?->getRole());
 
-        foreach (['/people', '/guests', '/budget'] as $rest) {
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($waiter, 'GET', '/api/events/' . $this->owambe));
+        self::assertSame(200, $this->statusCode(), 'the event\'s card, for Overview (sc-95382)');
+        self::assertSame(['events.read', 'service.work', ...(EventRole::CanRunFloor === $role ? ['service.manage'] : [])], $event['event']['permissions']);
+
+        foreach (['/people', '/guests', '/schedule', '/seating-plan', '/budget'] as $rest) {
             $this->as($waiter, 'GET', '/api/events/' . $this->owambe . $rest);
-            self::assertContains($this->statusCode(), [403, 404], $rest);
+            self::assertSame(403, $this->statusCode(), $rest);
         }
     }
 
