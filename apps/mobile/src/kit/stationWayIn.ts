@@ -1,5 +1,5 @@
-import type { KitchenStationsRead, MyNight } from '@soirely/api-client';
-import { type EventPhase, wallDay } from '@soirely/domain';
+import { ApiError, type KitchenStationsRead, type MyNight } from '@soirely/api-client';
+import { type EventPhase, answeredWithin, wallDay } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { openingStation } from './kitchenStation.ts';
@@ -33,6 +33,32 @@ export function stationRowLine(
   );
 
   return latest == null ? station : t('station.wayIn.line', { station, course: latest.name });
+}
+
+export type StationRowRead = { line: string; at: string; stale: boolean } | null;
+
+/** One read of the row: given up after NO_ANSWER_MS, as the page's band is, so offline shows "as of". */
+export function readStationRow(
+  t: TFunction,
+  stations: Promise<KitchenStationsRead>,
+  picked: Promise<string | null>,
+  now: () => Date = () => new Date(),
+): Promise<NonNullable<StationRowRead>> {
+  return answeredWithin(
+    Promise.all([stations, picked]),
+    () => new Error('The kitchen stations read went unanswered.'),
+  ).then(([read, pick]) => ({
+    line: stationRowLine(t, read, pick),
+    at: now().toISOString(),
+    stale: false,
+  }));
+}
+
+/** A refusal takes the row away; anything else keeps its line, as of when it was read. */
+export function afterFailedRead(was: StationRowRead, error: unknown): StationRowRead {
+  if (error instanceof ApiError && (error.status === 403 || error.status === 404)) return null;
+
+  return was == null ? was : { ...was, stale: true };
 }
 
 /** Open {station} on Your night: their own kitchen station, when their access opens it; null shows no button. */

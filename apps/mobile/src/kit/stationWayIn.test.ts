@@ -1,9 +1,16 @@
-import type { KitchenStationsRead, MyNight } from '@soirely/api-client';
-import { type EventState, eventPhase } from '@soirely/domain';
+import { ApiError, type KitchenStationsRead, type MyNight } from '@soirely/api-client';
+import { type EventState, NO_ANSWER_MS, eventPhase } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { openStationOf, stationRowLine, stationRowShows } from './stationWayIn.ts';
+import { type PickStore, readPick, rememberPick } from './kitchenStation.ts';
+import {
+  afterFailedRead,
+  openStationOf,
+  readStationRow,
+  stationRowLine,
+  stationRowShows,
+} from './stationWayIn.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
   key === 'station.wayIn.line'
@@ -87,6 +94,60 @@ describe('the row names where the station opens', () => {
   it('Pick a station, on none and with no pick, or a pick no longer a station', () => {
     expect(stationRowLine(t, { ...STATIONS, yours: null }, null)).toBe('station.wayIn.pick');
     expect(stationRowLine(t, { ...STATIONS, yours: null }, 'bar')).toBe('station.wayIn.pick');
+  });
+});
+
+function memoryStore(): PickStore {
+  const kept = new Map<string, string>();
+
+  return {
+    getItem: async (key) => kept.get(key) ?? null,
+    setItem: async (key, value) => void kept.set(key, value),
+  };
+}
+
+describe('a pick is the account’s, on that device (sc-95382, Decided 26 Nov)', () => {
+  const ON_NONE = { ...STATIONS, yours: null };
+
+  it('Pick a station for an account on no station signing in where another account picked', async () => {
+    const device = memoryStore();
+    await rememberPick(device, 'ada', 'e1', 'grill');
+
+    expect(stationRowLine(t, ON_NONE, await readPick(device, 'bisi', 'e1'))).toBe(
+      'station.wayIn.pick',
+    );
+  });
+
+  it('the account that picked reads its pick again on signing back in', async () => {
+    const device = memoryStore();
+    await rememberPick(device, 'ada', 'e1', 'grill');
+    await readPick(device, 'bisi', 'e1');
+
+    expect(stationRowLine(t, ON_NONE, await readPick(device, 'ada', 'e1'))).toBe('Grill');
+  });
+});
+
+describe('offline, the row keeps its line as of its last read (sc-95382)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('a read that never answers gives up after NO_ANSWER_MS, and the line reads as of', async () => {
+    const first = await readStationRow(t, Promise.resolve(STATIONS), Promise.resolve(null));
+    const unanswered = readStationRow(t, new Promise(() => {}), Promise.resolve(null)).then(
+      () => first,
+      (error: unknown) => afterFailedRead(first, error),
+    );
+    await vi.advanceTimersByTimeAsync(NO_ANSWER_MS);
+
+    expect(await unanswered).toEqual({ ...first, stale: true });
+  });
+
+  it('a refusal takes the row away', () => {
+    const was = { line: 'Grill', at: '2026-11-28T19:00:00.000Z', stale: false };
+
+    expect(
+      afterFailedRead(was, new ApiError({ type: 'about:blank', title: 'Forbidden', status: 403 })),
+    ).toBeNull();
   });
 });
 
