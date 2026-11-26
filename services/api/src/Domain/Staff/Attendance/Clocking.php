@@ -40,15 +40,15 @@ final readonly class Clocking
     ) {
     }
 
-    /** @return array{shift: StaffShift, attendance: ?ShiftAttendance}|null the shift still clocked in on first, else the one under way or next, else the last; null with no shift */
+    /** @return array{shift: StaffShift, attendance: ?ShiftAttendance}|null the shift still clocked in on first, then one open to clock in to, else the one under way or next, else the last; null with no shift */
     public function cardOf(StaffMember $entry): ?array
     {
         $now = $this->clock->now();
         $shifts = $this->staffShiftRepository->findOfPerson($entry);
         $attendances = $this->shiftAttendanceRepository->findOfPerson($entry);
         $of = static fn (StaffShift $shift): ?ShiftAttendance => Iter\first(Vec\filter($attendances, static fn (ShiftAttendance $one): bool => $one->getShift() === $shift));
-        $on = Iter\first(Vec\filter($shifts, static fn (StaffShift $shift): bool => ClockPhase::On === ClockWindow::phase($shift, $of($shift), $now)));
-        $shown = $on ?? Iter\first(Vec\filter($shifts, static fn (StaffShift $shift): bool => ClockWindow::endOf($shift) > $now)) ?? Iter\last($shifts);
+        $in = static fn (ClockPhase $phase): ?StaffShift => Iter\first(Vec\filter($shifts, static fn (StaffShift $shift): bool => $phase === ClockWindow::phase($shift, $of($shift), $now)));
+        $shown = $in(ClockPhase::On) ?? $in(ClockPhase::Ready) ?? Iter\first(Vec\filter($shifts, static fn (StaffShift $shift): bool => ClockWindow::endOf($shift) > $now)) ?? Iter\last($shifts);
 
         return null === $shown ? null : ['shift' => $shown, 'attendance' => $of($shown)];
     }
