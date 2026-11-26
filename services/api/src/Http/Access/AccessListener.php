@@ -68,7 +68,7 @@ final readonly class AccessListener
         $user = $this->account($route, false);
 
         if ($policy->orOnAnEvent && null !== $policy->permission) {
-            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw self::notFound();
+            $scope = $this->membershipDirectory->eventScopeIn($user, $organisationId) ?? throw $this->membershipDirectory->isOutsideIn($user, $organisationId) ? ApiException::permissionRequired($policy->permission) : self::notFound();
             $this->check($request, $scope->organisation, $scope->anywhere($policy->permission) ? null : $policy->permission, $policy->feature);
 
             return;
