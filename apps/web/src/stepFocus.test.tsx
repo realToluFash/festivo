@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { useFocusOnceShown } from './stepFocus.ts';
+import { cssRule } from './test-styles.ts';
 
 function Card() {
   const [stage, setStage] = useState<'open' | 'loading' | 'at-rest'>('open');
@@ -44,5 +45,11 @@ describe('useFocusOnceShown', () => {
 
     act(() => screen.getByRole('button', { name: 'Loaded' }).click());
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Turn on' }));
+  });
+});
+
+describe('where focus lands for a notice (sc-74701)', () => {
+  it('keeps 12px clear of its scroller on both edges, so its focus ring shows whole', () => {
+    expect(cssRule('[data-notice-landing]')).toContain('scroll-margin-block: var(--spaceLg);');
   });
 });
