@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\Controller;
 
-use App\Domain\Staff\Attendance\ClockWindow;
 use App\Domain\Staff\Link\StaffLinks;
 use App\Domain\Staff\Station\StationPlan;
+use App\Domain\Staff\WhosHere\Model\WhosHerePlace;
 use App\Domain\Staff\WhosHere\Model\WhosHereView;
 use App\Domain\Staff\WhosHere\WalkOns;
 use App\Domain\Staff\WhosHere\WhosHereAccess;
 use App\Domain\Staff\WhosHere\WhosHereReader;
 use App\Entity\Event;
 use App\Entity\StaffMember;
-use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
@@ -23,12 +22,8 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Realtime\SubscriberTokenIssuer;
 use App\Repository\EventRepository;
-use App\Repository\ShiftAttendanceRepository;
 use App\Repository\StaffMemberRepository;
-use App\Repository\StaffShiftRepository;
-use Psl\Iter;
 use Psl\Type;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,15 +38,12 @@ final readonly class WhosHereController
         private Security $security,
         private EventRepository $eventRepository,
         private StaffMemberRepository $staffMemberRepository,
-        private StaffShiftRepository $staffShiftRepository,
-        private ShiftAttendanceRepository $shiftAttendanceRepository,
         private WhosHereAccess $whosHereAccess,
         private WhosHereReader $whosHereReader,
         private WalkOns $walkOns,
         private StaffLinks $staffLinks,
         private StationPlan $stationPlan,
         private SubscriberTokenIssuer $subscriberTokenIssuer,
-        private ClockInterface $clock,
     ) {
     }
 
@@ -99,7 +91,7 @@ final readonly class WhosHereController
         return new JsonResponse($this->linked($person, $view));
     }
 
-    /** Cover {station}: the floor lead's and staff.manage's only. Refused `validation_failed` on `mover` for someone not clocked in or already on that station. */
+    /** Cover {station}: the floor lead's and staff.manage's only. Refused `validation_failed` on `absent` for someone who is here, and on `mover` for someone not clocked in or already on that station. */
     #[Route('/api/events/{eventId}/whos-here/cover', name: 'whos_here_cover', methods: ['POST'])]
     #[InEvent(Permission::EventsRead)]
     public function cover(Request $request, string $eventId): JsonResponse
@@ -115,13 +107,12 @@ final readonly class WhosHereController
         $absent = $this->staffMember($event, $body['absent']);
         $mover = $this->staffMember($event, $body['mover']);
 
-        if (!$this->isHere($mover)) {
-            throw ApiException::validation([[
-                'propertyPath' => 'mover',
-                'message' => 'whos_here.cover_not_here',
-                'code' => ErrorCode::ValidationFailed->value,
-                'parameters' => [],
-            ]]);
+        if ($this->isHere($event, $absent)) {
+            throw self::refused('absent', 'whos_here.cover_already_here');
+        }
+
+        if (!$this->isHere($event, $mover)) {
+            throw self::refused('mover', 'whos_here.cover_not_here');
         }
 
         $this->stationPlan->cover($absent, $mover, $view->reader);
@@ -162,14 +153,19 @@ final readonly class WhosHereController
         ];
     }
 
-    private function isHere(StaffMember $person): bool
+    private function isHere(Event $event, StaffMember $person): bool
     {
-        $now = $this->clock->now();
+        return WhosHerePlace::HERE === $this->whosHereReader->place($event, $person)?->list;
+    }
 
-        return Iter\any(
-            $this->staffShiftRepository->findOfPerson($person),
-            fn (StaffShift $shift): bool => ClockWindow::stillOn($shift, $this->shiftAttendanceRepository->findOneOn($shift, $person), $now),
-        );
+    private static function refused(string $field, string $message): ApiException
+    {
+        return ApiException::validation([[
+            'propertyPath' => $field,
+            'message' => $message,
+            'code' => ErrorCode::ValidationFailed->value,
+            'parameters' => [],
+        ]]);
     }
 
     private function view(Event $event): WhosHereView

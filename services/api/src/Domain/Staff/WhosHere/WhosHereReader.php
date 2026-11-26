@@ -47,16 +47,19 @@ final readonly class WhosHereReader
     ) {
     }
 
+    /** Where the lists put one person now: the same decision `read` makes for each of them. */
+    public function place(Event $event, StaffMember $person): ?WhosHerePlace
+    {
+        return self::placeOf($person, $this->staffShiftRepository->findOnEvent($event), $this->attendances($event), $this->clock->now());
+    }
+
     /** @return array<string, mixed> */
     public function read(Event $event, WhosHereView $view): array
     {
         $now = $this->clock->now();
         $zone = new DateTimeZone($event->getTimeZone());
         $shifts = $this->staffShiftRepository->findOnEvent($event);
-        $attendances = Dict\reindex(
-            $this->shiftAttendanceRepository->findOnEvent($event),
-            static fn (ShiftAttendance $attendance): string => $attendance->getShift()->getId()->toRfc4122() . ':' . $attendance->getPersonId()->toRfc4122(),
-        );
+        $attendances = $this->attendances($event);
         $roster = $this->staffMemberRepository->findOnEvent($event);
         $placed = Vec\filter_nulls(Vec\map($roster, static fn (StaffMember $person): ?WhosHerePlace => self::placeOf($person, $shifts, $attendances, $now)));
 
@@ -160,6 +163,15 @@ final readonly class WhosHereReader
         }
 
         return ['id' => $station->getId()->toRfc4122(), 'name' => $station->getName()];
+    }
+
+    /** @return array<string, ShiftAttendance> by shift and person */
+    private function attendances(Event $event): array
+    {
+        return Dict\reindex(
+            $this->shiftAttendanceRepository->findOnEvent($event),
+            static fn (ShiftAttendance $attendance): string => $attendance->getShift()->getId()->toRfc4122() . ':' . $attendance->getPersonId()->toRfc4122(),
+        );
     }
 
     /**

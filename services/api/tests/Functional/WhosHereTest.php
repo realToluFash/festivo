@@ -225,7 +225,7 @@ final class WhosHereTest extends ApiTestCase
 
         self::assertTrue($this->as($this->owner, 'GET', $this->path())['ended']);
         $this->as($dayo, 'POST', $this->path('walk-ons'), ['fullName' => 'Kunle Ade', 'mobile' => null, 'job' => $this->jobs['Door'], 'station' => $this->places['Door']]);
-        self::assertContains($this->statusCode(), [404, 409], Json\encode($this->last()));
+        self::assertSame(404, $this->statusCode(), 'Dayo\'s staff link stops granting once the event ends, before the event is read: ' . Json\encode($this->last()));
 
         $this->as($this->owner, 'POST', $this->path('walk-ons'), ['fullName' => 'Kunle Ade', 'mobile' => null, 'job' => $this->jobs['Door'], 'station' => $this->places['Door']]);
         self::assertSame([409, 'event_concluded'], [$this->statusCode(), $this->errorCode()]);
@@ -239,6 +239,8 @@ final class WhosHereTest extends ApiTestCase
         self::assertSame([422, ['mover']], [$this->statusCode(), $this->fields($this->last()['violations'] ?? null)], 'Tope has not clocked in');
         $this->as($dayo, 'POST', $this->path('cover'), ['absent' => $this->tope, 'mover' => $this->grace]);
         self::assertSame([422, ['mover']], [$this->statusCode(), $this->fields($this->last()['violations'] ?? null)], 'already on the Bar');
+        $this->as($dayo, 'POST', $this->path('cover'), ['absent' => $this->grace, 'mover' => $this->dayo]);
+        self::assertSame([422, ['absent']], [$this->statusCode(), $this->fields($this->last()['violations'] ?? null)], 'Grace is here, on her station');
 
         $read = $this->as($dayo, 'POST', $this->path('cover'), ['absent' => $this->ngozi, 'mover' => $this->grace]);
         self::assertSame(200, $this->statusCode(), Json\encode($read));

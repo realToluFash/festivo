@@ -197,6 +197,7 @@
     "whos_here.mobile_required": "Enter their mobile number.",
     "whos_here.cover_no_station": "They have no station to cover.",
     "whos_here.cover_already_on": "They are already on {station}.",
+    "whos_here.cover_already_here": "They have clocked in, so there is nothing to cover.",
     "whos_here.cover_not_here": "Choose someone who has clocked in.",
     "validation.dish_name_required": "Introduza o nome do prato.",
     "validation.dish_name_too_long": "Encurte o nome para um máximo de {max} caracteres.",
