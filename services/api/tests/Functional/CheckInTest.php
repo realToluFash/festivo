@@ -197,7 +197,7 @@ final class CheckInTest extends ApiTestCase
         $read = $this->as($this->owner, 'GET', $this->checkIn());
 
         $row = Type\shape(['guests' => Type\vec(Type\dict(Type\string(), Type\mixed()))], true)->coerce($read)['guests'][0];
-        self::assertSame(['id', 'fullName', 'reply', 'repliedAt', 'code', 'walkIn', 'arrival', 'companions'], Vec\keys($row));
+        self::assertSame(['id', 'fullName', 'reply', 'repliedAt', 'code', 'walkIn', 'arrival', 'seat', 'companions'], Vec\keys($row));
         self::assertStringNotContainsString('adaeze@example.com', Json\encode($read));
         self::assertStringNotContainsString('Family', Json\encode($read));
     }

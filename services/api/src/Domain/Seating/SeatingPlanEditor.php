@@ -23,6 +23,7 @@ use App\Enum\TableShape;
 use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Locale\NameNormaliser;
+use App\Realtime\CheckInSignal;
 use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -92,6 +93,7 @@ final readonly class SeatingPlanEditor
         private GuestSeater $guestSeater,
         private GuestRepository $guestRepository,
         private GuestPageSignal $guestPageSignal,
+        private CheckInSignal $checkInSignal,
     ) {
     }
 
@@ -1314,6 +1316,7 @@ final readonly class SeatingPlanEditor
 
     private function published(Event $event, ?SeatingPlan $plan): void
     {
+        $this->checkInSignal->send($event);
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $plan));
         null === $plan ? $this->guestPageSignal->send($event) : $this->guestPageSignal->seatingChanged($event);
     }

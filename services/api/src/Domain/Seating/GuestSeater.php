@@ -19,6 +19,7 @@ use App\Enum\ErrorCode;
 use App\Enum\GuestReply;
 use App\Enum\RealtimeTopic;
 use App\Http\Exception\ApiException;
+use App\Realtime\CheckInSignal;
 use App\Realtime\RealtimePublisher;
 use App\Repository\GuestRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -50,6 +51,7 @@ final readonly class GuestSeater
         private RealtimePublisher $realtimePublisher,
         private TranslatorInterface $translator,
         private GuestPageSignal $guestPageSignal,
+        private CheckInSignal $checkInSignal,
     ) {
     }
 
@@ -207,6 +209,7 @@ final readonly class GuestSeater
             throw new ApiException(ErrorCode::SeatingSeatTaken, 'seating.seat_taken', previous: $taken, parameters: ['{name}' => null === $named ? '' : $this->nameOf($named)]);
         }
 
+        $this->checkInSignal->send($event);
         $this->realtimePublisher->publish(RealtimeTopic::EventSeating, $event->getId()->toRfc4122(), $this->seatingSerialiser->seating($event, $seatingPlan));
         $this->guestPageSignal->seatingChanged($event);
 
