@@ -7056,11 +7056,11 @@
     "searchByName": "Pesquisar por nome",
     "clearSearch": "Clear search",
     "arrived": "Chegou",
-    "arrivedFor": "Arrived: {{name}}",
+    "arrivedFor": "Chegou, {{name}}",
     "arrivedAtBy": "Chegada: {{time}} · {{name}}",
     "arrivedAnnounced": "{{name}} arrived at {{time}}.",
     "undo": "Anular chegada",
-    "undoFor": "Undo arrival: {{name}}",
+    "undoFor": "Anular chegada, {{name}}",
     "undone": "Chegada anulada",
     "notRecorded": "Não ficou registado. Tente novamente.",
     "noOne": "Ninguém na lista corresponde a «{{typed}}».",
@@ -7087,8 +7087,8 @@
     "yourShift": "O seu turno",
     "notSignedIn": {
       "title": "Inicie sessão com a sua ligação ou o seu código",
-      "body": "Para registar a entrada dos convidados, abra a ligação que lhe enviámos ou volte a introduzir o seu código da porta.",
-      "cta": "Introduzir o código da porta"
+      "body": "Para registar a entrada dos convidados, abra a ligação que lhe enviámos ou volte a introduzir o seu código de acesso.",
+      "cta": "Introduzir um código de acesso"
     }
   }
 }

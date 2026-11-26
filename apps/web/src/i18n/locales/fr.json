@@ -7056,11 +7056,11 @@
     "searchByName": "Rechercher par nom",
     "clearSearch": "Clear search",
     "arrived": "Arrivée",
-    "arrivedFor": "Arrived: {{name}}",
+    "arrivedFor": "Arrivée, {{name}}",
     "arrivedAtBy": "Arrivée à {{time}} · {{name}}",
     "arrivedAnnounced": "{{name}} arrived at {{time}}.",
     "undo": "Annuler l’arrivée",
-    "undoFor": "Undo arrival: {{name}}",
+    "undoFor": "Annuler l’arrivée, {{name}}",
     "undone": "Arrivée annulée",
     "notRecorded": "Non enregistrée. Réessayez.",
     "noOne": "Personne sur la liste ne correspond à « {{typed}} ».",
@@ -7087,8 +7087,8 @@
     "yourShift": "Votre service",
     "notSignedIn": {
       "title": "Connectez-vous avec votre lien ou votre code",
-      "body": "Pour accueillir les invités, ouvrez le lien que nous vous avons envoyé ou saisissez de nouveau votre code d’entrée.",
-      "cta": "Saisir un code d’entrée"
+      "body": "Pour accueillir les invités, ouvrez le lien que nous vous avons envoyé ou saisissez de nouveau votre code d’accès.",
+      "cta": "Saisir un code d’accès"
     }
   }
 }
