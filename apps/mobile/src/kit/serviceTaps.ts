@@ -2,10 +2,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type KeptServiceTap, type ServiceTapStore, asKeptServiceTaps } from '@soirely/api-client';
 
 const KEPT = 'soirely.serviceTaps.';
+const stores = new Map<string, ServiceTapStore>();
 
-/** An event's service taps waiting to send, kept on the device so closing the app loses none (sc-4028). */
+/** An event's service taps waiting to send, kept on the device so closing the app loses none (sc-4028). One store per event, shared by every view. */
 export function storedServiceTaps(eventId: string): ServiceTapStore {
-  const key = KEPT + eventId;
+  let store = stores.get(eventId);
+
+  if (store == null) {
+    store = keptOnDevice(KEPT + eventId);
+    stores.set(eventId, store);
+  }
+
+  return store;
+}
+
+function keptOnDevice(key: string): ServiceTapStore {
   let held: KeptServiceTap[] | null = null;
 
   return {

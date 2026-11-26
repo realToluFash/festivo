@@ -25,11 +25,16 @@ describe('service taps kept in the browser', () => {
     expect(window.localStorage.getItem('soirely.serviceTaps.evt-1')).toBeNull();
   });
 
+  it('are one store per event, so every view sees the taps another kept', () => {
+    expect(storedServiceTaps('evt-3')).toBe(storedServiceTaps('evt-3'));
+    expect(storedServiceTaps('evt-3')).not.toBe(storedServiceTaps('evt-4'));
+  });
+
   it('are kept in memory where storage is blocked', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    const store = storedServiceTaps('evt-1');
+    const store = storedServiceTaps('evt-blocked');
 
     await store.save([tap]);
 

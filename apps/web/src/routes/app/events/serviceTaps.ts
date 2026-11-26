@@ -1,10 +1,21 @@
 import { type KeptServiceTap, type ServiceTapStore, asKeptServiceTaps } from '@soirely/api-client';
 
 const KEPT = 'soirely.serviceTaps.';
+const stores = new Map<string, ServiceTapStore>();
 
-/** An event's service taps waiting to send, kept in the browser so closing the tab loses none (sc-4028); in memory where storage is blocked. */
+/** An event's service taps waiting to send, kept in the browser so closing the tab loses none (sc-4028); in memory where storage is blocked. One store per event, shared by every view. */
 export function storedServiceTaps(eventId: string): ServiceTapStore {
-  const key = `${KEPT}${eventId}`;
+  let store = stores.get(eventId);
+
+  if (store == null) {
+    store = keptInBrowser(`${KEPT}${eventId}`);
+    stores.set(eventId, store);
+  }
+
+  return store;
+}
+
+function keptInBrowser(key: string): ServiceTapStore {
   let memory: KeptServiceTap[] = [];
   let blocked = false;
 
