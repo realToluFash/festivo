@@ -209,6 +209,45 @@ final class ServiceStepsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPlateTakenOffATrayIsBackAtToServeAndOffTheTray(): void
+    {
+        $this->arrive('Adaeze Obi', 'Bola Ade');
+        $this->fire();
+        $tray = $this->startTray();
+        $plate = $tray['plates'][0];
+
+        $this->as('DELETE', '/api/events/' . $this->event->getId()->toRfc4122() . '/service/trays/' . $tray['id'] . '/plates/' . $plate);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $order = self::guestOf(self::tableOf($this->read()), 'Adaeze Obi')['order'];
+        self::assertSame('toServe', $order['stage']);
+        self::assertNull($order['trayId']);
+    }
+
+    #[Test]
+    public function waitForAllKeepsTheGuestHeldAndWhatsReadyNowNeedsSomethingReady(): void
+    {
+        $this->arrive('Adaeze Obi');
+        $this->fire();
+        $course = $this->course->getId()->toRfc4122();
+        $this->put('/course/' . $course . '/items', ['item' => 'plantain', 'state' => 'preparing']);
+        $order = self::guestOf(self::tableOf($this->read()), 'Adaeze Obi')['order'];
+
+        $this->put('/plates/' . $order['id'] . '/choice', ['choice' => 'waitForAll']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertTrue(self::guestOf(self::tableOf($this->read()), 'Adaeze Obi')['order']['held']);
+
+        foreach (['jollof rice', OrderMaker::CHEFS_CHOICE] as $item) {
+            $this->put('/course/' . $course . '/items', ['item' => $item, 'state' => 'preparing']);
+            self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        }
+
+        $this->put('/plates/' . $order['id'] . '/choice', ['choice' => 'whatsReadyNow']);
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(ErrorCode::PlateEmpty->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
     public function theReadWithNoViewerNamesNobody(): void
     {
         $this->arrive('Adaeze Obi');
