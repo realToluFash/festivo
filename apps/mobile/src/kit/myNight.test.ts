@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkInOf,
-  clockOpensAt,
   crossesMidnight,
   dietaryOf,
   headingOf,
@@ -20,6 +19,8 @@ const t = ((key: string, values?: Record<string, unknown>) =>
       : key) as unknown as TFunction;
 
 const NIGHT: MyNight = {
+  pastAccess: false,
+  clock: null,
   event: { id: 'ev-1', name: 'Adébáyọ̀ at 60', timeZone: 'Africa/Lagos' },
   endsAt: '2026-11-29T02:00:00+01:00',
   station: 'Section B',
@@ -65,11 +66,6 @@ describe('a staff member’s night in the app (sc-3915)', () => {
   it('heads with the station, else the job', () => {
     expect(headingOf(NIGHT)).toBe('Section B');
     expect(headingOf({ ...NIGHT, station: null })).toBe('Waiter');
-  });
-
-  it('opens the clock an hour before the shift, and shows no card from then', () => {
-    expect(clockOpensAt(NIGHT, new Date('2026-11-28T14:30:00Z'))).toBe('2026-11-28T15:00:00.000Z');
-    expect(clockOpensAt(NIGHT, new Date('2026-11-28T15:00:00Z'))).toBeNull();
   });
 
   it('knows a shift that ends after midnight on the event’s clock', () => {

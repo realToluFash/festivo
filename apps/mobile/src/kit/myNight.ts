@@ -2,9 +2,6 @@ import type { MyNight, MyNightGuest } from '@soirely/api-client';
 import { formatWallClock, wallOfZoned } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
-/** The clock card opens an hour before the shift (sc-234's Recording). */
-const CLOCK_OPENS_BEFORE_MS = 60 * 60_000;
-
 /** 24-hour, on the event's clock whatever the reader's zone. */
 export function clockAt(at: string, locale: string): string {
   return formatWallClock(wallOfZoned(at), locale);
@@ -35,14 +32,6 @@ export function updatedAfter(
   if (night.station == null) return null;
 
   return was != null && headingOf(was) !== headingOf(night) ? night.station : kept;
-}
-
-/** When clocking in opens, while that is still ahead; null once the window is open or with no shift. */
-export function clockOpensAt(night: MyNight, now: Date): string | null {
-  if (night.shift == null) return null;
-  const opens = Date.parse(night.shift.startsAt) - CLOCK_OPENS_BEFORE_MS;
-
-  return now.getTime() >= opens ? null : new Date(opens).toISOString();
 }
 
 /** "Vegetarian, Peanuts": a guest's diets, then their allergies, as the guest record names them; null with neither. */

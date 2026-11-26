@@ -6,6 +6,7 @@ namespace App\Domain\Event\DoorCode\Controller;
 
 use App\Domain\Event\DoorCode\DoorCodeRedeemer;
 use App\Domain\Event\DoorCode\DoorCodeSignIn;
+use App\Domain\Staff\Attendance\JoinCodeShift;
 use App\Domain\User\Http\SignInResponse;
 use App\Entity\DoorCode;
 use App\Entity\EventPerson;
@@ -32,6 +33,7 @@ final readonly class RedeemController
         private DoorCodeSignIn $doorCodeSignIn,
         private SignInResponse $signInResponse,
         private CodeField $codeField,
+        private JoinCodeShift $joinCodeShift,
     ) {
     }
 
@@ -53,7 +55,7 @@ final readonly class RedeemController
     public function redeem(Request $request, string $code): JsonResponse
     {
         $redeemed = $this->doorCodeRedeemer->redeem($code, $this->reader(), $request);
-        $answer = self::youreIn($redeemed['person'], $redeemed['again']);
+        $answer = $this->youreIn($redeemed['person'], $redeemed['again']);
 
         return new JsonResponse($answer, $redeemed['again'] ? Response::HTTP_OK : Response::HTTP_CREATED);
     }
@@ -85,12 +87,15 @@ final readonly class RedeemController
         $signedIn = $this->doorCodeSignIn->signIn($code, $body['handle'], $this->codeField->required($body, 'code', CodeField::FROM_TEXT), $request, RefreshTokenDelivery::Cookie === $delivery);
         $person = $signedIn['person'];
 
-        return $this->signInResponse->for($signedIn['admission'], $signedIn['user'], $delivery, $request, null === $person ? [] : self::youreIn($person, $signedIn['again']));
+        return $this->signInResponse->for($signedIn['admission'], $signedIn['user'], $delivery, $request, null === $person ? [] : $this->youreIn($person, $signedIn['again']));
     }
 
-    /** @return array<string, mixed> */
-    private static function youreIn(EventPerson $person, bool $again): array
+    /** @return array<string, mixed> `shift` says whether it lands on My night, or on You're in with why its shift was not joined (sc-234) */
+    private function youreIn(EventPerson $person, bool $again): array
     {
+        $doorCode = $person->getDoorCode();
+        $user = $person->getUser();
+
         return [
             'eventId' => $person->getEvent()->getId()->toRfc4122(),
             'name' => $person->getUser()?->getName(),
@@ -98,6 +103,7 @@ final readonly class RedeemController
             'jobLabel' => $person->getJobLabel(),
             'endsAt' => $person->getEvent()->getClosesAt()?->format(\DATE_ATOM),
             'again' => $again,
+            'shift' => null === $doorCode || null === $user ? null : $this->joinCodeShift->answerFor($doorCode, $user),
         ];
     }
 
