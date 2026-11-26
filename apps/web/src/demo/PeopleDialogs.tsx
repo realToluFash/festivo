@@ -16,8 +16,8 @@ import {
   UNUSABLE,
   everyoneOn,
   FIRST_ROLE,
+  askWords,
   calledIn,
-  keepWords,
   inOrganisation,
   isServiceLevel,
   leadOff,
@@ -31,8 +31,6 @@ import {
   type OrgMember,
   OUTSIDE_ENDS,
   type PeopleViewer,
-  removeLine,
-  removeTitle,
   rolesOff,
   SAVE_MS,
   savedWords,
@@ -74,6 +72,7 @@ export function RoleDialog({
   organisation,
   removing,
   asking: askingFirst = false,
+  french = false,
   onSaved,
   onLost,
   onClose,
@@ -84,6 +83,7 @@ export function RoleDialog({
   organisation?: string;
   removing?: Removing | undefined;
   asking?: boolean;
+  french?: boolean;
   onSaved: (role: Level) => void;
   onLost: (words: string) => void;
   onClose: () => void;
@@ -105,6 +105,7 @@ export function RoleDialog({
   const open = useRef(true);
   const first = useRef<HTMLInputElement>(null);
   const off: readonly Level[] = rolesOff(person);
+  const ask = askWords(person, french, organisation);
   useEffect(() => {
     open.current = true;
 
@@ -245,10 +246,18 @@ export function RoleDialog({
       </Dialog>
       {asking && (
         <Ask
-          title={<AddressIn text={person.name} words={removeTitle} />}
-          line={removeLine(person, organisation)}
-          keep={keepWords(person)}
-          go="Remove"
+          title={
+            french ? (
+              <span lang="fr">
+                <AddressIn text={person.name} words={ask.title} />
+              </span>
+            ) : (
+              <AddressIn text={person.name} words={ask.title} />
+            )
+          }
+          line={ask.line}
+          keep={ask.keep}
+          go={ask.go}
           busy={gone == null ? undefined : removing?.words}
           onKeep={() => setAsking(false)}
           onGo={() => (removing == null ? onRemove() : setGone(removing.ms))}
