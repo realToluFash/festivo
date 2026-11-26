@@ -9,6 +9,7 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Domain\Staff\Briefing\BriefingPrinter;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Enum\NotificationAudienceKind;
@@ -36,6 +37,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         private StaffRosterPublisher $staffRosterPublisher,
         private ShiftNoticeReach $shiftNoticeReach,
         private ShiftUrgency $shiftUrgency,
+        private BriefingPrinter $briefingPrinter,
     ) {
     }
 
@@ -141,7 +143,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         );
     }
 
-    /** Once it has gone, what it said is what they were told; one not delivered leaves that as it was, so the roster keeps Changed since sent. */
+    /** Once it has gone, what it said is what they were told, and the briefing's print is settled with it so the roster's Changed since sent clears; one not delivered leaves both as they were. */
     public function finished(array $payload, NotificationDeliveryStatus $status): void
     {
         $entry = $this->entry($payload);
@@ -152,6 +154,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
 
         if (NotificationDeliveryStatus::Sent === $status) {
             $this->toldShifts->toldNow($entry);
+            $entry->setBrief($entry->getBriefStatus(), $this->briefingPrinter->printOf($entry));
             $this->entityManager->flush();
         }
 

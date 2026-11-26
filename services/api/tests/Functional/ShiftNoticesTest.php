@@ -101,12 +101,13 @@ final class ShiftNoticesTest extends ApiTestCase
             ]],
         ], $this->row($this->ada)['notice']);
 
+        self::assertSame('changed', $this->row($this->ada)['briefing']);
         $this->at('2027-03-01T10:14:00Z');
         self::assertSame([], $this->pushes());
 
         $this->at('2027-03-01T10:15:00Z');
         self::assertSame([['Your shift has changed · Owambe', ['Your start time is now 19:00 (was 18:00).'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
-        self::assertSame(['state' => 'told', 'at' => '2027-03-01T11:15:00+01:00', 'channel' => 'push', 'ending' => null], $this->row($this->ada)['notice']);
+        self::assertSame(['notice' => ['state' => 'told', 'at' => '2027-03-01T11:15:00+01:00', 'channel' => 'push', 'ending' => null], 'briefing' => 'sent'], $this->row($this->ada));
     }
 
     #[Test]
