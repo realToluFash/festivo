@@ -158,6 +158,7 @@ const NIGHT = {
   ],
   checksIn: false,
   dishes: false,
+  whosHere: false,
   rules: null,
 };
 

@@ -28,6 +28,17 @@ final readonly class WhosHereAccess
     /** Refused 403 `permission_required` on staff.read for anybody else. */
     public function viewOf(User $reader, Event $event): WhosHereView
     {
+        return $this->viewFor($reader, $event) ?? throw ApiException::permissionRequired(Permission::StaffRead);
+    }
+
+    /** Whether the reader may open Who's here at all, for the way in on My night (27 Nov, #98252). */
+    public function reads(User $reader, Event $event): bool
+    {
+        return null !== $this->viewFor($reader, $event);
+    }
+
+    private function viewFor(User $reader, Event $event): ?WhosHereView
+    {
         $grants = $this->membershipDirectory->grantsOnEvent($reader, $event->getOrganisation()->getId(), $event->getId());
         $manage = $grants?->allows(Permission::StaffManage) ?? false;
         $entries = $this->entriesOf($reader, $event);
@@ -39,9 +50,7 @@ final readonly class WhosHereAccess
 
         $led = Iter\first(Vec\filter_nulls(Vec\map($entries, self::ledBy(...))));
 
-        return null === $led
-            ? throw ApiException::permissionRequired(Permission::StaffRead)
-            : new WhosHereView($reader, $led, $manage, $manage);
+        return null === $led ? null : new WhosHereView($reader, $led, $manage, $manage);
     }
 
     /** Whether the reader may give this person a number: staff.manage for anyone, and the lead who added a walk-on for that walk-on (pm, 31 Oct). */
