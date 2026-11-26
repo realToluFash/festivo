@@ -7129,7 +7129,7 @@
     }
   },
   "checkIn": {
-    "noSeat": "No seat yet",
+    "noSeat": "Ainda sem lugar",
     "title": "Entradas",
     "count_one": "Chegadas: {{count, number}} de {{expected, number}}",
     "count_other": "Chegadas: {{count, number}} de {{expected, number}}",
