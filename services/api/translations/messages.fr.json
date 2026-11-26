@@ -546,8 +546,8 @@
     "service.ready_in_invalid": "Le délai « Prêt dans … min environ » peut être de 5, 10 ou 15 minutes, et ne se donne que pour un élément « En préparation ».",
     "service.item_not_on_course": "Cet élément ne fait pas partie de ce service.",
     "service.item_not_on_plate": "Cet élément n’est pas sur cette assiette.",
-    "service.changed": "This changed while you were offline. Nothing was changed.",
-    "service.expected_required": "Send what the tap saw with each service step.",
-    "service.idempotency_key_required": "Send an Idempotency-Key with each service step.",
-    "service.idempotency_key_reused": "This Idempotency-Key was already used for a different step. Nothing was changed."
+    "service.changed": "Quelqu’un d’autre a fait une modification pendant que vous étiez hors ligne. Rien n’a été enregistré.",
+    "service.expected_required": "Envoyez avec chaque étape du service l’état vu par l’appareil.",
+    "service.idempotency_key_required": "Envoyez l’en-tête Idempotency-Key à chaque étape du service.",
+    "service.idempotency_key_reused": "Cette Idempotency-Key a déjà été utilisée pour une autre étape. Rien n’a été modifié."
 }
