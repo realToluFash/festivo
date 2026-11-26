@@ -37,6 +37,7 @@ const NIGHT = {
   doorsAt: '2030-11-14T18:00:00+00:00',
   tables: null,
   checksIn: true,
+  dishes: false,
   rules: null,
 };
 
