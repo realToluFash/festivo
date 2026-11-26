@@ -7,7 +7,7 @@ import {
   type EventRole,
   type OrganisationEvent,
 } from '@soirely/api-client';
-import { firstName, initials, numberFormat } from '@soirely/domain';
+import { initials, numberFormat } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,9 @@ import {
   holderOf,
   inListOrder,
   joinedLine,
+  keepWord,
   managesPeople,
+  notChangedLine,
   nowCan,
   offerLine,
   offered,
@@ -127,16 +129,12 @@ function sheetWords(
     removeLine: person.outside
       ? t('eventPeople.removeLineOutside')
       : t('eventPeople.removeLine', { organisation }),
-    keep: t('eventPeople.keep', { name: firstName(name) }),
+    keep: keepWord(t, person),
     removeConfirm: t('eventPeople.removeConfirm'),
     removing: t('eventPeople.removing'),
     savedHeard: (role) =>
       t('eventPeople.savedHeard', { said: t(`eventPeople.nowOne.${role}`, { name }) }),
-    notChanged: (held) =>
-      t('eventPeople.changeFailed', {
-        name: firstName(name),
-        role: t(`eventPeople.role.${held}`),
-      }),
+    notChanged: (held) => notChangedLine(t, person, name, held),
     removeFailed: (error) => refusalSaid(error, t('eventPeople.removeFailed')),
   };
 }

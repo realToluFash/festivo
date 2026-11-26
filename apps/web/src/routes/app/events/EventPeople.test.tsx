@@ -1344,4 +1344,45 @@ describe('an outsider’s address breaks after its @, never inside its domain (s
     const ask = screen.getByRole('alertdialog', { name: 'Remove Tom Becker from this event?' });
     expect(ask.querySelector('.whole-address')).toBeNull();
   });
+
+  it.each([
+    ['an address', 'amaka.outside@soirely.test', /^amaka\.outside@soirely\.test/u],
+    ['a mobile number', '+2348031234567', /^\+234 803 123 4567/u],
+    ['nothing the viewer may see', null, /^Not joined yet/u],
+  ])(
+    'keeps someone with no account name by Keep them, given %s (sc-91678)',
+    async (_, address, row) => {
+      signedIn();
+      await onPeople([TOM, outsider('amaka', { address }, 'can_view')]);
+
+      fireEvent.click(within(people()).getByRole('button', { name: row }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove from this event…' }));
+      const ask = screen.getByRole('alertdialog');
+      const keep = within(ask).getByRole('button', { name: 'Keep them' });
+      expect(keep.textContent).toBe('Keep them');
+      expect(
+        within(ask).queryByRole('button', { name: /^Keep \+|^Keep amaka|^Keep Not/u }),
+      ).toBeNull();
+
+      fireEvent.click(keep);
+
+      expect(screen.queryByRole('alertdialog')).toBeNull();
+      expect(screen.getByRole('dialog', { name: 'Role on this event' })).toBeDefined();
+    },
+  );
+
+  it('keeps someone with no account name by Ne pas retirer in French (sc-91678)', async () => {
+    signedIn();
+    await onPeople([TOM, outsider('ngozi', { address: '+2348031234567' }, 'can_view')]);
+    await act(() => i18next.changeLanguage('fr'));
+
+    try {
+      fireEvent.click(within(people()).getByRole('button', { name: /^\+234 803 123 4567/u }));
+      fireEvent.click(screen.getByRole('button', { name: /^Retirer de cet événement/u }));
+      const ask = screen.getByRole('alertdialog');
+      expect(within(ask).getByRole('button', { name: 'Ne pas retirer' })).toBeDefined();
+    } finally {
+      await act(() => i18next.changeLanguage('en'));
+    }
+  });
 });
