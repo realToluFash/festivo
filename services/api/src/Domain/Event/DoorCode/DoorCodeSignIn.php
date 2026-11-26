@@ -18,6 +18,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PhoneSignInRepository;
+use DateTimeImmutable;
 use Psl\Iter;
 use Psl\Str;
 use SensitiveParameter;
@@ -61,7 +62,7 @@ final readonly class DoorCodeSignIn
             throw $this->doorCodeRedeemer->tooMany($bySource->getRetryAfter());
         }
 
-        $sent = $this->phoneSignInRepository->sentForDoorCodeSince($doorCode, $this->clock->now()->modify('-1 hour'));
+        $sent = $this->phoneSignInRepository->sentForDoorCodeSince($doorCode, new DateTimeImmutable('-1 hour'));
         $over = Iter\count($sent) - self::SENDS_PER_USE_AN_HOUR * $doorCode->getUseCap();
 
         if ($over >= 0) {
