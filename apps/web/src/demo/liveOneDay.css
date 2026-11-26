@@ -1,8 +1,13 @@
-/* sc-93858: the card with no step keeps the box its finished line and Duplicate take, so nothing below moves when the step comes back. */
+/* sc-93858: the card with no step shares its cell with an unseen finished copy, so it keeps the finished height in every locale and nothing below moves when the step comes back. */
 .lod-held {
-  display: contents;
+  display: grid;
+  flex: none;
 }
 
-.lod-held .ev-card-foot {
-  min-height: calc(14.5px * 1.4 + var(--spaceSm) + var(--sizeHit));
+.lod-held > * {
+  grid-area: 1 / 1;
+}
+
+.lod-unseen {
+  visibility: hidden;
 }

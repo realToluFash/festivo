@@ -182,7 +182,23 @@ export function EventCard({
       onStep={(step) => onStep(step.action)}
     />
   );
-  const card = held ? <div className="lod-held">{product}</div> : product;
+  const card = held ? (
+    <div className="lod-held">
+      <div className="lod-unseen">
+        <ProductCard
+          event={{ ...shown, phase: 'finished' }}
+          now={now}
+          locale={dateLocale()}
+          level={level}
+          takes={() => !reads}
+          onStep={() => undefined}
+        />
+      </div>
+      {product}
+    </div>
+  ) : (
+    product
+  );
 
   return words == null ? card : <I18nextProvider i18n={words}>{card}</I18nextProvider>;
 }
