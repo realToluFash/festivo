@@ -27,7 +27,6 @@ import { goBack } from '../DemoScreen.tsx';
 import { SelectRow } from '../SelectRow.tsx';
 import { COUNTRIES, type Country } from '../countries.ts';
 import {
-  DOORS,
   EVENT,
   JOBS,
   LEAD,
@@ -119,11 +118,7 @@ function WhosHere({ start }: { start: WhStateName }) {
   const close = (): void => finish(s);
 
   const lead = s.role === 'station';
-  const lists =
-    s.system === 'live' ||
-    s.system === 'refreshing' ||
-    s.system === 'stale' ||
-    s.system === 'partFailed';
+  const lists = s.system === 'live' || s.system === 'stale';
   const showStations = lists && !lead && !phone;
   const door = showsDoor(s) ? (
     <PrimaryButton
@@ -148,7 +143,7 @@ function WhosHere({ start }: { start: WhStateName }) {
         <View style={[styles.head, wide && styles.headWide]}>
           <View style={styles.grow}>
             <Text size={14} weight="semibold" style={styles.secondary}>
-              {EVENT} · {DOORS}
+              {EVENT}
             </Text>
             <Text size={phone ? 28 : 30} weight="bold" accessibilityRole="header">
               {W.title}
@@ -193,7 +188,7 @@ function WhosHere({ start }: { start: WhStateName }) {
             testID="wh.demo.epic36"
           />
           <SecondaryButton
-            label={s.failNext ? 'The next Add fails once · on' : 'Make the next Add fail once'}
+            label={s.failNext ? 'The next save fails once · on' : 'Make the next save fail once'}
             onPress={() => setS({ ...s, failNext: !s.failNext })}
             testID="wh.demo.fail"
           />
@@ -246,13 +241,13 @@ function LiveLine({ s }: { s: WhState }) {
         </Text>
       </View>
     );
-  if (s.system !== 'live' && s.system !== 'refreshing') return null;
+  if (s.system !== 'live') return null;
 
   return (
     <View style={styles.live}>
       <View style={styles.dot} />
       <Text size={14} weight="medium" style={styles.secondary}>
-        {s.system === 'refreshing' ? W.refreshing : W.live(time(s.clock))}
+        {W.live(time(s.clock))}
       </Text>
     </View>
   );
@@ -408,16 +403,7 @@ function Body({
         </Section>
       )}
       <Section title={W.here(inNow.length)} testID="wh.here">
-        {s.system === 'partFailed' ? (
-          <View style={styles.block}>
-            <Notice tone="broken" mark="!" body={W.partFailed} announce />
-            <SecondaryButton
-              label={W.tryAgain}
-              onPress={() => apply({ ...s, system: 'live' })}
-              testID="wh.here.retry"
-            />
-          </View>
-        ) : inNow.length === 0 ? (
+        {inNow.length === 0 ? (
           <Text size={15} style={styles.secondary}>
             {W.hereEmpty}
           </Text>
@@ -765,7 +751,7 @@ function MobileForm({ s, apply }: { s: WhState; apply: (next: WhState) => void }
       focusChecked(numberField);
       return;
     }
-    const pressed = setMobile(s, { tried: true, busy: true });
+    const pressed = setMobile(s, { tried: true, busy: true, failed: false });
     apply(pressed);
     setTimeout(() => apply(mobileAnswer(pressed, country.dial)), MOBILE_MS);
   }
@@ -785,7 +771,7 @@ function MobileForm({ s, apply }: { s: WhState; apply: (next: WhState) => void }
         <TextField
           ref={numberField}
           value={f.number}
-          onChangeText={(number) => apply(setMobile(s, { number }))}
+          onChangeText={(number) => apply(setMobile(s, { number, failed: false }))}
           wrong={f.tried && problem != null}
           accessibilityLabel={W.mobile}
           keyboardType="phone-pad"
@@ -794,6 +780,7 @@ function MobileForm({ s, apply }: { s: WhState; apply: (next: WhState) => void }
           testID="wh.mobile.number"
         />
       </Field>
+      {f.failed && <Notice tone="broken" mark="!" body={W.mobileFailed} announce />}
       <SheetActions>
         <PrimaryButton
           label={s.epic36 ? 'Text the link' : 'Copy the link'}
@@ -870,11 +857,18 @@ function CoverForm({
             })}
           </View>
           {sheet.tried && chosen == null && <Wrong words={W.choose(t.station)} />}
+          {sheet.failed && chosen != null && (
+            <Notice tone="broken" mark="!" body={W.coverFailed(chosen.name)} announce />
+          )}
           <SheetActions>
             <PrimaryButton
               label={W.moveTo(t.station, chosen?.name ?? null)}
               onPress={() => {
                 const next = moveChosen(s);
+                if (next.sheet?.kind === 'cover' && next.sheet.failed) {
+                  apply(next);
+                  return;
+                }
                 if (next.sheet != null) {
                   apply(next);
                   moveScreenReaderFocus(firstRef.current);

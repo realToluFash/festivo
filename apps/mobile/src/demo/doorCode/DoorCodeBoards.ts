@@ -69,6 +69,22 @@ const JOINING: Record<RedeemState, readonly [string, string]> = {
   'code-exhausted': ['Joining · too many wrong tries', 'Send a new code'],
   'code-failed': ['Joining · it did not go', 'No connection; nothing lost'],
   'used-up': ['Joining · used up after the phone code', 'Once sc-4235 is built'],
+  'event-keys': [
+    'Joining · the keys up on Your name',
+    'Your name and the number row both above Send code (sc-97734)',
+  ],
+  'event-keys-number': [
+    'Joining · the keys up on Mobile number',
+    'Both still above Send code, or Mobile number alone',
+  ],
+  'event-keys-refused': [
+    'Joining · the keys up after a refusal',
+    'That code does not work, with both fields when all three fit',
+  ],
+  'event-keys-failed': [
+    'Joining · the keys up after it did not go',
+    'Something went wrong on the way, with the fields',
+  ],
   'code-second-number': [
     'Joining · an alternative number, the code',
     'Rita’s number is an alternative number',

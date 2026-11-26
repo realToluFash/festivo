@@ -24,6 +24,7 @@ import {
   type ShownEvent,
 } from './today.ts';
 import { daysWords } from './eventsList.ts';
+import { needsToday } from './todayNeeds.ts';
 
 export interface Reader {
   timeZone: string;
@@ -42,7 +43,7 @@ export function shownEvent(event: ListedEvent): ShownEvent {
 const SHORT_DAY: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
 
 /** A wall day, `2026-11-03`, written in the reader's language. */
-function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
+export function dayWords(day: string, locale: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
     new Date(`${day}T00:00:00Z`),
   );
@@ -240,6 +241,18 @@ export function todayMoment(
 ): Moment {
   const view = todayView(loaded, now, reader);
   const shortDay = (day: string) => dayWords(day, reader.locale, SHORT_DAY);
+  // A first run can see no event, so it has no row and no tick (sc-29884).
+  const needs =
+    view.kind === 'first'
+      ? null
+      : needsToday(
+          loaded.events,
+          shownEvent,
+          now,
+          (day, withYear) =>
+            dayWords(day, reader.locale, withYear ? { ...SHORT_DAY, year: 'numeric' } : SHORT_DAY),
+          t,
+        );
 
   return {
     name: view.kind === 'day' ? 'dayNow' : view.kind === 'plan' ? 'planNow' : view.kind,
@@ -251,9 +264,12 @@ export function todayMoment(
       name === ''
         ? t(`todayScreen.hello.${view.greeting}`)
         : t(`todayScreen.helloName.${view.greeting}`, { name }),
-    lead: null,
+    lead:
+      needs != null && needs.length > 0
+        ? t('todayScreen.needsLead', { count: needs.length })
+        : null,
     sub: subOf(view.sub, now, reader, t),
-    needs: null,
+    needs,
     days: view.days.map(({ day, today: isToday, dots }) => ({
       weekday: dayWords(day, reader.locale, { weekday: 'short' }),
       number: dayWords(day, reader.locale, { day: 'numeric' }),
