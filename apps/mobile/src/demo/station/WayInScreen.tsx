@@ -73,7 +73,7 @@ function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'o
 
 function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'rows' }> }) {
   const [at, setAt] = useState<'overview' | 'people'>('overview');
-  const night = nightOf('kitchen');
+  const night = nightOf(shown.night);
   const answered = useAnswered(shown.station);
 
   return (
@@ -94,7 +94,7 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
       {...(shown.rostered && {
         night: {
           line: rowLineOf(night),
-          onOpen: () => router.push('/demo/my-night?state=kitchen'),
+          onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
         },
       })}
       {...stationRow(shown.station, answered)}
