@@ -66,6 +66,9 @@ export const SELECTED_ROW = {
 /** A row title beside its tag: never shrunk, only capped at the row, so a tag with no room goes under it and the title wraps at the row's full width (sc-30302). */
 export const TITLE_BESIDE_TAG = { flexShrink: 0, maxWidth: '100%' } as const;
 
+/** A row's line under its title: 1.4 of its size, in whole points, so its last line is never drawn cut on iOS (sc-94081). */
+const ROW_LINE = 1.4;
+
 /** The width of the line a tag sits on: its title row's, the words column of a row (sc-90472). */
 const TagLine = createContext<number | null>(null);
 
@@ -430,8 +433,9 @@ export function Row({
           <Text
             size={14}
             weight="medium"
+            wholeLines={ROW_LINE}
             accessible={grouped ? false : undefined}
-            style={[styles.secondary, styles.line]}
+            style={styles.secondary}
           >
             {line}
           </Text>
@@ -676,7 +680,6 @@ const styles = StyleSheet.create({
   },
   title: { ...TITLE_BESIDE_TAG, lineHeight: 16 * 1.3 },
   address: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
-  line: { lineHeight: 14 * 1.4 },
   consequence: { lineHeight: 14 * 1.45 },
   count: { fontVariant: ['tabular-nums'] },
   hairline: { height: 1, backgroundColor: tokens.colorBorder },
