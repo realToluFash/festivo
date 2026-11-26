@@ -4442,8 +4442,8 @@
   },
   "briefing": {
     "card": "Briefing",
-    "refused": "You cannot see this event’s staff.",
-    "backToEvent": "Back to the event",
+    "refused": "No puede ver el personal de este evento.",
+    "backToEvent": "Volver al evento",
     "cardSub": "Las normas de la casa y el turno de cada persona, en una página propia.",
     "tally": "Estado del briefing",
     "read": "Leído",
