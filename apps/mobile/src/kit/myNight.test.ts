@@ -43,7 +43,7 @@ describe('My night leads to check-in (sc-28230)', () => {
   it('to the event’s check-in for a job that checks guests in', () => {
     expect(checkInOf({ ...NIGHT, checksIn: true })).toEqual({
       pathname: '/events/[id]/check-in',
-      params: { id: 'ev-1' },
+      params: { id: 'ev-1', from: 'night' },
     });
   });
 

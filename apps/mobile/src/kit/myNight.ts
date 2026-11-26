@@ -75,11 +75,17 @@ export function rowLineOf(t: TFunction, night: MyNight, locale: string): string 
   })}`;
 }
 
+/** The route param through which check-in knows it was opened from Your night, and leads back there (sc-28230). */
+export const CHECK_IN_FROM = 'from';
+
 /** Where My night's Check-in leads, for a job whose level opens check-in at the door (sc-28230); null shows no button. */
 export function checkInOf(
   night: MyNight,
-): { pathname: '/events/[id]/check-in'; params: { id: string } } | null {
+): { pathname: '/events/[id]/check-in'; params: { id: string; [CHECK_IN_FROM]: 'night' } } | null {
   return night.checksIn
-    ? { pathname: '/events/[id]/check-in', params: { id: night.event.id } }
+    ? {
+        pathname: '/events/[id]/check-in',
+        params: { id: night.event.id, [CHECK_IN_FROM]: 'night' },
+      }
     : null;
 }
