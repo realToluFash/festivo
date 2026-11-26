@@ -127,10 +127,13 @@ export function KitchenStationView({
   eventId,
   kind,
   onBack,
+  from = null,
 }: {
   eventId: string;
   kind: LayoutKind;
   onBack: () => void;
+  /** The way in it opened from (sc-95382): its ‹ names Overview or Your night. */
+  from?: 'overview' | 'night' | null;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -385,9 +388,25 @@ export function KitchenStationView({
           style={[styles.back, { minHeight: z.side }]}
           testID="station.back"
         >
-          <Text size={15} weight="semibold" style={styles.accent}>
-            {t('station.back')}
-          </Text>
+          {from == null ? (
+            <Text size={15} weight="semibold" style={styles.accent}>
+              {t('station.back')}
+            </Text>
+          ) : (
+            <View style={styles.backTo}>
+              <Text
+                size={15}
+                weight="semibold"
+                style={styles.accent}
+                importantForAccessibility="no"
+              >
+                ‹
+              </Text>
+              <Text size={15} weight="semibold" style={styles.accent}>
+                {from === 'overview' ? t('eventNav.overview') : t('myNight.title')}
+              </Text>
+            </View>
+          )}
         </Pressable>
         {children}
       </ScrollView>
@@ -966,6 +985,7 @@ const styles = StyleSheet.create({
   body: { padding: tokens.space3xl, gap: tokens.spaceXl, paddingBottom: 96 },
   bodyPhone: { padding: tokens.spaceXl, paddingBottom: 96 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   accent: { color: tokens.colorAccentText },
   secondary: { color: tokens.colorInkSecondary },
   attention: { color: tokens.colorAttentionText },

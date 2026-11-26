@@ -19,6 +19,7 @@ import {
   updatedAfter,
   weekdayOf,
 } from '../kit/myNight.ts';
+import { openStationOf } from '../kit/stationWayIn.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -181,6 +182,12 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
   const heading = headingOf(night);
   const opens = clockOpensAt(night, new Date(now));
   const checkIn = checkInOf(night);
+  const station = openStationOf(night);
+  const openStation = () =>
+    router.push({
+      pathname: '/events/[id]/station',
+      params: { id: night.event.id, from: 'night' },
+    });
 
   const left = (
     <>
@@ -220,6 +227,20 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
           testID="myNight.checkIn"
         />
       )}
+      {station != null &&
+        (checkIn == null ? (
+          <PrimaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('station.wayIn.open', { station })}
+            onPress={openStation}
+            testID="myNight.openStation"
+          />
+        ))}
       {night.shift != null && <Shift night={night} shift={night.shift} />}
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />
