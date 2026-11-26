@@ -3766,7 +3766,7 @@
     "tryAgain": "Réessayer",
     "loading": "Chargement de votre soirée…",
     "otherNeed": "{{what}} (autre)",
-    "beforeYouStart": "Before you start"
+    "beforeYouStart": "Avant de commencer"
   },
   "station": {
     "title": "Poste de cuisine · {{station}}",
