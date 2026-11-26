@@ -50,14 +50,25 @@ describe('the focused field after Save is answered with a notice (sc-74540)', ()
     expect(brought.mock.calls[0]?.[3]).toMatchObject({ aboveKeys: true });
   });
 
-  it('stays where the scroll to the top left it as it reshapes during the hold, and follows again after', () => {
+  it('stays where the scroll to the top left it however late it reshapes, and follows again once focus moves (sc-75689)', () => {
     holdField();
+    fieldReshaped(field);
+    vi.advanceTimersByTime(2000);
     fieldReshaped(field);
     expect(brought).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(500);
-    fieldReshaped(field);
+    fieldFocused(field);
     expect(brought).toHaveBeenCalledOnce();
+    fieldReshaped(field);
+    expect(brought).toHaveBeenCalledTimes(2);
+  });
+
+  it('follows the field again as it reshapes once typed in after the hold', () => {
+    holdField();
+    fieldTyped();
+    fieldReshaped(field);
+
+    expect(brought).toHaveBeenCalledTimes(2);
   });
 
   it('is left be when typed in with the keys down', () => {
