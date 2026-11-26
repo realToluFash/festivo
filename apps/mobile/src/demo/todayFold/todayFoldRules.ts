@@ -1,9 +1,13 @@
-/** How far the phone's tab bar fade reaches up from the screen's foot, as main draws it (`TabBarFade`). */
+import { tokens } from '../../theme/tokens.ts';
+
+/** How far the phone's tab bar fade reaches up from the screen's foot: `styles.fade` in main's `TodayCover`, held to it by this rule's test. */
 export const TAB_FADE = 150;
 
 export const OPEN_ABOVE_SHEET = 22;
 
-export const BAND_COMES = 24;
+/** How far before the fold the band starts to come, as main's `TodayScreen` reads it. */
+export const BAND_COMES = tokens.space3xl;
+/** How long the cover's words take to go, before the band comes: main's private `WORDS_GO` in `TodayScreen`, held to it by this rule's test. */
 export const WORDS_GO = 96;
 
 export interface Fold {

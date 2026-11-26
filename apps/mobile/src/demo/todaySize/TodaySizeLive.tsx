@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Animated,
   type LayoutChangeEvent,
   Pressable,
   type StyleProp,
@@ -41,6 +42,7 @@ export function LiveBanner({
   arrived = null,
   phone = false,
   foot = 0,
+  words: ink = 1,
 }: {
   name: string;
   place: string | null;
@@ -51,6 +53,8 @@ export function LiveBanner({
   phone?: boolean;
   /** Room added under the phone's words, where a sheet rises over the cover's foot (sc-95084). */
   foot?: number;
+  /** How much of the phone's top row and words still show: they go as Today scrolls up, before the band comes, as main's cover does (sc-95084). */
+  words?: Animated.AnimatedInterpolation<number> | number;
 }) {
   const { t } = useTranslation();
   const { open: go } = useTodayShell();
@@ -208,11 +212,17 @@ export function LiveBanner({
     return (
       <View style={styles.phone} testID="demo.todaySize.livePhone">
         <EventMesh event={{ mesh: meshFor('evt-live'), photo: null }} shade="day" />
-        <View style={styles.phoneTop}>{top}</View>
+        <Animated.View style={[styles.phoneTop, { opacity: ink }]}>{top}</Animated.View>
         <View style={styles.grow} />
-        <View style={[styles.phoneNow, foot > 0 && { marginBottom: tokens.space4xl + foot }]}>
+        <Animated.View
+          style={[
+            styles.phoneNow,
+            foot > 0 && { marginBottom: tokens.space4xl + foot },
+            { opacity: ink },
+          ]}
+        >
           {block}
-        </View>
+        </Animated.View>
       </View>
     );
 

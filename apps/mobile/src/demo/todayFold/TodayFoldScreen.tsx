@@ -49,6 +49,7 @@ import {
   type Fold,
   foldAt,
   restingPlaces,
+  wordsGoFrom,
 } from './todayFoldRules.ts';
 
 export interface TodayFoldStart {
@@ -95,7 +96,7 @@ export function TodayFoldScreen({ start }: { start: TodayFoldStart }) {
     [tell],
   );
   const choices = (
-    <DemoOnly title="Stand-ins for the device’s text size and its language. Dîner en direct is live, as qa found it, with no venue, no run of show and nobody arrived; the cover, its chips, its name, its end line and Open the event draw as under Today · the greeting and headings whole at the largest text sizes. Today rests in one of three places: open, at its top; folded, the sheet meeting the band, as on main; and, only where Open the event’s foot is lower than the top of the tabs’ fade at the top of the page, between them, scrolled until that foot sits at the top of the fade, so the button is whole above the tabs and clear of the band. A scroll that stops between two of them snaps to the nearer, as main snaps between open and folded; past the fold Today scrolls freely to This week and Your events. Below AX1 the cover fits, so Today rests open and folded only, as on main. The band here is a stand-in for sc-92248’s; its title and live line draw at the size chosen, wrapping only between words. The cover’s words do not fade here; in the app they go over main’s 96 before the band comes, but never before the resting place that holds Open the event, so it rests at full ink. Open the event shows a toast here, as the event page has its own design. Nothing is sent and no string is added.">
+    <DemoOnly title="Stand-ins for the device’s text size and its language. Dîner en direct is live, as qa found it, with no venue, no run of show and nobody arrived; the cover, its chips, its name, its end line and Open the event draw as under Today · the greeting and headings whole at the largest text sizes. Today rests in one of three places: open, at its top; folded, the sheet meeting the band, as on main; and, only where Open the event’s foot is lower than the top of the tabs’ fade at the top of the page, between them, scrolled until that foot sits at the top of the fade, so the button is whole above the tabs and clear of the band. A scroll that stops between two of them snaps to the nearer, as main snaps between open and folded; past the fold Today scrolls freely to This week and Your events. Below AX1 the cover fits, so Today rests open and folded only, as on main. The band here is a stand-in for sc-92248’s; its title and live line draw at the size chosen, wrapping only between words. The cover’s words go as Today scrolls up, over main’s 96 before the band comes, but never before the resting place that holds Open the event, so it rests at full ink. Open the event shows a toast here, as the event page has its own design. Nothing is sent and no string is added.">
       <Choices
         heading="Text size"
         options={FILTER_SIZES}
@@ -154,6 +155,12 @@ function Folding({ scale, choices }: { scale: number; choices: ReactNode }) {
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
+  const goFrom = measured ? wordsGoFrom(fold) : 0;
+  const words = offset.interpolate({
+    inputRange: [goFrom, Math.max(goFrom + 1, folds - BAND_COMES)],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: offset } } }], {
@@ -202,6 +209,7 @@ function Folding({ scale, choices }: { scale: number; choices: ReactNode }) {
             top={<PillRow scale={scale} cap={Infinity} waiting={0} />}
             phone
             foot={OPEN_ABOVE_SHEET}
+            words={measured ? words : 1}
           />
         </View>
         <View style={styles.sheet}>

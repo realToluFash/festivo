@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -62,5 +65,23 @@ describe('where Today comes to rest on the phone (sc-95084)', () => {
 
     expect(reachAt(short)).toBeNull();
     expect(restingPlaces(short)).toEqual([0, foldAt(short)]);
+  });
+});
+
+describe('the numbers the rule follows are main’s (sc-95084)', () => {
+  const components = join(import.meta.dirname, '..', '..', 'components');
+  const read = (file: string) => readFileSync(join(components, file), 'utf8');
+
+  it('parks Open the event at the top of the fade main draws', () => {
+    expect(read('TodayCover.tsx')).toMatch(
+      new RegExp(`\\bfade: \\{[^}]*\\bheight: ${TAB_FADE}\\b`),
+    );
+  });
+
+  it('brings the band and takes the words away over main’s spans', () => {
+    const today = read('TodayScreen.tsx');
+
+    expect(today).toMatch(/const bandFrom = foldAt - tokens\.space3xl;/);
+    expect(today).toMatch(new RegExp(`const WORDS_GO = ${WORDS_GO};`));
   });
 });
