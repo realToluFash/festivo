@@ -71,7 +71,7 @@ export function rowLine(where: Where): string {
 export type ShiftStation =
   { kind: 'kitchen'; name: string; dishes: number } | { kind: 'section'; name: string } | null;
 
-/** Open {station} under Your shift: a station that dishes something, access that opens it, and the app. */
+/** Open {station} above Your shift: a station that dishes something, access that opens it, and the app. */
 export function openButton(station: ShiftStation, access: Access, inApp: boolean): string | null {
   if (!inApp || station == null || station.kind !== 'kitchen' || station.dishes === 0) return null;
 

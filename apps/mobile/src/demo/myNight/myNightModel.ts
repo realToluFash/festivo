@@ -281,7 +281,7 @@ export function movedToGrill(night: Night): Night {
   };
 }
 
-/** Open {station} under Your shift, or nothing (sc-95382). */
+/** Open {station} above Your shift, or nothing (sc-95382). */
 export function openOf(night: Night): { label: string; href: string } | null {
   const label = openButton(night.kind, night.access, night.inApp);
 

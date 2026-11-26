@@ -54,7 +54,7 @@ import {
   type Redeemable,
 } from './DoorCodeModel.ts';
 import { onEventCount, signedInAs, W } from './DoorCodeWords.ts';
-import { KS } from '../station/wayIn.ts';
+import { stationItem, type TonightRow } from '../station/TonightRows.tsx';
 import { AREA_WORDS, areasFor, type InsideArea, moreAreas } from './RedeemModel.ts';
 
 const AREA_GLYPH: Record<InsideArea, GlyphName> = { ...EVENT_GLYPH, checkIn: 'tick' };
@@ -97,10 +97,7 @@ export interface NightRow {
 }
 
 /** Someone whose access opens the kitchen stations, on the event's day (sc-95382): under Your night, or first. */
-export interface StationRow {
-  line: string;
-  onOpen: () => void;
-}
+export type StationRow = TonightRow;
 
 export interface MoreGroup {
   key: string;
@@ -447,25 +444,7 @@ function Overview({
                   ),
                 },
               ]),
-          ...(station == null
-            ? []
-            : [
-                {
-                  key: 'station',
-                  inset: 40,
-                  row: (
-                    <Row
-                      title={KS.title}
-                      line={station.line}
-                      lead={<LineIcon name="tablet" />}
-                      opens
-                      accessibilityLabel={KS.label(station.line)}
-                      onPress={station.onOpen}
-                      testID="inside.station"
-                    />
-                  ),
-                },
-              ]),
+          ...(station == null ? [] : [stationItem(station, 'inside.station')]),
           {
             key: 'guests',
             inset: 40,

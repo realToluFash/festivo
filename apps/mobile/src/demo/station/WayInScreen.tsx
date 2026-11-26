@@ -3,20 +3,58 @@ import { useState } from 'react';
 
 import { goBack } from '../DemoScreen.tsx';
 import { InsideEvent } from '../doorCode/Inside.tsx';
+import { EventScreen } from '../events/EventPage.tsx';
+import { EventsShell } from '../events/Route.tsx';
 import { nightOf, rowLineOf } from '../myNight/myNightModel.ts';
 import { EVENT } from './stationModel.ts';
-import { overviewOf, wayInStateOf } from './wayInBoards.ts';
+import { ORGANISER_EVENT, type WayInOverview, overviewOf, wayInStateOf } from './wayInBoards.ts';
 
-/** /demo/kitchen-way-in: the event's Overview with Kitchen station under Your night, or first (sc-95382). */
+/** /demo/kitchen-way-in: the event's Overview with Kitchen station under Your night, or in its place (sc-95382). */
 export function WayInRoute() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const shown = overviewOf(wayInStateOf(state));
+
+  return shown.page === 'organiser' ? (
+    <OrganiserOverview key={state} shown={shown} />
+  ) : (
+    <RowListOverview key={state} shown={shown} />
+  );
+}
+
+function stationRow(station: WayInOverview['station']) {
+  return station == null
+    ? {}
+    : { station: { line: station.line, onOpen: () => router.push(station.href as Href) } };
+}
+
+function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'organiser' }> }) {
+  const night = nightOf(shown.night);
+
+  return (
+    <EventsShell>
+      <EventScreen
+        id={ORGANISER_EVENT}
+        state={null}
+        area={null}
+        clock={shown.now}
+        {...(shown.rostered && {
+          night: {
+            line: rowLineOf(night),
+            onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
+          },
+        })}
+        {...stationRow(shown.station)}
+      />
+    </EventsShell>
+  );
+}
+
+function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'rows' }> }) {
   const [at, setAt] = useState<'overview' | 'people'>('overview');
   const night = nightOf('kitchen');
 
   return (
     <InsideEvent
-      key={state}
       at={at}
       role={shown.role}
       who={shown.who}
@@ -36,12 +74,7 @@ export function WayInRoute() {
           onOpen: () => router.push('/demo/my-night?state=kitchen'),
         },
       })}
-      {...(shown.station != null && {
-        station: {
-          line: shown.station.line,
-          onOpen: () => router.push(shown.station?.href as Href),
-        },
-      })}
+      {...stationRow(shown.station)}
       onAt={setAt}
       onSignOut={goBack}
       onAccount={() => router.push('/demo/settings/account?as=noOrg')}

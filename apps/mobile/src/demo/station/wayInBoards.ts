@@ -1,7 +1,7 @@
 import { type CodeChoice } from '../doorCode/DoorCodeModel.ts';
 import { type EventDay, type Where, opensStations, rowLine, rowShows } from './wayIn.ts';
 
-export const WAY_IN_STATES = [
+const ROW_STATES = [
   'own_course',
   'own_before',
   'past_midnight',
@@ -13,7 +13,13 @@ export const WAY_IN_STATES = [
   'view',
 ] as const;
 
+const ORGANISER_STATES = ['org_night', 'org_no_night', 'org_day_before'] as const;
+
+export const WAY_IN_STATES = [...ROW_STATES, ...ORGANISER_STATES] as const;
+
 export type WayInState = (typeof WAY_IN_STATES)[number];
+type RowState = (typeof ROW_STATES)[number];
+type OrganiserState = (typeof ORGANISER_STATES)[number];
 
 const DAY: EventDay = {
   startDay: '2026-11-28',
@@ -23,6 +29,16 @@ const DAY: EventDay = {
 };
 
 const TONIGHT = new Date('2026-11-28T18:40:00Z');
+
+/** The organiser's Overview draws the Events sample's own wedding, in London. */
+export const ORGANISER_EVENT = 'evt-wed-4';
+
+const ORGANISER_DAY: EventDay = {
+  startDay: '2026-11-05',
+  timeZone: 'Europe/London',
+  finished: false,
+  calledOff: false,
+};
 
 interface Sample {
   role: CodeChoice;
@@ -55,7 +71,7 @@ const ADA: Sample = {
   opens: 'picked-grill',
 };
 
-const SAMPLES: Record<WayInState, Sample> = {
+const SAMPLES: Record<RowState, Sample> = {
   own_course: GBENGA,
   own_before: {
     ...GBENGA,
@@ -71,32 +87,93 @@ const SAMPLES: Record<WayInState, Sample> = {
   view: { ...ADA, role: 'Can view', who: 'Ngozi Obi' },
 };
 
-export interface WayInOverview {
-  role: CodeChoice;
-  who: string;
+/** An Owner, an Admin, anyone else in the organisation, or Can edit: the organiser's page of cards. */
+interface OrganiserSample {
+  role: 'Lead' | 'Admin';
   rostered: boolean;
-  station: { line: string; href: string } | null;
+  now: Date;
+  where: Where;
+  opens: string;
+  /** Your night's own sample, for a member with a shift. */
+  night: 'kitchen_pass';
 }
+
+const RONKE: OrganiserSample = {
+  role: 'Lead',
+  rostered: true,
+  now: new Date('2026-11-05T20:40:00Z'),
+  where: { own: 'Pass', lastPick: null, course: 'Mains' },
+  opens: 'pass',
+  night: 'kitchen_pass',
+};
+
+const ORGANISER: Record<OrganiserState, OrganiserSample> = {
+  org_night: RONKE,
+  org_no_night: {
+    ...RONKE,
+    role: 'Admin',
+    rostered: false,
+    where: { own: null, lastPick: 'Grill', course: 'Mains' },
+    opens: 'picked-grill',
+  },
+  org_day_before: { ...RONKE, now: new Date('2026-11-04T23:59:00Z') },
+};
+
+type StationLink = { line: string; href: string } | null;
+
+export type WayInOverview =
+  | { page: 'rows'; role: CodeChoice; who: string; rostered: boolean; station: StationLink }
+  | {
+      page: 'organiser';
+      role: OrganiserSample['role'];
+      rostered: boolean;
+      now: Date;
+      night: OrganiserSample['night'];
+      station: StationLink;
+    };
 
 export function wayInStateOf(raw: string | undefined): WayInState {
   return WAY_IN_STATES.find((state) => state === raw) ?? 'own_course';
 }
 
+function isOrganiser(state: WayInState): state is OrganiserState {
+  return ORGANISER_STATES.some((one) => one === state);
+}
+
+function linkOf(where: Where, stationState: string, opens: string): StationLink {
+  return {
+    line: rowLine(where),
+    href: `/demo/kitchen-station?state=${stationState}&from=overview&on=${opens}`,
+  };
+}
+
 export function overviewOf(state: WayInState): WayInOverview {
+  if (isOrganiser(state)) {
+    const organiser = ORGANISER[state];
+
+    return {
+      page: 'organiser',
+      role: organiser.role,
+      rostered: organiser.rostered,
+      now: organiser.now,
+      night: organiser.night,
+      station:
+        opensStations(organiser.role) && rowShows(ORGANISER_DAY, organiser.now)
+          ? linkOf(organiser.where, 'here', organiser.opens)
+          : null,
+    };
+  }
+
   const sample = SAMPLES[state];
   const shows =
     opensStations(sample.role) && rowShows({ ...DAY, finished: sample.finished }, sample.now);
 
   return {
+    page: 'rows',
     role: sample.role,
     who: sample.who,
     rostered: sample.rostered,
-    station: shows
-      ? {
-          line: rowLine(sample.where),
-          href: `/demo/kitchen-station?state=${sample.stationState}&from=overview&on=${sample.opens}`,
-        }
-      : null,
+    station: shows ? linkOf(sample.where, sample.stationState, sample.opens) : null,
   };
 }
 
@@ -113,6 +190,18 @@ const WHAT: Record<WayInState, readonly [string, string]> = {
   finished: ['Finished', 'Your night only: the row goes once the event is Finished'],
   floor: ['Can work the floor', 'Your night only: Overview as it is today'],
   view: ['Can view', 'No row: Overview as it is today'],
+  org_night: [
+    'The organiser’s Overview, a Lead on the Pass',
+    'Kitchen station · Pass · Mains directly under Your night, above the guest numbers card; first in the right-hand column on its side',
+  ],
+  org_no_night: [
+    'The organiser’s Overview, an Admin with no shift',
+    'No Your night row: Kitchen station · Grill · Mains takes its place, under the event’s card',
+  ],
+  org_day_before: [
+    'The organiser’s Overview, 23:59 the day before',
+    'Your night only: the row shows from 00:00 on the day, as on the row list',
+  ],
 };
 
 export const KITCHEN_WAY_IN_BOARDS = WAY_IN_STATES.map((state) => ({

@@ -97,7 +97,27 @@ describe('the way in’s demo states (sc-95382)', () => {
       finished: null,
       floor: null,
       view: null,
+      org_night: 'Pass · Mains',
+      org_no_night: 'Grill · Mains',
+      org_day_before: null,
     });
+  });
+
+  it('draws the organiser’s Overview under Your night, or in its place with no shift', () => {
+    const night = overviewOf('org_night');
+    const none = overviewOf('org_no_night');
+
+    expect([night.page, night.rostered, night.station?.href]).toEqual([
+      'organiser',
+      true,
+      '/demo/kitchen-station?state=here&from=overview&on=pass',
+    ]);
+    expect([none.page, none.rostered, none.station?.href]).toEqual([
+      'organiser',
+      false,
+      '/demo/kitchen-station?state=here&from=overview&on=picked-grill',
+    ]);
+    expect(overviewOf('org_day_before').rostered).toBe(true);
   });
 
   it('opens the station on the station the row names, its ‹ reading Overview', () => {
