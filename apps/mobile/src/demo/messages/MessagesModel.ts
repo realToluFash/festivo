@@ -50,7 +50,7 @@ import {
 import { CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { type Previewing, previewStart } from './PreviewModel.ts';
 import { BRACED_BODY, DATED_BODY, PLAIN_BODY } from './PreviewSample.ts';
-import { type Refusal, TYPED_EDIT, refusalOf, reloaded } from './ScheduledSave.ts';
+import { type Refusal, TYPED_EDIT, refusalOf, reloaded, sayNobody } from './ScheduledSave.ts';
 import { EDGE } from './TokenText.ts';
 import { WAITS_STARTS, type Waits } from './CheckWaits.ts';
 import {
@@ -202,6 +202,7 @@ export const MESSAGES_STATES = [
   'scheduledPausedEdit',
   'scheduledFinished',
   'scheduledTooLate',
+  'nobodyDue',
   ...REASON_STATES,
   ...TELL_KINDS,
   ...BELL_STATES,
@@ -273,7 +274,7 @@ export interface Draft {
   time: string;
   seen: number;
   soFar: number | null;
-  outcome?: 'sent' | 'tooLate';
+  outcome?: 'sent' | 'tooLate' | 'nobody';
   cancelledBy?: string;
   /** sc-3963: its event is paused, so it waits whichever side of its time it is. */
   paused?: boolean;
@@ -586,6 +587,7 @@ const SCHEDULED_AS: Partial<Record<MessagesState, Partial<Draft>>> = {
     finished: true,
   },
   scheduledTooLate: { outcome: 'tooLate', at: { date: DAYS.tooLate, time: '09:00' } },
+  nobodyDue: { outcome: 'nobody', at: { date: DAYS.nobodyDue, time: '09:00' } },
 };
 
 function scheduledStart(change: Partial<Draft>): Messages {
@@ -1667,6 +1669,7 @@ export function draftLine(draft: Draft, thread: Thread | null = null, locale = '
   const result = resultOf(draft);
   if (draft.step === 'cancelled')
     return say.cancelledRow(draft.cancelledBy ?? READER, draft.cancelledAt ?? CANCELLED_AT);
+  if (draft.outcome === 'nobody') return sayNobody.row(draft.at?.time ?? '');
   if (draft.at != null)
     return `${say.toGroup(TO_WORD[draft.to])} · ${say.dayTime(dayWords(draft.at.date, locale), draft.at.time)}`;
   const line = (() => {

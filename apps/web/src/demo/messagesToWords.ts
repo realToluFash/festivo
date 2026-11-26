@@ -39,7 +39,7 @@ export const TW = {
   saveAudience: 'Save audience',
   nameBlank: 'Enter a name for this audience.',
   nameLong: 'A saved audience’s name can be up to 60 characters.',
-  nameTaken: 'There’s already a saved audience called {{name}}.',
+  nameTaken: 'There is already a saved audience called {{name}}.',
   full: 'This event has 20 saved audiences, the most it can have. Delete one to save another.',
   savedSaid: 'Saved as {{name}}. It is with your saved audiences, at the top of To.',
   moreActions: 'More actions for {{name}}',

@@ -19,7 +19,7 @@ use App\Repository\GuestGroupRepository;
 use App\Repository\GuestRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Str;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** An event's groups (sc-3775), made, renamed and deleted under the event's lock so two hosts cannot both make the fiftieth or one name twice. */
@@ -37,6 +37,7 @@ final readonly class GuestGroupEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private GuestListPublisher $guestListPublisher,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -92,7 +93,7 @@ final readonly class GuestGroupEditor
             }
 
             $this->record(self::DELETED, $group, $by);
-            $this->entityManager->remove($group);
+            $group->delete($this->clock->now());
             $this->entityManager->flush();
         });
 
@@ -131,7 +132,7 @@ final readonly class GuestGroupEditor
     /** Case, accents and the curl of an apostrophe aside, as the web compares them before sending. */
     public static function key(string $name): string
     {
-        return NameNormaliser::key(Str\replace_every($name, ['’' => "'", '‘' => "'", '`' => "'"]));
+        return NameNormaliser::labelKey($name);
     }
 
     private function made(Event $event, string $name, User $by): GuestGroup

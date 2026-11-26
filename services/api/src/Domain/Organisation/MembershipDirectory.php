@@ -6,6 +6,7 @@ namespace App\Domain\Organisation;
 
 use App\Domain\Billing\Entitlements;
 use App\Domain\Organisation\SignInRules\SignInRules;
+use App\Domain\Staff\Link\OutsideEvent;
 use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Entity\Membership;
 use App\Entity\User;
@@ -16,6 +17,7 @@ use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
+use Psl\Iter;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -83,6 +85,15 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
         }
 
         return new EventScope($membership, $grants, $byEvent);
+    }
+
+    public function isOutsideIn(User $user, Uuid $organisationId): bool
+    {
+        if (null !== $this->membershipRepository->findActive($user, $organisationId)) {
+            return false;
+        }
+
+        return Iter\any($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
     }
 
     /** @return list<PlanFeature> */

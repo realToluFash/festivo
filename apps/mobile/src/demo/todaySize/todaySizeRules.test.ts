@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 import { waitingRoomUnder, wholeTileAlone } from '../../layout/pillFit.ts';
-import { dotKept } from '../../layout/textSize.ts';
+import { LABEL_LINE, dotKept } from '../../layout/textSize.ts';
 
 import {
   ARRIVING_EVERY,
@@ -23,9 +23,16 @@ import {
   TODAY_ORGS,
   TODAY_VENUES,
   SIZE_TODAY,
+  STRIP_LABEL,
+  STRIP_TRACKING,
+  STARTS_DAYS,
   WEEK_DAYS,
+  titleOnOneLine,
   chipsUnderDates,
   daysUntil,
+  stripDays,
+  stripLabelRoom,
+  stripLabelSize,
   linkUnder,
   liveName,
   piecesKeepingDot,
@@ -139,6 +146,30 @@ describe('the size demo’s events', () => {
 describe('a This week day line (sc-92250)', () => {
   it('starts every week day on a date this week', () => {
     for (const day of WEEK_DAYS) {
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
+      expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
+    }
+  });
+});
+
+describe('a This week row title (sc-94683)', () => {
+  it('holds a title that fits its room to one line, so it takes no blank second one', () => {
+    expect(titleOnOneLine(299.5, 300)).toBe(true);
+    expect(titleOnOneLine(300, 300)).toBe(true);
+  });
+
+  it('lets a title wider than its room wrap', () => {
+    expect(titleOnOneLine(300.5, 300)).toBe(false);
+  });
+
+  it('decides nothing before the row has its room', () => {
+    expect(titleOnOneLine(120, 0)).toBe(false);
+  });
+
+  it('has two events starting this week, one of them the Garden party, each titled by the product', () => {
+    const starts = STARTS_DAYS.flatMap((day) => day.rows).filter((row) => row.title == null);
+    expect(starts.map((row) => row.key)).toEqual(['garden', 'party']);
+    for (const day of STARTS_DAYS) {
       expect(daysUntil(SIZE_TODAY, day.date)).toBeGreaterThanOrEqual(0);
       expect(daysUntil(SIZE_TODAY, day.date)).toBeLessThan(7);
     }
@@ -376,5 +407,68 @@ describe('the live cover with a guest arrived (sc-94022)', () => {
   it('gives the figure’s words the column less the ring and its gap', () => {
     expect(figureRoom(968, 136, 10)).toBe(822);
     expect(figureRoom(100, 136, 10)).toBe(0);
+  });
+});
+
+describe('This week’s strip, a day’s label (sc-94682)', () => {
+  const seventh = STRIP_LABEL * 1.353;
+
+  it('keeps the step’s size while the label fits its column', () => {
+    expect(stripLabelSize(seventh, 40, 3, 47)).toBe(seventh);
+    expect(stripLabelSize(seventh, 47, 5, 47)).toBe(seventh);
+  });
+
+  it('steps TODAY down to the largest whole size at which it fits its column', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const tracking = 5 * STRIP_TRACKING;
+    const at = (size: number) => ((52 - tracking) * size) / seventh + tracking;
+
+    expect(drawn).toBe(13);
+    expect(at(drawn)).toBeLessThanOrEqual(47);
+    expect(at(drawn + 1)).toBeGreaterThan(47);
+  });
+
+  it('never draws a label under its default size, even where it is too wide there', () => {
+    expect(stripLabelSize(seventh, 120, 5, 47)).toBe(STRIP_LABEL);
+    expect(stripLabelSize(STRIP_LABEL, 60, 5, 47)).toBe(STRIP_LABEL);
+  });
+
+  it('draws a step below the default as main does, even where the label is over its column', () => {
+    expect(stripLabelSize(9, 50, 5, 47)).toBe(9);
+  });
+
+  it('keeps the step’s line as the label’s room, so a stepped-down TODAY leaves today’s circle in line', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const room = stripLabelRoom(seventh);
+
+    expect(drawn).toBeLessThan(seventh);
+    expect(room).toBeCloseTo(Math.ceil(seventh * LABEL_LINE));
+    expect(room).toBeGreaterThan(Math.ceil(drawn * LABEL_LINE));
+    expect(stripLabelRoom(STRIP_LABEL)).toBeCloseTo(Math.ceil(STRIP_LABEL * LABEL_LINE));
+  });
+
+  it('sizes every day’s label room from the step alone, never from the size it is drawn at', () => {
+    const strip = readFileSync(join('src', 'demo', 'todaySize', 'TodaySizeStrip.tsx'), 'utf8');
+    const room = /style=\{\[styles\.labelRoom, \{ minHeight: stripLabelRoom\((\w+)\) \}\]\}/u.exec(
+      strip,
+    );
+
+    expect(room?.[1]).toBe('start');
+  });
+
+  it('draws seven days from today, a dot only where an event has a row', () => {
+    const days = stripDays('days');
+
+    expect(days.map((day) => day.date)).toEqual([
+      SIZE_TODAY,
+      '2026-11-26',
+      '2026-11-27',
+      '2026-11-28',
+      '2026-11-29',
+      '2026-11-30',
+      '2026-12-01',
+    ]);
+    expect(days.map((day) => day.dots)).toEqual([['ireti'], ['wed'], [], [], ['party'], [], []]);
+    expect(stripDays('quiet').every((day) => day.dots.length === 0)).toBe(true);
   });
 });

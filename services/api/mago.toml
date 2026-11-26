@@ -274,11 +274,12 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 # language is one of SupportedLocales (sc-852), as AI's and Address's are. Every account
 # and security email is queued on the notification path (sc-4332), through UserMailer.
 # A staff link's sign-in holds its job's level (sc-4235): the account lists it, and a
-# browser session ends with it, read from StaffLinkGrants alone.
+# browser session ends with it, read from StaffLinkGrants alone, as OutsideEvent.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
     "App\\Domain\\Staff\\Link\\StaffLinkGrants",
+    "App\\Domain\\Staff\\Link\\OutsideEvent",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -300,11 +301,12 @@ permit = [
 # suppression list (sc-46109); messaging does not reach back. Export all data keeps
 # its archive in the private bucket, and writes its CSV files as the guest export
 # does (CsvFile, sc-612); neither reaches back. An account a staff link signed in
-# holds its job's level on the event, from StaffLinkGrants (sc-4235).
+# holds its job's level on the event, from StaffLinkGrants (sc-4235), as OutsideEvent.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
     "App\\Domain\\Staff\\Link\\StaffLinkGrants",
+    "App\\Domain\\Staff\\Link\\OutsideEvent",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

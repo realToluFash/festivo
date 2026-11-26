@@ -56,6 +56,7 @@ const BOARDS: Record<MessagesState, readonly [string, string]> = {
     'The event finished before this message was due; in Done',
   ],
   scheduledTooLate: ['not sent: too late', 'Not resumed or restored within 48 hours; in Done'],
+  nobodyDue: ['nobody matched when it was due', 'Sent nothing; greyed, no actions; in Done'],
   fixed: ['after a fix', 'Bounced kept; Updated · not sent yet, and Send to Tomás Ferreira again'],
   sentAgain: ['sent again', 'Sent to Tomás Ferreira; Resend to the 10 not reached'],
   checkAll: ['the check, all guests', 'Sending to 142 people; 9 can’t be told'],
