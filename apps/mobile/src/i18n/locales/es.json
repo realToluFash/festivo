@@ -3766,7 +3766,7 @@
     "tryAgain": "Reintentar",
     "loading": "Cargando su noche…",
     "otherNeed": "{{what}} (otra)",
-    "beforeYouStart": "Before you start"
+    "beforeYouStart": "Antes de empezar"
   },
   "station": {
     "title": "Zona de cocina · {{station}}",
