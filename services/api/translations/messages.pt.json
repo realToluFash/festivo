@@ -564,6 +564,7 @@
     "service.idempotency_key_required": "Envie o cabeçalho Idempotency-Key em cada passo do serviço.",
     "service.idempotency_key_reused": "Esta Idempotency-Key já foi usada noutro passo. Nada foi alterado.",
     "timeline.give_final_numbers": "Give final numbers to the kitchen",
+    "timeline.give_kitchen_changes": "Give the changes to the kitchen",
     "timeline.open_kitchen_sheet": "Open the kitchen sheet",
     "validation.final_numbers_invalid": "Choose a valid date.",
     "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",

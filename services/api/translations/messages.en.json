@@ -564,6 +564,7 @@
     "service.idempotency_key_required": "Send an Idempotency-Key with each service step.",
     "service.idempotency_key_reused": "This Idempotency-Key was already used for a different step. Nothing was changed.",
     "timeline.give_final_numbers": "Give final numbers to the kitchen",
+    "timeline.give_kitchen_changes": "Give the changes to the kitchen",
     "timeline.open_kitchen_sheet": "Open the kitchen sheet",
     "validation.final_numbers_invalid": "Choose a valid date.",
     "validation.final_numbers_not_before_event": "The date cannot be on or after the day the event starts. Choose an earlier date.",

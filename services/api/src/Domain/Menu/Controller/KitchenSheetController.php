@@ -7,6 +7,7 @@ namespace App\Domain\Menu\Controller;
 use App\Domain\Menu\Kitchen\FinalNumbers;
 use App\Domain\Menu\Kitchen\KitchenSheet;
 use App\Domain\Menu\Kitchen\KitchenSheetDocument;
+use App\Domain\Menu\Kitchen\KitchenSinceCopy;
 use App\Entity\Event;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -36,6 +37,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * The kitchen sheet (sc-3911): menu.read opens it; names in Allergies need guests.manage, because allergies are health data (GDPR Art. 9), the one gate sc-3777 set.
  *
  * @phpstan-import-type Sheet from KitchenSheet
+ * @phpstan-import-type Since from KitchenSinceCopy
  */
 final readonly class KitchenSheetController
 {
@@ -57,9 +59,10 @@ final readonly class KitchenSheetController
     public function show(string $eventId): JsonResponse
     {
         $event = $this->event($eventId);
-        $sheet = $this->kitchenSheet->of($event, $this->names($event));
+        $names = $this->names($event);
+        $sheet = $this->kitchenSheet->of($event, $names);
 
-        return new JsonResponse(['sheet' => [...$sheet, 'paper' => $sheet['paper']->value], 'finalNumbers' => $this->finalNumbers->of($event)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
+        return new JsonResponse(['sheet' => [...$sheet, 'paper' => $sheet['paper']->value], 'finalNumbers' => $this->finalNumbers->of($event, $names)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
     }
 
     /** Final numbers due (sc-30812): a day or null. Refused 422 on `due`. */
@@ -71,20 +74,22 @@ final readonly class KitchenSheetController
         $body = Input::body($request, Type\shape(['due' => Type\nullable(Type\string())]));
         $this->finalNumbers->setDue($event, $body['due']);
 
-        return new JsonResponse(['finalNumbers' => $this->finalNumbers->of($event)], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
+        return new JsonResponse(['finalNumbers' => $this->finalNumbers->of($event, $this->names($event))], Response::HTTP_OK, ['Cache-Control' => 'no-store']);
     }
 
-    /** Give final numbers… (sc-30812): the PDF exactly as Download PDF makes it now, and that sheet kept as the numbers given. A PDF that cannot be made records nothing. */
+    /** Give final numbers… (sc-30812) and Give the changes… (sc-30692): the sheet as Download PDF makes it now, after a page of the changes once there is an earlier copy, kept as the numbers given. A PDF that cannot be made records nothing. */
     #[Route('/api/events/{eventId}/menu/kitchen-sheet/copies', name: 'menu_kitchen_sheet_give', methods: ['POST'])]
     #[InEvent(Permission::MenuManage)]
     public function give(Request $request, string $eventId): Response
     {
         $event = $this->event($eventId);
         $names = $this->names($event);
-        $sheet = $this->kitchenSheet->of($event, $names);
+        $full = $this->kitchenSheet->of($event, true);
+        $sheet = $names ? $full : [...$full, 'names' => false, 'allergic' => null];
+        $changes = $this->finalNumbers->changes($event, $names, $full);
         $locale = self::locale($request);
-        $pdf = $this->made($event, $sheet, $locale);
-        $this->finalNumbers->record($event, $sheet, $this->user(), $names);
+        $pdf = $this->made($event, $sheet, $locale, $changes);
+        $this->finalNumbers->record($event, $full, $this->user(), $names, $changes);
 
         return $this->download($pdf, $this->fileName($event, $sheet['asOf'], $locale));
     }
@@ -96,10 +101,11 @@ final readonly class KitchenSheetController
     {
         $event = $this->event($eventId);
         $copy = $this->kitchenCopyRepository->findOneInEvent($event, $copyId) ?? throw ApiException::notFound('access.not_found');
-        $sheet = $this->finalNumbers->sheetOf($copy, $this->names($event));
+        $names = $this->names($event);
+        $sheet = $this->finalNumbers->sheetOf($copy, $names);
         $locale = self::locale($request);
 
-        return $this->download($this->made($event, $sheet, $locale), $this->fileName($event, $sheet['asOf'], $locale));
+        return $this->download($this->made($event, $sheet, $locale, $this->finalNumbers->changesOf($copy, $names)), $this->fileName($event, $sheet['asOf'], $locale));
     }
 
     /** Made when pressed, from the sheet as it is now, in the viewer's language; named for the event and the snapshot's day. */
@@ -114,11 +120,14 @@ final readonly class KitchenSheetController
         return $this->download($this->made($event, $sheet, $locale), $this->fileName($event, $sheet['asOf'], $locale));
     }
 
-    /** @param Sheet $sheet */
-    private function made(Event $event, array $sheet, string $locale): string
+    /**
+     * @param Sheet  $sheet
+     * @param ?Since $changes
+     */
+    private function made(Event $event, array $sheet, string $locale, ?array $changes = null): string
     {
         try {
-            return $this->pdfMaker->make($this->kitchenSheetDocument->html($event, $sheet, $locale));
+            return $this->pdfMaker->make($this->kitchenSheetDocument->html($event, $sheet, $locale, $changes));
         } catch (PdfNotMade $failure) {
             throw new ApiException(ErrorCode::ServiceUnavailable, 'The PDF could not be made. Print still works.', [], $failure);
         }

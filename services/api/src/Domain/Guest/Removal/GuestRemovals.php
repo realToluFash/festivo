@@ -7,6 +7,7 @@ namespace App\Domain\Guest\Removal;
 use App\Audit\Auditor;
 use App\Domain\Guest\GuestListPublisher;
 use App\Domain\Guest\Model\RemovedTogether;
+use App\Domain\Menu\Listener\KitchenChangeListener;
 use App\Entity\Event;
 use App\Entity\Guest;
 use App\Entity\User;
@@ -44,6 +45,7 @@ final readonly class GuestRemovals
         private GuestListPublisher $guestListPublisher,
         private ClockInterface $clock,
         private KitchenCopyRepository $kitchenCopyRepository,
+        private KitchenChangeListener $kitchenChangeListener,
     ) {
     }
 
@@ -258,6 +260,7 @@ final readonly class GuestRemovals
             ['ids' => ArrayParameterType::STRING],
         );
         $this->kitchenCopyRepository->forget($first->getEvent(), $people);
+        $this->kitchenChangeListener->mark($first->getEvent());
         $this->connection->executeStatement('DELETE FROM guests WHERE id IN (:ids)', ['ids' => Vec\map($hosts, static fn (Guest $host): string => $host->getId()->toRfc4122())], ['ids' => ArrayParameterType::STRING]);
 
         foreach (Vec\flatten($parties) as $person) {
