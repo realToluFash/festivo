@@ -12,6 +12,7 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
+use NumberFormatter;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -36,7 +37,7 @@ final readonly class HouseRulesEditor
         if (Str\length($rules) > Event::STAFF_RULES_MAXIMUM) {
             throw ApiException::validation([[
                 'propertyPath' => 'rules',
-                'message' => $this->translator->trans('validation.staff_rules_too_long', ['{max}' => (string) Event::STAFF_RULES_MAXIMUM]),
+                'message' => $this->translator->trans('validation.staff_rules_too_long', ['{max}' => $this->maximum()]),
                 'code' => ErrorCode::ValidationFailed->value,
             ]]);
         }
@@ -46,5 +47,10 @@ final readonly class HouseRulesEditor
         $this->entityManager->flush();
 
         $this->staffRosterPublisher->publish($event);
+    }
+
+    private function maximum(): string
+    {
+        return (string) new NumberFormatter($this->translator->getLocale(), NumberFormatter::DECIMAL)->format(Event::STAFF_RULES_MAXIMUM);
     }
 }

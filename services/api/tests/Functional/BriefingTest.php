@@ -6,7 +6,6 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
-use App\Entity\Event;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -237,7 +236,7 @@ final class BriefingTest extends ApiTestCase
         self::assertSame(422, $this->statusCode());
         $violation = Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true)->coerce(Type\vec(Type\mixed())->coerce($this->last()['violations'] ?? null)[0] ?? null);
         self::assertSame('rules', $violation['propertyPath']);
-        self::assertSame(self::service(TranslatorInterface::class)->trans('validation.staff_rules_too_long', ['{max}' => (string) Event::STAFF_RULES_MAXIMUM], null, 'en'), $violation['message']);
+        self::assertSame(self::service(TranslatorInterface::class)->trans('validation.staff_rules_too_long', ['{max}' => '2,000'], null, 'en'), $violation['message']);
         self::assertSame($fits, $this->as($this->owner, 'GET', $this->path(''))['rules'] ?? null);
     }
 
