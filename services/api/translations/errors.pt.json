@@ -162,5 +162,11 @@
     "plan_not_priced": "Este plano não tem preço na sua moeda de faturação.",
     "nothing_paid_through_provider": "Não há nenhum método de pagamento a atualizar até um plano ser pago.",
     "table_not_yours": "Esta mesa está na zona de outra pessoa. Fale com essa pessoa ou com o chefe de sala.",
-    "level_not_allowed_for_code": "Um código de acesso não pode dar permissão para chefiar a sala. Dê «Pode chefiar a sala» a uma só pessoa, com a sua própria ligação a partir da lista da equipa."
+    "level_not_allowed_for_code": "Um código de acesso não pode dar permissão para chefiar a sala. Dê «Pode chefiar a sala» a uma só pessoa, com a sua própria ligação a partir da lista da equipa.",
+    "tray_not_yours": "This tray is {name}’s. Ask them or the floor lead.",
+    "plate_stage_invalid": "This plate cannot take that step from where it is now.",
+    "plate_empty": "A plate with nothing on it is not taken to a guest. Take it off the tray instead.",
+    "table_nothing_to_serve": "There is nothing to put on a tray for this table yet.",
+    "tray_check_incomplete": "Mark every item On, or Not on and Bring after, before checking the tray.",
+    "undo_expired": "It is more than 2 minutes since that step, so it cannot be undone."
 }

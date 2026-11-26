@@ -49,6 +49,7 @@ export * from './eventWords.ts';
 export * from './coverPhoto.ts';
 export * from './ownerClaims.ts';
 export * from './eventStates.ts';
+export * from './serviceStages.ts';
 export * from './serverClock.ts';
 export * from './venueLookup.ts';
 export * from './typedName.ts';

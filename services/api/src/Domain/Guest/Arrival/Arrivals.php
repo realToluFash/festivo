@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Guest\Arrival;
 
 use App\Audit\Auditor;
+use App\Domain\Guest\Interfaces\ArrivalFollowerInterface;
 use App\Domain\Guest\Model\NewGuest;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -38,13 +39,17 @@ final readonly class Arrivals
         private Auditor $auditor,
         private RealtimePublisher $realtimePublisher,
         private ClockInterface $clock,
+        private ArrivalFollowerInterface $arrivalFollower,
     ) {
     }
 
     /** A guest or companion, each on their own; one already arrived keeps their first arrival and nothing is refused. `$recordedAt` is when a device that was offline recorded it (sc-1301): the door must have been open then, and a time after now is taken as now. */
     public function arrive(Event $event, string $personId, User $by, string $device, ?DateTimeImmutable $recordedAt = null): Guest
     {
-        return $this->changed($event, $personId, $by, $device, static fn (Guest $person, DateTimeImmutable $now): bool => $person->arrive(null === $recordedAt || $recordedAt > $now ? $now : $recordedAt, $by), self::ARRIVED, $recordedAt);
+        $person = $this->changed($event, $personId, $by, $device, static fn (Guest $person, DateTimeImmutable $now): bool => $person->arrive(null === $recordedAt || $recordedAt > $now ? $now : $recordedAt, $by), self::ARRIVED, $recordedAt);
+        $this->arrivalFollower->arrived($person, $by);
+
+        return $person;
     }
 
     /** Asks nothing first; one not arrived is left as they are. */

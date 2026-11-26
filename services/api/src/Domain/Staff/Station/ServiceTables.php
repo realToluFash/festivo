@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Station;
 
 use App\Domain\Staff\VerifiedContactOwner;
-use App\Entity\SeatingTable;
+use App\Entity\SeatingSection;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -27,22 +27,54 @@ final readonly class ServiceTables
     ) {
     }
 
-    /** 403 `permission_required` without the floor, `table_not_yours` for a section with somebody else on it. */
-    public function requireYours(Grants $grants, User $user, SeatingTable $table): void
+    /** 403 `permission_required` without the floor, `table_not_yours` for a section with somebody else on it. A table, a row or a block of single seats is reached through its section. */
+    public function requireYours(Grants $grants, User $user, ?SeatingSection $section): void
     {
         $grants->requireServiceAt(ServicePlace::Floor);
 
-        if ($grants->holds(Permission::ServiceManage)) {
-            return;
-        }
-
-        $section = $table->getSection();
-        $station = null === $section ? null : $this->staffStationRepository->findOneOfSection($section);
-        $onIt = null === $station ? [] : $this->staffMemberRepository->findOnStation($station);
-
-        if ([] !== $onIt && !Iter\any($onIt, fn (StaffMember $entry): bool => $this->isTheirs($entry, $user))) {
+        if (!$this->reaches($grants, $user, $section)) {
             throw new ApiException(ErrorCode::TableNotYours, 'service.table_not_yours');
         }
+    }
+
+    /** Whether a floor write would pass at the section: running the service, or nobody else on it. */
+    public function mayWriteAt(Grants $grants, User $user, ?SeatingSection $section): bool
+    {
+        if ($grants->holds(Permission::ServiceManage)) {
+            return true;
+        }
+
+        $level = $grants->eventRole();
+
+        if (!$grants->holds(Permission::ServiceWork) || !(null === $level || $level->worksAt(ServicePlace::Floor))) {
+            return false;
+        }
+
+        return $this->reaches($grants, $user, $section);
+    }
+
+    /** @return list<StaffMember> the people on the section's station */
+    public function onSection(?SeatingSection $section): array
+    {
+        $station = null === $section ? null : $this->staffStationRepository->findOneOfSection($section);
+
+        return null === $station ? [] : $this->staffMemberRepository->findOnStation($station);
+    }
+
+    public function isOn(?SeatingSection $section, User $user): bool
+    {
+        return Iter\any($this->onSection($section), fn (StaffMember $entry): bool => $this->isTheirs($entry, $user));
+    }
+
+    private function reaches(Grants $grants, User $user, ?SeatingSection $section): bool
+    {
+        if ($grants->holds(Permission::ServiceManage)) {
+            return true;
+        }
+
+        $onIt = $this->onSection($section);
+
+        return [] === $onIt || Iter\any($onIt, fn (StaffMember $entry): bool => $this->isTheirs($entry, $user));
     }
 
     /** The service levels are held from outside the organisation, so the roster's `member` link is no use here: the entry is theirs by a mobile number or email they have verified. */
