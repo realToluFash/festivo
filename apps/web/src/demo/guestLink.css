@@ -1,0 +1,48 @@
+.gp-link {
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-link-was {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: 12px;
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 400 15px/1.4 var(--fontFamily);
+}
+
+.gp-link-picked {
+  margin-top: 12px;
+  cursor: default;
+}
+
+.gp-link-picked .gp-now {
+  flex-shrink: 1;
+  white-space: normal;
+  text-align: right;
+}
+
+.gp-link > .gp-notice {
+  margin-top: 12px;
+}
+
+.gp-link > .gp-filled {
+  margin-top: 18px;
+}
+
+.gp-link > .gp-outlined {
+  margin-top: 10px;
+}
+
+.gp-link > .gp-greet + .gp-sub {
+  margin-top: 0;
+}
+
+.gp-link > .gp-sub + .gp-outlined {
+  margin-top: 18px;
+}
