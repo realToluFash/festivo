@@ -1,3 +1,4 @@
+import type { ServicePhase } from './serviceFreshness.ts';
 import type {
   HeldChoice,
   ItemState,
@@ -63,6 +64,7 @@ export interface ServiceTrayRead {
 }
 
 export interface ServiceCourseRead {
+  phase?: ServicePhase;
   course: { id: string; name: string };
   items: { key: string; name: string | null; state: ItemState; readyIn: number | null }[];
   tables: ServiceTableRead[];
