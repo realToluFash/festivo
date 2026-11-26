@@ -523,7 +523,7 @@ export function pick(s: StationState, id: StationId): StationState {
 }
 
 export function pickedLine(id: StationId): string {
-  return `${nameOf(id)} is open on this tablet. Nobody’s station changed.`;
+  return `${nameOf(id)} is open on this device. Nobody’s station changed.`;
 }
 
 export function undoLine(was: 'Ready' | 'Preparing', when: number): string {
