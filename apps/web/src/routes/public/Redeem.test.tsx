@@ -21,6 +21,7 @@ const OPENED = {
     endsAt: '2030-11-14T23:30:00+00:00',
     timeZone: 'Europe/Lisbon',
     organisation: 'Lumen Feiras',
+    country: 'PT',
   },
   standing: null,
 };

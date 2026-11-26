@@ -4189,6 +4189,7 @@ describe('door codes (sc-72)', () => {
       endsAt: '2026-11-14T23:30:00+00:00',
       timeZone: 'Europe/Lisbon',
       organisation: 'Lumen Feiras',
+      country: 'PT',
     },
     standing: null,
   };

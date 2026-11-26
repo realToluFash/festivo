@@ -38,6 +38,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
 import { focusChecked } from './Field.tsx';
+import { deviceNow } from './CreateWalkWindow.tsx';
 import { ProviderButtons, failedOver } from './ProviderSignIn.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { type CodeLeave, NumberFields, PhoneCodeScreen, shownNumber } from './RedeemPhone.tsx';
@@ -100,6 +101,11 @@ async function opening(typed: string): Promise<Opened> {
   );
 
   return { account, to };
+}
+
+/** Where the number starts: the event's country, or the device's when the opening names none. */
+function startCountry(opened: OpenedDoorCode): string {
+  return opened.event.country === '' ? (deviceNow().country ?? '') : opened.event.country;
 }
 
 function close(): void {
@@ -400,7 +406,7 @@ function EventStep({
   const name = useRef(step.typed?.name ?? '');
   const number = useRef(step.typed?.number ?? '');
   const numberField = useRef<TextInputInstance>(null);
-  const [country, setCountry] = useState(step.typed?.country ?? step.opened.event.country);
+  const [country, setCountry] = useState(() => step.typed?.country ?? startCountry(step.opened));
   const [nameSaid, setNameSaid] = useState<string | null>(null);
   const [numberSaid, setNumberSaid] = useState<string | null>(
     step.back === 'alternative' ? t('redeem.phone.alternative') : null,
