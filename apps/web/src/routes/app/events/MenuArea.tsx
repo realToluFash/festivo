@@ -328,26 +328,29 @@ export function MenuArea({ event }: { event: OrganisationEvent }) {
 function Crumbs({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   const desk = useDeskTop();
+  const outside = outsideOn(useSession(), event.id) != null;
 
   return (
     <div className="ev-crumb-row">
-      <nav className="ev-crumb" aria-label={t('eventMenu.crumb')}>
-        <ol>
-          <li className="ev-crumb-part">
-            <Link to="/app/events">{t('eventMenu.events')}</Link>
-          </li>
-          <li className="ev-crumb-part">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <Link className="ev-crumb-name" to={`/app/events/${encodeURIComponent(event.id)}`}>
-              {event.name}
-            </Link>
-          </li>
-          <li className="ev-crumb-part" aria-current="page">
-            <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-            <span className="ev-crumb-name">{t('eventMenu.title')}</span>
-          </li>
-        </ol>
-      </nav>
+      {!outside && (
+        <nav className="ev-crumb" aria-label={t('eventMenu.crumb')}>
+          <ol>
+            <li className="ev-crumb-part">
+              <Link to="/app/events">{t('eventMenu.events')}</Link>
+            </li>
+            <li className="ev-crumb-part">
+              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              <Link className="ev-crumb-name" to={`/app/events/${encodeURIComponent(event.id)}`}>
+                {event.name}
+              </Link>
+            </li>
+            <li className="ev-crumb-part" aria-current="page">
+              <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
+              <span className="ev-crumb-name">{t('eventMenu.title')}</span>
+            </li>
+          </ol>
+        </nav>
+      )}
       {desk.bell}
     </div>
   );
