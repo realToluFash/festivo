@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\Controller;
 
-use App\Domain\Organisation\MembershipDirectory;
 use App\Domain\Staff\Attendance\AttendanceCorrector;
 use App\Domain\Staff\Http\StaffHoursSerialiser;
 use App\Entity\Event;
@@ -32,7 +31,6 @@ final readonly class StaffHoursController
         private Security $security,
         private StaffHoursSerialiser $staffHoursSerialiser,
         private AttendanceCorrector $attendanceCorrector,
-        private MembershipDirectory $membershipDirectory,
         private EventRepository $eventRepository,
     ) {
     }
@@ -46,7 +44,7 @@ final readonly class StaffHoursController
         return new JsonResponse($this->staffHoursSerialiser->page($event, $this->canCorrect($event)));
     }
 
-    /** Refused `validation_failed` on `clockedInAt` or `clockedOutAt`, as the form checks them, and 403 on the corrector's own shift. */
+    /** Refused `validation_failed` on `clockedInAt` or `clockedOutAt`, as the form checks them; 403 to a grant from outside and on the corrector's own shift. */
     #[Route('/api/events/{eventId}/staff/hours/{shiftId}/{staffId}', name: 'staff_hours_correct', methods: ['PUT'])]
     #[InEvent(Permission::StaffManage)]
     public function correct(Request $request, #[InThisEvent('shiftId')] StaffShift $shift, #[InThisEvent('staffId')] StaffMember $person): JsonResponse
@@ -67,7 +65,7 @@ final readonly class StaffHoursController
 
     private function canCorrect(Event $event): bool
     {
-        return $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId())?->allows(Permission::StaffManage) ?? false;
+        return $this->attendanceCorrector->mayCorrect($this->user(), $event);
     }
 
     private function user(): User

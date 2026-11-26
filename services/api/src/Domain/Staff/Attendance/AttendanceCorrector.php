@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Attendance;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\MembershipDirectory;
 use App\Domain\Staff\ShiftClock;
+use App\Entity\Event;
 use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\Permission;
 use App\Http\Exception\ApiException;
 use App\Repository\ShiftAttendanceRepository;
 use DateTimeImmutable;
@@ -29,17 +32,32 @@ final readonly class AttendanceCorrector
         private ShiftAttendanceRepository $shiftAttendanceRepository,
         private Auditor $auditor,
         private ClockInterface $clock,
+        private MembershipDirectory $membershipDirectory,
     ) {
+    }
+
+    /** A member of the organisation who manages staff on the event; a grant from outside (sc-71) or a staff link never corrects, at any level. */
+    public function mayCorrect(User $by, Event $event): bool
+    {
+        $organisationId = $event->getOrganisation()->getId();
+
+        return null !== $this->membershipDirectory->grantsIn($by, $organisationId)
+            && ($this->membershipDirectory->grantsOnEvent($by, $organisationId, $event->getId())?->allows(Permission::StaffManage) ?? false);
     }
 
     /** Both times as typed on the event's clock, `YYYY-MM-DDTHH:MM`; the clock-out blank only while the person is still clocked in. */
     public function correct(StaffShift $shift, StaffMember $person, string $typedIn, ?string $typedOut, User $by): void
     {
+        $event = $shift->getJob()->getEvent();
+
+        if (!$this->mayCorrect($by, $event)) {
+            throw ApiException::permissionRequired(Permission::StaffManage);
+        }
+
         if (true === $person->getAccount()?->getId()->equals($by->getId())) {
             throw new ApiException(ErrorCode::Forbidden, 'staff.hours_own');
         }
 
-        $event = $shift->getJob()->getEvent();
         $attendance = $this->shiftAttendanceRepository->findOneOn($shift, $person);
         $now = $this->clock->now();
         $inWall = ShiftClock::wall($typedIn) ?? throw self::refused('clockedInAt', 'staff.hours_in_blank');
