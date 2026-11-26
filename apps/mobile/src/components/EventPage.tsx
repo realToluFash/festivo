@@ -66,6 +66,7 @@ import { useKeysUp } from './keyboardWatch.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import type { TextHandle } from './Text.tsx';
 import { RowList, TextAction } from './Summary.tsx';
+import { EventNeeds } from './EventNeeds.tsx';
 import { ComingUp, useTimeline } from './Timeline.tsx';
 import { useStationRowItem } from './StationWayIn.tsx';
 import { useYourNightItem } from './YourNight.tsx';
@@ -319,6 +320,7 @@ export function EventPage({
       onAllDates={() => router.push(`/events/${encodeURIComponent(event.id)}/dates`)}
     />
   );
+  const needsYou = <EventNeeds event={event} timeline={timeline} />;
   const nameCover = (
     <PartsSection
       title={t('eventPage.nameAndCover')}
@@ -409,6 +411,7 @@ export function EventPage({
             {notice}
             {thankYou}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
           </>
@@ -430,6 +433,7 @@ export function EventPage({
             {numbers}
             {people}
             {details}
+            {needsYou}
             {comingUp}
             {nameCover}
             {forYou}
