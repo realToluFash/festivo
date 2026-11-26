@@ -56,6 +56,27 @@
   white-space: normal;
 }
 
+.sv-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.sv-asked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  color: var(--colorInk);
+  font: var(--typeSmall);
+}
+
+.sv-asked svg {
+  flex: none;
+  color: var(--colorAccent);
+}
+
 .sv-finished {
   margin: 0;
   padding: var(--spaceMd);

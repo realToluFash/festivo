@@ -1,4 +1,8 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+
 import { Glyph } from '../components/Glyph.tsx';
+import { offButton } from '../offButton.ts';
 import { Switch } from '../components/GeneralParts.tsx';
 import { type Card, type Mark, NW, REMINDER_AT, type rowLines } from './notices.ts';
 import './notices.css';
@@ -9,18 +13,20 @@ export function ReminderCard({
   on,
   notSaved,
   billing,
+  ask,
+  owners,
   over,
   onSwitch,
-  onCredits,
 }: {
   card: Card;
   manage: boolean;
   on: boolean;
   notSaved: boolean;
   billing: boolean;
+  ask: Ask;
+  owners: number;
   over: boolean;
   onSwitch: (next: boolean) => void;
-  onCredits: () => void;
 }) {
   return (
     <>
@@ -71,17 +77,13 @@ export function ReminderCard({
                       <Glyph name="warn" size={18} weight={2.3} />
                       {NW.short(card.short)}
                     </p>
-                    <button
-                      type="button"
-                      className={
-                        billing
-                          ? 'gs-pill is-primary sv-short-act'
-                          : 'gs-pill is-secondary sv-short-act'
-                      }
-                      onClick={onCredits}
-                    >
-                      {billing ? NW.buyCredits : NW.askOwner}
-                    </button>
+                    {billing ? (
+                      <Link to={ADD_CREDITS} className="gs-pill is-primary sv-short-act">
+                        {NW.addCredits}
+                      </Link>
+                    ) : (
+                      <AskOwner start={ask} owners={owners} />
+                    )}
                   </div>
                 )}
                 {card.left.map((line) => (
@@ -95,6 +97,55 @@ export function ReminderCard({
         )}
       </section>
     </>
+  );
+}
+
+type Ask = 'ready' | 'sent' | 'failed';
+
+/** sc-3963's Add credits, on the web only: Plan and billing with its packs open. */
+const ADD_CREDITS = '/demo/settings/plan-and-billing?state=packs';
+const ASKING_MS = 600;
+
+/** Ask an owner, as sc-3931 has it: the owners are sent the link to Plan and billing, or Not sent and try again. */
+function AskOwner({ start, owners }: { start: Ask; owners: number }) {
+  const [ask, setAsk] = useState<Ask | 'asking'>(start);
+  const timer = useRef<number | undefined>(undefined);
+  const said = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (ask === 'sent' && start !== 'sent') said.current?.focus();
+  }, [ask, start]);
+
+  if (ask === 'sent')
+    return (
+      <p ref={said} className="sv-asked" role="status" tabIndex={-1}>
+        <Glyph name="tick" size={15} weight={2.8} />
+        {NW.asked(owners)}
+      </p>
+    );
+
+  return (
+    <div className="sv-ask">
+      <button
+        type="button"
+        className="gs-pill is-secondary sv-short-act"
+        aria-busy={ask === 'asking'}
+        {...offButton(ask === 'asking', { dim: false })}
+        onClick={() => {
+          setAsk('asking');
+          timer.current = window.setTimeout(() => setAsk('sent'), ASKING_MS);
+        }}
+      >
+        {NW.askOwner}
+      </button>
+      {ask === 'failed' && (
+        <p className="rs-missed" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {NW.askFailed}
+        </p>
+      )}
+    </div>
   );
 }
 

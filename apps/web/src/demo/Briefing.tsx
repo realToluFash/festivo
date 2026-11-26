@@ -348,7 +348,6 @@ export function useBriefing({
             next: notices.next,
             sent: notices.sent,
             concluded,
-            included: notices.included,
             balance: credits,
           },
           cost,
@@ -357,11 +356,10 @@ export function useBriefing({
         on={remindOn}
         notSaved={remindNotSaved}
         billing={first.billing}
+        ask={notices.ask}
+        owners={notices.owners}
         over={over}
         onSwitch={flip}
-        onCredits={() =>
-          tell(`${first.billing ? NW.buyCredits : NW.askOwner} has its own design (sc-3963).`)
-        }
       />
     );
 

@@ -21,7 +21,6 @@ const reminder = (o: Partial<Reminder> = {}): Reminder => ({
   next: FRI,
   sent: null,
   concluded: null,
-  included: 0,
   balance: 1500,
   ...o,
 });
@@ -94,23 +93,17 @@ describe('the reminder card', () => {
 
 describe('what the next reminder costs', () => {
   it('never counts push', () => {
-    expect(previewOf([], 0, 0)).toEqual({ count: 0, included: 0, credits: 0, short: 0 });
-    expect(costLine(previewOf([], 0, 0))).toBeNull();
+    expect(previewOf([], 0)).toEqual({ count: 0, credits: 0, short: 0 });
+    expect(costLine(previewOf([], 0))).toBeNull();
   });
 
-  it('picks one of three keys from what pays', () => {
-    expect(card({ included: 5 })).toMatchObject({
-      cost: '2 by text or WhatsApp, from your included messages.',
-    });
+  it('counts credits only, and never names included messages', () => {
     expect(card()).toMatchObject({ cost: '2 by text or WhatsApp, using 93 of your credits.' });
-    expect(card({ included: 1 })).toMatchObject({
-      cost: '2 by text or WhatsApp: 1 from your included messages, the rest using 62 of your credits.',
-    });
+    expect(costLine(previewOf([31], 100))).toBe('1 by text or WhatsApp, using 31 of your credits.');
   });
 
-  it('uses included messages first, then each text only while the credits cover all of it', () => {
-    expect(previewOf([31, 62], 1, 0)).toEqual({ count: 2, included: 1, credits: 0, short: 1 });
-    expect(previewOf([62, 31], 0, 40)).toEqual({ count: 2, included: 0, credits: 31, short: 1 });
+  it('pays each text only while the credits cover all of it', () => {
+    expect(previewOf([62, 31], 40)).toEqual({ count: 2, credits: 31, short: 1 });
   });
 
   it('warns in place of the cost line when the credits fall short, counting only those not covered', () => {
@@ -166,7 +159,6 @@ describe('the lines under Briefing', () => {
       { mark: null, words: 'Edits before then go in the same message.' },
     ]);
     expect(rowLines(waiting, 'calledOff')).toEqual([]);
-    expect(NW.change({ field: 'removed' })).toBe('Taken off the shift');
   });
 
   it('reads each delivery state with its own mark', () => {

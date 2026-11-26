@@ -175,4 +175,27 @@ describe('the briefing on the web (sc-3917)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Send/ })).toBeNull();
   });
+
+  it('offers Add credits to billing.manage when the reminder’s credits fall short, opening Plan and billing (sc-4333)', async () => {
+    await open('noticesCostShort');
+    const card = screen.getByRole('region', { name: NW.card });
+    expect(within(card).getByText(NW.short(1))).toBeTruthy();
+    expect(within(card).getByRole('link', { name: 'Add credits' }).getAttribute('href')).toBe(
+      '/demo/settings/plan-and-billing?state=packs',
+    );
+    expect(within(card).queryByRole('button', { name: /Buy credits|Ask an owner/ })).toBeNull();
+  });
+
+  it('offers Ask an owner to anyone else, with its sent and not-sent lines (sc-4333)', async () => {
+    await open('noticesCostShortAskFailed');
+    const card = screen.getByRole('region', { name: NW.card });
+    expect(within(card).getByRole('alert').textContent).toBe('Not sent. Try again in a moment.');
+    expect(within(card).queryByRole('link', { name: 'Add credits' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Ask an owner' }));
+    await wait(600);
+    expect(
+      within(card).getByText('The owners have been sent the link to Plan and billing.'),
+    ).toBeTruthy();
+    expect(within(card).queryByRole('button', { name: 'Ask an owner' })).toBeNull();
+  });
 });

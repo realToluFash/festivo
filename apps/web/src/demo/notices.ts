@@ -1,10 +1,13 @@
 import type { Brief } from './briefing.ts';
+import { WW } from './messagesWaitsWords.ts';
 
 export type Channel = 'push' | 'text' | 'whatsApp';
 
-export type Change =
-  | { field: 'start' | 'end' | 'job' | 'date' | 'venue'; now: string; was: string }
-  | { field: 'removed' };
+export interface Change {
+  field: 'start' | 'end' | 'job' | 'date' | 'venue';
+  now: string;
+  was: string;
+}
 
 export type Notice =
   | { kind: 'waiting'; at: string; changes: readonly Change[] }
@@ -50,19 +53,18 @@ export const NW = {
   nobody: 'Nobody to remind yet.',
   sent: (date: string, n: number) =>
     people(n, `Sent on ${date}, to 1 person.`, `Sent on ${date}, to {count} people.`),
-  costIncluded: (n: number) => `${n} by text or WhatsApp, from your included messages.`,
-  costCredits: (n: number, credits: number) =>
+  cost: (n: number, credits: number) =>
     `${n} by text or WhatsApp, using ${credits} of your credits.`,
-  costBoth: (n: number, included: number, credits: number) =>
-    `${n} by text or WhatsApp: ${included} from your included messages, the rest using ${credits} of your credits.`,
   short: (n: number) =>
     people(
       n,
       '1 person will not get the reminder by text or WhatsApp: not enough credits. If they have the app, they still get it by push.',
       '{count} people will not get the reminder by text or WhatsApp: not enough credits. If they have the app, they still get it by push.',
     ),
-  buyCredits: 'Buy credits first',
-  askOwner: 'Ask an owner',
+  addCredits: 'Add credits',
+  askOwner: WW.askOwner,
+  asked: (owners: number) => (owners === 1 ? WW.ownersSent_one : WW.ownersSent_other),
+  askFailed: WW.askFailed,
   notBriefed: (n: number) =>
     people(
       n,
@@ -78,10 +80,7 @@ export const NW = {
   unreachable: "Can't be reached",
   unreachableLine: "Can't be reached: not signed in to the app, and no mobile number.",
   goesAt: (time: string) => `Goes at ${time}`,
-  change: (change: Change) =>
-    change.field === 'removed'
-      ? 'Taken off the shift'
-      : `${CHANGE_WORD[change.field]} ${change.now} (was ${change.was})`,
+  change: (change: Change) => `${CHANGE_WORD[change.field]} ${change.now} (was ${change.was})`,
   sameMessage: 'Edits before then go in the same message.',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: (on: string, time: string, by: Channel) => `Told on ${on} at ${time}, by ${BY[by]}.`,
@@ -145,21 +144,16 @@ export function removalLine(
 
 export interface Preview {
   count: number;
-  included: number;
   credits: number;
   short: number;
 }
 
-/** sc-3931's reservation preview for the next S3: included messages first, then each text paid only while the credits cover its whole cost. */
-export function previewOf(costs: readonly number[], included: number, balance: number): Preview {
-  let free = included;
+/** sc-3931's reservation preview for the next S3: each text paid only while the credits cover its whole cost. Texts have nothing included (sc-3931, 31 Oct). */
+export function previewOf(costs: readonly number[], balance: number): Preview {
   let left = balance;
-  const preview: Preview = { count: costs.length, included: 0, credits: 0, short: 0 };
+  const preview: Preview = { count: costs.length, credits: 0, short: 0 };
   for (const cost of costs) {
-    if (free > 0) {
-      free -= 1;
-      preview.included += 1;
-    } else if (cost <= left) {
+    if (cost <= left) {
       left -= cost;
       preview.credits += cost;
     } else preview.short += 1;
@@ -170,10 +164,8 @@ export function previewOf(costs: readonly number[], included: number, balance: n
 
 export function costLine(preview: Preview): string | null {
   if (preview.count === 0 || preview.short > 0) return null;
-  if (preview.credits === 0) return NW.costIncluded(preview.count);
-  if (preview.included === 0) return NW.costCredits(preview.count, preview.credits);
 
-  return NW.costBoth(preview.count, preview.included, preview.credits);
+  return NW.cost(preview.count, preview.credits);
 }
 
 export interface Reminder {
@@ -181,7 +173,6 @@ export interface Reminder {
   next: string;
   sent: { date: string; count: number } | null;
   concluded: Concluded | null;
-  included: number;
   balance: number;
 }
 
@@ -235,7 +226,6 @@ export function cardOf<T extends Reachable>(
 
   const preview = previewOf(
     reminded.filter((one) => one.app !== true).map(creditsOf),
-    reminder.included,
     reminder.balance,
   );
 

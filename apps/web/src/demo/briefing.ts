@@ -425,7 +425,9 @@ export interface NoticesStart {
   next: string;
   sent: { date: string; count: number } | null;
   concluded: Concluded | null;
-  included: number;
+  /** Ask an owner, for a person without billing.manage (sc-3931): ready, its sent line, or Not sent. */
+  ask: 'ready' | 'sent' | 'failed';
+  owners: number;
   removing: string | null;
   /** A page opened before End now: its sends are refused, and it reloads Finished. */
   stale: boolean;
@@ -619,7 +621,8 @@ function notices(o: Partial<NoticesStart> = {}): NoticesStart {
     next: FRI,
     sent: null,
     concluded: null,
-    included: 0,
+    ask: 'ready',
+    owners: 2,
     removing: null,
     stale: false,
     alreadyOver: false,
@@ -992,14 +995,8 @@ const STATES = {
   noticesRemoved: () =>
     noticed(
       {
-        name: 'Removing someone briefed: the confirm',
-        note: 'Tope gets one last message. Kelechi was taken off his shift, and it waits. Remove from the event, or Keep them.',
-        people: reshaped({
-          kelechi: {
-            shift: null,
-            notice: { kind: 'waiting', at: '19:55', changes: [{ field: 'removed' }] },
-          },
-        })(),
+        name: 'Removing someone briefed: the question',
+        note: 'Tope Balogun’s details, Remove from the event: one line more, as Tope gets one last message. Remove from the event, or Keep them.',
       },
       { removing: 'tope' },
     ),
@@ -1021,27 +1018,11 @@ const STATES = {
       note: 'Nobody to remind yet.',
       people: [],
     }),
-  noticesCostIncluded: () =>
-    noticed(
-      {
-        name: 'Cost: from included messages',
-        note: '2 by text or WhatsApp, from your included messages.',
-      },
-      { included: 5 },
-    ),
   noticesCostCredits: () =>
     noticed({
       name: 'Cost: using credits',
-      note: 'Kelechi’s WhatsApp (31 credits) and Yusuf’s text (62).',
+      note: 'Kelechi’s WhatsApp (31 credits) and Yusuf’s text (62). Credits only: texts have nothing included.',
     }),
-  noticesCostBoth: () =>
-    noticed(
-      {
-        name: 'Cost: both',
-        note: 'One included message left: Kelechi’s, with Yusuf’s from credits.',
-      },
-      { included: 1 },
-    ),
   noticesNoCredits: () =>
     noticed({
       name: 'Not delivered: no credits left',
@@ -1050,18 +1031,51 @@ const STATES = {
     }),
   noticesCostShort: () =>
     noticed({
-      name: 'Credits short, with Buy credits first',
-      note: 'billing.manage. 40 credits cover Kelechi’s WhatsApp, not Yusuf’s text.',
+      name: 'Credits short, with Add credits',
+      note: 'billing.manage. 40 credits cover Kelechi’s WhatsApp, not Yusuf’s text. Add credits opens Plan and billing.',
       balance: 40,
     }),
   noticesCostShortReadOnly: () =>
     noticed({
       name: 'Credits short, with Ask an owner',
-      note: 'staff.read, 20 credits: neither is covered.',
+      note: 'staff.read, 20 credits: neither is covered. Press Ask an owner.',
       access: 'read',
       balance: 20,
       billing: false,
     }),
+  noticesCostShortAsked: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the owners',
+        note: 'The owners have been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent' },
+    ),
+  noticesCostShortAskedOne: () =>
+    noticed(
+      {
+        name: 'Ask an owner: sent to the one owner',
+        note: 'The owner has been sent the link to Plan and billing.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'sent', owners: 1 },
+    ),
+  noticesCostShortAskFailed: () =>
+    noticed(
+      {
+        name: 'Ask an owner: not sent',
+        note: 'Not sent. Try again in a moment. Press Ask an owner again.',
+        access: 'read',
+        balance: 20,
+        billing: false,
+      },
+      { ask: 'failed' },
+    ),
   noticesCalledOff: () =>
     noticed(
       {
@@ -1268,11 +1282,12 @@ export const NOTICE_PAGES: readonly { name: string; states: readonly DemoLink[] 
     name: 'What the next reminder costs (sc-3931)',
     states: (
       [
-        'noticesCostIncluded',
         'noticesCostCredits',
-        'noticesCostBoth',
         'noticesCostShort',
         'noticesCostShortReadOnly',
+        'noticesCostShortAsked',
+        'noticesCostShortAskedOne',
+        'noticesCostShortAskFailed',
       ] as const
     ).map(link),
   },
