@@ -67,7 +67,7 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
   });
 }
 
-function signedIn(outsideEvents: unknown[] = [], heldByDevice = false): void {
+function signedIn(outsideEvents: unknown[] = [], signedOutAt: string | null = null): void {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
   const ire = membership({ id: 'org_2', name: 'Ìrè Events' });
   __setSessionState({
@@ -88,7 +88,7 @@ function signedIn(outsideEvents: unknown[] = [], heldByDevice = false): void {
       timezone: null,
       waitingFor: null,
       outsideEvents,
-      heldByDevice,
+      signedOutAt,
     },
   } as never);
 }
@@ -694,7 +694,7 @@ describe('"You’re in for…" leads to check-in (sc-28230)', () => {
     expect(screen.queryByText(/^You’ll be signed out at/u)).toBeNull();
   });
 
-  it('reads the end of a door-code account on /d/in/:eventId as after redeeming, on the event’s clock', async () => {
+  it('reads when a session signed in at the door ends on /d/in/:eventId, as after redeeming, on the event’s clock', async () => {
     signedIn(
       [
         {
@@ -704,11 +704,11 @@ describe('"You’re in for…" leads to check-in (sc-28230)', () => {
           role: 'can_check_in',
           jobLabel: 'Bar and drinks',
           startsAt: '2030-11-14T15:00:00+00:00',
-          endsAt: '2030-11-14T18:00:00+00:00',
+          endsAt: '2030-11-14T23:30:00+00:00',
           timeZone: 'Africa/Lagos',
         },
       ],
-      true,
+      '2030-11-14T18:00:00+00:00',
     );
     at('/d/in/ev_1', {});
 

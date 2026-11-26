@@ -173,8 +173,8 @@ function Redeem({ code, again }: { code: string; again: string | undefined }) {
           jobLabel: held.jobLabel,
           role: held.role,
           name,
-          endsAt: held.endsAt,
-          held: account?.heldByDevice === true,
+          endsAt: account?.signedOutAt ?? held.endsAt,
+          held: account?.signedOutAt != null,
         };
   const backShown = back != null;
 
