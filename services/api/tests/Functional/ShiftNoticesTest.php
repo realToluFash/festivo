@@ -111,6 +111,18 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEditToTheEventThatTellsTheStaffNothingLeavesAWaitingChangeOnTime(): void
+    {
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+        self::mockTime(new DateTimeImmutable('2027-03-01T10:14:00Z'));
+        $this->editEvent(['arrivalNote' => 'Use the side gate.']);
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertCount(1, $this->pushes());
+    }
+
+    #[Test]
     public function editsWithinTheFifteenMinutesGoAsOneMessageWithTheFinalState(): void
     {
         $this->briefed($this->ada);

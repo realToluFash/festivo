@@ -25,6 +25,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
@@ -36,6 +37,9 @@ final readonly class EventEditor
     public const string UPDATED = 'event.updated';
 
     private const array SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
+
+    /** The recorded fields a shift notice tells the staff of (sc-4333): its day and its venue. Any other edit leaves their waiting notice's time alone. */
+    private const array TOLD_TO_STAFF = ['startsAt', 'timeZone', 'venueName'];
 
     public function __construct(
         private EventRules $eventRules,
@@ -140,7 +144,10 @@ final readonly class EventEditor
                 $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
                 $this->eventChangeRecorder->edited($event, $by, $details, EventDetails::of($event));
                 $this->entityManager->flush();
-                $this->shiftNotices->changed(...$this->staffMemberRepository->findOnEvent($event));
+
+                if ([] !== Dict\select_keys($changes, self::TOLD_TO_STAFF)) {
+                    $this->shiftNotices->changed(...$this->staffMemberRepository->findOnEvent($event));
+                }
             }
 
             return $event;
