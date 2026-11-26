@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-type StaffPage = 'roster' | 'jobs' | 'stations';
+type StaffPage = 'roster' | 'jobs' | 'stations' | 'hours';
 
-/** The Staff page's tab row, as sc-3910's Design draws it; Hours worked adds its tab when it ships. */
+/** The Staff page's tab row, as sc-3910's Design draws it, with sc-234's Hours worked last. */
 export function StaffTabs({ on, eventId }: { on: StaffPage; eventId: string }) {
   const { t } = useTranslation();
   const base = `/app/events/${encodeURIComponent(eventId)}/staff`;
@@ -11,6 +11,7 @@ export function StaffTabs({ on, eventId }: { on: StaffPage; eventId: string }) {
     { page: 'roster', words: t('roster.roster'), to: `${base}/roster` },
     { page: 'jobs', words: t('jobs.tab'), to: `${base}/jobs` },
     { page: 'stations', words: t('stations.tab'), to: `${base}/stations` },
+    { page: 'hours', words: t('hours.tab'), to: `${base}/hours` },
   ];
 
   return (

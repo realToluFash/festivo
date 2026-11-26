@@ -1,21 +1,28 @@
-import { ApiError, type MyNight, type MyNightTable } from '@soirely/api-client';
+import {
+  ApiError,
+  ApiUnreachableError,
+  type ClockAction,
+  type MyNight,
+  type MyNightTable,
+} from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { dateLocale } from '../../i18n/index.ts';
-import {
-  clockAt,
-  clockOpensAt,
-  crossesMidnight,
-  dietaryOf,
-  headingOf,
-  weekdayOf,
-} from './myNight.ts';
+import { forgetSession } from '../../session.ts';
+import { clockAt, crossesMidnight, dietaryOf, headingOf, weekdayOf } from './myNight.ts';
 import { atWords } from '../app/events/doorCodes.ts';
+import {
+  type ClockLine,
+  type ClockSeen,
+  ClockCard,
+  ClockedOutEnded,
+  PastAccess,
+} from './ShiftClock.tsx';
 import './myNight.css';
 
 /** Changes to their station, shift or lead show within 10 seconds (sc-3915). */
@@ -49,6 +56,8 @@ export function MyNightPage({
   const { t } = useTranslation();
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
   const [round, setRound] = useState(0);
+  const [tap, setTap] = useState<{ line: ClockLine; busy: boolean }>({ line: null, busy: false });
+  const [ended, setEnded] = useState<ClockSeen | null>(null);
   const lost = useRef(onLost);
 
   useEffect(() => {
@@ -56,6 +65,7 @@ export function MyNightPage({
   });
 
   useEffect(() => {
+    if (ended != null) return undefined;
     let current = true;
     const read = () =>
       api.staffLinkNight(token).then(
@@ -73,10 +83,55 @@ export function MyNightPage({
       current = false;
       window.clearInterval(every);
     };
-  }, [token, round]);
+  }, [token, round, ended]);
 
   const night = seen.kind === 'shown' ? seen.night : null;
   const now = seen.kind === 'shown' ? seen.at : 0;
+
+  /** Sent as the tap, at Soirely's time when it arrives: nothing is kept to send later. */
+  async function press(): Promise<void> {
+    const card = night?.clock;
+    if (card == null || tap.busy || (card.phase !== 'ready' && card.phase !== 'on')) return;
+    const action: ClockAction = card.phase === 'ready' ? 'in' : 'out';
+    setTap({ line: null, busy: true });
+    try {
+      const outcome = await api.staffLinkClock(token, action);
+      const line: ClockLine =
+        outcome.outcome === 'already' ? (action === 'in' ? 'alreadyIn' : 'alreadyOut') : null;
+      setSeen((was) =>
+        was.kind === 'shown'
+          ? { ...was, night: { ...was.night, clock: outcome.clock }, at: Date.now() }
+          : was,
+      );
+      setTap({ line, busy: false });
+      if (outcome.signedOut) {
+        setEnded({ card: outcome.clock, line, busy: false });
+        void api
+          .signOut()
+          .catch(() => undefined)
+          .finally(() => forgetSession());
+      }
+    } catch (error) {
+      const offline = error instanceof TypeError || error instanceof ApiUnreachableError;
+      setTap({ line: offline ? (action === 'in' ? 'offIn' : 'offOut') : null, busy: false });
+      if (error instanceof ApiError && error.status === 409) setRound((n) => n + 1);
+    }
+  }
+
+  if (ended != null && night != null)
+    return <ClockedOutEnded seen={ended} now={now} timeZone={night.event.timeZone} />;
+
+  const clock =
+    night?.clock == null ? null : (
+      <Clock
+        night={night}
+        seen={{ card: night.clock, ...tap }}
+        now={now}
+        onPress={() => void press()}
+      />
+    );
+
+  if (night?.pastAccess === true) return <PastAccess name={night.event.name}>{clock}</PastAccess>;
 
   return (
     <main id="content" className="myn">
@@ -111,7 +166,7 @@ export function MyNightPage({
         </div>
       )}
       <div className="myn-page">
-        {night == null ? <Loading /> : <Night night={night} now={now} />}
+        {night == null ? <Loading /> : <Night night={night} now={now} clock={clock} />}
         <You name={name} night={night} now={now} place="foot" onSignOut={onSignOut} />
       </div>
     </main>
@@ -134,16 +189,8 @@ function shown(was: Seen, night: MyNight): Seen {
   };
 }
 
-function Night({ night, now }: { night: MyNight; now: number }) {
+function Night({ night, now, clock }: { night: MyNight; now: number; clock: ReactNode }) {
   const { t } = useTranslation();
-  const locale = dateLocale();
-  const opens = clockOpensAt(night, new Date(now));
-  const opensWords =
-    opens == null
-      ? null
-      : t('staffLink.night.clockOpensAt', {
-          time: formatEventClock(opens, night.event.timeZone, locale),
-        });
 
   return (
     <>
@@ -159,14 +206,7 @@ function Night({ night, now }: { night: MyNight; now: number }) {
               <span className="myn-on-station">{headingOf(night)}</span>
             </h1>
           </div>
-          {opensWords != null && (
-            <section className="myn-clock" aria-label={opensWords}>
-              <button type="button" className="myn-clock-button" disabled>
-                {opensWords}
-              </button>
-              <p className="myn-clock-help">{t('staffLink.night.clockOpensLine')}</p>
-            </section>
-          )}
+          {clock}
           {night.shift != null && <Shift night={night} shift={night.shift} />}
           <YourLead lead={night.lead} />
         </div>
@@ -176,6 +216,46 @@ function Night({ night, now }: { night: MyNight; now: number }) {
         </div>
       </div>
     </>
+  );
+}
+
+/** Clock in opens at keeps sc-3915's look before the window; from then on it is sc-234's card. */
+function Clock({
+  night,
+  seen,
+  now,
+  onPress,
+}: {
+  night: MyNight;
+  seen: ClockSeen;
+  now: number;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+
+  if (seen.card.phase === 'before') {
+    const opensWords = t('staffLink.night.clockOpensAt', {
+      time: formatEventClock(seen.card.opensAt, night.event.timeZone, dateLocale()),
+    });
+
+    return (
+      <section className="myn-clock" aria-label={opensWords}>
+        <button type="button" className="myn-clock-button" disabled>
+          {opensWords}
+        </button>
+        <p className="myn-clock-help">{t('staffLink.night.clockOpensLine')}</p>
+      </section>
+    );
+  }
+
+  return (
+    <ClockCard
+      seen={seen}
+      past={night.pastAccess}
+      now={now}
+      timeZone={night.event.timeZone}
+      onPress={onPress}
+    />
   );
 }
 

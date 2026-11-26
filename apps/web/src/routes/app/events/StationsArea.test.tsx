@@ -216,6 +216,7 @@ describe('Stations on the Staff page (sc-3910)', () => {
       'Roster',
       'Jobs and shifts',
       'Stations',
+      'Hours worked',
     ]);
     expect(tabs.querySelector('[aria-current="page"]')?.textContent).toBe('Stations');
   });
