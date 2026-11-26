@@ -25,6 +25,7 @@ import {
   stationView,
   undoOpen,
   undoPlan,
+  undoWords,
 } from './kitchenStation.ts';
 
 const PASS = 'pass';
@@ -498,6 +499,8 @@ describe('stationView', () => {
 
 describe('openingStation', () => {
   const list = (yours: string | null) => ({
+    event: 'Adaeze & Tunde’s wedding',
+    you: 'Gbenga Salami',
     stations: [
       { id: PASS, name: 'Pass', people: [] },
       { id: GRILL, name: 'Grill', people: [] },
@@ -523,6 +526,7 @@ describe('undo after a mark (sc-4015)', () => {
     courseId: 'mains',
     key: 'jollof',
     was: 'ready',
+    to: 'preparing',
     tapKey: 'tap-1',
     at: marked,
   };
@@ -559,7 +563,25 @@ describe('undo after a mark (sc-4015)', () => {
   it('is offered on an item’s first mark, which has no id yet', () => {
     expect(undoOpen(mark, after(1_000))).toBe(true);
     expect(undoPlan(mark, [], [course(null)])).toEqual({ kind: 'unknown' });
-    expect(undoPlan(mark, [], [course('item-1')])).toEqual({ kind: 'send', subject: 'item-1' });
+    expect(undoPlan(mark, [], [course('item-1')])).toEqual({
+      kind: 'send',
+      subject: 'item-1',
+      expected: { item: 'preparing' },
+    });
+  });
+
+  it('expects the state the mark left, which the server refuses an undo without', () => {
+    expect(undoPlan({ ...mark, was: 'preparing', to: 'ready' }, [], [course('item-1')])).toEqual({
+      kind: 'send',
+      subject: 'item-1',
+      expected: { item: 'ready' },
+    });
+  });
+
+  it('says what the mark made, so a new time while Preparing reads Preparing', () => {
+    expect(undoWords({ ...mark, was: 'preparing', to: 'preparing' })).toBe('station.undoPreparing');
+    expect(undoWords({ ...mark, was: 'preparing', to: 'ready' })).toBe('station.undoReady');
+    expect(undoWords(mark)).toBe('station.undoPreparing');
   });
 
   it('takes a mark that was never sent out of what is kept, rather than sending an undo', () => {
@@ -570,6 +592,7 @@ describe('undo after a mark (sc-4015)', () => {
     expect(undoPlan(mark, [tap('other')], [course('item-1')])).toEqual({
       kind: 'send',
       subject: 'item-1',
+      expected: { item: 'preparing' },
     });
   });
 });
@@ -672,7 +695,6 @@ describe('picking a station from the list (sc-4015)', () => {
     ].sort();
 
     expect(calls).toEqual([
-      'event',
       'kitchenStations',
       'sendServiceTap',
       'serviceRead',

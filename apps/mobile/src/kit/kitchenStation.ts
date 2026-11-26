@@ -325,6 +325,8 @@ export interface StationMark {
   courseId: string;
   key: string;
   was: ItemState;
+  /** The state the mark left, which its undo expects to find. */
+  to: ItemState;
   tapKey: string;
   /** By the corrected clock, as the window is measured. */
   at: number;
@@ -337,7 +339,9 @@ export function undoOpen(mark: StationMark, now: Date): boolean {
 }
 
 export type UndoPlan =
-  { kind: 'drop'; tapKey: string } | { kind: 'send'; subject: string } | { kind: 'unknown' };
+  | { kind: 'drop'; tapKey: string }
+  | { kind: 'send'; subject: string; expected: { item: ItemState } }
+  | { kind: 'unknown' };
 
 export function undoPlan(
   mark: StationMark,
@@ -349,7 +353,14 @@ export function undoPlan(
     .find((read) => read.course.id === mark.courseId)
     ?.items.find((item) => item.key === mark.key)?.id;
 
-  return id == null ? { kind: 'unknown' } : { kind: 'send', subject: id };
+  return id == null
+    ? { kind: 'unknown' }
+    : { kind: 'send', subject: id, expected: { item: mark.to } };
+}
+
+/** What the undo line says was marked: the state the mark left, so a new time while Preparing reads Preparing. */
+export function undoWords(mark: StationMark): 'station.undoPreparing' | 'station.undoReady' {
+  return mark.to === 'preparing' ? 'station.undoPreparing' : 'station.undoReady';
 }
 
 export function stationTime(at: Date | number | string, locale: string): string {
