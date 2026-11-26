@@ -2,8 +2,8 @@ import { ApiError, type MyNight, type MyNightTable } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
-import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { dateLocale } from '../../i18n/index.ts';
@@ -15,6 +15,7 @@ import {
   headingOf,
   weekdayOf,
 } from './myNight.ts';
+import { doorAddress } from './doorCheckIn.ts';
 import { atWords } from '../app/events/doorCodes.ts';
 import './myNight.css';
 
@@ -35,12 +36,15 @@ type Seen =
 
 /** The person's whole night at their own link, signed in (sc-3915), as the web demo's /demo/my-night draws it. */
 export function MyNightPage({
-  token,
+  source,
+  read: readNight,
   name,
   onSignOut,
   onLost,
 }: {
-  token: string;
+  /** Names what `read` reads, so a change of it starts again. */
+  source: string;
+  read: () => Promise<MyNight>;
   name: string;
   onSignOut: () => void;
   /** The link no longer answers this account: read it again for what it says now. */
@@ -50,15 +54,17 @@ export function MyNightPage({
   const [seen, setSeen] = useState<Seen>({ kind: 'loading' });
   const [round, setRound] = useState(0);
   const lost = useRef(onLost);
+  const reads = useRef(readNight);
 
   useEffect(() => {
     lost.current = onLost;
+    reads.current = readNight;
   });
 
   useEffect(() => {
     let current = true;
     const read = () =>
-      api.staffLinkNight(token).then(
+      reads.current().then(
         (night) => current && setSeen((was) => shown(was, night)),
         (error: unknown) => {
           if (!current) return;
@@ -73,7 +79,7 @@ export function MyNightPage({
       current = false;
       window.clearInterval(every);
     };
-  }, [token, round]);
+  }, [source, round]);
 
   const night = seen.kind === 'shown' ? seen.night : null;
   const now = seen.kind === 'shown' ? seen.at : 0;
@@ -166,6 +172,11 @@ function Night({ night, now }: { night: MyNight; now: number }) {
               </button>
               <p className="myn-clock-help">{t('staffLink.night.clockOpensLine')}</p>
             </section>
+          )}
+          {night.checksIn && (
+            <Link className="button button-primary myn-check-in" to={doorAddress(night.event.id)}>
+              {t('checkIn.title')}
+            </Link>
           )}
           {night.shift != null && <Shift night={night} shift={night.shift} />}
           <YourLead lead={night.lead} />

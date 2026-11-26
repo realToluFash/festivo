@@ -227,6 +227,11 @@
   font-size: 17px;
 }
 
+.myn-check-in {
+  min-height: 48px;
+  font-size: 17px;
+}
+
 .myn-rules {
   white-space: pre-line;
   line-height: 1.55;
@@ -421,6 +426,10 @@
   .myn-card,
   .myn-clock {
     border-radius: var(--radiusCardDesktop);
+  }
+
+  .myn-check-in {
+    min-height: 52px;
   }
 
   .myn-you-foot {

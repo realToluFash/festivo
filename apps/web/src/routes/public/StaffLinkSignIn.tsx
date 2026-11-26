@@ -117,7 +117,8 @@ export function StaffLinkSignIn({
   if (reader === 'yours')
     return (
       <MyNightPage
-        token={token}
+        source={token}
+        read={() => api.staffLinkNight(token)}
         name={name}
         onSignOut={() => void signOut()}
         onLost={() => void onSignedIn()}
