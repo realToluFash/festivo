@@ -41,6 +41,7 @@ import { Confetti, Cover, type Piece } from './Cover.tsx';
 import { EventMesh } from './EventMesh.tsx';
 import { Glass } from './Glass.tsx';
 import { Glyph, type GlyphName } from './Glyph.tsx';
+import type { Box } from '../kit/confettiClearance.ts';
 import type { ArrivedFigure as Figure, Moment, Now } from '../kit/today.ts';
 import { useAccessibilitySizes, useLayout, useNameLines } from '../layout/useLayout.ts';
 import { OrgMark } from './OrgMark.tsx';
@@ -1000,6 +1001,12 @@ export function Band({
   const [rowMiddle, setRowMiddle] = useState<number>();
   const height = top + bandBody(moment, layout);
   const underTitle = phone && atAccessibilitySizes(fontScale);
+  const [rowAt, setRowAt] = useState<{ x: number; y: number }>();
+  const [titleBox, setTitleBox] = useState<Box | null>(null);
+  const titleOnBand =
+    rowAt == null || titleBox == null
+      ? null
+      : { ...titleBox, x: rowAt.x + titleBox.x, y: rowAt.y - top + titleBox.y };
   const liveSize =
     underTitle && rowMiddle != null
       ? bandLiveSize(fontScale, bandLiveRoom(rowMiddle, height, LIVE_FOOT))
@@ -1014,7 +1021,10 @@ export function Band({
         <>
           <Cover pieces={[]} shade="foot" />
           <View style={[styles.pieces, { top, bottom: 0 }]}>
-            <Confetti pieces={phone ? BAND_PIECES : TABLET_BAND_PIECES} />
+            <Confetti
+              pieces={phone ? BAND_PIECES : TABLET_BAND_PIECES}
+              words={underTitle ? (titleOnBand == null ? null : [titleOnBand]) : undefined}
+            />
           </View>
         </>
       ) : (
@@ -1026,10 +1036,11 @@ export function Band({
           { marginTop: top },
           tall && { minHeight: CAPSULE_TOP + capsule },
         ]}
-        onLayout={({ nativeEvent: { layout } }) =>
+        onLayout={({ nativeEvent: { layout } }) => {
           // The middle under its top padding, where the tile and the title are centred.
-          setRowMiddle(layout.y + (layout.height + styles.topPhone.paddingTop) / 2)
-        }
+          setRowMiddle(layout.y + (layout.height + styles.topPhone.paddingTop) / 2);
+          setRowAt({ x: layout.x, y: layout.y });
+        }}
       >
         {!phone && measure}
         <View onLayout={({ nativeEvent: { layout } }) => setTileEnd(layout.x + layout.width)}>
@@ -1051,6 +1062,7 @@ export function Band({
                 ? undefined
                 : { width: row, tileEnd, searchStart }
             }
+            onTitle={setTitleBox}
           />
         ) : (
           <View style={styles.capsuleAt} pointerEvents="box-none">
@@ -1092,7 +1104,14 @@ export function Band({
 }
 
 /** The phone's band title: main's below AX1; from AX1 whole on one line, 8 clear of the tile and Search, in the row's height (sc-92248). */
-function BandTitleText({ row }: { row: BandRow | undefined }) {
+function BandTitleText({
+  row,
+  onTitle,
+}: {
+  row: BandRow | undefined;
+  /** From AX1, the title's box in the row once it draws at its fitted size; null until then. */
+  onTitle: (box: Box | null) => void;
+}) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
   const title = t('todayScreen.today');
@@ -1101,6 +1120,18 @@ function BandTitleText({ row }: { row: BandRow | undefined }) {
   const { widths, measure } = useMeasuredAt(start, [title]);
   const [wide] = widths;
   const fitted = row == null || wide == null ? undefined : bandTitle(fontScale, wide, row);
+  const drawn = fitted?.size ?? start;
+  const [placed, setPlaced] = useState<{ x: number; y: number }>();
+  const [text, setText] = useState<{ size: number; box: Box }>();
+  const ready = large && fitted != null && text?.size === drawn;
+
+  useEffect(() => {
+    onTitle(
+      !ready || placed == null || text == null
+        ? null
+        : { ...text.box, x: placed.x + text.box.x, y: placed.y + text.box.y },
+    );
+  }, [onTitle, ready, placed, text]);
 
   if (!large) {
     return (
@@ -1112,7 +1143,6 @@ function BandTitleText({ row }: { row: BandRow | undefined }) {
     );
   }
 
-  const drawn = fitted?.size ?? start;
   const inRoom = fitted?.centred === 'room' && row != null;
 
   return (
@@ -1124,9 +1154,11 @@ function BandTitleText({ row }: { row: BandRow | undefined }) {
           inRoom && { left: row.tileEnd + BAND_CLEAR, right: undefined, width: bandRoom(row) },
         ]}
         pointerEvents="box-none"
+        onLayout={({ nativeEvent: { layout } }) => setPlaced({ x: layout.x, y: layout.y })}
       >
         <Text
           key={drawn}
+          onLayout={({ nativeEvent: { layout } }) => setText({ size: drawn, box: layout })}
           size={drawn}
           weight="semibold"
           allowFontScaling={false}
