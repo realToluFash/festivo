@@ -17,6 +17,8 @@ export interface MyNight {
   checksIn: boolean;
   /** Their station is a kitchen station and their access opens it (sc-95382). */
   dishes: boolean;
+  /** The house rules, shown as Before you start (sc-3917). */
+  rules: string | null;
 }
 
 export interface MyNightMoment {
@@ -140,7 +142,8 @@ export function asMyNight(raw: unknown): MyNight | null {
     timing == null ||
     (raw.tables !== null && tables == null) ||
     typeof raw.checksIn !== 'boolean' ||
-    typeof raw.dishes !== 'boolean'
+    typeof raw.dishes !== 'boolean' ||
+    !text(raw.rules)
   )
     return null;
 
@@ -157,5 +160,6 @@ export function asMyNight(raw: unknown): MyNight | null {
     tables,
     checksIn: raw.checksIn,
     dishes: raw.dishes,
+    rules: raw.rules,
   };
 }

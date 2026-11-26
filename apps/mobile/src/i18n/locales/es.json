@@ -3765,7 +3765,8 @@
     "staleBody": "Su noche, tal como estaba a esta hora: {{time}}.",
     "tryAgain": "Reintentar",
     "loading": "Cargando su noche…",
-    "otherNeed": "{{what}} (otra)"
+    "otherNeed": "{{what}} (otra)",
+    "beforeYouStart": "Before you start"
   },
   "station": {
     "wayIn": {

@@ -468,6 +468,16 @@ describe('adding someone from outside (sc-71)', () => {
     expect(opened('longAddressUnbroken')?.name).toBe(UNBROKEN);
     expect(opened('longMobile')).toMatchObject({ id: LONG_MOBILE, name: '+234 803 123 4567' });
     expect(peopleStart('longAddressRemove').opened).toEqual({ id: AMAKA, removing: 'ask' });
+    expect(peopleStart('longMobileRemove').opened).toEqual({ id: LONG_MOBILE, removing: 'ask' });
+    expect(sheetWords(opened('longMobileRemove') as OnEvent).keep).toBe('Keep them');
+    expect(sheetWords(opened('joinedRemove') as OnEvent).keep).toBe('Keep Kemi');
+    expect(peopleStart('longMobileRoleFails')).toMatchObject({
+      roleFails: true,
+      opened: { id: LONG_MOBILE, removing: null },
+    });
+    expect(sheetWords(opened('longMobileRoleFails') as OnEvent).notChanged('Can view')).toBe(
+      'We couldn’t change +234 803 123 4567’s role, so it’s still Can view. Check your connection and pick again.',
+    );
     expect(peopleStart('longAddress').opened?.removing).toBeNull();
     expect(sheetWords(opened('longAddress') as OnEvent).removeTitle).toBe(
       `Remove ${AMAKA} from this event?`,

@@ -150,6 +150,7 @@ const NIGHT = {
   ],
   checksIn: false,
   dishes: false,
+  rules: null,
 };
 
 const SIGNED_IN = {

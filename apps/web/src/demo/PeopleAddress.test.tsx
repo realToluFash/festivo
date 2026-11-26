@@ -77,6 +77,22 @@ describe('an outsider’s address breaks after its @, never inside its domain (s
     expect(screen.queryByRole('button', { name: /^Keep fundacao/u })).toBeNull();
   });
 
+  it('asks Keep them for a mobile number and Keep Kemi for a joined name', async () => {
+    await people('mobileRemove');
+    expect(screen.getByRole('button', { name: 'Keep them' })).toBeDefined();
+    cleanup();
+
+    await people('joinedRemove');
+    expect(screen.getByRole('button', { name: 'Keep Kemi' })).toBeDefined();
+  });
+
+  it('asks in French with Ne pas retirer and Retirer', async () => {
+    await people('addressRemoveFr');
+
+    expect(screen.getByRole('button', { name: 'Ne pas retirer' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Retirer' })).toBeDefined();
+  });
+
   it('leaves a mobile number and a joined name as they are', async () => {
     await people('addressShort');
 

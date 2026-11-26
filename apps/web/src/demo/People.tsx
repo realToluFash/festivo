@@ -266,6 +266,7 @@ function PeopleScreen({ start, door }: { start: PeopleStart; door: DoorStart | n
             roleFails={start.roleFails}
             organisation={place.organisation}
             asking={opened.visit === 0 && start.open?.asking === true}
+            french={start.french === true}
             removing={
               door == null
                 ? undefined

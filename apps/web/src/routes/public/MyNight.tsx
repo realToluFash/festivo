@@ -195,8 +195,14 @@ function Night({ night, now }: { night: MyNight; now: number }) {
               {t('checkIn.title')}
             </Link>
           )}
-          {night.shift != null && <Shift night={night} shift={night.shift} />}
-          <YourLead lead={night.lead} />
+          {night.shift != null && <NightShift night={night} shift={night.shift} />}
+          <NightLead lead={night.lead} />
+          {night.rules != null && (
+            <section className="myn-card" aria-labelledby="myn-rules">
+              <h2 id="myn-rules">{t('staffLink.night.beforeYouStart')}</h2>
+              <p className="myn-rules">{night.rules}</p>
+            </section>
+          )}
         </div>
         <div className="myn-column">
           {night.timing.length > 0 && <Timing night={night} />}
@@ -219,7 +225,14 @@ function Loading() {
   );
 }
 
-function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['shift']> }) {
+/** Also the briefing's Preview as (sc-3917). */
+export function NightShift({
+  night,
+  shift,
+}: {
+  night: MyNight;
+  shift: NonNullable<MyNight['shift']>;
+}) {
   const { t } = useTranslation();
   const locale = dateLocale();
   const end = clockAt(shift.endsAt, locale);
@@ -248,7 +261,7 @@ function Shift({ night, shift }: { night: MyNight; shift: NonNullable<MyNight['s
   );
 }
 
-function YourLead({ lead }: { lead: MyNight['lead'] }) {
+export function NightLead({ lead }: { lead: MyNight['lead'] }) {
   const { t } = useTranslation();
 
   return (

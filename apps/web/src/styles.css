@@ -2387,6 +2387,10 @@ span {
   margin-bottom: var(--space3xl);
 }
 
+[data-notice-landing] {
+  scroll-margin-block: var(--spaceLg);
+}
+
 /* A click on Close rings where focus lands as a key does. A click on the words themselves does not. */
 [data-notice-landing]:focus {
   outline: 2px solid var(--colorAccent);

@@ -50,7 +50,7 @@ import {
   foldAt,
   restingPlaces,
   wordsGoFrom,
-} from './todayFoldRules.ts';
+} from '../../layout/todayFold.ts';
 
 export interface TodayFoldStart {
   size: FilterSize;

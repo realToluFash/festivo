@@ -37,6 +37,7 @@ const NIGHT = {
   tables: null,
   checksIn: true,
   dishes: false,
+  rules: null,
 };
 
 /** A door code's grant on the event, as /api/me's outsideEvents lists it. */

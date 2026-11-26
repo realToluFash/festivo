@@ -36,6 +36,7 @@ const NIGHT: MyNight = {
   tables: null,
   checksIn: false,
   dishes: false,
+  rules: null,
 };
 
 describe('My night leads to check-in (sc-28230)', () => {

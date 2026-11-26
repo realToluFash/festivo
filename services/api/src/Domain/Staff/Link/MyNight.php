@@ -6,6 +6,7 @@ namespace App\Domain\Staff\Link;
 
 use App\Domain\Event\LocalTimeResolver;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
+use App\Domain\Staff\LeadFinder;
 use App\Domain\Staff\ShiftClock;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -24,7 +25,6 @@ use App\Repository\GuestNeedRepository;
 use App\Repository\ScheduleItemRepository;
 use App\Repository\SeatAssignmentRepository;
 use App\Repository\SeatingTableRepository;
-use App\Repository\StaffMemberRepository;
 use App\Repository\StaffShiftRepository;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -38,7 +38,7 @@ final readonly class MyNight
 {
     public function __construct(
         private StaffShiftRepository $staffShiftRepository,
-        private StaffMemberRepository $staffMemberRepository,
+        private LeadFinder $leadFinder,
         private ScheduleItemRepository $scheduleItemRepository,
         private SeatingTableRepository $seatingTableRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
@@ -78,6 +78,7 @@ final readonly class MyNight
             'tables' => $this->tables($station, $now >= $doorsAt),
             'checksIn' => Iter\contains(StaffLinkGrants::levelOf($entry)->permissions(), Permission::GuestsCheckIn),
             'dishes' => $this->dishes($entry),
+            'rules' => $event->getStaffRules(),
         ];
     }
 
@@ -111,18 +112,12 @@ final readonly class MyNight
         return $station->getSection()?->getName() ?? $station->getName();
     }
 
-    /** @return array{name: string, phone: ?string, floor: bool}|null their station's lead, else the floor lead; never themself */
+    /** @return array{name: string, phone: ?string, floor: bool}|null */
     private function lead(StaffMember $entry): ?array
     {
-        $own = $entry->getStation()?->getLead();
+        $lead = $this->leadFinder->leadOf($entry);
 
-        if (null !== $own && $own !== $entry) {
-            return ['name' => $own->getFullName(), 'phone' => $own->getMobile(), 'floor' => false];
-        }
-
-        $floor = $this->staffMemberRepository->findOneBy(['event' => $entry->getEvent(), 'floorLead' => true]);
-
-        return null === $floor || $floor === $entry ? null : ['name' => $floor->getFullName(), 'phone' => $floor->getMobile(), 'floor' => true];
+        return null === $lead ? null : ['name' => $lead->getFullName(), 'phone' => $lead->getMobile(), 'floor' => $lead !== $entry->getStation()?->getLead()];
     }
 
     /** @return list<array{at: string, title: string, for: 'guests'|'staff'}> planned times, skipped moments left out */

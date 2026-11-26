@@ -245,6 +245,13 @@ function Night({ night, now, wide }: { night: MyNight; now: number; wide: boolea
       <Card title={t('myNight.yourLead')}>
         <YourLead lead={night.lead} />
       </Card>
+      {night.rules != null && (
+        <Card title={t('myNight.beforeYouStart')}>
+          <Text size={17} style={styles.rules}>
+            {night.rules}
+          </Text>
+        </Card>
+      )}
     </>
   );
 
@@ -476,6 +483,7 @@ function You({ name, inBar }: { name: string; inBar: boolean }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: tokens.colorPage },
+  rules: { lineHeight: 26 },
   bar: {
     flexDirection: 'row',
     flexWrap: 'wrap',

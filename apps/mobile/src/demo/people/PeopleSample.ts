@@ -187,13 +187,16 @@ export function longOutsiders(): OnEvent[] {
   ];
 }
 
+/** Joined from outside, so her account name is cut to its first word on a button (sc-91678). */
+export const KEMI = 'kemi.okafor@example.com';
+
 export function sampleOnEvent(): OnEvent[] {
   return [
     onEventAs(PRIYA, 'Lead'),
     onEventAs(ANA, 'Can edit'),
     onEventAs(TOM, 'Can check guests in'),
     {
-      id: 'kemi.okafor@example.com',
+      id: KEMI,
       name: 'Kemi Okafor',
       initials: 'KO',
       tone: 3,
@@ -508,6 +511,9 @@ export const PEOPLE_STATES = [
   'longAddressUnbroken',
   'longMobile',
   'longAddressRemove',
+  'longMobileRemove',
+  'joinedRemove',
+  'longMobileRoleFails',
   'longOrganisation',
   'oneWordOrganisation',
   'loading',
@@ -607,6 +613,21 @@ export function peopleStart(state: PeopleState): PeopleStart {
         ...base,
         onEvent: [...base.onEvent, ...longOutsiders()],
         opened: { id: LONG_OPENS[state], removing: state === 'longAddressRemove' ? 'ask' : null },
+      };
+    case 'longMobileRemove':
+      return {
+        ...base,
+        onEvent: [...base.onEvent, ...longOutsiders()],
+        opened: { id: LONG_MOBILE, removing: 'ask' },
+      };
+    case 'joinedRemove':
+      return { ...base, opened: { id: KEMI, removing: 'ask' } };
+    case 'longMobileRoleFails':
+      return {
+        ...base,
+        onEvent: [...base.onEvent, ...longOutsiders()],
+        roleFails: true,
+        opened: { id: LONG_MOBILE, removing: null },
       };
     case 'longOrganisation':
       return { ...base, world: { ...ireWorld(), organisation: LONG_ORGANISATION } };
