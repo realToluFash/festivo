@@ -24,6 +24,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   type ScrollViewProps,
   StyleSheet,
   View,
@@ -255,11 +256,13 @@ function SheetFrame({
             {...(drags ? drag.handlers : {})}
             testID={testID}
           >
-            <StripHeld.Provider value={drags && stripHeld}>
-              <ScrolledAway.Provider value={drag.scrolledAway}>
-                <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
-              </ScrolledAway.Provider>
-            </StripHeld.Provider>
+            <Drags.Provider value={drags}>
+              <StripHeld.Provider value={drags && stripHeld}>
+                <ScrolledAway.Provider value={drag.scrolledAway}>
+                  <Revealed.Provider value={!unnamed}>{children}</Revealed.Provider>
+                </ScrolledAway.Provider>
+              </StripHeld.Provider>
+            </Drags.Provider>
             {drags && <View style={styles.grabber} pointerEvents="none" />}
             {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
             {phone && !underKeys && (
@@ -548,17 +551,23 @@ export function SilentWindowName() {
 
 const Revealed = createContext(true);
 
+const Drags = createContext(false);
+
 const StripHeld = createContext(false);
 
 const ScrolledAway = createContext<(scrolled: boolean) => void>(() => undefined);
 
-/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet (sc-95217). */
+/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in, so a drag down there while scrolled takes the content back to its top (sc-95217). */
 export function SheetScrollView({
   holdsHeading = false,
   ...props
 }: ScrollViewProps & { holdsHeading?: boolean }) {
+  const drags = useContext(Drags);
   const held = useContext(StripHeld);
   const scrolledAway = useContext(ScrolledAway);
+  const [away, setAway] = useState(false);
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const landed = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!holdsHeading) return;
@@ -566,20 +575,50 @@ export function SheetScrollView({
     return () => scrolledAway(false);
   }, [holdsHeading, scrolledAway]);
 
-  return (
+  const scroll = (
     <ScrollView
       {...props}
+      ref={scrollRef}
       scrollEnabled={!held && props.scrollEnabled !== false}
       {...(holdsHeading
         ? {
             scrollEventThrottle: 16,
             onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-              scrolledAway(event.nativeEvent.contentOffset.y > 0);
+              const scrolled = event.nativeEvent.contentOffset.y > 0;
+              scrolledAway(scrolled);
+              setAway(scrolled);
               props.onScroll?.(event);
             },
           }
         : {})}
     />
+  );
+  if (!holdsHeading || !drags) return scroll;
+
+  return (
+    <>
+      <View
+        style={[styles.strip, away && styles.stripScrolled]}
+        onTouchStart={({ nativeEvent }) => {
+          landed.current = { x: nativeEvent.pageX, y: nativeEvent.pageY };
+        }}
+        onTouchMove={({ nativeEvent }) => {
+          const from = landed.current;
+          if (from == null || !away) return;
+          const dy = nativeEvent.pageY - from.y;
+          if (dy <= 0 || !sheetDragStarts({ from: 0, dx: nativeEvent.pageX - from.x, dy })) return;
+          landed.current = null;
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }}
+        onTouchEnd={() => {
+          landed.current = null;
+        }}
+        onTouchCancel={() => {
+          landed.current = null;
+        }}
+      />
+      {scroll}
+    </>
   );
 }
 
@@ -602,6 +641,11 @@ export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget
     return () => clearTimeout(focus);
   }, [open, opener]);
 }
+
+const GRABBER_HEIGHT = 5;
+
+/** The grabber's strip, as tall as the space above it, the grabber and the same space below. */
+export const SHEET_GRABBER_STRIP = tokens.spaceSm * 2 + GRABBER_HEIGHT;
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
@@ -645,10 +689,18 @@ const styles = StyleSheet.create({
     top: tokens.spaceSm,
     alignSelf: 'center',
     width: 40,
-    height: 5,
+    height: GRABBER_HEIGHT,
     borderRadius: 2.5,
     backgroundColor: tokens.colorControlBorder,
   },
+  // Its hairline shows only while the content is scrolled from its top, so the cut reads as more above.
+  strip: {
+    height: SHEET_GRABBER_STRIP,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colorCard,
+    backgroundColor: tokens.colorCard,
+  },
+  stripScrolled: { borderBottomColor: tokens.colorBorder },
   skirt: {
     position: 'absolute',
     top: '100%',

@@ -16,7 +16,7 @@ import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { CheckMark } from './SecurityTwoFactor.tsx';
 import { useShellLayout } from './settingsShell.ts';
 import { Avatar } from './SettingsParts.tsx';
-import { Sheet, SheetScrollView } from './Sheet.tsx';
+import { SHEET_GRABBER_STRIP, Sheet, SheetScrollView } from './Sheet.tsx';
 import {
   Ask,
   type AskProps,
@@ -846,7 +846,7 @@ const styles = StyleSheet.create({
   sheetScroll: { flexGrow: 0, flexShrink: 1 },
   sheetBody: {
     gap: tokens.spaceLg,
-    paddingTop: 27,
+    paddingTop: 27 - SHEET_GRABBER_STRIP,
     paddingHorizontal: tokens.spaceXxl,
     paddingBottom: tokens.spaceLg,
   },
