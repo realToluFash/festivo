@@ -131,6 +131,8 @@ final class DoorCodesTest extends ApiTestCase
         $this->client->request('GET', '/api/events/' . $this->owambe, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
         self::assertSame(200, $this->statusCode(), "the event's card opens Overview (sc-95382)");
         self::assertSame(['events.read', 'service.work'], $this->last()['event']['permissions'] ?? null);
+        $this->client->request('GET', '/api/events/' . $this->owambe . '/service/stations', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
+        self::assertSame(EventRole::CanWorkFloor === $level ? 403 : 200, $this->statusCode(), 'the stations');
         foreach (['/guests', '/schedule', '/seating-plan', '/people'] as $rest) {
             $this->client->request('GET', '/api/events/' . $this->owambe . $rest, server: ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]);
             self::assertSame(403, $this->statusCode(), $rest);

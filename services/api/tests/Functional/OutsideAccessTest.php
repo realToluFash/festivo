@@ -597,6 +597,9 @@ final class OutsideAccessTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), 'the event\'s card, for Overview (sc-95382)');
         self::assertSame(['events.read', 'service.work', ...(EventRole::CanRunFloor === $role ? ['service.manage'] : [])], $event['event']['permissions']);
 
+        $this->as($waiter, 'GET', '/api/events/' . $this->owambe . '/service/stations');
+        self::assertSame(EventRole::CanWorkFloor === $role ? 403 : 200, $this->statusCode(), 'the stations');
+
         foreach (['/people', '/guests', '/schedule', '/seating-plan', '/budget'] as $rest) {
             $this->as($waiter, 'GET', '/api/events/' . $this->owambe . $rest);
             self::assertSame(403, $this->statusCode(), $rest);

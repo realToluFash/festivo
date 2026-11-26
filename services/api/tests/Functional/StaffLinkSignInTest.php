@@ -34,6 +34,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -345,24 +346,36 @@ final class StaffLinkSignInTest extends ApiTestCase
         $this->signsOutWithTheLink($token, $answer, $member);
     }
 
-    #[Test]
-    public function aJobAtAServiceLevelHoldsThatLevel(): void
+    /** @return iterable<string, array{0: string, 1: string, 2: list<string>, 3: int, 4: int}> job access, level, the event read's permissions, the stations read, the other areas' reads */
+    public static function jobLevels(): iterable
     {
-        $this->jobAccess('pass');
+        $reads = ['events.read', 'guests.read', 'seating.read', 'run_of_show.read', 'people.read'];
+
+        yield 'Can view' => ['view', 'can_view', $reads, 403, 200];
+        yield 'Can check guests in' => ['check_in', 'can_check_in', [...$reads, 'guests.check_in'], 403, 200];
+        yield 'Can work the floor' => ['floor', 'can_work_floor', ['events.read', 'service.work'], 403, 403];
+        yield 'Can work the pass' => ['pass', 'can_work_pass', ['events.read', 'service.work'], 200, 403];
+        yield 'Can run the floor' => ['run', 'can_run_floor', ['events.read', 'service.work', 'service.manage'], 200, 403];
+    }
+
+    /** @param list<string> $permissions */
+    #[Test]
+    #[DataProvider('jobLevels')]
+    public function aJobsLevelIsWhatTheStaffLinkHoldsAndAServiceLevelReadsTheEventsCardAndNothingElse(string $access, string $level, array $permissions, int $stations, int $areas): void
+    {
+        $this->jobAccess($access);
         $user = $this->signedIn();
 
-        self::assertSame('can_work_pass', $this->outsideRole($user));
+        self::assertSame($level, $this->outsideRole($user));
+        $event = Type\shape(['event' => Type\shape(['permissions' => Type\vec(Type\string())], true)], true)->coerce($this->as($user, 'GET', '/api/events/' . $this->eventId));
+        self::assertSame(200, $this->statusCode(), "the event's card opens Overview (sc-95382)");
+        self::assertEqualsCanonicalizing($permissions, $event['event']['permissions']);
         $this->as($user, 'GET', '/api/events/' . $this->eventId . '/service/stations');
-        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
-        self::assertSame(['events.read', 'service.work'], $this->as($user, 'GET', '/api/events/' . $this->eventId)['event']['permissions'] ?? null, "the event's card opens Overview (sc-95382)");
+        self::assertSame($stations, $this->statusCode(), Json\encode($this->last()));
         foreach (['/guests', '/schedule', '/seating-plan', '/people'] as $rest) {
             $this->as($user, 'GET', '/api/events/' . $this->eventId . $rest);
-            self::assertSame(403, $this->statusCode(), $rest);
+            self::assertSame($areas, $this->statusCode(), $rest);
         }
-
-        $this->jobAccess('run');
-
-        self::assertSame('can_run_floor', $this->outsideRole($user));
     }
 
     #[Test]
