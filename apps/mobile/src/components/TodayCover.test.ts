@@ -159,7 +159,7 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
     expect(cover).toMatch(/<NowBlock moment=\{moment\} wide side \/>/u);
     expect(cover).toMatch(/const whole = useAccessibilitySizes\(\);/u);
     expect(cover).toMatch(
-      /if \(side && whole && run == null && !moment\.full\) return <WholeNowBlock now=\{now\} \/>;/u,
+      /if \(wide && whole && run == null && !moment\.full\)\n {4}return <WholeNowBlock now=\{now\} upright=\{!side\} \/>;/u,
     );
   });
 
@@ -168,7 +168,9 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
     expect(block).toMatch(/const under = name \?\? Infinity;/u);
     expect(block).toMatch(/onDrawn=\{setName\}/u);
     expect(block.match(/under=\{under\}/gu)).toHaveLength(3);
-    expect(block).toMatch(/<WholeChips now=\{now\} column=\{column\} under=\{under\} \/>/u);
+    expect(block).toMatch(
+      /\{upright \? <Chips now=\{now\} grows \/> : <WholeChips now=\{now\} column=\{column\} under=\{under\} \/>\}/u,
+    );
     expect(block).toMatch(/<WholeWhiteButton[\s\S]*?under=\{under\}/u);
 
     const chips = /export function WholeChips\([\s\S]*?\n\}\n/u.exec(run)?.[0] ?? '';
@@ -180,8 +182,24 @@ describe('the live cover on the iPad’s side banner from AX1 (sc-92312)', () =>
 
 describe('the live cover upright from AX1 (sc-93211)', () => {
   it('grows its chips upright only, and keeps main’s chips on the phone and below AX1', () => {
-    expect(cover).toMatch(/<Chips now=\{now\} grows=\{wide && whole\} \/>/u);
+    const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
+    expect(below).toMatch(/<Chips now=\{now\} \/>/u);
     expect(cover).toMatch(/<NowBlock moment=\{moment\} wide=\{!phone\} \/>/u);
+  });
+});
+
+describe('the live cover upright from AX1 (sc-93578)', () => {
+  it('takes the whole-words block, as on its side, so Open the event sits under the end line and the name has the cover’s width', () => {
+    expect(cover).toMatch(/<NowBlock moment=\{moment\} wide=\{!phone\} \/>/u);
+    expect(cover).toMatch(/return <WholeNowBlock now=\{now\} upright=\{!side\} \/>;/u);
+
+    const block = /function WholeNowBlock\([\s\S]*?\n\}\n/u.exec(cover)?.[0] ?? '';
+    expect(block).toMatch(
+      /<CoverLine\n {8}size=\{48\}[\s\S]*?room=\{column\}\n {8}onDrawn=\{setName\}/u,
+    );
+    expect(block).toMatch(
+      /now\.arrived == null && <View style=\{styles\.openUnder\}>\{open\}<\/View>/u,
+    );
   });
 
   it('draws the chips’ words at main’s 13, never stepped down and never cut to one line', () => {
