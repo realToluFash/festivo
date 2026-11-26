@@ -91,10 +91,10 @@ export const SW = {
     date: (now: string, was: string) => `Date ${now} (was ${was})`,
     venue: (now: string, was: string) => `Venue ${now} (was ${was})`,
   } satisfies Record<ChangeField, (now: string, was: string) => string>,
-  shiftAdded: (shift: string) => `[Added: ${shift}]`,
-  shiftOff: (shift: string) => `[Off: ${shift}]`,
-  shiftRetimed: (now: string, was: string) => `[${now} (was ${was})]`,
-  noShift: '[No shift for now]',
+  shiftAdded: (shift: string) => `Assigned ${shift}`,
+  shiftOff: (shift: string) => `Unassigned ${shift}`,
+  shiftRetimed: (now: string, was: string) => `Shift ${now} (was ${was})`,
+  noShift: 'No shift left, still on the staff',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: {
     push: (date: string, time: string) => `Told on ${date} at ${time}, by push.`,
@@ -469,17 +469,17 @@ const SEVERAL: Record<string, Edit> = {
   dayo: {
     shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
     ...waiting('read', [
-      { field: 'shiftRetimed', now: 'Saturday 15:00 to 23:00', was: '17:00 to 23:00' },
+      { field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' },
     ]),
   },
   grace: {
     shift: 'Saturday 16:00 to 23:00, Sunday 12:00 to 18:00',
-    ...waiting('sent', [{ field: 'shiftAdded', shift: 'Sunday 12:00 to 18:00' }]),
+    ...waiting('sent', [{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
   },
   yusuf: {
     shift: null,
     ...waiting('sent', [
-      { field: 'shiftOff', shift: 'Saturday 18:00 to 00:00' },
+      { field: 'shiftOff', shift: 'Saturday 18:00–Sunday 00:00' },
       { field: 'noShift' },
     ]),
   },
@@ -561,7 +561,7 @@ const STATES = {
   several_shifts: () =>
     start({
       title: 'Several shifts, waiting',
-      what: 'Dayo has one of two shifts retimed, Grace a shift added, Yusuf his last taken off: each Goes at with its short line, bracketed until [en] writes them',
+      what: 'Dayo has one of two shifts retimed, Grace a shift added, and Yusuf’s last is taken off: each Goes at with its short line, the start with its weekday',
       people: edited(SEVERAL),
     }),
   eve: () =>

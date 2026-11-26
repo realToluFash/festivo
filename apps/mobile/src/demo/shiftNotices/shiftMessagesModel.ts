@@ -102,22 +102,20 @@ const CHANGES: Partial<Record<MessageKind, readonly ChangeKey[]>> = {
   several: ['start', 'job', 'venue'],
 };
 
-/** Bracketed until [en] writes them (#96276). */
+/** Each {start} carries its weekday; {end} and the old times only when on another day than the time before them. */
 const SHIFT = {
-  added: (day: string, start: string, end: string) =>
-    `[You are now also on ${day}, ${start} to ${end}.]`,
-  removed: (day: string, start: string, end: string) =>
-    `[You are no longer on ${day}, ${start} to ${end}.]`,
-  retimed: (day: string, start: string, end: string, wasStart: string, wasEnd: string) =>
-    `[Your shift on ${day} is now ${start} to ${end} (was ${wasStart} to ${wasEnd}).]`,
-  none: '[You have no shift at this event for now. Your shift page still works.]',
+  added: (start: string, end: string) => `You now have a shift from ${start} to ${end}.`,
+  removed: (start: string, end: string) => `You no longer have the shift from ${start} to ${end}.`,
+  retimed: (start: string, end: string, wasStart: string, wasEnd: string) =>
+    `Your shift is now ${start} to ${end} (was ${wasStart} to ${wasEnd}).`,
+  none: `You have no shift at ${EVENT} for now. You are still on the staff.`,
 };
 
 const SHIFT_LINES: Partial<Record<MessageKind, readonly string[]>> = {
-  shift_added: [SHIFT.added(NEW_DATE, '12:00', '18:00')],
-  shift_removed: [SHIFT.removed(NEW_DATE, '12:00', '18:00')],
-  shift_retimed: [SHIFT.retimed(NEW_DATE, '12:00', '17:00', '12:00', '18:00')],
-  no_shift_left: [SHIFT.removed(DATE, START, '23:00'), SHIFT.none],
+  shift_added: [SHIFT.added('Sunday 12:00', '18:00')],
+  shift_removed: [SHIFT.removed('Sunday 12:00', '18:00')],
+  shift_retimed: [SHIFT.retimed('Sunday 12:00', '17:00', '12:00', '18:00')],
+  no_shift_left: [SHIFT.removed(`Saturday ${START}`, '23:00'), SHIFT.none],
 };
 
 export interface Message {
@@ -186,7 +184,19 @@ export function messageOf(kind: MessageKind, channel: Channel): Message {
       button,
     };
 
-  const lines = SHIFT_LINES[kind] ?? changeLines(kind);
+  const shiftLines = SHIFT_LINES[kind];
+  if (shiftLines != null)
+    return {
+      title: `Your shifts have changed · ${EVENT}`,
+      lines: shiftLines,
+      text: withLink(
+        [`${ORGANISATION}: your shifts at ${EVENT} have changed.`, ...shiftLines].join(' '),
+      ),
+      link: channel === 'sms' ? SAMPLE_LINK : null,
+      button,
+    };
+
+  const lines = changeLines(kind);
   const on = kind === 'date' ? NEW_DATE : DATE;
 
   return {

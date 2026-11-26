@@ -57,9 +57,12 @@ describe('the roster’s Briefing lines', () => {
   it('reads a shift retimed, added, and the last taken off, one line per shift', () => {
     const between = (id: string) => words('several_shifts', id).slice(1, -1);
 
-    expect(between('dayo')).toEqual(['[Saturday 15:00 to 23:00 (was 17:00 to 23:00)]']);
-    expect(between('grace')).toEqual(['[Added: Sunday 12:00 to 18:00]']);
-    expect(between('yusuf')).toEqual(['[Off: Saturday 18:00 to 00:00]', '[No shift for now]']);
+    expect(between('dayo')).toEqual(['Shift Saturday 15:00–23:00 (was 17:00–23:00)']);
+    expect(between('grace')).toEqual(['Assigned Sunday 12:00–18:00']);
+    expect(between('yusuf')).toEqual([
+      'Unassigned Saturday 18:00–Sunday 00:00',
+      'No shift left, still on the staff',
+    ]);
   });
 
   it('reminds nobody left with no shift', () => {

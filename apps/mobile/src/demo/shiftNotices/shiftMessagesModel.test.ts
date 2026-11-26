@@ -9,6 +9,7 @@ import {
   messageKindOf,
   messageOf,
 } from './shiftMessagesModel.ts';
+import { SAMPLE } from '../samples.ts';
 
 const LINK = 'https://soirely.com/s/7Gk2pQ9xVb4mT1sR8nLw3c';
 
@@ -54,16 +55,25 @@ describe('a change to the shift (S2)', () => {
 });
 
 describe('a change to one of several shifts (S2)', () => {
-  it('says a line per shift, with its day, in place of the start and end lines', () => {
+  it('says a line per shift, each start with its weekday, in place of the start and end lines', () => {
     expect(messageOf('shift_added', 'push').lines).toEqual([
-      '[You are now also on Sunday, Oct 18, 12:00 to 18:00.]',
+      'You now have a shift from Sunday 12:00 to 18:00.',
     ]);
     expect(messageOf('shift_removed', 'push').lines).toEqual([
-      '[You are no longer on Sunday, Oct 18, 12:00 to 18:00.]',
+      'You no longer have the shift from Sunday 12:00 to 18:00.',
     ]);
     expect(messageOf('shift_retimed', 'push').lines).toEqual([
-      '[Your shift on Sunday, Oct 18 is now 12:00 to 17:00 (was 12:00 to 18:00).]',
+      'Your shift is now Sunday 12:00 to 17:00 (was 12:00 to 18:00).',
     ]);
+  });
+
+  it('heads them Your shifts have changed, with no date in the SMS and WhatsApp lead', () => {
+    expect(messageOf('shift_added', 'push').title).toBe(
+      'Your shifts have changed · Adaeze & Tunde’s wedding',
+    );
+    expect(messageOf('shift_retimed', 'whatsApp').text).toBe(
+      `${SAMPLE.organisation}: your shifts at Adaeze & Tunde’s wedding have changed. Your shift is now Sunday 12:00 to 17:00 (was 12:00 to 18:00).`,
+    );
   });
 
   it('keeps the link when the last shift goes, and never reads as a removal', () => {
@@ -71,8 +81,8 @@ describe('a change to one of several shifts (S2)', () => {
 
     expect(last.link).toBe(LINK);
     expect(messageOf('no_shift_left', 'push').lines).toEqual([
-      '[You are no longer on Saturday, Oct 17, 17:00 to 23:00.]',
-      '[You have no shift at this event for now. Your shift page still works.]',
+      'You no longer have the shift from Saturday 17:00 to 23:00.',
+      'You have no shift at Adaeze & Tunde’s wedding for now. You are still on the staff.',
     ]);
     expect(last.text).not.toContain('no longer on the staff');
     expect(messageOf('no_shift_left', 'whatsApp').button).toBe(MY_SHIFT);
