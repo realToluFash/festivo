@@ -1,15 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
-import { needsConnection, refusalKey, tapKind, tapOutcome, tapRefusals } from './serviceTaps.ts';
+import type { Freshness } from './serviceFreshness.ts';
+import { refusalKey, tapKind, tapNow, tapOutcome, tapRefusals } from './serviceTaps.ts';
 
 const ERRORS = 'https://soirely.com/errors/';
 
-describe('which taps need a connection', () => {
-  it('keeps a step and refuses a tray start or a tick on a flagged guest', () => {
-    expect(needsConnection(tapKind('check'))).toBe(false);
-    expect(needsConnection(tapKind('tick'))).toBe(false);
-    expect(needsConnection(tapKind('tick', true))).toBe(true);
-    expect(needsConnection('startTray')).toBe(true);
+const CONNECTED: Freshness = { state: 'connected', asOf: new Date('2027-03-06T19:00:00Z') };
+const NOT_STARTED: Freshness = { state: 'notStarted' };
+const NO_CONNECTION: Freshness = { state: 'noConnection', asOf: null, waiting: 0 };
+
+describe('what a tap does now', () => {
+  it('sends a queue change before service with the network up', () => {
+    expect(tapNow('queueChange', NOT_STARTED)).toBe('send');
+  });
+
+  it('sends every tap while Connected', () => {
+    for (const kind of ['startTray', 'mark', tapKind('tick', true), 'allServed'] as const) {
+      expect(tapNow(kind, CONNECTED)).toBe('send');
+    }
+  });
+
+  it('refuses starting a tray and a flagged guest’s tick with No connection, keeping nothing', () => {
+    expect(tapNow('startTray', NO_CONNECTION)).toEqual({
+      refused: 'service.needsConnection.startTray',
+    });
+    expect(tapNow(tapKind('tick', true), NO_CONNECTION)).toEqual({
+      refused: 'service.needsConnection.flaggedTick',
+    });
+    expect(tapNow('queueChange', NO_CONNECTION)).toEqual({ refused: null });
+  });
+
+  it('keeps a mark, an unflagged tick and All served with No connection', () => {
+    expect(tapNow('mark', NO_CONNECTION)).toBe('keep');
+    expect(tapNow(tapKind('tick'), NO_CONNECTION)).toBe('keep');
+    expect(tapNow('allServed', NO_CONNECTION)).toBe('keep');
   });
 });
 

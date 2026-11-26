@@ -1,3 +1,4 @@
+import type { Freshness } from './serviceFreshness.ts';
 import { ITEM_STATES, type ItemState, PLATE_STAGES, type PlateStage } from './serviceStages.ts';
 
 /** sc-4005's writes that are kept on the device with no connection, sent in order, and checked by the API when they land. */
@@ -36,7 +37,7 @@ export function tapKind(kind: KeptTap, guestFlagged = false): ServiceTapKind {
   return kind === 'tick' && guestFlagged ? 'flaggedTick' : kind;
 }
 
-export function needsConnection(kind: ServiceTapKind): boolean {
+function needsConnection(kind: ServiceTapKind): kind is ConnectionTap {
   return (CONNECTION_TAPS as readonly string[]).includes(kind);
 }
 
@@ -44,6 +45,17 @@ export const NEEDS_CONNECTION_KEYS: Partial<Record<ConnectionTap, string>> = {
   startTray: 'service.needsConnection.startTray',
   flaggedTick: 'service.needsConnection.flaggedTick',
 };
+
+/** What a tap does now: sent, kept to send later, or refused while the device is No connection, with the key its story shows (null where that story has none yet). */
+export function tapNow(
+  kind: ServiceTapKind,
+  freshness: Freshness,
+): 'send' | 'keep' | { refused: string | null } {
+  if (freshness.state !== 'noConnection') return 'send';
+  if (needsConnection(kind)) return { refused: NEEDS_CONNECTION_KEYS[kind] ?? null };
+
+  return 'keep';
+}
 
 export interface TapExpected {
   plates?: Record<string, PlateStage>;
