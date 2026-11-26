@@ -131,7 +131,7 @@ export function Chip({
       ]}
     >
       <Shape status={status} side={big ? 18 : 15} />
-      <Text size={big ? 15 : 13} weight="semibold" style={{ color: st.ink }}>
+      <Text size={big ? 15 : 13} weight="semibold" style={{ color: st.ink, flexShrink: 1 }}>
         {words ?? t(STATUS_KEY[status])}
       </Text>
     </View>
@@ -346,6 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     gap: 5,
     minHeight: 28,
     paddingLeft: 8,

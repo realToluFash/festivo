@@ -608,7 +608,7 @@ function Strip({ freshness, time }: { freshness: Freshness; time: (at: Date) => 
       ) : (
         <Glyph paths={GLYPH.offline} ink={tokens.colorInkSecondary} side={15} />
       )}
-      <Text size={14} weight="medium" style={styles.secondary}>
+      <Text size={14} weight="medium" style={[styles.secondary, styles.shrink]}>
         {words}
       </Text>
     </View>
@@ -982,6 +982,7 @@ const styles = StyleSheet.create({
   titleWords: { flexShrink: 1 },
   strip: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm, minHeight: 24 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colorAccent },
+  shrink: { flexShrink: 1 },
   landing: { gap: tokens.spaceMd },
   moved: {
     flexDirection: 'row',
