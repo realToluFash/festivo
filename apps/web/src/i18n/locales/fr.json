@@ -7083,8 +7083,8 @@
       "preparing": "En préparation"
     },
     "mark": {
-      "on": "Présent",
-      "notOn": "Absent",
+      "on": "Posé",
+      "notOn": "Pas posé",
       "bringAfter": "À apporter ensuite"
     },
     "owed": {
