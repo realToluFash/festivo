@@ -348,8 +348,10 @@ final class ClockingTest extends ApiTestCase
     public function aPersonRemovedAfterClockingInKeepsTheirTimesUnderTheirNameAndIsCountedAsIfTheyHadStayed(): void
     {
         $kunle = $this->person('Kunle Bello', '0803 111 0011');
+        $tunde = $this->person('Tunde Yusuf', '0803 111 0012');
         $this->onShift($this->grace, '2027-03-06T17:00', '2027-03-07T01:00');
         $this->onShift($kunle, '2027-03-06T17:00', '2027-03-07T01:00');
+        $this->onShift($tunde, '2027-03-06T17:00', '2027-03-07T01:00');
         $shift = $this->shiftOf($this->grace);
         $this->as($this->owner, 'PUT', '/api/events/' . $this->eventId . '/budget/staff-rates/jobs/' . $this->jobId, ['kind' => 'hourly', 'amount' => '1500', 'currency' => 'NGN']);
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
@@ -364,11 +366,13 @@ final class ClockingTest extends ApiTestCase
         self::em()->clear();
         self::assertNull(self::em()->find(StaffMember::class, $this->grace), 'their entry, with its mobile number and email, is gone');
         $shifts = Type\vec(Type\shape(['id' => Type\string(), 'people' => Type\vec(Type\string())], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['shifts'] ?? null);
-        self::assertSame([$kunle], (Iter\search($shifts, static fn (array $one): bool => $one['id'] === $shift) ?? self::fail('no shift'))['people'], 'their place opens');
+        self::assertEqualsCanonicalizing([$kunle, $tunde], (Iter\search($shifts, static fn (array $one): bool => $one['id'] === $shift) ?? self::fail('no shift'))['people'], 'their place opens');
         $this->person('Grace Okon', '0803 111 0009');
 
         self::mockTime(new DateTimeImmutable('2027-03-07T09:00:00Z'));
-        $row = $this->rows($this->as($this->owner, 'GET', $this->path('hours')))['Grace Okon'];
+        $rows = $this->rows($this->as($this->owner, 'GET', $this->path('hours')));
+        self::assertSame(['Kunle Bello', 'Tunde Yusuf', 'Grace Okon'], Vec\keys($rows), 'a removed person comes after the shift\'s current people');
+        $row = $rows['Grace Okon'];
         self::assertSame([$shift, $this->grace, true, 476, 476, 'not_clocked_out', false], [$row['shiftId'], $row['staffId'], $row['removed'], $row['workedMinutes'], $row['assumedMinutes'], $row['mark'], $row['stillOn']]);
         $rates = $this->as($this->owner, 'GET', '/api/events/' . $this->eventId . '/budget/staff-rates');
         self::assertSame(200, $this->statusCode(), Json\encode($rates));

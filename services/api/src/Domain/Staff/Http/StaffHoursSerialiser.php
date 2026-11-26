@@ -51,16 +51,20 @@ final readonly class StaffHoursSerialiser
             static fn (ShiftAttendance $one): array => [HoursWorked::placeKey($one->getShift(), $one->getPersonId()->toRfc4122()), $one],
         ));
         $removed = Vec\filter($attendances, static fn (ShiftAttendance $one): bool => null === $one->getStaffMember());
-        $rows = Vec\flat_map($shifts, static fn (StaffShift $shift): array => Vec\sort(
-            [
-                ...Vec\map($shift->getPeople(), static fn (StaffMember $person): array => self::row($shift, $person->getId()->toRfc4122(), $person->getFullName(), $attendances[HoursWorked::placeKey($shift, $person->getId()->toRfc4122())] ?? null, $now, $zone)),
-                ...Vec\map(
+        $byName = static fn (array $a, array $b): int => Str\lowercase($a['name']) <=> Str\lowercase($b['name']);
+        $rows = Vec\flat_map($shifts, static fn (StaffShift $shift): array => [
+            ...Vec\sort(
+                Vec\map($shift->getPeople(), static fn (StaffMember $person): array => self::row($shift, $person->getId()->toRfc4122(), $person->getFullName(), $attendances[HoursWorked::placeKey($shift, $person->getId()->toRfc4122())] ?? null, $now, $zone)),
+                $byName,
+            ),
+            ...Vec\sort(
+                Vec\map(
                     Vec\filter($removed, static fn (ShiftAttendance $one): bool => $one->getShift() === $shift),
                     static fn (ShiftAttendance $one): array => self::row($shift, $one->getPersonId()->toRfc4122(), $one->name(), $one, $now, $zone),
                 ),
-            ],
-            static fn (array $a, array $b): int => Str\lowercase($a['name']) <=> Str\lowercase($b['name']),
-        ));
+                $byName,
+            ),
+        ]);
         $ends = Vec\map($shifts, static fn (StaffShift $shift): int => ClockWindow::endOf($shift)->getTimestamp());
 
         return [
