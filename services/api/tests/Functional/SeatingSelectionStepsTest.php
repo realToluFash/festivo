@@ -244,16 +244,16 @@ final class SeatingSelectionStepsTest extends ApiTestCase
         self::assertSame(['Table 1'], $this->names());
     }
 
-    /**
-     * @param list<array<string, mixed>> $items
-     *
-     * @return array<string, mixed>
-     */
     private function seatingPublished(): int
     {
         return Iter\count(Vec\filter(self::service(RecordingHub::class)->published, fn (Update $update): bool => $update->getTopics() === ['events/' . $this->eventId . '/seating']));
     }
 
+    /**
+     * @param list<array<string, mixed>> $items
+     *
+     * @return array<string, mixed>
+     */
     private function step(string $method, string $path, array $items, ?User $by = null): array
     {
         return $this->as($by ?? $this->owner, $method, $this->furniture() . ('' === $path ? '' : '/' . $path), ['items' => $items]);
