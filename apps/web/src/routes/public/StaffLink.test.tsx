@@ -149,6 +149,7 @@ const NIGHT = {
     },
   ],
   checksIn: false,
+  dishes: false,
 };
 
 const SIGNED_IN = {

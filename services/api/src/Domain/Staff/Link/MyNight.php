@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Domain\Event\LocalTimeResolver;
+use App\Domain\Menu\Interfaces\ServingStationsInterface;
 use App\Domain\Staff\ShiftClock;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -17,6 +18,8 @@ use App\Entity\StaffShift;
 use App\Entity\StaffStation;
 use App\Enum\NeedKind;
 use App\Enum\Permission;
+use App\Enum\ServicePlace;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\GuestNeedRepository;
 use App\Repository\ScheduleItemRepository;
 use App\Repository\SeatAssignmentRepository;
@@ -40,11 +43,13 @@ final readonly class MyNight
         private SeatingTableRepository $seatingTableRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
         private GuestNeedRepository $guestNeedRepository,
+        private ServingStationsInterface $servingStations,
+        private MembershipDirectoryInterface $membershipDirectory,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their job's level opens the door (sc-28230) */
+    /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open; `checksIn` when their job's level opens the door (sc-28230); `dishes` when their station dishes and their account opens the kitchen stations (sc-95382) */
     public function of(StaffMember $entry, DateTimeImmutable $until): array
     {
         $event = $entry->getEvent();
@@ -72,7 +77,22 @@ final readonly class MyNight
             'doorsAt' => $doorsAt->format(\DATE_ATOM),
             'tables' => $this->tables($station, $now >= $doorsAt),
             'checksIn' => Iter\contains(StaffLinkGrants::levelOf($entry)->permissions(), Permission::GuestsCheckIn),
+            'dishes' => $this->dishes($entry),
         ];
+    }
+
+    /** Their station is one of the kitchen stations, the Pass included (sc-3910), and the account they read it with opens them (sc-4002). */
+    private function dishes(StaffMember $entry): bool
+    {
+        $station = $entry->getStation()?->getId()->toRfc4122();
+        $account = $entry->getAccount();
+        $event = $entry->getEvent();
+
+        if (null === $station || null === $account || !Iter\any($this->servingStations->of($event)['stops'], static fn (array $stop): bool => $stop['id'] === $station)) {
+            return false;
+        }
+
+        return true === $this->membershipDirectory->grantsOnEvent($account, $event->getOrganisation()->getId(), $event->getId())?->servesAt(ServicePlace::Pass);
     }
 
     /** @param list<StaffShift> $shifts by start; the one under way, else the next, else the last */

@@ -35,6 +35,7 @@ const NIGHT: MyNight = {
   doorsAt: '2026-11-28T19:00:00+01:00',
   tables: null,
   checksIn: false,
+  dishes: false,
 };
 
 describe('My night leads to check-in (sc-28230)', () => {

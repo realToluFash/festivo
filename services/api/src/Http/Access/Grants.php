@@ -109,6 +109,12 @@ final readonly class Grants
         }
     }
 
+    /** Whether requireServiceAt would let this reader work the place. */
+    public function servesAt(ServicePlace $place): bool
+    {
+        return $this->holds(Permission::ServiceWork) && (null === $this->eventRole || $this->eventRole->worksAt($place));
+    }
+
     /** Whether the area is one this reader is shown: its read held. */
     public function opens(PermissionArea $area): bool
     {
