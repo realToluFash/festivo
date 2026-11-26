@@ -17,7 +17,7 @@ import {
 } from './MessagesModel.ts';
 import { DAYS, SCHEDULED, SCHEDULED_BODY } from './MessagesSample.ts';
 import { W } from './MessagesWords.ts';
-import { SW, pausedWaits, refusalLine } from './ScheduledSave.ts';
+import { SW, pausedWaits, refusalLine, sayNobody } from './ScheduledSave.ts';
 
 const REFUSED = ['editConflict', 'editSent', 'editCancelled', 'editTooLate'];
 const TYPED = SCHEDULED_BODY.replace('17:30', '17:15');
@@ -198,5 +198,36 @@ describe('sc-3963’s paused, finished and too-late rows', () => {
     expect(m.draft?.outcome).toBe('tooLate');
     expect(m.draft == null ? '' : draftLine(m.draft)).toBe('To Coming · Sat, Oct 31, 09:00');
     expect(where(m)).toBe('done');
+  });
+});
+
+describe('sc-3963’s nobodyDue: a message that matched nobody when it went', () => {
+  it('is read from ?state= and linked from the demo home', () => {
+    expect(messagesStateOf('nobodyDue')).toBe('nobodyDue');
+    expect(MESSAGES_BOARDS.find((board) => board.state === 'nobodyDue')?.href).toBe(
+      '/demo/events/evt-wed-4?area=messages&state=nobodyDue',
+    );
+  });
+
+  it('sits in Done, its row in the web’s words, with nothing left to do', () => {
+    const m = opened('nobodyDue');
+
+    expect(m.draft?.outcome).toBe('nobody');
+    expect(m.draft == null ? '' : draftLine(m.draft)).toBe(
+      'Nobody matched when it was due, 09:00 · sent nothing',
+    );
+    expect(m.draft != null && isScheduled(m.draft)).toBe(false);
+    expect(where(m)).toBe('done');
+  });
+
+  it('says why it sent nothing, greyed, with no actions and no Who it reached', () => {
+    const talk = source('Conversation.tsx');
+
+    expect(sayNobody.line('09:00')).toBe(
+      'At 09:00 no guest matched its conditions, so it sent nothing.',
+    );
+    expect(talk).toContain("if (draft.outcome === 'nobody') return [];");
+    expect(talk).toContain('<SystemLine text={sayNobody.line(at.time)} glyph="x" />');
+    expect(talk).toContain("draft.outcome === 'tooLate' || draft.outcome === 'nobody'");
   });
 });

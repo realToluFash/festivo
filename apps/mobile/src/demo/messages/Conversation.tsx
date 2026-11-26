@@ -58,7 +58,7 @@ import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './Messag
 import { Preview } from './Preview.tsx';
 import { previewOf, previewOffOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
-import { SW, pausedWaits } from './ScheduledSave.ts';
+import { SW, pausedWaits, sayNobody } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
 import { SMSW } from './SmsWords.ts';
 import { type Stopping, headOf, stoppedLine } from './StopWriting.ts';
@@ -787,6 +787,7 @@ function endBits(draft: Draft, when: string): Bit[] {
   if (draft.outcome === 'sent')
     return [{ word: W.onTheirPage, where: 'page' }, { word: say.byAt(READER, draft.time) }];
   if (draft.outcome === 'tooLate') return [{ word: W.tooLate, mark: 'notsent' }];
+  if (draft.outcome === 'nobody') return [];
 
   return draft.paused === true && draft.step === 'scheduled'
     ? [{ word: W.scheduled, ring: true }, { word: when }]
@@ -808,7 +809,7 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       text={shown.body}
       bits={endBits(draft, say.inZone(day, at.time, W.londonTime))}
       dashed={!cancelled && draft.outcome == null}
-      greyed={cancelled || draft.outcome === 'tooLate'}
+      greyed={cancelled || draft.outcome === 'tooLate' || draft.outcome === 'nobody'}
       faded={draft.was != null}
     />
   );
@@ -840,6 +841,8 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
       />
     );
   else if (draft.outcome === 'tooLate') rest = <SystemLine text={SW.tooLateWhy} glyph="clock" />;
+  else if (draft.outcome === 'nobody')
+    rest = <SystemLine text={sayNobody.line(at.time)} glyph="x" />;
   else if (draft.outcome === 'sent') rest = null;
   else if (draft.was != null) {
     const editingLine = (
@@ -953,7 +956,10 @@ function scheduledParts(talk: Talk, draft: Draft): Parts {
   return {
     title: messageName(draft),
     titleLines: 1,
-    line: `${say.toGroup(toChip(draft.to))} · ${scheduledWord(draft, talk.locale)}`,
+    line:
+      draft.outcome === 'nobody'
+        ? say.toGroup(toChip(draft.to))
+        : `${say.toGroup(toChip(draft.to))} · ${scheduledWord(draft, talk.locale)}`,
     lead: <GroupTile side={44} />,
     stream: (
       <>

@@ -10,6 +10,7 @@ export const SW = {
   tooLateWhy: 'The event was not resumed or restored within 48 hours of this message’s time.',
   editingPaused: 'Editing.',
   finishedWhy: 'The event finished before this message was due.',
+  sentNothing: 'sent nothing',
 } as const;
 
 /** How late a held message may go: the API's figure, 48 in the sample. */
@@ -19,6 +20,12 @@ export const TOO_LATE_HOURS = 48;
 export function pausedWaits(hours = TOO_LATE_HOURS): string {
   return `This message is waiting while the event is paused. If the event is live again by this message’s time, it goes then. If not, it goes soon after the event is live again, unless that is more than ${hours} ${hours === 1 ? 'hour' : 'hours'} late.`;
 }
+
+/** sc-3963's `nobodyDue`, in the web demo's words: a message whose conditions matched nobody when it went. */
+export const sayNobody = {
+  row: (time: string) => `Nobody matched when it was due, ${time} · ${SW.sentNothing}`,
+  line: (time: string) => `At ${time} no guest matched its conditions, so it sent nothing.`,
+};
 
 export const saySaved = {
   notSavedChanged: (name: string) => `Not saved. ${name} changed this message.`,
