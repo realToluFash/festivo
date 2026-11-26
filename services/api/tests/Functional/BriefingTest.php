@@ -241,6 +241,16 @@ final class BriefingTest extends ApiTestCase
     }
 
     #[Test]
+    public function theRulesRefusalWritesTwoThousandInSpanishAsTheClientsDo(): void
+    {
+        $this->as($this->owner, 'PUT', $this->rulesPath(), ['rules' => Str\repeat('a', 2001)], 'es');
+
+        self::assertSame(422, $this->statusCode());
+        $violation = Type\shape(['message' => Type\string()], true)->coerce(Type\vec(Type\mixed())->coerce($this->last()['violations'] ?? null)[0] ?? null);
+        self::assertSame('Acorte las normas de la casa a 2000 caracteres como máximo.', $violation['message']);
+    }
+
+    #[Test]
     public function aPreviewRecordsNothing(): void
     {
         $this->copy($this->ada);
@@ -443,13 +453,13 @@ final class BriefingTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function as(User $user, string $method, string $path, ?array $body = null): array
+    private function as(User $user, string $method, string $path, ?array $body = null, string $language = 'en'): array
     {
         $who = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($who),
-            'HTTP_ACCEPT_LANGUAGE' => 'en',
+            'HTTP_ACCEPT_LANGUAGE' => $language,
         ], content: null === $body ? null : Json\encode($body));
 
         return $this->last();

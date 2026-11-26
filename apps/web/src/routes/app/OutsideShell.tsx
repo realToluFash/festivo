@@ -84,7 +84,10 @@ export function OutsideShell({
   const areas = outsideAreas(event.role);
 
   const refusedHere =
-    held != null && matchPath('/app/events/:eventId/staff/roster', pathname) != null;
+    held != null &&
+    ['/app/events/:eventId/staff', '/app/events/:eventId/staff/roster'].some(
+      (path) => matchPath(path, pathname) != null,
+    );
 
   if (
     !atAccount &&
