@@ -16,6 +16,7 @@ import { type CodeSource, useCodeCheck } from '../../codeCheck.ts';
 import { Glyph } from '../../components/Glyph.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { codeChoice, phoneProblemMessage } from '../../phoneProblem.ts';
+import { type ProviderOnly, providerOnlyBy } from '../../session.ts';
 import { PHONE_CODE_LENGTH, type PhoneEntry } from './redeemEntry.ts';
 
 function entryLines(entry: PhoneEntry, t: ReturnType<typeof useTranslation>['t']) {
@@ -150,6 +151,7 @@ function CountryCode({ country, onChange }: { country: string; onChange: (code: 
 export type Leave<Signed> =
   | { kind: 'signedIn'; signedIn: Signed }
   | { kind: 'alternative' }
+  | { kind: 'providerOnly'; refusal: ProviderOnly }
   | { kind: 'refused'; error: ApiError };
 
 /** The phone code in a browser: one field and Verify, nothing sent as it is typed (WCAG 3.2.2). */
@@ -196,6 +198,11 @@ export function PhoneCodeStep<Signed>({
       if (when !== 'answer' || !(error instanceof ApiError)) return false;
       if (error.is('phone_alternative')) {
         onLeave({ kind: 'alternative' });
+        return true;
+      }
+      const providerOnly = providerOnlyBy(error.problem);
+      if (providerOnly != null) {
+        onLeave({ kind: 'providerOnly', refusal: providerOnly });
         return true;
       }
       if (error.status === 429 || error.status === 404 || error.is('door_code_invalid')) {

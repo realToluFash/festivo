@@ -12,10 +12,12 @@ import { useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
+import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
+import { providerList } from '../../providerList.ts';
 import { holdReturn } from '../../heldReturn.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { meshFor } from '../../mesh.ts';
-import { adoptAccount, useSessionState } from '../../session.ts';
+import { type ProviderOnly, adoptAccount, useSessionState } from '../../session.ts';
 import { useSignOut } from '../../signOut.ts';
 import { codePassed } from '../../providerSignIn.ts';
 import { MyNightPage } from './MyNight.tsx';
@@ -30,6 +32,7 @@ type Step =
   | { kind: 'code'; handle: string }
   | { kind: 'twoFactor'; challenge: TwoFactorChallenge }
   | { kind: 'alternative' }
+  | { kind: 'providerOnly'; refusal: ProviderOnly }
   | { kind: 'tooMany'; when: string | null; words: string };
 
 type Confirm = Extract<Step, { kind: 'confirm' }>;
@@ -192,6 +195,8 @@ export function StaffLinkSignIn({
             action={{ idle: t('staffLink.signIn.signIn'), busy: t('staffLink.signIn.signingIn') }}
             onLeave={(leave) => {
               if (leave.kind === 'alternative') go({ kind: 'alternative' });
+              else if (leave.kind === 'providerOnly')
+                go({ kind: 'providerOnly', refusal: leave.refusal });
               else if (leave.kind === 'refused') refused(leave.error);
               else void signedIn(leave.signedIn);
             }}
@@ -220,6 +225,22 @@ export function StaffLinkSignIn({
             <Title titleRef={title}>{t('staffLink.signIn.confirm')}</Title>
             <LinkCard link={link} />
             <p className="ss-told">{t('staffLink.signIn.alternative')}</p>
+          </>
+        );
+      case 'providerOnly':
+        return (
+          <>
+            <Title titleRef={title}>
+              {t('signIn.providerOnlyTitle', { organisation: step.refusal.organisation })}
+            </Title>
+            <LinkCard link={link} />
+            <p className="ss-told">
+              {t('signIn.providerOnlyCode', {
+                organisation: step.refusal.organisation,
+                providers: providerList(step.refusal.providers),
+              })}
+            </p>
+            <ProviderSignIn only={step.refusal.providers} returnTo={`/w/${token}`} />
           </>
         );
       case 'tooMany':

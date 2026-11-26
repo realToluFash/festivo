@@ -736,6 +736,7 @@
     "timedOutBody_many": "{{organisation}} ferme les sessions après {{count, number}} de jours d’inactivité. Reconnectez-vous pour poursuivre.",
     "providerOnlyTitle": "{{organisation}} : connexion avec Google ou Apple uniquement",
     "providerOnlyBody": "La connexion par mot de passe est désactivée dans {{organisation}}. Utilisez plutôt {{providers}}.",
+    "providerOnlyCode": "A code sent to your phone cannot sign you in to this account. {{organisation}} asks everyone in it to use {{providers}}.",
     "anotherAccount": "Se connecter avec un autre compte",
     "providerOnlyFootnote": "Une règle fixée par {{organisation}} : la connexion par mot de passe y est désactivée pour tout le monde."
   },
