@@ -18,7 +18,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Service\ResetInterface;
 
 /** The service heartbeat's worker (sc-4028), shaped as the notification worker is: it exits after its limits and on SIGTERM, and the container's restart picks up new code. */
-#[AsCommand(name: self::NAME, description: 'Publish a heartbeat on each service topic every 10 seconds while service is on')]
+#[AsCommand(name: self::NAME, description: 'Publish a heartbeat on each service topic every 10 seconds while service is on, and each change of phase within a second')]
 final class ServiceHeartbeatCommand extends Command implements SignalableCommandInterface
 {
     public const string NAME = 'app:service:heartbeat';
@@ -48,10 +48,18 @@ final class ServiceHeartbeatCommand extends Command implements SignalableCommand
         $deadline = \microtime(true) + self::number($input->getOption('time-limit'));
         $memoryLimit = (int) (self::number($input->getOption('memory-limit')) * 1024 * 1024);
         $beats = 0;
+        $on = [];
+        $beatAt = 0.0;
 
         while (!$this->stopping) {
-            $next = \microtime(true) + ServiceHeartbeat::EVERY_SECONDS;
-            $beats += $this->serviceHeartbeat->beat();
+            $next = \microtime(true) + ServiceHeartbeat::LOOK_SECONDS;
+            $on = $this->serviceHeartbeat->look($on);
+
+            if (\microtime(true) >= $beatAt) {
+                $beatAt = \microtime(true) + ServiceHeartbeat::EVERY_SECONDS;
+                $beats += $this->serviceHeartbeat->beat();
+            }
+
             $this->entityManager->clear();
             $this->servicesResetter->reset();
 
