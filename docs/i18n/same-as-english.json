@@ -252,7 +252,11 @@
     "mobile:station.heldUpFor_other",
     "mobile:station.minutes_one",
     "mobile:station.minutes_other",
-    "web:briefing.card"
+    "web:briefing.card",
+    "web:staffRates.minutes",
+    "mobile:shiftClock.minutes_one",
+    "mobile:shiftClock.minutes_other",
+    "mobile:staffHours.date"
   ],
   "pt": [
     "web:staffRates.hoursMinutes",
