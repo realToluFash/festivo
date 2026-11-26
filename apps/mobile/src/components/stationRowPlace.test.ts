@@ -13,7 +13,7 @@ describe('the Kitchen station row on each Overview (sc-95382)', () => {
 
   it('sits under Your night and above the guests on an outsider’s Overview', () => {
     expect(outside).toMatch(
-      /\.\.\.\(night == null \? \[\] : \[night\]\),\n\s*\.\.\.\(station == null \? \[\] : \[station\]\),\n\s*\{\n\s*key: 'guests',/u,
+      /\.\.\.\(night == null \? \[\] : \[night\]\),\n\s*\.\.\.\(station == null \? \[\] : \[station\]\),\n\s*\.\.\.\(reads\n\s*\? \[\n\s*\{\n\s*key: 'guests',/u,
     );
   });
 });

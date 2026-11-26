@@ -1,4 +1,4 @@
-import type { OutsideEvent } from '@soirely/api-client';
+import { isServiceLevel, type OutsideEvent } from '@soirely/api-client';
 import {
   formatEventClock,
   formatEventDate,
@@ -17,16 +17,27 @@ const READING_PLACES: readonly EventPlace[] = [
   'people',
 ];
 
-/** On a phone, held from outside, the tabs before More; the level's other areas are in More (sc-71). */
-export const OUTSIDE_TABS: readonly EventPlace[] = ['overview', 'guests'];
+/** On a phone, held from outside, the tabs before More; the level's other areas are in More (sc-71). A service level has Overview alone (sc-96279). */
+export function outsideTabs(role: OutsideEvent['role']): readonly EventPlace[] {
+  return outsidePlaces(role).filter((place) => place === 'overview' || place === 'guests');
+}
 
-/** What a level held from outside an organisation opens (sc-71): the reading levels the event's own screens, Can edit every area but Budget. */
+/** What a level held from outside an organisation opens (sc-71): the reading levels the event's own screens, Can edit every area but Budget, a service level Overview alone (sc-96279). */
 export function outsidePlaces(role: OutsideEvent['role']): readonly EventPlace[] {
-  return role === 'can_edit' ? EVENT_PLACES.filter((place) => place !== 'budget') : READING_PLACES;
+  if (role === 'can_edit') return EVENT_PLACES.filter((place) => place !== 'budget');
+
+  return isServiceLevel(role) ? ['overview'] : READING_PLACES;
 }
 
 export function outsideMore(role: OutsideEvent['role']): readonly EventPlace[] {
-  return outsidePlaces(role).filter((place) => !OUTSIDE_TABS.includes(place));
+  const tabs = outsideTabs(role);
+
+  return outsidePlaces(role).filter((place) => !tabs.includes(place));
+}
+
+/** The area a link asks for, held from outside: one the level does not open lands on Overview (sc-96279). */
+export function outsideArea(role: OutsideEvent['role'], asked: EventPlace): EventPlace {
+  return outsidePlaces(role).includes(asked) ? asked : 'overview';
 }
 
 interface Held {

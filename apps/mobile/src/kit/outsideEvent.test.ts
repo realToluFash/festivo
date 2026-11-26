@@ -10,10 +10,12 @@ import {
   levelLine,
   outsideGroups,
   outsideHref,
+  outsideArea,
   outsideLanding,
   outsideMore,
   outsideOn,
   outsidePlaces,
+  outsideTabs,
   readsOverview,
   switcherOutside,
   wayBack,
@@ -77,6 +79,33 @@ describe('what a level held from outside opens', () => {
     expect(outsideMore('can_edit')).not.toContain('overview');
     expect(outsideMore('can_edit')).not.toContain('guests');
     expect(outsideMore('can_edit')).toContain('menu');
+  });
+});
+
+describe('a service level held from outside (sc-96279)', () => {
+  it.each(['can_work_floor', 'can_work_pass', 'can_run_floor'] as const)(
+    'opens Overview alone at %s: no Guests tab, nothing under More, no sidebar area',
+    (role) => {
+      expect(outsidePlaces(role)).toEqual(['overview']);
+      expect(outsideTabs(role)).toEqual(['overview']);
+      expect(outsideMore(role)).toEqual([]);
+      expect(readsOverview(role)).toBe(true);
+    },
+  );
+
+  it.each(['guests', 'schedule', 'seating', 'people', 'menu'] as const)(
+    'lands a link to %s on Overview at Can work the pass',
+    (asked) => {
+      expect(outsideArea('can_work_pass', asked)).toBe('overview');
+    },
+  );
+
+  it('keeps Guests and People open at Can view and Can check guests in', () => {
+    expect(outsideTabs('can_view')).toEqual(['overview', 'guests']);
+    expect(outsideTabs('can_check_in')).toEqual(['overview', 'guests']);
+    expect(outsideArea('can_view', 'guests')).toBe('guests');
+    expect(outsideArea('can_check_in', 'people')).toBe('people');
+    expect(outsideArea('can_edit', 'menu')).toBe('menu');
   });
 });
 
