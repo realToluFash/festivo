@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { connection } from '@soirely/domain';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,6 +105,7 @@ function at(path: string, answers: Record<string, () => Response>): string[] {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   localStorage.clear();
@@ -196,6 +198,23 @@ describe('check-in in the browser (sc-28230)', () => {
     expect([...kept, document.cookie].join('\n')).not.toMatch(/Amara|Bísí|Zé|amara/);
     expect(opened.indexedDB).not.toHaveBeenCalled();
     expect(opened.caches).not.toHaveBeenCalled();
+  });
+
+  it('tells the offline band the time in the event’s zone, not the browser’s', async () => {
+    vi.useFakeTimers({ now: new Date('2030-11-14T09:10:00Z'), toFake: ['Date'] });
+    signedIn([{ ...HELD, timeZone: 'Asia/Tokyo' }]);
+    const tokyo = list();
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () =>
+        json({ ...tokyo, checkIn: { ...(tokyo.checkIn as object), timeZone: 'Asia/Tokyo' } }),
+      'GET /api/events/ev_1/my-night': () =>
+        json({ ...NIGHT, event: { ...NIGHT.event, timeZone: 'Asia/Tokyo' } }),
+    });
+    await screen.findByText('Amara Eze');
+
+    act(() => connection.deviceOffline());
+
+    expect(await screen.findByText('Offline · as of 18:10')).toBeTruthy();
   });
 
   it('shows the link page in the list’s place once the grant has ended', async () => {
