@@ -70,7 +70,7 @@ export function PhoneEntryStep({
           inputRef={fieldRef}
           autoComplete="name"
           onChange={(named) =>
-            onChange({ ...entry, named, refused: { ...entry.refused, name: undefined } })
+            onChange({ ...entry, named, refused: { ...entry.refused, name: null } })
           }
         />
       </div>
@@ -83,7 +83,7 @@ export function PhoneEntryStep({
                 ...entry,
                 country,
                 alternative: false,
-                refused: { ...entry.refused, number: undefined },
+                refused: { ...entry.refused, number: null },
               })
             }
           />
@@ -99,7 +99,7 @@ export function PhoneEntryStep({
                 ...entry,
                 number,
                 alternative: false,
-                refused: { ...entry.refused, number: undefined },
+                refused: { ...entry.refused, number: null },
               })
             }
           />

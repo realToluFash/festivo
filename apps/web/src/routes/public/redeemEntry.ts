@@ -11,7 +11,7 @@ export interface PhoneEntry {
   /** The right code was for an alternative number, which signs into nothing. */
   alternative: boolean;
   /** What the API said of each field Send code sent, until that field is typed in again. */
-  refused: { name?: string; number?: string };
+  refused: { name: string | null; number: string | null };
 }
 
 export function startingEntry(): PhoneEntry {
@@ -21,7 +21,7 @@ export function startingEntry(): PhoneEntry {
     number: '',
     checked: false,
     alternative: false,
-    refused: {},
+    refused: { name: null, number: null },
   };
 }
 

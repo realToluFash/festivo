@@ -160,7 +160,11 @@ function Redeem({ code }: { code: string }) {
         ...event,
         busy: false,
         trouble: null,
-        entry: { ...event.entry, checked: true, refused: { name: said.name, number: said.number } },
+        entry: {
+          ...event.entry,
+          checked: true,
+          refused: { name: said.name ?? null, number: said.number ?? null },
+        },
       });
       document.getElementById(said.name == null ? 'rd-number' : 'rd-name')?.focus();
     }
