@@ -1,5 +1,11 @@
-/** A person's own night (sc-3915): what their page shows, and nothing about anybody else beyond their lead. Times are in the event's offset. */
+import { type ShiftClockCard, asShiftClockCard } from './shiftHours.ts';
+
+/** A person's own night (sc-3915): what their page shows, and nothing about anybody else beyond their lead. Times are in the event's offset. Past access (sc-234) it carries the event's name and the clock card alone: no station, shift, lead, timing or tables. */
 export interface MyNight {
+  /** Past the person's access, still clocked in: the page is the clock card alone, until `endsAt`. */
+  pastAccess: boolean;
+  /** Their shift's clock card (sc-234); null once it is gone. */
+  clock: ShiftClockCard | null;
   event: { name: string; timeZone: string };
   /** The link's end, when the browser is signed out. */
   endsAt: string;
@@ -121,6 +127,7 @@ export function asMyNight(raw: unknown): MyNight | null {
   const lead = asLead(raw.lead);
   const timing = every(raw.timing, asMoment);
   const tables = raw.tables === null ? null : every(raw.tables, asTable);
+  const clock = raw.clock === null ? null : asShiftClockCard(raw.clock);
 
   if (
     typeof name !== 'string' ||
@@ -133,11 +140,15 @@ export function asMyNight(raw: unknown): MyNight | null {
     later === undefined ||
     lead === undefined ||
     timing == null ||
-    (raw.tables !== null && tables == null)
+    (raw.tables !== null && tables == null) ||
+    typeof raw.pastAccess !== 'boolean' ||
+    (raw.clock !== null && clock == null)
   )
     return null;
 
   return {
+    pastAccess: raw.pastAccess,
+    clock,
     event: { name, timeZone },
     endsAt,
     station,

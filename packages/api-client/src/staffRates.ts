@@ -44,6 +44,26 @@ export interface StaffRateJob {
   fees: number;
   paidOnce: string[];
   keepOwn: string[];
+  /** Once the event has ended (sc-234): the hours clocked on this job and what they cost. */
+  worked: StaffJobWorked | null;
+}
+
+/** Hours worked on one job: a missing clock-out counts to the scheduled end (`assumedMinutes`), a missing clock-in nothing (`noAttendance` shifts). `people` is how many worked it, each one flat fee. */
+export interface StaffJobWorked {
+  minutes: number;
+  assumedMinutes: number;
+  noAttendance: number;
+  people: number;
+  cost: string | null;
+}
+
+/** The worked cost under the headline after the event; the headline itself stays the scheduled cost. */
+export interface StaffWorked {
+  total: string;
+  minutes: number;
+  scheduledMinutes: number;
+  assumedMinutes: number;
+  noAttendance: number;
 }
 
 export interface StaffOwnRate {
@@ -53,11 +73,15 @@ export interface StaffOwnRate {
   changed: StaffRateChanged | null;
   minutes: number;
   cost: string;
+  /** Once the event has ended: the hours this person clocked on the job, at their own rate. */
+  worked: { minutes: number; cost: string } | null;
 }
 
 export interface StaffRates {
   currency: string;
   headline: StaffHeadline;
+  /** Null until the event has ended. */
+  worked: StaffWorked | null;
   jobs: StaffRateJob[];
   own: StaffOwnRate[];
   /** People on this event's shifts with no rate of their own; `minutes` are their scheduled minutes in their job. */
@@ -119,6 +143,32 @@ export function asStaffHeadline(value: unknown): StaffHeadline {
   };
 }
 
+function asJobWorked(value: unknown): StaffJobWorked | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const one = record(value);
+
+  return {
+    minutes: whole(one.minutes),
+    assumedMinutes: whole(one.assumedMinutes),
+    noAttendance: whole(one.noAttendance),
+    people: whole(one.people),
+    cost: typeof one.cost === 'string' ? one.cost : null,
+  };
+}
+
+function asWorked(value: unknown): StaffWorked | null {
+  if (typeof value !== 'object' || value == null) return null;
+  const one = record(value);
+
+  return {
+    total: text(one.total) || '0',
+    minutes: whole(one.minutes),
+    scheduledMinutes: whole(one.scheduledMinutes),
+    assumedMinutes: whole(one.assumedMinutes),
+    noAttendance: whole(one.noAttendance),
+  };
+}
+
 function asJob(value: unknown): StaffRateJob {
   const one = record(value);
 
@@ -136,6 +186,7 @@ function asJob(value: unknown): StaffRateJob {
     fees: whole(one.fees),
     paidOnce: names(one.paidOnce),
     keepOwn: names(one.keepOwn),
+    worked: asJobWorked(one.worked),
   };
 }
 
@@ -151,6 +202,10 @@ function asOwn(value: unknown): StaffOwnRate | null {
     changed: asChanged(one.changed),
     minutes: whole(one.minutes),
     cost: text(one.cost) || '0',
+    worked:
+      typeof one.worked === 'object' && one.worked != null
+        ? { minutes: whole(record(one.worked).minutes), cost: text(record(one.worked).cost) || '0' }
+        : null,
   };
 }
 
@@ -160,6 +215,7 @@ export function asStaffRates(value: unknown): StaffRates {
   return {
     currency: text(body.currency),
     headline: asStaffHeadline(body.headline),
+    worked: asWorked(body.worked),
     jobs: list(body.jobs).map(asJob),
     own: list(body.own)
       .map(asOwn)

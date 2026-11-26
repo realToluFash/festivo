@@ -136,6 +136,14 @@ import {
 import { type PhoneHint, asPhoneHint } from './phoneHint.ts';
 import { type MyNight, asMyNight } from './myNight.ts';
 import {
+  type ClockAction,
+  type ClockOutcome,
+  type HoursTyped,
+  type StaffHours,
+  asClockOutcome,
+  asStaffHours,
+} from './shiftHours.ts';
+import {
   type Dish,
   type DishDetails,
   type DishLibrary,
@@ -4109,6 +4117,59 @@ export class ApiClient {
   /** The same night in the app, for an account on the event's roster; 404 for anybody else. */
   async myNight(eventId: string): Promise<MyNight> {
     return this.myNightOf(await this.get<unknown>(`/api/events/${eventId}/my-night`));
+  }
+
+  /** Clock in or out at the person's link (sc-234), at the server's time when it arrives; also past access while still clocked in. Refused 409 `conflict` outside the window, or out with no clock-in. */
+  async staffLinkClock(token: string, action: ClockAction): Promise<ClockOutcome> {
+    return this.clockOutcomeOf(await this.post<unknown>('/api/staff-links/clock', { token, action }));
+  }
+
+  /** The same in the app. */
+  async myNightClock(eventId: string, action: ClockAction): Promise<ClockOutcome> {
+    return this.clockOutcomeOf(
+      await this.post<unknown>(`/api/events/${eventId}/my-night/clock`, { action }),
+    );
+  }
+
+  private clockOutcomeOf(raw: unknown): ClockOutcome {
+    const outcome = asClockOutcome(raw);
+
+    if (outcome == null) {
+      throw new Error(
+        'The API answered a clock-in in a shape this client does not know. Check StaffClockController in services/api.',
+      );
+    }
+
+    return outcome;
+  }
+
+  /** An event's hours worked (sc-234), to anybody who can see its staff. */
+  async staffHours(eventId: string): Promise<StaffHours> {
+    return this.staffHoursOf(await this.get<unknown>(`/api/events/${eventId}/staff/hours`));
+  }
+
+  /** Corrects one person's times on one shift, keeping what was recorded; `staff.manage` only, never on one's own shift. Refused 422 `validation_failed` on `clockedInAt` or `clockedOutAt`. */
+  async correctStaffHours(
+    eventId: string,
+    shiftId: string,
+    staffId: string,
+    typed: HoursTyped,
+  ): Promise<StaffHours> {
+    return this.staffHoursOf(
+      await this.put<unknown>(`/api/events/${eventId}/staff/hours/${shiftId}/${staffId}`, typed),
+    );
+  }
+
+  private staffHoursOf(raw: unknown): StaffHours {
+    const hours = asStaffHours(raw);
+
+    if (hours == null) {
+      throw new Error(
+        'The API answered hours worked in a shape this client does not know. Check StaffHoursSerialiser in services/api.',
+      );
+    }
+
+    return hours;
   }
 
   private myNightOf(raw: unknown): MyNight {
