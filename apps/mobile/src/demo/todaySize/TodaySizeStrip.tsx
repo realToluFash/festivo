@@ -6,6 +6,7 @@ import { eventColour } from '../../components/EventMesh.tsx';
 import { Text } from '../../components/Text.tsx';
 import { Panel } from '../../components/TodayParts.tsx';
 import { MeasuredWords } from '../../components/Title.tsx';
+import { wholeLineHeight } from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { EVENTS, sayIn } from '../today.ts';
 import {
@@ -102,7 +103,11 @@ function StripLabel({ text, today, scale }: { text: string; today: boolean; scal
   const look = [styles.label, today ? styles.accent : styles.secondary];
 
   return (
-    <View style={styles.labelRoom} onLayout={(event) => setColumn(event.nativeEvent.layout.width)}>
+    <View
+      // A stepped-down label keeps the step's line, so today's circle stays in line with the other six.
+      style={[styles.labelRoom, { minHeight: wholeLineHeight(start, start) }]}
+      onLayout={(event) => setColumn(event.nativeEvent.layout.width)}
+    >
       <MeasuredWords
         words={[text]}
         size={start}
@@ -140,7 +145,7 @@ const styles = StyleSheet.create({
   },
   days: { flexDirection: 'row' },
   dayColumn: { flex: 1, alignItems: 'center', gap: 5 },
-  labelRoom: { alignSelf: 'stretch', alignItems: 'center' },
+  labelRoom: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
   label: { letterSpacing: STRIP_TRACKING, textAlign: 'center' },
   dayCircle: { alignItems: 'center', justifyContent: 'center' },
   dayToday: { backgroundColor: tokens.colorAccent },
