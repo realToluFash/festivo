@@ -57,6 +57,7 @@ final class ServiceReadTest extends ServiceTestCase
     #[Test]
     public function aClientThatAppliesEachPatchHasWhatARefetchReturns(): void
     {
+        self::mockTime(new DateTimeImmutable('2027-03-06T19:00:00.437Z'));
         $dessert = new MenuCourse($this->event, 'Dessert', null, 1);
         $dessert->listOwnItems(['Puff-puff']);
         self::em()->persist($dessert);
@@ -123,6 +124,7 @@ final class ServiceReadTest extends ServiceTestCase
             }
 
             self::assertNotSame([], Vec\filter($hub->published, static fn (Update $update): bool => isset(Type\mixed_dict()->coerce(Json\decode($update->getData()))['patch'])), $what . ' published nothing');
+            self::em()->clear();
             self::assertSame($this->read(), $patched[$this->courseId()], $what . ', the Main');
             self::assertSame($this->read($dessert), $patched[$this->courseId($dessert)], $what . ', the Dessert');
         }
