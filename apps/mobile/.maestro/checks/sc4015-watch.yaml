@@ -1,0 +1,25 @@
+# sc-4015: opens ${EVENT_ID}'s station and stays on it, screenshotting at about 0, 12, 24 and 36 seconds, for a change made elsewhere.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}/station
+- extendedWaitUntil:
+    visible:
+      id: 'station.title'
+    timeout: 30000
+    optional: true
+- takeScreenshot: t00
+- extendedWaitUntil:
+    visible: 'QA_NEVER_THERE'
+    timeout: 12000
+    optional: true
+- takeScreenshot: t12
+- extendedWaitUntil:
+    visible: 'QA_NEVER_THERE'
+    timeout: 12000
+    optional: true
+- takeScreenshot: t24
+- extendedWaitUntil:
+    visible: 'QA_NEVER_THERE'
+    timeout: 12000
+    optional: true
+- takeScreenshot: t36
