@@ -203,8 +203,7 @@ export function todayMoment(
       name === ''
         ? t(`today.hello.${view.greeting}`)
         : t(`today.helloName.${view.greeting}`, { name }),
-    lead:
-      needs != null && needs.length > 0 ? t('today.needsLead', { count: needs.length }) : null,
+    lead: needs != null && needs.length > 0 ? t('today.needsLead', { count: needs.length }) : null,
     sub: subOf(view.sub, now, reader, t),
     needs,
     days: view.days.map(({ day, today: isToday, dots }) => ({
