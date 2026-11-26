@@ -458,6 +458,7 @@
     "currencyInUse": "The currency cannot change once amounts are recorded against this event.",
     "notSaved": "Not saved. Your changes are still here. Try again.",
     "forbidden": "Nothing was changed. Your role does not include the permission this needs.",
+    "eventGone": "Nothing was changed. This event is no longer available.",
     "changedElsewhere": "Not saved. Somebody else changed this event since you opened it. What you typed is still here.",
     "showLatest": "Show the latest",
     "showLatestTitle": "Show the latest version?",

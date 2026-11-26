@@ -175,6 +175,7 @@ export type EventSaveRefusal =
   | { kind: 'changed' }
   | { kind: 'failed' }
   | { kind: 'forbidden' }
+  | { kind: 'gone' }
   | {
       kind: 'refused';
       errors: Partial<Record<EventFormField, string>>;
@@ -182,7 +183,7 @@ export type EventSaveRefusal =
       currencyInUse: boolean;
     };
 
-/** What a refused save of an event says, the same in Edit details and in a part edited in place: `changed` on a 412, `forbidden` when the role no longer allows it, else each refusal under the field or host row it names. */
+/** What a refused save of an event says, the same in Edit details and in a part edited in place: `changed` on a 412, `forbidden` when the role no longer allows it, `gone` on a 404 for an event deleted or no longer theirs (sc-75689), else each refusal under the field or host row it names. */
 export function eventSaveRefusal(
   error: unknown,
   rows: readonly HostRow[],
@@ -191,6 +192,7 @@ export function eventSaveRefusal(
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.status === 412) return { kind: 'changed' };
   if (error.is('permission_required')) return { kind: 'forbidden' };
+  if (error.status === 404) return { kind: 'gone' };
   if (error.is('event_concluded'))
     return refusal({ startsAt: t('eventEdit.scheduleConcluded') }, {});
   if (error.is('event_currency_in_use'))

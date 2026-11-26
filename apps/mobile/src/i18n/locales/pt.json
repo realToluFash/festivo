@@ -1738,6 +1738,7 @@
     "noCurrency": "Nenhuma moeda corresponde a «{{typed}}».",
     "notSaved": "Não foi guardado. As suas alterações continuam aqui. Tente novamente.",
     "forbidden": "Nada foi alterado. A sua função não inclui a permissão necessária.",
+    "eventGone": "Nada foi alterado. Este evento já não está disponível.",
     "changedElsewhere": "Não foi guardado. Outra pessoa alterou este evento desde que o abriu. O que escreveu continua aqui.",
     "showLatest": "Ver a versão mais recente",
     "showLatestTitle": "Ver a versão mais recente?",

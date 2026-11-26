@@ -150,6 +150,10 @@ describe('A refused save of an event, read once for Edit details and the parts e
     });
   });
 
+  it('reads a 404 as an event no longer available, deleted or no longer theirs (sc-75689)', () => {
+    expect(eventSaveRefusal(problem(404, 'not_found'), [], t)).toEqual({ kind: 'gone' });
+  });
+
   it('puts a concluded schedule under Starts, and says a currency in use', () => {
     expect(eventSaveRefusal(problem(409, 'event_concluded'), [], t)).toEqual({
       kind: 'refused',

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-/** sc-74398: the three answers to a part's Save, shown after its fields and directly above Cancel and Save. */
-export type SaveAnswer = 'notSaved' | 'forbidden' | 'changedElsewhere';
+/** sc-74398: the answers to a part's Save, shown after its fields and directly above Cancel and Save. */
+export type SaveAnswer = 'notSaved' | 'forbidden' | 'eventGone' | 'changedElsewhere';
 
 export interface Answered {
   answer: SaveAnswer | null;

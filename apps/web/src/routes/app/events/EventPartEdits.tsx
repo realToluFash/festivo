@@ -168,6 +168,7 @@ const ANSWER = {
   changed: 'changedElsewhere',
   failed: 'notSaved',
   forbidden: 'forbidden',
+  gone: 'eventGone',
 } as const satisfies Record<Exclude<Saving['kind'], 'saved' | 'refused'>, SaveAnswer>;
 
 export function NamePart({ event, tag, onDirty, onClose, onSaved, onLatest }: PartProps) {
@@ -724,7 +725,9 @@ export function CoverPart({
       throw new Error(
         error instanceof ApiError && error.is('permission_required')
           ? t('eventEdit.forbidden')
-          : refusalOf(error, t),
+          : error instanceof ApiError && error.status === 404
+            ? t('eventEdit.eventGone')
+            : refusalOf(error, t),
       );
     }
   }

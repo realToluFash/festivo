@@ -108,6 +108,7 @@ export function ReplyByPart({
         return outcome.give('changedElsewhere');
       if (error instanceof ApiError && error.is('permission_required'))
         return outcome.give('forbidden');
+      if (error instanceof ApiError && error.status === 404) return outcome.give('eventGone');
       if (
         error instanceof ApiError &&
         error.status === 422 &&
@@ -126,7 +127,7 @@ export function ReplyByPart({
     setTyped(value);
     setTried(false);
     setRefusedHere(false);
-    if (outcome.answer === 'forbidden') outcome.clear();
+    if (outcome.answer === 'forbidden' || outcome.answer === 'eventGone') outcome.clear();
   }
 
   function save(): void {
