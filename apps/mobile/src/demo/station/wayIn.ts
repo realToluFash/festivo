@@ -21,6 +21,7 @@ export const KS = {
   pick: 'Pick a station',
   open: (station: string) => `Open ${station}`,
   label: (line: string) => `Kitchen station, ${line}`,
+  asOf: (line: string, time: string) => `${line} · as of ${time}`,
   overview: 'Overview',
   yourNight: 'Your night',
 } as const;
@@ -47,6 +48,16 @@ export function rowShows(event: EventDay, now: Date): boolean {
   if (event.finished || event.calledOff) return false;
 
   return dayIn(now, event.timeZone) >= event.startDay;
+}
+
+/** The last answered read's time, 24-hour, in the event's zone. */
+export function readAt(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(at);
 }
 
 export interface Where {

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { checkInOf, movedToGrill, nightOf, openOf } from '../myNight/myNightModel.ts';
-import { type Access, KS, openButton, opensStations, rowLine, rowShows } from './wayIn.ts';
-import { KITCHEN_WAY_IN_BOARDS, WAY_IN_STATES, overviewOf } from './wayInBoards.ts';
+import { type Access, KS, openButton, opensStations, readAt, rowLine, rowShows } from './wayIn.ts';
+import {
+  KITCHEN_WAY_IN_BOARDS,
+  READ_ANSWERS_IN,
+  WAY_IN_STATES,
+  overviewOf,
+} from './wayInBoards.ts';
 import { stationIdOf, wayBackOf } from './wayInRoute.ts';
 
 const SAO_PAULO = {
@@ -90,6 +95,8 @@ describe('the way in’s demo states (sc-95382)', () => {
     expect(lines).toEqual({
       own_course: 'Fryer · Mains',
       own_before: 'Fryer',
+      answering: 'Fryer · Mains',
+      offline: 'Fryer · Mains · as of 19:38',
       past_midnight: 'Fryer · Mains',
       last_pick: 'Grill · Mains',
       pick: 'Pick a station',
@@ -101,6 +108,13 @@ describe('the way in’s demo states (sc-95382)', () => {
       org_no_night: 'Grill · Mains',
       org_day_before: null,
     });
+  });
+
+  it('holds the row until the stations read answers, and keeps the last line with no connection', () => {
+    expect(overviewOf('answering').station?.answersIn).toBe(READ_ANSWERS_IN);
+    expect(overviewOf('own_course').station?.answersIn).toBe(undefined);
+    expect(overviewOf('offline').station?.answersIn).toBe(undefined);
+    expect(readAt(new Date('2026-11-28T23:05:00Z'), 'Africa/Lagos')).toBe('00:05');
   });
 
   it('draws the organiser’s Overview under Your night, or in its place with no shift', () => {

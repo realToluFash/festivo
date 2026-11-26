@@ -1,9 +1,19 @@
 import { type CodeChoice } from '../doorCode/DoorCodeModel.ts';
-import { type EventDay, type Where, opensStations, rowLine, rowShows } from './wayIn.ts';
+import {
+  type EventDay,
+  KS,
+  type Where,
+  opensStations,
+  readAt,
+  rowLine,
+  rowShows,
+} from './wayIn.ts';
 
 const ROW_STATES = [
   'own_course',
   'own_before',
+  'answering',
+  'offline',
   'past_midnight',
   'last_pick',
   'pick',
@@ -50,6 +60,10 @@ interface Sample {
   where: Where;
   opens: string;
   stationState: string;
+  /** The stations read has not answered yet: no row until it does. */
+  answering?: boolean;
+  /** No connection: the last answered read, kept with its time. */
+  lastRead?: Date;
 }
 
 const GBENGA: Sample = {
@@ -78,6 +92,8 @@ const SAMPLES: Record<RowState, Sample> = {
     where: { ...GBENGA.where, course: null },
     stationState: 'noCourse',
   },
+  answering: { ...GBENGA, answering: true },
+  offline: { ...GBENGA, lastRead: new Date('2026-11-28T18:38:00Z') },
   past_midnight: { ...GBENGA, now: new Date('2026-11-28T23:30:00Z') },
   last_pick: ADA,
   pick: { ...ADA, where: { ...ADA.where, lastPick: null }, opens: 'none' },
@@ -119,7 +135,10 @@ const ORGANISER: Record<OrganiserState, OrganiserSample> = {
   org_day_before: { ...RONKE, now: new Date('2026-11-04T23:59:00Z') },
 };
 
-type StationLink = { line: string; href: string } | null;
+/** How long the demo's stations read takes to answer, for the `answering` state. */
+export const READ_ANSWERS_IN = 1500;
+
+type StationLink = { line: string; href: string; answersIn?: number } | null;
 
 export type WayInOverview =
   | { page: 'rows'; role: CodeChoice; who: string; rostered: boolean; station: StationLink }
@@ -140,11 +159,20 @@ function isOrganiser(state: WayInState): state is OrganiserState {
   return ORGANISER_STATES.some((one) => one === state);
 }
 
-function linkOf(where: Where, stationState: string, opens: string): StationLink {
+function linkOf(where: Where, stationState: string, opens: string): NonNullable<StationLink> {
   return {
     line: rowLine(where),
     href: `/demo/kitchen-station?state=${stationState}&from=overview&on=${opens}`,
   };
+}
+
+function sampleLink(sample: Sample): StationLink {
+  const link = linkOf(sample.where, sample.stationState, sample.opens);
+  if (sample.lastRead != null) {
+    return { ...link, line: KS.asOf(link.line, readAt(sample.lastRead, DAY.timeZone)) };
+  }
+
+  return sample.answering === true ? { ...link, answersIn: READ_ANSWERS_IN } : link;
 }
 
 export function overviewOf(state: WayInState): WayInOverview {
@@ -173,13 +201,18 @@ export function overviewOf(state: WayInState): WayInOverview {
     role: sample.role,
     who: sample.who,
     rostered: sample.rostered,
-    station: shows ? linkOf(sample.where, sample.stationState, sample.opens) : null,
+    station: shows ? sampleLink(sample) : null,
   };
 }
 
 const WHAT: Record<WayInState, readonly [string, string]> = {
   own_course: ['Their own station', 'Kitchen station · Fryer · Mains, under Your night'],
   own_before: ['Before any course is fired', 'Kitchen station · Fryer'],
+  answering: [
+    'The stations read not yet answered',
+    'No row and no placeholder, then Kitchen station · Fryer · Mains fades in over 200 ms; none under Reduce motion',
+  ],
+  offline: ['No connection', 'Kitchen station · Fryer · Mains · as of 19:38, its last line kept'],
   past_midnight: ['Past midnight', '00:30 on Sunday, before the end: the row stays'],
   last_pick: [
     'A join code, a last pick',

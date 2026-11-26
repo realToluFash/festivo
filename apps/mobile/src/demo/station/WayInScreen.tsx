@@ -1,5 +1,5 @@
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { goBack } from '../DemoScreen.tsx';
 import { InsideEvent } from '../doorCode/Inside.tsx';
@@ -21,14 +21,36 @@ export function WayInRoute() {
   );
 }
 
-function stationRow(station: WayInOverview['station']) {
-  return station == null
+/** Until the stations read answers there is no row; then it fades in (sc-95382, `answering`). */
+function useAnswered(station: WayInOverview['station']): boolean {
+  const waits = station?.answersIn;
+  const [answered, setAnswered] = useState(waits == null);
+
+  useEffect(() => {
+    if (waits == null) return;
+    const timer = setTimeout(() => setAnswered(true), waits);
+
+    return () => clearTimeout(timer);
+  }, [waits]);
+
+  return answered;
+}
+
+function stationRow(station: WayInOverview['station'], answered: boolean) {
+  return station == null || !answered
     ? {}
-    : { station: { line: station.line, onOpen: () => router.push(station.href as Href) } };
+    : {
+        station: {
+          line: station.line,
+          onOpen: () => router.push(station.href as Href),
+          fades: station.answersIn != null,
+        },
+      };
 }
 
 function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'organiser' }> }) {
   const night = nightOf(shown.night);
+  const answered = useAnswered(shown.station);
 
   return (
     <EventsShell>
@@ -43,7 +65,7 @@ function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'o
             onOpen: () => router.push(`/demo/my-night?state=${shown.night}` as Href),
           },
         })}
-        {...stationRow(shown.station)}
+        {...stationRow(shown.station, answered)}
       />
     </EventsShell>
   );
@@ -52,6 +74,7 @@ function OrganiserOverview({ shown }: { shown: Extract<WayInOverview, { page: 'o
 function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'rows' }> }) {
   const [at, setAt] = useState<'overview' | 'people'>('overview');
   const night = nightOf('kitchen');
+  const answered = useAnswered(shown.station);
 
   return (
     <InsideEvent
@@ -74,7 +97,7 @@ function RowListOverview({ shown }: { shown: Extract<WayInOverview, { page: 'row
           onOpen: () => router.push('/demo/my-night?state=kitchen'),
         },
       })}
-      {...stationRow(shown.station)}
+      {...stationRow(shown.station, answered)}
       onAt={setAt}
       onSignOut={goBack}
       onAccount={() => router.push('/demo/settings/account?as=noOrg')}
