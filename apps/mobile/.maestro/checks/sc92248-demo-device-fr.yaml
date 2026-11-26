@@ -1,4 +1,4 @@
-# sc-92248: the band-title demo at lang=fr, upright. Vars: METRO_URL.
+# sc-92248: the band-title demo at lang=fr, upright, at the device's own text size (no size in the link). Vars: METRO_URL.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
