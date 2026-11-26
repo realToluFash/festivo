@@ -22,11 +22,15 @@ describe('The role sheet once it scrolls (sc-95217, on qa3 #95718)', () => {
       'export const SHEET_GRABBER_STRIP = tokens.spaceSm * 2 + GRABBER_HEIGHT;',
     );
     expect(scrollView).toContain('if (!holdsHeading || !drags) return scroll;');
-    expect(scrollView).toMatch(
-      /<View style=\{\[styles\.strip, away && styles\.stripScrolled\]\} \/>\s+\{scroll\}/u,
-    );
+    expect(scrollView).toMatch(/style=\{\[styles\.strip, away && styles\.stripScrolled\]\}/u);
     expect(sheet).toContain('stripScrolled: { borderBottomColor: tokens.colorBorder },');
     expect(sheet).toMatch(/<Drags\.Provider value=\{drags\}>/u);
+  });
+
+  it('takes the content back to its top on a drag down from the strip while scrolled, as the sheet holds still then', () => {
+    expect(scrollView).toContain('if (from == null || !away) return;');
+    expect(scrollView).toContain('scrollRef.current?.scrollTo({ y: 0, animated: true });');
+    expect(scrollView).toContain('ref={scrollRef}');
   });
 
   it('keeps the heading where it sat, the strip taken from the body’s top padding', () => {

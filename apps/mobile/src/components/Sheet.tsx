@@ -556,7 +556,7 @@ const StripHeld = createContext(false);
 
 const ScrolledAway = createContext<(scrolled: boolean) => void>(() => undefined);
 
-/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in (sc-95217). */
+/** A sheet's scrolling content. It holds still while a finger that landed in the sheet's top strip is down, or Android's scroll takes the drag and the sheet never moves (sc-27948). With `holdsHeading`, the sheet's heading scrolls inside it, so while it is scrolled from its top a drag in the strip scrolls it back rather than moving the sheet; on a sheet that drags, it starts under the grabber's own strip, which never scrolls and which Android's scroll never sees a finger land in, so a drag down there while scrolled takes the content back to its top (sc-95217). */
 export function SheetScrollView({
   holdsHeading = false,
   ...props
@@ -565,6 +565,8 @@ export function SheetScrollView({
   const held = useContext(StripHeld);
   const scrolledAway = useContext(ScrolledAway);
   const [away, setAway] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const landed = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!holdsHeading) return;
@@ -575,6 +577,7 @@ export function SheetScrollView({
   const scroll = (
     <ScrollView
       {...props}
+      ref={scrollRef}
       scrollEnabled={!held && props.scrollEnabled !== false}
       {...(holdsHeading
         ? {
@@ -593,7 +596,26 @@ export function SheetScrollView({
 
   return (
     <>
-      <View style={[styles.strip, away && styles.stripScrolled]} />
+      <View
+        style={[styles.strip, away && styles.stripScrolled]}
+        onTouchStart={({ nativeEvent }) => {
+          landed.current = { x: nativeEvent.pageX, y: nativeEvent.pageY };
+        }}
+        onTouchMove={({ nativeEvent }) => {
+          const from = landed.current;
+          if (from == null || !away) return;
+          const dy = nativeEvent.pageY - from.y;
+          if (dy <= 0 || !sheetDragStarts({ from: 0, dx: nativeEvent.pageX - from.x, dy })) return;
+          landed.current = null;
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        }}
+        onTouchEnd={() => {
+          landed.current = null;
+        }}
+        onTouchCancel={() => {
+          landed.current = null;
+        }}
+      />
       {scroll}
     </>
   );
