@@ -268,9 +268,8 @@ describe('Sign out on the shift page check-in leads back to (sc-28230)', () => {
     const [signOut] = await screen.findAllByRole('button', { name: 'Sign out' });
     fireEvent.click(signOut ?? document.body);
 
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in from your link or code' }),
-    ).toBeTruthy();
+    const heading = await screen.findByRole('heading', { name: 'Sign in from your link or code' });
+    expect(document.activeElement).toBe(heading);
     expect(screen.getByRole('status').textContent).toBe('Signed out.');
     expect(screen.getByRole('link', { name: 'Enter a door code' })).toBeTruthy();
     expect(router.state.location.pathname).toBe('/night/ev_1');
@@ -281,9 +280,8 @@ describe('Sign out on the shift page check-in leads back to (sc-28230)', () => {
     __setSessionState({ status: 'signedOut', ended: false });
     at('/night/ev_1', {});
 
-    expect(
-      await screen.findByRole('heading', { name: 'Sign in from your link or code' }),
-    ).toBeTruthy();
+    const heading = await screen.findByRole('heading', { name: 'Sign in from your link or code' });
+    expect(document.activeElement).not.toBe(heading);
     expect(screen.queryByText('Signed out.')).toBeNull();
   });
 

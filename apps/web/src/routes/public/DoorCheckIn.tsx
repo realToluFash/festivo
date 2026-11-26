@@ -693,6 +693,11 @@ export function LinkGone() {
 /** Check-in's address in a browser that is not signed in: it names no guest, event or person. */
 export function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
   const { t } = useTranslation();
+  const title = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (signedOut) title.current?.focus();
+  }, [signedOut]);
 
   return (
     <Page back={null}>
@@ -704,7 +709,9 @@ export function NotSignedIn({ signedOut = false }: { signedOut?: boolean }) {
               {t('redeem.signedOut')}
             </p>
           )}
-          <h1 className="ci-title">{t('checkIn.notSignedIn.title')}</h1>
+          <h1 ref={title} tabIndex={-1} className="ci-title">
+            {t('checkIn.notSignedIn.title')}
+          </h1>
           <p>{t('checkIn.notSignedIn.body')}</p>
           <Link className="ci-primary" to="/d">
             {t('checkIn.notSignedIn.cta')}
