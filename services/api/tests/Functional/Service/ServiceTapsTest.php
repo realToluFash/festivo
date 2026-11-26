@@ -200,6 +200,21 @@ final class ServiceTapsTest extends ServiceTestCase
     }
 
     #[Test]
+    public function trayNotYoursNamesTheWaiterAsTheRosterHasThem(): void
+    {
+        $this->ownerOnTheRosterAs('Ifeoma Adaobi Nduka');
+        $tray = $this->trayAtDishing();
+        $plate = Type\string()->coerce($tray['plates'][0]);
+        $this->caller = $this->waiterOnTheSection();
+
+        $this->put('/trays/' . self::id($tray) . '/marks', ['plateId' => $plate, 'item' => 'plantain', 'mark' => 'on', 'expected' => ['plates' => [$plate => 'dishing']]]);
+
+        $this->assertRefused(403, ErrorCode::TrayNotYours->type());
+        self::assertSame('Ifeoma Adaobi Nduka', Type\mixed_dict()->coerce($this->last()['waiter'])['name']);
+        self::assertStringContainsString('Ifeoma Adaobi Nduka', Type\string()->coerce($this->last()['detail'] ?? $this->last()['title'] ?? ''));
+    }
+
+    #[Test]
     public function aKeptUndoLandingAfterTwoMinutesIsTooLate(): void
     {
         $tray = $this->trayAtDishing();

@@ -8,6 +8,7 @@ use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
 use App\Domain\Service\Model\ServingTable;
+use App\Domain\Staff\RosterNames;
 use App\Domain\Staff\Station\ServiceTables;
 use App\Entity\Guest;
 use App\Entity\MenuCourse;
@@ -35,6 +36,7 @@ final readonly class ServiceRead
         private ServingTables $servingTables,
         private ServingStationsInterface $servingStations,
         private ServiceTables $serviceTables,
+        private RosterNames $rosterNames,
         private GuestNeedsRecord $guestNeedsRecord,
         private ServiceFiringRepository $serviceFiringRepository,
         private ServiceItemRepository $serviceItemRepository,
@@ -56,7 +58,7 @@ final readonly class ServiceRead
         $states = $this->states($course);
         $plates = $this->servicePlateRepository->findOfCourse($course);
         $trays = $this->trayRead->trays($plates);
-        $nameOf = $this->serviceTables->rosterNames($event);
+        $nameOf = $this->rosterNames->of($event);
         $onTrays = $this->servicePlateRepository->findOnTrays($trays);
         $firings = Dict\from_entries(Vec\map($this->serviceFiringRepository->findOfCourse($course), static fn (ServiceFiring $one): array => [$one->getTableKey(), $one]));
         $tables = $this->servingTables->of($event);

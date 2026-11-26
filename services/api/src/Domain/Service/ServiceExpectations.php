@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Service;
 
 use App\Domain\Service\Model\Expected;
-use App\Domain\Staff\Station\ServiceTables;
+use App\Domain\Staff\RosterNames;
 use App\Entity\Event;
 use App\Entity\ServiceItem;
 use App\Entity\ServicePlate;
@@ -32,7 +32,7 @@ final readonly class ServiceExpectations
         private ServicePlateRepository $servicePlateRepository,
         private ServiceTrayRepository $serviceTrayRepository,
         private UserRepository $userRepository,
-        private ServiceTables $serviceTables,
+        private RosterNames $rosterNames,
     ) {
     }
 
@@ -49,7 +49,7 @@ final readonly class ServiceExpectations
         }
 
         $changed = [];
-        $nameOf = $this->serviceTables->rosterNames($event);
+        $nameOf = $this->rosterNames->of($event);
 
         foreach ($now as $id => $plate) {
             $stage = $saw[$id] ?? null;
@@ -80,7 +80,7 @@ final readonly class ServiceExpectations
         if ($saw !== $state) {
             $by = $item?->getChangedBy();
 
-            throw self::changed([['item' => $itemKey, 'state' => $state->value, 'by' => null === $by ? null : $this->serviceTables->rosterNames($item->getCourse()->getEvent())($by)]]);
+            throw self::changed([['item' => $itemKey, 'state' => $state->value, 'by' => null === $by ? null : $this->rosterNames->of($item->getCourse()->getEvent())($by)]]);
         }
     }
 
