@@ -227,6 +227,26 @@ signing in sits on a `PhoneSignIn` row, so **no account exists until the code is
   the invited address is on it and verified. The invitation's preview carries
   `needsEmail`, and `signedInAsPhone` where `signedInAs` would name an address.
 
+## A staff member's own night
+
+A person on the roster reads their whole night (sc-3915) as their own account alone: at
+their link with `POST /api/staff-links/night` (`token` in the body), and in the app with
+`GET /api/events/{eventId}/my-night`. Both answer only inside the link's window, to the
+account the roster entry is linked to; every other caller, the organiser included, gets the
+one `404 not_found` a link that does not exist gets.
+
+- It answers `event` (`name`, `timeZone`), `endsAt` (the window's end), `station`, `job`,
+  `shift` (the one under way, else the next, else the last), `later` (the shift after it),
+  `lead`, `timing`, `doorsAt` and `tables`, every time in the event's offset.
+- `lead` is the station's lead, else the floor lead with `floor: true`, never the person
+  themself, with `phone` in E.164 or null; null with neither.
+- `timing` is the run of show's moments not skipped, at their planned times, each `for`
+  `guests` when shown to guests and `staff` otherwise.
+- `doorsAt` is the event's start. `tables` is null with no section station, empty until
+  then, and after it each table in the section with its guests' `name`, `allergens`,
+  `diets`, `otherAllergy` and `otherDiet` alone: never a contact detail, never another
+  table.
+
 ## Alternative addresses and numbers
 
 From Settings > Account (sc-113). **A primary identifies; an alternative only reaches.**
