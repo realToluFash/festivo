@@ -17,6 +17,7 @@ import {
   countsOf,
   guestsCardOf,
   guestsStart,
+  replyLine,
   handMarked,
   haventLine,
   invitationLine,
@@ -699,5 +700,21 @@ describe('a reply from a guest nobody invited yet (sc-52829)', () => {
     expect(countsOf(list).invited).toBe(countsOf(before).invited + 1);
     expect(countsOf(list).coming).toBe(countsOf(before).coming + 1);
     expect(countsOf(list).notYet).toBe(countsOf(before).notYet - 1);
+  });
+});
+
+describe('where a reply came from (sc-1291)', () => {
+  it('names the answer link a reply was confirmed from, and nothing for the page itself', () => {
+    const { list } = guestsStart('replyFromLink', new URLSearchParams());
+    const line = (id: string) => {
+      const one = list.find((guest) => guest.id === id);
+      if (one == null) throw new Error(id);
+
+      return replyLine(one, '2026-11-04');
+    };
+
+    expect(line('sophie')).toBe('Coming · replied Oct 12 · from the email link');
+    expect(line('camille')).toBe('Not coming · replied Oct 20 · from the SMS link');
+    expect(line('kwame')).toBe('Coming · replied Oct 2');
   });
 });

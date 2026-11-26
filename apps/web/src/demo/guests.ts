@@ -160,6 +160,8 @@ export interface Guest {
   needs: Needs;
   /** sc-3775: the one group they are in, by id; their companions follow them. Absent is No group. */
   group?: string;
+  /** sc-1291: the answer link the reply was confirmed from; absent is the page itself, which shows no source. */
+  via?: 'emailLink' | 'smsLink';
 }
 
 /** sc-1363: when a guest who answered Not sure yet will be, or was, asked again; Not sent: too late reads as nothing chosen. */
@@ -812,7 +814,9 @@ export function replyTail(one: Guest, replyBy: string | null): string {
   if (one.reply === 'notSure' && one.askAgain != null) return askTail(one.askAgain);
   if (one.reply === 'notSure' && replyBy != null) return GW.askedOn(dayOf(replyBy));
 
-  return GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+  const on = GW.repliedOn(dayOf(one.replied ?? ADDED.on));
+
+  return one.via == null ? on : GW.withWord(on, GW[one.via]);
 }
 
 function askTail(ask: AskAgain): string {
@@ -1697,6 +1701,20 @@ function everyoneReplied(list: readonly Guest[]): Guest[] {
   );
 }
 
+/** sc-1291: two replies confirmed from an answer link, one by email and one by SMS; the rest from the page itself. */
+function fromLinks(list: readonly Guest[]): Guest[] {
+  const via: Partial<Record<string, 'emailLink' | 'smsLink'>> = {
+    sophie: 'emailLink',
+    camille: 'smsLink',
+  };
+
+  return list.map((one) => {
+    const from = via[one.id];
+
+    return from == null ? one : { ...one, via: from };
+  });
+}
+
 /** No companion held behind a guest who owes a reply: the card's line loses its bracket. */
 function noCompanionWaiting(list: readonly Guest[]): Guest[] {
   return list.map((one) => (one.reply === 'noReply' ? { ...one, companions: [] } : one));
@@ -1746,6 +1764,7 @@ export const GUESTS_STATES = [
   { key: 'searchNumber', name: 'A number in its national form: “0803 412”' },
   { key: 'everyoneReplied', name: 'Everyone has replied' },
   { key: 'noCompanionsWaiting', name: 'No companion among those who haven’t replied' },
+  { key: 'replyFromLink', name: 'Where a reply came from: the email link, the SMS link (sc-1291)' },
   { key: 'closesToday', name: 'Replies close today' },
   { key: 'closesLater', name: 'Replies close on a later date' },
   { key: 'repliesClosedLive', name: 'Replies have closed, the event still to come' },
@@ -2194,6 +2213,8 @@ export function guestsStart(state: GuestsState | null, params: URLSearchParams):
       return { ...start, list: everyoneReplied(start.list) };
     case 'noCompanionsWaiting':
       return { ...start, list: noCompanionWaiting(start.list) };
+    case 'replyFromLink':
+      return column(guestPane('sophie'), { choice: 'all', list: fromLinks(start.list) });
     case 'closesToday':
       return { ...start, clock: CLOCK_CLOSES };
     case 'closesLater':
@@ -2829,6 +2850,7 @@ export const GUESTS_PAGES: readonly { name: string; states: readonly DemoLink[] 
     'filterNone',
     'everyoneReplied',
     'noCompanionsWaiting',
+    'replyFromLink',
     'closesToday',
     'closesLater',
     'repliesClosedLive',

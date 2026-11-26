@@ -73,6 +73,8 @@ import { inDayOrder } from './guestDay.ts';
 import { KeptOut, YourMessages } from './GuestMessages.tsx';
 import { plusDays } from './dataControl.ts';
 import { GuestAsk } from './GuestAsk.tsx';
+import { LinkAnswer } from './GuestLink.tsx';
+import { carriesOn } from './guestLink.ts';
 import {
   type AskKey,
   type AskView,
@@ -239,18 +241,13 @@ function Visitor({
   function answer(chosen: Answer): void {
     const { view } = visit;
 
-    if (view.kind !== 'answer' && view.kind !== 'changing') return;
-    if (chosen === 'coming' && hasStep(visit.party)) {
-      go(
-        () => ({
-          view: { kind: 'withYou', from: view.kind === 'changing' ? 'changing' : 'answer' },
-        }),
-        'withYouHead',
-      );
+    if (view.kind === 'link') {
+      linkAnswer(chosen);
       return;
     }
-    if (chosen === 'coming') {
-      kitchen.open(view.kind === 'changing' ? 'changing' : 'answer');
+    if (view.kind !== 'answer' && view.kind !== 'changing') return;
+    if (carriesOn(visit, chosen)) {
+      goOn(view.kind === 'changing' ? 'changing' : 'answer');
       return;
     }
 
@@ -259,6 +256,36 @@ function Visitor({
         view.kind === 'answer' ? { ...view, busy: chosen, note: null } : { ...view, busy: chosen },
     }));
     later(SEND_MS, () => record(chosen));
+  }
+
+  function goOn(from: 'answer' | 'changing'): void {
+    if (hasStep(visit.party)) go(() => ({ view: { kind: 'withYou', from } }), 'withYouHead');
+    else kitchen.open(from);
+  }
+
+  function linkAnswer(chosen: Answer): void {
+    if (carriesOn(visit, chosen)) {
+      goOn(visit.recorded == null ? 'answer' : 'changing');
+      return;
+    }
+
+    go((was) => (was.view.kind === 'link' ? { view: { ...was.view, busy: true } } : {}));
+    later(SEND_MS, () =>
+      go(
+        (was) => ({
+          ...sentAnswer({ ...was, ticked: false }, chosen),
+          view: { kind: 'recorded', same: false, downAs: true },
+        }),
+        'greeting',
+      ),
+    );
+  }
+
+  function choose(): void {
+    go(
+      (was) => ({ view: was.recorded == null ? OPEN : { kind: 'changing', busy: null } }),
+      'row-coming',
+    );
   }
 
   function askPick(key: AskKey): void {
@@ -387,6 +414,7 @@ function Visitor({
       onBack={back}
       onTick={tick}
       onChange={() => go(() => ({ view: { kind: 'changing', busy: null } }), 'newHead')}
+      onChoose={choose}
       onKeep={() => go(() => ({ view: { kind: 'recorded', same: false } }), 'change')}
       onTellThem={tellThem}
       onGoBack={() =>
@@ -599,6 +627,7 @@ function Under({
   onBack,
   onTick,
   onChange,
+  onChoose,
   onKeep,
   onTellThem,
   onGoBack,
@@ -616,6 +645,7 @@ function Under({
   onBack: () => void;
   onTick: () => void;
   onChange: () => void;
+  onChoose: () => void;
   onKeep: () => void;
   onTellThem: () => void;
   onGoBack: () => void;
@@ -662,6 +692,7 @@ function Under({
         onBack={onBack}
         onTick={onTick}
         onChange={onChange}
+        onChoose={onChoose}
         onKeep={onKeep}
         onTellThem={onTellThem}
         onGoBack={onGoBack}
@@ -692,6 +723,7 @@ function Shown({
   onBack,
   onTick,
   onChange,
+  onChoose,
   onKeep,
   onTellThem,
   onGoBack,
@@ -706,6 +738,7 @@ function Shown({
   onBack: () => void;
   onTick: () => void;
   onChange: () => void;
+  onChoose: () => void;
   onKeep: () => void;
   onTellThem: () => void;
   onGoBack: () => void;
@@ -724,8 +757,23 @@ function Shown({
           )}
           {view.note === 'unsent' && <Notice kind="attention">{words.unsent}</Notice>}
           {view.note === 'notSentTap' && <Notice kind="broken">{words.notSentTap}</Notice>}
-          <AnswerRows words={words} busy={view.busy} onAnswer={onAnswer} />
+          <AnswerRows
+            words={words}
+            busy={view.busy}
+            goesOn={!visit.yesRecords}
+            onAnswer={onAnswer}
+          />
         </section>
+      );
+    case 'link':
+      return (
+        <LinkAnswer
+          visit={visit}
+          view={view}
+          words={words}
+          onAnswer={onAnswer}
+          onChoose={onChoose}
+        />
       );
     case 'withYou':
       return <WithYou visit={visit} words={words} actions={party} />;
@@ -792,9 +840,11 @@ function Shown({
           <div className="gp-greet">
             <Mark answer={recorded.answer} />
             <h2 id="gp-greeting" className="gp-h2" tabIndex={-1} data-focus="greeting">
-              {recorded.by == null
-                ? words.greeting(recorded.answer)
-                : words.answerIs(recorded.answer)}
+              {view.downAs === true
+                ? words.downAs(recorded.answer)
+                : recorded.by == null
+                  ? words.greeting(recorded.answer)
+                  : words.answerIs(recorded.answer)}
             </h2>
           </div>
           <div className="gp-indent">
@@ -837,6 +887,7 @@ function Shown({
             words={words}
             current={recorded?.answer ?? null}
             busy={view.busy}
+            goesOn={!visit.yesRecords}
             onAnswer={onAnswer}
           />
           <TextAction focus="keep" onClick={onKeep}>

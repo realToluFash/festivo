@@ -32,6 +32,7 @@ import type { DemoLink } from './settings.ts';
 import { U } from './unsubscribe.ts';
 import { type AskView, afterAnswer } from './guestAsk.ts';
 import { type ReplyByChoice, askStarts, isAskState } from './guestAskStates.ts';
+import { guestLinkStarts, isGuestLinkState } from './guestLink.ts';
 
 /** The guest's own page in A · The cover card (sc-31306), on the boards' sample: main's evt-wed-4 and one guest. */
 export const EVENT: SampleEvent = sampleEvent('evt-wed-4') as SampleEvent;
@@ -167,7 +168,8 @@ export type View =
   | { kind: 'answer'; busy: Answer | null; note: 'unsent' | 'notSentTap' | null }
   | { kind: 'check'; busy: boolean; failed: boolean; refused: boolean; from: 'answer' | 'changing' }
   | { kind: 'kitchen'; busy?: boolean }
-  | { kind: 'recorded'; same: boolean }
+  | { kind: 'recorded'; same: boolean; downAs?: true }
+  | { kind: 'link'; picked: Answer; busy: boolean }
   | { kind: 'changing'; busy: Answer | null }
   | { kind: 'closed' }
   | { kind: 'withYou'; from: 'answer' | 'changing' }
@@ -275,6 +277,8 @@ export interface Visit {
   /** sc-4022: null until the hosts share the tables, as the API sends no seating field before then. */
   seating: GuestSeating | null;
   tableMoves: boolean;
+  /** sc-1291: none of sc-1439's Yes steps applies to this guest, so Coming records at once, as the other two do. */
+  yesRecords: boolean;
 }
 
 export const OPEN: View = { kind: 'answer', busy: null, note: null };
@@ -332,6 +336,7 @@ const BASE: Visit = {
   programme: 'none',
   seating: null,
   tableMoves: false,
+  yesRecords: false,
 };
 
 const COMING = { answer: 'coming', on: TODAY } as const;
@@ -761,6 +766,7 @@ function startsOf(
   if (isGuestKitchenState(value))
     return guestKitchenStarts(value, { earlier: EARLIER, companions: COMPANIONS });
   if (isGuestNoteState(value)) return guestNoteStarts(value);
+  if (isGuestLinkState(value)) return guestLinkStarts(value);
   if (isGuestChangeState(value)) return guestChangeStarts(value);
   if (isGuestPartyState(value)) return guestPartyStarts(value);
   if (isGuestDayState(value)) return guestDayStarts(value);
@@ -1108,6 +1114,18 @@ const BOARD_ENGLISH = {
   notSent: 'Your answer was not sent. Everything you chose is still here. Try again.',
   notSentTap: 'Your answer was not sent. Check your connection and choose it again.',
   same: 'You’re already down as {{answer}}. Nothing has changed.',
+  confirmAnswer: 'Confirm your answer',
+  fromMessage: 'From your message',
+  confirm: 'Confirm',
+  carryOn: 'Carry on',
+  chooseDifferent: 'Choose a different answer',
+  alreadyComing: 'You’re already down as coming.',
+  alreadyNotComing: 'You’re already down as not coming.',
+  alreadyNotSure: 'You’re already down as not sure yet.',
+  since: 'Since {{date}}. There is nothing to confirm.',
+  downAsComing: 'You’re down as coming.',
+  downAsNotComing: 'You’re down as not coming.',
+  downAsNotSure: 'You’re down as not sure yet.',
   unsent: 'You haven’t sent your answer yet.',
   closedBy: 'Answers closed on {{date}}. Contact your host if something has changed.',
   closedByNotSure: 'Answers closed on {{date}}. Contact your host if you can still come.',
@@ -1298,6 +1316,32 @@ export function wordsFor(lang: Lang) {
       ),
     companions: board('companionsOnHold'),
     companionsNotComing: board('companionsNotComing'),
+    confirmAnswer: board('confirmAnswer'),
+    fromMessage: board('fromMessage'),
+    confirm: board('confirm'),
+    carryOn: board('carryOn'),
+    chooseDifferent: board('chooseDifferent'),
+    already: (answer: Answer): string =>
+      board(
+        (
+          {
+            coming: 'alreadyComing',
+            notComing: 'alreadyNotComing',
+            notSure: 'alreadyNotSure',
+          } as const
+        )[answer],
+      ),
+    since: (date: string) => board('since', { date }),
+    downAs: (answer: Answer): string =>
+      board(
+        (
+          {
+            coming: 'downAsComing',
+            notComing: 'downAsNotComing',
+            notSure: 'downAsNotSure',
+          } as const
+        )[answer],
+      ),
     change: board('change'),
     newAnswer: board('newAnswer'),
     answerNow: board('answerNow'),
