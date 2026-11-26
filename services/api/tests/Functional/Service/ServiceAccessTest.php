@@ -120,6 +120,36 @@ final class ServiceAccessTest extends ServiceTestCase
     }
 
     #[Test]
+    public function floorOpensOnTheFloorWithTheSectionsYouAreOnAndIsRefusedAtThePassAlone(): void
+    {
+        $kemi = self::em()->find(StaffMember::class, $this->kemiOnB->getId()) ?? self::fail('no Kemi');
+        $kemi->setFloorLead(true);
+        self::em()->flush();
+        $path = '/api/events/' . $this->event->getId()->toRfc4122() . '/service/floor';
+
+        $this->caller = $this->bisi;
+        $floor = $this->as('GET', $path);
+        self::assertSame(200, $this->statusCode(), Json\encode($floor));
+        self::assertSame([['id' => $this->section->getId()->toRfc4122(), 'name' => 'Section A']], $floor['yours']);
+        self::assertSame('Kemi Waiter', $floor['floorLead']);
+        self::assertFalse($floor['manage']);
+        $read = Type\mixed_dict()->coerce(Type\vec(Type\mixed_dict())->coerce($floor['courses'])[0]);
+        self::assertSame(['Table 1' => true, 'Table 2' => false, 'Table 3' => true], $this->namedTables($read), 'each course read as Bisi sees it');
+        $this->assertNoPrivateNeeds($read, 'Floor');
+
+        $this->caller = $this->owner;
+        $floor = $this->as('GET', $path);
+        self::assertSame([], $floor['yours']);
+        self::assertTrue($floor['manage']);
+
+        foreach ([$this->tunde, $this->reader] as $refused) {
+            $this->caller = $refused;
+            $this->as('GET', $path);
+            $this->assertRefused(403, ErrorCode::PermissionRequired->type());
+        }
+    }
+
+    #[Test]
     public function tableWritesAreRefusedAtAnotherSectionsTable(): void
     {
         $this->caller = $this->bisi;
