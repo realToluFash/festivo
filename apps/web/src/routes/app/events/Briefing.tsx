@@ -58,6 +58,7 @@ export function useBriefing({
   finished,
   onEntry,
   onRules,
+  reload,
   focus,
   announce,
   onSide,
@@ -70,6 +71,8 @@ export function useBriefing({
   finished: boolean;
   onEntry: (entry: StaffEntry) => void;
   onRules: (rules: string | null) => void;
+  /** Reads the event and the roster again, after a refusal that says the page is stale. */
+  reload: () => void;
   /** Where focus goes after the next render. */
   focus: (id: string) => void;
   announce: (text: string) => void;
@@ -84,6 +87,7 @@ export function useBriefing({
   const [wrong, setWrong] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [missed, setMissed] = useState<string | null>(null);
+  const [over, setOver] = useState(false);
   const [handHeld, setHandHeld] = useState<{ id: string; url: string } | null>(null);
 
   const acts = manage && !finished;
@@ -149,7 +153,14 @@ export function useBriefing({
       if (handHeld?.id === entry.id) setHandHeld(null);
       announce(t('roster.markedSent', { name: entry.fullName }));
       focus(side?.kind === 'copy' ? `bf-copy-${entry.id}` : `bf-row-copy-${entry.id}`);
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'event_concluded') {
+        setOver(true);
+        announce(t('notices.alreadyOver'));
+        reload();
+        focus('sv-over');
+        return;
+      }
       setMissed(entry.id);
       announce(t('roster.linkNotIssued'));
     }
@@ -255,7 +266,19 @@ export function useBriefing({
           )}
         </div>
       </section>
-      <ReminderCard event={event} manage={acts} roster={people} announce={announce} />
+      {over && (
+        <p id="sv-over" className="sv-over" role="status" tabIndex={-1}>
+          <Glyph name="info" size={18} weight={2.2} />
+          {t('notices.alreadyOver')}
+        </p>
+      )}
+      <ReminderCard
+        event={event}
+        manage={acts}
+        roster={people}
+        onOver={() => setOver(true)}
+        announce={announce}
+      />
     </>
   );
 

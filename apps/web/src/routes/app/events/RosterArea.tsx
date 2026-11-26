@@ -301,6 +301,7 @@ function Roster({
     finished,
     onEntry: (entry) => relinked(entry),
     onRules: (rules) => onPlan({ ...plan, rules }),
+    reload,
     focus: (id) => {
       focusAfter.current = id;
     },

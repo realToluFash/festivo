@@ -14,19 +14,21 @@ export function ReminderCard({
   event,
   manage,
   roster,
+  onOver,
   announce,
 }: {
   event: OrganisationEvent;
   manage: boolean;
   /** Changes whenever the roster does. */
   roster: unknown;
+  /** The switch was refused because the event is over; the caller shows the line, as it does for a refused send. */
+  onOver: () => void;
   announce: (text: string) => void;
 }) {
   const { t } = useTranslation();
   const [card, setCard] = useState<StaffReminder | null>(null);
   const [busy, setBusy] = useState(false);
   const [notSaved, setNotSaved] = useState(false);
-  const [over, setOver] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -53,7 +55,7 @@ export function ReminderCard({
       setCard(await api.setStaffReminder(event.id, next));
     } catch (error) {
       if (error instanceof ApiError && error.code === 'event_concluded') {
-        setOver(true);
+        onOver();
         announce(t('notices.alreadyOver'));
         setCard(await api.staffReminder(event.id).catch(() => card));
       } else {
@@ -67,12 +69,6 @@ export function ReminderCard({
 
   return (
     <>
-      {over && (
-        <p className="sv-over" role="status">
-          <Glyph name="info" size={18} weight={2.2} />
-          {t('notices.alreadyOver')}
-        </p>
-      )}
       <section className="sn-card sv-card" aria-labelledby="sv-title">
         <div className="sn-card-top">
           <div className="sn-card-names">
