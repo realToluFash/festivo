@@ -164,6 +164,7 @@ import {
   type PressSent,
   asSchedule,
 } from './schedule.ts';
+import type { KeptServiceTap } from './serviceTapQueue.ts';
 import { type RoomScreen, type ScreenLink, asRoomScreen, asScreenLinks } from './screens.ts';
 import { type BudgetLineTyped, type EventBudget, asEventBudget } from './budget.ts';
 import { type StaffRateTyped, type StaffRates, asStaffRates } from './staffRates.ts';
@@ -4051,6 +4052,18 @@ export class ApiClient {
         { kind, pressedAt: sent.pressedAt, ...(sent.fromCard === true ? { fromCard: true } : {}) },
         { headers: { 'Idempotency-Key': sent.key } },
       ),
+    );
+  }
+
+  /** A kept service tap (sc-4028); the same key again answers as the first time, 409 `service_changed` names each plate or item that moved since. */
+  async sendServiceTap(tap: KeptServiceTap): Promise<void> {
+    await this.request<unknown>(
+      `/api/events/${encodeURIComponent(tap.eventId)}/service${tap.path}`,
+      {
+        method: tap.method,
+        body: { ...tap.body, expected: tap.expected },
+        headers: { 'Idempotency-Key': tap.key },
+      },
     );
   }
 

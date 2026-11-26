@@ -105,6 +105,8 @@ services:
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:?}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:?}
+      # History capped as on the local stack: the service heartbeat (sc-4028) adds six updates a minute per live event.
+      MERCURE_TRANSPORT_URL: bolt:///data/mercure.db?size=1000
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins https://${APP_HOST}
         subscriptions

@@ -7043,7 +7043,51 @@
     "held": "Esperando a cocina",
     "heldCount_one": "{{count, number}} esperando a cocina",
     "heldCount_many": "{{count, number}} esperando a cocina",
-    "heldCount_other": "{{count, number}} esperando a cocina"
+    "heldCount_other": "{{count, number}} esperando a cocina",
+    "fresh": {
+      "connected": "Connected · up to date {{time}}",
+      "noConnection": "No connection · as of {{time}}",
+      "noConnectionWaiting_one": "No connection · as of {{time}} · {{count, number}} tap waiting",
+      "noConnectionWaiting_other": "No connection · as of {{time}} · {{count, number}} taps waiting",
+      "noConnectionWaiting_many": "No connection · as of {{time}} · {{count, number}} taps waiting",
+      "notStarted": "Not started yet"
+    },
+    "waitingToSend": "Waiting to send",
+    "notSent": {
+      "heading": "Not sent · the floor changed while you were offline",
+      "stageNow": {
+        "toServe": "{{who}} is to serve now, by {{by}}.",
+        "dishing": "{{who}} is dishing now, by {{by}}.",
+        "checked": "{{who}} is checked now, by {{by}}.",
+        "onItsWay": "{{who}} is on its way now, by {{by}}.",
+        "served": "{{who}} is served now, by {{by}}."
+      },
+      "stageNowUnnamed": {
+        "toServe": "{{who}} is to serve now.",
+        "dishing": "{{who}} is dishing now.",
+        "checked": "{{who}} is checked now.",
+        "onItsWay": "{{who}} is on its way now.",
+        "served": "{{who}} is served now."
+      },
+      "offTray": "{{who}} was taken off this tray, by {{by}}.",
+      "offTrayUnnamed": "{{who}} was taken off this tray.",
+      "itemNow": {
+        "ready": "{{item}} is ready now, by {{by}}.",
+        "preparing": "{{item}} is preparing now, by {{by}}."
+      },
+      "itemNowUnnamed": {
+        "ready": "{{item}} is ready now.",
+        "preparing": "{{item}} is preparing now."
+      },
+      "trayNotYours": "This tray is {{name}}'s now.",
+      "undoExpired_one": "Too late to undo: {{count, number}} minute had passed.",
+      "undoExpired_other": "Too late to undo: {{count, number}} minutes had passed.",
+      "undoExpired_many": "Too late to undo: {{count, number}} minutes had passed."
+    },
+    "needsConnection": {
+      "startTray": "Starting a tray needs a connection.",
+      "flaggedTick": "Needs a connection: check {{name}} at the table."
+    }
   },
   "checkIn": {
     "title": "Registro de llegada",

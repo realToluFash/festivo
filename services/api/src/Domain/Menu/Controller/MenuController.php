@@ -281,10 +281,15 @@ final readonly class MenuController
 
     /** The people a menu change asked to pick again who have not answered yet, for Messaging to tell (epic 36). Nothing is sent from here (sc-3913). */
     #[Route('/api/events/{eventId}/menu/asked-again', name: 'menu_asked_again', methods: ['GET'])]
-    #[InEvent(Permission::GuestsRead)]
+    #[InEvent(Permission::MenuRead)]
     public function askedAgain(string $eventId): JsonResponse
     {
-        return new JsonResponse(['people' => $this->menuReasks->toTell($this->event($eventId))]);
+        $event = $this->event($eventId);
+        if (true !== $this->membershipDirectory->grantsOnEvent($this->user(), $event->getOrganisation()->getId(), $event->getId())?->holds(Permission::GuestsRead)) {
+            throw ApiException::permissionRequired(Permission::GuestsRead);
+        }
+
+        return new JsonResponse(['people' => $this->menuReasks->toTell($event)]);
     }
 
     #[Route('/api/events/{eventId}/menu/subscriptions', name: 'menu_subscribe', methods: ['POST'])]

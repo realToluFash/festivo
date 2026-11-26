@@ -8,6 +8,7 @@ use App\Domain\Guest\GuestNeedsRecord;
 use App\Domain\Guest\Interfaces\ArrivalFollowerInterface;
 use App\Domain\Guest\Model\GuestNeeds;
 use App\Domain\Menu\Interfaces\ServingStationsInterface;
+use App\Domain\Service\Model\Expected;
 use App\Domain\Service\Model\ServingTable;
 use App\Domain\Staff\Station\ServiceTables;
 use App\Entity\Event;
@@ -61,6 +62,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         private TranslatorInterface $translator,
         private ServiceUndo $serviceUndo,
         private ServiceFiringRepository $serviceFiringRepository,
+        private ServiceExpectations $serviceExpectations,
     ) {
     }
 
@@ -88,7 +90,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function markItem(MenuCourse $course, string $itemKey, ItemState $state, ?int $readyIn, Grants $grants, User $by): void
+    public function markItem(MenuCourse $course, string $itemKey, ItemState $state, ?int $readyIn, Expected $expected, Grants $grants, User $by): void
     {
         $grants->requireServiceAt(ServicePlace::Pass);
 
@@ -96,12 +98,13 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             throw $this->invalid('readyIn', 'service.ready_in_invalid');
         }
 
-        $this->write($course->getEvent(), [], function (DateTimeImmutable $now) use ($course, $itemKey, $state, $readyIn, $by): void {
+        $this->write($course->getEvent(), [], function (DateTimeImmutable $now) use ($course, $itemKey, $state, $readyIn, $expected, $by): void {
             if (!Iter\contains($this->itemKeys($course), $itemKey)) {
                 throw $this->invalid('item', 'service.item_not_on_course');
             }
 
             $item = $this->serviceItemRepository->findOneOf($course, $itemKey);
+            $this->serviceExpectations->item($expected, $item, $itemKey);
             $before = null === $item ? ServiceUndo::nothing() : ServiceUndo::before(items: [$item]);
             $made = ServiceUndo::none();
 
@@ -116,10 +119,11 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function choose(ServicePlate $order, HeldChoice $choice, Grants $grants, User $by): void
+    public function choose(ServicePlate $order, HeldChoice $choice, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTable($order, $grants, $by);
-        $this->write($order->getEvent(), [$order], function (DateTimeImmutable $now) use ($order, $choice, $by): void {
+        $this->write($order->getEvent(), [$order], function (DateTimeImmutable $now) use ($order, $choice, $expected, $by): void {
+            $this->serviceExpectations->plates($order->getEvent(), $expected, [$order]);
             $states = $this->serviceRead->states($order->getCourse());
 
             if (!$order->isOrder() || $order->isOwed() || PlateStage::ToServe !== $order->getStage() || [] === ServiceRules::preparing($order, $states) || null !== $order->getTray()) {
@@ -164,10 +168,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function mark(ServiceTray $tray, ServicePlate $plate, string $itemKey, ?ItemMark $mark, Grants $grants, User $by): void
+    public function mark(ServiceTray $tray, ServicePlate $plate, string $itemKey, ?ItemMark $mark, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTray($tray, $grants, $by);
-        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $itemKey, $mark, $by): void {
+        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $itemKey, $mark, $expected, $by): void {
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, [$plate], $tray);
+
             if ($plate->getTray() !== $tray || PlateStage::Dishing !== $plate->getStage()) {
                 throw self::stageInvalid();
             }
@@ -190,11 +196,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function check(ServiceTray $tray, Grants $grants, User $by): void
+    public function check(ServiceTray $tray, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTray($tray, $grants, $by);
-        $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $by): void {
+        $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $expected, $by): void {
             $plates = $this->servicePlateRepository->findOnTray($tray);
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, $plates, $tray);
 
             if ([] === $plates || !Iter\all($plates, static fn (ServicePlate $plate): bool => PlateStage::Dishing === $plate->getStage())) {
                 throw self::stageInvalid();
@@ -220,10 +227,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function takeOff(ServiceTray $tray, ServicePlate $plate, Grants $grants, User $by): void
+    public function takeOff(ServiceTray $tray, ServicePlate $plate, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTray($tray, $grants, $by);
-        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $by): void {
+        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $expected, $by): void {
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, [$plate], $tray);
+
             if ($plate->getTray() !== $tray || !$plate->getStage()->allows(PlateStep::TakeOff)) {
                 throw self::stageInvalid();
             }
@@ -234,11 +243,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function takeToTable(ServiceTray $tray, Grants $grants, User $by): void
+    public function takeToTable(ServiceTray $tray, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTray($tray, $grants, $by);
-        $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $by): void {
+        $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $expected, $by): void {
             $plates = $this->servicePlateRepository->findOnTray($tray);
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, $plates, $tray);
 
             if ([] === $plates || !Iter\all($plates, static fn (ServicePlate $plate): bool => PlateStage::Checked === $plate->getStage())) {
                 throw self::stageInvalid();
@@ -248,10 +258,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function tick(ServiceTray $tray, ServicePlate $plate, Grants $grants, User $by): void
+    public function tick(ServiceTray $tray, ServicePlate $plate, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTray($tray, $grants, $by);
-        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $by): void {
+        $this->write($tray->getEvent(), [$tray, $plate], function (DateTimeImmutable $now) use ($tray, $plate, $expected, $by): void {
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, [$plate], $tray);
+
             if ($plate->getTray() !== $tray || PlateStage::OnItsWay !== $plate->getStage()) {
                 throw self::stageInvalid();
             }
@@ -263,12 +275,14 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
     }
 
     /** @return array{ticked: int, left: int} every plate On its way but a flagged guest's, who is ticked by their own name */
-    public function allServed(ServiceTray $tray, Grants $grants, User $by): array
+    public function allServed(ServiceTray $tray, Expected $expected, Grants $grants, User $by): array
     {
         $this->requireTray($tray, $grants, $by);
 
-        return $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $by): array {
-            $onItsWay = Vec\filter($this->servicePlateRepository->findOnTray($tray), static fn (ServicePlate $plate): bool => PlateStage::OnItsWay === $plate->getStage());
+        return $this->write($tray->getEvent(), [$tray], function (DateTimeImmutable $now) use ($tray, $expected, $by): array {
+            $onTray = $this->servicePlateRepository->findOnTray($tray);
+            $this->serviceExpectations->plates($tray->getEvent(), $expected, $onTray, $tray);
+            $onItsWay = Vec\filter($onTray, static fn (ServicePlate $plate): bool => PlateStage::OnItsWay === $plate->getStage());
 
             if ([] === $onItsWay) {
                 throw self::stageInvalid();
@@ -288,10 +302,12 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
-    public function sendBack(ServicePlate $plate, SentBackReason $reason, Grants $grants, User $by): void
+    public function sendBack(ServicePlate $plate, SentBackReason $reason, Expected $expected, Grants $grants, User $by): void
     {
         $this->requireTable($plate, $grants, $by);
-        $this->write($plate->getEvent(), [$plate], function (DateTimeImmutable $now) use ($plate, $reason, $by): void {
+        $this->write($plate->getEvent(), [$plate], function (DateTimeImmutable $now) use ($plate, $reason, $expected, $by): void {
+            $this->serviceExpectations->plates($plate->getEvent(), $expected, [$plate]);
+
             if (!$plate->getStage()->allows(PlateStep::SendBack)) {
                 throw self::stageInvalid();
             }
@@ -306,10 +322,10 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         }
     }
 
-    public function undo(Event $event, string $subject, Grants $grants, User $by): void
+    public function undo(Event $event, string $subject, Expected $expected, Grants $grants, User $by): void
     {
         $grants->require(Permission::ServiceWork);
-        $this->write($event, [], function (DateTimeImmutable $now) use ($event, $subject, $grants, $by): void {
+        $this->write($event, [], function (DateTimeImmutable $now) use ($event, $subject, $expected, $grants, $by): void {
             $step = $this->serviceStepRepository->findLastOn($event, $subject) ?? throw ApiException::notFound('access.not_found');
 
             if ($now->getTimestamp() - $step->getAt()->getTimestamp() > ServiceRules::UNDO_SECONDS) {
@@ -319,6 +335,8 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
             if (!$step->getBy()->getId()->equals($by->getId()) && !$grants->holds(Permission::ServiceManage)) {
                 throw ApiException::permissionRequired(Permission::ServiceManage);
             }
+
+            $this->serviceExpectations->undoing($event, $subject, $expected);
 
             foreach ($step->getSubjects() as $other) {
                 if (!$this->serviceStepRepository->findLastOn($event, $other)?->getId()->equals($step->getId())) {

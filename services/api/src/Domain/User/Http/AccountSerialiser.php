@@ -7,8 +7,8 @@ namespace App\Domain\User\Http;
 use App\Domain\Messaging\EmailSuppressions;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Http\JoinRequestSerialiser;
+use App\Domain\Organisation\MembershipDirectory;
 use App\Domain\Staff\Link\OutsideEvent;
-use App\Domain\Staff\Link\StaffLinkGrants;
 use App\Domain\User\Onboarding\AccountCompleteness;
 use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
@@ -28,7 +28,7 @@ final readonly class AccountSerialiser
         private JoinOfferFinder $joinOfferFinder,
         private JoinRequestSerialiser $joinRequestSerialiser,
         private EmailSuppressions $emailSuppressions,
-        private StaffLinkGrants $staffLinkGrants,
+        private MembershipDirectory $membershipDirectory,
     ) {
     }
 
@@ -36,7 +36,7 @@ final readonly class AccountSerialiser
     public function serialise(User $user): array
     {
         $memberships = $this->membershipRepository->findActiveFor($user);
-        $outside = $this->staffLinkGrants->liveOutsideEvents($user);
+        $outside = $this->membershipDirectory->outsideEvents($user);
         $pending = [] === $memberships ? $this->joinOfferFinder->pendingRequestFor($user) : null;
         $emails = $user->getEmailAddresses();
         $suppressed = $this->emailSuppressions->suppressedAmong(Vec\map($emails, static fn (EmailAddress $address): string => $address->getAddress()));

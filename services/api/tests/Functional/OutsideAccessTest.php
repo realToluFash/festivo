@@ -217,6 +217,18 @@ final class OutsideAccessTest extends ApiTestCase
     }
 
     #[Test]
+    public function anOutsiderWhoJoinsTheOrganisationNoLongerReachesItsEventsFromOutside(): void
+    {
+        $caterer = $this->account('bisi@lagoslights.example', 'Bisi');
+        $this->grant($this->owner, $this->owambe, 'bisi@lagoslights.example', 'can_view');
+        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($caterer, 'GET', '/api/auth/me')['outsideEvents']));
+
+        $this->join($caterer, SeededRole::Member);
+
+        self::assertSame([], $this->as($caterer, 'GET', '/api/auth/me')['outsideEvents']);
+    }
+
+    #[Test]
     public function aMemberOfAnotherOrganisationIsToldOfTheEventsTheyReachFromOutside(): void
     {
         $other = $this->account('owner@ayo.events', 'Ayo Owner');
@@ -481,6 +493,7 @@ final class OutsideAccessTest extends ApiTestCase
             ['POST', $event . '/messages/subscriptions'],
             ['GET', $event . '/menu'],
             ['GET', $event . '/menu/picks'],
+            ['GET', $event . '/menu/asked-again'],
             ['GET', $event . '/menu/preview'],
             ['GET', $event . '/menu/kitchen-sheet'],
             ['POST', $event . '/menu/kitchen-sheet/pdf'],
@@ -628,7 +641,12 @@ final class OutsideAccessTest extends ApiTestCase
 
     private function member(string $address, SeededRole $seeded, string $name): User
     {
-        $user = $this->account($address, $name);
+        return $this->join($this->account($address, $name), $seeded);
+    }
+
+    private function join(User $user, SeededRole $seeded): User
+    {
+        $user = self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
         self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
