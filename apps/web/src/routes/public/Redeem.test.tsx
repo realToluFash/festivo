@@ -668,6 +668,20 @@ describe('"You’re in for…" leads to check-in (sc-28230)', () => {
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
   });
 
+  it('says when a session signed in at the door ends after it redeems another code, as /d/in/:eventId does', async () => {
+    signedIn([], '2030-11-14T18:00:00+00:00');
+    at('/d/K7P2QX9M', {
+      'GET /api/door-codes/K7P2QX9M': () => json(OPENED),
+      'POST /api/door-codes/K7P2QX9M/redeem': () => json(REDEEMED('can_check_in'), 201),
+      'GET /api/auth/me': () =>
+        json(account({ needsOrganisation: false, signedOutAt: '2030-11-14T18:00:00+00:00' })),
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Join as Kemi Okafor' }));
+
+    expect(await screen.findByText(/^You’ll be signed out at .*18:00\.$/u)).toBeDefined();
+  });
+
   it('reads /d/in/:eventId as after redeeming, and redeems nothing again', async () => {
     signedIn([
       {

@@ -201,12 +201,13 @@ export async function refreshAccount(): Promise<void> {
 }
 
 /** The events held from outside, read again: one whose grant ended or was revoked is gone from the list (sc-68438). */
-export async function rereadOutsideEvents(): Promise<void> {
+export async function rereadOutsideEvents(): Promise<string | null> {
   const asked = generation;
-  const { outsideEvents, signedOutAt } = await api.me();
-  if (generation !== asked || state.status !== 'signedIn') return;
+  const { outsideEvents, signedOutAt = null } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return signedOutAt;
 
   set({ status: 'signedIn', session: { ...state.session, outsideEvents, signedOutAt } });
+  return signedOutAt;
 }
 
 /** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
