@@ -204,16 +204,6 @@ export const WEEK_DAYS: readonly WeekDay[] = [
   },
 ];
 
-/** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
-export function dayLineShares(
-  name: number,
-  dottedDate: number,
-  gap: number,
-  room: number,
-): boolean {
-  return name + gap + dottedDate <= room;
-}
-
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';
 
