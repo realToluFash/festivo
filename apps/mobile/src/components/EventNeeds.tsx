@@ -7,6 +7,7 @@ import { eventNeeds } from '../kit/eventNeeds.ts';
 import { dayWords } from '../kit/todayMoment.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { TextAction } from './SummaryRows.tsx';
 import type { TimelineRead } from './Timeline.tsx';
@@ -24,6 +25,9 @@ export function EventNeeds({
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
+  useReadOut(load.kind === 'failed' && retried ? t('timeline.failed') : null, {
+    quietAtMount: true,
+  });
   const rows =
     load.kind === 'loaded'
       ? eventNeeds(
@@ -67,7 +71,7 @@ export function EventNeeds({
           </Text>
         )}
         {load.kind === 'failed' && (
-          <View style={styles.line} accessibilityLiveRegion={retried ? 'polite' : 'none'}>
+          <View style={styles.line}>
             <Text size={15} weight="medium">
               {t('timeline.failed')}
             </Text>
