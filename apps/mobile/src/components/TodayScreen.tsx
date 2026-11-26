@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { WORDS_GO, foldAt as foldOf, restingPlaces, wordsGoFrom } from '../layout/todayFold.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import type { Moment } from '../kit/today.ts';
@@ -33,7 +34,6 @@ import { TodaySidebar } from './TodaySidebar.tsx';
 
 export const TAB_BAR = 64;
 const BELOW_HEAD = 28;
-const WORDS_GO = 96;
 
 /** Today, drawn for the device: a cover the sheet rises over on a phone and an upright iPad, a sidebar and a banner on its side. */
 export function TodayScreen({
@@ -110,7 +110,15 @@ function Scrolled({
   const [body, setBody] = useState(() => coverBody(moment, layout));
   // At the accessibility sizes the tablet's band grows past its body to keep the live line whole, so the fold follows what the band measures.
   const [bandHeight, setBandHeight] = useState(() => bandBody(moment, layout));
-  const foldAt = body - bandHeight - SHEET_RISE;
+  // The scroller's own height, not the window's: on an edge-to-edge Android tablet the window leaves out the system bars, and a short page would stop before it folds.
+  const [height, setHeight] = useState(() => Dimensions.get('window').height);
+  const fold = {
+    coverFoot: insets.top + body,
+    sheetRise: SHEET_RISE,
+    bandFoot: insets.top + bandHeight,
+    screen: height,
+  };
+  const foldAt = foldOf(fold);
   const bandFrom = foldAt - tokens.space3xl;
   const band = offset.interpolate({
     inputRange: [bandFrom, foldAt],
@@ -119,12 +127,10 @@ function Scrolled({
   });
   // The words are gone before the band comes, so the two never show through each other.
   const words = offset.interpolate({
-    inputRange: [Math.max(0, bandFrom - WORDS_GO), bandFrom],
+    inputRange: [phone ? wordsGoFrom(fold) : Math.max(0, bandFrom - WORDS_GO), bandFrom],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
-  // The scroller's own height, not the window's: on an edge-to-edge Android tablet the window leaves out the system bars, and a short page would stop before it folds.
-  const [height, setHeight] = useState(() => Dimensions.get('window').height);
   const onScroll = useMemo(
     () =>
       Animated.event([{ nativeEvent: { contentOffset: { y: offset } } }], {
@@ -146,14 +152,14 @@ function Scrolled({
 
   return (
     <View style={styles.page}>
-      {/* Like a large title, the cover is open or folded: a scroll that stops between snaps to one, and a short page still has the room to fold. */}
+      {/* Like a large title, the cover is open or folded: a scroll that stops between snaps to one, and a short page still has the room to fold. A phone cover taller than the screen also rests with Open the event above the tabs. */}
       <Animated.ScrollView
         ref={scroller}
         onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        snapToOffsets={[0, foldAt]}
+        snapToOffsets={phone ? restingPlaces(fold) : [0, foldAt]}
         snapToEnd={false}
         contentContainerStyle={{
           minHeight: height + foldAt,
