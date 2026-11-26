@@ -88,11 +88,7 @@ final readonly class GuestConditions
         return [[] === $clauses ? 'FALSE' : Str\join($clauses, ' AND '), $parameters];
     }
 
-    /**
-     * @param list<Condition> $conditions
-     *
-     * @return list<array<string, mixed>> each group by its name now, and whether it was deleted
-     */
+    /** @param list<Condition> $conditions */
     public function shown(Event $event, array $conditions): array
     {
         return Iter\first($this->shownEach($event, [$conditions])) ?? [];
@@ -101,7 +97,7 @@ final readonly class GuestConditions
     /**
      * @param list<list<Condition>> $lists
      *
-     * @return list<list<array<string, mixed>>> as shown, with one lookup for every group the lists name
+     * @return list<list<array<string, mixed>>> each group by its name now, and whether it was deleted, in one lookup
      */
     public function shownEach(Event $event, array $lists): array
     {

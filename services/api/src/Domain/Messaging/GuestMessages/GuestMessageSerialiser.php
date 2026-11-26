@@ -124,7 +124,7 @@ final readonly class GuestMessageSerialiser
     }
 
     /**
-     * @param list<array<string, mixed>> $conditions as shown
+     * @param array<mixed> $conditions as shown
      *
      * @return array<string, mixed>
      */
