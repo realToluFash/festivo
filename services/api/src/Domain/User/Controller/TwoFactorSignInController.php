@@ -51,7 +51,7 @@ final readonly class TwoFactorSignInController
             $result->tokens,
             $delivery,
             $request,
-            ['account' => $this->accountSerialiser->serialise($result->user), 'linked' => $result->linked],
+            ['account' => $this->accountSerialiser->serialise($result->user, $result->tokens), 'linked' => $result->linked],
         );
     }
 }

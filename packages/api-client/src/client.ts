@@ -552,7 +552,7 @@ export interface Account {
   waitingFor: JoinRequest | null;
   /** The events this account is on from outside their organisations (sc-71), soonest first. */
   outsideEvents: OutsideEvent[];
-  /** When this session ends, for a browser's that ends with the account's grants (sc-4235); null for any other, and from every read but `me`. */
+  /** When this session ends, for a browser's that ends with the account's grants (sc-4235); null for any other. */
   signedOutAt: string | null;
 }
 

@@ -36,12 +36,11 @@ final readonly class CallerSession
         return \is_string($session) && Uuid::isValid($session) ? Uuid::fromString($session) : null;
     }
 
-    /** When the caller's session ends, if it is one that ends with its account's grants (sc-4235); null for one that does not, as the app's. */
+    /** When the caller's session ends, if it is one that ends with its account's grants (sc-4235). */
     public function endsAt(User $user): ?DateTimeImmutable
     {
         $chain = $this->chain();
-        $session = null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]);
 
-        return true === $session?->endsWithGrants() ? $this->tokenIssuer->grantsEndFor($user) : null;
+        return $this->tokenIssuer->endsAt(null === $chain ? null : $this->refreshTokenRepository->findOneBy(['chainId' => $chain]), $user);
     }
 }

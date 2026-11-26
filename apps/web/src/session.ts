@@ -61,7 +61,7 @@ export interface Session {
   outsideEvents?: readonly OutsideEvent[];
   /** A door code's account (sc-72): no address to prove, so no gate, and nothing but its events and itself to read. */
   heldByDevice?: boolean;
-  /** When this browser's session ends with the account's grants (sc-4235), from `/me`; null for one that does not. */
+  /** When this browser's session ends with the account's grants (sc-4235); null for one that does not. */
   signedOutAt?: string | null;
 }
 

@@ -387,7 +387,7 @@ final class DoorCodesTest extends ApiTestCase
     }
 
     #[Test]
-    public function meSaysWhenABrowserSessionSignedInAtTheDoorEndsAndNamesNoEndForTheApps(): void
+    public function theAccountSaysWhenABrowserSessionSignedInAtTheDoorEndsAndNamesNoEndForTheApps(): void
     {
         $code = $this->code('can_check_in');
         $joanna = $this->account('joanna@bello.ng', 'Joanna Bello');
@@ -396,6 +396,8 @@ final class DoorCodesTest extends ApiTestCase
 
         $browser = $this->signInFor($code, Type\string()->coerce($this->sendFor($code, 'Jo', $number)['handle']), $this->codeTo($number), 'cookie');
         self::assertSame(200, $this->statusCode(), Json\encode($browser));
+        $account = Type\shape(['signedOutAt' => Type\string()], true)->coerce($browser['account']);
+        self::assertSame(new DateTimeImmutable(Type\string()->coerce($browser['endsAt']))->getTimestamp(), new DateTimeImmutable($account['signedOutAt'])->getTimestamp(), 'the sign-in reads it as /me does');
         $this->client->request('GET', '/api/auth/me', server: ['HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->coerce($browser['accessToken'])]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertSame(

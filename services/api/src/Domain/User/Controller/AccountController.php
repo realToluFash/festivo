@@ -58,7 +58,7 @@ final class AccountController
         // Every client reads this on opening, which is how an address proved since being added to an event takes its grant (sc-71).
         $this->addressClaims->claimFor($user);
 
-        return new JsonResponse($this->accountSerialiser->serialise($user) + ['signedOutAt' => $this->callerSession->endsAt($user)?->format(\DATE_ATOM)]);
+        return new JsonResponse($this->accountSerialiser->serialise($user));
     }
 
     /** The language switcher, signed in: the account's language, which every device and every email then follow. */
