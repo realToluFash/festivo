@@ -1,6 +1,7 @@
-import { type Entry, sample } from './roster.ts';
+import { type Entry, type RosterStart, rosterWith, sample } from './roster.ts';
 import type { DemoLink } from './settings.ts';
 import { type Delivered, type Trail, NOW_AT, YOU, afterCopy } from './staffLink.ts';
+import { texting } from './staffText.ts';
 import { STATIONS_EVENT } from './stations.ts';
 
 /** The briefing on the event's Staff page (sc-3917, Staffing.dc.html › Tweaks › Briefing on page e34): house rules and everyone's shift, sent with one tap. */
@@ -57,6 +58,8 @@ export const BW = {
   copiedBy: (trail: Trail) => `Copied by ${trail.by} · ${trail.at} · not marked as sent`,
   markedBy: (trail: Trail) => `Marked as sent by ${trail.by} · ${trail.at}`,
   markSent: 'Mark as sent',
+  /** A briefing copy's button, named apart from the same row's Link-column Copy link and Mark as sent. */
+  forBriefing: (act: string, name: string) => `${act} for the briefing: ${name}`,
   marked: (name: string) => `[Marked as sent to ${name}.]`,
   nobody: '[Nobody has a shift yet.]',
   giveShift: '[Give someone a shift]',
@@ -113,14 +116,12 @@ export function codePoints(text: string): number {
   return Array.from(text).length;
 }
 
-/** The rules box takes nothing past 2,000 code points; a paste that would go over keeps its first part and says so. */
+/** The rules box takes nothing past 2,000 code points: a key typed at the limit, anywhere in the text, is not taken; a paste that would go over keeps its first part and says so. */
 export function fitRules(before: string, typed: string): { text: string; cut: boolean } {
   if (codePoints(typed) <= RULES_MAX) return { text: typed, cut: false };
+  if (codePoints(typed) - codePoints(before) <= 1) return { text: before, cut: false };
 
-  return {
-    text: Array.from(typed).slice(0, RULES_MAX).join(''),
-    cut: codePoints(typed) - codePoints(before) > 1,
-  };
+  return { text: Array.from(typed).slice(0, RULES_MAX).join(''), cut: true };
 }
 
 export function countLine(text: string): { words: string; limit: boolean } | null {
@@ -161,6 +162,21 @@ export function onShift(people: readonly Person[]): Person[] {
   return people.filter((one) => one.shift != null);
 }
 
+/** A roster entry added or edited on the page with the briefing: a new person is Not sent, and a station or shift changed after the briefing went reads Changed since sent. */
+export function asPerson(made: Entry, before: Entry | null): Person {
+  const was = before as Partial<Person> | null;
+  const brief = was?.brief ?? 'none';
+  const moved = before != null && (before.station !== made.station || before.shift !== made.shift);
+
+  return {
+    channel: was?.channel ?? 'sms',
+    heldText: was?.heldText ?? false,
+    briefCopy: was?.briefCopy ?? null,
+    ...made,
+    brief: moved && (brief === 'sent' || brief === 'read') ? 'changed' : brief,
+  };
+}
+
 export function afterBriefCopy(one: Person): Person {
   const link = afterCopy(one.link, one.trail ?? null);
 
@@ -199,8 +215,21 @@ export interface Check {
 
 const cost = (one: Person) => (one.channel === 'whatsApp' ? WHATSAPP_CREDITS : SMS_CREDITS);
 
+export type Target = 'all' | 'changed' | string;
+
+/** Who the send is for and has no number: Not sent people with a shift for Send the briefing to {n}, changed people for Send to {n} changed, and nobody for one row's Send again. */
+export function noMobileFor(people: readonly Person[], target: Target): number {
+  if (target === 'all')
+    return people.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
+      .length;
+  if (target === 'changed')
+    return people.filter((one) => one.brief === 'changed' && one.mobile == null).length;
+
+  return 0;
+}
+
 /** sc-3931 on sc-3929's reservation preview: a text is paid only when the balance covers its whole cost; the lines count what is paid, and the rest wait. */
-export function checkOf(due: readonly Person[], all: readonly Person[], balance: number): Check {
+export function checkOf(due: readonly Person[], noMobile: number, balance: number): Check {
   let left = balance;
   const paid: Person[] = [];
   for (const one of due) {
@@ -215,8 +244,7 @@ export function checkOf(due: readonly Person[], all: readonly Person[], balance:
 
   return {
     people: due.length,
-    noMobile: all.filter((one) => one.shift != null && one.mobile == null && one.brief === 'none')
-      .length,
+    noMobile,
     sms: { n: by('sms', paid).length, credits: by('sms', paid).length * SMS_CREDITS },
     whatsApp:
       whatsApp.length === 0
@@ -318,7 +346,7 @@ export interface BriefingStart {
   missed: string | null;
   handHeld: { id: string; url: string } | null;
   loading: boolean;
-  check: 'all' | 'changed' | string | null;
+  check: Target | null;
   checkAt: 'loading' | 'shown' | 'failed';
   balance: number;
   billing: boolean;
@@ -363,7 +391,7 @@ const HELD = ['amina', 'emeka'];
 const afterShortSend = () => {
   const list = people();
   const due = dueAll(list);
-  const sent = sendTo(list, due, checkOf(due, list, 70));
+  const sent = sendTo(list, due, checkOf(due, noMobileFor(list, 'all'), 70));
 
   return sent.people;
 };
@@ -604,8 +632,11 @@ const STATES = {
     start({
       name: 'Sent, with the no-number count',
       note: 'Sent to 3. 1 has no mobile number. The three read Sent, not read, and Link sent.',
-      people: sendTo(people(), dueAll(people()), checkOf(dueAll(people()), people(), BALANCE))
-        .people,
+      people: sendTo(
+        people(),
+        dueAll(people()),
+        checkOf(dueAll(people()), noMobileFor(people(), 'all'), BALANCE),
+      ).people,
       result: { lines: resultLines(3, 1, 0), held: [] },
     }),
   resultHeld: () =>
@@ -645,8 +676,31 @@ export function briefingStart(raw: string | null): BriefingStart {
   return STATES[name]();
 }
 
-export function briefingAt(state?: BriefingStateName): string {
-  return `/demo/events/${STATIONS_EVENT}/staff/briefing${state == null ? '' : `?state=${state}`}`;
+/** The briefing's states are the Roster's, with the Briefing card and column: ?state=briefing, ?state=briefingChangedRow… */
+export function rosterStateOf(state: BriefingStateName): string {
+  return state === 'populated' ? 'briefing' : `briefing${state[0]?.toUpperCase()}${state.slice(1)}`;
+}
+
+/** The Roster on a briefing state: its people, its permissions, its clipboard, and Text links to {n} once the briefing can send (epic 36). */
+export function briefingRosterStart(raw: string | null): RosterStart | null {
+  const name = BRIEFING_STATES.find((one) => rosterStateOf(one) === raw);
+  if (name == null) return null;
+  const b = STATES[name]();
+
+  return rosterWith({
+    name: b.name,
+    note: b.note,
+    entries: b.people,
+    manage: b.access === 'manage',
+    finished: b.finished,
+    copy: b.copy === 'slow' ? 'works' : b.copy,
+    sms: b.live ? texting({ credits: b.balance, billing: b.billing }) : null,
+    briefing: b,
+  });
+}
+
+export function briefingAt(state: BriefingStateName = 'populated'): string {
+  return `/demo/events/${STATIONS_EVENT}/staff/roster?state=${rosterStateOf(state)}`;
 }
 
 const link = (state: BriefingStateName): DemoLink => ({

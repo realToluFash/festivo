@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
-import { BW } from './briefing.ts';
+import { type BriefingStateName, BW, briefingAt } from './briefing.ts';
 import { ISSUE_MS } from './staffLink.ts';
 
 const tested = config();
@@ -12,9 +12,12 @@ const tested = config();
 beforeEach(() => __setConfig({ ...tested, environment: 'development' }));
 afterEach(() => __setConfig(tested));
 
-async function open(state: string): Promise<void> {
+async function open(
+  state: BriefingStateName | null,
+  at = state == null ? '' : briefingAt(state),
+): Promise<void> {
   const router = createMemoryRouter(routes, {
-    initialEntries: [`/demo/events/evt-wed-4/staff/briefing?state=${state}`],
+    initialEntries: [at === '' ? '/demo/events/evt-wed-4/staff/roster' : at],
   });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { level: 1 }, { timeout: 8000 });
@@ -73,7 +76,7 @@ describe('the briefing on the web (sc-3917)', () => {
 
   it('marks a copied link as sent from the copy list, and recounts', async () => {
     await open('copyCopied');
-    press('Mark as sent: Amina Yusuf');
+    press(BW.forBriefing(BW.markSent, 'Amina Yusuf'));
     expect(button('Send the briefing to 2')).toBeTruthy();
     expect(screen.getAllByText('Marked as sent by Amara Nwosu · 19:12').length).toBeGreaterThan(0);
   });
@@ -88,10 +91,49 @@ describe('the briefing on the web (sc-3917)', () => {
   });
 
   it('refuses without either permission', async () => {
-    const router = createMemoryRouter(routes, {
-      initialEntries: ['/demo/events/evt-wed-4/staff/briefing?state=refused'],
-    });
+    const router = createMemoryRouter(routes, { initialEntries: [briefingAt('refused')] });
     render(<RouterProvider router={router} />);
     expect(await screen.findByText(BW.refusedPage, {}, { timeout: 8000 })).toBeTruthy();
+  });
+
+  it('is the Roster itself, with its controls and the Link column beside Briefing', async () => {
+    await open('populated');
+    expect(button('Add a person')).toBeTruthy();
+    expect(button('Text links to 4')).toBeTruthy();
+    expect(button('Copy link: Tolu Bello')).toBeTruthy();
+    const table = screen.getByRole('table', { name: 'Roster' });
+    const heads = within(table)
+      .getAllByRole('columnheader')
+      .map((one) => one.textContent);
+    expect(heads).toEqual(['Name', 'Job', 'Station', 'Shift', 'Briefing', 'Link']);
+  });
+
+  it('leaves Briefing alone on a Link-column Mark as sent', async () => {
+    await open('populated');
+    press('Mark as sent: Amina Yusuf');
+    expect(button('Send the briefing to 3')).toBeTruthy();
+    expect(button('Text links to 3')).toBeTruthy();
+  });
+
+  it('turns the Link column to Link sent on a briefing Mark as sent, so Text links leaves them out', async () => {
+    await open('copyCopied');
+    expect(button('Text links to 4')).toBeTruthy();
+    press(BW.forBriefing(BW.markSent, 'Amina Yusuf'));
+    expect(button('Text links to 3')).toBeTruthy();
+    expect(button('Mark as sent: Amina Yusuf')).toBeNull();
+  });
+
+  it('counts no one without a number in Send to 2 changed', async () => {
+    await open('checkChanged');
+    const dialog = await screen.findByRole('dialog');
+    await wait(ISSUE_MS);
+    expect(within(dialog).getByText('2 people')).toBeTruthy();
+    expect(within(dialog).queryByText(/no mobile number/)).toBeNull();
+  }, 15_000);
+
+  it('keeps the Roster’s own states without the briefing', async () => {
+    await open(null);
+    expect(screen.queryByRole('heading', { name: BW.card })).toBeNull();
+    expect(button('Add a person')).toBeTruthy();
   });
 });

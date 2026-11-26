@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useParams, useSearchParams } from 'react-router';
+import { type Dispatch, type ReactNode, type SetStateAction, useEffect, useState } from 'react';
+import { Link } from 'react-router';
 
 import { Glyph } from '../components/Glyph.tsx';
 import { Dialog, type Tell } from '../components/SettingsParts.tsx';
@@ -12,35 +12,25 @@ import {
   BW,
   afterBriefCopy,
   afterBriefMark,
-  briefingStart,
+  asPerson,
   checkOf,
   countLine,
   dueAll,
   dueChanged,
   fitRules,
+  noMobileFor,
   noteOf,
   onShift,
   resultLines,
   sendTo,
   tallyOf,
 } from './briefing.ts';
-import { DemoBell } from './DemoBell.tsx';
-import { EventsShell } from './EventParts.tsx';
-import { EventSidebar } from './EventSidebar.tsx';
-import { CLOCKS, type SampleEvent, sampleEvent } from './events.ts';
+import type { SampleEvent } from './events.ts';
 import { Pill } from './GuestsParts.tsx';
-import { clockOfKitchen } from './kitchen.ts';
-import { KeptArea, KeptHere } from './KeptOffline.tsx';
-import { keptInbox, waitingLine } from './messages.ts';
 import { MN } from './myNight.ts';
-import { LinkWord } from './Roster.tsx';
-import { linkOf, sorted } from './roster.ts';
-import { ROSTER_WORDS, RosterWordsContext } from './rosterWords.ts';
-import { ISSUE_MS, SAMPLE_LINK, copyIssued, plainItem, trailLine } from './staffLink.ts';
-import { STATIONS_EVENT } from './stations.ts';
-import { Select, StaffTabs } from './Stations.tsx';
-import { useSwitcherStart } from './switcher.ts';
-import { clockWords } from './tabKept.ts';
+import { type Entry, sorted } from './roster.ts';
+import { ISSUE_MS, SAMPLE_LINK, copyIssued, plainItem } from './staffLink.ts';
+import { Select } from './Stations.tsx';
 import './guests.css';
 import './menu.css';
 import './myNight.css';
@@ -50,111 +40,78 @@ import './briefing.css';
 
 const BRIEFS: readonly Brief[] = ['read', 'sent', 'changed', 'none'];
 
-/** /demo/events/evt-wed-4/staff/briefing (sc-3917): the Roster with the Briefing card above it and its Briefing column, by ?state=. */
-export function BriefingPage() {
-  const { id } = useParams();
-  const [params] = useSearchParams();
-  const raw = params.get('state');
-  useSwitcherStart();
-
-  return <BriefingAt key={`${id ?? ''}|${raw ?? ''}`} id={id} raw={raw} />;
+/** The briefing's parts on the Roster (sc-3917): the card above it, the Briefing column, the held link under a row, the panel and the check. */
+export interface Briefing {
+  on: boolean;
+  side: boolean;
+  card: ReactNode;
+  cell: (one: Entry) => ReactNode;
+  held: (one: Entry, span: number) => ReactNode;
+  panel: ReactNode;
+  check: ReactNode;
+  /** Closes the briefing's panel when the Roster opens one of its own. */
+  dismiss: () => void;
+  /** A person added or edited on the Roster, with their briefing kept. */
+  adopt: (made: Entry, before: Entry | null) => Entry;
 }
 
-function BriefingAt({ id, raw }: { id: string | undefined; raw: string | null }) {
-  const [event] = useState(() => sampleEvent(id));
-  const [first] = useState(() => briefingStart(raw));
+const OFF: Briefing = {
+  on: false,
+  side: false,
+  card: null,
+  cell: () => null,
+  held: () => null,
+  panel: null,
+  check: null,
+  dismiss: () => undefined,
+  adopt: (made) => made,
+};
 
-  if (event == null) return <Navigate to="/demo/events" replace />;
-  if (event.id !== STATIONS_EVENT)
-    return <Navigate to={`/demo/events/${event.id}?area=staff`} replace />;
-  const now = first.finished ? CLOCKS.finished : clockOfKitchen();
-
-  return (
-    <KeptArea eventId={event.id} area="staff" at={clockWords(now, event.timeZone)}>
-      <EventsShell
-        renderSide={(tell, covered) => (
-          <EventSidebar
-            event={event}
-            area="staff"
-            now={now}
-            tell={tell}
-            inert={covered}
-            waiting={waitingLine(keptInbox())}
-          />
-        )}
-      >
-        {(tell) => (
-          <RosterWordsContext value={ROSTER_WORDS.en}>
-            {first.access === 'none' ? (
-              <Refused event={event} />
-            ) : (
-              <BriefingView first={first} event={event} tell={tell} />
-            )}
-          </RosterWordsContext>
-        )}
-      </EventsShell>
-    </KeptArea>
-  );
-}
-
-function Refused({ event }: { event: SampleEvent }) {
-  return (
-    <div className="desk-page ev-page gs mn sn rs bf">
-      <div className="ev-wide mn-page">
-        <div className="bf-refused" role="alert">
-          <Glyph name="lock" size={28} weight={2} />
-          <p className="rs-empty-title">{BW.refusedPage}</p>
-          <Link className="gs-pill is-secondary" to={`/demo/events/${event.id}`}>
-            {BW.backToEvent}
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BriefingView({
+/** The briefing's state and actions on the Roster's own rows: a briefing copy turns the Link column to Copied, and a Link-column copy leaves Briefing alone. */
+export function useBriefing({
   first,
-  event,
+  entries,
+  setEntries,
+  focus,
+  announce,
+  credits,
+  spend,
   tell,
+  event,
+  onSide,
 }: {
-  first: BriefingStart;
-  event: SampleEvent;
+  first: BriefingStart | null;
+  entries: readonly Entry[];
+  setEntries: Dispatch<SetStateAction<Entry[]>>;
+  /** Where focus goes after the next render. */
+  focus: (id: string) => void;
+  announce: (text: string) => void;
+  credits: number;
+  spend: (credits: number) => void;
   tell: Tell;
-}) {
-  const [people, setPeople] = useState<Person[]>(first.people);
-  const [side, setSide] = useState<Side>(first.side);
-  const [rules, setRules] = useState(first.rules);
-  const [draft, setDraft] = useState(first.draft);
-  const [cut, setCut] = useState(first.cut);
-  const [saved, setSaved] = useState(first.saved);
-  const [busy, setBusy] = useState(first.busy);
-  const [missed, setMissed] = useState(first.missed);
-  const [handHeld, setHandHeld] = useState(first.handHeld);
-  const [check, setCheck] = useState(first.check);
-  const [checkAt, setCheckAt] = useState(first.checkAt);
-  const [stuck, setStuck] = useState(first.checkAt === 'loading');
+  event: SampleEvent;
+  onSide: () => void;
+}): Briefing {
+  const [side, setSide] = useState<Side>(first?.side ?? null);
+  const [rules, setRules] = useState(first?.rules ?? '');
+  const [draft, setDraft] = useState(first?.draft ?? null);
+  const [cut, setCut] = useState(first?.cut ?? false);
+  const [saved, setSaved] = useState(first?.saved ?? false);
+  const [busy, setBusy] = useState(first?.busy ?? null);
+  const [missed, setMissed] = useState(first?.missed ?? null);
+  const [handHeld, setHandHeld] = useState(first?.handHeld ?? null);
+  const [check, setCheck] = useState(first?.check ?? null);
+  const [checkAt, setCheckAt] = useState(first?.checkAt ?? 'shown');
+  const [stuck, setStuck] = useState(first?.checkAt === 'loading');
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  const [result, setResult] = useState(first.result);
-  const [live, setLive] = useState({ text: first.said ?? '', said: 0 });
-  const focusAfter = useRef<string | null>(null);
-  const manage = first.access === 'manage';
-  const acts = manage && !first.finished;
-  const sends = acts && first.live;
+  const [result, setResult] = useState(first?.result ?? null);
 
   useEffect(() => {
-    if (first.handHeld != null) {
-      const field = document.getElementById(`bf-held-${first.handHeld.id}`);
-      if (field instanceof HTMLInputElement) field.select();
-    }
+    if (first?.handHeld == null) return;
+    const field = document.getElementById(`bf-held-${first.handHeld.id}`);
+    if (field instanceof HTMLInputElement) field.select();
   }, [first]);
-
-  useEffect(() => {
-    if (focusAfter.current == null) return;
-    document.getElementById(focusAfter.current)?.focus();
-    focusAfter.current = null;
-  });
 
   useEffect(() => {
     if (check == null || checkAt !== 'loading' || stuck) return;
@@ -163,44 +120,53 @@ function BriefingView({
     return () => window.clearTimeout(timer);
   }, [check, checkAt, stuck]);
 
-  function announce(text: string) {
-    setLive((was) => ({ text, said: was.said + 1 }));
-  }
+  if (first == null) return OFF;
 
+  const people = entries as readonly Person[];
+  const manage = first.access === 'manage';
+  const acts = manage && !first.finished;
+  const sends = acts && first.live;
   const rows = sorted(people) as Person[];
-  const shown = (id: string) => people.find((one) => one.id === id) as Person;
+  const here = (id: string) => people.find((one) => one.id === id);
+  const shown = (id: string) => here(id) as Person;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
 
   function open(next: Side) {
+    onSide();
     setSide(next);
     setSaved(false);
     setCut(false);
-    focusAfter.current = 'sn-panel-title';
+    focus('sn-panel-title');
   }
 
-  function close(back: string) {
+  function dismiss() {
     setSide(null);
     setDraft(null);
     setCut(false);
-    focusAfter.current = back;
+  }
+
+  function close(back: string) {
+    dismiss();
+    focus(back);
   }
 
   function change(id: string, to: (one: Person) => Person) {
-    setPeople((was) => was.map((one) => (one.id === id ? to(one) : one)));
+    setEntries((was) => was.map((one) => (one.id === id ? to(one as Person) : one)));
   }
 
   async function copy(id: string) {
-    if (busy != null) return;
+    if (first == null || busy != null) return;
     setBusy(id);
     setMissed(null);
     if (handHeld?.id === id) setHandHeld(null);
     if (first.copy === 'slow') return;
+    const fails = first.copy === 'notIssued';
     const issue = () =>
       new Promise<string>((resolve, reject) =>
         window.setTimeout(
-          () => (first.copy === 'notIssued' ? reject(new Error('503')) : resolve(SAMPLE_LINK)),
+          () => (fails ? reject(new Error('503')) : resolve(SAMPLE_LINK)),
           ISSUE_MS,
         ),
       );
@@ -225,15 +191,14 @@ function BriefingView({
     }
     setHandHeld({ id, url: outcome.url });
     announce(BW.refused);
-    focusAfter.current = `bf-held-${id}`;
+    focus(`bf-held-${id}`);
   }
 
   function mark(id: string) {
     change(id, afterBriefMark);
     if (handHeld?.id === id) setHandHeld(null);
     announce(BW.marked(shown(id).name));
-    focusAfter.current =
-      side?.kind === 'copy' || result != null ? `bf-copy-${id}` : `bf-row-copy-${id}`;
+    focus(side?.kind === 'copy' || result != null ? `bf-copy-${id}` : `bf-row-copy-${id}`);
   }
 
   function ask(target: string) {
@@ -251,32 +216,36 @@ function BriefingView({
         : check === 'changed'
           ? changed
           : people.filter((one) => one.id === check);
-  const costs: Check | null = check == null ? null : checkOf(due, people, first.balance);
+  const costs: Check | null =
+    check == null ? null : checkOf(due, noMobileFor(people, check), credits);
 
   function closeCheck() {
-    focusAfter.current =
-      check === 'all' ? 'bf-send' : check === 'changed' ? 'bf-changed' : `bf-again-${check ?? ''}`;
+    focus(
+      check === 'all' ? 'bf-send' : check === 'changed' ? 'bf-changed' : `bf-again-${check ?? ''}`,
+    );
     setCheck(null);
     setSendFailed(false);
   }
 
   function sendNow() {
-    if (costs == null || sending || checkAt !== 'shown') return;
+    if (first == null || costs == null || sending || checkAt !== 'shown') return;
+    const fails = first.sendFails;
     setSending(true);
     window.setTimeout(() => {
       setSending(false);
-      if (first.sendFails) {
+      if (fails) {
         setSendFailed(true);
         announce(BW.sendFailed);
         return;
       }
       const sent = sendTo(people, due, costs);
-      setPeople(sent.people);
+      setEntries(sent.people);
+      spend(costs.credits);
       setCheck(null);
-      const lines = resultLines(sent.sent, check === 'all' ? costs.noMobile : 0, sent.held.length);
+      const lines = resultLines(sent.sent, costs.noMobile, sent.held.length);
       setResult({ lines, held: sent.held });
       announce(lines.join(' '));
-      focusAfter.current = 'bf-result';
+      focus('bf-result');
     }, ISSUE_MS);
   }
 
@@ -295,342 +264,271 @@ function BriefingView({
     setSaved(true);
     setSide({ kind: 'rules', editing: false });
     announce(BW.saved);
-    focusAfter.current = 'sn-panel-title';
+    focus('sn-panel-title');
   }
 
   const backFrom = (now: Side) =>
     now?.kind === 'copy' ? 'bf-copy' : now?.kind === 'preview' ? 'bf-preview' : 'bf-rules';
+  const heldHere = (result?.held ?? []).filter((id) => here(id) != null);
+  const previewed = side?.kind === 'preview' ? here(side.id) : undefined;
 
-  return (
-    <div
-      className={
-        side == null
-          ? 'desk-page ev-page gs mn sn rs bf'
-          : 'desk-page ev-page gs mn sn rs bf is-side'
-      }
-    >
-      <div className="ev-wide mn-page">
-        <KeptHere />
-        <div className="ev-crumb-row">
-          <nav className="ev-crumb" aria-label="Breadcrumb">
-            <ol>
-              <li className="ev-crumb-part">
-                <Link to="/demo/events">Events</Link>
-              </li>
-              <li className="ev-crumb-part">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <Link className="ev-crumb-name" to={`/demo/events/${event.id}`}>
-                  {event.name}
-                </Link>
-              </li>
-              <li className="ev-crumb-part" aria-current="page">
-                <Glyph name="chevron" size={15} weight={2.4} className="desk-chevron" />
-                <span className="ev-crumb-name">Staff</span>
-              </li>
-            </ol>
-          </nav>
-          <DemoBell tell={tell} />
-        </div>
-        <header className="gs-top">
-          <div className="mn-head">
-            <h1 className="gs-title">Staff</h1>
-            <p className="mn-sub">
-              Who works the event, where they work, and what each station serves.
-            </p>
-          </div>
-        </header>
-        <StaffTabs on="Roster" eventId={event.id} tell={tell} />
-        {!manage && (
-          <p className="mn-lock">
-            <Glyph name="lock" size={16} weight={2.2} />
-            {BW.lock}
-          </p>
-        )}
-        <p className="visually-hidden" role="status">
-          <span key={live.said}>{live.text}</span>
-        </p>
-        <div className="mn-split">
-          <div className="mn-list">
-            <section className="sn-card bf-card" aria-labelledby="bf-title">
-              <div className="sn-card-top">
-                <div className="sn-card-names">
-                  <h2 id="bf-title">{BW.card}</h2>
-                  <p className="mn-sub">{BW.cardSub}</p>
-                </div>
-              </div>
-              <ul className="bf-tally" aria-label="Where the briefing is">
-                {BRIEFS.map((brief) => (
-                  <li key={brief}>
-                    <BriefWord brief={brief} />
-                    <span className="bf-tally-n">{tally[brief]}</span>
-                  </li>
-                ))}
-              </ul>
-              {acts && (
-                <div className="bf-acts">
-                  {sends && all.length > 0 && (
-                    <button
-                      id="bf-send"
-                      type="button"
-                      className="gs-pill is-primary"
-                      aria-haspopup="dialog"
-                      onClick={() => ask('all')}
-                    >
-                      {BW.sendAll(all.length)}
-                    </button>
-                  )}
-                  {sends && changed.length > 0 && (
-                    <button
-                      id="bf-changed"
-                      type="button"
-                      className="gs-pill is-secondary"
-                      aria-haspopup="dialog"
-                      onClick={() => ask('changed')}
-                    >
-                      {BW.sendChanged(changed.length)}
-                    </button>
-                  )}
-                  <button
-                    id="bf-copy"
-                    type="button"
-                    className="gs-pill is-secondary"
-                    aria-expanded={side?.kind === 'copy'}
-                    onClick={() => open({ kind: 'copy' })}
-                  >
-                    {BW.copy}
-                  </button>
-                </div>
-              )}
-              <div className="bf-more">
-                <button
-                  id="bf-rules"
-                  type="button"
-                  className="desk-text"
-                  aria-expanded={side?.kind === 'rules'}
-                  onClick={() => open({ kind: 'rules', editing: false })}
-                >
-                  <Glyph name="pen" size={16} weight={2.3} />
-                  {manage ? BW.editRules : BW.rules}
-                </button>
-                <button
-                  id="bf-preview"
-                  type="button"
-                  className="desk-text"
-                  aria-expanded={side?.kind === 'preview'}
-                  onClick={() => {
-                    const firstOne = rows.find((one) => one.shift != null) ?? rows[0];
-                    if (firstOne != null) open({ kind: 'preview', id: firstOne.id });
-                  }}
-                >
-                  <Glyph name="eye" size={16} weight={2.3} />
-                  {BW.previewAs}
-                </button>
-              </div>
-              {result != null && (
-                <div className="bf-result" id="bf-result" tabIndex={-1}>
-                  <div className="bf-result-lines">
-                    <Glyph name="tick" size={18} weight={2.6} />
-                    <div>
-                      {result.lines.map((line) => (
-                        <p key={line}>{line}</p>
-                      ))}
-                    </div>
-                  </div>
-                  {result.held.length > 0 && (
-                    <ul className="bf-held-list">
-                      {result.held.map((id) => (
-                        <CopyRow
-                          key={id}
-                          one={shown(id)}
-                          acts={acts}
-                          busy={busy === id}
-                          missed={missed === id}
-                          handHeld={handHeld?.id === id ? handHeld.url : null}
-                          onCopy={() => void copy(id)}
-                          onMark={() => mark(id)}
-                          brief={false}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                  <button type="button" className="desk-text" onClick={() => setResult(null)}>
-                    {BW.dismiss}
-                  </button>
-                </div>
-              )}
-              {sendFailed && check == null && (
-                <p className="rs-missed" role="alert">
-                  <Glyph name="alert" size={15} weight={2.2} />
-                  {BW.sendFailed}
-                </p>
-              )}
-            </section>
-            <section className="sn-card">
-              <div className="sn-card-top">
-                <div className="sn-card-names">
-                  <h2 id="rs-roster" tabIndex={-1}>
-                    Roster
-                  </h2>
-                </div>
-              </div>
-              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- it scrolls sideways, so a keyboard has to reach it (WCAG 2.2 §2.1.1). */}
-              <div className="rs-frame" tabIndex={0} role="region" aria-labelledby="rs-roster">
-                <table className="rs-table bf-table" aria-labelledby="rs-roster">
-                  <thead>
-                    <tr>
-                      <th scope="col">Name</th>
-                      <th scope="col">Job</th>
-                      <th scope="col">Station</th>
-                      <th scope="col">Shift</th>
-                      <th scope="col">{BW.column}</th>
-                      <th scope="col">Link</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((one) => (
-                      <Fragment key={one.id}>
-                        <tr>
-                          <th scope="row" className="bf-name">
-                            {one.name}
-                          </th>
-                          <td className={one.job == null ? 'rs-quiet' : undefined}>
-                            {one.job ?? 'No job yet'}
-                          </td>
-                          <td className={one.station == null ? 'rs-quiet' : undefined}>
-                            {one.station ?? 'No station yet'}
-                          </td>
-                          <td className={one.shift == null ? 'rs-quiet' : 'rs-shift'}>
-                            {one.shift ?? 'Not on a shift yet'}
-                          </td>
-                          <td>
-                            <BriefCell
-                              one={one}
-                              acts={acts}
-                              sends={sends}
-                              busy={busy === one.id}
-                              missed={missed === one.id}
-                              onAgain={() => ask(one.id)}
-                              onCopy={() => void copy(one.id)}
-                              onMark={() => mark(one.id)}
-                            />
-                          </td>
-                          <td>
-                            <span className="rs-link-cell">
-                              <LinkWord state={linkOf(one, false)} />
-                              {trailLine(one.link, one.trail ?? null) != null && (
-                                <span className="rs-trail">
-                                  {trailLine(one.link, one.trail ?? null)}
-                                </span>
-                              )}
-                            </span>
-                          </td>
-                        </tr>
-                        {handHeld?.id === one.id && side?.kind !== 'copy' && result == null && (
-                          <tr className="rs-held-row">
-                            <td colSpan={6}>
-                              <HandHeld one={one} url={handHeld.url} />
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-          {side != null && (
-            <aside className="mn-panel bf-panel" aria-labelledby="sn-panel-title">
-              <button
-                type="button"
-                className="desk-text bf-back"
-                onClick={() => close(backFrom(side))}
-              >
-                <Glyph name="back" size={16} weight={2.4} />
-                {BW.roster}
-              </button>
-              {side.kind === 'copy' && (
-                <CopyPanel
-                  people={rows}
-                  loading={first.loading}
-                  acts={acts}
-                  busy={busy}
-                  missed={missed}
-                  handHeld={handHeld}
-                  onCopy={(id) => void copy(id)}
-                  onMark={mark}
-                  onClose={() => close('bf-copy')}
-                />
-              )}
-              {side.kind === 'rules' && (
-                <RulesPanel
-                  rules={rules}
-                  draft={side.editing ? (draft ?? rules) : null}
-                  manage={acts}
-                  cut={cut}
-                  saved={saved}
-                  onEdit={() => {
-                    setDraft(rules);
-                    setSaved(false);
-                    setSide({ kind: 'rules', editing: true });
-                    focusAfter.current = 'bf-rules-box';
-                  }}
-                  onType={rulesTyped}
-                  onSave={saveRules}
-                  onCancel={() => {
-                    setDraft(null);
-                    setCut(false);
-                    setSide({ kind: 'rules', editing: false });
-                    focusAfter.current = 'sn-panel-title';
-                  }}
-                  onClose={() => close('bf-rules')}
-                />
-              )}
-              {side.kind === 'preview' && (
-                <PreviewPanel
-                  people={rows}
-                  one={shown(side.id)}
-                  rules={rules}
-                  event={event.name}
-                  onPick={(id) => setSide({ kind: 'preview', id })}
-                  onClose={() => close('bf-preview')}
-                />
-              )}
-            </aside>
-          )}
+  const card = (
+    <section className="sn-card bf-card" aria-labelledby="bf-title">
+      <div className="sn-card-top">
+        <div className="sn-card-names">
+          <h2 id="bf-title">{BW.card}</h2>
+          <p className="mn-sub">{BW.cardSub}</p>
         </div>
       </div>
-      {check != null && costs != null && (
-        <Dialog
-          title={BW.checkTitle}
-          verb={
-            check === 'all'
-              ? BW.sendAll(costs.people)
-              : check === 'changed'
-                ? BW.sendChanged(costs.people)
-                : BW.sendAgain
-          }
-          dismiss={BW.cancel}
-          on={checkAt === 'shown' && !sending}
-          locked={sending}
-          onDismiss={closeCheck}
-          onConfirm={sendNow}
-        >
-          <CheckBody
-            costs={costs}
-            at={checkAt}
-            billing={first.billing}
-            sending={sending}
-            failed={sendFailed}
-            tell={tell}
-            onRetry={() => setCheckAt('loading')}
-            onCopy={() => {
-              setCheck(null);
-              open({ kind: 'copy' });
-            }}
-          />
-        </Dialog>
+      {!manage && (
+        <p className="mn-lock">
+          <Glyph name="lock" size={16} weight={2.2} />
+          {BW.lock}
+        </p>
       )}
+      <ul className="bf-tally" aria-label="Where the briefing is">
+        {BRIEFS.map((brief) => (
+          <li key={brief}>
+            <BriefWord brief={brief} />
+            <span className="bf-tally-n">{tally[brief]}</span>
+          </li>
+        ))}
+      </ul>
+      {acts && (
+        <div className="bf-acts">
+          {sends && all.length > 0 && (
+            <button
+              id="bf-send"
+              type="button"
+              className="gs-pill is-primary"
+              aria-haspopup="dialog"
+              onClick={() => ask('all')}
+            >
+              {BW.sendAll(all.length)}
+            </button>
+          )}
+          {sends && changed.length > 0 && (
+            <button
+              id="bf-changed"
+              type="button"
+              className="gs-pill is-secondary"
+              aria-haspopup="dialog"
+              onClick={() => ask('changed')}
+            >
+              {BW.sendChanged(changed.length)}
+            </button>
+          )}
+          <button
+            id="bf-copy"
+            type="button"
+            className="gs-pill is-secondary"
+            aria-expanded={side?.kind === 'copy'}
+            onClick={() => open({ kind: 'copy' })}
+          >
+            {BW.copy}
+          </button>
+        </div>
+      )}
+      <div className="bf-more">
+        <button
+          id="bf-rules"
+          type="button"
+          className="desk-text"
+          aria-expanded={side?.kind === 'rules'}
+          onClick={() => open({ kind: 'rules', editing: false })}
+        >
+          <Glyph name="pen" size={16} weight={2.3} />
+          {manage ? BW.editRules : BW.rules}
+        </button>
+        <button
+          id="bf-preview"
+          type="button"
+          className="desk-text"
+          aria-expanded={side?.kind === 'preview'}
+          onClick={() => {
+            const firstOne = rows.find((one) => one.shift != null) ?? rows[0];
+            if (firstOne != null) open({ kind: 'preview', id: firstOne.id });
+          }}
+        >
+          <Glyph name="eye" size={16} weight={2.3} />
+          {BW.previewAs}
+        </button>
+      </div>
+      {result != null && (
+        <div className="bf-result" id="bf-result" tabIndex={-1}>
+          <div className="bf-result-lines">
+            <Glyph name="tick" size={18} weight={2.6} />
+            <div>
+              {result.lines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          </div>
+          {heldHere.length > 0 && (
+            <ul className="bf-held-list">
+              {heldHere.map((id) => (
+                <CopyRow
+                  key={id}
+                  one={shown(id)}
+                  acts={acts}
+                  busy={busy === id}
+                  missed={missed === id}
+                  handHeld={handHeld?.id === id ? handHeld.url : null}
+                  onCopy={() => void copy(id)}
+                  onMark={() => mark(id)}
+                  brief={false}
+                />
+              ))}
+            </ul>
+          )}
+          <button type="button" className="desk-text" onClick={() => setResult(null)}>
+            {BW.dismiss}
+          </button>
+        </div>
+      )}
+      {sendFailed && check == null && (
+        <p className="rs-missed" role="alert">
+          <Glyph name="alert" size={15} weight={2.2} />
+          {BW.sendFailed}
+        </p>
+      )}
+    </section>
+  );
+
+  const panel =
+    side == null ? null : (
+      <aside className="mn-panel bf-panel" aria-labelledby="sn-panel-title">
+        <button type="button" className="desk-text bf-back" onClick={() => close(backFrom(side))}>
+          <Glyph name="back" size={16} weight={2.4} />
+          {BW.roster}
+        </button>
+        {side.kind === 'copy' && (
+          <CopyPanel
+            people={rows}
+            loading={first.loading}
+            acts={acts}
+            busy={busy}
+            missed={missed}
+            handHeld={handHeld}
+            onCopy={(id) => void copy(id)}
+            onMark={mark}
+            onClose={() => close('bf-copy')}
+          />
+        )}
+        {side.kind === 'rules' && (
+          <RulesPanel
+            rules={rules}
+            draft={side.editing ? (draft ?? rules) : null}
+            manage={acts}
+            cut={cut}
+            saved={saved}
+            onEdit={() => {
+              setDraft(rules);
+              setSaved(false);
+              setSide({ kind: 'rules', editing: true });
+              focus('bf-rules-box');
+            }}
+            onType={rulesTyped}
+            onSave={saveRules}
+            onCancel={() => {
+              setDraft(null);
+              setCut(false);
+              setSide({ kind: 'rules', editing: false });
+              focus('sn-panel-title');
+            }}
+            onClose={() => close('bf-rules')}
+          />
+        )}
+        {side.kind === 'preview' && previewed != null && (
+          <PreviewPanel
+            people={rows}
+            one={previewed as Person}
+            rules={rules}
+            event={event.name}
+            onPick={(id) => setSide({ kind: 'preview', id })}
+            onClose={() => close('bf-preview')}
+          />
+        )}
+      </aside>
+    );
+
+  const dialog =
+    check == null || costs == null ? null : (
+      <Dialog
+        title={BW.checkTitle}
+        verb={
+          check === 'all'
+            ? BW.sendAll(costs.people)
+            : check === 'changed'
+              ? BW.sendChanged(costs.people)
+              : BW.sendAgain
+        }
+        dismiss={BW.cancel}
+        on={checkAt === 'shown' && !sending}
+        locked={sending}
+        onDismiss={closeCheck}
+        onConfirm={sendNow}
+      >
+        <CheckBody
+          costs={costs}
+          at={checkAt}
+          billing={first.billing}
+          sending={sending}
+          failed={sendFailed}
+          tell={tell}
+          onRetry={() => setCheckAt('loading')}
+          onCopy={() => {
+            setCheck(null);
+            open({ kind: 'copy' });
+          }}
+        />
+      </Dialog>
+    );
+
+  return {
+    on: true,
+    side: side != null,
+    card,
+    cell: (one) => (
+      <BriefCell
+        one={one as Person}
+        acts={acts}
+        sends={sends}
+        busy={busy === one.id}
+        missed={missed === one.id}
+        onAgain={() => ask(one.id)}
+        onCopy={() => void copy(one.id)}
+        onMark={() => mark(one.id)}
+      />
+    ),
+    held: (one, span) =>
+      handHeld?.id === one.id && side?.kind !== 'copy' && result == null ? (
+        <tr className="rs-held-row">
+          <td colSpan={span}>
+            <HandHeld one={one as Person} url={handHeld.url} />
+          </td>
+        </tr>
+      ) : null,
+    panel,
+    check: dialog,
+    dismiss,
+    adopt: asPerson,
+  };
+}
+
+/** Neither staff.read nor staff.manage (403): the refusal in place of the Roster. */
+export function BriefingRefused({ event }: { event: SampleEvent }) {
+  return (
+    <div className="desk-page ev-page gs mn sn rs bf">
+      <div className="ev-wide mn-page">
+        <div className="bf-refused" role="alert">
+          <Glyph name="lock" size={28} weight={2} />
+          <p className="rs-empty-title">{BW.refusedPage}</p>
+          <Link className="gs-pill is-secondary" to={`/demo/events/${event.id}`}>
+            {BW.backToEvent}
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -730,7 +628,7 @@ function CopyButton({
       id={id}
       type="button"
       className={busy ? 'desk-text is-busy' : 'desk-text'}
-      aria-label={`${BW.copy}: ${one.name}`}
+      aria-label={BW.forBriefing(BW.copy, one.name)}
       aria-disabled={busy || undefined}
       aria-busy={busy || undefined}
       onClick={onCopy}
@@ -746,7 +644,7 @@ function MarkButton({ one, onMark }: { one: Person; onMark: () => void }) {
     <button
       type="button"
       className="desk-text"
-      aria-label={`${BW.markSent}: ${one.name}`}
+      aria-label={BW.forBriefing(BW.markSent, one.name)}
       onClick={onMark}
     >
       {BW.markSent}

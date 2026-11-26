@@ -102,7 +102,6 @@ import { StaffHoursPage } from './StaffHours.tsx';
 import { HOURS_PAGES } from './hours.ts';
 import { ShiftClockPage } from './ShiftClock.tsx';
 import { SHIFT_CLOCK_PAGES } from './shiftClock.ts';
-import { BriefingPage } from './Briefing.tsx';
 import { BRIEFING_PAGES } from './briefing.ts';
 import { RosterPage } from './Roster.tsx';
 import { ROSTER_PAGES } from './roster.ts';
@@ -309,7 +308,6 @@ export default function Demo() {
       <Route path="events/:id/staff" element={<Navigate to="roster" replace />} />
       <Route path="events/:id/staff/stations" element={<StationsPage />} />
       <Route path="events/:id/staff/roster" element={<RosterPage />} />
-      <Route path="events/:id/staff/briefing" element={<BriefingPage />} />
       <Route path="events/:id/staff/jobs" element={<JobsShiftsPage />} />
       <Route path="events/:id/staff/hours" element={<StaffHoursPage />} />
       <Route path="events/:id/schedule" element={<SchedulePage />} />
