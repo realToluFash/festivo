@@ -10,11 +10,11 @@ export type Reach = 'push' | 'sms' | 'whatsApp' | 'none';
 
 export type ChangeField = 'start' | 'end' | 'job' | 'date' | 'venue';
 
-export interface Change {
-  field: ChangeField;
-  now: string;
-  was: string;
-}
+export type Change =
+  | { field: ChangeField; now: string; was: string }
+  | { field: 'shiftAdded' | 'shiftOff'; shift: string }
+  | { field: 'shiftRetimed'; now: string; was: string }
+  | { field: 'noShift' };
 
 export type ShiftNotice =
   | { kind: 'waiting'; at: string; changes: readonly Change[]; was: 'read' | 'sent'; day: string }
@@ -91,6 +91,10 @@ export const SW = {
     date: (now: string, was: string) => `Date ${now} (was ${was})`,
     venue: (now: string, was: string) => `Venue ${now} (was ${was})`,
   } satisfies Record<ChangeField, (now: string, was: string) => string>,
+  shiftAdded: (shift: string) => `[New shift ${shift}]`,
+  shiftOff: (shift: string) => `[Off the shift ${shift}]`,
+  shiftRetimed: (now: string, was: string) => `[Shift ${now} (was ${was})]`,
+  noShift: '[No shift for now]',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: {
     push: (date: string, time: string) => `Told on ${date} at ${time}, by push.`,
@@ -102,7 +106,8 @@ export const SW = {
   cantLine: "Can't be reached: not signed in to the app, and no mobile number.",
   calledOffLine: 'Called off',
   endedLine: 'Event ended',
-  footnote: '[Once a person’s briefing went, a change to their shift goes to them by itself.]',
+  footnote:
+    'Once a person’s briefing has gone, changes to their shifts are sent to them automatically.',
 };
 
 export type LineMark =
@@ -123,7 +128,18 @@ export interface RowLine {
 }
 
 function changeWords(change: Change): string {
-  return SW.change[change.field](change.now, change.was);
+  switch (change.field) {
+    case 'shiftAdded':
+      return SW.shiftAdded(change.shift);
+    case 'shiftOff':
+      return SW.shiftOff(change.shift);
+    case 'shiftRetimed':
+      return SW.shiftRetimed(change.now, change.was);
+    case 'noShift':
+      return SW.noShift;
+    default:
+      return SW.change[change.field](change.now, change.was);
+  }
 }
 
 export function rowLines(one: Pick<Person, 'notice' | 'ended'>): RowLine[] {
@@ -419,7 +435,7 @@ export function shiftPeople(): Person[] {
   }));
 }
 
-type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended'>>;
+type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended' | 'shift'>>;
 
 function edited(edits: Record<string, Edit>, base: Person[] = shiftPeople()): Person[] {
   return base.map((one) => ({ ...one, ...edits[one.id] }));
@@ -442,6 +458,27 @@ const LIST: Record<string, Edit> = {
     notice: { kind: 'quiet', day: 'Friday', at: '09:00', was: 'read', on: REMINDER_DAY },
   },
   yusuf: { brief: 'changed', notice: { kind: 'failed', reason: CARRIER_REFUSED } },
+};
+
+const waiting = (was: 'read' | 'sent', changes: readonly Change[]) => ({
+  brief: 'changed' as const,
+  notice: { kind: 'waiting' as const, at: GOES_AT, day: NOW_DAY, was, changes },
+});
+
+const SEVERAL: Record<string, Edit> = {
+  dayo: {
+    shift: '10:00 to 14:00, 15:00 to 23:00',
+    ...waiting('read', [{ field: 'shiftAdded', shift: '10:00 to 14:00' }]),
+  },
+  grace: waiting('sent', [{ field: 'shiftOff', shift: '11:00 to 15:00' }]),
+  kelechi: {
+    shift: '12:00 to 15:00, 18:00 to 00:00',
+    ...waiting('read', [{ field: 'shiftRetimed', now: '18:00 to 00:00', was: '16:00 to 00:00' }]),
+  },
+  tope: {
+    shift: null,
+    ...waiting('sent', [{ field: 'shiftOff', shift: '17:00 to 23:00' }, { field: 'noShift' }]),
+  },
 };
 
 const EVE: Record<string, Edit> = {
@@ -516,6 +553,12 @@ const STATES = {
     start({
       title: 'The card and every roster line',
       what: 'Next on Friday, Oct 16, to 5 people; 2 using 93 of your credits; Goes at, Held, Told, Not delivered, Can’t be reached',
+    }),
+  several_shifts: () =>
+    start({
+      title: 'Several shifts, waiting',
+      what: 'A shift added, a shift taken off, one of several retimed, and the last taken off, each as Goes at with its short line. Words bracketed until [en] writes them',
+      people: edited(SEVERAL),
     }),
   eve: () =>
     start({

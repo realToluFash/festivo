@@ -9,6 +9,10 @@ export type MessageKind =
   | 'venue'
   | 'date'
   | 'several'
+  | 'shift_added'
+  | 'shift_off'
+  | 'last_shift_off'
+  | 'shift_retimed'
   | 'removed'
   | 'called_off'
   | 'event_ended'
@@ -23,6 +27,10 @@ export const MESSAGE_KINDS: readonly MessageKind[] = [
   'venue',
   'date',
   'several',
+  'shift_added',
+  'shift_off',
+  'last_shift_off',
+  'shift_retimed',
   'removed',
   'called_off',
   'event_ended',
@@ -38,6 +46,10 @@ export const KIND_NAMES: Record<MessageKind, string> = {
   venue: 'Venue changed',
   date: 'Date changed',
   several: 'Three changes in one message',
+  shift_added: 'A shift added',
+  shift_off: 'A shift taken off',
+  last_shift_off: 'The last shift taken off',
+  shift_retimed: 'One of several shifts retimed',
   removed: 'Removed from the event',
   called_off: 'The event is called off',
   event_ended: 'The event has ended (End now)',
@@ -88,6 +100,22 @@ const CHANGES: Partial<Record<MessageKind, readonly ChangeKey[]>> = {
   venue: ['venue'],
   date: ['date'],
   several: ['start', 'job', 'venue'],
+};
+
+/** Bracketed until [en] writes them (#96276). */
+const SHIFT = {
+  added: (start: string, end: string) => `[You are now also on the shift from ${start} to ${end}.]`,
+  off: (start: string, end: string) => `[You are no longer on the shift from ${start} to ${end}.]`,
+  retimed: (start: string, end: string, wasStart: string, wasEnd: string) =>
+    `[One of your shifts is now ${start} to ${end} (was ${wasStart} to ${wasEnd}).]`,
+  none: `[You have no shift at ${EVENT} for now. Your shift page still works.]`,
+};
+
+const SHIFT_LINES: Partial<Record<MessageKind, readonly string[]>> = {
+  shift_added: [SHIFT.added('18:00', '23:00')],
+  shift_off: [SHIFT.off('12:00', '16:00')],
+  last_shift_off: [SHIFT.off(START, '23:00'), SHIFT.none],
+  shift_retimed: [SHIFT.retimed('18:00', '23:30', START, '23:00')],
 };
 
 export interface Message {
@@ -156,7 +184,7 @@ export function messageOf(kind: MessageKind, channel: Channel): Message {
       button,
     };
 
-  const lines = changeLines(kind);
+  const lines = SHIFT_LINES[kind] ?? changeLines(kind);
   const on = kind === 'date' ? NEW_DATE : DATE;
 
   return {

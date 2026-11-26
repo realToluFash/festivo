@@ -54,6 +54,22 @@ describe('the roster’s Briefing lines', () => {
     ]);
   });
 
+  it('reads a shift added, taken off, retimed and the last taken off, one line per shift', () => {
+    const between = (id: string) => words('several_shifts', id).slice(1, -1);
+
+    expect(between('dayo')).toEqual(['[New shift 10:00 to 14:00]']);
+    expect(between('grace')).toEqual(['[Off the shift 11:00 to 15:00]']);
+    expect(between('kelechi')).toEqual(['[Shift 18:00 to 00:00 (was 16:00 to 00:00)]']);
+    expect(between('tope')).toEqual(['[Off the shift 17:00 to 23:00]', '[No shift for now]']);
+  });
+
+  it('reminds nobody left with no shift', () => {
+    const reminded = remindedOf(shiftStart('several_shifts').people).map((one) => one.id);
+
+    expect(reminded).not.toContain('tope');
+    expect(reminded).toContain('dayo');
+  });
+
   it('reads one line each for held, told and not delivered', () => {
     expect(words('list', 'kelechi')).toEqual(['Held for quiet hours. Goes Friday at 09:00.']);
     expect(words('list', 'grace')).toEqual(['Told on Thursday, Oct 15 at 15:42, by push.']);
