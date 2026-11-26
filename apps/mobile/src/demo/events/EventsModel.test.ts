@@ -219,7 +219,7 @@ describe('the card’s one step, by nextStep', () => {
     });
     expect(step('evt-off')).toMatchObject({
       action: 'duplicate',
-      line: "Called off on Fri, Oct 30, before it started. Guests following their link are told it won't go ahead.",
+      line: 'Called off on Fri, Oct 30, before it started. Guests following their link are told it won’t go ahead.',
     });
   });
 
@@ -284,7 +284,7 @@ describe('the page', () => {
       line: 'Dates · Europe/Madrid',
     });
     expect(datesRow(shown('evt-wed-4', finished), LOCALE).line).toBe(
-      "Dates · This event is over, so its start, end and time zone can't be changed.",
+      'Dates · This event is over, so its start, end and time zone can’t be changed.',
     );
     expect(datesRow(shown('evt-off'), LOCALE).line).toBe(
       "Dates · This event was called off, so its start, end and time zone can't be changed.",

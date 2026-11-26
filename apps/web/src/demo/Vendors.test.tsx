@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { atPhoneWidth } from '../test-widths.ts';
+import { LONGEST_EVENT_NAME, ONE_WORD_EVENT_NAME } from './vendors.ts';
 
 const tested = config();
 const SLOW = { timeout: 20000 };
@@ -427,6 +428,27 @@ describe('Settings › Vendors in A · Summary first (sc-82)', () => {
         ['Payments to Bloom & Co on Ireti at 40', '/demo/events/evt-ireti-2?area=budget&vendor=v3'],
       ]);
       expect(within(dialog).getByRole('button', { name: 'Archive this vendor' })).toBeDefined();
+    },
+  );
+
+  it.each([
+    ['archive_refused', 'Adaeze & Tunde’s wedding'],
+    ['archive_refused_long', LONGEST_EVENT_NAME],
+    ['archive_refused_one_word', ONE_WORD_EVENT_NAME],
+  ])(
+    'opens %s with each owed event’s link wrapping whole, every word in the link (sc-91886)',
+    SLOW,
+    async (state, name) => {
+      await open(`/demo/settings/vendors?state=${state}`);
+      const dialog = screen.getByRole('dialog', { name: 'Edit vendor' });
+      const links = within(dialog).getAllByRole('link');
+
+      expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+        [`Payments to Bloom & Co on ${name}`, '/demo/events/evt-wed-4?area=budget&vendor=v3'],
+        ['Payments to Bloom & Co on Ireti at 40', '/demo/events/evt-ireti-2?area=budget&vendor=v3'],
+      ]);
+      expect(links.every((one) => one.className === 'desk-text is-wraps')).toBe(true);
+      expect(links.every((one) => one.childElementCount === 0)).toBe(true);
     },
   );
 

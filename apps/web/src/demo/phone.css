@@ -98,6 +98,31 @@
     padding-inline: var(--spaceXl);
   }
 
+  /* sc-91795: Vendors' column runs to that gutter, 16 px from each side of the window, as every desk page does at this width; its rows' tint reaches past the column into it. */
+  .dp-fit .desk-main > .desk-page:has(> .vd-column) {
+    padding-inline: 0;
+    overflow: visible;
+  }
+
+  .dp-fit .desk-page > .vd-column {
+    margin-inline-end: 0;
+  }
+
+  /* Under the search a menu's button may sit anywhere on its line, so its menu opens under the tools at the column's width, as Events' filter does in a phone (phoneFit.css), rather than past an edge of the window. */
+  .dp-fit .vd-tools {
+    position: relative;
+  }
+
+  .dp-fit .vd-tools > .desk-menu-at {
+    position: static;
+  }
+
+  .dp-fit .vd-tools .desk-menu {
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+
   /* Calendar keeps the window's height, so its weeks scroll inside the page and the month's name follows them. */
   .dp-fit.today:has(.cal-page) {
     height: 100dvh;
@@ -108,12 +133,5 @@
     min-height: 0;
     padding-bottom: 0;
     overflow: hidden;
-  }
-
-  /* Under the bar the page runs flat to the window's edges, as the product's shell does at this width. */
-  .today.desk.dp-bar:not(.dp-fit) > .desk-main {
-    margin: 0;
-    border-radius: 0;
-    box-shadow: none;
   }
 }

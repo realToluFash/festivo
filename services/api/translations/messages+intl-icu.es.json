@@ -499,5 +499,19 @@
     "kitchen_sheet.by_station": "Por zona",
     "kitchen_sheet.chefs_choice": "A elección del chef",
     "kitchen_sheet.health": "Esta hoja contiene información de salud de los invitados. Guárdela en la cocina y destrúyala después del evento.",
-    "kitchen_sheet.page": "Página {n} de {m}"
+    "kitchen_sheet.page": "Página {n} de {m}",
+    "guest_message.notice.subject": "{event}: un mensaje de {hosts}",
+    "guest_message.notice.dear": "Hola, {greeting}:",
+    "guest_message.notice.body": "Tiene un mensaje de {hosts} sobre el evento {event}. Está en su página.",
+    "guest_message.notice.read": "Leerlo en su página",
+    "guest_message.notice.link": "{label}: {url}",
+    "guest_message.notice.from": "{organisation} vía Soirely",
+    "validation.guest_message_required": "Escriba un mensaje.",
+    "validation.guest_message_subject_too_long": "Acorte el asunto a {count, number, ::group-auto} caracteres como máximo.",
+    "validation.guest_message_too_long": "Acorte el mensaje a {count, number, ::group-auto} caracteres como máximo.",
+    "validation.guest_message_choose_guests": "Elija al menos un invitado.",
+    "validation.guest_message_follows_unknown": "Esta conversación ya no está en el evento.",
+    "validation.guest_message_no_guests": "Este evento aún no tiene invitados a los que escribir.",
+    "guest_message.event_draft": "Este evento es un borrador. Publíquelo para escribir a sus invitados.",
+    "guest_message.event_ended": "Este evento terminó hace más de 30 días, así que ya no puede escribir a sus invitados."
 }

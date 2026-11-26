@@ -56,9 +56,19 @@ describe('Settings and Your account at a phone’s width, under the product shel
     expect(AT_PHONE).toMatch(/\.dp-bar \.desk-main \.desk-bell \{\s+display: none;/u);
   });
 
-  it('runs the page flat to the window’s edges under the bar, as the product’s shell does', () => {
-    expect(AT_PHONE).toMatch(
-      /\.today\.desk\.dp-bar:not\(\.dp-fit\) > \.desk-main \{\s+margin: 0;\s+border-radius: 0;\s+box-shadow: none;/u,
+  it('runs the page flat to the window’s edges under the bar by the one desk rule, one line under the bar', () => {
+    const reflow = mediaBlock(
+      '(width <= 40rem)',
+      readFileSync(join(import.meta.dirname, 'deskReflow.css'), 'utf8'),
+    );
+
+    expect(AT_PHONE).not.toMatch(/\.dp-bar:not\(\.dp-fit\) > \.desk-main/u);
+    expect(AT_PHONE).toMatch(/\.dp-bar \.today-side,[\s\S]*?border-bottom: var\(--borderCard\);/u);
+    expect(reflow).toMatch(
+      /\.today\.desk:not\(\.dp-fit\) > \.desk-main \{[^}]*margin: 0;[^}]*border-radius: 0;[^}]*box-shadow: none;/u,
+    );
+    expect(reflow).toMatch(
+      /\.today\.desk:not\(\.dp-fit, \.dp-bar\) > \.desk-main \{\s+border-top/u,
     );
   });
 });

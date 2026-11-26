@@ -15,6 +15,7 @@ import {
 import { Pressable, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import type { ScreenReaderTarget } from '../../components/screenReaderFocus.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { LineIcon } from '../../components/AccountCard.tsx';
 import { AlertLine } from '../../components/AlertLine.tsx';
@@ -516,7 +517,7 @@ export function EventScreen({
     <EventCard
       event={shown}
       now={now}
-      locale={locale}
+      locale={dateLocale()}
       wide={shell.layout !== 'phone'}
       takes={(action) => takesCardStep(member, action)}
       onStep={onStep}
@@ -856,11 +857,11 @@ export function EventScreen({
   let page: ReactNode;
   if (at === 'staff' && messagesHere)
     page = (
-      <AreaPage area={at} event={shown} locale={locale}>
+      <AreaPage area={at} event={shown} locale={dateLocale()}>
         <StaffRoster state={staff ?? 'populated'} />
       </AreaPage>
     );
-  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={locale} />;
+  else if (at !== 'overview') page = <AreaPage area={at} event={shown} locale={dateLocale()} />;
   else
     page = (
       <OverviewColumns
@@ -1112,8 +1113,8 @@ function Details({
   onMaps: () => void;
   last?: ReactNode;
 }) {
-  const dates = datesRow(shown, locale);
-  const hosts = hostsRow(shown, locale);
+  const dates = datesRow(shown, dateLocale());
+  const hosts = hostsRow(shown, dateLocale());
   const locked = scheduleLocked(shown);
   const reply = replyByRow(replyBy, shown.timeZone, locale, now);
 

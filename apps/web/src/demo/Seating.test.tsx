@@ -241,6 +241,7 @@ describe('the plan and the room (sc-3998, sc-4007)', () => {
       fireEvent.click(start);
       const hint = await screen.findByText('Add your first table, row or seat from the bar below.');
       expect(hint.closest('.st-bar')?.classList.contains('is-floor')).toBe(true);
+      expect(screen.queryByRole('button', { name: 'Select all' })).toBeNull();
       expect(
         within(panel()).getByText(
           'No sections yet. A section is a name and a colour on part of the room, such as Terrace.',

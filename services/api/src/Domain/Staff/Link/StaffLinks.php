@@ -106,6 +106,7 @@ final readonly class StaffLinks
         $this->entityManager->wrapInTransaction(function () use ($entry, $by): void {
             $this->entityManager->refresh($entry, LockMode::PESSIMISTIC_WRITE);
             $this->staffLinkTokenRepository->endAllOf($entry);
+            $entry->linkAccount(null);
             $entry->linkMoved(StaffLinkStatus::None, null, null);
             $this->audit(self::REPLACED, $entry, $by);
             $this->entityManager->flush();

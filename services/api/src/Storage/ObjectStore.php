@@ -141,6 +141,18 @@ final readonly class ObjectStore
         $this->s3->copyObject(['Bucket' => $this->publicBucket, 'Key' => $to, 'CopySource' => $this->publicBucket . '/' . $from]);
     }
 
+    /** The bytes the public bucket holds under the prefix, as the store reports them. */
+    public function publishedBytesUnder(string $prefix): int
+    {
+        $bytes = 0;
+
+        foreach ($this->s3->listObjectsV2(['Bucket' => $this->publicBucket, 'Prefix' => $prefix])->getContents() as $object) {
+            $bytes += (int) $object->getSize();
+        }
+
+        return $bytes;
+    }
+
     public function unpublish(string $key): void
     {
         $this->delete($this->publicBucket, $key);

@@ -207,6 +207,7 @@ const GUESTS: Record<GuestsState, Board> = {
   added: ['added', 'Bimpe Adeyemi added; the form cleared'],
   addNotAdded: ['Add guest failed', 'Everything typed is kept'],
   addOffline: ['Add guest offline', 'Nothing saved, the form kept'],
+  addDiscard: ['Add guest, Cancel with a name typed', 'Discard your changes?'],
   picker: ['From contacts, iOS', 'The system picker, many at once'],
   androidPick: ['From contacts, Android', 'Choose people, after the permission'],
   androidNone: ['Choose people, nobody ticked', 'Tick at least one person'],

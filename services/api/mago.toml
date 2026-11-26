@@ -272,9 +272,12 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 # organisation scope's own step rather than by writing its tables. The account's
 # language is one of SupportedLocales (sc-852), as AI's and Address's are. Every account
 # and security email is queued on the notification path (sc-4332), through UserMailer.
+# A staff link's sign-in holds its job's level (sc-4235): the account lists it, and a
+# browser session ends with it, read from StaffLinkGrants alone.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
+    "App\\Domain\\Staff\\Link\\StaffLinkGrants",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -295,10 +298,12 @@ permit = [
 # whether an invitation's email could not be delivered from its delivery record and the
 # suppression list (sc-46109); messaging does not reach back. Export all data keeps
 # its archive in the private bucket, and writes its CSV files as the guest export
-# does (CsvFile, sc-612); neither reaches back.
+# does (CsvFile, sc-612); neither reaches back. An account a staff link signed in
+# holds its job's level on the event, from StaffLinkGrants (sc-4235).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
+    "App\\Domain\\Staff\\Link\\StaffLinkGrants",
     "@layer:native",
     "@layer:external",
     "@layer:shared",
@@ -320,10 +325,11 @@ permit = [
 # are audited (sc-3928), and its unit-cost countries are checked against the one
 # country list (Regions), not the scope around it. A purge takes a billing account
 # nothing is paid for by any more. The meter's usage reaches an open billing page
-# through the one realtime publisher (sc-3929).
+# through the one realtime publisher (sc-3929). Storage is measured from the
+# sizes the object store reports for an organisation's kept files (sc-90252).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "App\\Domain\\Organisation\\Regions"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's
@@ -550,9 +556,11 @@ permit = [
 # organisation scope keeps them, through the access layer's grants, and a person's language as the
 # user scope chooses it (AccountLanguage). The bell publishes its items on a declared topic (sc-3980).
 # An event's changes write dates in the house order for each language (SupportedLocales, sc-13214).
+# A host's send to guests is in the audit log (sc-3942).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Messaging\\"
 permit = [
+    "@layer:audit",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

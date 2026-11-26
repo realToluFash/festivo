@@ -79,7 +79,9 @@ def everything(labels, state):
 ROLES = {
     "pm": {"skill": "soirely-product-manager", "queue": ["To Do", "Backlog"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
-    "ux": {"skill": "soirely-designer", "queue": ["Needs Design"],
+    # A demo-only story's merged demo is its whole build, so its Failed QA is ux's rework,
+    # ahead of new drawing (`work.queued` keeps any other Failed QA story from ux).
+    "ux": {"skill": "soirely-designer", "queue": ["Failed QA", "Needs Design"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
     # `background`: the worker runs as `claude --bg`, which has the Artifact tool the design
     # is read with.

@@ -109,16 +109,28 @@ export function viewerOf(name: string | null): Viewer {
   return Object.values(VIEWERS).find((viewer) => viewer.key === name) ?? VIEWERS.folake;
 }
 
-/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. A paused membership holds no role, so it lists those two whatever the role elsewhere (sc-86077). */
-export function groupsFor(viewer: Pick<Viewer, 'manages'>, paused = false): SectionGroup[] {
-  const manages = viewer.manages && !paused;
+/** What holds the account in the organisation in use: a paused membership (sc-86077), two-factor overdue for everyone (sc-609), or an admin held until two-factor (sc-39471). */
+export type Hold = 'paused' | 'overdue' | 'adminTwoFactor';
+
+/** The sections each hold leaves out, as the API leaves their permissions out of `permissions`: the administrators' rule keeps `vendors.read`, which is not administrative (sc-93443). */
+const WITHHELD: Record<Hold, readonly Section[]> = {
+  paused: ['members', 'vendors', 'data'],
+  overdue: ['members', 'vendors', 'data'],
+  adminTwoFactor: ['members', 'data'],
+};
+
+const MANAGED: readonly Section[] = ['members', 'vendors', 'data'];
+
+/** Members, Vendors and Data and control only for an owner or an admin: a member sees General and Sign-in rules, read only. A hold hides what its permissions withhold, whatever the role (sc-86077, sc-93443). */
+export function groupsFor(
+  viewer: Pick<Viewer, 'manages'>,
+  hold: Hold | null = null,
+): SectionGroup[] {
+  const hidden = [...(viewer.manages ? [] : MANAGED), ...(hold == null ? [] : WITHHELD[hold])];
 
   return GROUPS.map((group) => ({
     ...group,
-    sections: group.sections.filter(
-      (section) =>
-        manages || (section !== 'members' && section !== 'vendors' && section !== 'data'),
-    ),
+    sections: group.sections.filter((section) => !hidden.includes(section)),
   }));
 }
 

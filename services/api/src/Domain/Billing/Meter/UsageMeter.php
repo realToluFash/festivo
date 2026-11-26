@@ -6,12 +6,11 @@ namespace App\Domain\Billing\Meter;
 
 use App\Domain\Billing\Catalogue\Catalogue;
 use App\Domain\Billing\Catalogue\Model\Allowance;
-use App\Domain\Billing\Entitlements;
+use App\Domain\Billing\Catalogue\Model\PlanTerms;
 use App\Domain\Billing\Meter\Exception\ReservationRefused;
 use App\Domain\Billing\Meter\Exception\UnknownReservation;
 use App\Domain\Billing\Meter\Model\Hold;
 use App\Domain\Billing\Meter\Model\MeteredUse;
-use App\Domain\Billing\Meter\Model\SubscriptionPeriod;
 use App\Entity\BillingAccount;
 use App\Entity\CatalogueVersion;
 use App\Entity\Organisation;
@@ -44,7 +43,7 @@ final readonly class UsageMeter
     public function __construct(
         private EntityManagerInterface $entityManager,
         private SubscriptionRepository $subscriptionRepository,
-        private Entitlements $entitlements,
+        private SubscriptionPeriods $subscriptionPeriods,
         private Catalogue $catalogue,
         private UnitPricer $unitPricer,
         private UsagePublisher $usagePublisher,
@@ -59,8 +58,9 @@ final readonly class UsageMeter
         $version = $this->catalogue->unitCosts();
         $creditsPerUnit = $this->unitPricer->in($version, $use);
         $now = $this->now();
-        $period = SubscriptionPeriod::containing($subscription->getPeriodStart(), $now);
-        $allowance = $this->allowance($organisationId, $use->kind);
+        $inForce = $this->subscriptionPeriods->containing($subscription, $now);
+        $period = $inForce->period;
+        $allowance = self::allowance($inForce->terms, $use->kind);
         $organisation = $subscription->getOrganisation();
         $account = $subscription->getBillingAccount();
 
@@ -177,8 +177,9 @@ final readonly class UsageMeter
         $version = $this->catalogue->unitCosts();
         $creditsPerUnit = $this->unitPricer->in($version, $use);
         $now = $this->now();
-        $period = SubscriptionPeriod::containing($subscription->getPeriodStart(), $now);
-        $allowance = $this->allowance($organisationId, $use->kind);
+        $inForce = $this->subscriptionPeriods->containing($subscription, $now);
+        $period = $inForce->period;
+        $allowance = self::allowance($inForce->terms, $use->kind);
         $organisation = $subscription->getOrganisation();
         $account = $subscription->getBillingAccount();
 
@@ -210,7 +211,7 @@ final readonly class UsageMeter
     {
         $subscription = $this->subscriptionRepository->findCurrentOf($organisationId);
         $now = $this->now();
-        $period = SubscriptionPeriod::containing($subscription->getPeriodStart(), $now);
+        $period = $this->subscriptionPeriods->containing($subscription, $now)->period;
         $key = $organisationId->toRfc4122() . '/' . $day->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d');
         $organisation = $subscription->getOrganisation();
         $account = $subscription->getBillingAccount();
@@ -280,7 +281,8 @@ final readonly class UsageMeter
         $reservedPrice = $reservation->getCreditsPerUnit();
         $sameKind = $delivered->kind === $reservation->getKind();
         $paidByReservedUnit = false;
-        $free = $this->includedFree($organisationId, $periodStart, $delivered->kind, $this->allowance($organisationId, $delivered->kind));
+        $terms = $this->subscriptionPeriods->containing($this->subscriptionRepository->findCurrentOf($organisationId), $periodStart)->terms;
+        $free = $this->includedFree($organisationId, $periodStart, $delivered->kind, self::allowance($terms, $delivered->kind));
 
         if ($sameKind) {
             $version = $reservation->getUnitCostVersion();
@@ -290,7 +292,7 @@ final readonly class UsageMeter
         } else {
             [$pricedBy, $creditsPerUnit] = $this->unitPricer->fromVersion($this->catalogue->unitCostsVersion($reservation->getUnitCostVersion()->getId()), $delivered);
             $version = $this->versionNamed($pricedBy->versionId);
-            $paidByReservedUnit = $creditsPerUnit > 0 && ($late ? $this->includedFree($organisationId, $periodStart, $reservation->getKind(), $this->allowance($organisationId, $reservation->getKind())) > 0 : $fromIncluded > 0);
+            $paidByReservedUnit = $creditsPerUnit > 0 && ($late ? $this->includedFree($organisationId, $periodStart, $reservation->getKind(), self::allowance($terms, $reservation->getKind())) > 0 : $fromIncluded > 0);
             $included = $paidByReservedUnit ? 1 : Math\minva($delivered->quantity, $free);
             // Never above the hold: Soirely absorbs a dearer delivery, so the check at reserve still guarantees the credits (sc-3929, 26 Oct).
             $credits = $paidByReservedUnit ? 0 : Math\minva(($delivered->quantity - $included) * $creditsPerUnit, ($fromCredits + $beyond) * $reservedPrice);
@@ -405,9 +407,9 @@ final readonly class UsageMeter
         return $this->entityManager->getRepository(UsageRecord::class)->findOneBy(['organisation' => $organisationId, 'keyScope' => $kind->keyScope(), 'idempotencyKey' => $idempotencyKey]);
     }
 
-    private function allowance(Uuid $organisationId, UsageKind $kind): Allowance
+    private static function allowance(PlanTerms $terms, UsageKind $kind): Allowance
     {
-        return $this->entitlements->of($organisationId)->terms->limit($kind->limit())->allowance;
+        return $terms->limit($kind->limit())->allowance;
     }
 
     /** @return int<0, max> what the period's included amount has left that no reservation holds */

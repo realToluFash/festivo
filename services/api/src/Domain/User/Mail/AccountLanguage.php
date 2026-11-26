@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Mail;
 
+use App\Entity\PhoneNumber;
+use App\Entity\PhoneSignIn;
+use App\Entity\TextableContact;
 use App\Entity\User;
 use App\Locale\Listener\RequestLocaleListener;
 use App\Locale\SupportedLocales;
@@ -30,6 +33,16 @@ final readonly class AccountLanguage
         }
 
         return SupportedLocales::narrow($asked ?? $this->translator->getLocale());
+    }
+
+    /** A code's text in its account's language; a number with no account yet in the language it asked in (sc-4235). */
+    public function ofContact(TextableContact $contact): string
+    {
+        return match (true) {
+            $contact instanceof PhoneNumber => $this->of($contact->getUser()),
+            $contact instanceof PhoneSignIn => SupportedLocales::narrow($contact->getLocale()),
+            default => SupportedLocales::narrow($this->translator->getLocale()),
+        };
     }
 
     /** What a screen writes a date in (sc-9267, sc-65714): the request's formatting tag when it asked for a language; else theirs. */

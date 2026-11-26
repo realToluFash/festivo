@@ -100,10 +100,20 @@ final readonly class TwoFactorSettings
         $this->entityManager->persist(new TwoFactorFactor($user, $this->secretBox->seal($secret)));
         $this->entityManager->flush();
 
-        $uri = $this->authenticatorCodes->provisioningUri($secret, $user->getPrimaryEmailAddress()?->getAddress() ?? $user->getName());
+        $uri = $this->authenticatorCodes->provisioningUri($secret, self::label($user));
         $qr = new Writer(new ImageRenderer(new RendererStyle(self::QR_SIZE, 1), new SvgImageBackEnd()))->writeString($uri);
 
         return ['secret' => $secret, 'otpauthUri' => $uri, 'qrSvg' => $qr];
+    }
+
+    /** With no email, the verified primary number in E.164, which the two-factor step names masked (sc-4235). */
+    private static function label(User $user): string
+    {
+        $phone = $user->getPrimaryPhoneNumber();
+
+        return $user->getPrimaryEmailAddress()?->getAddress()
+            ?? (true === $phone?->isVerified() ? $phone->getNumber() : null)
+            ?? $user->getName();
     }
 
     /** @return list<string> the recovery codes, shown this once; none when passkeys had it on already */

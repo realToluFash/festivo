@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { NO_NEEDS } from '@soirely/domain';
 
-import { addOf, editOf, valuesOf } from './guestValues.ts';
+import { addOf, discardNameOf, editOf, valuesOf } from './guestValues.ts';
 
 function details(more: Partial<GuestDetails> = {}): GuestDetails {
   return {
@@ -115,5 +115,20 @@ describe('Group and Needs as the app saves them (sc-5519)', () => {
       note: null,
     });
     expect(sent.companions[0]?.needs?.allergies).toEqual([]);
+  });
+});
+
+describe('the discard ask names the guest only when a name is held (sc-82245)', () => {
+  const blank = valuesOf(null, 'GB');
+
+  it('has no name for an email only, or a name of spaces', () => {
+    expect(discardNameOf(blank, { ...blank, email: 'ada@example.com' })).toBeNull();
+    expect(discardNameOf(blank, { ...blank, fullName: '   ' })).toBeNull();
+  });
+
+  it('uses the typed name, and the saved name before it', () => {
+    expect(discardNameOf(blank, { ...blank, fullName: ' Ada ' })).toBe('Ada');
+    const saved = valuesOf(details(), 'GB');
+    expect(discardNameOf(saved, { ...saved, fullName: '' })).toBe('Adaeze Okafor');
   });
 });

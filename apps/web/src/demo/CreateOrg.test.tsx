@@ -38,7 +38,7 @@ describe('creating an organisation in B · A short walk at a desk (sc-30335)', (
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByRole('alert').textContent).toBe("Enter the organisation's name.");
+    expect(screen.getByRole('alert').textContent).toBe('Enter the organisation’s name.');
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect(document.activeElement).toBe(field);
 

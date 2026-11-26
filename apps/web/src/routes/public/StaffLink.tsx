@@ -7,6 +7,8 @@ import { useParams } from 'react-router';
 import { api } from '../../api.ts';
 import { Brand } from '../../components/Brand.tsx';
 import { dateLocale } from '../../i18n/index.ts';
+import { restoreSession } from '../../session.ts';
+import { StaffLinkSignIn } from './StaffLinkSignIn.tsx';
 import './staffLink.css';
 
 type Load =
@@ -27,22 +29,25 @@ function StaffLink({ token }: { token: string }) {
 
   useEffect(() => {
     let current = true;
+    // Whoever this browser's cookie signs in reads the link: its own account goes on, another is told whose it is.
     const ask = (seen: boolean) =>
-      api.staffLinkWindow(token, seen).then(
-        (window) => current && setLoad({ kind: 'shown', window }),
-        (error: unknown) => {
-          if (!current) return;
-          if (error instanceof ApiError && error.status === 404) setLoad({ kind: 'gone' });
-          else
-            setLoad({
-              kind: 'failed',
-              words:
-                error instanceof ApiError && error.status === 429
-                  ? (error.problem.detail ?? null)
-                  : null,
-            });
-        },
-      );
+      restoreSession()
+        .then(() => api.staffLinkWindow(token, seen))
+        .then(
+          (window) => current && setLoad({ kind: 'shown', window }),
+          (error: unknown) => {
+            if (!current) return;
+            if (error instanceof ApiError && error.status === 404) setLoad({ kind: 'gone' });
+            else
+              setLoad({
+                kind: 'failed',
+                words:
+                  error instanceof ApiError && error.status === 429
+                    ? (error.problem.detail ?? null)
+                    : null,
+              });
+          },
+        );
     const seenNow = () => {
       if (document.visibilityState !== 'visible') return;
       document.removeEventListener('visibilitychange', seenNow);
@@ -60,6 +65,23 @@ function StaffLink({ token }: { token: string }) {
       document.removeEventListener('visibilitychange', seenNow);
     };
   }, [token]);
+
+  // Signed in by the code: read again, so the link answers as the account's own.
+  const reread = () =>
+    api.staffLinkWindow(token, false).then(
+      (window) => setLoad({ kind: 'shown', window }),
+      () => setLoad({ kind: 'failed', words: null }),
+    );
+
+  if (load.kind === 'shown' && load.window.state === 'open')
+    return (
+      <StaffLinkSignIn
+        token={token}
+        link={load.window}
+        onGone={() => setLoad({ kind: 'gone' })}
+        onSignedIn={reread}
+      />
+    );
 
   return (
     <main id="content" className="wl">

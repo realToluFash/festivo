@@ -15,6 +15,7 @@ final readonly class RenderedNotification
      * @param bool         $quiet       only rewrites the member's unread item in the thread, neither re-dating nor announcing it
      * @param bool         $silent      a push to the app alone, on its silent channel and passive on iOS: the run-of-show card (sc-66580)
      * @param ?string      $unsubscribe an email's one-click unsubscribe URL (RFC 8058), sent as its List-Unsubscribe
+     * @param ?string      $senderName  an email's From name, "{organisation} via Soirely" for a guest's notice (sc-3942)
      */
     public function __construct(
         public string $subject,
@@ -27,6 +28,7 @@ final readonly class RenderedNotification
         public bool $silent = false,
         public ?string $unsubscribe = null,
         public bool $reopens = false,
+        public ?string $senderName = null,
     ) {
     }
 }

@@ -192,6 +192,7 @@ export function EventNav({
       <ul className="today-places">
         {areas
           .filter((area) => area !== 'budget' || seesBudget(event))
+          .filter((area) => area !== 'messages' || seesMessages(event))
           .map((area) => {
             const current = area === litArea(inside.area, event);
             const sub =
@@ -237,6 +238,11 @@ function litArea(area: SideArea | null, event: OrganisationEvent | undefined): S
 /** Without budget.read the event's Budget is not in its navigation (sc-85); until the event has loaded, nobody is known to hold it. */
 function seesBudget(event: OrganisationEvent | undefined): boolean {
   return event != null && canOn(event, PAGE_NEEDS.budget);
+}
+
+/** Without messages.read the event's Messages is not in its navigation, as Settings has no Members without members.read (sc-3942). */
+function seesMessages(event: OrganisationEvent | undefined): boolean {
+  return event != null && canOn(event, PAGE_NEEDS.messages);
 }
 
 /** Its phase and how soon, in the words of its card on Events. */

@@ -1,5 +1,5 @@
-import type { Ref } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { type Ref, useState } from 'react';
+import { type LayoutRectangle, StyleSheet, View, type ViewInstance } from 'react-native';
 
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
@@ -76,12 +76,14 @@ export function DoorCodeCard({
   const tag = status === 'working' ? null : TAGS[status];
   const holds = cardStep(status) === 'hold';
   const under = underCard(status);
+  const [words, setWords] = useState<LayoutRectangle | null>(null);
 
   return (
     <>
       <SummaryCard
         height={200}
         gap={10}
+        words={words == null ? null : [words]}
         step={{
           label: holds ? W.show : W.makeNew,
           onPress: holds ? onHold : onMakeNew,
@@ -90,19 +92,21 @@ export function DoorCodeCard({
         }}
         testID={`door.card.${code.id}`}
       >
-        <OnCard text={cardTop(code.role, code.job)} />
-        <View style={styles.codeRow}>
-          <Text
-            size={30}
-            weight="bold"
-            accessibilityLabel={doorCodeSaid(code.code)}
-            style={styles.code}
-          >
-            {code.code}
-          </Text>
-          {tag != null && <GlassTag word={tag.word} mark={tag.mark} />}
+        <View style={styles.words} onLayout={(event) => setWords(event.nativeEvent.layout)}>
+          <OnCard text={cardTop(code.role, code.job)} />
+          <View style={styles.codeRow}>
+            <Text
+              size={30}
+              weight="bold"
+              accessibilityLabel={doorCodeSaid(code.code)}
+              style={styles.code}
+            >
+              {code.code}
+            </Text>
+            {tag != null && <GlassTag word={tag.word} mark={tag.mark} />}
+          </View>
+          <OnCard text={cardLine(code, locale, today)} />
         </View>
-        <OnCard text={cardLine(code, locale, today)} />
       </SummaryCard>
       {under.length > 0 && (
         <View style={styles.under}>
@@ -123,6 +127,7 @@ export function AnotherCode({ onPress }: { onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  words: { alignSelf: 'flex-start', gap: 10 },
   codeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

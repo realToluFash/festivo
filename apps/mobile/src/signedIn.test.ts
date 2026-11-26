@@ -337,6 +337,8 @@ describe('an invitation answered on one screen', () => {
     refusal: null,
     forYou: true,
     signedInAs: null,
+    signedInAsPhone: null,
+    needsEmail: false,
     managed: null,
   };
   const joined = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };

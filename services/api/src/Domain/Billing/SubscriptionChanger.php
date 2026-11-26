@@ -67,13 +67,12 @@ final readonly class SubscriptionChanger
             $startMoves = null !== $state->billedFrom && !self::same($subscription->getPeriodStart(), $state->billedFrom);
 
             if ($endMoves) {
-                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodEnd()?->format(DateTimeInterface::ATOM), $state->periodEnd->format(DateTimeInterface::ATOM), $by);
+                $this->record($subscription, SubscriptionChangeKind::PeriodEnd, $subscription->getPeriodEnd()?->format(DateTimeInterface::ATOM), $state->periodEnd->format(DateTimeInterface::ATOM), $by);
                 $subscription->changePeriod($state->periodEnd);
-            } elseif ($startMoves) {
-                $this->record($subscription, SubscriptionChangeKind::Period, $subscription->getPeriodStart()->format(DateTimeInterface::ATOM), $state->billedFrom->format(DateTimeInterface::ATOM), $by);
             }
 
             if ($startMoves) {
+                $this->record($subscription, SubscriptionChangeKind::PeriodStart, $subscription->getPeriodStart()->format(DateTimeInterface::ATOM), $state->billedFrom->format(DateTimeInterface::ATOM), $by);
                 $subscription->startPeriodAt($state->billedFrom);
             }
 
@@ -128,7 +127,7 @@ final readonly class SubscriptionChanger
             $from = $subscription->getPeriodStart();
 
             if ($from->getTimestamp() !== $periodStart->getTimestamp()) {
-                $this->record($subscription, SubscriptionChangeKind::Period, $from->format(DateTimeInterface::ATOM), $periodStart->format(DateTimeInterface::ATOM), $by);
+                $this->record($subscription, SubscriptionChangeKind::PeriodStart, $from->format(DateTimeInterface::ATOM), $periodStart->format(DateTimeInterface::ATOM), $by);
                 $subscription->startPeriodAt($periodStart);
             }
 

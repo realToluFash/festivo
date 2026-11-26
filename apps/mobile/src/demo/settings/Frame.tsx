@@ -7,7 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TitleCap } from '../../components/Text.tsx';
 import { PAGE_TITLE } from '../../components/topTitle.ts';
 import { titleSize } from '../../layout/textSize.ts';
-import { SETTINGS_LIST_WIDTH, useSideListWidth } from '../../layout/useLayout.ts';
+import {
+  SETTINGS_LIST_WIDTH,
+  useAccessibilitySizes,
+  useNameLines,
+  useSideListWidth,
+} from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import { useOrgOpener } from '../OrgSwitcher.tsx';
 import { OrgPill as ProductOrgPill } from '../../components/OrgPill.tsx';
@@ -229,7 +234,9 @@ export function OrgPill({
   const { viewer } = useShell();
   const ref = useRef<ViewInstance>(null);
   const org = useOrgOpener(ref);
-  const { tileAlone, measure } = usePillFit(org.name, org.waiting, room, false);
+  const large = useAccessibilitySizes() && room != null;
+  const lines = useNameLines();
+  const { tileAlone, measure } = usePillFit(org.name, org.waiting, room, large);
 
   if (viewer === 'noOrg') return null;
 
@@ -242,6 +249,9 @@ export function OrgPill({
       label={org.label}
       expanded={org.expanded}
       onPress={org.onPress}
+      bare={large}
+      wrap={large}
+      lines={large ? lines : undefined}
       tileAlone={givesWay || tileAlone}
       testID="org.switch"
     />

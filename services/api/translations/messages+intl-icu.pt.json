@@ -499,5 +499,19 @@
     "kitchen_sheet.by_station": "Por posto",
     "kitchen_sheet.chefs_choice": "À escolha do chef",
     "kitchen_sheet.health": "Esta folha contém informações de saúde dos convidados. Guarde-a na cozinha e destrua-a depois do evento.",
-    "kitchen_sheet.page": "Página {n} de {m}"
+    "kitchen_sheet.page": "Página {n} de {m}",
+    "guest_message.notice.subject": "{event}: uma mensagem de {hosts}",
+    "guest_message.notice.dear": "Olá, {greeting},",
+    "guest_message.notice.body": "Recebeu uma mensagem da parte de {hosts} sobre o evento {event}. Está na sua página.",
+    "guest_message.notice.read": "Ler na sua página",
+    "guest_message.notice.link": "{label}: {url}",
+    "guest_message.notice.from": "{organisation} via Soirely",
+    "validation.guest_message_required": "Escreva uma mensagem.",
+    "validation.guest_message_subject_too_long": "Encurte o assunto para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.guest_message_too_long": "Encurte a mensagem para um máximo de {count, number, ::group-auto} caracteres.",
+    "validation.guest_message_choose_guests": "Escolha pelo menos um convidado.",
+    "validation.guest_message_follows_unknown": "Esta conversa já não faz parte do evento.",
+    "validation.guest_message_no_guests": "Este evento ainda não tem convidados a quem escrever.",
+    "guest_message.event_draft": "Este evento é um rascunho. Publique-o para escrever aos seus convidados.",
+    "guest_message.event_ended": "Este evento terminou há mais de 30 dias, por isso já não pode escrever aos seus convidados."
 }

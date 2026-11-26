@@ -78,6 +78,12 @@ final readonly class SubscriberTokenIssuer
         return $this->issue([RealtimeTopic::EventGuestPages->for($eventId->toRfc4122())]);
     }
 
+    /** One event's messages to its guests' signal to ask again, for someone the route has already found holds messages.read on it (sc-3942); its messages carry nothing else. */
+    public function issueForEventMessages(Uuid $eventId): IssuedSubscriberToken
+    {
+        return $this->issue([RealtimeTopic::EventMessages->for($eventId->toRfc4122())]);
+    }
+
     /** One event's menu, for someone the route has already found holds menu.read on it (sc-3902). */
     public function issueForEventMenu(Uuid $eventId): IssuedSubscriberToken
     {

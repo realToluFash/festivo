@@ -1,13 +1,16 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-import { Text } from './Text.tsx';
+import { Text, type TextProps } from './Text.tsx';
+import { CappedWholeWords } from './Title.tsx';
 import { Glass } from './Glass.tsx';
 import { Glyph } from './Glyph.tsx';
 import { readOut } from './ReadOut.tsx';
 import { tokens } from '../theme/tokens.ts';
+import { LABEL_LINE, dotKept, wholeLineHeight } from '../layout/textSize.ts';
+import { dayChipRoom, liveChipRoom, openRoom } from '../layout/liveCoverFit.ts';
 import type { Now } from '../kit/today.ts';
 import { railLabels, type RunNow } from '../kit/todayRun.ts';
 
@@ -25,7 +28,12 @@ export function WhiteButton({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.whiteButton, pressed && styles.pressed, style]}
+      style={({ pressed }) => [
+        styles.whiteButton,
+        styles.whiteFixed,
+        pressed && styles.pressed,
+        style,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -37,25 +45,146 @@ export function WhiteButton({
   );
 }
 
-export function Chips({ now }: { now: Now }) {
+/** With `grows`, upright from AX1: each chip grows to hold its words at main's size, the day's wrapping only between words with its dot kept on the word before, and taking the line under Live now where both do not fit side by side (sc-93211). */
+export function Chips({ now, grows = false }: { now: Now; grows?: boolean }) {
+  const { t } = useTranslation();
+  const height = grows ? styles.chipGrows : styles.chipFixed;
+
+  return (
+    <View style={styles.chips}>
+      <View style={[styles.chip, styles.chipLight, height]}>
+        <View style={styles.liveRing}>
+          <View style={styles.liveDot} />
+        </View>
+        <Text size={13} weight="semibold" wholeLines={grows} style={grows && styles.shrink}>
+          {t('todayScreen.liveNow')}
+        </Text>
+      </View>
+      <View style={[styles.chip, styles.chipDark, height]}>
+        {grows ? (
+          <Text size={13} weight="semibold" wholeLines style={[styles.white, styles.shrink]}>
+            {dotKept(now.live)}
+          </Text>
+        ) : (
+          <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
+            {now.live}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** From AX1, a line of the live cover on its side: no larger than `under`, wrapping between words, stepping down only until its widest word fits `room`, never under `size` (sc-92312). */
+export function CoverLine({
+  size,
+  line,
+  room,
+  under,
+  onDrawn,
+  children,
+  ...look
+}: TextProps & {
+  size: number;
+  line: number;
+  room: number;
+  under?: number | undefined;
+  onDrawn?: ((size: number) => void) | undefined;
+  children: string;
+}) {
+  const [drawn, setDrawn] = useState<number | null>(null);
+  const report = useCallback(
+    (at: number) => {
+      setDrawn(at);
+      onDrawn?.(at);
+    },
+    [onDrawn],
+  );
+
+  return (
+    <CappedWholeWords
+      {...look}
+      size={size}
+      room={room}
+      under={under}
+      breakAfterHyphens
+      onDrawn={report}
+      style={[look.style, drawn != null && { lineHeight: wholeLineHeight(size, drawn, line) }]}
+    >
+      {children}
+    </CappedWholeWords>
+  );
+}
+
+/** The chips from AX1: each grows to hold its words and steps alone, no larger than the name, and the day's takes the line under Live now where both do not fit side by side (sc-92312). */
+export function WholeChips({ now, column, under }: { now: Now; column: number; under: number }) {
   const { t } = useTranslation();
 
   return (
     <View style={styles.chips}>
-      <View style={[styles.chip, styles.chipLight]}>
+      <View style={[styles.chip, styles.chipLight, styles.chipGrows]}>
         <View style={styles.liveRing}>
           <View style={styles.liveDot} />
         </View>
-        <Text size={13} weight="semibold">
+        <CoverLine
+          size={13}
+          line={LABEL_LINE}
+          weight="semibold"
+          room={liveChipRoom(column)}
+          under={under}
+          style={styles.shrink}
+        >
           {t('todayScreen.liveNow')}
-        </Text>
+        </CoverLine>
       </View>
-      <View style={[styles.chip, styles.chipDark]}>
-        <Text size={13} weight="semibold" style={styles.white} numberOfLines={1}>
+      <View style={[styles.chip, styles.chipDark, styles.chipGrows]}>
+        <CoverLine
+          size={13}
+          line={LABEL_LINE}
+          weight="semibold"
+          room={dayChipRoom(column)}
+          under={under}
+          style={[styles.white, styles.shrink]}
+        >
           {now.live}
-        </Text>
+        </CoverLine>
       </View>
     </View>
+  );
+}
+
+/** The white button from AX1: it grows to hold its label, which steps alone, no larger than the name (sc-92312). */
+export function WholeWhiteButton({
+  label,
+  onPress,
+  column,
+  under,
+}: {
+  label: string;
+  onPress: () => void;
+  column: number;
+  under: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.whiteButton, styles.whiteGrows, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <CoverLine
+        size={16}
+        line={LABEL_LINE}
+        weight="semibold"
+        accessible={false}
+        room={openRoom(column)}
+        under={under}
+        style={styles.shrink}
+      >
+        {label}
+      </CoverLine>
+      <Glyph name="arrow" ink={tokens.colorInk} />
+    </Pressable>
   );
 }
 
@@ -356,7 +485,6 @@ const styles = StyleSheet.create({
   wideRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 36 },
   right: { width: 340, gap: 18 },
   whiteButton: {
-    height: tokens.sizeHitPhoneHero,
     borderRadius: tokens.sizeHitPhoneHero / 2,
     backgroundColor: tokens.colorCard,
     flexDirection: 'row',
@@ -365,9 +493,21 @@ const styles = StyleSheet.create({
     gap: tokens.spaceSm,
     paddingHorizontal: 22,
   },
+  whiteFixed: { height: tokens.sizeHitPhoneHero },
+  whiteGrows: {
+    minHeight: tokens.sizeHitPhoneHero,
+    paddingVertical: tokens.spaceSm,
+    maxWidth: '100%',
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  chipFixed: { height: tokens.space4xl },
+  chipGrows: {
+    minHeight: tokens.space4xl,
+    paddingVertical: tokens.spaceXxs,
+    maxWidth: '100%',
+    flexShrink: 1,
+  },
   chip: {
-    height: tokens.space4xl,
     paddingHorizontal: 12,
     borderRadius: tokens.spacePillEnd,
     flexDirection: 'row',

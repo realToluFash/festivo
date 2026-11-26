@@ -97,3 +97,8 @@ export function editOf(
     ...(groupChanged(current, group) ? { group } : {}),
   };
 }
+
+/** The name the discard ask can use: the saved one, else the typed one; null when both are blank. */
+export function discardNameOf(first: Values, values: Values): string | null {
+  return first.fullName.trim() || values.fullName.trim() || null;
+}

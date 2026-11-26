@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { addressRuns } from '../kit/addressBreaks.ts';
+import { addressRuns, atWithItsLastCharacter, isLoneAt } from '../kit/addressBreaks.ts';
 import { Text, type TextProps } from './Text.tsx';
 import { CappedWholeWords } from './Title.tsx';
 import { atAccessibilitySizes, LABEL_LINE } from '../layout/textSize.ts';
@@ -98,7 +98,7 @@ export function TitleBesideTag({
   );
 }
 
-/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). */
+/** A person's name, or an address standing for one: the address as `local@` and its domain side by side, so it breaks after the @ before anywhere else, and is read whole (sc-70353). `shown` reaches only what ends the name, so nothing it adds sits between the @ and the domain. */
 export function NameText({
   name,
   box,
@@ -112,6 +112,7 @@ export function NameText({
   shown?: (run: string) => string;
 }) {
   const runs = addressRuns(name);
+  const [atAlone, setAtAlone] = useState(false);
   if (runs == null)
     return (
       <Text {...text} accessible={accessible} accessibilityRole={accessibilityRole}>
@@ -126,11 +127,18 @@ export function NameText({
       accessibilityRole={accessibilityRole}
       accessibilityLabel={name}
     >
-      {runs.map((run) => (
-        <Text key={run} {...text} accessible={false}>
-          {shown(run)}
-        </Text>
-      ))}
+      <Text
+        {...text}
+        accessible={false}
+        onTextLayout={(event) => {
+          if (isLoneAt(event.nativeEvent.lines.at(-1)?.text ?? '')) setAtAlone(true);
+        }}
+      >
+        {atAlone ? atWithItsLastCharacter(runs[0]) : runs[0]}
+      </Text>
+      <Text {...text} accessible={false}>
+        {shown(runs[1])}
+      </Text>
     </View>
   );
 }

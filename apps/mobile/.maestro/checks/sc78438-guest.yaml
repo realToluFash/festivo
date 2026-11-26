@@ -1,4 +1,4 @@
-# Add guest at the current text size: the mobile field with Royaume-Uni, the keypad up, and the guest saved with that number. sc-78438.
+# Add guest at the current text size: the mobile field with Royaume-Uni, the keypad up, and the guest saved with that number. sc-78438. Phone only: on a tablet the form is a sheet, and keys-away's blank-page tap lands on its scrim.
 appId: host.exp.Exponent
 ---
 - setOrientation: PORTRAIT
@@ -28,36 +28,17 @@ appId: host.exp.Exponent
       id: 'guest.form'
     timeout: 20000
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.number'
-    timeout: 10000
-    centerElement: true
-- takeScreenshot: guest-field
 - repeat:
     while:
       notVisible:
-        id: 'guest.form.mobile.number'
-    times: 12
+        id: 'guest.form.mobile.country'
+    times: 15
     commands:
       - swipe:
-          start: 50%, 88%
-          end: 50%, 62%
+          start: 50%, 80%
+          end: 50%, 50%
       - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.country'
-    direction: DOWN
-    centerElement: true
-    timeout: 25000
-    optional: true
-- scrollUntilVisible:
-    element:
-      id: 'guest.form.mobile.country'
-    direction: UP
-    centerElement: true
-    timeout: 8000
-    optional: true
+- takeScreenshot: guest-field
 - tapOn:
     id: 'guest.form.mobile.country'
 - waitForAnimationToEnd
@@ -77,9 +58,11 @@ appId: host.exp.Exponent
       - waitForAnimationToEnd
 - scrollUntilVisible:
     element:
-      id: 'guest.form.mobile.number'
-    timeout: 10000
+      id: 'guest.form.mobile.country'
+    direction: UP
     centerElement: true
+    timeout: 10000
+    optional: true
 - swipe:
     start: 50%, 55%
     end: 50%, 80%
@@ -108,6 +91,8 @@ appId: host.exp.Exponent
 - inputText: '7400123458'
 - waitForAnimationToEnd
 - takeScreenshot: guest-keypad
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
 - scrollUntilVisible:
     element:
       id: 'guest.form.fullName'
@@ -125,6 +110,8 @@ appId: host.exp.Exponent
 - tapOn:
     id: 'guest.form.fullName'
 - inputText: '${GUEST_NAME}'
+- runFlow: ../keys-away.yaml
+- waitForAnimationToEnd
 - tapOn:
     id: 'guest.form.save'
     optional: true

@@ -56,7 +56,7 @@ import {
 import { NOTE_SENT, changeTitle } from './TellKinds.ts';
 import { CHANNEL_IN_LINE, CHANNEL_WORD, type ChannelKey, W, say } from './MessagesWords.ts';
 import { Preview } from './Preview.tsx';
-import { previewOf } from './PreviewModel.ts';
+import { previewOf, previewOffOf } from './PreviewModel.ts';
 import { RefusedSave } from './RefusedSave.tsx';
 import { SW, pausedWaits } from './ScheduledSave.ts';
 import { clockNote } from './Sms.ts';
@@ -670,6 +670,7 @@ function ownParts(talk: Talk, followUp: string): Own {
       onCaret={talk.onCaret}
       onInsert={talk.onInsert}
       onPreview={() => dispatch({ type: 'preview' })}
+      previewOff={previewOffOf(m)}
       onSend={talk.onSend}
     />
   );

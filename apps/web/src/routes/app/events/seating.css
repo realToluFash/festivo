@@ -481,6 +481,19 @@
   border-radius: var(--spaceLg);
 }
 
+.st-bar.is-floor {
+  top: 50%;
+  left: 50%;
+  align-items: flex-start;
+  width: min(470px, calc(100% - 2 * var(--spaceLg)));
+  transform: translate(-50%, -50%);
+}
+
+/* sc-92210: on two lines or three the info icon stays at the start of the first. */
+.st-bar.is-floor > :first-child {
+  margin-top: calc(var(--spaceLg) + (14.5px * 1.4 - 17px) / 2);
+}
+
 .st-bar.is-inline {
   position: static;
   width: auto;
@@ -1489,6 +1502,43 @@
   accent-color: var(--colorAccent);
 }
 
+/* sc-91971: the zoom bar wraps onto two rows; what stands above it steps up 46 px. */
+@media (width <= 40rem) {
+  .st-zoom {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    place-items: center;
+    max-width: calc(100% - 2 * var(--spaceLg));
+  }
+
+  .st-zoom > .st-tool {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  .st-main:not(.is-none) .st-canvas.is-plan {
+    height: 704px;
+  }
+
+  .st-minimap,
+  .st-another {
+    bottom: 126px;
+  }
+
+  .st-keys {
+    bottom: 124px;
+  }
+
+  .st-canvas:has(> .st-add.is-crowded) :is(.st-minimap, .st-another) {
+    bottom: 190px;
+  }
+
+  .st-canvas:has(> .st-add.is-crowded) .st-keys {
+    bottom: 188px;
+  }
+}
+
 .st-handle {
   fill: var(--colorCard);
   stroke: var(--colorAccent);
@@ -2159,6 +2209,16 @@
   top: 0;
   z-index: 5;
   flex: none;
+}
+
+/* sc-91971: when the switch and the save line, as drawn in the page's language, would come within 12 px, the save line steps down a line at the room's right, and what stood on that line steps down with it (sc-57282). */
+.is-row-down > .st-top-right {
+  top: 72px;
+}
+
+/* sc-92210: the first-table banner keeps the frame's middle, so it is the one floating bar that does not step down. */
+.is-row-down > :is(.st-bar:not(.is-floor), .st-under-views, .st-view-wrap) {
+  top: 132px;
 }
 
 .st-view {

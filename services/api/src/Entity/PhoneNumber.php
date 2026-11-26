@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_phone_number_user', columns: ['user_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_primary_phone_per_user', columns: ['user_id'], options: ['where' => 'is_primary'])]
 #[ORM\UniqueConstraint(name: 'uniq_pending_phone_per_user', columns: ['user_id'], options: ['where' => 'is_pending'])]
-class PhoneNumber implements VerifiableContact
+class PhoneNumber implements TextableContact
 {
     use Timestampable;
 

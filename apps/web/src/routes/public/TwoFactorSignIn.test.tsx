@@ -99,6 +99,19 @@ describe('a sign-in that asks for a second factor', () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  it('on an account with no email, names its masked number in its own line', async () => {
+    await atTheCodeScreen({
+      'POST /api/auth/login': () =>
+        json({ ...CHALLENGE, email: '', phone: { countryCode: 'PT', lastDigits: '4512' } }, 202),
+    });
+
+    expect(
+      screen.getByText(
+        'Open your authenticator app and enter the 6-digit code for +351 ••• ••• 4512.',
+      ),
+    ).toBeDefined();
+  });
+
   it('checks the code before sending, and a failed check costs no attempt', async () => {
     const sent = await atTheCodeScreen({});
 

@@ -256,6 +256,7 @@
   "twoFactor": {
     "title": "Saisissez votre code",
     "intro": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{email}}.",
+    "introNumber": "Ouvrez votre application d’authentification et saisissez le code à 6 chiffres pour {{number}}.",
     "code": "Code",
     "useRecovery": "Utiliser plutôt un code de récupération",
     "recoveryTitle": "Saisissez un code de récupération",
@@ -3527,7 +3528,20 @@
     "inTitleNoJob": "Vous avez rejoint {{event}}",
     "endsLine": "Votre accès dure jusqu’à la fin de l’événement.",
     "openEvent": "Ouvrir l’événement",
-    "signedInAs": "Session ouverte : {{name}}"
+    "signedInAs": "Session ouverte : {{name}}",
+    "phone": {
+      "mobile": "Numéro de portable",
+      "countryCode": "Indicatif",
+      "sendCode": "Envoyer le code",
+      "alternative": "Ce numéro est associé à un compte Soirely sans en être le numéro principal : il ne permet donc pas de vous connecter. Saisissez le numéro principal de ce compte, ou définissez celui-ci comme numéro principal.",
+      "checkWhatsApp": "Consultez WhatsApp",
+      "checkMessages": "Code envoyé",
+      "sentWhatsApp": "Nous avons envoyé un code sur votre WhatsApp au {{number}}.",
+      "texted": "Nous avons envoyé un code par SMS au {{number}}.",
+      "wrongWhatsApp": "Ce code ne correspond pas. Vérifiez le dernier message WhatsApp de Soirely et réessayez.",
+      "wrongText": "Ce code ne correspond pas. Vérifiez le dernier SMS de Soirely et réessayez.",
+      "textInstead": "Me l’envoyer par SMS"
+    }
   },
   "doorCodes": {
     "doorCode": "Code d’accès",

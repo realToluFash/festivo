@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router';
 import { StillSignedIn } from './StillSignedIn.tsx';
 import { useSignOut } from '../signOut.ts';
 import { useAnyNotOverdue } from '../twoFactorStanding.ts';
+import { SECURITY, securityOn } from '../routes/app/settings/signInRulesDesk.ts';
 
 /** In place of every page of an organisation whose deadline for two-factor has passed (sc-609). */
 export function TwoFactorOverdue({
@@ -32,7 +33,7 @@ export function TwoFactorOverdue({
       </p>
       {unreached && <StillSignedIn />}
       <div className="two-factor-overdue-actions">
-        <Link className="button button-primary" to="/app/account/security">
+        <Link className="button button-primary" to={SECURITY} state={securityOn('turnOn')}>
           {t('signInRules.overdueTurnOn')}
         </Link>
         <button className="button" type="button" onClick={() => void signOut()}>

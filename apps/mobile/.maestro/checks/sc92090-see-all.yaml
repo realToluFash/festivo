@@ -1,0 +1,11 @@
+# sc-92090: Today's See all under Your events opens Events. Vars: METRO_URL.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- scrollUntilVisible: { element: { text: 'All events.*|Tout voir.*' }, direction: DOWN }
+- tapOn: { text: 'All events.*|Tout voir.*' }
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 3000, optional: true }
+- takeScreenshot: events

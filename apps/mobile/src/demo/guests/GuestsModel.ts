@@ -184,6 +184,7 @@ export const ADD_STATES = [
   'added',
   'addNotAdded',
   'addOffline',
+  'addDiscard',
   'picker',
   'androidPick',
   'androidNone',
@@ -300,6 +301,28 @@ function one<T extends string>(states: readonly T[], value: string | null | unde
 
 export const guestsStateOf = (value: string | undefined) => one(GUESTS_STATES, value);
 export const doorStateOf = (value: string | undefined) => one(DOOR_STATES, value);
+
+/** The country Add guest's number starts on. */
+export const START_COUNTRY = 'GB';
+
+/** Add guest holds a change once anything differs from the empty form, so its Cancel asks (sc-82245). */
+export function addHoldsChange(form: {
+  texts: readonly string[];
+  country: string;
+  language: string | null;
+  companions: number;
+  needs: boolean;
+  group: boolean;
+}): boolean {
+  return (
+    form.texts.some((text) => text.trim() !== '') ||
+    form.country !== START_COUNTRY ||
+    form.language != null ||
+    form.companions > 0 ||
+    form.needs ||
+    form.group
+  );
+}
 
 export function isIn<T extends string>(states: readonly T[], state: string | null): state is T {
   return state != null && (states as readonly string[]).includes(state);
