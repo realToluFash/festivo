@@ -137,6 +137,19 @@ export function fitWidest(size: number, start: number, widest: number, slot: num
   return Math.max(size, Math.floor((start * slot) / widest));
 }
 
+/** As `fitWidest`, for a word whose tracking, `tracking` across it, stays the same at every size: it is taken out before the word is scaled (sc-94682). */
+export function fitTracked(
+  size: number,
+  start: number,
+  width: number,
+  tracking: number,
+  slot: number,
+): number {
+  if (width <= slot || start <= size) return start;
+
+  return Math.max(size, Math.floor((start * (slot - tracking)) / (width - tracking)));
+}
+
 /** A day's name and its dotted date share a line only when both fit it whole; otherwise the date takes the line under, without its dot (sc-92250). */
 export function dayLineShares(
   name: number,
