@@ -179,3 +179,10 @@ framework:
             policy: fixed_window
             limit: 120
             interval: '1 minute'
+
+        service_tap:
+            # Per account, spent by each service write (sc-4028). A waiter back online sends every
+            # kept tap at once, in order, so the burst is generous; a loop is not (RFC 6585 §4).
+            policy: token_bucket
+            limit: 60
+            rate: { interval: '30 seconds', amount: 60 }

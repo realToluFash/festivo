@@ -25,6 +25,8 @@ enum ErrorCode: string
     case TableNothingToServe = 'table_nothing_to_serve';
     case TrayCheckIncomplete = 'tray_check_incomplete';
     case UndoExpired = 'undo_expired';
+    case ServiceChanged = 'service_changed';
+    case ExpectedRequired = 'expected_required';
     case LevelNotAllowedForCode = 'level_not_allowed_for_code';
     case AlreadyLinked = 'already_linked';
     case AddressLimitReached = 'address_limit_reached';
@@ -188,7 +190,7 @@ enum ErrorCode: string
     public function status(): int
     {
         return match ($this) {
-            self::BadRequest, self::IdempotencyKeyRequired => 400,
+            self::BadRequest, self::IdempotencyKeyRequired, self::ExpectedRequired => 400,
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
@@ -230,7 +232,7 @@ enum ErrorCode: string
             self::AssistantRefused, self::IdempotencyKeyReused => 422,
             self::AuditExportTooMany => 422,
             self::LevelNotAllowedForCode => 422,
-            self::PlateStageInvalid, self::PlateEmpty, self::TableNothingToServe, self::TrayCheckIncomplete, self::UndoExpired => 409,
+            self::PlateStageInvalid, self::PlateEmpty, self::TableNothingToServe, self::TrayCheckIncomplete, self::UndoExpired, self::ServiceChanged => 409,
         };
     }
 

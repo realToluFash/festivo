@@ -417,6 +417,7 @@
     "payment_reminder.email.settings": "Notification settings",
     "payment_reminder.email.footer": "You're getting this because you can record payments at {organisation}. To stop these emails, turn off Money email in Notification settings.",
     "limits.staff_links": "This link has been opened too often. Try again {hour, plural, other {at {time}}}.",
+    "limits.service_taps": "Too many steps at once. Try again {hour, plural, other {at {time}}}.",
     "guestReplies.bell.coming": "{count, plural, one {{count, number, ::group-auto} coming} other {{count, number, ::group-auto} coming}}",
     "guestReplies.bell.notComing": "{count, plural, one {{count, number, ::group-auto} not coming} other {{count, number, ::group-auto} not coming}}",
     "guestReplies.bell.maybe": "{count, plural, one {{count, number, ::group-auto} not sure yet} other {{count, number, ::group-auto} not sure yet}}",

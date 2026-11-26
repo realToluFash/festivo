@@ -168,5 +168,7 @@
     "plate_empty": "A plate with nothing on it is not taken to a guest. Take it off the tray instead.",
     "table_nothing_to_serve": "There is nothing to put on a tray for this table yet.",
     "tray_check_incomplete": "Mark every item On, or Not on and Bring after, before checking the tray.",
-    "undo_expired": "It is more than 2 minutes since that step, so it cannot be undone."
+    "undo_expired": "It is more than 2 minutes since that step, so it cannot be undone.",
+    "service_changed": "This changed while you were offline. Nothing was changed.",
+    "expected_required": "Send what the tap saw with each service step."
 }
