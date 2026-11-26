@@ -8,7 +8,8 @@ import { dayWords } from '../kit/todayMoment.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Glyph } from './Glyph.tsx';
 import { Text } from './Text.tsx';
-import { DatesFailed, DatesLoading, type TimelineRead } from './Timeline.tsx';
+import { TextAction } from './SummaryRows.tsx';
+import type { TimelineRead } from './Timeline.tsx';
 import { Panel, SectionHead } from './TodayParts.tsx';
 
 const SHORT_DAY: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
@@ -55,9 +56,23 @@ export function EventNeeds({
         />
       </View>
       <Panel>
-        {load.kind === 'loading' && <DatesLoading testID="event.needsYou.loading" />}
+        {load.kind === 'loading' && (
+          <Text
+            size={15}
+            weight="medium"
+            style={[styles.secondary, styles.line]}
+            testID="event.needsYou.loading"
+          >
+            {t('timeline.loading')}
+          </Text>
+        )}
         {load.kind === 'failed' && (
-          <DatesFailed announced={retried} onRetry={retry} testID="event.needsYou.retry" />
+          <View style={styles.line} accessibilityLiveRegion={retried ? 'polite' : 'none'}>
+            <Text size={15} weight="medium">
+              {t('timeline.failed')}
+            </Text>
+            <TextAction label={t('timeline.retry')} onPress={retry} testID="event.needsYou.retry" />
+          </View>
         )}
         {load.kind === 'loaded' && rows.length === 0 && (
           <View style={styles.clear} testID="event.needsYou.nothing">
@@ -100,6 +115,7 @@ export function EventNeeds({
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
+  line: { paddingVertical: tokens.spaceLg },
   late: { color: tokens.colorBroken },
   ruled: { borderBottomWidth: 1, borderBottomColor: tokens.colorBorder },
   row: { gap: tokens.spaceHair, paddingVertical: tokens.spaceLg },

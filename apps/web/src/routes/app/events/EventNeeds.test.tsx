@@ -90,6 +90,27 @@ describe('an event’s Needs you card', () => {
     expect(screen.getByText('Nothing needs you')).toBeTruthy();
   });
 
+  it('ticks a started event with no You milestone', () => {
+    show(read(loaded([milestone('2026-11-12T10:00:00Z', { owner: 'event' })])));
+
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
+    expect(screen.queryByRole('listitem')).toBeNull();
+  });
+
+  it('shows only the load it is given, and drops a row a re-read no longer has', () => {
+    const other = milestone('2026-11-12T10:00:00Z', { title: 'On another event' });
+    const view = show(read(loaded([KITCHEN])));
+
+    expect(screen.queryByText(other.title)).toBeNull();
+    view.rerender(
+      <MemoryRouter>
+        <EventNeeds event={event(['menu.manage'])} timeline={read(loaded([]))} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(KITCHEN.title)).toBeNull();
+    expect(screen.getByText('Nothing needs you')).toBeTruthy();
+  });
+
   it('shows neither row, count nor tick while loading', () => {
     show(read({ kind: 'loading' }));
 
@@ -121,6 +142,14 @@ describe('the rows', () => {
 
     expect(rows([milestone(at)], new Date('2026-11-09T08:00:00Z'))[0]?.due).toBe('Due today');
     expect(rows([milestone(at)], new Date('2026-11-10T00:30:00Z'))[0]?.due).toBe('1 day overdue');
+  });
+
+  it('words tomorrow and a same-day overdue', () => {
+    expect(rows([milestone('2026-11-11T22:59:00Z')])[0]?.due).toBe('Due tomorrow');
+    expect(rows([milestone('2026-11-10T08:00:00Z')])[0]).toMatchObject({
+      due: 'Overdue',
+      late: true,
+    });
   });
 
   it('writes the year only in another year', () => {
