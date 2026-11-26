@@ -66,7 +66,7 @@ final class ServiceReadTest extends ServiceTestCase
         $plate = '';
         $steps = [
             'the firing' => $this->fire(...),
-            'a late arrival' => fn () => $this->arrive('Ese Ugo'),
+            'a late arrival, at the door' => fn () => $this->arriveAtTheDoor('Ese Ugo'),
             'an item Preparing' => fn () => $this->itemState('plantain', 'preparing', 15),
             'a choice' => fn () => $this->put('/plates/' . Type\string()->coerce($this->orderOf('Dayo Ola')['id']) . '/choice', ['choice' => 'whatsReadyNow']),
             'an item Ready' => fn () => $this->itemState('plantain', 'ready'),
@@ -126,6 +126,22 @@ final class ServiceReadTest extends ServiceTestCase
             self::assertSame($this->read(), $patched[$this->courseId()], $what . ', the Main');
             self::assertSame($this->read($dessert), $patched[$this->courseId($dessert)], $what . ', the Dessert');
         }
+    }
+
+    #[Test]
+    public function anArrivalBeforeAnyFiringIsStoredAndPublishesNoPatch(): void
+    {
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+
+        $this->arriveAtTheDoor('Adaeze Obi');
+
+        self::assertSame([], Vec\filter($hub->published, static fn (Update $update): bool => isset(Type\mixed_dict()->coerce(Json\decode($update->getData()))['patch'])));
+        self::assertNull($this->guestOf(self::tableOf($this->read()), 'Adaeze Obi')['noOrder']);
+
+        $this->fire();
+
+        self::assertSame('toServe', $this->orderOf('Adaeze Obi')['stage']);
     }
 
     #[Test]

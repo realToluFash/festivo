@@ -9,7 +9,7 @@ use App\Entity\Guest;
 use App\Entity\User;
 use Closure;
 
-/** What else a guest's arrival, or its undo, starts: an order for each course already fired at their table, and the service's reads patched from before it (sc-4005). */
+/** What else a guest's arrival, or its undo, starts: an order for each course already fired at their table, and, once any course is fired, the service's reads patched from before it (sc-4005). */
 interface ArrivalFollowerInterface
 {
     /** @param Closure(): Guest $arrival stores the arrival or its undo */

@@ -16,6 +16,7 @@ use App\Entity\SeatingPlan;
 use App\Entity\SeatingSection;
 use App\Entity\SeatingTable;
 use App\Entity\User;
+use App\Enum\EventStatus;
 use App\Enum\SectionColour;
 use App\Enum\TableShape;
 use App\Locale\NameNormaliser;
@@ -114,6 +115,20 @@ abstract class ServiceTestCase extends ApiTestCase
                 return $guest;
             });
         }
+    }
+
+    /** Through the check-in route, as a door phone arrives a guest; the door opens only on a live event. */
+    protected function arriveAtTheDoor(string $name): void
+    {
+        $event = self::em()->find(Event::class, $this->event->getId()) ?? self::fail('no event');
+
+        if (EventStatus::Live !== $event->getStatus()) {
+            $event->makeLive(new DateTimeImmutable('2027-03-06T12:00:00Z'));
+            self::em()->flush();
+        }
+
+        $body = $this->as('POST', '/api/events/' . $this->event->getId()->toRfc4122() . '/check-in/arrivals', ['guestId' => $this->guests[$name]->getId()->toRfc4122()]);
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
     }
 
     protected function fire(?MenuCourse $course = null, ?SeatingTable $table = null): void

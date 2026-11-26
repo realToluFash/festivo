@@ -29,6 +29,7 @@ use App\Enum\SentBackReason;
 use App\Enum\ServicePlace;
 use App\Http\Access\Grants;
 use App\Http\Exception\ApiException;
+use App\Repository\ServiceFiringRepository;
 use App\Repository\ServiceItemRepository;
 use App\Repository\ServicePlateRepository;
 use App\Repository\ServiceStepRepository;
@@ -59,6 +60,7 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         private ServiceStepRepository $serviceStepRepository,
         private TranslatorInterface $translator,
         private ServiceUndo $serviceUndo,
+        private ServiceFiringRepository $serviceFiringRepository,
     ) {
     }
 
@@ -69,9 +71,16 @@ final readonly class ServiceSteps implements ArrivalFollowerInterface
         });
     }
 
+    /** Before any course is fired, the arrival is stored under a shared lock on the event and nothing else, so arrivals at the door never wait on each other; a firing waits for it, and it for a firing, which then takes the locked path below. */
     public function arrival(Event $event, User $by, Closure $arrival): Guest
     {
-        return $this->write($event, [], function (DateTimeImmutable $now) use ($arrival, $by): Guest {
+        $stored = $this->entityManager->wrapInTransaction(function () use ($event, $arrival): ?Guest {
+            $this->entityManager->getConnection()->executeQuery('SELECT 1 FROM events WHERE id = :id FOR SHARE', ['id' => $event->getId()->toRfc4122()]);
+
+            return $this->serviceFiringRepository->anyOn($event) ? null : $arrival();
+        });
+
+        return $stored ?? $this->write($event, [], function (DateTimeImmutable $now) use ($arrival, $by): Guest {
             $guest = $arrival();
             $this->orderMaker->arrived($guest, $now, $by);
 
