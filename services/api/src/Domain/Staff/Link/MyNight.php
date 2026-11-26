@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Domain\Event\LocalTimeResolver;
+use App\Domain\Staff\Attendance\Clocking;
+use App\Domain\Staff\Http\ClockCardSerialiser;
 use App\Domain\Staff\ShiftClock;
 use App\Entity\Event;
 use App\Entity\Guest;
@@ -39,8 +41,43 @@ final readonly class MyNight
         private SeatingTableRepository $seatingTableRepository,
         private SeatAssignmentRepository $seatAssignmentRepository,
         private GuestNeedRepository $guestNeedRepository,
+        private Clocking $clocking,
         private ClockInterface $clock,
     ) {
+    }
+
+    /**
+     * Past the person's access while still clocked in (sc-234): the event's name and the clock card, nothing else.
+     *
+     * @return array<string, mixed>
+     */
+    public function pastAccess(StaffMember $entry, DateTimeImmutable $until): array
+    {
+        $event = $entry->getEvent();
+        $zone = new DateTimeZone($event->getTimeZone());
+
+        return [
+            'pastAccess' => true,
+            'clock' => $this->card($entry),
+            'event' => ['name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
+            'endsAt' => $until->setTimezone($zone)->format(\DATE_ATOM),
+            'station' => null,
+            'job' => null,
+            'shift' => null,
+            'later' => null,
+            'lead' => null,
+            'timing' => [],
+            'doorsAt' => $event->getStartsAt()->setTimezone($zone)->format(\DATE_ATOM),
+            'tables' => null,
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function card(StaffMember $entry): ?array
+    {
+        $card = $this->clocking->cardOf($entry);
+
+        return null === $card ? null : ClockCardSerialiser::card($card['shift'], $card['attendance'], $this->clock->now());
     }
 
     /** @return array<string, mixed> times in the event's offset; `tables` is null with no section station, and empty until doors open */
@@ -56,6 +93,8 @@ final readonly class MyNight
         $doorsAt = $event->getStartsAt()->setTimezone($zone);
 
         return [
+            'pastAccess' => false,
+            'clock' => $this->card($entry),
             'event' => ['name' => $event->getName(), 'timeZone' => $event->getTimeZone()],
             'endsAt' => $until->setTimezone($zone)->format(\DATE_ATOM),
             'station' => null === $station ? null : self::stationName($station),

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Entity\EventPerson;
+use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\User;
 use App\Enum\EventRole;
 use App\Enum\StaffAccess;
 use App\Repository\EventPersonRepository;
+use App\Repository\ShiftAttendanceRepository;
 use App\Repository\StaffMemberRepository;
 use DateTimeImmutable;
 use Psl\Iter;
@@ -23,6 +25,7 @@ final readonly class StaffLinkGrants
     public function __construct(
         private StaffMemberRepository $staffMemberRepository,
         private EventPersonRepository $eventPersonRepository,
+        private ShiftAttendanceRepository $shiftAttendanceRepository,
         private StaffLinks $staffLinks,
         private ClockInterface $clock,
     ) {
@@ -51,11 +54,36 @@ final readonly class StaffLinkGrants
         return $live;
     }
 
-    /** When a browser signed in by phone code is signed out: the last of the account's live grants to end, or null once none is live. */
+    /**
+     * Past their access, still clocked in (sc-234): the entries whose link opens the clock card alone, and until when. No grant comes with it.
+     *
+     * @return list<array{entry: StaffMember, until: DateTimeImmutable}>
+     */
+    public function clockOnly(User $user, ?Uuid $eventId = null): array
+    {
+        $entries = Vec\unique_by(
+            Vec\map($this->shiftAttendanceRepository->findOpenOfAccount($user, $eventId), static fn (ShiftAttendance $attendance): StaffMember => $attendance->getStaffMember()),
+            static fn (StaffMember $entry): string => $entry->getId()->toRfc4122(),
+        );
+        $open = [];
+
+        foreach ($entries as $entry) {
+            $until = $this->staffLinks->window($entry)->clockUntil;
+
+            if (null !== $until) {
+                $open[] = ['entry' => $entry, 'until' => $until];
+            }
+        }
+
+        return $open;
+    }
+
+    /** When a browser signed in by phone code is signed out: the last of the account's live grants to end, a clock card past access included, or null once none is live. */
     public function lastEndFor(User $user): ?DateTimeImmutable
     {
         $ends = [
             ...Vec\map($this->live($user), static fn (array $grant): DateTimeImmutable => $grant['until']),
+            ...Vec\map($this->clockOnly($user), static fn (array $grant): DateTimeImmutable => $grant['until']),
             ...Vec\filter_nulls(Vec\map($this->eventPersonRepository->findLiveOutsideFor($user, $this->clock->now()), static fn (EventPerson $person): ?DateTimeImmutable => $person->getEvent()->getClosesAt())),
         ];
 

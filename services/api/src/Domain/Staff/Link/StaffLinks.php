@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Staff\Link;
 
 use App\Audit\Auditor;
+use App\Domain\Staff\Attendance\Clocking;
 use App\Domain\Staff\ShiftClock;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\Event;
@@ -55,6 +56,7 @@ final readonly class StaffLinks
         private StaffShiftRepository $staffShiftRepository,
         private StaffRosterPublisher $staffRosterPublisher,
         private Auditor $auditor,
+        private Clocking $clocking,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
     ) {
@@ -135,7 +137,7 @@ final readonly class StaffLinks
         $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
-    /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished. */
+    /** From 12 hours before their first shift starts until 2 hours after their last one ends, not yet while they have no shift, and never once the event has finished; past it, the clock card alone while they are still clocked in. */
     public function window(StaffMember $entry): StaffLinkWindow
     {
         $event = $entry->getEvent();
@@ -143,7 +145,7 @@ final readonly class StaffLinks
         $shifts = $this->staffShiftRepository->findOfPerson($entry);
 
         if ($this->finished($event, $now)) {
-            return StaffLinkWindow::ended();
+            return StaffLinkWindow::ended($this->clocking->openUntil($entry));
         }
 
         if ([] === $shifts) {
@@ -157,7 +159,7 @@ final readonly class StaffLinks
 
         return match (true) {
             $now < $from => StaffLinkWindow::notYet($from, $until),
-            $now >= $until => StaffLinkWindow::ended(),
+            $now >= $until => StaffLinkWindow::ended($this->clocking->openUntil($entry)),
             default => StaffLinkWindow::open($until),
         };
     }

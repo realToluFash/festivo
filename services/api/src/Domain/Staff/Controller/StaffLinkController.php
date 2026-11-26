@@ -132,21 +132,32 @@ final readonly class StaffLinkController
         $reader = $this->security->getUser();
         $window = $this->staffLinks->window($entry);
 
-        if (!$reader instanceof User || true !== $entry->getAccount()?->getId()->equals($reader->getId()) || !$window->open || null === $window->until) {
+        if (!$reader instanceof User || true !== $entry->getAccount()?->getId()->equals($reader->getId())) {
             throw ApiException::notFound('access.not_found');
         }
 
-        return new JsonResponse($this->myNight->of($entry, $window->until));
+        return match (true) {
+            $window->open && null !== $window->until => new JsonResponse($this->myNight->of($entry, $window->until)),
+            null !== $window->clockUntil => new JsonResponse($this->myNight->pastAccess($entry, $window->clockUntil)),
+            default => throw ApiException::notFound('access.not_found'),
+        };
     }
 
-    /** The same night in the app, for an account on the event's roster through its link (sc-3906); 404 for anybody else, organisers included. */
+    /** The same night in the app, for an account on the event's roster through its link (sc-3906), and its clock card alone past access (sc-234); 404 for anybody else, organisers included. */
     #[Route('/api/events/{eventId}/my-night', name: 'staff_my_night', methods: ['GET'])]
     #[Authenticated]
     public function mine(string $eventId): JsonResponse
     {
-        $grant = Uuid::isValid($eventId) ? Iter\first($this->staffLinkGrants->live($this->user(), Uuid::fromString($eventId))) : null;
+        $event = Uuid::isValid($eventId) ? Uuid::fromString($eventId) : null;
+        $grant = null === $event ? null : Iter\first($this->staffLinkGrants->live($this->user(), $event));
 
-        return null === $grant ? throw ApiException::notFound('access.not_found') : new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
+        if (null !== $grant) {
+            return new JsonResponse($this->myNight->of($grant['entry'], $grant['until']));
+        }
+
+        $clockOnly = null === $event ? null : Iter\first($this->staffLinkGrants->clockOnly($this->user(), $event));
+
+        return null === $clockOnly ? throw ApiException::notFound('access.not_found') : new JsonResponse($this->myNight->pastAccess($clockOnly['entry'], $clockOnly['until']));
     }
 
     /** Sent by the page once it is visible, so a preview fetch records nothing; answers as `look` does. */
@@ -175,7 +186,7 @@ final readonly class StaffLinkController
 
         return $state + [
             'event' => ['name' => $entry->getEvent()->getName()],
-            'job' => $entry->getJob()?->getName(),
+            'job' => true === $state['pastAccess'] ? null : $entry->getJob()?->getName(),
             'mobile' => null === $mobile ? null : PhoneHint::ofNumber($mobile),
             'reader' => match (true) {
                 !$reader instanceof User => null,
@@ -199,11 +210,15 @@ final readonly class StaffLinkController
         return $this->tokenIssuer->grantsEndFor($reader)->setTimezone(new DateTimeZone($entry->getEvent()->getTimeZone()))->format(\DATE_ATOM);
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, string|bool> */
     private static function state(StaffLinkWindow $window, StaffMember $entry): array
     {
         if ($window->open) {
-            return ['state' => 'open'];
+            return ['state' => 'open', 'pastAccess' => false];
+        }
+
+        if (null !== $window->clockUntil) {
+            return ['state' => 'open', 'pastAccess' => true];
         }
 
         if ($window->ended) {

@@ -5,42 +5,147 @@ declare(strict_types=1);
 namespace App\Domain\Budget;
 
 use App\Domain\Budget\Model\JobCost;
+use App\Domain\Budget\Model\JobWorked;
 use App\Domain\Budget\Model\OwnCost;
+use App\Domain\Budget\Model\OwnWorked;
 use App\Domain\Budget\Model\PayRate;
 use App\Domain\Budget\Model\ScheduledShift;
 use App\Domain\Budget\Model\StaffCost;
+use App\Domain\Budget\Model\WorkedCost;
+use App\Domain\Staff\Attendance\ClockWindow;
+use App\Domain\Staff\Attendance\HoursWorked;
+use App\Domain\Staff\Model\WorkedShift;
 use App\Domain\Staff\ShiftClock;
 use App\Entity\Event;
+use App\Entity\ShiftAttendance;
 use App\Entity\StaffRate;
 use App\Entity\StaffShift;
+use App\Enum\HoursMark;
 use App\Enum\StaffPay;
+use App\Repository\ShiftAttendanceRepository;
 use App\Repository\StaffJobRepository;
 use App\Repository\StaffRateRepository;
 use App\Repository\StaffShiftRepository;
 use BcMath\Number;
+use DateTimeImmutable;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\Math;
 use Psl\Vec;
 
-/** The one place an event's scheduled hours and staff cost are worked out (sc-101): a shift counts once for every place it needs, taken or not. */
+/** The one place an event's scheduled hours and staff cost are worked out (sc-101), and its hours worked beside them (sc-234): a shift counts once for every place it needs, taken or not, and is worked only by who clocked it. */
 final readonly class StaffCosts
 {
     public function __construct(
         private StaffJobRepository $staffJobRepository,
         private StaffShiftRepository $staffShiftRepository,
         private StaffRateRepository $staffRateRepository,
+        private ShiftAttendanceRepository $shiftAttendanceRepository,
     ) {
     }
 
     public function of(Event $event): StaffCost
     {
-        $rates = $this->staffRateRepository->findOnEvent($event);
+        ['jobs' => $jobRates, 'own' => $ownRates, 'jobOf' => $jobOf] = $this->rates($event);
+
+        return self::priced(
+            Vec\map($this->staffJobRepository->findOnEvent($event), static fn ($job): string => $job->getId()->toRfc4122()),
+            Vec\map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): ScheduledShift => self::scheduled($shift, $event)),
+            $jobRates,
+            $ownRates,
+            $jobOf,
+        );
+    }
+
+    /** Every assigned place, one row per person per shift; a place nobody took has none. */
+    public function workedOf(Event $event, DateTimeImmutable $now): WorkedCost
+    {
+        ['jobs' => $jobRates, 'own' => $ownRates] = $this->rates($event);
+
+        return self::pricedWorked(
+            Vec\map($this->staffJobRepository->findOnEvent($event), static fn ($job): string => $job->getId()->toRfc4122()),
+            $this->worked($event, $now),
+            $jobRates,
+            $ownRates,
+        );
+    }
+
+    /** @return list<WorkedShift> */
+    public function worked(Event $event, DateTimeImmutable $now): array
+    {
+        $attendances = Dict\from_entries(Vec\map(
+            $this->shiftAttendanceRepository->findOnEvent($event),
+            static fn (ShiftAttendance $one): array => [HoursWorked::placeKey($one->getShift(), $one->getStaffMember()->getId()->toRfc4122()), $one],
+        ));
+
+        return Vec\flat_map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): array => Vec\map($shift->getPeople(), static function ($person) use ($shift, $attendances, $now): WorkedShift {
+            $attendance = $attendances[HoursWorked::placeKey($shift, $person->getId()->toRfc4122())] ?? null;
+
+            return HoursWorked::of($shift->getJob()->getId()->toRfc4122(), $person->getId()->toRfc4122(), ClockWindow::endOf($shift), $attendance?->countedIn(), $attendance?->countedOut(), $now);
+        }));
+    }
+
+    /**
+     * After the event: an hourly rate on the minutes clocked, a flat fee once for each person who worked, and nothing for a place nobody worked.
+     *
+     * @param list<string>           $jobs     in the event's order
+     * @param list<WorkedShift>      $worked
+     * @param array<string, PayRate> $jobRates by job
+     * @param array<string, PayRate> $ownRates by person
+     */
+    public static function pricedWorked(array $jobs, array $worked, array $jobRates, array $ownRates): WorkedCost
+    {
+        $own = [];
+        $costs = Vec\map($jobs, static function (string $job) use ($worked, $jobRates, $ownRates, &$own): JobWorked {
+            $its = Vec\filter($worked, static fn (WorkedShift $shift): bool => $shift->job === $job);
+            $minutesOf = static fn (string $person): int => Iter\reduce($its, static fn (int $sum, WorkedShift $shift): int => $sum + ($shift->person === $person ? $shift->minutes : 0), 0);
+            $workers = Vec\unique(Vec\map(Vec\filter($its, static fn (WorkedShift $shift): bool => $shift->worked()), static fn (WorkedShift $shift): string => $shift->person));
+            $onJobRate = Vec\filter($workers, static fn (string $person): bool => !Iter\contains_key($ownRates, $person));
+            $ownCost = 0;
+
+            foreach (Vec\filter($workers, static fn (string $person): bool => Iter\contains_key($ownRates, $person)) as $person) {
+                $theirs = $ownRates[$person];
+                $minutes = $minutesOf($person);
+                $cost = StaffPay::Hourly === $theirs->pay ? self::hourly($theirs->minor, $minutes) : $theirs->minor;
+                $own[] = new OwnWorked($person, $job, $minutes, $cost);
+                $ownCost += $cost;
+            }
+
+            $rate = $jobRates[$job] ?? null;
+            $rateMinutes = Iter\reduce($onJobRate, static fn (int $sum, string $person): int => $sum + $minutesOf($person), 0);
+
+            return new JobWorked(
+                $job,
+                Iter\reduce($its, static fn (int $sum, WorkedShift $shift): int => $sum + $shift->minutes, 0),
+                Iter\reduce($its, static fn (int $sum, WorkedShift $shift): int => $sum + $shift->assumedMinutes, 0),
+                Iter\count(Vec\filter($its, static fn (WorkedShift $shift): bool => HoursMark::NoAttendance === $shift->mark)),
+                Iter\count($workers),
+                match (true) {
+                    null === $rate => null,
+                    StaffPay::Flat === $rate->pay => $ownCost + (Iter\count($onJobRate) * $rate->minor),
+                    default => $ownCost + self::hourly($rate->minor, $rateMinutes),
+                },
+            );
+        });
+
+        return new WorkedCost(
+            Iter\reduce($costs, static fn (int $sum, JobWorked $job): int => $sum + ($job->costMinor ?? 0), 0),
+            Iter\reduce($costs, static fn (int $sum, JobWorked $job): int => $sum + $job->minutes, 0),
+            Iter\reduce($costs, static fn (int $sum, JobWorked $job): int => $sum + $job->assumedMinutes, 0),
+            Iter\reduce($costs, static fn (int $sum, JobWorked $job): int => $sum + $job->noAttendance, 0),
+            $costs,
+            $own,
+        );
+    }
+
+    /** @return array{jobs: array<string, PayRate>, own: array<string, PayRate>, jobOf: array<string, string>} */
+    private function rates(Event $event): array
+    {
         $jobRates = [];
         $ownRates = [];
         $jobOf = [];
 
-        foreach ($rates as $rate) {
+        foreach ($this->staffRateRepository->findOnEvent($event) as $rate) {
             $paid = new PayRate($rate->getPay(), $rate->getAmountMinor());
             $job = $rate->getJob();
             $person = $rate->getPerson();
@@ -53,13 +158,7 @@ final readonly class StaffCosts
             }
         }
 
-        return self::priced(
-            Vec\map($this->staffJobRepository->findOnEvent($event), static fn ($job): string => $job->getId()->toRfc4122()),
-            Vec\map($this->staffShiftRepository->findOnEvent($event), static fn (StaffShift $shift): ScheduledShift => self::scheduled($shift, $event)),
-            $jobRates,
-            $ownRates,
-            Dict\filter_nulls($jobOf),
-        );
+        return ['jobs' => $jobRates, 'own' => $ownRates, 'jobOf' => Dict\filter_nulls($jobOf)];
     }
 
     /** @return list<StaffRate> */
