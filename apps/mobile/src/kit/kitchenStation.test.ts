@@ -20,9 +20,11 @@ import {
   notSentLine,
   openingStation,
   pickedKey,
+  refusedAccess,
   rememberPick,
   stationTime,
   stationView,
+  topicMessage,
   undoOpen,
   undoPlan,
   undoWords,
@@ -700,5 +702,36 @@ describe('picking a station from the list (sc-4015)', () => {
       'serviceRead',
       'serviceSubscription',
     ]);
+  });
+});
+
+describe('the view’s wiring QA failed (sc-4015)', () => {
+  const view = () =>
+    readFileSync(new URL('../components/station/KitchenStationView.tsx', import.meta.url), 'utf8');
+  const refused = (status: number, worksAt?: 'floor' | 'pass') =>
+    new ApiError({ type: 'about:blank', title: 'No', status, ...(worksAt ? { worksAt } : {}) });
+
+  it('sends a floor worker refused here to the floor card, and anyone else to no access', () => {
+    expect(refusedAccess(refused(403, 'floor'))).toBe('floor');
+    expect(refusedAccess(refused(403, 'pass'))).toBe('none');
+    expect(refusedAccess(refused(403))).toBe('none');
+    expect(refusedAccess(refused(500, 'floor'))).toBeNull();
+    expect(refusedAccess(new Error('offline'))).toBeNull();
+    expect(view()).toMatch(/refusedAccess\(error\)/u);
+  });
+
+  it('re-reads when the stations change: a stations message is data, not a heartbeat or a phase', () => {
+    expect(topicMessage(JSON.stringify({ type: 'stations' }))).toEqual({ kind: 'data' });
+    expect(topicMessage(JSON.stringify({ type: 'heartbeat' }))).toEqual({ kind: 'heartbeat' });
+    expect(topicMessage(JSON.stringify({ type: 'phase', phase: 'wrapped' }))).toEqual({
+      kind: 'phase',
+      phase: 'wrapped',
+    });
+    expect(topicMessage('not json')).toEqual({ kind: 'data' });
+    expect(view()).toMatch(/topicMessage\(data\)/u);
+  });
+
+  it('tells the freshness line how many marks are kept on the device', () => {
+    expect(view()).toMatch(/\.waiting\(kept\.length\)/u);
   });
 });

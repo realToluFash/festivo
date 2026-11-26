@@ -1,15 +1,17 @@
-import type {
-  KeptServiceTap,
-  KitchenStationsRead,
-  ServiceCourseItem,
-  ServiceFlags,
-  ServicePlate,
-  ServiceRead,
-  ServiceTray,
+import {
+  ApiError,
+  type KeptServiceTap,
+  type KitchenStationsRead,
+  type ServiceCourseItem,
+  type ServiceFlags,
+  type ServicePlate,
+  type ServiceRead,
+  type ServiceTray,
 } from '@soirely/api-client';
 import {
   type ItemMark,
   type ItemState,
+  type ServicePhase,
   type TapRefusal,
   UNDO_MINUTES,
   heldUpMinutes,
@@ -387,4 +389,32 @@ export function notSentLine(t: TFunction, line: TapRefusal, reads: readonly Serv
     name: line.kind === 'trayNotYours' ? line.name : '',
     count: UNDO_MINUTES,
   });
+}
+
+/** The card a refused read shows: a 403 naming the floor sends a floor worker there, any other 403 is no access. */
+export function refusedAccess(error: unknown): 'floor' | 'none' | null {
+  if (!(error instanceof ApiError) || error.status !== 403) return null;
+  return error.problem.worksAt === 'floor' ? 'floor' : 'none';
+}
+
+export type TopicMessage =
+  { kind: 'heartbeat' } | { kind: 'phase'; phase: ServicePhase } | { kind: 'data' };
+
+/** Anything on the service topic that is not a heartbeat or a phase, a station change among them, is data to re-read. */
+export function topicMessage(data: string | null): TopicMessage {
+  let message: unknown = null;
+  try {
+    message = data == null ? null : JSON.parse(data);
+  } catch {
+    message = null;
+  }
+  const type =
+    typeof message === 'object' && message != null
+      ? (message as { type?: unknown; phase?: unknown })
+      : {};
+  if (type.type === 'heartbeat') return { kind: 'heartbeat' };
+  if (type.type === 'phase' && typeof type.phase === 'string') {
+    return { kind: 'phase', phase: type.phase as ServicePhase };
+  }
+  return { kind: 'data' };
 }

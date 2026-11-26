@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  ApiError,
   type KeptServiceTap,
   type KitchenStationsRead,
   type ServiceFlags,
@@ -40,9 +39,11 @@ import {
   notSentLine,
   openingStation,
   pickedKey,
+  refusedAccess,
   rememberPick,
   stationTime,
   stationView,
+  topicMessage,
   undoOpen,
   undoPlan,
   undoWords,
@@ -177,11 +178,9 @@ export function KitchenStationView({
       setMine(new Map());
       return phase.current;
     } catch (error) {
-      if (error instanceof ApiError && error.status === 403) {
-        setLoaded({
-          state: 'refused',
-          access: error.problem.worksAt === 'floor' ? 'floor' : 'none',
-        });
+      const access = refusedAccess(error);
+      if (access != null) {
+        setLoaded({ state: 'refused', access });
         return phase.current;
       }
       setLoaded((was) => (was.state === 'ok' ? was : { state: 'failed' }));
@@ -218,22 +217,13 @@ export function KitchenStationView({
     const live = followTopic(realtimeTopic('EventService', eventId), {
       subscribe: () => api.serviceSubscription(eventId),
       onData: (data) => {
-        let message: unknown = null;
-        try {
-          message = data == null ? null : JSON.parse(data);
-        } catch {
-          message = null;
-        }
-        const type =
-          typeof message === 'object' && message != null
-            ? (message as { type?: unknown; phase?: unknown })
-            : {};
-        if (type.type === 'heartbeat') {
+        const message = topicMessage(data);
+        if (message.kind === 'heartbeat') {
           fresh.message('heartbeat');
           return;
         }
-        if (type.type === 'phase' && typeof type.phase === 'string') {
-          fresh.message('phase', type.phase as ServicePhase);
+        if (message.kind === 'phase') {
+          fresh.message('phase', message.phase);
           return;
         }
         fresh.message('data');
