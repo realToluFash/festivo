@@ -411,9 +411,11 @@ permit = [
 # mobile number is checked by the account's parser; each change is audited and published.
 # A shift's wall-clock times are read in the event's zone as the event's own are (sc-3908).
 # Stations give each course's items, as the menu lists them, the place that dishes them (sc-3910).
+# Hours worked are corrected only by a member who manages staff, read from the member's grants (sc-234).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Staff\\"
 permit = [
+    "App\\Domain\\Organisation\\MembershipDirectory",
     "@layer:native",
     "@layer:external",
     "@layer:shared",

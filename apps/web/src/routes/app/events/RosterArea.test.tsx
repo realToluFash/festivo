@@ -915,6 +915,8 @@ describe('The briefing on the Roster (sc-3917)', () => {
   };
   const ON = { mobile: '+2348031234567', link: 'none', shifts: [SHIFT] };
   const NIGHT = {
+    pastAccess: false,
+    clock: null,
     event: { id: 'ev_1', name: 'Adaeze and Tunde', timeZone: 'Africa/Lagos' },
     endsAt: '2030-11-15T02:00:00+01:00',
     station: 'Bar',

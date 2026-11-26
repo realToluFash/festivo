@@ -438,6 +438,8 @@ export function EventScreen({
           action={
             area === 'schedule' ? (
               <RunViewEntry event={event} happening={phase === 'happening_now'} />
+            ) : area === 'staff' ? (
+              <HoursEntry event={event} />
             ) : null
           }
         >
@@ -786,6 +788,23 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
           testID="events.schedule.run"
         />
       )}
+    </View>
+  );
+}
+
+/** Staff's way into the event's hours worked (sc-234), for anyone who can see its staff. */
+function HoursEntry({ event }: { event: OrganisationEvent }) {
+  const { t } = useTranslation();
+  if (!event.permissions.includes('staff.read')) return null;
+
+  return (
+    <View style={styles.runEntry}>
+      <SecondaryButton
+        label={t('staffHours.open')}
+        link
+        onPress={() => router.push({ pathname: '/events/[id]/hours', params: { id: event.id } })}
+        testID="events.staff.hours"
+      />
     </View>
   );
 }

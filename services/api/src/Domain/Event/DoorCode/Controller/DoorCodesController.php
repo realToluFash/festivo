@@ -8,6 +8,7 @@ use App\Domain\Event\DoorCode\DoorCodeLink;
 use App\Domain\Event\DoorCode\DoorCodes;
 use App\Entity\DoorCode;
 use App\Entity\Event;
+use App\Entity\StaffShift;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\EventRole;
@@ -19,6 +20,7 @@ use App\Http\Input;
 use App\Repository\DoorCodeRedemptionRepository;
 use App\Repository\DoorCodeRepository;
 use App\Repository\EventRepository;
+use App\Repository\StaffShiftRepository;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -38,6 +40,7 @@ final readonly class DoorCodesController
         private DoorCodeRedemptionRepository $doorCodeRedemptionRepository,
         private DoorCodes $doorCodes,
         private DoorCodeLink $doorCodeLink,
+        private StaffShiftRepository $staffShiftRepository,
     ) {
     }
 
@@ -62,10 +65,12 @@ final readonly class DoorCodesController
             'useCap' => Type\optional(Type\nullable(Type\int())),
             'expiresAt' => Type\optional(Type\nullable(Type\string())),
             'replaces' => Type\optional(Type\nullable(Type\string())),
+            'shiftId' => Type\optional(Type\nullable(Type\string())),
         ]));
         $event = $this->event($eventId);
         $replaces = null === ($body['replaces'] ?? null) ? null : $this->inPlay($event, $body['replaces']);
-        $code = $this->doorCodes->make($event, $body['role'], $body['jobLabel'] ?? null, $body['useCap'] ?? null, $body['expiresAt'] ?? null, $this->user(), $replaces);
+        $shift = null === ($body['shiftId'] ?? null) ? null : $this->shiftOn($event, $body['shiftId']);
+        $code = $this->doorCodes->make($event, $body['role'], $body['jobLabel'] ?? null, $body['useCap'] ?? null, $body['expiresAt'] ?? null, $this->user(), $replaces, $shift);
 
         return new JsonResponse(['doorCode' => $this->card($code, 0)], Response::HTTP_CREATED);
     }
@@ -90,6 +95,7 @@ final readonly class DoorCodesController
             'qrSvg' => $this->doorCodeLink->qrSvgOf($code),
             'role' => $code->getRole()->value,
             'jobLabel' => $code->getJobLabel(),
+            'shiftId' => $code->getShift()?->getId()->toRfc4122(),
             'useCap' => $code->getUseCap(),
             'used' => $used,
             'status' => $this->doorCodes->statusOf($code, $used)->value,
@@ -102,6 +108,14 @@ final readonly class DoorCodesController
     private function event(string $id): Event
     {
         return $this->eventRepository->find($id) ?? throw ApiException::notFound('access.not_found');
+    }
+
+    /** A shift on another event, or none, is answered as one that does not exist (sc-234). */
+    private function shiftOn(Event $event, string $id): StaffShift
+    {
+        $shift = Uuid::isValid($id) ? $this->staffShiftRepository->findOneInEvent($event->getId(), Uuid::fromString($id)) : null;
+
+        return $shift ?? throw ApiException::notFound('access.not_found');
     }
 
     private function inPlay(Event $event, string $id): DoorCode

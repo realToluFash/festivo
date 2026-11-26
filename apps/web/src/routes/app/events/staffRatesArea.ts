@@ -31,6 +31,7 @@ export const ownKey = (memberId: string) => `own:${memberId}`;
 export function hoursWords(t: TFunction, minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
+  if (hours === 0 && rest > 0) return t('staffRates.minutes', { minutes: rest });
 
   return rest === 0
     ? t('staffRates.hours', { hours })
@@ -261,5 +262,33 @@ export function ownLines(
       jobRate: jobRate == null ? t('staffRates.noRateYet') : rateText(t, jobRate, currency, locale),
     }),
     t('staffRates.ownHours', { hours: hoursWords(t, own.minutes), job: own.job.name }),
+    ...(own.worked == null
+      ? []
+      : [
+          t('staffRates.ownWorked', {
+            hours: hoursWords(t, own.worked.minutes),
+            job: own.job.name,
+            cost: minorMoney(own.worked.cost, currency, locale),
+          }),
+        ]),
   ];
+}
+
+/** A job's Worked line after the event (sc-234): its hours, who worked a flat fee, then what is assumed and what had no attendance. */
+export function workedLine(t: TFunction, job: StaffRateJob): string | null {
+  const { worked } = job;
+  if (worked == null) return null;
+  if (job.shifts === 0) return t('staffRates.workedNone');
+  const hours = hoursWords(t, worked.minutes);
+  const parts = [
+    job.rate?.kind === 'flat'
+      ? `${hours} · ${t('staffRates.workedBy', { count: worked.people })}`
+      : hours,
+  ];
+  if (worked.assumedMinutes > 0)
+    parts.push(t('staffRates.assumed', { hours: hoursWords(t, worked.assumedMinutes) }));
+  if (worked.noAttendance > 0)
+    parts.push(t('staffRates.noAttendance', { count: worked.noAttendance }));
+
+  return parts.join(' · ');
 }

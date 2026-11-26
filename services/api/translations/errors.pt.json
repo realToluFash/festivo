@@ -42,6 +42,8 @@
     "check_in_closed": "Agora não é possível registar chegadas.",
     "staff_number_shared": "Esse número já está na lista da equipa.",
     "staff_job_staffed": "Há pessoas nos turnos desta função.",
+    "staff_job_worked": "Alguém trabalhou num turno desta função.",
+    "staff_shift_worked": "Esta pessoa trabalhou este turno.",
     "staff_shift_full": "Todas as vagas deste turno estão preenchidas.",
     "staff_works_as": "Esta pessoa tem outra função neste evento.",
     "staff_shift_overlap": "Esta pessoa está noutro turno a essa hora.",

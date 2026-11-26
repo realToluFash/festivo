@@ -303,6 +303,7 @@
     "audit.field.addressKind": "Medio de contacto",
     "audit.field.jobLabel": "Puesto",
     "audit.field.useCap": "Personas que pueden usarlo",
+    "audit.field.shift": "Turno",
     "audit.field.expiresAt": "Válido hasta",
     "audit.field.stoppedAt": "Desactivado",
     "audit.field.signedIn": "Con sesión iniciada",

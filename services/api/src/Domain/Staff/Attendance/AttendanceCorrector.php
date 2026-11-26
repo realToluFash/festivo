@@ -1,0 +1,140 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Staff\Attendance;
+
+use App\Audit\Auditor;
+use App\Domain\Organisation\MembershipDirectory;
+use App\Domain\Staff\ShiftClock;
+use App\Entity\Event;
+use App\Entity\ShiftAttendance;
+use App\Entity\StaffMember;
+use App\Entity\StaffShift;
+use App\Entity\User;
+use App\Enum\Actor;
+use App\Enum\ErrorCode;
+use App\Enum\Permission;
+use App\Http\Exception\ApiException;
+use App\Repository\ShiftAttendanceRepository;
+use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
+use LogicException;
+use Psl\Str;
+use Psr\Clock\ClockInterface;
+
+/** Correcting a person's times on a shift (sc-234), by a member who manages staff and never on their own shift; what was recorded is kept. */
+final readonly class AttendanceCorrector
+{
+    public const string CORRECTED = 'staff.hours_corrected';
+
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private ShiftAttendanceRepository $shiftAttendanceRepository,
+        private Auditor $auditor,
+        private ClockInterface $clock,
+        private MembershipDirectory $membershipDirectory,
+    ) {
+    }
+
+    /** A member of the organisation who manages staff on the event; a grant from outside (sc-71) or a staff link never corrects, at any level. */
+    public function mayCorrect(User $by, Event $event): bool
+    {
+        $organisationId = $event->getOrganisation()->getId();
+
+        return null !== $this->membershipDirectory->grantsIn($by, $organisationId)
+            && ($this->membershipDirectory->grantsOnEvent($by, $organisationId, $event->getId())?->allows(Permission::StaffManage) ?? false);
+    }
+
+    /** Both times as typed on the event's clock, `YYYY-MM-DDTHH:MM`; the clock-out blank only while the person can still clock out, which a person removed from the roster cannot. */
+    public function correct(StaffShift $shift, StaffMember|ShiftAttendance $who, string $typedIn, ?string $typedOut, User $by): void
+    {
+        $this->refuseUnlessMay($shift, $by);
+
+        if ($who instanceof ShiftAttendance) {
+            $this->apply($shift, null, $who, $typedIn, $typedOut, $by);
+
+            return;
+        }
+
+        if (true === $who->getAccount()?->getId()->equals($by->getId())) {
+            throw new ApiException(ErrorCode::Forbidden, 'staff.hours_own');
+        }
+
+        $this->apply($shift, $who, $this->shiftAttendanceRepository->findOneOn($shift, $who), $typedIn, $typedOut, $by);
+    }
+
+    private function refuseUnlessMay(StaffShift $shift, User $by): void
+    {
+        if (!$this->mayCorrect($by, $shift->getJob()->getEvent())) {
+            throw ApiException::permissionRequired(Permission::StaffManage);
+        }
+    }
+
+    private function apply(StaffShift $shift, ?StaffMember $person, ?ShiftAttendance $attendance, string $typedIn, ?string $typedOut, User $by): void
+    {
+        $event = $shift->getJob()->getEvent();
+        $now = $this->clock->now();
+        $inWall = ShiftClock::wall($typedIn) ?? throw self::refused('clockedInAt', 'staff.hours_in_blank');
+        $in = ShiftClock::instant($inWall, $event);
+        $out = null;
+
+        if (null === $typedOut || '' === Str\trim($typedOut)) {
+            if (null === $person || !ClockWindow::stillOn($shift, $attendance, $now)) {
+                throw self::refused('clockedOutAt', 'staff.hours_out_blank');
+            }
+        } else {
+            $outWall = ShiftClock::wall($typedOut) ?? throw self::refused('clockedOutAt', 'staff.hours_out_blank');
+            $out = ShiftClock::instant($outWall, $event);
+
+            if ($out <= $in) {
+                throw self::refused('clockedOutAt', 'staff.hours_order');
+            }
+
+            if ($out->getTimestamp() - $in->getTimestamp() > ClockWindow::LONGEST_SECONDS) {
+                throw self::refused('clockedOutAt', 'staff.hours_long');
+            }
+        }
+
+        if (self::same($attendance?->countedIn(), $in) && self::same($attendance?->countedOut(), $out)) {
+            return;
+        }
+
+        $this->entityManager->wrapInTransaction(function () use ($shift, $person, $attendance, $in, $out, $by, $now): void {
+            if (null === $attendance) {
+                $attendance = new ShiftAttendance($shift, $person ?? throw new LogicException('A removed person always has their row.'));
+                $this->entityManager->persist($attendance);
+            }
+
+            $was = ['in' => self::written($attendance->countedIn()), 'out' => self::written($attendance->countedOut())];
+            $attendance->correctIn(self::same($attendance->getClockedInAt(), $in) ? null : $in, $by->getName(), $now);
+            $attendance->correctOut(self::same($attendance->getClockedOutAt(), $out) ? null : $out, $by->getName(), $now);
+            $this->auditor->record(self::CORRECTED, 'StaffMember', $attendance->getPersonId(), Actor::User, $by->getId(), $by->getName(), [
+                'shift' => [$shift->getId()->toRfc4122(), $shift->getId()->toRfc4122()],
+                'clockedInAt' => [$was['in'], self::written($in)],
+                'clockedOutAt' => [$was['out'], self::written($out)],
+            ]);
+            $this->entityManager->flush();
+        });
+    }
+
+    private static function same(?DateTimeImmutable $one, ?DateTimeImmutable $other): bool
+    {
+        return $one?->getTimestamp() === $other?->getTimestamp();
+    }
+
+    private static function written(?DateTimeImmutable $at): ?string
+    {
+        return $at?->format(\DATE_ATOM);
+    }
+
+    private static function refused(string $field, string $key): ApiException
+    {
+        return ApiException::validation([[
+            'propertyPath' => $field,
+            'message' => $key,
+            'code' => ErrorCode::ValidationFailed->value,
+            'parameters' => [],
+        ]]);
+    }
+}
