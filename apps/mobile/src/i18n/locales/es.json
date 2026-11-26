@@ -3556,6 +3556,7 @@
     "join": "Unirse",
     "joining": "Uniéndose…",
     "signOut": "Cerrar sesión",
+    "signedOut": "Sesión cerrada.",
     "memberTitle": "Ya es miembro de {{organisation}}",
     "memberLine": "Los miembros acceden a un evento desde la página Personas del evento. Pida a la persona responsable del evento o a un administrador que añada su cuenta.",
     "openEvents": "Abrir Eventos",

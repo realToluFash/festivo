@@ -32,11 +32,12 @@ import { nextAfterSignIn } from '../challenge.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
 import { reloadSignedIn, signOutThen } from '../signedIn.ts';
 import { InsideField } from '../steps/InsideField.tsx';
-import { Heading, Says } from '../steps/Lines.tsx';
+import { Heading, Says, stepTitle, useStepTitleSize } from '../steps/Lines.tsx';
 import { NavBar, StepScreen } from '../steps/StepScreen.tsx';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { EventThumb } from './EventThumb.tsx';
+import { Glyph } from './Glyph.tsx';
 import { focusChecked } from './Field.tsx';
 import { deviceNow } from './CreateWalkWindow.tsx';
 import { ProviderButtons, failedOver } from './ProviderSignIn.tsx';
@@ -46,7 +47,14 @@ import { TextAction } from './SummaryRows.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
-  | { kind: 'enter'; typed: string; line: CodeLine | null; busy: boolean }
+  | {
+      kind: 'enter';
+      typed: string;
+      line: CodeLine | null;
+      busy: boolean;
+      /** Just signed out: "Signed out." above the heading, until the next step (sc-4235). */
+      signedOut?: boolean;
+    }
   | TooMany
   | {
       kind: 'event';
@@ -114,12 +122,13 @@ function close(): void {
 }
 
 /** Joining with a door code (sc-72), as the app demo's redeem draws it: the code, the event and a name, then You're in. */
-export function Redeem({ code }: { code: string }) {
+export function Redeem({ code, signedOut = false }: { code: string; signedOut?: boolean }) {
   const [step, setStep] = useState<Step>({
     kind: 'enter',
     typed: code,
     line: null,
     busy: code !== '',
+    signedOut,
   });
   const [visit, setVisit] = useState(0);
   const [account, setAccount] = useState<Account | null>(null);
@@ -211,7 +220,7 @@ export function Redeem({ code }: { code: string }) {
           key={key}
           step={step}
           onContinue={(typed) => {
-            setStep({ ...step, typed, line: null, busy: true });
+            setStep({ ...step, typed, line: null, busy: true, signedOut: false });
             void opening(typed).then((answer) => opened(typed, answer));
           }}
         />
@@ -283,7 +292,7 @@ export function Redeem({ code }: { code: string }) {
           step={step}
           onSignedOut={() => {
             setAccount(null);
-            go({ kind: 'enter', typed: '', line: null, busy: false });
+            go({ kind: 'enter', typed: '', line: null, busy: false, signedOut: true });
           }}
         />
       );
@@ -306,6 +315,23 @@ function Refused({ words }: { words: string }) {
     <Text size={tokens.typeBody.size} style={styles.refused}>
       {words}
     </Text>
+  );
+}
+
+/** "Signed out." as a status above the page's own heading, said without focus moving (sc-4235, Decided 12 Nov). */
+function SignedOutLine() {
+  const { t } = useTranslation();
+  const size = useStepTitleSize();
+  const words = t('redeem.signedOut');
+  useReadOut(words);
+
+  return (
+    <View style={styles.signedOut} testID="redeem.signedOut">
+      <Glyph name="signOut" size={26} ink={tokens.colorInkSecondary} weight={2.2} />
+      <Text size={size} weight="bold" style={[styles.grow, stepTitle(size)]}>
+        {words}
+      </Text>
+    </View>
   );
 }
 
@@ -345,6 +371,7 @@ function EnterStep({
         />
       }
     >
+      {step.signedOut === true && <SignedOutLine />}
       <Heading title={t('redeem.enterTitle')} />
       <View style={styles.fields}>
         <InsideField
@@ -688,6 +715,13 @@ function InStep({
 }
 
 const styles = StyleSheet.create({
+  grow: { flex: 1, minWidth: 0 },
+  signedOut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spaceMd,
+    marginBottom: tokens.spaceLg,
+  },
   tile: { marginTop: tokens.spaceLg },
   fields: { marginTop: tokens.space3xl, gap: tokens.spaceLg },
   refused: { color: tokens.colorBrokenText },

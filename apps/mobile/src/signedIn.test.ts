@@ -58,6 +58,8 @@ const account = {
   id: 'usr_1',
   name: 'Adaeze',
   verified: true,
+  hasPassword: true,
+  providers: [],
   emailAddresses: [],
   phoneNumbers: [],
 };
@@ -131,6 +133,33 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
     await settle();
 
     expect(router.replace).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith('/welcome');
+  });
+
+  it('opens an empty Enter a door code saying Signed out. for an account only a phone code signs in (sc-4235)', async () => {
+    api.me.mockResolvedValue({ ...account, hasPassword: false, providers: [] });
+    await reloadSignedIn();
+    vi.clearAllMocks();
+
+    signOutHere();
+    await settle();
+
+    expect(router.replace).toHaveBeenCalledTimes(1);
+    expect(router.replace).toHaveBeenCalledWith({ pathname: '/d', params: { signedOut: '1' } });
+  });
+
+  it.each([
+    ['a password', { hasPassword: true, providers: [] }],
+    ['Google', { hasPassword: false, providers: [{ provider: 'google', email: 'a@b.ng' }] }],
+    ['Apple', { hasPassword: false, providers: [{ provider: 'apple', email: 'a@b.ng' }] }],
+  ])('opens welcome for an account %s signs in (sc-4235)', async (_way, ways) => {
+    api.me.mockResolvedValue({ ...account, ...ways });
+    await reloadSignedIn();
+    vi.clearAllMocks();
+
+    signOutHere();
+    await settle();
+
     expect(router.replace).toHaveBeenCalledWith('/welcome');
   });
 
