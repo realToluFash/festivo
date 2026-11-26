@@ -1,0 +1,69 @@
+# sc-38830: the Calendar's Month and Agenda over the busy November and December 2026 of sc-36920's seed, for reading Metro's log for "two children with the same key". Needs that seed.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: calendar.view.month
+    timeout: 30000
+- takeScreenshot: first-render
+- tapOn:
+    id: calendar.view.month
+- tapOn:
+    id: calendar.today
+- extendedWaitUntil:
+    visible:
+      id: calendar.day.2026-11-18
+    timeout: 15000
+- takeScreenshot: month-nov
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-12-09
+    direction: DOWN
+- takeScreenshot: month-dec
+- scrollUntilVisible:
+    element:
+      id: calendar.day.2026-11-25
+    direction: UP
+- takeScreenshot: month-busy
+- tapOn:
+    id: calendar.day.2026-11-25
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-25-top
+- scroll
+- takeScreenshot: day-25-scrolled
+- scrollUntilVisible:
+    element:
+      id: calendar.dayList.close
+    direction: UP
+- tapOn:
+    id: calendar.dayList.close
+- tapOn:
+    id: calendar.day.2026-11-27
+- extendedWaitUntil:
+    visible:
+      id: calendar.dayList
+    timeout: 10000
+- takeScreenshot: day-27
+- tapOn:
+    id: calendar.dayList.close
+- tapOn:
+    id: calendar.view.agenda
+- extendedWaitUntil:
+    visible:
+      id: calendar.agenda
+    timeout: 10000
+- takeScreenshot: agenda-1
+- scroll
+- takeScreenshot: agenda-2
+- scroll
+- takeScreenshot: agenda-3
+- scroll
+- takeScreenshot: agenda-4
+- scroll
+- takeScreenshot: agenda-5
+- scroll
+- takeScreenshot: agenda-6

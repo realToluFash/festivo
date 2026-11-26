@@ -1,0 +1,62 @@
+# sc-36766: each step's question, the country list's headings, None yet beside Antarctica, and the discard sheet, in the account's language. Pass METRO_URL, the Expo dev server for this stack.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=name
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 20000
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.whatTitle}}'
+- takeScreenshot: words-01-what
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'Ọmọ Ẹ̀gbẹ́ Lagos'
+# On iOS the name field's Return continues the walk; hideKeyboard stops an iPhone run (README).
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+      - tapOn:
+          id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.whereTitle}}'
+- assertVisible: '{{t:createOrganisation.fromDevice}}'
+- assertVisible: '{{t:createOrganisation.allCountries}}'
+- takeScreenshot: words-02-where
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'Ant'
+# On iOS the search field's Return puts the keys away.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.noneYet}}'
+- takeScreenshot: words-03-antarctica
+- tapOn:
+    id: 'createWalk.country.AQ'
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.readyTitle}}'
+- takeScreenshot: words-04-ready
+- tapOn:
+    id: 'createWalk.cancel'
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: '{{t:createOrganisation.discardTitle}}'
+- takeScreenshot: words-05-discard

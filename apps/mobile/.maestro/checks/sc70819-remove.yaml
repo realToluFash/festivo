@@ -1,0 +1,21 @@
+# sc-70819: the Remove ask for a proved domain. DOMAIN is a proved domain on the list.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/data-and-control/email-domains
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.card
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: emailDomains.${DOMAIN}.remove
+    direction: DOWN
+- tapOn:
+    id: emailDomains.${DOMAIN}.remove
+- extendedWaitUntil:
+    visible:
+      id: emailDomains.remove.confirm
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sc70819-remove

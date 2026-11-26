@@ -1,0 +1,29 @@
+# sc-85645: past the two-factor deadline of the organisation in use, with another organisation listed whose deadline is not past (none, or still ahead), the overdue page reads the elsewhere line on Today, Events, Calendar and Settings. ORIENT=PORTRAIT|LANDSCAPE_LEFT.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible:
+      id: 'twoFactorOverdue.turnOn'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueElsewhere}}'
+- assertNotVisible: '{{t:signInRules.overdueSingleEvents}}'
+- takeScreenshot: overdue-today
+- openLink: ${METRO_URL}/--/events
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueElsewhere}}'
+- takeScreenshot: overdue-events
+- openLink: ${METRO_URL}/--/calendar
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueElsewhere}}'
+- takeScreenshot: overdue-calendar
+- openLink: ${METRO_URL}/--/settings
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertVisible: '{{t:signInRules.overdueElsewhere}}'
+- takeScreenshot: overdue-settings

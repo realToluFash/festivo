@@ -1,0 +1,28 @@
+# sc-94081: Make a door code from an event's People, its role choices top to foot. ${EV} is an event with no door code yet.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EV}?area=people
+- extendedWaitUntil:
+    visible: '.*{{t:eventPeople.title}}.*'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'door.make.first'
+    direction: DOWN
+    visibilityPercentage: 30
+    centerElement: true
+- tapOn:
+    id: 'door.make.first'
+- extendedWaitUntil:
+    visible:
+      id: 'door.make'
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: make-1
+- scrollUntilVisible:
+    element:
+      id: 'door.make.job'
+    direction: DOWN
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: make-2

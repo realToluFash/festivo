@@ -1,0 +1,48 @@
+# sc-75211: Back from When at the foot and from Type part way down, and When's Between, with swipes that start inside the menu wherever it opens (French opens lower and on the left). Text size AX5, set outside the flow.
+appId: host.exp.Exponent
+---
+- runFlow: sc75211-setup.yaml
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 500 }
+- waitForAnimationToEnd
+- takeScreenshot: m-foot-before-when
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- takeScreenshot: m-when-opened
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: m-back-from-when
+- swipe: { start: '40%,62%', end: '40%,84%', duration: 700 }
+- waitForAnimationToEnd
+- takeScreenshot: m-partway-before-type
+- tapOn: { id: 'events.filter.type' }
+- waitForAnimationToEnd
+- takeScreenshot: m-type-opened
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: m-back-from-type
+- tapOn: { id: 'events.filter.when' }
+- waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: m-when-scrolled
+- tapOn: { id: 'events.filter.when.between' }
+- waitForAnimationToEnd
+- takeScreenshot: m-between-picked
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 600 }
+- waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: UP, duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: m-between-to
+- swipe: { from: { id: 'events.filter.to' }, direction: DOWN, duration: 500 }
+- waitForAnimationToEnd
+- takeScreenshot: m-drag-from-to
+- swipe: { from: { id: 'events.filter.menu' }, direction: DOWN, duration: 500 }
+- waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: DOWN, duration: 500 }
+- waitForAnimationToEnd
+- swipe: { from: { id: 'events.filter.menu' }, direction: DOWN, duration: 500 }
+- waitForAnimationToEnd
+- takeScreenshot: m-when-top-again
+- tapOn: { id: 'events.filter.back' }
+- waitForAnimationToEnd
+- takeScreenshot: m-back-from-between

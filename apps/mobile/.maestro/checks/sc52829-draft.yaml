@@ -1,0 +1,35 @@
+# sc-52829: a Draft event's Not yet invited guest has no Invitation rows, no Record a reply and no 'Copying their link' line.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${DRAFT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- tapOn:
+    id: 'guests.search'
+- inputText: ${G_DRAFT_NAME}
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: 'guests.row.${G_DRAFT}'
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${G_DRAFT}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.${G_DRAFT}'
+    timeout: 30000
+- takeScreenshot: draft-top
+- assertNotVisible:
+    id: 'guest.recordNotYet'
+- assertNotVisible:
+    id: 'guest.mark'
+- assertNotVisible: '.*Copying their link.*'
+- scrollUntilVisible:
+    element:
+      id: 'guest.needs'
+    direction: DOWN
+- takeScreenshot: draft-lower
+- assertNotVisible:
+    id: 'guest.recordNotYet'

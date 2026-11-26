@@ -1,0 +1,469 @@
+/* A staff member's whole night on one page (sc-3915), as the web demo's /demo/my-night draws it: 390 first, two columns from 800. */
+
+.myn {
+  min-height: 100vh;
+  background: var(--colorPage);
+  color: var(--colorInk);
+  font: 400 17px/1.45 var(--fontFamily);
+}
+
+:where(.myn) :is(h1, h2, h3, p, ol, ul) {
+  margin: 0;
+}
+
+:where(.myn) :is(ol, ul) {
+  padding: 0;
+  list-style: none;
+}
+
+.myn-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceLg) var(--spaceXl);
+  min-height: 56px;
+  padding: var(--spaceSm) var(--spaceXl);
+  border-bottom: 1px solid var(--colorHeaderBorder);
+  background: var(--colorHeader);
+}
+
+.myn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXxs);
+  min-height: var(--sizeHit);
+  color: var(--colorAccentText);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.myn-brand {
+  margin-right: auto;
+}
+
+.myn-live:empty {
+  display: none;
+}
+
+.myn-updated,
+.myn-stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceMd) var(--spaceLg);
+  padding: var(--spaceLg) var(--spaceXl);
+  font-weight: 600;
+}
+
+.myn-updated {
+  border-bottom: 1px solid var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+}
+
+.myn-stale {
+  border-bottom: 1px solid var(--colorAttentionBorder);
+  background: var(--colorAttentionTint);
+}
+
+.myn-stale-words {
+  flex: 1 1 14rem;
+  font-weight: 400;
+}
+
+.myn-ring {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--colorAccentText);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorAccentText);
+  font-weight: 700;
+}
+
+.myn-ring-amber {
+  border-color: var(--colorAttention);
+  color: var(--colorAttentionText);
+}
+
+.myn-strong {
+  font-weight: 700;
+}
+
+.myn-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--spaceXl) var(--spaceXl) 48px;
+}
+
+.myn-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.myn-only,
+.myn-quiet {
+  color: var(--colorInkSecondary);
+}
+
+.myn-event {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.myn-columns,
+.myn-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.myn-on {
+  padding: var(--spaceXxl);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
+}
+
+.myn-on h1 {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  font-weight: 700;
+}
+
+.myn-on-label {
+  color: var(--colorInkOnDarkSecondary);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.myn-on-station {
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.myn-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceXl) var(--spaceXxl);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardPhone);
+  background: var(--colorCard);
+}
+
+.myn-card h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--markInfoInk);
+}
+
+.myn-big {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.myn-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.myn-inset {
+  padding: var(--spaceLg) var(--spacePillEnd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.myn-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+}
+
+.myn-lead-who {
+  display: flex;
+  flex: 1 1 10rem;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.myn-flag,
+.myn-for,
+.myn-diet,
+.myn-opens {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+}
+
+.myn-flag,
+.myn-for {
+  color: var(--markInfoInk);
+  font-weight: 600;
+}
+
+.myn-call {
+  gap: var(--spaceSm);
+  min-height: var(--sizeHitPhonePrimary);
+  padding: 0 var(--spaceXxl);
+  font-size: 17px;
+}
+
+.myn-check-in {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.myn-rules {
+  white-space: pre-line;
+  line-height: 1.55;
+}
+
+.myn-moments li {
+  display: flex;
+  gap: var(--spaceLg);
+  padding: var(--spaceMd) 0;
+  border-top: 1px solid var(--colorInsetBorder);
+}
+
+.myn-at {
+  flex: none;
+  width: 3.5em;
+  font-weight: 700;
+}
+
+.myn-what {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.myn-square,
+.myn-circle,
+.myn-diamond {
+  flex: none;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+}
+
+.myn-square {
+  background: var(--markInfoInk);
+}
+
+.myn-circle {
+  border: 2px solid var(--markInfoInk);
+  border-radius: var(--radiusPill);
+}
+
+.myn-diamond {
+  border: 2px solid var(--colorAttention);
+  transform: rotate(45deg);
+}
+
+.myn-diet {
+  color: var(--colorAttentionText);
+  font-weight: 600;
+}
+
+.myn-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding: var(--spaceLg) var(--spacePillEnd);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.myn-table h3 {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.myn-count {
+  color: var(--markInfoInk);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.myn-table li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  padding: var(--spaceSm) 0;
+  border-top: 1px solid var(--colorBorder);
+}
+
+.myn-opens svg {
+  flex: none;
+  color: var(--markInfoInk);
+}
+
+.myn-loading {
+  gap: var(--spaceLg);
+}
+
+.myn-bone {
+  width: 70%;
+  height: 18px;
+  border-radius: var(--radiusPill);
+  background: var(--colorInsetBorder);
+}
+
+.myn-bone-short {
+  width: 45%;
+}
+
+.myn-you {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+}
+
+.myn-you-foot {
+  padding: var(--spaceXl) var(--spaceXxl);
+  border: 1px solid var(--colorInsetBorder);
+  border-radius: var(--radiusCardPhone);
+  background: var(--colorInset);
+}
+
+.myn-alone {
+  color: var(--markInfoInk);
+}
+
+.myn-you-bar {
+  display: none;
+}
+
+.myn-secondary {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--spaceXxl);
+  border: 1px solid var(--colorFieldBorder);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: 600 17px/1.2 var(--fontFamily);
+  text-align: center;
+  text-decoration: none;
+}
+
+/* sc-234's clock card before its window, as its board draws it, its text raised to this page's 17 px floor. */
+.myn-clock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  padding: var(--spaceXl);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardPhone);
+  background: var(--colorCard);
+}
+
+.myn-clock-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--sizeHitPhoneHero);
+  padding: 0 var(--spaceXl);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: 600 17px/1.2 var(--fontFamily);
+  text-align: center;
+  cursor: default;
+}
+
+.myn-clock-help {
+  color: var(--colorInkSecondary);
+}
+
+@media (width >= 50rem) {
+  .myn-bar {
+    padding-inline: var(--space3xl);
+  }
+
+  .myn-page {
+    padding: var(--space3xl) var(--space3xl) 56px;
+  }
+
+  .myn-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space3xl);
+  }
+
+  .myn-card,
+  .myn-clock {
+    border-radius: var(--radiusCardDesktop);
+  }
+
+  .myn-check-in {
+    min-height: 52px;
+  }
+
+  .myn-you-foot {
+    display: none;
+  }
+
+  .myn-you-bar {
+    display: flex;
+    flex: 1 1 24rem;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spaceXs) var(--spaceLg);
+    max-width: 44rem;
+  }
+
+  .myn-you-bar .myn-alone {
+    flex: 1 1 18rem;
+  }
+
+  .myn-you-bar .notice {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .myn-updated {
+    animation: myn-in var(--motionBase) var(--motionEase) both;
+  }
+}
+
+@keyframes myn-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--motionRise)));
+  }
+}

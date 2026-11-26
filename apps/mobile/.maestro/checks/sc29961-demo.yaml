@@ -1,0 +1,29 @@
+# sc-29961: the demo's states, for side-by-side pairs: Waiting, its cancel sheet, Sign in timed out, the codes step email only and with a phone.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/waiting?email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.cancel' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: waiting
+- tapOn: { id: 'demo.cancel' }
+- extendedWaitUntil: { visible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: sheet
+- tapOn: { id: 'demo.cancelAskNo' }
+- extendedWaitUntil: { notVisible: '{{t:lostTwoFactor.cancelTitle}}', timeout: 10000 }
+- openLink: ${METRO_URL}/--/demo/sign-in?timedOut=1&email=${EMAIL}
+- extendedWaitUntil: { visible: '{{t:signIn.codeTimedOutTitle}}.*', timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: timed-out
+- openLink: ${METRO_URL}/--/demo/lost?emailOnly=1&email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.send' }, timeout: 30000 }
+- tapOn: { id: 'demo.send' }
+- extendedWaitUntil: { visible: { id: 'demo.resend' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: codes-email-only
+- openLink: ${METRO_URL}/--/demo/lost?email=${EMAIL}
+- extendedWaitUntil: { visible: { id: 'demo.send' }, timeout: 30000 }
+- tapOn: { id: 'demo.send' }
+- extendedWaitUntil: { visible: { id: 'demo.resend' }, timeout: 30000 }
+- waitForAnimationToEnd
+- takeScreenshot: codes-phone

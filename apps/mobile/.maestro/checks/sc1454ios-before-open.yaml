@@ -1,0 +1,9 @@
+# sc-1454: on the event's day before the door opens, the card's second chip reads "Today, HH:MM".
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EV_BEFORE}/check-in
+- extendedWaitUntil: { visible: { id: 'checkIn.search' }, timeout: 30000 }
+- waitForAnimationToEnd: { timeout: 3000 }
+- assertVisible: 'Today, 18:00'
+- takeScreenshot: before-open

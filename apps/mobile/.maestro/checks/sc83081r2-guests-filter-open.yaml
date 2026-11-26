@@ -1,0 +1,10 @@
+# sc-83081: an event's Guests (EVENT) on a tablet with its filter open, left open for a network change outside Maestro. Needs ${METRO_URL}, EVENT.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}?area=guests
+- extendedWaitUntil: { visible: { id: 'guests.filter' }, timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: { id: 'guests.filter' }
+- extendedWaitUntil: { visible: { id: 'guests.filter.menu' }, timeout: 10000 }
+- waitForAnimationToEnd
+- takeScreenshot: open

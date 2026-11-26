@@ -1,0 +1,20 @@
+# sc-65714: Members with one request waiting, then the request's page, as the server and the app write their dates. Needs MEMBER_ID, the waiting membership's id.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/members
+- extendedWaitUntil:
+    visible:
+      id: 'members.approve.${MEMBER_ID}'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-waiting
+- tapOn:
+    id: 'members.approve.${MEMBER_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'members.approveAs'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: members-request
