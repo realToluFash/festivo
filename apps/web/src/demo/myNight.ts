@@ -74,7 +74,7 @@ export const MN = {
   loading: 'Loading your night…',
   signedInAs: (name: string) => `Signed in as ${name}`,
   signOut: 'Sign out',
-  events: 'Events',
+  overview: 'Overview',
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
