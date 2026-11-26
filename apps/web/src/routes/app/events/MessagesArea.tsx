@@ -26,7 +26,16 @@ import {
   useRef,
   useState,
 } from 'react';
-import { messageSegments, messageWire, numberFormat, sortedGroups } from '@soirely/domain';
+import {
+  MESSAGE_MAXIMUM,
+  SUBJECT_MAXIMUM,
+  closedOf,
+  messageSegments,
+  messageWire,
+  numberFormat,
+  shortTitle,
+  sortedGroups,
+} from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 
@@ -44,20 +53,16 @@ import {
   type Quick,
   type Refusals,
   type Who,
-  MESSAGE_MAXIMUM,
   NOT_REPLIED,
   QUICKS,
-  SUBJECT_MAXIMUM,
   asCondition,
   audienceRefusal,
   audienceRefusalOf,
-  closedOf,
   conversationsOf,
   fieldOfPath,
   firstRefused,
   matching,
   refusalsOf,
-  shortTitle,
   writesToNotReplied,
 } from './messagesArea.ts';
 import {

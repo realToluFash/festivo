@@ -2,16 +2,11 @@ import {
   ApiError,
   type GuestCondition,
   type GuestMessageRow,
-  type OrganisationEvent,
   type PickableGuest,
   type SavedAudience,
   type ShownCondition,
 } from '@soirely/api-client';
-import { foldedName, groupNameLength, sameGroup, visibleLength } from '@soirely/domain';
-
-export const SUBJECT_MAXIMUM = 150;
-export const MESSAGE_MAXIMUM = 10_000;
-const AFTER_END_DAYS = 30;
+import { foldedName, groupNameLength, overLimits, sameGroup } from '@soirely/domain';
 
 export type Quick = 'coming' | 'notReplied';
 export type Picked = Quick | 'who' | `saved:${string}`;
@@ -173,13 +168,10 @@ export type Refusals = Partial<Record<Field, Refusal>>;
 
 /** What Send refuses before asking the API, counted as the API counts, with the ends trimmed; text past a limit stays in the field. */
 export function refusalsOf(who: Who, subject: string, message: string): Refusals {
-  const refusals: Refusals = {};
-  const body = message.trim();
+  const refusals: Refusals = overLimits(subject, message);
 
   if (who.kind === 'chosen' && who.ids.length === 0) refusals.who = 'chooseOne';
-  if (visibleLength(subject.trim()) > SUBJECT_MAXIMUM) refusals.subject = 'subjectTooLong';
-  if (body === '') refusals.message = 'enterMessage';
-  else if (visibleLength(body) > MESSAGE_MAXIMUM) refusals.message = 'messageTooLong';
+  if (message.trim() === '') refusals.message = 'enterMessage';
 
   return refusals;
 }
@@ -194,24 +186,6 @@ export function fieldOfPath(path: string): Field | null {
   if (path === 'subject' || path === 'message') return path;
 
   return null;
-}
-
-export type Closed = 'closedDraft' | 'closedEnded';
-
-/** Why nothing can be sent on this event: a Draft, or more than 30 days after it finished; a paused one can, so the host can say why. */
-export function closedOf(
-  event: Pick<OrganisationEvent, 'phase' | 'concludedAt' | 'endsAt'>,
-  now: Date,
-): Closed | null {
-  if (event.phase === 'draft') return 'closedDraft';
-  if (event.phase !== 'finished') return null;
-
-  const ended = Date.parse(event.concludedAt ?? event.endsAt);
-  const until = new Date(ended);
-
-  until.setUTCDate(until.getUTCDate() + AFTER_END_DAYS);
-
-  return now >= until ? 'closedEnded' : null;
 }
 
 /** Find a guest, as sc-3772's search: any part of the name, case and accents aside; the address too only with guests.manage (sc-3773). */
@@ -229,16 +203,6 @@ export function matching(
       foldedName(guest.name).includes(sought) ||
       (addresses && guest.email != null && guest.email.toLowerCase().includes(sought)),
   );
-}
-
-/** A message with no Subject is named by its first line, shortened to fit at a word. */
-export function shortTitle(title: string, most = 40): string {
-  if (title.length <= most) return title;
-
-  const cut = title.slice(0, most + 1);
-  const end = cut.lastIndexOf(' ');
-
-  return `${(end > 0 ? cut.slice(0, end) : cut).replace(/[\s.,;:!?]+$/u, '')}…`;
 }
 
 /** All messages as conversations, a follow-up under the message it continues: each oldest first, the latest activity first. */

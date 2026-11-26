@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { GuestMessageRow } from '@soirely/api-client';
 
-import {
-  closedOf,
-  conversationsOf,
-  firstRefused,
-  matching,
-  refusalsOf,
-  shortTitle,
-} from './messagesArea.ts';
+import { conversationsOf, firstRefused, matching, refusalsOf } from './messagesArea.ts';
 
 const all = { kind: 'all' } as const;
 
@@ -36,23 +29,6 @@ describe('refusalsOf', () => {
     });
     expect(firstRefused(refusals)).toBe('who');
     expect(firstRefused({ message: 'enterMessage', subject: 'subjectTooLong' })).toBe('subject');
-  });
-});
-
-describe('closedOf', () => {
-  const now = new Date('2026-11-25T12:00:00Z');
-  const event = { concludedAt: null, endsAt: '2026-10-20T22:00:00Z' };
-
-  it('closes a Draft and an event finished more than 30 days ago, never a paused one', () => {
-    expect(closedOf({ ...event, phase: 'draft' }, now)).toBe('closedDraft');
-    expect(closedOf({ ...event, phase: 'paused' }, now)).toBeNull();
-    expect(closedOf({ ...event, phase: 'finished' }, now)).toBe('closedEnded');
-    expect(
-      closedOf(
-        { phase: 'finished', concludedAt: '2026-10-27T12:00:01Z', endsAt: event.endsAt },
-        now,
-      ),
-    ).toBeNull();
   });
 });
 
@@ -83,14 +59,5 @@ describe('conversationsOf', () => {
       ['a', ['a', 'b', 'd']],
       ['c', ['c']],
     ]);
-  });
-});
-
-describe('shortTitle', () => {
-  it('shortens a first line at a word', () => {
-    expect(shortTitle('Dinner starts at seven')).toBe('Dinner starts at seven');
-    expect(shortTitle('Parking is behind the hall, by the side gate on Adeola Street')).toBe(
-      'Parking is behind the hall, by the side…',
-    );
   });
 });
