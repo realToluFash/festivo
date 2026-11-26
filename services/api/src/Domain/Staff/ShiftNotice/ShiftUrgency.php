@@ -9,11 +9,11 @@ use App\Domain\Staff\ShiftNotice\Model\ShiftTold;
 use App\Entity\StaffMember;
 use DateInterval;
 use DateTimeImmutable;
-use Psl\Math;
+use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
-/** A person's notice is urgent within 24 hours of their start (Decided, 19 Oct): the soonest of the shifts they hold and those they were told of, or the event's start when they have none. */
+/** A person's notice is urgent within 24 hours of their start: the soonest start still to come among the shifts they were told of and those they hold, judged when it goes (Decided, 26 Nov, on dev3's #97404). */
 final readonly class ShiftUrgency
 {
     private const string WINDOW = 'PT24H';
@@ -24,7 +24,8 @@ final readonly class ShiftUrgency
     ) {
     }
 
-    public function startOf(StaffMember $entry): DateTimeImmutable
+    /** @return list<DateTimeImmutable> */
+    public function startsOf(StaffMember $entry): array
     {
         $event = $entry->getEvent();
         $told = $entry->getTold();
@@ -32,13 +33,16 @@ final readonly class ShiftUrgency
             Vec\values(null === $told ? [] : ShiftTold::fromArray($told)->shifts),
             Vec\values($this->shiftSnapshots->of($entry)->shifts),
         );
-        $starts = Vec\map($shifts, static fn (array $times): DateTimeImmutable => ShiftClock::instant(ShiftTold::wall($times[0]), $event));
 
-        return Math\min_by($starts, static fn (DateTimeImmutable $start): int => $start->getTimestamp()) ?? $event->getStartsAt();
+        return Vec\map($shifts, static fn (array $times): DateTimeImmutable => ShiftClock::instant(ShiftTold::wall($times[0]), $event));
     }
 
-    public function isUrgent(DateTimeImmutable $start): bool
+    /** @param list<DateTimeImmutable> $starts */
+    public function isUrgent(array $starts): bool
     {
-        return $start <= $this->clock->now()->add(new DateInterval(self::WINDOW));
+        $now = $this->clock->now();
+        $until = $now->add(new DateInterval(self::WINDOW));
+
+        return Iter\any($starts, static fn (DateTimeImmutable $start): bool => $start > $now && $start <= $until);
     }
 }

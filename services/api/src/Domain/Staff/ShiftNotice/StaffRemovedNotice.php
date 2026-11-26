@@ -19,6 +19,7 @@ use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -109,7 +110,7 @@ final readonly class StaffRemovedNotice implements NotificationTypeInterface
     {
         $event = $this->event($payloads[0]) ?? throw new LogicException('Its event went after it was found still due.');
         $day = $event->getStartsAt()->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d');
-        $startsAt = Type\shape(['startsAt' => Type\string()], true)->coerce($payloads[0])['startsAt'];
+        $startsAt = Type\shape(['startsAt' => Type\vec(Type\string())], true)->coerce($payloads[0])['startsAt'];
 
         return new RenderedNotification(
             $this->translator->trans('staff.shift_notice.removed', [
@@ -117,7 +118,7 @@ final readonly class StaffRemovedNotice implements NotificationTypeInterface
                 'date' => $this->shiftNoticeWording->day($day, $recipient->locale),
             ], 'messages', $recipient->locale),
             '',
-            notYetUrgent: !$this->shiftUrgency->isUrgent(new DateTimeImmutable($startsAt)),
+            notYetUrgent: !$this->shiftUrgency->isUrgent(Vec\map($startsAt, static fn (string $start): DateTimeImmutable => new DateTimeImmutable($start))),
         );
     }
 

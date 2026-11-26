@@ -131,7 +131,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
             Str\join($lines, "\n"),
             $lines,
             Str\format('/app/events/%s/my-night', $event->getId()->toRfc4122()),
-            notYetUrgent: !$this->shiftUrgency->isUrgent($this->shiftUrgency->startOf($entry)),
+            notYetUrgent: !$this->shiftUrgency->isUrgent($this->shiftUrgency->startsOf($entry)),
         );
     }
 

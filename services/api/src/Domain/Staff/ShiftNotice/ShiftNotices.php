@@ -10,6 +10,8 @@ use App\Domain\Messaging\NotificationScheduler;
 use App\Entity\StaffMember;
 use App\Enum\EventPhase;
 use DateInterval;
+use DateTimeImmutable;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
 /** Called after the change is flushed, inside its transaction, so the notice and the change commit together (sc-4333). */
@@ -79,7 +81,7 @@ final readonly class ShiftNotices
             $entry->getId()->toRfc4122(),
             Trigger::at($this->clock->now()->add(new DateInterval(self::WAIT))),
             Audience::removedStaffMember($event->getId(), $account->getId()),
-            ['eventId' => $event->getId()->toRfc4122(), 'startsAt' => $this->shiftUrgency->startOf($entry)->format(\DATE_ATOM)],
+            ['eventId' => $event->getId()->toRfc4122(), 'startsAt' => Vec\map($this->shiftUrgency->startsOf($entry), static fn (DateTimeImmutable $start): string => $start->format(\DATE_ATOM))],
             $event,
         );
     }

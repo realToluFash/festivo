@@ -268,6 +268,44 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aShiftMovedFromTomorrowToNextWeekIsStillUrgent(): void
+    {
+        $this->editEvent(['endsAt' => '2027-03-13T02:00']);
+        self::mockTime(new DateTimeImmutable('2027-03-05T18:00:00Z'));
+        $this->briefed($this->ada);
+        $this->editTimes($this->evening, '2027-03-12T18:00', '2027-03-12T23:00');
+        $this->at('2027-03-05T18:15:00Z');
+
+        self::assertSame([false], $this->notYetUrgent());
+    }
+
+    #[Test]
+    public function aChangeFourDaysOutIsOrdinaryWhenTheirOtherShiftHasStarted(): void
+    {
+        $this->editEvent(['endsAt' => '2027-03-11T02:00']);
+        $later = $this->newShift('2027-03-10T18:00', '2027-03-10T23:00');
+        $this->assign($later, $this->ada);
+        $this->briefed($this->ada);
+        self::mockTime(new DateTimeImmutable('2027-03-06T18:00:00Z'));
+        $this->editTimes($later, '2027-03-10T19:00', '2027-03-10T23:00');
+        $this->at('2027-03-06T18:15:00Z');
+
+        self::assertSame([true], $this->notYetUrgent());
+    }
+
+    #[Test]
+    public function aPersonWithNoStartStillToComeIsSentAnOrdinaryPush(): void
+    {
+        $this->briefed($this->ada);
+        self::mockTime(new DateTimeImmutable('2027-03-06T18:00:00Z'));
+        $this->as($this->owner, 'DELETE', $this->path('shifts/' . $this->evening . '/people/' . $this->ada));
+        self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
+        $this->at('2027-03-06T18:15:00Z');
+
+        self::assertSame([true], $this->notYetUrgent());
+    }
+
+    #[Test]
     public function aRemovalMoreThanADayAheadIsNotUrgent(): void
     {
         $this->briefed($this->ada);
@@ -275,7 +313,7 @@ final class ShiftNoticesTest extends ApiTestCase
         self::assertLessThan(300, $this->statusCode(), Json\encode($this->last()));
         $this->at('2027-03-01T10:15:00Z');
 
-        self::assertSame([true], Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => $sent['notification']->notYetUrgent));
+        self::assertSame([true], $this->notYetUrgent());
     }
 
     #[Test]
@@ -345,6 +383,12 @@ final class ShiftNoticesTest extends ApiTestCase
     private function pushes(): array
     {
         return Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
+    }
+
+    /** @return list<bool> */
+    private function notYetUrgent(): array
+    {
+        return Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => $sent['notification']->notYetUrgent);
     }
 
     /** @return array{notice: mixed, briefing: string} */
