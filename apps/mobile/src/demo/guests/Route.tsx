@@ -6,7 +6,7 @@ import { CheckInScreen } from './CheckIn.tsx';
 import { doorStateOf, eventOf, guestsStateOf } from './GuestsModel.ts';
 import { seatingOf } from './DoorSeats.ts';
 import { ScannerScreen } from './Scanner.tsx';
-import { scanStateOf, searchAskOf, waitingOf } from './ScanModel.ts';
+import { doorFromOf, scanStateOf, searchAskOf, waitingOf } from './ScanModel.ts';
 
 /** /demo/guests: the event's Guests by guests-a-spec §15's ?state=, inside the event it opens on. */
 export function GuestsRoute() {
@@ -45,26 +45,33 @@ export function CheckInRoute() {
         state={state}
         seating={seating}
         searchAsk={searchAskOf(params)}
-        from={params.from === 'night' ? 'night' : 'guests'}
+        from={doorFromOf(params.from)}
       />
     </EventsShell>
   );
 }
 
-/** /demo/guests/scan: Scan a code (sc-1301), by guests-a-spec §19's ?state=, &waiting= for the offline count, and &seats=none. */
+/** /demo/guests/scan: Scan a code (sc-1301), by guests-a-spec §19's ?state=, &waiting= for the offline count, &seats=none, and &from=night carried back to Check-in. */
 export function ScanRoute() {
-  const params = useLocalSearchParams<{ state?: string; waiting?: string; seats?: string }>();
+  const params = useLocalSearchParams<{
+    state?: string;
+    waiting?: string;
+    seats?: string;
+    from?: string;
+  }>();
   const state = scanStateOf(params.state);
   const waiting = waitingOf(params.waiting);
   const seating = seatingOf(params.seats);
+  const from = doorFromOf(params.from);
 
   return (
     <EventsShell>
       <ScannerScreen
-        key={`${state ?? ''}.${waiting}.${seating}`}
+        key={`${state ?? ''}.${waiting}.${seating}.${from}`}
         state={state}
         waiting={waiting}
         seating={seating}
+        from={from}
       />
     </EventsShell>
   );

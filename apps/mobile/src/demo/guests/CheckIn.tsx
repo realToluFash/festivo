@@ -35,6 +35,7 @@ import { REPLY_WORD, W, say } from './GuestsWords.ts';
 import { DoorGlyph, MarkSlot } from '../../components/ReplyMark.tsx';
 import { type Seating, seatLineOf } from './DoorSeats.ts';
 import { navSide, titleBeside } from './DoorNav.ts';
+import { type DoorFrom, scanHref } from './ScanModel.ts';
 import { MN } from '../myNight/myNightModel.ts';
 import { arrivedUnder } from '../../kit/doorRow.ts';
 import { wordsIn } from '../../layout/textSize.ts';
@@ -132,8 +133,6 @@ function cardOf(
     step: null,
   };
 }
-
-export type DoorFrom = 'guests' | 'night';
 
 function leaveTo(from: DoorFrom): () => void {
   return () => {
@@ -401,7 +400,7 @@ export function CheckInScreen({
           event={event}
           words={cardOf(phase, count, state === 'doorEmpty')}
           layout={layout}
-          onStep={() => router.push('/demo/guests/scan?state=scanning' as Href)}
+          onStep={() => router.push(scanHref(from) as Href)}
           stepLabel={open ? W.scanCode : null}
         />
       ) : null}
