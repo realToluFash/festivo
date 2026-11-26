@@ -204,6 +204,35 @@ export const WEEK_DAYS: readonly WeekDay[] = [
   },
 ];
 
+/** Main's strip label, `TYPE.label` in semibold capitals, tracked by a fixed 6% of it at every size. */
+export const STRIP_LABEL = 11;
+export const STRIP_TRACKING = STRIP_LABEL * 0.06;
+
+/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size. */
+export function stripLabelSize(
+  start: number,
+  width: number,
+  letters: number,
+  column: number,
+): number {
+  if (width <= column) return start;
+  const tracking = letters * STRIP_TRACKING;
+
+  return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));
+}
+
+/** The strip's seven days from today, a dot for each event with a row that day. */
+export function stripDays(week: TodayWeek): { date: string; dots: SizeEvent['key'][] }[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.parse(`${SIZE_TODAY}T00:00Z`) + index * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const rows = week === 'days' ? (WEEK_DAYS.find((day) => day.date === date)?.rows ?? []) : [];
+
+    return { date, dots: [...new Set(rows.map((row) => row.key))] };
+  });
+}
+
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
 export type TodayInvite = 'none' | 'one';
 

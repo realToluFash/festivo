@@ -23,9 +23,13 @@ import {
   TODAY_ORGS,
   TODAY_VENUES,
   SIZE_TODAY,
+  STRIP_LABEL,
+  STRIP_TRACKING,
   WEEK_DAYS,
   chipsUnderDates,
   daysUntil,
+  stripDays,
+  stripLabelSize,
   linkUnder,
   liveName,
   piecesKeepingDot,
@@ -376,5 +380,45 @@ describe('the live cover with a guest arrived (sc-94022)', () => {
   it('gives the figure’s words the column less the ring and its gap', () => {
     expect(figureRoom(968, 136, 10)).toBe(822);
     expect(figureRoom(100, 136, 10)).toBe(0);
+  });
+});
+
+describe('This week’s strip, a day’s label (sc-94682)', () => {
+  const seventh = STRIP_LABEL * 1.353;
+
+  it('keeps the step’s size while the label fits its column', () => {
+    expect(stripLabelSize(seventh, 40, 3, 47)).toBe(seventh);
+    expect(stripLabelSize(seventh, 47, 5, 47)).toBe(seventh);
+  });
+
+  it('steps TODAY down to the largest whole size at which it fits its column', () => {
+    const drawn = stripLabelSize(seventh, 52, 5, 47);
+    const tracking = 5 * STRIP_TRACKING;
+    const at = (size: number) => ((52 - tracking) * size) / seventh + tracking;
+
+    expect(drawn).toBe(13);
+    expect(at(drawn)).toBeLessThanOrEqual(47);
+    expect(at(drawn + 1)).toBeGreaterThan(47);
+  });
+
+  it('never draws a label under its default size, even where it is too wide there', () => {
+    expect(stripLabelSize(seventh, 120, 5, 47)).toBe(STRIP_LABEL);
+    expect(stripLabelSize(STRIP_LABEL, 60, 5, 47)).toBe(STRIP_LABEL);
+  });
+
+  it('draws seven days from today, a dot only where an event has a row', () => {
+    const days = stripDays('days');
+
+    expect(days.map((day) => day.date)).toEqual([
+      SIZE_TODAY,
+      '2026-11-26',
+      '2026-11-27',
+      '2026-11-28',
+      '2026-11-29',
+      '2026-11-30',
+      '2026-12-01',
+    ]);
+    expect(days.map((day) => day.dots)).toEqual([['ireti'], ['wed'], [], [], ['party'], [], []]);
+    expect(stripDays('quiet').every((day) => day.dots.length === 0)).toBe(true);
   });
 });
