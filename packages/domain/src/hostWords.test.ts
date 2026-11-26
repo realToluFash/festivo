@@ -6,6 +6,7 @@ import {
   type HostRow,
   aboveCover,
   eventSaveRefusal,
+  eventSaveStoppedWords,
   firstRefusedOf,
   hostErrorsOf,
   hostErrorsShownOf,
@@ -152,6 +153,16 @@ describe('A refused save of an event, read once for Edit details and the parts e
 
   it('reads a 404 as an event no longer available, deleted or no longer theirs (sc-75689)', () => {
     expect(eventSaveRefusal(problem(404, 'not_found'), [], t)).toEqual({ kind: 'gone' });
+  });
+
+  it('gives a cover the same line for a 404 and the role’s refusal, and leaves it every other refusal', () => {
+    expect(eventSaveStoppedWords(problem(404, 'not_found'), t)).toBe('eventEdit.eventGone');
+    expect(eventSaveStoppedWords(problem(403, 'permission_required'), t)).toBe(
+      'eventEdit.forbidden',
+    );
+    expect(eventSaveStoppedWords(problem(403, 'two_factor_required'), t)).toBeNull();
+    expect(eventSaveStoppedWords(problem(422, 'validation_failed'), t)).toBeNull();
+    expect(eventSaveStoppedWords(new Error('offline'), t)).toBeNull();
   });
 
   it('puts a concluded schedule under Starts, and says a currency in use', () => {

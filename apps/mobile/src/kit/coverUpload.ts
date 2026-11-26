@@ -4,6 +4,7 @@ import {
   coverDimensionsRefusal,
   coverFileRefusal,
   coverRefusalWords,
+  eventSaveStoppedWords,
 } from '@soirely/domain';
 
 /** What the photo library hands back, as much of it as the cover's rules read. */
@@ -50,8 +51,5 @@ export function coverRefusalOf(error: unknown, t: (key: string) => string): stri
 
 /** A cover's save, refused for the role (sc-49861) or for an event no longer there (sc-75689), says so rather than that the photo did not upload. */
 export function coverSaveRefusalOf(error: unknown, t: (key: string) => string): string {
-  if (error instanceof ApiError && error.is('permission_required')) return t('eventEdit.forbidden');
-  if (error instanceof ApiError && error.status === 404) return t('eventEdit.eventGone');
-
-  return coverRefusalOf(error, t);
+  return eventSaveStoppedWords(error, t) ?? coverRefusalOf(error, t);
 }

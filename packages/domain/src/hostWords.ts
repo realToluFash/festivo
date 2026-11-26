@@ -191,8 +191,8 @@ export function eventSaveRefusal(
 ): EventSaveRefusal {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
   if (error.status === 412) return { kind: 'changed' };
-  if (error.is('permission_required')) return { kind: 'forbidden' };
-  if (error.status === 404) return { kind: 'gone' };
+  const stopped = eventSaveStopped(error);
+  if (stopped != null) return { kind: stopped };
   if (error.is('event_concluded'))
     return refusal({ startsAt: t('eventEdit.scheduleConcluded') }, {});
   if (error.is('event_currency_in_use'))
@@ -210,6 +210,23 @@ export function eventSaveRefusal(
   return Object.keys(errors).length + Object.keys(hosts).length === 0
     ? { kind: 'failed' }
     : refusal(errors, hosts);
+}
+
+/** The one reading of a save on an event that the role no longer allows, or that hit an event deleted or no longer theirs (sc-75689), shared by every part and the cover on both clients. */
+export function eventSaveStopped(error: unknown): 'forbidden' | 'gone' | null {
+  if (!(error instanceof ApiError)) return null;
+  if (error.is('permission_required')) return 'forbidden';
+  if (error.status === 404) return 'gone';
+
+  return null;
+}
+
+/** The line a cover's save says when `eventSaveStopped` reads it, the same on the web and the app; null leaves the cover's own refusal. */
+export function eventSaveStoppedWords(error: unknown, t: Translate): string | null {
+  const stopped = eventSaveStopped(error);
+  if (stopped == null) return null;
+
+  return t(stopped === 'gone' ? 'eventEdit.eventGone' : 'eventEdit.forbidden');
 }
 
 function refusal(

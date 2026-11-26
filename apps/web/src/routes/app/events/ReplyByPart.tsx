@@ -1,5 +1,11 @@
 import { ApiError, type OrganisationEvent, type TaggedEvent } from '@soirely/api-client';
-import { type ReplyByCheck, formatWallDay, replyByCheck, wallDay } from '@soirely/domain';
+import {
+  type ReplyByCheck,
+  eventSaveStopped,
+  formatWallDay,
+  replyByCheck,
+  wallDay,
+} from '@soirely/domain';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -106,9 +112,8 @@ export function ReplyByPart({
       setBusy(false);
       if (error instanceof ApiError && error.status === 412)
         return outcome.give('changedElsewhere');
-      if (error instanceof ApiError && error.is('permission_required'))
-        return outcome.give('forbidden');
-      if (error instanceof ApiError && error.status === 404) return outcome.give('eventGone');
+      const stopped = eventSaveStopped(error);
+      if (stopped != null) return outcome.give(stopped === 'gone' ? 'eventGone' : 'forbidden');
       if (
         error instanceof ApiError &&
         error.status === 422 &&

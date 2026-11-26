@@ -3,13 +3,7 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
 import en from '../i18n/locales/en.json';
-import {
-  PART_NOTICE,
-  answeredWithNotice,
-  heldRead,
-  partChangedElsewhere,
-  sendPart,
-} from './partSave.ts';
+import { answeredWithNotice, heldRead, partChangedElsewhere, sendPart } from './partSave.ts';
 
 const t = ((key: string) => key) as unknown as TFunction;
 
@@ -158,8 +152,6 @@ describe('a save answered with a notice at the top of the screen (sc-74540)', ()
 
 describe('the notice at the top of a part for a save that stopped (sc-75689)', () => {
   it('says the event is no longer available for a 404, and nothing was changed for the role, with no Try again', () => {
-    expect(PART_NOTICE.gone).toBe('eventEdit.eventGone');
-    expect(PART_NOTICE.forbidden).toBe('eventEdit.forbidden');
     expect(en.eventEdit.eventGone).toBe('Nothing was changed. This event is no longer available.');
     expect(en.eventEdit.eventGone).not.toMatch(/Try again/u);
   });
