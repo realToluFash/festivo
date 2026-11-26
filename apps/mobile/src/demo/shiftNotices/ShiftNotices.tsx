@@ -1,19 +1,18 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { type ReactNode, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { SecondaryButton } from '../../components/Buttons.tsx';
 import { Glyph } from '../../components/Glyph.tsx';
 import { Notice } from '../../components/Notice.tsx';
 import { OnOffSwitch } from '../../components/OnOffSwitch.tsx';
 import { ReadOut, readOut } from '../../components/ReadOut.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { ShapeMark } from '../../components/StatusMark.tsx';
 import { Text } from '../../components/Text.tsx';
 import { useLayout } from '../../layout/useLayout.ts';
 import { tokens } from '../../theme/tokens.ts';
 import type { BriefingParts } from '../briefing/StaffBriefing.tsx';
 import { ISSUE_MS, type Person } from '../briefing/briefingModel.ts';
-import { ASK_MS, type Ask, askAnswered, pressAsk } from '../messages/CheckWaits.ts';
+import { type Ask } from '../messages/CheckWaits.ts';
 import { MessageGlyph } from '../messages/MessageMarks.tsx';
 import {
   type LineMark,
@@ -25,6 +24,7 @@ import {
   sendsOffered,
   shiftStart,
 } from './shiftNoticesModel.ts';
+import { useOwnerAsk } from '../messages/useOwnerAsk.ts';
 
 const hidden = {
   accessibilityElementsHidden: true,
@@ -212,37 +212,8 @@ export function useShiftNotices(
 
 /** Ask an owner, as sc-3931 has it: the owners are sent the link to Plan and billing, or Not sent and try again. */
 function AskOwner({ start, owners }: { start: Ask; owners: number }) {
-  const [ask, setAsk] = useState<Ask>(start);
-  const now = useRef<Ask>(start);
-  const pressed = useRef(false);
-  const sentRef = useRef<ViewInstance>(null);
-  const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { ask, onAsk, sentRef } = useOwnerAsk(start);
   const sent = SW.asked(owners);
-
-  const move = (next: Ask) => {
-    now.current = next;
-    setAsk(next);
-  };
-  const onAsk = () => {
-    const next = pressAsk(now.current);
-    if (!next.sends) return;
-    pressed.current = true;
-    move(next.ask);
-    answer.current = setTimeout(() => move(askAnswered(now.current, true)), ASK_MS);
-  };
-
-  useEffect(
-    () => () => {
-      if (answer.current != null) clearTimeout(answer.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    if (ask !== 'sent' || !pressed.current) return undefined;
-    const later = setTimeout(() => moveScreenReaderFocus(sentRef.current), 350);
-
-    return () => clearTimeout(later);
-  }, [ask]);
 
   if (ask === 'sent')
     return (

@@ -1,23 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ViewInstance } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Glyph } from '../../components/Glyph.tsx';
 import { ReadOut } from '../../components/ReadOut.tsx';
-import { moveScreenReaderFocus } from '../../components/screenReaderFocus.ts';
 import { Pill } from '../../components/SettingsParts.tsx';
 import { TextAction } from '../../components/Summary.tsx';
 import { Text } from '../../components/Text.tsx';
 import { tokens } from '../../theme/tokens.ts';
-import {
-  ASK_MS,
-  type Ask,
-  type Waits,
-  type WaitsCheck,
-  askAnswered,
-  pressAsk,
-} from './CheckWaits.ts';
+import { type Waits, type WaitsCheck } from './CheckWaits.ts';
 import { DeliveryMark } from './MessageMarks.tsx';
 import { type ChannelKey, W, WW, say } from './MessagesWords.ts';
+import { useOwnerAsk } from './useOwnerAsk.ts';
 
 /** sc-3963: under who can't be told, in place of the credits line, as noticeWaits does for one guest. */
 export function WaitBlock({
@@ -31,38 +23,9 @@ export function WaitBlock({
   onWithout: (drops: readonly ChannelKey[]) => void;
   linesOnly?: boolean;
 }) {
-  const [ask, setAsk] = useState<Ask>(waits.ask);
-  const now = useRef<Ask>(waits.ask);
-  const pressed = useRef(false);
-  const sentRef = useRef<ViewInstance>(null);
-  const answer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { ask, onAsk, sentRef } = useOwnerAsk(waits.ask);
   const asks = !linesOnly && !waits.canBill && ask !== 'sent';
   const sent = say.ownersAsked(waits.owners);
-
-  const move = (next: Ask) => {
-    now.current = next;
-    setAsk(next);
-  };
-  const onAsk = () => {
-    const next = pressAsk(now.current);
-    if (!next.sends) return;
-    pressed.current = true;
-    move(next.ask);
-    answer.current = setTimeout(() => move(askAnswered(now.current, true)), ASK_MS);
-  };
-
-  useEffect(
-    () => () => {
-      if (answer.current != null) clearTimeout(answer.current);
-    },
-    [],
-  );
-  useEffect(() => {
-    if (ask !== 'sent' || !pressed.current) return undefined;
-    const later = setTimeout(() => moveScreenReaderFocus(sentRef.current), 350);
-
-    return () => clearTimeout(later);
-  }, [ask]);
 
   return (
     <View style={styles.block} testID="messages.check.waits">
