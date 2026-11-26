@@ -13,7 +13,7 @@ import { landAfterSignIn } from '../../signedIn.ts';
 export function TwoFactorSignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const challenge = useLocation().state as TwoFactorChallenge | null;
+  const challenge = useLocation().state as (TwoFactorChallenge & { opensOn?: 'recovery' }) | null;
 
   if (challenge?.challenge == null) return <Navigate to="/sign-in" replace />;
   const number = numberOf(challenge);
@@ -38,6 +38,7 @@ export function TwoFactorSignIn() {
         }
         lostBoth={{ to: '/two-factor/recovery', state: challenge }}
         factors={challenge.factors}
+        {...(challenge.opensOn == null ? {} : { opensOn: challenge.opensOn })}
         passkey={{
           lead:
             number == null

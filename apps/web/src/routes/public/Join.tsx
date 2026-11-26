@@ -672,7 +672,7 @@ function Refused({
       )}
 
       {refusal === 'invitation_needs_email' && (
-        <Link className="button button-primary" to="/app/settings/account">
+        <Link className="button button-primary" to="/app/account">
           {t('join.addEmail')}
         </Link>
       )}

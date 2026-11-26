@@ -206,7 +206,8 @@ told apart from an unknown one: delete it and a replay no longer revokes the cha
 thief keeps the newest token, and the response looks exactly the same.
 
 **It runs once a day, at 03:00 UTC**, from `services/api/config/crontab`, alongside
-`app:prune-unverified-accounts` at 03:10 and `app:prune-pending-registrations` at 03:20.
+`app:prune-unverified-accounts` at 03:10, `app:prune-pending-registrations` at 03:20 and
+`app:prune-phone-sign-ins` at 03:25.
 The prod image carries [supercronic](https://github.com/aptible/supercronic), pinned by
 version and checksum; every deployed environment runs one more container from that image
 with `supercronic /app/config/crontab` as its command. Each run logs its count, 0 included;

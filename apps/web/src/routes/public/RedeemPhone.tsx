@@ -19,14 +19,13 @@ import { codeChoice, phoneProblemMessage } from '../../phoneProblem.ts';
 import { PHONE_CODE_LENGTH, type PhoneEntry } from './redeemEntry.ts';
 
 function entryLines(entry: PhoneEntry, t: ReturnType<typeof useTranslation>['t']) {
-  const name = entry.named.trim() === '' ? t('redeem.nameBlank') : null;
-  const number = phoneProblemMessage(
-    phoneLengthProblem(entry.number, entry.country),
-    entry.country,
-    t,
-  );
+  const name = entry.named.trim() === '' ? t('redeem.nameBlank') : (entry.refused.name ?? null);
+  const number =
+    phoneProblemMessage(phoneLengthProblem(entry.number, entry.country), entry.country, t) ??
+    entry.refused.number ??
+    (entry.alternative ? t('redeem.phone.alternative') : null);
 
-  return { name, number: number ?? (entry.alternative ? t('redeem.phone.alternative') : null) };
+  return { name, number };
 }
 
 /** Your name, the country's code and the mobile number, then Send code, as the web demo's redeem draws it. */
@@ -70,14 +69,23 @@ export function PhoneEntryStep({
           said={nameSaid}
           inputRef={fieldRef}
           autoComplete="name"
-          onChange={(named) => onChange({ ...entry, named })}
+          onChange={(named) =>
+            onChange({ ...entry, named, refused: { ...entry.refused, name: null } })
+          }
         />
       </div>
       <div className="rd-group">
         <div className="rd-phone">
           <CountryCode
             country={entry.country}
-            onChange={(country) => onChange({ ...entry, country, alternative: false })}
+            onChange={(country) =>
+              onChange({
+                ...entry,
+                country,
+                alternative: false,
+                refused: { ...entry.refused, number: null },
+              })
+            }
           />
           <Field
             id="rd-number"
@@ -86,7 +94,14 @@ export function PhoneEntryStep({
             said={numberSaid}
             autoComplete="tel-national"
             inputMode="tel"
-            onChange={(number) => onChange({ ...entry, number, alternative: false })}
+            onChange={(number) =>
+              onChange({
+                ...entry,
+                number,
+                alternative: false,
+                refused: { ...entry.refused, number: null },
+              })
+            }
           />
         </div>
       </div>
@@ -318,7 +333,7 @@ export function Title({
   );
 }
 
-function Field({
+export function Field({
   id,
   label,
   value,
