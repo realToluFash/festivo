@@ -26,6 +26,7 @@ const entry = {
   briefingCopy: null,
   contactsErased: false,
   notice: null,
+  inApp: false,
 };
 
 const plan = {
@@ -92,14 +93,16 @@ describe('asStaffPlan', () => {
       ...entry,
       notice: { state: 'told', at: '2026-11-01T11:15:00+01:00', channel: 'push' },
     };
-    const unreachable = { ...entry, notice: { state: 'unreachable' } };
-    const read = { ...plan, staff: [waiting, told, unreachable] };
+    const read = { ...plan, staff: [waiting, told] };
 
     expect(asStaffPlan(read)).toEqual(read);
   });
 
   it('refuses a change notice of a state or kind it does not know', () => {
     expect(asStaffPlan({ ...plan, staff: [{ ...entry, notice: { state: 'held' } }] })).toBeNull();
+    expect(
+      asStaffPlan({ ...plan, staff: [{ ...entry, notice: { state: 'unreachable' } }] }),
+    ).toBeNull();
     expect(
       asStaffPlan({
         ...plan,

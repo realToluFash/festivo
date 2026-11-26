@@ -9,6 +9,7 @@ use App\Enum\PushTargetKind;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Types;
+use Psl\Dict;
 use Psl\Type;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
@@ -78,6 +79,34 @@ final readonly class PushTargets
             Type\nullable(Type\string())->coerce($row['public_key']),
             Type\nullable(Type\string())->coerce($row['auth_secret']),
         ));
+    }
+
+    /**
+     * Of these members, those signed in to the app with notifications allowed: a live session holding an Expo target (sc-4333).
+     *
+     * @return array<string, true> by the member's id
+     */
+    public function inApp(Uuid ...$userIds): array
+    {
+        if ([] === $userIds) {
+            return [];
+        }
+
+        $ids = $this->connection->fetchFirstColumn(
+            <<<'SQL'
+                SELECT DISTINCT t.user_id
+                FROM push_targets t
+                WHERE t.user_id IN (:users) AND t.kind = :expo
+                  AND EXISTS (
+                      SELECT 1 FROM refresh_tokens r
+                      WHERE r.chain_id = t.session_id AND r.user_id = t.user_id AND r.revoked_at IS NULL AND r.expires_at > :now
+                  )
+                SQL,
+            ['users' => Vec\map($userIds, static fn (Uuid $id): string => $id->toRfc4122()), 'expo' => PushTargetKind::Expo->value, 'now' => $this->clock->now()],
+            ['users' => ArrayParameterType::STRING, 'now' => Types::DATETIME_IMMUTABLE],
+        );
+
+        return Dict\from_keys(Vec\map($ids, static fn (mixed $id): string => Type\string()->coerce($id)), static fn (): true => true);
     }
 
     /** The provider said the device no longer takes it. */

@@ -9,6 +9,7 @@ use App\Domain\Messaging\Interfaces\NotificationTypeInterface;
 use App\Domain\Messaging\Model\EventTimes;
 use App\Domain\Messaging\Model\Recipient;
 use App\Domain\Messaging\Model\RenderedNotification;
+use App\Domain\Messaging\PushTargets;
 use App\Domain\Staff\StaffRosterPublisher;
 use App\Entity\StaffMember;
 use App\Enum\NotificationAudienceKind;
@@ -34,6 +35,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         private ToldShifts $toldShifts,
         private ShiftNoticeWording $shiftNoticeWording,
         private StaffRosterPublisher $staffRosterPublisher,
+        private PushTargets $pushTargets,
     ) {
     }
 
@@ -103,12 +105,13 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         return null;
     }
 
-    /** Nothing differing from what they were told, an Unassign put back say, cancels it. */
+    /** Nothing differing from what they were told, an Unassign put back say, cancels it, and so does their not being in the app with notifications allowed by then: the row keeps Changed since sent. */
     public function isStillDue(array $payload, ?Uuid $recipient = null): bool
     {
         $entry = $this->entry($payload);
+        $account = $entry?->getAccount();
 
-        return null !== $entry && [] !== $this->toldShifts->changesOf($entry);
+        return null !== $entry && null !== $account && [] !== $this->toldShifts->changesOf($entry) && [] !== $this->pushTargets->inApp($account->getId());
     }
 
     public function thread(array $payload): ?string
@@ -131,7 +134,7 @@ final readonly class ShiftChangeNotice implements NotificationTypeInterface, Fol
         );
     }
 
-    /** Once it has gone, what it said is what they were told; one not delivered leaves that as it was, so the roster reads Not delivered. */
+    /** Once it has gone, what it said is what they were told; one not delivered leaves that as it was, so the roster keeps Changed since sent. */
     public function finished(array $payload, NotificationDeliveryStatus $status): void
     {
         $entry = $this->entry($payload);

@@ -19,7 +19,7 @@ use App\Repository\StaffShiftRepository;
 use DateTimeZone;
 use Psl\Vec;
 
-/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. `briefing` is where their briefing stands (sc-3917), and `briefingCopy` the last copy of their link from it. `notice` is where their change notice stands (sc-4333), null before their briefing went. Every time is the instant, with the event's offset. */
+/** `link` is how far the person's own link got (sc-3912), or `no_mobile` or `erased` when none can be given; `linkBy` and `linkAt` say who moved it and when. `briefing` is where their briefing stands (sc-3917), and `briefingCopy` the last copy of their link from it. `notice` is where their change notice stands (sc-4333), null before their briefing went or while push has not reached them, and `inApp` whether push can. Every time is the instant, with the event's offset. */
 final readonly class StaffSerialiser
 {
     public function __construct(
@@ -62,7 +62,7 @@ final readonly class StaffSerialiser
      * @param ?list<StaffShift>                                                                     $shifts    the person's shifts by start, read when null
      * @param ?array<string, list<array{id: string, name: string}>>                                 $tables    each seating section's tables, read when null
      * @param ?StaffMember                                                                          $floorLead the event's floor lead, read when null
-     * @param ?array{waiting: array<string, string>, finished: array<string, array<string, mixed>>} $notices   the event's change notices, read when null
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $notices the event's change notices, read when null
      *
      * @return array<string, mixed>
      */
@@ -103,7 +103,8 @@ final readonly class StaffSerialiser
                 'marked' => $entry->isBriefCopyMarked(),
             ],
             'contactsErased' => null !== $entry->getContactsErasedAt(),
-            'notice' => $this->shiftNoticeStates->of($entry, $shifts, $notices),
+            'notice' => $this->shiftNoticeStates->of($entry, $shifts, $notices ??= $this->shiftNoticeStates->ofEvent($event)),
+            'inApp' => $this->shiftNoticeStates->inApp($entry, $notices),
         ];
     }
 

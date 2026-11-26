@@ -52,12 +52,10 @@ export interface StaffChange {
   count: number;
 }
 
-/** Where a person's change notice stands (sc-4333), for the roster's Briefing column; null before their briefing went. */
+/** Where a person's change notice stands (sc-4333), for the roster's Briefing column; null before their briefing went and whenever push has not reached them, so the row stays sc-3917's. */
 export type StaffNotice =
   | { state: 'waiting'; goesAt: string; changes: StaffChange[] }
-  | { state: 'told'; at: string; channel: string }
-  | { state: 'not_delivered'; reason: 'no_device' | 'provider' }
-  | { state: 'unreachable' };
+  | { state: 'told'; at: string; channel: string };
 
 export type StaffAccess = 'view' | 'check_in' | 'floor' | 'pass' | 'run';
 
@@ -105,6 +103,8 @@ export interface StaffEntry {
   briefingCopy: StaffBriefingCopy | null;
   contactsErased: boolean;
   notice: StaffNotice | null;
+  /** Signed in to the app with notifications allowed, so a change notice reaches them by push (sc-4333). */
+  inApp: boolean;
 }
 
 export interface StaffJob {
@@ -258,12 +258,6 @@ function asNotice(raw: unknown): StaffNotice | null | undefined {
       return typeof raw.at === 'string' && typeof raw.channel === 'string'
         ? { state: 'told', at: raw.at, channel: raw.channel }
         : undefined;
-    case 'not_delivered':
-      return raw.reason === 'no_device' || raw.reason === 'provider'
-        ? { state: 'not_delivered', reason: raw.reason }
-        : undefined;
-    case 'unreachable':
-      return { state: 'unreachable' };
     default:
       return undefined;
   }
@@ -331,6 +325,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     linkAt,
     briefing,
     contactsErased,
+    inApp,
   } = raw;
   const job = asJobRef(raw.job);
   const briefingCopy = asBriefingCopy(raw.briefingCopy);
@@ -358,7 +353,8 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     !BRIEFINGS.includes(briefing as StaffBriefing) ||
     briefingCopy === undefined ||
     notice === undefined ||
-    typeof contactsErased !== 'boolean'
+    typeof contactsErased !== 'boolean' ||
+    typeof inApp !== 'boolean'
   )
     return null;
 
@@ -381,6 +377,7 @@ export function asStaffEntry(raw: unknown): StaffEntry | null {
     briefingCopy,
     contactsErased,
     notice,
+    inApp,
   };
 }
 

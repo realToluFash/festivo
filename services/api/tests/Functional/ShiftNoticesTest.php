@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Messaging\NotificationWorker;
+use App\Domain\Messaging\PushTargets;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Organisation;
 use App\Entity\StaffMember;
 use App\Entity\User;
+use App\Enum\PushTargetKind;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\Messaging\RecordingPushSender;
 use App\Tests\Traits\OnboardsAccounts;
@@ -57,7 +60,7 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->ada = $this->person('Ada Obi', '0803 111 0009');
         $this->evening = $this->newShift('2027-03-06T18:00', '2027-03-06T23:00');
         $this->assign($this->evening, $this->ada);
-        $this->signedIn($this->ada, 'ada@example.com');
+        $this->signedIn($this->ada, 'ada@example.com', withPush: true);
     }
 
     #[Test]
@@ -171,7 +174,7 @@ final class ShiftNoticesTest extends ApiTestCase
     public function aNewVenueIsToldToEveryoneWhoseBriefingWent(): void
     {
         $bisi = $this->person('Bisi Ola', '0803 111 0010');
-        $this->signedIn($bisi, 'bisi@example.com');
+        $this->signedIn($bisi, 'bisi@example.com', withPush: false);
         $this->briefed($this->ada);
         $this->editEvent(['venue' => ['name' => 'Eko Hotel', 'address' => null]]);
         $this->at('2027-03-01T10:15:00Z');
@@ -180,13 +183,31 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
-    public function nobodySignedInToTheAppCannotBeReached(): void
+    public function aBriefedPersonWithoutPushIsSentNothingAndKeepsChangedSinceSent(): void
+    {
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->signedIn($bisi, 'bisi@example.com', withPush: false);
+        $this->assign($this->evening, $bisi);
+        $this->briefed($bisi);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
+
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame([], Vec\filter(self::service(RecordingPushSender::class)->sent, static fn (array $sent): bool => 'Bisi Ola' === $sent['recipient']->name));
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+    }
+
+    #[Test]
+    public function aBriefedPersonNeverSignedInIsSentNothing(): void
     {
         $bisi = $this->person('Bisi Ola', '0803 111 0010');
         $this->assign($this->evening, $bisi);
         $this->briefed($bisi);
+        $this->editTimes($this->evening, '2027-03-06T19:00', '2027-03-06T23:00');
 
-        self::assertSame(['state' => 'unreachable'], $this->row($bisi)['notice']);
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
     }
 
     #[Test]
@@ -223,12 +244,20 @@ final class ShiftNoticesTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
     }
 
-    private function signedIn(string $staffId, string $address): void
+    /** With push, they are signed in to the app with notifications allowed: a live session holding an Expo target. */
+    private function signedIn(string $staffId, string $address, bool $withPush): void
     {
         $account = $this->account($address, 'Staff ' . $address);
         $entry = self::em()->find(StaffMember::class, $staffId) ?? self::fail('nobody ' . $staffId);
         $entry->linkAccount(self::em()->find(User::class, $account->getId()));
         self::em()->flush();
+
+        if ($withPush) {
+            $session = self::service(TokenIssuer::class)->issueFor($account)->sessionId;
+            self::em()->flush();
+            self::em()->getConnection()->executeStatement("UPDATE refresh_tokens SET expires_at = '2027-04-01' WHERE chain_id = :chain", ['chain' => $session->toRfc4122()]);
+            self::service(PushTargets::class)->register($account->getId(), $session, PushTargetKind::Expo, 'ExponentPushToken[' . $address . ']');
+        }
     }
 
     private function editTimes(string $shiftId, string $from, string $to): void
@@ -262,13 +291,13 @@ final class ShiftNoticesTest extends ApiTestCase
         return Vec\map(self::service(RecordingPushSender::class)->sent, static fn (array $sent): array => [$sent['notification']->subject, $sent['notification']->lines, $sent['notification']->place]);
     }
 
-    /** @return array{notice: mixed} */
+    /** @return array{notice: mixed, briefing: string} */
     private function row(string $staffId): array
     {
-        $staff = Type\vec(Type\shape(['id' => Type\string(), 'notice' => Type\mixed()], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['staff'] ?? null);
+        $staff = Type\vec(Type\shape(['id' => Type\string(), 'notice' => Type\mixed(), 'briefing' => Type\string()], true))->coerce($this->as($this->owner, 'GET', $this->path(''))['staff'] ?? null);
         $row = Iter\search($staff, static fn (array $one): bool => $one['id'] === $staffId) ?? self::fail('nobody ' . $staffId);
 
-        return ['notice' => $row['notice']];
+        return ['notice' => $row['notice'], 'briefing' => $row['briefing']];
     }
 
     private function assign(string $shiftId, string $staffId): void

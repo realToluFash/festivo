@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Staff\ShiftNotice;
 
+use App\Domain\Messaging\PushTargets;
 use App\Domain\Staff\ShiftClock;
 use App\Domain\Staff\ShiftNotice\Model\ShiftChange;
 use App\Entity\Event;
@@ -14,20 +15,21 @@ use App\Enum\ScheduledNotificationStatus;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Connection;
-use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
 
-/** Null before the person's briefing went (sc-4333); a date line's values are days, not instants. */
+/** Null before the person's briefing went, and whenever push has not reached them, so the row stays sc-3917's (sc-4333); a date line's values are days, not instants. */
 final readonly class ShiftNoticeStates
 {
     public function __construct(
         private Connection $connection,
         private ToldShifts $toldShifts,
+        private PushTargets $pushTargets,
     ) {
     }
 
-    /** @return array{waiting: array<string, string>, finished: array<string, array<string, mixed>>} each by the person's id */
+    /** @return array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} waiting and sent by the person's id, inApp by their account's */
     public function ofEvent(Event $event): array
     {
         $eventId = $event->getId()->toRfc4122();
@@ -35,25 +37,22 @@ final readonly class ShiftNoticeStates
             'SELECT source_id, due_at FROM scheduled_notifications WHERE type = :type AND event_id = :event AND status = :pending',
             ['type' => ShiftChangeNotice::NAME, 'event' => $eventId, 'pending' => ScheduledNotificationStatus::Pending->value],
         );
-        $finished = $this->connection->fetchAllAssociativeIndexed(
-            <<<'SQL'
-                SELECT DISTINCT ON (source_id) source_id, status, channel, finished_at, last_error
-                FROM notification_deliveries
-                WHERE type = :type AND event_id = :event AND status IN (:sent, :failed)
-                ORDER BY source_id, finished_at DESC
-                SQL,
-            ['type' => ShiftChangeNotice::NAME, 'event' => $eventId, 'sent' => NotificationDeliveryStatus::Sent->value, 'failed' => NotificationDeliveryStatus::Failed->value],
+        $sent = $this->connection->fetchAllKeyValue(
+            'SELECT source_id, MAX(finished_at) FROM notification_deliveries WHERE type = :type AND event_id = :event AND status = :sent GROUP BY source_id',
+            ['type' => ShiftChangeNotice::NAME, 'event' => $eventId, 'sent' => NotificationDeliveryStatus::Sent->value],
         );
+        $accounts = $this->connection->fetchFirstColumn('SELECT account_id FROM staff_members WHERE event_id = :event AND account_id IS NOT NULL', ['event' => $eventId]);
 
         return [
             'waiting' => Type\dict(Type\string(), Type\string())->coerce($waiting),
-            'finished' => Type\dict(Type\string(), Type\dict(Type\string(), Type\mixed()))->coerce($finished),
+            'sent' => Type\dict(Type\string(), Type\string())->coerce($sent),
+            'inApp' => $this->pushTargets->inApp(...Vec\map($accounts, static fn (mixed $id): Uuid => Uuid::fromString(Type\string()->coerce($id)))),
         ];
     }
 
     /**
      * @param list<StaffShift>                                                                      $shifts the person's shifts
-     * @param ?array{waiting: array<string, string>, finished: array<string, array<string, mixed>>} $known  the event's, read when null
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known the event's, read when null
      *
      * @return ?array<string, mixed>
      */
@@ -69,7 +68,7 @@ final readonly class ShiftNoticeStates
         $goesAt = $known['waiting'][$id] ?? null;
         $zone = new DateTimeZone($event->getTimeZone());
 
-        if (null !== $goesAt) {
+        if (null !== $goesAt && $this->inApp($entry, $known)) {
             return [
                 'state' => 'waiting',
                 'goesAt' => self::instant($goesAt)->setTimezone($zone)->format(\DATE_ATOM),
@@ -77,17 +76,31 @@ final readonly class ShiftNoticeStates
             ];
         }
 
-        $last = $known['finished'][$id] ?? null;
+        $sentAt = $known['sent'][$id] ?? null;
 
-        if (null !== $last) {
-            $sent = NotificationDeliveryStatus::Sent->value === $last['status'];
-
-            return $sent
-                ? ['state' => 'told', 'at' => self::instant(Type\string()->coerce($last['finished_at']))->setTimezone($zone)->format(\DATE_ATOM), 'channel' => $last['channel']]
-                : ['state' => 'not_delivered', 'reason' => self::reason(Type\nullable(Type\string())->coerce($last['last_error']))];
+        if (null === $sentAt || [] !== $this->toldShifts->changesOf($entry, $shifts)) {
+            return null;
         }
 
-        return null === $entry->getAccount() ? ['state' => 'unreachable'] : null;
+        return ['state' => 'told', 'at' => self::instant($sentAt)->setTimezone($zone)->format(\DATE_ATOM), 'channel' => 'push'];
+    }
+
+    /**
+     * Signed in to the app with notifications allowed, so a change notice can reach them; the removal question says so only then.
+     *
+     * @param ?array{waiting: array<string, string>, sent: array<string, string>, inApp: array<string, true>} $known the event's, read when null
+     */
+    public function inApp(StaffMember $entry, ?array $known = null): bool
+    {
+        $account = $entry->getAccount();
+
+        if (null === $account) {
+            return false;
+        }
+
+        $known ??= $this->ofEvent($entry->getEvent());
+
+        return isset($known['inApp'][$account->getId()->toRfc4122()]);
     }
 
     /** @return array<string, mixed> */
@@ -105,12 +118,6 @@ final readonly class ShiftNoticeStates
             'old' => $change->old,
             'count' => $change->count,
         ];
-    }
-
-    /** `no_device` when push found no device of theirs (the worker records an Unreachable by its message alone), `provider` when the provider refused it (recorded with the failure's class). */
-    private static function reason(?string $error): string
-    {
-        return null === $error || !Str\contains($error, '\\') ? 'no_device' : 'provider';
     }
 
     private static function instant(string $stored): DateTimeImmutable
