@@ -18,6 +18,7 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Repository\EventPersonRepository;
 use App\Repository\MembershipRepository;
 use Psl\Iter;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -89,11 +90,22 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
 
     public function isOutsideIn(User $user, Uuid $organisationId): bool
     {
-        if (null !== $this->membershipRepository->findActive($user, $organisationId)) {
-            return false;
-        }
+        return Iter\any($this->outsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
+    }
 
-        return Iter\any($this->staffLinkGrants->liveOutsideEvents($user), static fn (OutsideEvent $outside): bool => $outside->event->getOrganisation()->getId()->equals($organisationId));
+    /**
+     * The account's live grants from outside, less those on an organisation it is an active member of: there its role wins (sc-94843).
+     *
+     * @return list<OutsideEvent>
+     */
+    public function outsideEvents(User $user): array
+    {
+        $memberOf = Vec\map($this->membershipRepository->findActiveFor($user), static fn (Membership $membership): Uuid => $membership->getOrganisation()->getId());
+
+        return Vec\filter(
+            $this->staffLinkGrants->liveOutsideEvents($user),
+            static fn (OutsideEvent $outside): bool => !Iter\any($memberOf, static fn (Uuid $id): bool => $id->equals($outside->event->getOrganisation()->getId())),
+        );
     }
 
     /** @return list<PlanFeature> */
