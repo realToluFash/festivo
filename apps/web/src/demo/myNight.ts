@@ -1,5 +1,5 @@
 import { type Card, cardOf } from './shiftClock.ts';
-import { CW, signedOutTime } from './doorCheckIn.ts';
+import { signedOutTime } from './doorCheckIn.ts';
 
 export const MY_NIGHT_STATES = [
   'night',
@@ -78,6 +78,8 @@ export const MN = {
   demoMove: 'Demo: the organiser moves Grace to Section C',
   demoMoveButton: 'Move Grace to Section C',
   demoMoveBody: 'The page changes within 10 seconds and says so to screen readers.',
+  signedOutAt: (time: string) =>
+    `This link is yours alone. You’ll be signed out at ${time}, and nothing stays on this device.`,
 } as const;
 
 export function guestCount(table: Table): string {
@@ -89,7 +91,7 @@ export function headingOf(night: Night): string {
 }
 
 export function yoursAlone(night: Night): string {
-  return CW.shift.signedOutAt(signedOutTime(night.linkEndsAt, night.now));
+  return MN.signedOutAt(signedOutTime(night.linkEndsAt, night.now));
 }
 
 const g = (name: string, diet: string | null = null): Guest => ({ name, diet });
