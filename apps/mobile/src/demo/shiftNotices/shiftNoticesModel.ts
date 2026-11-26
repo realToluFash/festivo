@@ -91,9 +91,9 @@ export const SW = {
     date: (now: string, was: string) => `Date ${now} (was ${was})`,
     venue: (now: string, was: string) => `Venue ${now} (was ${was})`,
   } satisfies Record<ChangeField, (now: string, was: string) => string>,
-  shiftAdded: (shift: string) => `[New shift ${shift}]`,
-  shiftOff: (shift: string) => `[Off the shift ${shift}]`,
-  shiftRetimed: (now: string, was: string) => `[Shift ${now} (was ${was})]`,
+  shiftAdded: (shift: string) => `[Added: ${shift}]`,
+  shiftOff: (shift: string) => `[Off: ${shift}]`,
+  shiftRetimed: (now: string, was: string) => `[${now} (was ${was})]`,
   noShift: '[No shift for now]',
   quiet: (day: string, time: string) => `Held for quiet hours. Goes ${day} at ${time}.`,
   told: {
@@ -467,17 +467,21 @@ const waiting = (was: 'read' | 'sent', changes: readonly Change[]) => ({
 
 const SEVERAL: Record<string, Edit> = {
   dayo: {
-    shift: '10:00 to 14:00, 15:00 to 23:00',
-    ...waiting('read', [{ field: 'shiftAdded', shift: '10:00 to 14:00' }]),
+    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting('read', [
+      { field: 'shiftRetimed', now: 'Saturday 15:00 to 23:00', was: '17:00 to 23:00' },
+    ]),
   },
-  grace: waiting('sent', [{ field: 'shiftOff', shift: '11:00 to 15:00' }]),
-  kelechi: {
-    shift: '12:00 to 15:00, 18:00 to 00:00',
-    ...waiting('read', [{ field: 'shiftRetimed', now: '18:00 to 00:00', was: '16:00 to 00:00' }]),
+  grace: {
+    shift: 'Saturday 16:00 to 23:00, Sunday 12:00 to 18:00',
+    ...waiting('sent', [{ field: 'shiftAdded', shift: 'Sunday 12:00 to 18:00' }]),
   },
-  tope: {
+  yusuf: {
     shift: null,
-    ...waiting('sent', [{ field: 'shiftOff', shift: '17:00 to 23:00' }, { field: 'noShift' }]),
+    ...waiting('sent', [
+      { field: 'shiftOff', shift: 'Saturday 18:00 to 00:00' },
+      { field: 'noShift' },
+    ]),
   },
 };
 
@@ -557,7 +561,7 @@ const STATES = {
   several_shifts: () =>
     start({
       title: 'Several shifts, waiting',
-      what: 'A shift added, a shift taken off, one of several retimed, and the last taken off, each as Goes at with its short line. Words bracketed until [en] writes them',
+      what: 'Dayo has one of two shifts retimed, Grace a shift added, Yusuf his last taken off: each Goes at with its short line, bracketed until [en] writes them',
       people: edited(SEVERAL),
     }),
   eve: () =>

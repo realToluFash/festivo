@@ -10,9 +10,9 @@ export type MessageKind =
   | 'date'
   | 'several'
   | 'shift_added'
-  | 'shift_off'
-  | 'last_shift_off'
+  | 'shift_removed'
   | 'shift_retimed'
+  | 'no_shift_left'
   | 'removed'
   | 'called_off'
   | 'event_ended'
@@ -28,9 +28,9 @@ export const MESSAGE_KINDS: readonly MessageKind[] = [
   'date',
   'several',
   'shift_added',
-  'shift_off',
-  'last_shift_off',
+  'shift_removed',
   'shift_retimed',
+  'no_shift_left',
   'removed',
   'called_off',
   'event_ended',
@@ -47,8 +47,8 @@ export const KIND_NAMES: Record<MessageKind, string> = {
   date: 'Date changed',
   several: 'Three changes in one message',
   shift_added: 'A shift added',
-  shift_off: 'A shift taken off',
-  last_shift_off: 'The last shift taken off',
+  shift_removed: 'A shift taken off',
+  no_shift_left: 'The last shift taken off',
   shift_retimed: 'One of several shifts retimed',
   removed: 'Removed from the event',
   called_off: 'The event is called off',
@@ -104,18 +104,20 @@ const CHANGES: Partial<Record<MessageKind, readonly ChangeKey[]>> = {
 
 /** Bracketed until [en] writes them (#96276). */
 const SHIFT = {
-  added: (start: string, end: string) => `[You are now also on the shift from ${start} to ${end}.]`,
-  off: (start: string, end: string) => `[You are no longer on the shift from ${start} to ${end}.]`,
-  retimed: (start: string, end: string, wasStart: string, wasEnd: string) =>
-    `[One of your shifts is now ${start} to ${end} (was ${wasStart} to ${wasEnd}).]`,
-  none: `[You have no shift at ${EVENT} for now. Your shift page still works.]`,
+  added: (day: string, start: string, end: string) =>
+    `[You are now also on ${day}, ${start} to ${end}.]`,
+  removed: (day: string, start: string, end: string) =>
+    `[You are no longer on ${day}, ${start} to ${end}.]`,
+  retimed: (day: string, start: string, end: string, wasStart: string, wasEnd: string) =>
+    `[Your shift on ${day} is now ${start} to ${end} (was ${wasStart} to ${wasEnd}).]`,
+  none: '[You have no shift at this event for now. Your shift page still works.]',
 };
 
 const SHIFT_LINES: Partial<Record<MessageKind, readonly string[]>> = {
-  shift_added: [SHIFT.added('18:00', '23:00')],
-  shift_off: [SHIFT.off('12:00', '16:00')],
-  last_shift_off: [SHIFT.off(START, '23:00'), SHIFT.none],
-  shift_retimed: [SHIFT.retimed('18:00', '23:30', START, '23:00')],
+  shift_added: [SHIFT.added(NEW_DATE, '12:00', '18:00')],
+  shift_removed: [SHIFT.removed(NEW_DATE, '12:00', '18:00')],
+  shift_retimed: [SHIFT.retimed(NEW_DATE, '12:00', '17:00', '12:00', '18:00')],
+  no_shift_left: [SHIFT.removed(DATE, START, '23:00'), SHIFT.none],
 };
 
 export interface Message {

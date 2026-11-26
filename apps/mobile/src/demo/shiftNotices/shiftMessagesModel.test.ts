@@ -54,25 +54,28 @@ describe('a change to the shift (S2)', () => {
 });
 
 describe('a change to one of several shifts (S2)', () => {
-  it('says a line per shift, in place of the start and end lines', () => {
+  it('says a line per shift, with its day, in place of the start and end lines', () => {
     expect(messageOf('shift_added', 'push').lines).toEqual([
-      '[You are now also on the shift from 18:00 to 23:00.]',
+      '[You are now also on Sunday, Oct 18, 12:00 to 18:00.]',
     ]);
-    expect(messageOf('shift_off', 'push').lines).toEqual([
-      '[You are no longer on the shift from 12:00 to 16:00.]',
+    expect(messageOf('shift_removed', 'push').lines).toEqual([
+      '[You are no longer on Sunday, Oct 18, 12:00 to 18:00.]',
     ]);
     expect(messageOf('shift_retimed', 'push').lines).toEqual([
-      '[One of your shifts is now 18:00 to 23:30 (was 17:00 to 23:00).]',
+      '[Your shift on Sunday, Oct 18 is now 12:00 to 17:00 (was 12:00 to 18:00).]',
     ]);
   });
 
   it('keeps the link when the last shift goes, and never reads as a removal', () => {
-    const last = messageOf('last_shift_off', 'sms');
+    const last = messageOf('no_shift_left', 'sms');
 
     expect(last.link).toBe(LINK);
-    expect(last.text).toContain('[You have no shift at Adaeze & Tunde’s wedding for now.');
+    expect(messageOf('no_shift_left', 'push').lines).toEqual([
+      '[You are no longer on Saturday, Oct 17, 17:00 to 23:00.]',
+      '[You have no shift at this event for now. Your shift page still works.]',
+    ]);
     expect(last.text).not.toContain('no longer on the staff');
-    expect(messageOf('last_shift_off', 'whatsApp').button).toBe(MY_SHIFT);
+    expect(messageOf('no_shift_left', 'whatsApp').button).toBe(MY_SHIFT);
   });
 });
 
