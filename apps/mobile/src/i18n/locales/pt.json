@@ -3936,7 +3936,7 @@
     "of": "{{worked}} de {{scheduled}} marcadas",
     "assumed": "das quais {{time}} presumidas (saída não registada)",
     "noneShifts_one": "{{count, number}} turno sem registo de ponto",
-    "noneShifts_many": "{{count, number}} turnos sem registo de ponto",
+    "noneShifts_many": "{{count, number}} de turnos sem registo de ponto",
     "noneShifts_other": "{{count, number}} turnos sem registo de ponto",
     "liveSummary": "Entradas registadas: {{on, number}} de {{all, number}}",
     "liveAt": "Atualizado: {{time}}",
