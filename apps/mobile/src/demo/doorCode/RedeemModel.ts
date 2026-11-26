@@ -8,6 +8,7 @@ export const REDEEM_STATES = [
   'welcome',
   'camera',
   'enter',
+  'signed-out',
   'enter-blank',
   'enter-short',
   'checking',
@@ -87,6 +88,8 @@ export interface Flow {
   more: boolean;
   /** The providers linked to the number's account, when its organisation signs in with Google or Apple only (sc-94849). */
   providers: readonly Provider[] | null;
+  /** Just signed out: "Signed out." above "Enter a door code", until the next step (sc-4235). */
+  signedOut: boolean;
 }
 
 export const JOAO = { name: 'João Pereira', number: '912 345 412' } as const;
@@ -141,7 +144,13 @@ export function freshFlow(step: RedeemStep = 'welcome'): Flow {
     tries: 0,
     more: false,
     providers: null,
+    signedOut: false,
   };
+}
+
+/** Sign out lands on the code's first step, empty, as the browser's does (sc-4235). */
+export function signedOut(): Flow {
+  return { ...freshFlow('enter'), signedOut: true };
 }
 
 export function redeemStateOf(name: string | undefined): RedeemState {
@@ -159,6 +168,8 @@ export function flowAt(state: RedeemState): Flow {
       return { ...plain, step: 'camera' };
     case 'enter':
       return { ...plain, step: 'enter', typed: BAR.code };
+    case 'signed-out':
+      return signedOut();
     case 'enter-blank':
       return { ...plain, step: 'enter', said: W.codeBlank };
     case 'enter-short':
