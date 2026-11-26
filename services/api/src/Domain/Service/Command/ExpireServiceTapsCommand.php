@@ -11,8 +11,8 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'app:prune-service-taps', description: 'Delete service tap keys older than the 24 hours they are kept')]
-final readonly class PruneServiceTapsCommand
+#[AsCommand(name: 'app:service-taps:expire', description: 'Delete service tap keys older than the 24 hours they are kept')]
+final readonly class ExpireServiceTapsCommand
 {
     public function __construct(
         private ServiceTaps $serviceTaps,

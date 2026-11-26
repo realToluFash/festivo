@@ -76,7 +76,7 @@ final class ServiceTapsTest extends ServiceTestCase
     }
 
     #[Test]
-    public function thePruneDeletesKeysOlderThanTwentyFourHoursAndKeepsTheRest(): void
+    public function keysOlderThanTwentyFourHoursAreDeletedEveryHourAndTheRestKept(): void
     {
         $tray = $this->trayAtDishing();
         $plate = Type\string()->coerce($tray['plates'][0]);
@@ -84,7 +84,7 @@ final class ServiceTapsTest extends ServiceTestCase
         self::em()->getConnection()->executeStatement("UPDATE service_taps SET made_at = NOW() - INTERVAL '25 hours'");
         $this->mark($tray, $plate, 'plantain', 'notOn');
 
-        $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find('app:prune-service-taps'));
+        $tester = new CommandTester(new Application(self::$kernel ?? throw new LogicException('No kernel.'))->find('app:service-taps:expire'));
         $tester->execute(['--dry-run' => true]);
         self::assertStringContainsString('Would delete 1 service tap keys.', $tester->getDisplay());
         $tester->execute([]);

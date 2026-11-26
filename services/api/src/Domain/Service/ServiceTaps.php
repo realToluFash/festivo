@@ -52,11 +52,7 @@ final readonly class ServiceTaps
         return new SentTap($key, \hash('sha256', $request->getMethod() . ' ' . $request->getPathInfo() . "\n" . $request->getContent()));
     }
 
-    /**
-     * The same key twice at once waits for the first to be kept, then gets its answer: nothing is applied twice, and a retry of a tap that landed is not refused.
-     *
-     * @param Closure(): JsonResponse $write
-     */
+    /** @param Closure(): JsonResponse $write */
     public function once(Event $event, User $by, SentTap $sent, Closure $write): JsonResponse
     {
         $hold = $by->getId()->toRfc4122() . ':' . $sent->key;
@@ -88,7 +84,6 @@ final readonly class ServiceTaps
         }
     }
 
-    /** Every key older than the 24 hours it is kept, with the read its answer holds. */
     public function prune(): int
     {
         return (int) $this->connection->executeStatement('DELETE FROM service_taps WHERE made_at < :since', ['since' => $this->since()->format('Y-m-d H:i:s')]);
