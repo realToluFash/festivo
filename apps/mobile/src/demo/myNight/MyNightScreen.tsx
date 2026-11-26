@@ -114,6 +114,13 @@ export function MyNightScreen({ first }: { first: Night }) {
         </Text>
       </View>
       <Clock night={night} />
+      {open != null && (
+        <PrimaryButton
+          label={open.label}
+          onPress={() => router.push(open.href as Href)}
+          testID="myNight.openStation"
+        />
+      )}
       <Card title={MN.yourShift}>
         <Text size={20} weight="bold">
           {night.job}
@@ -130,13 +137,6 @@ export function MyNightScreen({ first }: { first: Night }) {
           </View>
         )}
       </Card>
-      {open != null && (
-        <PrimaryButton
-          label={open.label}
-          onPress={() => router.push(open.href as Href)}
-          testID="myNight.openStation"
-        />
-      )}
       <Card title={MN.yourLead}>
         <YourLead lead={night.lead} />
       </Card>

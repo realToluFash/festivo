@@ -311,7 +311,7 @@ const LEAD: Record<MyNightState, readonly [string, string]> = {
   ],
   kitchen: [
     'On a kitchen station',
-    'Open Fryer under Your shift opens Kitchen station, ‹ Your night; the demo moves Gbenga to the Grill',
+    'Open Fryer above Your shift opens Kitchen station, ‹ Your night; the demo moves Gbenga to the Grill',
   ],
   kitchen_pass: ['On the Pass', 'Open Pass: the Pass dishes, so it opens as a station'],
   kitchen_floor: ['Can work the floor on a kitchen station', 'No button: the station refuses it'],
