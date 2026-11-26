@@ -700,9 +700,15 @@ export function NowBlock({
         >
           {now.name}
         </Text>
-        <Text size={16} weight="semibold" style={styles.white}>
-          {now.ends}
-        </Text>
+        {!wide && whole ? (
+          <CoverLine size={16} line={1.3} weight="semibold" room={column} style={styles.white}>
+            {now.ends}
+          </CoverLine>
+        ) : (
+          <Text size={16} weight="semibold" style={styles.white}>
+            {now.ends}
+          </Text>
+        )}
       </>
     );
     const label = t('todayScreen.openEvent');
