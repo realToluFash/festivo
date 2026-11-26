@@ -306,10 +306,23 @@ describe('the end line on the phone’s live cover from AX1 (sc-96187)', () => {
   it('wraps whole across the column, stepping down only for a word too wide, and is main’s below AX1', () => {
     const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
     expect(below).toMatch(
-      /!wide && whole \? \(\n\s*<CoverLine size=\{16\} line=\{1\.3\} weight="semibold" room=\{column\} style=\{styles\.white\}>\n\s*\{now\.ends\}/u,
+      /<CoverLine\n\s*size=\{16\}\n\s*line=\{1\.3\}\n\s*weight="semibold"\n\s*room=\{column\}\n\s*under=\{name \?\? Infinity\}\n\s*style=\{styles\.white\}\n\s*>\n\s*\{now\.ends\}/u,
     );
     expect(below).toMatch(
       /<Text size=\{16\} weight="semibold" style=\{styles\.white\}>\n\s*\{now\.ends\}/u,
+    );
+  });
+});
+
+describe('the name on the phone’s live cover from AX1 (sc-96733)', () => {
+  it('wraps whole across the column as on the iPad, and caps the end line and Open the event at its size', () => {
+    const below = /if \(!moment\.full\) \{[\s\S]*?\n {2}\}\n/u.exec(cover)?.[0] ?? '';
+    expect(below).toMatch(
+      /!wide && whole \? \(\n\s*<CoverLine\n\s*size=\{36\}\n\s*line=\{1\.06\}\n\s*weight="bold"\n\s*accessibilityRole="header"\n\s*room=\{column\}\n\s*onDrawn=\{setName\}[\s\S]*?\{now\.name\}\n\s*<\/CoverLine>/u,
+    );
+    expect(below).toMatch(/<Text\n\s*size=\{wide \? 48 : 36\}/u);
+    expect(below).toMatch(
+      /<WholeWhiteButton label=\{label\} onPress=\{onOpen\} column=\{column\} under=\{name \?\? Infinity\} \/>/u,
     );
   });
 });
