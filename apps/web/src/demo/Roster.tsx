@@ -632,6 +632,7 @@ function RosterView({
               {panel.kind === 'remove' && (
                 <RemoveAsk
                   entry={shown(panel.id)}
+                  told={bf.removal(shown(panel.id))}
                   onKeep={() => {
                     setPanel({ kind: 'details', id: panel.id });
                     focusAfter.current = 'rs-remove';
@@ -1068,10 +1069,12 @@ function HeldLink({ entry, url }: { entry: Entry; url: string }) {
 
 function RemoveAsk({
   entry,
+  told,
   onKeep,
   onRemove,
 }: {
   entry: Entry;
+  told: string | null;
   onKeep: () => void;
   onRemove: () => void;
 }) {
@@ -1095,6 +1098,7 @@ function RemoveAsk({
           ))}
         </ul>
         <p className="mn-quiet">{RW.stopsWorking}</p>
+        {told != null && <p className="mn-quiet">{told}</p>}
       </div>
       <div className="mn-panel-foot">
         <div className="mn-panel-acts">
