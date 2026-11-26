@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { BAND_TALLEST, BAND_TITLE, bandLine, bandRoom, bandStart, bandTitle } from './bandTitle.ts';
+import {
+  BAND_TALLEST,
+  BAND_TITLE,
+  bandLine,
+  bandLiveRoom,
+  bandLiveSize,
+  bandRoom,
+  bandStart,
+  bandTitle,
+} from './bandTitle.ts';
+import { LIVE_FOOT, LIVE_LINE, liveLineHeight } from './bandLive.ts';
 
 // An iPhone 17 Pro upright: 402 wide, 16 either side, the 40 tile, then Search and the bell, 40 each with 8 between.
 const PRO = { width: 402, tileEnd: 56, searchStart: 298 };
@@ -68,5 +78,28 @@ describe('the band’s title at the accessibility sizes', () => {
     const start = bandStart(AX1);
 
     expect(bandTitle(AX1, 10, PRO).size).toBe(start);
+  });
+});
+
+describe('the phone’s live line under the band’s title', () => {
+  // An iPhone 17 Pro's band on an event's day: 62 of status bar, 84 of body, the 40 row 4 under its top.
+  const room = bandLiveRoom(62 + 4 + 20, 62 + 84, LIVE_FOOT);
+
+  it('is main’s at the standard sizes', () => {
+    for (const scale of [1, SEVENTH]) expect(bandLiveSize(scale, room)).toBe(LIVE_LINE * scale);
+  });
+
+  it('keeps its line under the title’s tallest line from AX1, so the two never meet', () => {
+    for (const scale of [AX1, AX5]) {
+      const size = bandLiveSize(scale, room);
+
+      expect(liveLineHeight(size)).toBeLessThanOrEqual(room);
+      expect(size).toBeLessThanOrEqual(LIVE_LINE * scale);
+    }
+    expect(bandLiveSize(AX5, room)).toBeLessThan(LIVE_LINE * AX5);
+  });
+
+  it('never draws under its default size', () => {
+    expect(bandLiveSize(AX5, 0)).toBe(LIVE_LINE);
   });
 });
