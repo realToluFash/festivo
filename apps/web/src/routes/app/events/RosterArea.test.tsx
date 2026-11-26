@@ -124,6 +124,8 @@ function entry(id: string, fullName: string, more: Record<string, unknown> = {})
     briefing: 'none',
     briefingCopy: null,
     contactsErased: false,
+    notice: null,
+    inApp: false,
     ...more,
   };
 }
