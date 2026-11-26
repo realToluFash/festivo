@@ -139,6 +139,8 @@ final class OrganisationExportTest extends ApiTestCase
         'guest_reply_changes' => 'change history',
         'guest_reply_looks' => "notifications: one person's, or deliveries",
         'join_offer_dismissals' => "a person's own account (sc-611's rule)",
+        'kitchen_copies' => 'change history: the kitchen sheet as it was given, which the menu and guests in the archive make again',
+        'kitchen_final_numbers' => "a reminder: the timeline's own milestone, set again on the kitchen sheet",
         'known_devices' => "sign-in credentials (sc-611's rule)",
         'membership_transitions' => 'change history',
         'notification_deliveries' => "notifications: one person's, or deliveries",

@@ -166,7 +166,7 @@ final readonly class FinalNumbers
         $day = DateTimeImmutable::createFromFormat('!Y-m-d', Str\trim($typed), new DateTimeZone('UTC'));
 
         if (false === $day || $day->format('Y-m-d') !== Str\trim($typed)) {
-            throw $this->refusal('validation.final_numbers_invalid');
+            throw $this->dueRefused('validation.final_numbers_invalid');
         }
 
         if ($day->format('Y-m-d') === $was) {
@@ -174,17 +174,17 @@ final readonly class FinalNumbers
         }
 
         if ($day->format('Y-m-d') >= $event->getStartsAt()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->refusal('validation.final_numbers_not_before_event');
+            throw $this->dueRefused('validation.final_numbers_not_before_event');
         }
 
         if ($day->format('Y-m-d') < $this->clock->now()->setTimezone($zone)->format('Y-m-d')) {
-            throw $this->refusal('validation.final_numbers_past');
+            throw $this->dueRefused('validation.final_numbers_past');
         }
 
         return $day;
     }
 
-    private function refusal(string $key): ApiException
+    private function dueRefused(string $key): ApiException
     {
         return ApiException::validation([[
             'propertyPath' => 'due',
