@@ -10,7 +10,7 @@ import {
   myNightStateOf,
   nightOf,
   rowLineOf,
-  signedOutAt,
+  signedInUntil,
 } from './myNightModel.ts';
 
 describe('a staff member’s night (sc-3915)', () => {
@@ -31,8 +31,8 @@ describe('a staff member’s night (sc-3915)', () => {
     const night = nightOf('night');
 
     expect(MN.only(night.linkEnds)).toBe('Tonight only · ends 02:00');
-    expect(MN.yoursAlone(signedOutAt(night))).toBe(
-      'This link is yours alone. You’ll be signed out at Sunday 02:00, and nothing stays on this device.',
+    expect(MN.yoursAlone(signedInUntil(night))).toBe(
+      'This link is yours alone. You are signed in until Sun, Nov 29, 02:00. Nothing stays on this device.',
     );
   });
 

@@ -8,7 +8,13 @@ import {
 } from '../../layout/capsuleFit.ts';
 import type { LayoutKind } from '../../layout/classify.ts';
 import { PILL_CHROME, WAITING_RING, pillShowsWords } from '../../layout/pillFit.ts';
-import { atAccessibilitySizes, fitWidest, labelStart, piecesIn } from '../../layout/textSize.ts';
+import {
+  atAccessibilitySizes,
+  fitWidest,
+  labelStart,
+  piecesIn,
+  wholeLineHeight,
+} from '../../layout/textSize.ts';
 import { tokens } from '../../theme/tokens.ts';
 
 export type TodayName = 'qa' | 'long';
@@ -224,6 +230,41 @@ export const STARTS_DAYS: readonly WeekDay[] = [
 /** A row's title draws on one line, and so may take no more, when its width laid out unbounded is no wider than its room (sc-94683). */
 export function titleOnOneLine(width: number, room: number): boolean {
   return room > 0 && width <= room;
+}
+
+/** Main's strip label, `TYPE.label` in semibold capitals, tracked by a fixed 6% of it at every size. */
+export const STRIP_LABEL = 11;
+export const STRIP_TRACKING = STRIP_LABEL * 0.06;
+
+/** sc-94682: a strip label keeps this step's size while it fits its day's column; otherwise the largest whole size at which it fits, never under its default size, and below it as main draws it. */
+export function stripLabelSize(
+  start: number,
+  width: number,
+  letters: number,
+  column: number,
+): number {
+  if (width <= column || start <= STRIP_LABEL) return start;
+  const tracking = letters * STRIP_TRACKING;
+
+  return Math.max(STRIP_LABEL, Math.floor((start * (column - tracking)) / (width - tracking)));
+}
+
+/** sc-94682: a day's label keeps the room of this step's line whatever size it is drawn at, so today's circle stays in line with the other six. */
+export function stripLabelRoom(start: number): number {
+  return wholeLineHeight(start, start);
+}
+
+/** The strip's seven days from today, a dot for each event with a row that day. */
+export function stripDays(week: TodayWeek): { date: string; dots: WeekRowEvent[] }[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(Date.parse(`${SIZE_TODAY}T00:00Z`) + index * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    const days = week === 'starts' ? STARTS_DAYS : week === 'days' ? WEEK_DAYS : [];
+    const rows = days.find((day) => day.date === date)?.rows ?? [];
+
+    return { date, dots: [...new Set(rows.map((row) => row.key))] };
+  });
 }
 
 export type TodayOrg = 'qa' | 'lumen' | 'ire' | 'several' | 'oneWord';
