@@ -33,7 +33,9 @@ import {
   redeemStateOf,
   refusalOf,
   areasFor,
+  isServiceLevel,
   moreAreas,
+  SERVICE_LEVELS,
 } from './RedeemModel.ts';
 
 const LOCALE = 'en-US';
@@ -295,6 +297,15 @@ describe('inside the event, by role (pm, 7 Nov, sc-72)', () => {
     ]);
     expect(moreAreas('Can view', true)).toEqual(['schedule', 'seating', 'people']);
     expect(moreAreas('Can view', false)).toEqual([]);
+  });
+
+  it('opens Overview alone at every service level, however it is carried (sc-96279)', () => {
+    for (const level of SERVICE_LEVELS) {
+      expect(areasFor(level)).toEqual(['overview']);
+      expect(moreAreas(level, true)).toEqual([]);
+      expect(isServiceLevel(level)).toBe(true);
+    }
+    expect(isServiceLevel('Can check guests in')).toBe(false);
   });
 });
 
