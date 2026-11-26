@@ -361,6 +361,10 @@
 }
 
 @media (width >= 50rem) {
+  .myn-check-in {
+    min-height: 52px;
+  }
+
   .myn-bar {
     padding-inline: var(--space3xl);
   }

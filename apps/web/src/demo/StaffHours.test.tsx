@@ -63,6 +63,19 @@ describe('Hours worked at a desk (sc-234)', () => {
     expect(screen.queryByRole('button', { name: /^Correct times/ })).toBeNull();
   });
 
+  it('keeps a removed person under their name, and lets them be corrected', SLOW, async () => {
+    await open('removed');
+
+    const femi = within(table()).getByRole('rowheader', { name: /Femi Adeyemi/ });
+    expect(femi.textContent).toContain('Removed from the roster');
+    expect(
+      within(table()).getByRole('rowheader', { name: /Chinedu Eze/ }).textContent,
+    ).not.toContain('Removed');
+    fireEvent.click(screen.getByRole('button', { name: 'Correct times, Femi Adeyemi' }));
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByText('Not recorded, counted to 00:00')).toBeTruthy();
+  });
+
   it('shows who is in during service', SLOW, async () => {
     await open('list_live');
 

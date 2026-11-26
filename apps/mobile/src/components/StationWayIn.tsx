@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import type { OrganisationEvent } from '@soirely/api-client';
 import { formatEventClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -8,11 +8,17 @@ import { Animated } from 'react-native';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { pickedKey } from '../kit/kitchenStation.ts';
+import { readPick } from '../kit/kitchenStation.ts';
 import { useServerNow } from '../kit/serverNow.ts';
-import { stationRowLine, stationRowShows } from '../kit/stationWayIn.ts';
+import {
+  type StationRowRead,
+  afterFailedRead,
+  readStationRow,
+  stationRowShows,
+} from '../kit/stationWayIn.ts';
 import { glide } from '../motion.ts';
 import { useReducedMotion } from '../reducedMotion.ts';
+import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LineIcon } from './AccountCard.tsx';
 import { usePhaseOf } from './Events.tsx';
@@ -21,37 +27,26 @@ import { Row } from './Summary.tsx';
 /** The line follows a fire within this long. */
 const EVERY_MS = 30_000;
 
-type Read = { line: string; at: string; stale: boolean } | null;
-
 /** Kitchen station (sc-95382), the row under Your night on either Overview, on the event's day, for an account the stations read answers; null for anybody else, and Overview is as it was. */
 export function useStationRowItem(event: OrganisationEvent) {
   const { t } = useTranslation();
   const now = useServerNow();
   const phase = usePhaseOf(event, now);
   const shows = phase != null && stationRowShows(event, phase, now);
-  const [read, setRead] = useState<Read>(null);
+  const accountId = useSignedIn().account?.id;
+  const [read, setRead] = useState<StationRowRead>(null);
 
   useEffect(() => {
-    if (!shows) return;
+    if (!shows || accountId == null) return;
     let current = true;
     const load = () =>
-      Promise.all([
+      readStationRow(
+        t,
         api.kitchenStations(event.id),
-        AsyncStorage.getItem(pickedKey(event.id)).catch(() => null),
-      ]).then(
-        ([stations, picked]) =>
-          current &&
-          setRead({
-            line: stationRowLine(t, stations, picked),
-            at: new Date().toISOString(),
-            stale: false,
-          }),
-        (error: unknown) => {
-          if (!current) return;
-          if (error instanceof ApiError && (error.status === 403 || error.status === 404))
-            setRead(null);
-          else setRead((was) => (was == null ? was : { ...was, stale: true }));
-        },
+        readPick(AsyncStorage, accountId, event.id),
+      ).then(
+        (fresh) => current && setRead(fresh),
+        (error: unknown) => current && setRead((was) => afterFailedRead(was, error)),
       );
     void load();
     const timer = setInterval(() => void load(), EVERY_MS);
@@ -60,7 +55,7 @@ export function useStationRowItem(event: OrganisationEvent) {
       current = false;
       clearInterval(timer);
     };
-  }, [shows, event.id, t]);
+  }, [shows, accountId, event.id, t]);
 
   if (!shows || read == null) return null;
 

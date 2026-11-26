@@ -141,6 +141,12 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
     expect(providerNames([])).toEqual(['Google', 'Apple']);
     expect(providerNames(['apple'])).toEqual(['Apple']);
   });
+
+  it('names Google first whatever order the API lists them in (sc-96668)', () => {
+    expect(providerNames(['apple', 'google'])).toEqual(['Google', 'Apple']);
+    expect(providerNames(['google', 'apple'])).toEqual(['Google', 'Apple']);
+    expect(providerNames(['google'])).toEqual(['Google']);
+  });
 });
 
 describe('what the rules ask of a member, on the home screen', () => {

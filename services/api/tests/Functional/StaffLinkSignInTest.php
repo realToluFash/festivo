@@ -390,6 +390,18 @@ final class StaffLinkSignInTest extends ApiTestCase
     }
 
     #[Test]
+    public function anEventHeldByAStaffLinkAndAGrantFromOutsideIsListedOnceAtTheGrantsLevel(): void
+    {
+        $user = $this->signedIn();
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/people', ['address' => self::NUMBER, 'role' => 'can_view']);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $outside = Type\vec(Type\shape(['id' => Type\string(), 'role' => Type\string()], true))->coerce($this->as($user, 'GET', '/api/auth/me')['outsideEvents'] ?? null);
+
+        self::assertSame([[$this->eventId, 'can_view']], Vec\map($outside, static fn (array $one): array => [$one['id'], $one['role']]));
+    }
+
+    #[Test]
     public function replacingTheLinkEndsTheGrantAtOnce(): void
     {
         $user = $this->signedIn();

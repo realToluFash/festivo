@@ -99,7 +99,7 @@ export const NW = {
   noneCalledOff: 'No reminder will be sent: the event has been called off.',
   noneEnded: 'No reminder will be sent: the event has ended.',
   unreachable: "Can't be reached",
-  unreachableLine: "Can't be reached: not signed in to the app, and no mobile number.",
+  unreachableLine: "Can't be reached: no push notifications and no mobile number.",
   goesAt: (time: string) => `Goes at ${time}`,
   change: changeWords,
   sameMessage: 'Edits before then go in the same message.',

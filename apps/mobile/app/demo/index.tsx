@@ -1,4 +1,6 @@
 import { BRIEFING_BOARDS } from '../../src/demo/briefing/briefingModel.ts';
+import { SHIFT_MESSAGE_BOARDS } from '../../src/demo/shiftNotices/shiftMessagesModel.ts';
+import { SHIFT_NOTICE_BOARDS } from '../../src/demo/shiftNotices/shiftNoticesModel.ts';
 import { type Href, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -2717,6 +2719,22 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
   {
     page: 'Staffing · the briefing above the roster, house rules and everyone’s shift (sc-3917) · tablet portrait and landscape',
     boards: BRIEFING_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · the reminder the day before and each person’s shift notices, on the Staff page (sc-4333) · phone, tablet portrait and landscape',
+    boards: SHIFT_NOTICE_BOARDS.map(({ title, what, href }) => ({
+      title,
+      what,
+      href: href as Href,
+    })),
+  },
+  {
+    page: 'Staffing · ShiftMessages-Phone, the change and reminder messages as a person on the staff gets them (sc-4333) · phone',
+    boards: SHIFT_MESSAGE_BOARDS.map(({ title, what, href }) => ({
       title,
       what,
       href: href as Href,
