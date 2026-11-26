@@ -161,6 +161,8 @@
     "plan_sold_by_contract": "Este plan se vende por contrato, no mediante el pago en línea. Consulte a Soirely para contratarlo.",
     "plan_not_priced": "Este plan no tiene precio en su moneda de facturación.",
     "nothing_paid_through_provider": "No hay ningún método de pago que actualizar hasta que se pague un plan.",
+    "audience_name_taken": "Ese nombre ya lo usa un público guardado.",
+    "audiences_full": "Este evento ya tiene el máximo de públicos guardados.",
     "table_not_yours": "Esta mesa está en la zona de otra persona. Pregunte a esa persona o al responsable de sala.",
     "level_not_allowed_for_code": "Un código de acceso no puede dar permiso para dirigir la sala. Dé «Puede dirigir la sala» a una sola persona, con su propio enlace desde la lista del personal.",
     "tray_not_yours": "Esta bandeja es de {name}. Pregunte a esa persona o al responsable de sala.",

@@ -515,6 +515,7 @@
     "validation.guest_message_no_guests": "Cet événement n’a encore aucun invité à qui écrire.",
     "guest_message.event_draft": "Cet événement est un brouillon. Publiez-le pour écrire à vos invités.",
     "guest_message.event_ended": "Cet événement s’est terminé il y a plus de 30 jours : vous ne pouvez plus écrire à ses invités.",
+    "saved_audience.full": "Cet événement a {most, number, ::group-auto} publics enregistrés, le maximum. Supprimez-en un pour en enregistrer un autre.",
     "validation.guest_greet_as_too_long": "Raccourcissez l’appellation à {count, plural, one {{count, number, ::group-auto} caractère} many {{count, number, ::group-auto} de caractères} other {{count, number, ::group-auto} caractères}} maximum.",
     "validation.guest_message_token_unknown": "Non envoyé. Une partie du message ne peut pas être complétée pour chaque invité : supprimez-la, puis utilisez Insérer."
 }

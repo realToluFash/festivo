@@ -27,7 +27,19 @@ final class GuestGroupRepository extends ServiceEntityRepository implements Even
 
     public function findOneInEvent(Uuid $eventId, Uuid $id): ?GuestGroup
     {
-        return $this->findOneBy(['event' => $eventId, 'id' => $id]);
+        return $this->findOneBy(['event' => $eventId, 'id' => $id, 'deletedAt' => null]);
+    }
+
+    /**
+     * Deleted ones too, which a condition still names (sc-3957).
+     *
+     * @param list<string> $ids
+     *
+     * @return list<GuestGroup>
+     */
+    public function findEverIn(Event $event, array $ids): array
+    {
+        return [] === $ids ? [] : $this->findBy(['event' => $event->getId(), 'id' => $ids]);
     }
 
     /** @return list<GuestGroup> */
@@ -36,6 +48,7 @@ final class GuestGroupRepository extends ServiceEntityRepository implements Even
         /** @var list<GuestGroup> */
         return $this->createQueryBuilder('g')
             ->where('g.event = :event')
+            ->andWhere('g.deletedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->orderBy('g.nameKey', 'ASC')
             ->addOrderBy('g.id', 'ASC')
@@ -45,7 +58,7 @@ final class GuestGroupRepository extends ServiceEntityRepository implements Even
 
     public function findOneNamed(Event $event, string $nameKey): ?GuestGroup
     {
-        return $this->findOneBy(['event' => $event->getId(), 'nameKey' => $nameKey]);
+        return $this->findOneBy(['event' => $event->getId(), 'nameKey' => $nameKey, 'deletedAt' => null]);
     }
 
     public function countOnEvent(Event $event): int
@@ -53,6 +66,7 @@ final class GuestGroupRepository extends ServiceEntityRepository implements Even
         return Type\int()->coerce($this->createQueryBuilder('g')
             ->select('COUNT(g.id)')
             ->where('g.event = :event')
+            ->andWhere('g.deletedAt IS NULL')
             ->setParameter('event', $event->getId(), 'uuid')
             ->getQuery()
             ->getSingleScalarResult());

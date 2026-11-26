@@ -110,7 +110,7 @@ final readonly class OrganisationArchive
             SELECT gg.id, gg.event_id, gg.name, gg.created_at
               FROM guest_groups gg
               JOIN events ev ON ev.id = gg.event_id
-             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL AND gg.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, gg.event_id, gg.name_key, gg.id
             SQL,
         'guest_messages' => <<<'SQL'
@@ -119,6 +119,13 @@ final readonly class OrganisationArchive
               JOIN events ev ON ev.id = m.event_id
              WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
              ORDER BY ev.starts_at_utc, m.event_id, m.created_at, m.id
+            SQL,
+        'saved_audiences' => <<<'SQL'
+            SELECT a.id, a.event_id, a.name, a.conditions::text AS conditions, a.created_at
+              FROM saved_audiences a
+              JOIN events ev ON ev.id = a.event_id
+             WHERE ev.organisation_id = :organisation AND ev.deleted_at IS NULL
+             ORDER BY ev.starts_at_utc, a.event_id, a.name_key, a.id
             SQL,
         'seating_plans' => <<<'SQL'
             SELECT p.id, p.event_id, p.room_name, p.width_cm, p.length_cm, t.shared_at, t.share_by, p.created_at
