@@ -16,6 +16,7 @@ use App\Repository\KitchenCopyRepository;
 use App\Repository\KitchenFinalNumbersRepository;
 use DateTimeImmutable;
 use DateTimeZone;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psl\Type;
@@ -43,7 +44,7 @@ final readonly class FinalNumbers
     ) {
     }
 
-    /** @return Final `picksOpenUntil` is the last course's close while the due day ends before it */
+    /** @return Final `picksOpenUntil` is the last course's close while the due day falls before its day, both in the event's zone */
     public function of(Event $event): array
     {
         $due = $this->kitchenFinalNumbersRepository->findOneForEvent($event)?->getDueOn();
@@ -52,7 +53,7 @@ final readonly class FinalNumbers
 
         return [
             'due' => $due?->format('Y-m-d'),
-            'picksOpenUntil' => null !== $due && null !== $lastClose && self::endOf($due->format('Y-m-d'), $zone) < $lastClose ? $lastClose->setTimezone($zone)->format(\DATE_ATOM) : null,
+            'picksOpenUntil' => null !== $due && null !== $lastClose && $due->format('Y-m-d') < $lastClose->setTimezone($zone)->format('Y-m-d') ? $lastClose->setTimezone($zone)->format(\DATE_ATOM) : null,
             'copies' => Vec\map($this->kitchenCopyRepository->findForEvent($event), static fn (KitchenCopy $copy): array => [
                 'id' => $copy->getId()->toRfc4122(),
                 'recordedAt' => $copy->getRecordedAt()->setTimezone($zone)->format(\DATE_ATOM),
@@ -64,11 +65,13 @@ final readonly class FinalNumbers
     /** Before the event's first day, both in its zone; a new or changed day not before today there. A day left as it is stands, passed or moved past by the event's own dates. Refused 422 on `due`. */
     public function setDue(Event $event, ?string $typed): void
     {
-        $final = $this->kitchenFinalNumbersRepository->findOneForEvent($event) ?? new KitchenFinalNumbers($event);
-        $was = $final->getDueOn()?->format('Y-m-d');
-        $final->setDueOn($this->due($event, $typed, $was));
-        $this->entityManager->persist($final);
-        $this->entityManager->flush();
+        $this->entityManager->wrapInTransaction(function () use ($event, $typed): void {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+            $final = $this->kitchenFinalNumbersRepository->findOneForEvent($event) ?? new KitchenFinalNumbers($event);
+            $final->setDueOn($this->due($event, $typed, $final->getDueOn()?->format('Y-m-d')));
+            $this->entityManager->persist($final);
+            $this->entityManager->flush();
+        });
     }
 
     /** @param Sheet $sheet the full sheet, names included; its "As of" becomes the moment it was given */

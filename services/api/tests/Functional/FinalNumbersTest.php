@@ -133,6 +133,36 @@ final class FinalNumbersTest extends ApiTestCase
     }
 
     #[Test]
+    public function picksOpenUntilShowsOnlyWhileTheDueDayFallsBeforeTheLastClosesDay(): void
+    {
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no course');
+        $main->giveByDefault(self::em()->find(MenuDish::class, $this->jollof->getId()) ?? self::fail('no dish'), null, [], new DateTimeImmutable('2026-10-20'));
+        self::em()->flush();
+
+        $this->due('2026-10-19');
+        self::assertSame('2026-10-20T23:59:59+01:00', $this->final()['picksOpenUntil'], 'before the close');
+
+        $this->due('2026-10-20');
+        self::assertNull($this->final()['picksOpenUntil'], 'on the close’s day');
+
+        $this->due('2026-10-21');
+        self::assertNull($this->final()['picksOpenUntil'], 'after the close');
+    }
+
+    #[Test]
+    public function picksOpenUntilIsNullWhenNoCourseAsks(): void
+    {
+        $main = self::em()->find(MenuCourse::class, $this->main->getId()) ?? self::fail('no course');
+        $main->setGuestsChoose(false);
+        self::em()->remove(self::em()->find(MenuDish::class, $this->egusi->getId()) ?? self::fail('no dish'));
+        self::em()->flush();
+
+        $this->due('2026-10-10');
+
+        self::assertNull($this->final()['picksOpenUntil']);
+    }
+
+    #[Test]
     public function theMilestoneIsTheHostsAtTheDueDayAndMovesClearsAndGoes(): void
     {
         self::assertNull($this->milestone());
