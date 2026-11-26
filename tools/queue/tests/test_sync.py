@@ -136,7 +136,8 @@ class DesignBranchMoves(unittest.TestCase):
     def branch(self, name):
         return {"references": [{"entity_type": "branch", "id": 7, "name": name}]}
 
-    def sync(self, history, branch="ux/sc-5-pill", prs=(), failures=0, runs=1):
+    def sync(self, history, branch="ux/sc-5-pill", prs=(), failures=0, runs=1, pulls=(),
+             pull_requests=()):
         db, test = store.connect(":memory:"), self
         store.put_prs(db, list(prs))
         updates, failing = [], [failures]
@@ -149,7 +150,8 @@ class DesignBranchMoves(unittest.TestCase):
             def story(self, story_id):
                 return {"id": story_id, "name": "pill", "updated_at": "t1",
                         "workflow_state_id": test.ID["Ready For Dev"],
-                        "branches": [{"name": branch}]}
+                        "branches": [{"name": branch, "pull_requests": list(pulls)}],
+                        "pull_requests": list(pull_requests)}
 
             def history(self, story_id):
                 if failing[0]:
@@ -200,6 +202,48 @@ class DesignBranchMoves(unittest.TestCase):
         self.assertEqual((updates, state, self.synced_at), ([], "Ready For Dev", NOW))
         updates, state = self.sync(moved, failures=1, runs=2)
         self.assertEqual((len(updates), state), (1, "Needs Design"))
+
+    def test_a_merged_demo_stays_however_the_story_was_fetched(self):
+        merged = {"number": 2154, "merged": True, "closed": True}
+        updates, state = self.sync(self.pushed(), pulls=[merged])
+        self.assertEqual((updates, state), ([], "Ready For Dev"))
+
+    def test_a_closed_demo_pull_request_counts_as_finished(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154, "closed": True}])
+        self.assertEqual(updates, [])
+
+    def test_the_integrations_move_on_the_merge_stands(self):
+        merge = self.move("Needs Design", "Ready For Dev",
+                          references=[{"entity_type": "pull-request", "id": 9, "number": 2154}])
+        updates, _ = self.sync([*self.pushed(), self.move("Ready For Dev", "Needs Design"),
+                                merge], pulls=[{"number": 2154, "merged": True}],
+                               prs=[{"number": 2154, "story_id": 5, "branch": "ux/sc-5-pill",
+                                     "state": "open"}])
+        self.assertEqual(updates, [])
+
+    def test_a_merge_github_has_seen_before_shortcut_stands(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154}],
+                               prs=[{"number": 2154, "story_id": 5, "branch": "ux/sc-5-pill",
+                                     "state": "merged"}])
+        self.assertEqual(updates, [])
+
+    def test_an_open_demo_pull_request_is_undone(self):
+        updates, state = self.sync(self.pushed(), pulls=[{"number": 3888}])
+        self.assertEqual((len(updates), state), (1, "Needs Design"))
+
+    def test_a_second_ux_branch_still_open_is_undone(self):
+        updates, _ = self.sync(self.pushed(), pulls=[{"number": 2154, "merged": True}],
+                               pull_requests=[{"number": 3888, "branch_name": "ux/sc-5-states"}])
+        self.assertEqual(len(updates), 1)
+
+    def test_a_pull_request_only_shortcut_names_resolves_the_move(self):
+        merge = self.move("Needs Design", "Ready For Dev",
+                          references=[{"entity_type": "pull-request", "id": 9, "number": 3888}])
+        updates, _ = self.sync([merge], pulls=[{"number": 3888}])
+        self.assertEqual(len(updates), 1)
+
+    def pushed(self):
+        return [self.move("Needs Design", "Ready For Dev", **self.branch("ux/sc-5-pill"))]
 
     def test_only_the_last_move_counts(self):
         updates, _ = self.sync([self.move("Needs Design", "Ready For Dev",
