@@ -2549,6 +2549,21 @@ const PAGES: readonly { page: string; boards: readonly Board[] }[] = [
         href: '/demo/people?state=roleFails',
       },
       {
+        title: 'People · Remove asked for a mobile number',
+        what: 'Not joined, so the ask reads Keep them and Remove',
+        href: '/demo/people?state=longMobileRemove',
+      },
+      {
+        title: 'People · Remove asked for Kemi',
+        what: 'Joined from outside, so the ask reads Keep Kemi',
+        href: '/demo/people?state=joinedRemove',
+      },
+      {
+        title: 'People · a mobile number’s role change fails',
+        what: 'Pick a role offline: the line names +234 803 123 4567 whole',
+        href: '/demo/people?state=longMobileRoleFails',
+      },
+      {
         title: 'People · some added, one refused',
         what: 'Tick Kofi then Julien: Kofi goes in, Julien stays ticked',
         href: '/demo/people?state=addPartial',

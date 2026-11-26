@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  askWords,
   calledIn,
   keepWords,
   LONG_ADDRESSES,
@@ -216,5 +217,31 @@ describe('someone with no account name on the Remove ask (sc-91678)', () => {
   it('counts a withheld outsider as unnamed too', () => {
     const [hidden] = seenBy([mobile], false);
     expect(hidden && keepWords(hidden)).toBe('Keep them');
+  });
+
+  it('asks in French with Ne pas retirer for them and Garder for a joined name', () => {
+    const french = askWords(amaka, true);
+    expect(french.title(amaka.name)).toBe(
+      'Retirer amaka.outside@soirely.test de cet événement\u00A0?',
+    );
+    expect([french.keep, french.go]).toEqual(['Ne pas retirer', 'Retirer']);
+    expect(french.line).toBe('Cette personne perdra l’accès à sa prochaine action.');
+    expect(askWords(ada, true).keep).toBe('Garder Ada');
+    expect(askWords(mobile, false)).toMatchObject({ keep: 'Keep them', go: 'Remove' });
+  });
+
+  it('opens each case the demo shows on arrival', () => {
+    expect(peopleStart('mobileRemove').open).toEqual({ id: '+2348031234567', asking: true });
+    expect(peopleStart('joinedRemove').open).toEqual({
+      id: 'kemi.okafor@example.com',
+      asking: true,
+    });
+    const fails = peopleStart('mobileRoleFails');
+    expect([fails.roleFails, fails.open]).toEqual([true, { id: '+2348031234567', asking: false }]);
+    const french = peopleStart('addressRemoveFr');
+    expect([french.french, french.open]).toEqual([
+      true,
+      { id: LONG_ADDRESSES.addressShort, asking: true },
+    ]);
   });
 });
