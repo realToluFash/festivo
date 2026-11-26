@@ -9,12 +9,11 @@ export type Change =
   | { field: 'shiftRetimed'; now: string; was: string }
   | { field: 'noShift' };
 
-/** Bracketed until [en] writes them (#96276). */
 const SHIFT_WORDS = {
-  shiftAdded: (shift: string) => `[Added: ${shift}]`,
-  shiftOff: (shift: string) => `[Off: ${shift}]`,
-  shiftRetimed: (now: string, was: string) => `[${now} (was ${was})]`,
-  noShift: '[No shift for now]',
+  shiftAdded: (shift: string) => `Assigned ${shift}`,
+  shiftOff: (shift: string) => `Unassigned ${shift}`,
+  shiftRetimed: (now: string, was: string) => `Shift ${now} (was ${was})`,
+  noShift: 'No shift left, still on the staff',
 };
 
 function changeWords(change: Change): string {
@@ -230,6 +229,14 @@ export function cardOf<T extends Reachable>(
     };
   }
   if (!reminder.on) return { kind: 'open', top: null, cost: null, short: 0, left: [] };
+  if (reminder.sent != null)
+    return {
+      kind: 'open',
+      top: NW.sent(reminder.sent.date, reminder.sent.count),
+      cost: null,
+      short: 0,
+      left: [],
+    };
 
   const onShift = list.filter((one) => one.shift != null);
   const reminded = remindedOf(list);
@@ -239,14 +246,6 @@ export function cardOf<T extends Reachable>(
     ...(notBriefed > 0 ? [NW.notBriefed(notBriefed)] : []),
     ...(cannotReach > 0 ? [NW.cannotReach(cannotReach)] : []),
   ];
-  if (reminder.sent != null)
-    return {
-      kind: 'open',
-      top: NW.sent(reminder.sent.date, reminder.sent.count),
-      cost: null,
-      short: 0,
-      left,
-    };
 
   const preview = previewOf(
     reminded.filter((one) => one.app !== true).map(creditsOf),

@@ -82,11 +82,14 @@ describe('the reminder card', () => {
     });
   });
 
-  it('keeps the Sent line once the reminder has gone, with no cost line', () => {
-    expect(card({ sent: { date: FRI, count: 5 }, balance: 0 })).toMatchObject({
+  it('reads the Sent line alone once the reminder has gone: no cost, shortfall or left-out line', () => {
+    const none = noticePeople().map((p) => ({ ...p, brief: 'none' as const }));
+    expect(cardOf(none, reminder({ sent: { date: FRI, count: 5 }, balance: 0 }), cost)).toEqual({
+      kind: 'open',
       top: 'Sent on Friday, Oct 16, to 5 people.',
       cost: null,
       short: 0,
+      left: [],
     });
   });
 });
@@ -213,9 +216,12 @@ describe('several shifts', () => {
   };
 
   it('reads a shift retimed, added, and the last taken off, one line per shift', () => {
-    expect(lines('grace')).toEqual(['[Saturday 15:00 to 23:00 (was 17:00 to 23:00)]']);
-    expect(lines('tope')).toEqual(['[Added: Sunday 12:00 to 18:00]']);
-    expect(lines('yusuf')).toEqual(['[Off: Saturday 18:00 to 00:00]', '[No shift for now]']);
+    expect(lines('grace')).toEqual(['Shift Saturday 15:00–23:00 (was 17:00–23:00)']);
+    expect(lines('tope')).toEqual(['Assigned Sunday 12:00–18:00']);
+    expect(lines('yusuf')).toEqual([
+      'Unassigned Saturday 18:00–Sunday 00:00',
+      'No shift left, still on the staff',
+    ]);
   });
 });
 

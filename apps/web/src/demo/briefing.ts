@@ -583,15 +583,15 @@ const waiting = (changes: readonly Change[]) => ({
 const severalShifts = reshaped({
   grace: {
     shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
-    ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00 to 23:00', was: '17:00 to 23:00' }]),
+    ...waiting([{ field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' }]),
   },
   tope: {
     shift: 'Saturday 17:00 to 23:00, Sunday 12:00 to 18:00',
-    ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00 to 18:00' }]),
+    ...waiting([{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
   },
   yusuf: {
     shift: null,
-    ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00 to 00:00' }, { field: 'noShift' }]),
+    ...waiting([{ field: 'shiftOff', shift: 'Saturday 18:00–Sunday 00:00' }, { field: 'noShift' }]),
   },
 });
 
@@ -989,14 +989,14 @@ const STATES = {
   noticesSeveralShifts: () =>
     noticed({
       name: 'Several shifts, waiting',
-      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, Yusuf his last taken off. Each reads Goes at with its short line, bracketed until [en] writes it.',
+      note: 'Assign, Unassign and Edit times on Jobs and shifts: Grace has one of two shifts retimed, Tope a shift added, and Yusuf’s last is taken off. Each reads Goes at with its short line; a shift’s start carries its weekday, its end only when on another day.',
       people: severalShifts(),
     }),
   noticesEve: () =>
     noticed(
       {
         name: 'The reminder has gone (the eve)',
-        note: 'Sent on Friday, Oct 16, to 5 people. No cost line. Kelechi was told by WhatsApp.',
+        note: 'Sent on Friday, Oct 16, to 5 people, and nothing else: no cost line and no left-out lines. The roster still names who was not sent. Kelechi was told by WhatsApp.',
         people: eve(),
       },
       { sent: SENT_FRIDAY },
