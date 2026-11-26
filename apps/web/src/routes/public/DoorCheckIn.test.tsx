@@ -38,6 +38,17 @@ const NIGHT = {
   checksIn: true,
 };
 
+/** A door code's grant on the event, as /api/me's outsideEvents lists it. */
+const HELD = {
+  id: 'ev_1',
+  name: 'Joana & Rui’s wedding',
+  organisationName: 'Lumen Feiras',
+  role: 'can_check_in',
+  jobLabel: 'Bar and drinks',
+  startsAt: '2030-11-14T15:00:00+00:00',
+  endsAt: '2030-11-14T23:30:00+00:00',
+};
+
 const REFUSED = (status: number) => ({
   type: 'https://soirely.com/errors/access_denied',
   title: 'No',
@@ -51,7 +62,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function signedIn(): void {
+function signedIn(outsideEvents: unknown[] = []): void {
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: 's' });
   __setSessionState({
     status: 'signedIn',
@@ -70,7 +81,7 @@ function signedIn(): void {
       organisationCountry: null,
       timezone: null,
       waitingFor: null,
-      outsideEvents: [],
+      outsideEvents,
     },
   } as never);
 }
@@ -93,6 +104,7 @@ function at(path: string, answers: Record<string, () => Response>): string[] {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -135,18 +147,54 @@ describe('check-in in the browser (sc-28230)', () => {
     expect(screen.queryByText('Amara Eze')).toBeNull();
   });
 
-  it('keeps no guest’s name in the browser’s storage', async () => {
+  it('keeps no guest’s name in the browser after a search, an arrival and a walk-in', async () => {
     signedIn();
-    at('/door/ev_1', {
-      'GET /api/events/ev_1/check-in': () => json(list(true)),
+    const opened = { indexedDB: vi.fn(), caches: vi.fn() };
+    vi.stubGlobal('indexedDB', { open: opened.indexedDB });
+    vi.stubGlobal('caches', { open: opened.caches });
+    let arrived = false;
+    const walkIn = {
+      id: 'g_ze',
+      fullName: 'Zé Novo',
+      reply: 'coming',
+      arrival: { at: '2030-11-14T19:10:00+00:00', by: 'Kemi Okafor' },
+      companions: [],
+    };
+    const sent = at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(list(arrived)),
       'GET /api/events/ev_1/my-night': () => json(NIGHT),
-    });
-    await screen.findByText('Amara Eze');
+      'POST /api/events/ev_1/check-in/arrivals': () => {
+        arrived = true;
+        return json(list(true));
+      },
+      'POST /api/events/ev_1/check-in/walk-ins': () => {
+        const now = list(true);
 
+        return json({
+          ...now,
+          guests: [...(now.guests as unknown[]), walkIn],
+          walkIn: { id: 'g_ze' },
+        });
+      },
+    });
+
+    const search = await screen.findByLabelText('Search by name');
+    fireEvent.change(search, { target: { value: 'amara' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Arrived: Amara Eze' }));
+    await waitFor(() => expect(sent).toContain('POST /api/events/ev_1/check-in/arrivals'));
+
+    fireEvent.change(search, { target: { value: 'Zé Novo' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add walk-in' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add and mark arrived' }));
+    await waitFor(() => expect(sent).toContain('POST /api/events/ev_1/check-in/walk-ins'));
+
+    router.dispose();
     const kept = [localStorage, sessionStorage].flatMap((store) =>
       Object.keys(store).map((key) => `${key}=${store.getItem(key) ?? ''}`),
     );
-    expect(kept.join('\n')).not.toMatch(/Amara|Bísí/);
+    expect([...kept, document.cookie].join('\n')).not.toMatch(/Amara|Bísí|Zé|amara/);
+    expect(opened.indexedDB).not.toHaveBeenCalled();
+    expect(opened.caches).not.toHaveBeenCalled();
   });
 
   it('shows the link page in the list’s place once the grant has ended', async () => {
@@ -176,5 +224,56 @@ describe('check-in in the browser (sc-28230)', () => {
 
     expect(await screen.findByRole('link', { name: /door code/i })).toBeTruthy();
     expect(sent.filter((line) => line.includes('check-in'))).toEqual([]);
+  });
+
+  it('leads a door code’s holder back to "You’re in for…" when they hold no shift here', async () => {
+    signedIn([HELD]);
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(list()),
+      'GET /api/events/ev_1/my-night': () => json(REFUSED(404), 404),
+    });
+
+    const back = await screen.findByRole('link', { name: /Joana & Rui’s wedding/ });
+    expect(back.getAttribute('href')).toBe('/d/in/ev_1');
+    expect(screen.queryByRole('link', { name: /Your shift/ })).toBeNull();
+  });
+
+  it('asks the shift page again when it did not answer, rather than taking the door code’s way', async () => {
+    signedIn([HELD]);
+    let fails = true;
+    at('/door/ev_1', {
+      'GET /api/events/ev_1/check-in': () => json(list()),
+      'GET /api/events/ev_1/my-night': () => (fails ? json(REFUSED(500), 500) : json(NIGHT)),
+    });
+    await screen.findByText('Amara Eze');
+    expect(screen.queryByRole('link', { name: /Joana & Rui’s wedding/ })).toBeNull();
+
+    fails = false;
+    expect(
+      (await screen.findByRole('link', { name: /Your shift/ }, { timeout: 7_000 })).getAttribute(
+        'href',
+      ),
+    ).toBe('/night/ev_1');
+  }, 10_000);
+});
+
+describe('the web shift page leads to check-in (sc-28230)', () => {
+  it('shows Check-in to a job that checks guests in', async () => {
+    signedIn();
+    at('/night/ev_1', { 'GET /api/events/ev_1/my-night': () => json(NIGHT) });
+
+    expect((await screen.findByRole('link', { name: 'Check-in' })).getAttribute('href')).toBe(
+      '/door/ev_1',
+    );
+  });
+
+  it('shows no Check-in to a job that cannot', async () => {
+    signedIn();
+    at('/night/ev_1', {
+      'GET /api/events/ev_1/my-night': () => json({ ...NIGHT, checksIn: false }),
+    });
+
+    expect(await screen.findByText(/Joana & Rui’s wedding/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
   });
 });
