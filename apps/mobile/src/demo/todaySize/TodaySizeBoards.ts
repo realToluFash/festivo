@@ -4,8 +4,33 @@ export interface TodaySizeBoard {
   href: string;
 }
 
-/** Today's live cover on its side (sc-92312) and upright (its chips sc-93211; its name, end line and Open the event sc-93578), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
+/** Today's live cover on its side (sc-92312), upright (its chips sc-93211; its name, end line and Open the event sc-93578) and on the iPhone (its chips sc-93855), its organisation pill on the phone (sc-92247) and the switcher it opens there (sc-92465) and beside the upright iPad's tabs (sc-92314), greeting, section headings (sc-91291), Your events rows (sc-92090) and This week's day lines (sc-92250) at the accessibility sizes; open each on the iPad upright, on its side, and on the iPhone. */
 export const TODAY_SIZE_BOARDS: readonly TodaySizeBoard[] = [
+  {
+    title: 'Live now · AX5, iPhone',
+    what: 'Live now with its dot and Day 1 of 1 at their full size, each chip grown to hold its words, Day 1 of 1 under Live now from the same left edge where both do not fit, both clear of the pill row above and the name below; never Day cut through its y',
+    href: '/demo/today-size?size=ax5&lang=en&live=dinner',
+  },
+  {
+    title: 'En cours · AX5, iPhone',
+    what: 'En cours and Jour 1 sur 1 whole, each in its chip, no chip wider than the screen; scroll Today to Ouvrir l’événement, one tap opens Dîner en direct (a toast here)',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner',
+  },
+  {
+    title: 'Live now · AX1, iPhone',
+    what: 'Live now and Day 1 of 1 whole at AX1, side by side where they fit; step through AX2 to AX4 with Text size',
+    href: '/demo/today-size?size=ax1&lang=en&live=dinner',
+  },
+  {
+    title: 'Jour 1 sur 1 · AX5, iPhone, a venue',
+    what: 'Jour 1 sur 1 · Salle des fêtes du Château de Chantilly in full on as many lines as it needs, each ending between words, no line starting with ·, the cover grown down and the name below it',
+    href: '/demo/today-size?size=ax5&lang=fr&live=dinner&venue=chantilly',
+  },
+  {
+    title: 'Live now · default size, iPhone',
+    what: 'The chips as on main, 28 tall on one line, Day 1 of 1 on one line, and Open the event under the hair as on main; the cover’s height and foot are the demo’s, so compare the chips and the button, not the cover, with main',
+    href: '/demo/today-size?size=default&lang=en&live=dinner',
+  },
   {
     title: 'Dîner en direct · AX5, upright',
     what: 'Dîner en direct whole across the cover, or Dîner en / direct, never Dîn / er or dire / ct; Ouvrir l’événement on its own line under the end line, at the name’s left edge, every word whole; one tap opens Dîner en direct (a toast here)',

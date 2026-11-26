@@ -9,6 +9,7 @@ import {
   moved,
   myNightStateOf,
   nightOf,
+  rowLineOf,
   signedOutAt,
 } from './myNightModel.ts';
 
@@ -79,5 +80,11 @@ describe('a staff member’s night (sc-3915)', () => {
     expect(
       sparse.tables?.flatMap((table) => table.guests).every((guest) => guest.diet == null),
     ).toBe(true);
+  });
+
+  it('names where they are and the shift on the event’s Your night row, the job with no station', () => {
+    expect(rowLineOf(nightOf('app_event'))).toBe('Section B · 17:00 to 01:00');
+    expect(rowLineOf({ ...nightOf('app_event'), station: null })).toBe('Waiter · 17:00 to 01:00');
+    expect(nightOf('app_event').inApp).toBe(true);
   });
 });

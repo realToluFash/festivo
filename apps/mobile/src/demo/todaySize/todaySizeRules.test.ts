@@ -283,8 +283,9 @@ describe('the live cover upright (sc-93578)', () => {
     const upright = /\n {2}if \(upright\)[\s\S]*?\n {4}\);\n/u.exec(live)?.[0] ?? '';
 
     expect(words).toMatch(
-      /\{under && <View style=\{styles\.openUnder\}>\{open\}<\/View>\}\n {4}<\/View>\n/u,
+      /\{under && <View style=\{phone \? styles\.openFlush : styles\.openUnder\}>\{open\}<\/View>\}\n {4}<\/View>\n/u,
     );
+    expect(live).toMatch(/\n {2}openFlush: \{ alignItems: 'flex-start' \},\n/u);
     expect(live).toMatch(/\n {2}const block = under \? \(\n {4}words\n {2}\) : \(/u);
     expect(upright).toMatch(/<View style=\{styles\.uprightNow\}>\{block\}<\/View>/u);
   });

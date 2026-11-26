@@ -83,6 +83,7 @@ export const W = {
   guestsLine: 'Names and replies only, no contact details',
   people: 'People',
   overview: 'Overview',
+  yourNight: 'Your night',
   more: 'More',
   yourAccount: 'Your account',
   schedule: 'Schedule',
