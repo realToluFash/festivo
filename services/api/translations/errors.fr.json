@@ -171,6 +171,6 @@
     "table_nothing_to_serve": "Il n’y a encore rien à mettre sur un plateau pour cette table.",
     "tray_check_incomplete": "Marquez chaque élément « Présent », ou « Absent » et « À apporter ensuite », avant de vérifier le plateau.",
     "undo_expired": "Plus de 2 minutes se sont écoulées depuis cette étape : elle ne peut plus être annulée.",
-    "service_changed": "Cela a changé pendant que vous étiez hors ligne. Rien n’a été modifié.",
-    "expected_required": "Envoyez ce que l’appui a vu avec chaque étape du service."
+    "service_changed": "Quelqu’un d’autre a fait une modification pendant que vous étiez hors ligne. Rien n’a été enregistré.",
+    "expected_required": "Envoyez avec chaque étape du service l’état vu par l’appareil."
 }

@@ -506,10 +506,10 @@ function openOf(first: CoursesStart, lang: Lang): Open | null {
     return {
       kind: 'addDish',
       courseId: o.courseId,
-      tab: o.tab,
+      tab: first.outside === true ? 'new' : o.tab,
       q: o.q ?? '',
       form: { ...blankForm(ORG_CURRENCY), ...o.form },
-      onlyEvent: false,
+      onlyEvent: first.outside === true,
       pressed: o.press === true,
       failed: null,
       added: '',
@@ -858,10 +858,10 @@ function Courses({
     setOpen({
       kind: 'addDish',
       courseId: course.id,
-      tab: 'library',
+      tab: first.outside === true ? 'new' : 'library',
       q: '',
       form: blankForm(ORG_CURRENCY),
-      onlyEvent: false,
+      onlyEvent: first.outside === true,
       pressed: false,
       failed: null,
       added: '',
@@ -1752,6 +1752,7 @@ function Courses({
                   }}
                   onPatch={(next) => setOpen({ ...open, form: { ...open.form, ...next } })}
                   onOnlyEvent={(onlyEvent) => setOpen({ ...open, onlyEvent })}
+                  outside={first.outside === true}
                 />
               )}
               {open.kind === 'editDish' && openCourse != null && (
