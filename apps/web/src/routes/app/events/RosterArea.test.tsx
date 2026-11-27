@@ -462,20 +462,26 @@ describe('The Roster on the Staff page (sc-3906)', () => {
     expect(ring).toContain('outline-offset: 2px;');
   });
 
-  it('keeps whole words in the Roster table below 720 px, the frame scrolling instead (sc-70540)', () => {
-    const narrow = ROSTER_CSS.slice(ROSTER_CSS.indexOf('(width <= 720px)'));
+  it('keeps whole words in the Roster table at every width, Link at 168 px, the frame scrolling instead (sc-70540, sc-75033)', () => {
+    const narrow = mediaBlock('(width <= 720px)', ROSTER_CSS);
+    const everyWidth = ROSTER_CSS.replace(narrow, '');
     expect(
-      cssRule('.rs-frame > .rs-table :is(th, td),\n  .rs-frame > .rs-table :is(th, td) *', narrow),
+      cssRule(
+        '.rs-frame > .rs-table :is(th, td),\n.rs-frame > .rs-table :is(th, td) *',
+        everyWidth,
+      ),
     ).toContain('overflow-wrap: normal;');
+    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', everyWidth)).toContain(
+      'min-width: 168px;',
+    );
+    expect(everyWidth).not.toContain('min-width: 128px;');
     expect(
       cssRule(
         '.rs-frame > .rs-table thead th:nth-child(2),\n  .rs-frame > .rs-table thead th:nth-child(3)',
         narrow,
       ),
     ).toContain('min-width: 128px;');
-    expect(cssRule('.rs-frame > .rs-table thead th:nth-child(5)', narrow)).toContain(
-      'min-width: 168px;',
-    );
+    expect(ROSTER_CSS).not.toMatch(/^\.rs-table :is\(th, td\)/m);
   });
 
   it('removes a person after asking', async () => {
