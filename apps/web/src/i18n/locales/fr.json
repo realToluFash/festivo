@@ -1780,12 +1780,6 @@
     "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
     "ownerNoSuspend": "Une personne ayant le rôle Propriétaire ne peut pas être suspendue. Pour suspendre {{name}}, changez d’abord son rôle.",
     "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
-    "seatsInUse_one": "La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.",
-    "seatsInUse_other": "Les {{count, number}} places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
-    "seatsWayOwner": "Pour que {{name}} retrouve l’accès, libérez une place en suspendant ou en retirant une personne qui n’en a plus besoin, ou changez de forfait.",
-    "seatsWayAdmin": "Pour que {{name}} retrouve l’accès, libérez une place en suspendant ou en retirant une personne qui n’en a plus besoin. Seule une personne ayant le rôle Propriétaire peut changer de forfait.",
-    "seatsOpenMembers": "Ouvrir Membres ›",
-    "seatsSuspendedFree": "Un accès suspendu n’occupe pas de place.",
     "removeTitle": "Retirer {{name}}",
     "removeNameOpen": "Retirer {{name}}…",
     "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à l’organisation {{organisation}}.",
@@ -1832,7 +1826,6 @@
       "turnedDownNext": "Voir Anciens"
     },
     "proveOwner_many": "Pour donner à quelqu’un le rôle de Propriétaire de {{organisation}}, confirmez que c’est bien vous. Cela ne vous sera pas redemandé pendant {{count, number}} de minutes.",
-    "seatsInUse_many": "Les {{count, number}} de places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.",
     "failedTitle": "Impossible de charger les membres.",
     "failedLine": "Vérifiez votre connexion et réessayez.",
     "card": {
@@ -7529,7 +7522,8 @@
       "form": "The form is kept as you left it.",
       "invitation": "The invitation is kept as you wrote it.",
       "accept": "Your invitation stays open. Nothing is lost.",
-      "request": "{{name}}’s request keeps waiting. Nothing is lost."
+      "request": "La demande envoyée par {{name}} reste en attente. Rien n’est perdu.",
+      "restore": "L’accès reste suspendu pour {{name}}. Rien n’est perdu."
     },
     "goLive": "Another event can go live when {{event}} ends, on {{date}} at {{time}}.",
     "removeGuest": "Remove a guest",

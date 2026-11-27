@@ -77,17 +77,36 @@ describe('limitRefusalOf (sc-3930)', () => {
       'seatApprove',
       t,
       'en-GB',
-      'Kemi',
+      'Kemi Adeyemi',
     );
 
     expect(refusal).toEqual({
       title: 'limitReached.title.seats {"count":3}',
       line: null,
       figure: 'limitReached.figure.seats {"count":3,"allowed":3,"plan":"Free"}',
-      safe: 'limitReached.safe.request {"name":"Kemi"}',
+      safe: 'limitReached.safe.request {"name":"Kemi Adeyemi"}',
       goLive: null,
       ways: ['withdraw', 'removeMember'],
       untick: null,
+      planLimit: true,
+      back: 'limitReached.back.notNow',
+    });
+  });
+
+  it('keeps a restore refused for a seat suspended, with the seat ways and Not now', () => {
+    const refusal = limitRefusalOf(
+      refused('plan_limit_reached', { ...PLAN, limit: 'team_seats', used: 3, allowed: 3 }),
+      'seatRestore',
+      t,
+      'en-GB',
+      'Chidi Okoro',
+    );
+
+    expect(refusal).toMatchObject({
+      title: 'limitReached.title.seats {"count":3}',
+      figure: 'limitReached.figure.seats {"count":3,"allowed":3,"plan":"Free"}',
+      safe: 'limitReached.safe.restore {"name":"Chidi Okoro"}',
+      ways: ['withdraw', 'removeMember'],
       planLimit: true,
       back: 'limitReached.back.notNow',
     });

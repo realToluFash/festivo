@@ -136,7 +136,6 @@
     "owner_claim_ended": "This claim has already ended.",
     "owner_claim_unavailable": "This organisation has an active owner.",
     "owner_claim_own": "You cannot stop your own claim.",
-    "team_seats_in_use": "Every team seat on this organisation’s plan is in use.",
     "seating_items_outside": "Something in the room would sit outside it.",
     "seating_table_full": "That table is full.",
     "seating_table_short": "That table has too few free seats for the party.",

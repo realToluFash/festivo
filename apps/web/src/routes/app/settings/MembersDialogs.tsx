@@ -288,9 +288,7 @@ export function RequestDialog({
       }
     } catch (error) {
       setBusy(false);
-      const limit = approve
-        ? limitRefusalOf(error, 'seatApprove', t, dateLocale(), firstName(name))
-        : null;
+      const limit = approve ? limitRefusalOf(error, 'seatApprove', t, dateLocale(), name) : null;
       if (limit != null) return setLimited(limit);
       setFailed(
         error instanceof ApiError

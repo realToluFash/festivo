@@ -85,7 +85,7 @@ export function RequestScreen({
       await api.approveMember(organisation.id, member.id, role.id);
     } catch (error) {
       setBusy(null);
-      const limit = limitRefusalOf(error, 'seatApprove', t, dateLocale(), first);
+      const limit = limitRefusalOf(error, 'seatApprove', t, dateLocale(), name);
       if (limit != null) return setLimited(limit);
       setFailed({
         on: 'approve',

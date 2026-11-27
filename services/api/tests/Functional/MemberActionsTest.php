@@ -467,11 +467,13 @@ final class MemberActionsTest extends ApiTestCase
         self::assertSame(201, $this->statusCode(), 'a pending invitation takes the seat Chidi left');
 
         $refused = $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
-        self::assertSame(409, $this->statusCode(), Json\encode($refused));
-        self::assertSame(ErrorCode::TeamSeatsInUse->type(), $refused['type'] ?? null);
-        self::assertSame('All 3 team seats on this organisation’s plan are in use, so nothing has changed.', $refused['detail'] ?? null);
-        self::assertSame(3, $refused['limit'] ?? null);
+        self::assertSame(403, $this->statusCode(), Json\encode($refused));
+        self::assertSame(ErrorCode::PlanLimitReached->type(), $refused['type'] ?? null);
+        self::assertSame('Not restored. Your Free plan allows 3 team seats.', $refused['detail'] ?? null);
+        self::assertSame(['team_seats', 'free', 3, 3], [$refused['limit'] ?? null, $refused['plan'] ?? null, $refused['used'] ?? null, $refused['allowed'] ?? null]);
         self::assertSame(MembershipStatus::Suspended, $this->membership($chidi)->getStatus());
+        self::assertSame(SeededRole::Member, $this->roleOf($chidi));
+        self::assertSame(0, $this->audited(MemberSuspension::RESTORED));
 
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($bisi) . '/suspend'));
         $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));

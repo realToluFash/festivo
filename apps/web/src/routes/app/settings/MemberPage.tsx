@@ -13,6 +13,8 @@ import {
   grantableRoles,
   historyLine,
   initials,
+  type LimitRefusal,
+  limitRefusalOf,
   memberHeldNoRole,
   memberStanding,
   ownRoleLine,
@@ -25,6 +27,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
+import { LimitRefusalDialog } from '../../../components/LimitRefusal.tsx';
 import {
   Ask,
   Card,
@@ -55,7 +58,7 @@ type Outcome =
 
 type Asking = 'role' | 'suspend' | 'remove' | null;
 
-type Refusal = { kind: 'seats'; limit: number } | { kind: 'line'; text: string };
+type Refusal = { kind: 'line'; text: string };
 
 /** A member in the list's place (sc-34200): their card, how they got here, and what the viewer may do, by their standing (sc-68). */
 export function MemberPage({
@@ -92,6 +95,7 @@ export function MemberPage({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const [limited, setLimited] = useState<LimitRefusal | null>(null);
   const said = useRef<HTMLDivElement>(null);
   const owns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.owners, {
@@ -189,9 +193,9 @@ export function MemberPage({
       setOutcome({ kind: 'restored', role });
       await reload();
     } catch (error) {
-      if (error instanceof ApiError && error.is('team_seats_in_use')) {
-        setRefusal({ kind: 'seats', limit: Number(error.problem.limit ?? 0) });
-      } else if (error instanceof ApiError && error.is('restore_needs_address')) {
+      const limit = limitRefusalOf(error, 'seatRestore', t, dateLocale(), name);
+      if (limit != null) setLimited(limit);
+      else if (error instanceof ApiError && error.is('restore_needs_address')) {
         setRefusal({ kind: 'line', text: t('membersScreen.restoreNeedsAddress', named) });
       } else if (error instanceof ApiError && error.status === 409) {
         changedElsewhere();
@@ -313,23 +317,11 @@ export function MemberPage({
       )}
       {refusal != null && (
         <div className="desk-refusal" role="alert">
-          {refusal.kind === 'seats' ? (
-            <>
-              <p className="desk-line is-ink">
-                {t('membersScreen.seatsInUse', { count: refusal.limit })}
-              </p>
-              <p className="desk-line">
-                {owns
-                  ? t('membersScreen.seatsWayOwner', { name })
-                  : t('membersScreen.seatsWayAdmin', { name })}
-              </p>
-              <p className="desk-line">{t('membersScreen.seatsSuspendedFree')}</p>
-              <TextAction label={t('membersScreen.seatsOpenMembers')} onClick={onBack} />
-            </>
-          ) : (
-            <p className="desk-line is-ink">{refusal.text}</p>
-          )}
+          <p className="desk-line is-ink">{refusal.text}</p>
         </div>
+      )}
+      {limited != null && (
+        <LimitRefusalDialog refusal={limited} onBack={() => setLimited(null)} onWay={onBack} />
       )}
       {acts && suspended && byHand && <Note>{t('membersScreen.roleKeptWhileSuspended')}</Note>}
       <section className="desk-block">

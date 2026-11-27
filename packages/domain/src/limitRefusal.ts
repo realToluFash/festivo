@@ -4,7 +4,7 @@ import { type Translate } from './eventWords.ts';
 
 /** Where the work met the limit, which picks the safe line and the way back. */
 export type LimitMetAt =
-  'makeLive' | 'guestAdded' | 'seatInvite' | 'seatApprove' | 'seatAccept' | 'copy';
+  'makeLive' | 'guestAdded' | 'seatInvite' | 'seatApprove' | 'seatRestore' | 'seatAccept' | 'copy';
 
 /** The free ways past, before the way back. Change plan and Ask an owner are sc-100169's. */
 export type LimitWay = 'removeGuest' | 'withdraw' | 'removeMember';
@@ -30,6 +30,7 @@ const BACK: Record<LimitMetAt, string> = {
   guestAdded: 'limitReached.back.form',
   seatInvite: 'limitReached.back.invitation',
   seatApprove: 'limitReached.back.notNow',
+  seatRestore: 'limitReached.back.notNow',
   seatAccept: 'limitReached.back.notNow',
   copy: 'limitReached.back.form',
 };
@@ -39,6 +40,7 @@ const SAFE: Record<LimitMetAt, string> = {
   guestAdded: 'limitReached.safe.form',
   seatInvite: 'limitReached.safe.invitation',
   seatApprove: 'limitReached.safe.request',
+  seatRestore: 'limitReached.safe.restore',
   seatAccept: 'limitReached.safe.accept',
   copy: 'limitReached.safe.form',
 };
@@ -72,7 +74,7 @@ function planNameOf(key: string | undefined): string {
   return plan.charAt(0).toUpperCase() + plan.slice(1);
 }
 
-/** The refusal for a `plan_limit_reached` or `event_capacity_reached` problem met at `at`; null for any other error. `name` is whose request a `seatApprove` keeps waiting. */
+/** The refusal for a `plan_limit_reached` or `event_capacity_reached` problem met at `at`; null for any other error. `name` is, in full, whose request a `seatApprove` keeps waiting or who a `seatRestore` keeps suspended. */
 export function limitRefusalOf(
   error: unknown,
   at: LimitMetAt,
@@ -84,7 +86,7 @@ export function limitRefusalOf(
 
   const problem = error.problem;
   const base = {
-    safe: at === 'seatApprove' ? t(SAFE[at], { name }) : t(SAFE[at]),
+    safe: at === 'seatApprove' || at === 'seatRestore' ? t(SAFE[at], { name }) : t(SAFE[at]),
     back: t(BACK[at]),
     goLive: null,
     untick: null,
@@ -134,7 +136,7 @@ export function limitRefusalOf(
     };
   }
 
-  if (at === 'seatInvite' || at === 'seatApprove') {
+  if (at === 'seatInvite' || at === 'seatApprove' || at === 'seatRestore') {
     return {
       ...base,
       title: t('limitReached.title.seats', { count: allowed }),

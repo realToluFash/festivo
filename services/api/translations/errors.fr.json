@@ -136,7 +136,6 @@
     "owner_claim_ended": "Cette demande a déjà pris fin.",
     "owner_claim_unavailable": "Une personne ayant le rôle Propriétaire est déjà en fonction dans cette organisation.",
     "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande.",
-    "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées.",
     "seating_items_outside": "Un élément de la salle se retrouverait en dehors.",
     "seating_table_full": "Cette table est complète.",
     "seating_table_short": "Cette table n’a pas assez de places libres pour le groupe.",

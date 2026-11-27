@@ -1285,9 +1285,6 @@
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",
     "suspendedBody": "Esta persona no puede usar {{organisation}}. Se conservan su rol, sus eventos y su historial.",
     "restoreAccess": "Restablecer el acceso",
-    "seatsInUse_one": "La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.",
-    "seatsInUse_other": "Están ocupadas las {{count, number}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
-    "seatsInUse_many": "Están ocupadas las {{count, number}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
     "suspendedBecause": {
       "address_gone": "{{name}} ya no tiene su dirección de {{domain}} en la cuenta.",
       "domain_closed": "{{organisation}} ya no permite unirse a través de {{domain}}.",
@@ -4187,7 +4184,8 @@
       "form": "The form is kept as you left it.",
       "invitation": "The invitation is kept as you wrote it.",
       "accept": "Your invitation stays open. Nothing is lost.",
-      "request": "{{name}}’s request keeps waiting. Nothing is lost."
+      "request": "La solicitud de {{name}} sigue en espera. No se pierde nada.",
+      "restore": "El acceso de {{name}} sigue suspendido. No se pierde nada."
     },
     "goLive": "Another event can go live when {{event}} ends, on {{date}} at {{time}}.",
     "removeGuest": "Remove a guest",

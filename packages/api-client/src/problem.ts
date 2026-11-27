@@ -25,8 +25,8 @@ export interface Problem {
   retryAt?: string;
   /** On a refused two-factor code after the first factor passed: send it back with the next code instead. */
   pendingProof?: string;
-  /** On `team_seats_in_use`: how many team seats the plan has. On `plan_limit_reached`: which limit was met (sc-3930). */
-  limit?: number | 'live_events' | 'guests_per_event' | 'team_seats';
+  /** On `plan_limit_reached`: which limit was met (sc-3930). */
+  limit?: 'live_events' | 'guests_per_event' | 'team_seats';
   /** On `plan_limit_reached`: the plan's key, such as `free` (sc-3930). */
   plan?: string;
   /** On `plan_limit_reached`: how many the limit counts now, and how many the plan allows. */

@@ -1780,12 +1780,6 @@
     "roleKeptWhileSuspended": "El rol se conserva mientras el acceso esté suspendido. Podrá cambiarlo cuando se restablezca.",
     "ownerNoSuspend": "No se puede suspender a alguien con el rol Propietario. Para suspender a {{name}}, cambie antes su rol.",
     "accessConflict": "Otra persona ha cambiado el acceso de {{name}} mientras esta página estaba abierta, así que su cambio no se ha aplicado. Este es el estado actual.",
-    "seatsInUse_one": "La única plaza de equipo del plan de esta organización está ocupada, así que no ha cambiado nada.",
-    "seatsInUse_other": "Están ocupadas las {{count, number}} plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
-    "seatsWayOwner": "Para restablecer el acceso de {{name}}, libere una plaza suspendiendo o quitando a alguien que ya no necesite acceso, o cambie de plan.",
-    "seatsWayAdmin": "Para restablecer el acceso de {{name}}, libere una plaza suspendiendo o quitando a alguien que ya no necesite acceso. Solo alguien con el rol Propietario puede cambiar de plan.",
-    "seatsOpenMembers": "Abrir Miembros ›",
-    "seatsSuspendedFree": "Quien tiene el acceso suspendido no ocupa plaza.",
     "removeTitle": "Quitar a {{name}}",
     "removeNameOpen": "Quitar a {{name}}…",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
@@ -1832,7 +1826,6 @@
       "turnedDownNext": "Ver Antiguos"
     },
     "proveOwner_many": "Para dar a alguien el rol de Propietario de {{organisation}}, confirme que es usted. No se lo volveremos a pedir en {{count, number}} de minutos.",
-    "seatsInUse_many": "Están ocupadas las {{count, number}} de plazas de equipo del plan de esta organización, así que no ha cambiado nada.",
     "failedTitle": "No se han podido cargar los miembros.",
     "failedLine": "Compruebe la conexión y vuelva a intentarlo.",
     "card": {
@@ -7529,7 +7522,8 @@
       "form": "The form is kept as you left it.",
       "invitation": "The invitation is kept as you wrote it.",
       "accept": "Your invitation stays open. Nothing is lost.",
-      "request": "{{name}}’s request keeps waiting. Nothing is lost."
+      "request": "La solicitud de {{name}} sigue en espera. No se pierde nada.",
+      "restore": "El acceso de {{name}} sigue suspendido. No se pierde nada."
     },
     "goLive": "Another event can go live when {{event}} ends, on {{date}} at {{time}}.",
     "removeGuest": "Remove a guest",

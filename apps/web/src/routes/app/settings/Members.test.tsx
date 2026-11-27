@@ -360,7 +360,7 @@ describe('Members at a desk (sc-34200)', () => {
       await screen.findByRole('dialog', { name: 'Your plan allows 3 team seats' }),
     );
     expect(refused.getByText('3 of 3 team seats · Free plan')).toBeDefined();
-    expect(refused.getByText('Ada’s request keeps waiting. Nothing is lost.')).toBeDefined();
+    expect(refused.getByText('Ada Okeke’s request keeps waiting. Nothing is lost.')).toBeDefined();
     const ways = refused.getAllByRole('link').map((one) => one.textContent);
     expect(ways).toEqual([
       'Withdraw an invitationAn invitation not yet accepted holds a seat.',
@@ -1033,41 +1033,37 @@ const TUNDE = member({
 });
 
 describe('restoring, and what a refusal says (sc-34200)', () => {
-  it('says every seat is in use, and names the plan only to an owner', async () => {
-    for (const [session, way] of [
-      [
-        IRE,
-        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access, or change the plan.',
-      ],
-      [
-        ADMINISTRATOR,
-        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access. Only an Owner can change the plan.',
-      ],
-    ] as const) {
-      signedIn(session);
-      answering({
-        ...READS,
-        'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)),
-        'POST /api/orgs/org_1/members/m_bisi/restore': () =>
-          problem('team_seats_in_use', 409, { limit: 5 }),
-      });
-      const view = open();
+  it('refuses a restore over the plan’s team seats and keeps them suspended (sc-3930)', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () =>
+        problem('plan_limit_reached', 403, {
+          limit: 'team_seats',
+          plan: 'free',
+          used: 3,
+          allowed: 3,
+        }),
+    });
+    open();
 
-      await openPerson('Bisi Adeyemi');
-      fireEvent.click(page().getByRole('button', { name: 'Restore access' }));
+    await openPerson('Bisi Adeyemi');
+    fireEvent.click(page().getByRole('button', { name: 'Restore access' }));
 
-      expect(
-        await page().findByText(
-          'All 5 team seats on this organisation’s plan are in use, so nothing has changed.',
-        ),
-      ).toBeDefined();
-      expect(page().getByText(way)).toBeDefined();
-      expect(page().getByText('Suspended members do not take a seat.')).toBeDefined();
-      expect(page().getByRole('button', { name: 'Open Members ›' })).toBeDefined();
-      expect(page().queryByRole('link', { name: /Change the plan/ })).toBeNull();
-      view.unmount();
-      vi.restoreAllMocks();
-    }
+    const refused = within(
+      await screen.findByRole('dialog', { name: 'Your plan allows 3 team seats' }),
+    );
+    expect(refused.getByText('3 of 3 team seats · Free plan')).toBeDefined();
+    expect(refused.getByText('Bisi Adeyemi stays suspended. Nothing is lost.')).toBeDefined();
+    expect(refused.getAllByRole('link').map((one) => one.textContent)).toEqual([
+      'Withdraw an invitationAn invitation not yet accepted holds a seat.',
+      'Remove a memberA member removed frees their seat.',
+    ]);
+    fireEvent.click(refused.getByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Your plan allows 3 team seats' })).toBeNull();
+    expect(page().getByRole('button', { name: 'Restore access' })).toBeDefined();
   });
 
   it('says why a domain member is suspended, when they go, and refuses Restore without the address', async () => {

@@ -97,18 +97,9 @@ final readonly class HardLimits implements HardLimitsInterface
         $this->requireSeatToAdd($organisation, 'members.approve_plan_limit_seats');
     }
 
-    /** Its own refusal, `team_seats_in_use`, until pm settles whether a restore is refused as an invitation is. */
     public function requireSeatToRestore(Organisation $organisation): void
     {
-        [, $allowance] = $this->allowance($organisation, CatalogueLimit::TeamSeats);
-
-        if ($allowance->isUnlimited() || $allowance->covers($this->seatsTaken($organisation) + 1)) {
-            return;
-        }
-
-        $limit = $allowance->amount ?? 0;
-
-        throw new ApiException(ErrorCode::TeamSeatsInUse, $this->translator->trans('members.seats_in_use', ['count' => $limit]), members: ['limit' => $limit]);
+        $this->requireSeatToAdd($organisation, 'members.restore_plan_limit_seats');
     }
 
     public function requireSeatToAccept(Organisation $organisation): void
