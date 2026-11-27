@@ -677,7 +677,7 @@ final class ShiftNoticesTest extends ApiTestCase
         $this->as($this->owner, 'POST', $this->path($staffId . '/briefing/link'));
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
-        return Str\after_last(Type\string()->coerce($this->last()['url'] ?? null), '/w/');
+        return Str\after_last(Type\string()->coerce($this->last()['url'] ?? null), '/w/') ?? self::fail('no link in ' . Json\encode($this->last()));
     }
 
     private function markedSent(string $staffId): void
