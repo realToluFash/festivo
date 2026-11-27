@@ -1716,7 +1716,7 @@ describe("Inside an event, the navigation menu is the event's (sc-22103)", () =>
 describe("An event's Overview (sc-22103)", () => {
   const PAST = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
 
-  it('opens on Details, Coming up, and Name and cover, beside Just for you and Manage (sc-30413)', async () => {
+  it('opens on Details, Needs you, Coming up, and Name and cover, beside Just for you and Manage (sc-30413, sc-32801)', async () => {
     signedIn();
     answering({ 'GET /api/events/ev_1': () => json({ event: event() }) });
     at('/app/events/ev_1');
@@ -1725,8 +1725,16 @@ describe("An event's Overview (sc-22103)", () => {
     expect(screen.queryByRole('list', { name: 'Overview' })).toBeNull();
     expect(
       screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
-    ).toEqual(['Details', 'Coming up', 'Name and cover', 'Guests', 'Just for you', 'Manage']);
-    for (const label of ['On track', 'Replies', 'Needs you', 'Team on this event'])
+    ).toEqual([
+      'Details',
+      'Needs you',
+      'Coming up',
+      'Name and cover',
+      'Guests',
+      'Just for you',
+      'Manage',
+    ]);
+    for (const label of ['On track', 'Replies', 'Team on this event'])
       expect(screen.queryByRole('region', { name: label })).toBeNull();
     expect(await screen.findByText('No guests invited yet')).toBeDefined();
     expect(screen.queryByText('Invited')).toBeNull();

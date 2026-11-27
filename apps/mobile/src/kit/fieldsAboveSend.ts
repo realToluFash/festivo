@@ -1,4 +1,4 @@
-import { liftNeeded, offsetAboveKeyboard } from '../../kit/keyboard.ts';
+import { liftNeeded, offsetAboveKeyboard } from './keyboard.ts';
 
 /** Where a block sits inside the scroll content. */
 export interface Placed {

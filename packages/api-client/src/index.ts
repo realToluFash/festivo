@@ -26,6 +26,7 @@ export * from './quotes.ts';
 export * from './staff.ts';
 export * from './myNight.ts';
 export * from './shiftHours.ts';
+export * from './whosHere.ts';
 export * from './emailDomains.ts';
 export * from './organisationExport.ts';
 export * from './auditLog.ts';
