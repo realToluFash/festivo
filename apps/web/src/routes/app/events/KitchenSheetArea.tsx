@@ -17,7 +17,8 @@ import { LayersContext, useDeskLayers } from '../../../layers.ts';
 import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { daysWords } from '../../../eventsList.ts';
 import { canOn } from '../../../session.ts';
-import { DownloadMark, FinalNumbersBlock } from './FinalNumbersBlock.tsx';
+import { DownloadMark, FinalNumbersBlock, type Giving } from './FinalNumbersBlock.tsx';
+import { KitchenChanges } from './KitchenChanges.tsx';
 import {
   allergenName,
   allergensOf,
@@ -219,6 +220,10 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
   const [pdf, setPdf] = useState<Pdf>({ kind: 'rest' });
   const [final, setFinal] = useState(sheet.finalNumbers);
   const [told, setTold] = useState<string | null>(null);
+  const [giving, setGiving] = useState<Giving | null>(null);
+  const manage = canOn(event, 'menu.manage');
+  const [openedAt] = useState(() => Date.now());
+  const started = openedAt >= Date.parse(event.startsAt);
 
   const make = () => {
     setPdf({ kind: 'making' });
@@ -281,6 +286,13 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
       )}
       <div className="ev-columns ks-columns">
         <div className="ks-body ev-left">
+          {final.changes != null && (
+            <KitchenChanges
+              changes={final.changes}
+              timeZone={event.timeZone}
+              onGive={manage && !started ? () => setGiving('rest') : null}
+            />
+          )}
           <p className="ks-summary">{summaryLine(t, sheet)}</p>
           <section className="desk-block ks-card ks-allergies" aria-labelledby="ks-allergies">
             <h2 id="ks-allergies" className="ks-card-head">
@@ -315,7 +327,9 @@ function SheetScreen({ event, sheet }: { event: OrganisationEvent; sheet: Kitche
           <FinalNumbersBlock
             event={event}
             final={final}
-            manage={canOn(event, 'menu.manage')}
+            manage={manage}
+            giving={giving}
+            onGiving={setGiving}
             onChange={setFinal}
             tell={setTold}
           />

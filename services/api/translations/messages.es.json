@@ -574,6 +574,7 @@
     "service.idempotency_key_required": "Envíe la cabecera Idempotency-Key con cada paso del servicio.",
     "service.idempotency_key_reused": "Esta Idempotency-Key ya se usó con otro paso. No se ha cambiado nada.",
     "timeline.give_final_numbers": "Entregar las cifras definitivas a cocina",
+    "timeline.give_kitchen_changes": "Give the changes to the kitchen",
     "timeline.open_kitchen_sheet": "Abrir la hoja de cocina",
     "validation.final_numbers_invalid": "Elija una fecha válida.",
     "validation.final_numbers_not_before_event": "La fecha no puede ser el día en que empieza el evento ni posterior. Elija una fecha anterior.",

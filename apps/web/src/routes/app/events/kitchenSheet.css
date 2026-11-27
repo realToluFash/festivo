@@ -606,3 +606,12 @@
 .ks-give {
   margin-top: var(--spaceMd);
 }
+
+/* sc-30692: a dish name runs to 120 characters and stays whole, so a line breaks anywhere rather than overflows. */
+.ks-changes .desk-row-name {
+  overflow-wrap: anywhere;
+}
+
+.ks-changes > .desk-text {
+  margin-top: var(--spaceSm);
+}
