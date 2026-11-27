@@ -143,7 +143,13 @@ export function StaffRefused({ event }: { event: OrganisationEvent }) {
 }
 
 /** /app/events/:id/staff (sc-3906): the Roster on the event's Staff page, as its demo draws it at a desk. */
-export function RosterArea({ event }: { event: OrganisationEvent }) {
+export function RosterArea({
+  event,
+  onChange,
+}: {
+  event: OrganisationEvent;
+  onChange: (event: OrganisationEvent, tag: string) => void;
+}) {
   const { t } = useTranslation();
   const desk = useDeskTop();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -238,6 +244,13 @@ export function RosterArea({ event }: { event: OrganisationEvent }) {
             onStaff={(staff) => setLoad({ kind: 'loaded', plan: { ...load.plan, staff } })}
             onPlan={(plan) => setLoad({ kind: 'loaded', plan })}
             reload={() => setAttempt((n) => n + 1)}
+            onConcluded={() => {
+              setAttempt((n) => n + 1);
+              void api.taggedEvent(event.id).then(
+                (latest) => onChange(latest.event, latest.tag),
+                () => undefined,
+              );
+            }}
           />
         )}
       </div>
@@ -251,12 +264,15 @@ function Roster({
   onStaff,
   onPlan,
   reload,
+  onConcluded,
 }: {
   event: OrganisationEvent;
   plan: StaffPlan;
   onStaff: (staff: StaffEntry[]) => void;
   onPlan: (plan: StaffPlan) => void;
   reload: () => void;
+  /** The API said the event is over on a page that did not know: the event and the roster are read again, so the page shows the Finished state. */
+  onConcluded: () => void;
 }) {
   const { t } = useTranslation();
   const { staff } = plan;
@@ -301,7 +317,7 @@ function Roster({
     finished,
     onEntry: (entry) => relinked(entry),
     onRules: (rules) => onPlan({ ...plan, rules }),
-    reload,
+    reload: onConcluded,
     focus: (id) => {
       focusAfter.current = id;
     },

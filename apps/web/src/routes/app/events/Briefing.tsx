@@ -276,7 +276,10 @@ export function useBriefing({
         event={event}
         manage={acts}
         roster={people}
-        onOver={() => setOver(true)}
+        onOver={() => {
+          setOver(true);
+          reload();
+        }}
         announce={announce}
       />
     </>
