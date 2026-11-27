@@ -7349,6 +7349,7 @@
       "tryAgain": "Réessayer",
       "listBack": "Retour",
       "chefsChoice": "Au choix du chef",
+      "chefsChoiceInline": "au choix du chef",
       "listLine": "{{event}} · {{course}}",
       "refused": {
         "title": "La salle s’ouvre avec « Peut servir en salle »",

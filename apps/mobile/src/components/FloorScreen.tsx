@@ -100,8 +100,10 @@ function seatName(t: TFunction, guest: ServiceGuestRead): string {
   return guest.name ?? t('service.floor.seat', { seat: guest.seat });
 }
 
-function itemsOf(plate: ServicePlateRead, t: TFunction): string {
-  return plate.items.map((one) => one.name ?? t('service.floor.chefsChoice')).join(', ');
+function itemsOf(plate: ServicePlateRead, t: TFunction, inSentence = false): string {
+  const unnamed = inSentence ? 'service.floor.chefsChoiceInline' : 'service.floor.chefsChoice';
+
+  return plate.items.map((one) => one.name ?? t(unnamed)).join(', ');
 }
 
 function listLine(t: TFunction, read: FloorRead): string {
@@ -407,7 +409,7 @@ export function FloorScreen({
                 sending.plate,
                 t('service.floor.step.sentBack', {
                   guest: sending.guest,
-                  items: itemsOf(sending.plate, t),
+                  items: itemsOf(sending.plate, t, true),
                   reason: t(`service.sentBack.${reason}`),
                 }),
                 { kind: 'sendBack' },
@@ -1003,9 +1005,7 @@ function SendBackSheet({
       <View style={styles.header}>
         <Text size={22} weight="bold" accessibilityRole="header">
           {t('service.floor.sendBackTitle', {
-            items: sending.plate.items
-              .map((one) => one.name ?? t('service.floor.chefsChoice'))
-              .join(', '),
+            items: itemsOf(sending.plate, t, true),
           })}
         </Text>
         <Text size={15} weight="medium" style={styles.secondary}>
