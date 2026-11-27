@@ -66,7 +66,7 @@ export const DW = {
       `Your plan allows ${figure(limit)} person per event`,
       `Your plan allows ${figure(limit)} people per event`,
     ),
-  ceilingTitle: (ceiling: number) => `An event can hold ${figure(ceiling)} people`,
+  ceilingTitle: (ceiling: number) => `An event can have up to ${figure(ceiling)} people`,
   overPlan: (count: number, limit: number) =>
     one(
       count,

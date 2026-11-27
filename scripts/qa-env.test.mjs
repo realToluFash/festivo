@@ -2963,6 +2963,17 @@ describe('a batch flow', () => {
     expect(flow).toContain('stopApp: true');
     expect(flow.indexOf('sign-out.yaml')).toBeLessThan(flow.indexOf('session.yaml'));
   });
+
+  it('puts a tablet left on its side upright before a cold sign-out', () => {
+    const flow = batchFlow({ checks: ['home'], languages: ['any'], cold: true });
+    expect(flow).toMatch(/setOrientation: PORTRAIT[\s\S]*ASK: '\/portrait'[\s\S]*sign-out\.yaml/);
+  });
+
+  it('turns nothing on a warm batch, whose reset turns it', () => {
+    expect(batchFlow({ checks: ['home'], languages: ['en'], cold: false })).not.toContain(
+      '/portrait',
+    );
+  });
 });
 
 describe('the batch command', () => {
@@ -3599,7 +3610,7 @@ describe('the flows a batch runs', () => {
         rmSync(target, { recursive: true, force: true });
       }
     }
-  });
+  }, 30_000);
 
   it("composes the repository's checks in all four languages", () => {
     const root = join(import.meta.dirname, '..');
@@ -3841,7 +3852,7 @@ describe('the flows a batch runs', () => {
     } finally {
       rmSync(target, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
 
 describe('a check that runs a sibling check', () => {

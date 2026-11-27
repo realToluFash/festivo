@@ -5,9 +5,10 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
-import { cssRule, stylesheet } from '../../../test-styles.ts';
+import { cssRule, mediaBlock, stylesheet } from '../../../test-styles.ts';
 
 const EVENTS_DESK_CSS = stylesheet(import.meta.dirname, '../../../components/eventsDesk.css');
+const RUN_CSS = stylesheet(import.meta.dirname, 'runArea.css');
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 
@@ -158,6 +159,22 @@ describe('The run view (sc-1404)', () => {
     expect(
       screen.getByText('Next: Speeches at about 20:13. Next step: start it when it begins.'),
     ).toBeDefined();
+  });
+
+  it('makes each item a block of its own at 640 px and under, Mark beside its start, as its demo does (sc-98499)', async () => {
+    await onRun([DINNER, SPEECHES]);
+    const narrow = mediaBlock('(width <= 40rem)', RUN_CSS);
+
+    expect(screen.getByRole('table', { name: 'Main' }).parentElement?.tagName).toBe('SECTION');
+    expect(cssRule('.rv-table,\n  .rv-table tbody', narrow)).toContain('display: block;');
+    expect(cssRule('.rv-row', narrow)).toMatch(
+      /display: grid;\s+grid-template-areas:\s+'starts act'/u,
+    );
+    expect(cssRule('.rv-row .rv-act-col', narrow)).toContain('grid-area: act;');
+    expect(cssRule('.rv-table thead', narrow)).toContain('clip-path: inset(50%);');
+    expect(screen.getAllByRole('columnheader').map((th) => th.textContent)).toEqual(
+      expect.arrayContaining(['Starts', 'Lasts', 'Item', 'Owner']),
+    );
   });
 
   it('holds a fixed-time item at its planned time and says in words what would run into it', async () => {

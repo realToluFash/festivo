@@ -1119,16 +1119,44 @@ def pr_edit(c, a):
         raise Refused(f"PR #{a.pr} is closed unmerged")
     owns(c, live["story_id"], live.get("branch"), f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
     found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
-    if len(found) != 1:
-        headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
-        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
-                      f"{a.section}; the body has: {headings or 'no headings'}")
     text, count = github.unlink_others(a.text, live["story_id"])
-    body = T.swap(live["body"], found[0], text)
+    if found:
+        verb = "replaced"
+        heading = found[0]
+        if len(found) != 1:
+            raise Refused(f"{len(found)} headings match {a.section}; the body has: "
+                          f"{existing_headings(live['body'])}")
+        body = T.swap(live["body"], heading, text)
+    else:
+        heading = house_heading(live["body"], a.section)
+        verb = "added"
+        body = T.add_section(live["body"], heading, text, PR_SECTIONS)
     github.edit_body(a.pr, body)
     if known := store.pr(c.db, a.pr):
         store.put_pr(c.db, dict(known, body=body))
-    return f"PR #{a.pr}: replaced {found[0]}{unlinked(count)}"
+    return f"PR #{a.pr}: {verb} {heading}{unlinked(count)}"
+
+
+def existing_headings(body):
+    return "; ".join(h for h, _, _ in T.sections(body) if h != T.TOP) or "no headings"
+
+
+def house_heading(body, name):
+    """The one house heading the name asks for, matched as `pr --section` matches: exactly in
+    any case, else by prefix. Refused when it is none, several, or already there too deep."""
+    wanted = name.strip().lower()
+    exact = [h for h in PR_SECTIONS if h.lower() == wanted]
+    named = exact or [h for h in PR_SECTIONS if wanted and h.lower().startswith(wanted)]
+    if not named:
+        raise Refused(f"no heading matches {name}; the body has: {existing_headings(body)}; "
+                      f"pr-edit can add {', '.join(PR_SECTIONS[:-1])} or {PR_SECTIONS[-1]}")
+    if len(named) > 1:
+        raise Refused(f"{name} matches {' and '.join(named)}; name one of them in full")
+    deeper = {h.lower(): level for h, level, _ in T.sections(body, T.DEEPER) if level}
+    if named[0].lower() in deeper:
+        raise Refused(f"{named[0]} is at level {deeper[named[0].lower()]}; the body would carry "
+                      "it twice: replace the text there, or move the heading to levels 1-3")
+    return named[0]
 
 
 def to_qa(c, a):
