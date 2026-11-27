@@ -101,12 +101,17 @@ export function checkInBackOf(
     : { label: 'checkIn.back', href: null };
 }
 
-/** Who's here above Your shift (sc-3918), last of the buttons: primary when neither Check-in nor Open {station} comes before it; null shows no button. */
-export function whosHereOf(night: MyNight, station: string | null) {
-  return night.whosHere ? { primary: checkInOf(night) == null && station == null } : null;
+/** Who's here above Your shift (sc-3918), last of the buttons: primary when neither Check-in, Open {station} nor Open Floor comes before it; null shows no button. */
+export function whosHereOf(night: MyNight, opensBefore: boolean) {
+  return night.whosHere ? { primary: checkInOf(night) == null && !opensBefore } : null;
 }
 
 /** Where My night's Check-in leads, for a job whose level opens check-in at the door (sc-28230); null shows no button. */
 export function checkInOf(night: MyNight) {
   return night.checksIn ? checkInHrefOf(night.event.id, 'night') : null;
+}
+
+/** Open Floor above Your shift (sc-98893): their station is a section station and their access opens the floor; false shows no button. */
+export function opensFloorOf(night: MyNight): boolean {
+  return night.floor;
 }

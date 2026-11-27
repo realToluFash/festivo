@@ -40,6 +40,7 @@ const NIGHT = {
   tables: null,
   checksIn: true,
   dishes: false,
+  floor: false,
   whosHere: false,
   rules: null,
 };
@@ -385,6 +386,43 @@ describe('the web shift page leads to check-in (sc-28230)', () => {
 
     expect(await screen.findByText(/Joana & Rui’s wedding/)).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
+  });
+});
+
+describe('the web shift page leads to Floor (sc-98893)', () => {
+  it('shows Open Floor, primary, to a section station whose access opens the floor, before doors too', async () => {
+    signedIn();
+    at('/night/ev_1', {
+      'GET /api/events/ev_1/my-night': () =>
+        json({ ...NIGHT, checksIn: false, floor: true, doorsAt: '2099-03-06T19:00:00+00:00' }),
+    });
+
+    const open = await screen.findByRole('link', { name: 'Open Floor' });
+    expect(open.getAttribute('href')).toBe('/floor/ev_1?from=night');
+    expect(open.className).toContain('button-primary');
+    expect(screen.queryByRole('link', { name: 'Check-in' })).toBeNull();
+  });
+
+  it('keeps Check-in first and makes Open Floor the secondary under it when the job checks in too', async () => {
+    signedIn();
+    at('/night/ev_1', { 'GET /api/events/ev_1/my-night': () => json({ ...NIGHT, floor: true }) });
+
+    const checkIn = await screen.findByRole('link', { name: 'Check-in' });
+    const open = screen.getByRole('link', { name: 'Open Floor' });
+    expect(checkIn.className).toContain('button-primary');
+    expect(open.className).toContain('myn-secondary');
+    expect(open.className).not.toContain('button-primary');
+    expect(checkIn.compareDocumentPosition(open) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows no Open Floor when the night says the floor is not theirs: a kitchen station, no station, or a level that does not open it', async () => {
+    signedIn();
+    at('/night/ev_1', {
+      'GET /api/events/ev_1/my-night': () => json({ ...NIGHT, floor: false }),
+    });
+
+    expect(await screen.findByRole('link', { name: 'Check-in' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Open Floor' })).toBeNull();
   });
 });
 

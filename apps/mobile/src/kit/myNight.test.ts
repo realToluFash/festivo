@@ -13,6 +13,7 @@ import {
   scanHrefOf,
   updatedAfter,
   whosHereOf,
+  opensFloorOf,
 } from './myNight.ts';
 
 const t = ((key: string, values?: Record<string, unknown>) =>
@@ -41,24 +42,25 @@ const NIGHT: MyNight = {
   tables: null,
   checksIn: false,
   dishes: false,
+  floor: false,
   whosHere: false,
   rules: null,
 };
 
 describe('My night leads a lead to Who’s here (sc-3918)', () => {
   it('as the only button, primary, when nothing comes before it', () => {
-    expect(whosHereOf({ ...NIGHT, whosHere: true }, null)).toEqual({ primary: true });
+    expect(whosHereOf({ ...NIGHT, whosHere: true }, false)).toEqual({ primary: true });
   });
 
-  it('as a secondary button under Check-in or Open {station}', () => {
-    expect(whosHereOf({ ...NIGHT, whosHere: true, checksIn: true }, null)).toEqual({
+  it('as a secondary button under Check-in, Open {station} or Open Floor', () => {
+    expect(whosHereOf({ ...NIGHT, whosHere: true, checksIn: true }, false)).toEqual({
       primary: false,
     });
-    expect(whosHereOf({ ...NIGHT, whosHere: true }, 'Pass')).toEqual({ primary: false });
+    expect(whosHereOf({ ...NIGHT, whosHere: true }, true)).toEqual({ primary: false });
   });
 
   it('nowhere for someone who leads nothing', () => {
-    expect(whosHereOf(NIGHT, 'Pass')).toBeNull();
+    expect(whosHereOf(NIGHT, true)).toBeNull();
   });
 });
 
@@ -153,5 +155,12 @@ describe('a staff member’s night in the app (sc-3915)', () => {
     expect(updatedAfter(NIGHT, null, onC)).toBe('Section C');
     expect(updatedAfter(onC, 'Section C', onC)).toBe('Section C');
     expect(updatedAfter(onC, 'Section C', jobOnly)).toBeNull();
+  });
+});
+
+describe('Open Floor on Your night (sc-98893)', () => {
+  it('follows the night’s floor flag: a section station whose access opens the floor', () => {
+    expect(opensFloorOf({ ...NIGHT, floor: true })).toBe(true);
+    expect(opensFloorOf(NIGHT)).toBe(false);
   });
 });

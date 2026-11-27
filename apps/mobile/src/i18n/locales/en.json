@@ -3658,6 +3658,9 @@
         "choice": "{{guest}}: {{choice}}"
       },
       "loadFailed": "Floor didn’t load. Try again.",
+      "wayIn": {
+        "open": "Open Floor"
+      },
       "tryAgain": "Try again",
       "listBack": "Back",
       "chefsChoice": "Chef’s choice",

@@ -23,6 +23,7 @@ import {
   crossesMidnight,
   dietaryOf,
   headingOf,
+  opensFloorOf,
   updatedAfter,
   weekdayOf,
   whosHereOf,
@@ -99,7 +100,7 @@ function shown(was: Seen, night: MyNight): Seen {
   };
 }
 
-/** A staff member's whole night on one page, opened from the event's Overview (sc-3915), as the app's demo /demo/my-night?state=app draws it: one column on a phone, two on a tablet. */
+/** A staff member's whole night on one page, opened from the event's Overview (sc-3915), as the app's demo /demo/my-night?state=app draws it: one column on a phone, two on a tablet. Open Floor (sc-98893) and Open {station} (sc-95382) never show together: a station is a section or a kitchen station. */
 export function MyNightScreen({ eventId, onBack }: { eventId: string; onBack: () => void }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -216,12 +217,18 @@ function Night({
     );
   const checkIn = checkInOf(night);
   const station = openStationOf(night);
-  const whosHere = whosHereOf(night, station);
+  const floor = opensFloorOf(night);
+  const whosHere = whosHereOf(night, station != null || floor);
   const openWhosHere = () =>
     router.push({ pathname: '/events/[id]/whos-here', params: { id: night.event.id } });
   const openStation = () =>
     router.push({
       pathname: '/events/[id]/station',
+      params: { id: night.event.id, from: 'night' },
+    });
+  const openFloor = () =>
+    router.push({
+      pathname: '/events/[id]/floor',
       params: { id: night.event.id, from: 'night' },
     });
 
@@ -261,6 +268,20 @@ function Night({
             label={t('station.wayIn.open', { station })}
             onPress={openStation}
             testID="myNight.openStation"
+          />
+        ))}
+      {floor &&
+        (checkIn == null ? (
+          <PrimaryButton
+            label={t('service.floor.wayIn.open')}
+            onPress={openFloor}
+            testID="myNight.openFloor"
+          />
+        ) : (
+          <SecondaryButton
+            label={t('service.floor.wayIn.open')}
+            onPress={openFloor}
+            testID="myNight.openFloor"
           />
         ))}
       {whosHere != null &&
