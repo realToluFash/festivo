@@ -20,7 +20,7 @@ import {
   ledgerLines,
   lineDate,
   moreShownSaid,
-  signedCredits,
+  signed,
 } from './credits.ts';
 import { DemoBell } from './DemoBell.tsx';
 import { EventsShell } from './EventParts.tsx';
@@ -53,7 +53,7 @@ export function LedgerRows({
         >
           <span className="bl-entry-day">{lineDate(line.at, locale)}</span>
           <span className="bl-entry-words">{line.words(lang, locale)}</span>
-          <span className="bl-entry-amount">{signedCredits(line.credits, locale)}</span>
+          <span className="bl-entry-amount">{signed(line.credits, locale)}</span>
         </li>
       ))}
     </ul>
@@ -161,7 +161,6 @@ function CreditsPage({ state, lang, tell }: { state: CreditsPageState; lang: Lan
   const [firstAdded, setFirstAdded] = useState<number | undefined>(undefined);
   const failsLeft = useRef(state === 'more_fails' ? 1 : 0);
   const list = useRef<HTMLDivElement>(null);
-  const more = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (firstAdded == null) return;
@@ -244,7 +243,6 @@ function CreditsPage({ state, lang, tell }: { state: CreditsPageState; lang: Lan
                 )}
                 {shown < lines.length && (
                   <button
-                    ref={more}
                     type="button"
                     className="desk-text"
                     aria-disabled={busy}

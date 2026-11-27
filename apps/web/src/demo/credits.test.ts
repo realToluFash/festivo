@@ -10,7 +10,7 @@ import {
   ledgerLines,
   lineDate,
   moreShownSaid,
-  signedCredits,
+  signed,
 } from './credits.ts';
 
 const words = (entries: readonly LedgerEntry[], lang: 'en' | 'fr' = 'en', locale = 'en-GB') =>
@@ -80,10 +80,10 @@ describe('The Credits ledger (sc-99054)', () => {
   });
 
   it('writes counts, signs and plurals for the reader’s locale', () => {
-    expect(signedCredits(-1000, 'en-GB')).toBe('−1,000');
-    expect(signedCredits(1000, 'es')).toBe('+1000');
-    expect(signedCredits(10000, 'es')).toBe('+10.000');
-    expect(signedCredits(1000, 'fr').replace(/\s/gu, ' ')).toBe('+1 000');
+    expect(signed(-1000, 'en-GB')).toBe('−1,000');
+    expect(signed(1000, 'es')).toBe('+1000');
+    expect(signed(10000, 'es')).toBe('+10.000');
+    expect(signed(1000, 'fr').replace(/\s/gu, ' ')).toBe('+1 000');
     expect(creditsIn(0, 'fr', 'fr')).toBe('0 crédit');
     expect(creditsIn(0, 'en', 'en-GB')).toBe('0 credits');
     expect(moreShownSaid(1, 'en', 'en-GB')).toBe('1 more credit entry shown.');

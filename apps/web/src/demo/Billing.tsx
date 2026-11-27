@@ -17,7 +17,6 @@ import {
   billingStateOf,
   boughtSaid,
   buyingLine,
-  count,
   creditsWord,
   currencyOf,
   methodFor,
@@ -38,6 +37,7 @@ import {
   SAMPLE_ENTRIES,
   balanceOf,
   boughtNow,
+  count,
   creditsIn,
   langOf,
   ledgerLines,
@@ -334,7 +334,7 @@ function BillingPage({
     setPlan('enterprise');
     setPlanPaidAt(null);
     setRefreshing(true);
-    setSaid(`${W.yourPlan}: ${W.enterprise}. ${renewsLine(locale)}.`);
+    setSaid(`${cw.yourPlan}: ${W.enterprise}. ${renewsLine(locale)}.`);
   };
 
   const cardSaved = () => {
@@ -343,7 +343,7 @@ function BillingPage({
     focusLater(() => update.current);
     setTimeout(() => {
       setMethod(UPDATED_CARD);
-      setSaid(`${W.paymentMethod}: ${methodLine(UPDATED_CARD) ?? ''}.`);
+      setSaid(`${cw.paymentMethod}: ${methodLine(UPDATED_CARD) ?? ''}.`);
     }, REFRESH_MS);
   };
 

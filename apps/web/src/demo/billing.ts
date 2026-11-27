@@ -1,3 +1,6 @@
+import { CREDITS_WORDS, count, signed } from './credits.ts';
+import type { DemoLink } from './settings.ts';
+
 export const BILLING_STATES = [
   'none',
   'packs',
@@ -59,10 +62,6 @@ export function money(amount: number, currency: Currency, locale: string): strin
     currency,
     maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
   }).format(amount);
-}
-
-export function count(n: number, locale: string): string {
-  return new Intl.NumberFormat(locale).format(n);
 }
 
 /** A wait turns into the 2-minute line 2 minutes after its payment, however often the tab was reloaded since. */
@@ -144,10 +143,6 @@ export function methodFor(state: BillingState): Method {
   return SAMPLE_CARD;
 }
 
-export function signed(credits: number, locale: string): string {
-  return `${credits < 0 ? '−' : '+'}${count(Math.abs(credits), locale)}`;
-}
-
 export function buyingLine(credits: number, locale: string): string {
   return `Buying ${count(credits, locale)} ${credits === 1 ? 'credit' : 'credits'}…`;
 }
@@ -157,7 +152,7 @@ export function creditsWord(n: number, locale: string): string {
 }
 
 export function boughtSaid(credits: number, balance: number, locale: string): string {
-  return `${W.bought} ${signed(credits, locale)}. ${creditsWord(balance, locale)}.`;
+  return `${CREDITS_WORDS.en.bought} ${signed(credits, locale)}. ${creditsWord(balance, locale)}.`;
 }
 
 export function renewsLine(locale: string): string {
@@ -173,41 +168,21 @@ export function renewsLine(locale: string): string {
 
 /** The board's English; the developer gives each its key in the four locales. */
 export const BILLING_WORDS = {
-  title: 'Plan and billing',
   refreshing: 'Refreshing…',
-  yourPlan: 'Your plan',
-  free: 'Free',
   enterprise: 'Enterprise',
-  changePlan: 'Change plan',
   confirming: 'Confirming your payment…',
   slow: 'Your payment is being confirmed.',
   slowEmail: 'We’ll email you once it is confirmed.',
-  credits: 'Credits',
-  included: '50 credits included each month',
-  addCredits: 'Add credits',
   packsNote:
     'Bought credits never expire. Included credits are used first and do not carry over when they renew each month. When credits run out, WhatsApp and SMS messages wait. Emails are still sent, and events keep running normally.',
-  bought: 'Credits bought',
   notAdded: 'Credits not added. Nothing was charged.',
   refused: 'Nothing was changed. Your role does not include the permission this needs.',
-  recent: 'Recent credit entries',
-  paymentMethod: 'Payment method',
-  update: 'Update',
-  updateName: 'Update the payment method',
-  cardNote: 'Card details go to our payment provider, never to us.',
   checkoutTitle: 'Paddle’s hosted checkout, not ours',
   pageTitle: 'Paddle’s hosted page, not ours',
   close: 'Close',
   standInLine: 'Nothing in here is designed. Soirely passes only:',
   sandbox: 'Sandbox only: at launch the checkout sells credit packs alone.',
 } as const;
-
-const W = BILLING_WORDS;
-
-export interface DemoLink {
-  to: string;
-  name: string;
-}
 
 export const billingAt = (state: BillingState) => `/demo/settings/plan-and-billing?state=${state}`;
 

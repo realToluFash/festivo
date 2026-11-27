@@ -120,14 +120,16 @@ describe('Plan and billing › All credit entries (sc-99054)', () => {
     expect(lines(container)).toHaveLength(50);
 
     let shown = 50;
+    let before = shown;
     while (screen.queryByRole('button', { name: 'Show more' }) != null) {
       fireEvent.click(screen.getByRole('button', { name: 'Show more' }));
-      const before = shown;
+      before = shown;
       await waitFor(() => expect(lines(container).length).toBeGreaterThan(before), LOADS);
       shown = lines(container).length;
     }
 
     expect(shown).toBeGreaterThan(100);
+    await waitFor(() => expect(document.activeElement).toBe(lines(container)[before]));
     expect(screen.getByText(/^\d+ more credit entr(y|ies) shown\.$/u)).toBeDefined();
   });
 

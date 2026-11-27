@@ -1,3 +1,5 @@
+import type { DemoLink } from './settings.ts';
+
 export type Lang = 'en' | 'fr';
 
 export function langOf(raw: string | null): Lang {
@@ -106,19 +108,19 @@ const UNITS: Readonly<Record<Lang, Readonly<Record<Channel, readonly [string, st
 export function channelWords(channel: Channel, units: number, lang: Lang, locale: string): string {
   const [name, one, other] = UNITS[lang][channel];
 
-  return `${name} · ${number(units, locale)} ${plural(units, locale) === 'one' ? one : other}`;
+  return `${name} · ${count(units, locale)} ${plural(units, locale) === 'one' ? one : other}`;
 }
 
 function plural(n: number, locale: string): Intl.LDMLPluralRule {
   return new Intl.PluralRules(locale).select(n);
 }
 
-function number(n: number, locale: string): string {
+export function count(n: number, locale: string): string {
   return new Intl.NumberFormat(locale).format(n);
 }
 
-export function signedCredits(credits: number, locale: string): string {
-  return `${credits < 0 ? '−' : '+'}${number(Math.abs(credits), locale)}`;
+export function signed(credits: number, locale: string): string {
+  return `${credits < 0 ? '−' : '+'}${count(Math.abs(credits), locale)}`;
 }
 
 export function lineDate(at: string, locale: string): string {
@@ -216,13 +218,13 @@ export type CreditsWords = (typeof CREDITS_WORDS)[Lang];
 export function creditsIn(n: number, lang: Lang, locale: string): string {
   const w = CREDITS_WORDS[lang];
 
-  return `${number(n, locale)} ${plural(n, locale) === 'one' ? w.credit : w.creditsWord}`;
+  return `${count(n, locale)} ${plural(n, locale) === 'one' ? w.credit : w.creditsWord}`;
 }
 
 export function moreShownSaid(n: number, lang: Lang, locale: string): string {
   const [one, other] = CREDITS_WORDS[lang].moreShown;
 
-  return `${number(n, locale)} ${plural(n, locale) === 'one' ? one : other}`;
+  return `${count(n, locale)} ${plural(n, locale) === 'one' ? one : other}`;
 }
 
 const at = (day: string, time: string) => `${day}T${time}:00Z`;
@@ -408,11 +410,6 @@ export function creditsPageStateOf(raw: string | null): CreditsPageState {
 
 export const BILLING_PATH = '/demo/settings/plan-and-billing';
 export const CREDITS_PATH = `${BILLING_PATH}/credits`;
-
-export interface DemoLink {
-  to: string;
-  name: string;
-}
 
 export const CREDITS_PAGES: readonly { name: string; states: readonly DemoLink[] }[] = [
   {
