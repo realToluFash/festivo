@@ -87,7 +87,7 @@ import { PARTY_PAGES } from './mealParty.ts';
 import { MEAL_PAGES } from './mealStep.ts';
 import { MenuLibraryPage } from './MenuLibrary.tsx';
 import { LIBRARY_PAGES } from './menuLibrary.ts';
-import { CHANGES_PAGES, KITCHEN_PAGES } from './kitchen.ts';
+import { CHANGES_PAGES, KITCHEN_PAGES, SHEET_A_PAGES } from './kitchen.ts';
 import { LegalPage } from './Legal.tsx';
 import { LEGAL_PAGES } from './legal.ts';
 import { NewAccountBoard } from './NewAccount.tsx';
@@ -515,6 +515,11 @@ function DemoHome({ from }: { from: string }) {
         <BoardPages pages={KITCHEN_PAGES} />
         <h3>Changes since the kitchen’s last copy, in Guests A · desktop</h3>
         <BoardPages pages={CHANGES_PAGES} />
+        <h3>
+          The sheet’s own states, in Guests A · sc-3911 and sc-34244 · desktop, and a web window
+          down to 320 px
+        </h3>
+        <BoardPages pages={SHEET_A_PAGES} />
       </section>
 
       <section className="demo-home-page" aria-labelledby="demo-page-32">

@@ -96,6 +96,7 @@ export type SheetState =
   | 'closed'
   | 'noAllergies'
   | 'closedNoAllergies'
+  | 'noDiets'
   | 'loading'
   | 'cannotReach'
   | 'making'
@@ -119,6 +120,7 @@ const STATES: Readonly<Record<SheetState, string>> = {
   noAllergies: 'No allergies recorded',
   closedNoAllergies:
     'After the close, no allergies recorded: only diets kept people from the default',
+  noDiets: 'No diets recorded',
   loading: 'Loading',
   cannotReach: 'Cannot reach the sheet: it did not load, Try again loads it',
   making: 'Making the PDF',
@@ -175,6 +177,11 @@ const noAllergies = (world: PicksWorld): PicksWorld => ({
   people: world.people.map((person) => ({ ...person, allergies: [] })),
 });
 
+const noDiets = (world: PicksWorld): PicksWorld => ({
+  ...world,
+  people: world.people.map((person) => ({ ...person, diets: [] })),
+});
+
 /** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. A menu with items adds Fried yam to Coconut rice's side, picked by nobody, and an optional side to Zobo sorbet. */
 export function worldOf(state: SheetState, menu: SheetMenu = 'plain'): PicksWorld {
   const world = roomOf(state);
@@ -186,6 +193,7 @@ function roomOf(state: SheetState): PicksWorld {
   if (state === 'closed') return withOther(picksAfterClose());
   if (state === 'closedNoAllergies') return noAllergies(picksAfterClose());
   if (state === 'noAllergies') return noAllergies(samplePicks());
+  if (state === 'noDiets') return noDiets(samplePicks());
 
   return withOther(samplePicks());
 }

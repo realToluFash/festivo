@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
-import { KW, resetKitchen } from './kitchen.ts';
+import { KW, SHEET_A_PAGES, SHEET_STATE_NAMES, resetKitchen } from './kitchen.ts';
+import { KSW } from './kitchenSheet.ts';
 import { LONG_NAMES } from './kitchenChanges.ts';
 
 const tested = config();
@@ -490,5 +491,87 @@ describe('Give the changes to the kitchen on the Overview and All dates', () => 
       .find((one) => one.textContent?.includes('Give the changes to the kitchen'));
     expect(row?.textContent).toContain('You · Thu, Nov 5, 18:00');
     expect(within(row!).queryByText(KW.overdue)).toBeNull();
+  });
+});
+
+describe('the sheet’s own states in A (sc-99611)', () => {
+  function allergies(): HTMLElement {
+    return screen.getByRole('region', { name: /^Allergies/u });
+  }
+
+  it(
+    'lists every person with an allergy at once, the per-allergen line under them',
+    SLOW,
+    async () => {
+      await kitchen('changes_named');
+
+      expect(screen.queryByRole('button', { name: /^Show all/u })).toBeNull();
+      expect(within(within(allergies()).getByRole('list')).getAllByRole('listitem')).toHaveLength(
+        7,
+      );
+      expect(within(allergies()).getByText(/^Peanuts \d+ · /u)).toBeDefined();
+    },
+  );
+
+  it('draws sc-3911’s sheet with names, and counts without guests.manage', SLOW, async () => {
+    await kitchen('sheet_closed');
+
+    expect(within(allergies()).getAllByText(/^No allergy · /u).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(KSW.room).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/not chosen, never given the default/u).length).toBeGreaterThan(0);
+
+    await kitchen('sheet_closed_counts');
+
+    expect(within(allergies()).queryByText(/^No allergy · /u)).toBeNull();
+    expect(within(allergies()).getByText(KW.namesNeed)).toBeDefined();
+  });
+
+  it('says so when nothing is recorded', SLOW, async () => {
+    await kitchen('sheet_no_allergies');
+    expect(within(allergies()).getByText(KSW.noAllergies)).toBeDefined();
+
+    await kitchen('sheet_no_diets');
+    expect(screen.getByText(KSW.noDiets)).toBeDefined();
+  });
+
+  it('loads the sheet again with Try again', SLOW, async () => {
+    await kitchen('sheet_unreached');
+
+    expect(screen.getByRole('alert').textContent).toContain(KSW.cannotReach);
+    expect(screen.queryByRole('button', { name: KW.download })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: KSW.retry }));
+    await screen.findByRole('region', { name: /^Allergies/u }, WAIT);
+  });
+
+  it('refuses without menu.read, with Back to the event', SLOW, async () => {
+    open(`${AT}?state=sheet_refused`);
+
+    await screen.findByRole('heading', { level: 1, name: KSW.refused }, WAIT);
+    expect(screen.getByRole('link', { name: KSW.back })).toBeDefined();
+    expect(screen.queryByRole('region', { name: /^Allergies/u })).toBeNull();
+  });
+
+  it('makes the top’s PDF, and offers Try again when it fails', SLOW, async () => {
+    await kitchen('pdf_failed');
+
+    expect(screen.getByRole('alert').textContent).toContain(KSW.failed);
+    fireEvent.click(screen.getByRole('button', { name: KSW.retry }));
+    expect(screen.getByRole('button', { name: KSW.making })).toBeDefined();
+    await screen.findByText(/is ready\./u, {}, WAIT);
+  });
+
+  it('shows By station under a course with items', SLOW, async () => {
+    await kitchen('stations_open_counts');
+
+    expect(
+      screen.getAllByRole('heading', { level: 3, name: KSW.byStation }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('links every state from the demo’s home', () => {
+    const linked = SHEET_A_PAGES.flatMap((page) => page.states.map((one) => one.to));
+
+    for (const state of SHEET_STATE_NAMES) expect(linked).toContain(`${AT}?state=${state}`);
+    expect(SHEET_STATE_NAMES).toHaveLength(28);
   });
 });
