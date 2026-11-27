@@ -459,13 +459,14 @@ function Preview({
   const one = people.find((person) => person.id === id) ?? people[0];
   const [answered, setAnswered] = useState<Previewed | null>(null);
   const [round, setRound] = useState(0);
-  const key = `${one?.id}:${round}`;
+  const oneId = one?.id;
+  const key = `${oneId}:${round}`;
   const shown = answered?.key === key ? answered : null;
 
   useEffect(() => {
-    if (one == null) return undefined;
+    if (oneId == null) return undefined;
     let current = true;
-    api.previewStaffNight(eventId, one.id).then(
+    api.previewStaffNight(eventId, oneId).then(
       (night) => current && setAnswered({ key, kind: 'shown', night }),
       () => current && setAnswered({ key, kind: 'failed' }),
     );
@@ -473,7 +474,7 @@ function Preview({
     return () => {
       current = false;
     };
-  }, [eventId, key, one?.id]);
+  }, [eventId, key, oneId]);
 
   if (one == null) return null;
 
