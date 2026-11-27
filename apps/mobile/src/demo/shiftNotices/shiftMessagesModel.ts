@@ -263,9 +263,13 @@ export function messageOf(kind: MessageKind, channel: Channel): Message {
   };
 }
 
-/** A push inside 24 hours of the start is time-sensitive on iOS and goes on Android's Event day channel at high importance. */
+/** A change or removal pushed inside 24 hours of the start is time-sensitive on iOS and goes on Android's Event day channel at high importance; the reminder never is (pm #101995). */
 export const CATEGORY = 'Event day';
 export const TIME_SENSITIVE = 'Time Sensitive';
+
+export function canBeTimeSensitive(kind: MessageKind): boolean {
+  return kind !== 'reminder';
+}
 
 export function messageKindOf(raw: string | null | undefined): MessageKind {
   return MESSAGE_KINDS.find((one) => one === raw) ?? 'start_time';
@@ -281,13 +285,15 @@ export const SHIFT_MESSAGE_BOARDS = MESSAGE_KINDS.flatMap((kind) =>
     { channel: 'push' as const, urgent: true },
     { channel: 'sms' as const, urgent: false },
     { channel: 'whatsApp' as const, urgent: false },
-  ].map(({ channel, urgent }) => {
-    const message = messageOf(kind, channel);
+  ]
+    .filter(({ urgent }) => !urgent || canBeTimeSensitive(kind))
+    .map(({ channel, urgent }) => {
+      const message = messageOf(kind, channel);
 
-    return {
-      title: `${KIND_NAMES[kind]} · ${CHANNEL_NAMES[channel]}${urgent ? ', inside 24 hours' : ''}`,
-      what: channel === 'push' ? message.title : message.text,
-      href: `/demo/shift-messages?kind=${kind}&channel=${channel}${urgent ? '&urgent=1' : ''}`,
-    };
-  }),
+      return {
+        title: `${KIND_NAMES[kind]} · ${CHANNEL_NAMES[channel]}${urgent ? ', inside 24 hours' : ''}`,
+        what: channel === 'push' ? message.title : message.text,
+        href: `/demo/shift-messages?kind=${kind}&channel=${channel}${urgent ? '&urgent=1' : ''}`,
+      };
+    }),
 );

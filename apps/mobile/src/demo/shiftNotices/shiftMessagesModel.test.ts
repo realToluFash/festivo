@@ -176,8 +176,14 @@ describe('the reminder the day before (S3)', () => {
 });
 
 describe('the boards', () => {
-  it('links every kind on every channel, and push inside 24 hours', () => {
-    expect(SHIFT_MESSAGE_BOARDS).toHaveLength(MESSAGE_KINDS.length * 4);
+  it('links every kind on every channel, and push inside 24 hours but for the reminder', () => {
+    expect(SHIFT_MESSAGE_BOARDS).toHaveLength(MESSAGE_KINDS.length * 4 - 1);
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).not.toContain(
+      '/demo/shift-messages?kind=reminder&channel=push&urgent=1',
+    );
+    expect(SHIFT_MESSAGE_BOARDS.map((board) => board.href)).toContain(
+      '/demo/shift-messages?kind=removed&channel=push&urgent=1',
+    );
     for (const board of SHIFT_MESSAGE_BOARDS) {
       const params = new URLSearchParams(board.href.split('?')[1]);
       expect(messageKindOf(params.get('kind'))).toBe(params.get('kind'));

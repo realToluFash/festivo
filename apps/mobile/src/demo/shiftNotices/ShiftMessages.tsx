@@ -21,6 +21,7 @@ import {
   type Message,
   type MessageKind,
   TIME_SENSITIVE,
+  canBeTimeSensitive,
   channelOf,
   messageKindOf,
   messageOf,
@@ -43,7 +44,7 @@ export function ShiftMessagesRoute() {
   const params = useLocalSearchParams<{ kind?: string; channel?: string; urgent?: string }>();
   const kind = messageKindOf(params.kind);
   const channel = channelOf(params.channel);
-  const urgent = params.urgent === '1';
+  const urgent = params.urgent === '1' && canBeTimeSensitive(kind);
 
   return (
     <ShiftMessages
@@ -114,7 +115,7 @@ function ShiftMessages({
       </View>
       <View style={styles.demoPad}>
         <DemoOnly
-          title={`${KIND_NAMES[kind]} by ${CHANNEL_NAMES[channel]}. Push goes in the ${CATEGORY} category, and inside 24 hours of the start it is time-sensitive: iOS's ${TIME_SENSITIVE}, Android's high-importance ${CATEGORY} channel. A tap opens the shift page. The phone around the message is the system's, drawn as a stand-in.`}
+          title={`${KIND_NAMES[kind]} by ${CHANNEL_NAMES[channel]}. Push goes in the ${CATEGORY} category. ${canBeTimeSensitive(kind) ? `Inside 24 hours of the start it is time-sensitive: iOS's ${TIME_SENSITIVE}, Android's high-importance ${CATEGORY} channel.` : 'It is never time-sensitive, inside 24 hours of the start or not.'} A tap opens the shift page. The phone around the message is the system's, drawn as a stand-in.`}
         >
           {CHANNELS.filter((one) => one !== channel).map((one) => (
             <SecondaryButton
@@ -124,7 +125,7 @@ function ShiftMessages({
               testID={`shiftMessages.channel.${one}`}
             />
           ))}
-          {push && (
+          {push && canBeTimeSensitive(kind) && (
             <SecondaryButton
               label={urgent ? 'Inside 24 hours · on' : 'Inside 24 hours'}
               onPress={() => router.setParams({ urgent: urgent ? '0' : '1' })}
