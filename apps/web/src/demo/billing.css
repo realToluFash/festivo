@@ -186,6 +186,7 @@
 .bl-entry-amount {
   font-variant-numeric: tabular-nums;
   text-align: end;
+  white-space: nowrap;
 }
 
 .bl-method {
@@ -289,5 +290,70 @@
 
   to {
     opacity: 1;
+  }
+}
+
+.bl-entry-words {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bl-entry.is-bones {
+  align-items: center;
+  padding: var(--spaceMd) 0;
+}
+
+.bl-bone-amount {
+  width: 3rem;
+}
+
+.bl-all {
+  align-self: flex-start;
+}
+
+.bl-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  margin: 0;
+  color: var(--colorInkSecondary);
+  font: var(--typeBody);
+}
+
+.bl-failed {
+  margin: 0;
+  font: var(--typeBodyStrong);
+}
+
+.bl-more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  padding-top: var(--spaceSm);
+}
+
+.bl-more-failed {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  margin: 0;
+  color: var(--colorBrokenText);
+  font: var(--typeBody);
+}
+
+/* sc-99054: at 320 CSS px the date takes its own line, and the words wrap beside an amount that never does. */
+@media (width <= 40rem) {
+  .bl-entry {
+    grid-template-columns: 1fr auto;
+    gap: var(--spaceXxs) var(--spaceMd);
+  }
+
+  .bl-entry-day {
+    grid-column: 1 / -1;
+  }
+
+  .bl-card {
+    padding: var(--spaceLg);
   }
 }

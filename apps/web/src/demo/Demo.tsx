@@ -16,6 +16,8 @@ import { ALL_DATES_PAGES } from './allDates.ts';
 import { BoardPage, OrLine, Providers } from './BoardPage.tsx';
 import { Billing } from './Billing.tsx';
 import { BILLING_PAGES } from './billing.ts';
+import { AllCredits } from './Credits.tsx';
+import { CREDITS_PAGES } from './credits.ts';
 import { UsageWarning } from './UsageWarning.tsx';
 import { USAGE_WARNING_PAGES } from './usageWarning.ts';
 import { Calendar } from './Calendar.tsx';
@@ -359,6 +361,7 @@ export default function Demo() {
       />
       <Route path="settings/vendors" element={<Settings open="vendors" />} />
       <Route path="settings/plan-and-billing" element={<Billing />} />
+      <Route path="settings/plan-and-billing/credits" element={<AllCredits />} />
       <Route path="usage-warning" element={<UsageWarning />} />
       <Route path="settings/payment-reminders" element={<Settings open="vendors" reminders />} />
       <Route path="people" element={<People />} />
@@ -701,6 +704,11 @@ function DemoHome({ from }: { from: string }) {
         <h2 id="demo-page-37">37 · Billing</h2>
         <h3>Plan and billing: the hosted checkout and Update (sc-3933) · desktop</h3>
         <BoardPages pages={BILLING_PAGES} />
+        <h3>
+          The Credits card’s ledger and All credit entries (sc-99054) · desktop, and 320 px in
+          English and French
+        </h3>
+        <BoardPages pages={CREDITS_PAGES} />
         <h3>The 80% and 100% usage warning: the bell item and its email (sc-3931) · desktop</h3>
         <BoardPages pages={USAGE_WARNING_PAGES} />
       </section>
