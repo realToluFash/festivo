@@ -226,11 +226,16 @@ final class StaffLinkTest extends ApiTestCase
     #[Test]
     public function onlySomeoneWhoManagesTheStaffGivesMarksOrReplacesALink(): void
     {
-        $viewer = $this->member('viewer@ire.events', 'Bisi Ola', EventRole::CanView);
+        $members = [
+            'can_view' => $this->member('viewer@ire.events', 'Bisi Ola', EventRole::CanView),
+            'can_check_in' => $this->member('door@ire.events', 'Tayo Bello', EventRole::CanCheckIn),
+        ];
 
-        foreach (['', '/share', '/sent', '/replace'] as $what) {
-            $this->as($viewer, 'POST', $this->linkPath($this->ada) . $what);
-            self::assertSame(403, $this->statusCode(), $what);
+        foreach ($members as $role => $member) {
+            foreach (['', '/share', '/sent', '/replace'] as $what) {
+                $this->as($member, 'POST', $this->linkPath($this->ada) . $what);
+                self::assertSame(403, $this->statusCode(), $role . $what);
+            }
         }
 
         self::assertSame([], self::em()->getRepository(StaffLinkToken::class)->findAll());
