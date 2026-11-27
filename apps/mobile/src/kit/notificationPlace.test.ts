@@ -32,6 +32,10 @@ describe("a bell item's place in the app (sc-3980)", () => {
     expect(appPlace('/app/events/e1/guests')).toBeNull();
     expect(appPlace(null)).toBeNull();
   });
+
+  it('never opens Plan and billing from a usage warning: credits are bought outside the app (sc-3931)', () => {
+    expect(appPlace('/app/settings/plan-and-billing?organisation=o1#usage-this-period')).toBeNull();
+  });
 });
 
 describe('a notification for the event already open opens it in place (sc-84453)', () => {
