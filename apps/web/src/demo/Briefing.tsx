@@ -69,6 +69,8 @@ export interface Briefing {
   adopt: (made: Entry, before: Entry | null) => Entry;
   removal: (one: Entry) => string | null;
   footnote: string | null;
+  /** Finished by a call-off, End now or its end: no Copy link, as sc-3917's finished event (sc-4333, pm #100278). */
+  concluded: boolean;
 }
 
 const OFF: Briefing = {
@@ -83,6 +85,7 @@ const OFF: Briefing = {
   adopt: (made) => made,
   removal: () => null,
   footnote: null,
+  concluded: false,
 };
 
 /** The briefing's state and actions on the Roster's own rows: a briefing copy turns the Link column to Copied, and a Link-column copy leaves Briefing alone. */
@@ -157,7 +160,7 @@ export function useBriefing({
 
   const people = entries as readonly Person[];
   const manage = first.access === 'manage';
-  const acts = manage && !first.finished;
+  const acts = manage && !first.finished && concluded == null;
   const notices = first.notices;
   const sends = acts && sendsOffered(first.live, concluded);
   const rows = sorted(people) as Person[];
@@ -630,6 +633,7 @@ export function useBriefing({
     adopt: asPerson,
     removal: (one) => (notices == null ? null : removalLine(one as Person, concluded)),
     footnote: notices == null || concluded != null ? null : NW.footnote,
+    concluded: concluded != null,
   };
 }
 

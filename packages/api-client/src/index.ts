@@ -31,6 +31,7 @@ export * from './emailDomains.ts';
 export * from './organisationExport.ts';
 export * from './auditLog.ts';
 export * from './dishes.ts';
+export * from './yourMessages.ts';
 export * from './menu.ts';
 export * from './picks.ts';
 export * from './kitchenSheet.ts';

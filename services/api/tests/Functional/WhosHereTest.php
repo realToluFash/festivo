@@ -14,10 +14,13 @@ use App\Entity\ShiftAttendance;
 use App\Entity\StaffMember;
 use App\Entity\StaffShift;
 use App\Entity\User;
+use App\Enum\RealtimeTopic;
 use App\Tests\ApiTestCase;
+use App\Tests\Double\Messaging\RecordingHub;
 use App\Tests\Traits\OnboardsAccounts;
 use App\Tests\Traits\ReadsSentPhoneCodes;
 use DateTimeImmutable;
+use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
@@ -242,6 +245,24 @@ final class WhosHereTest extends ApiTestCase
 
         $this->as($this->account('stranger@ire.events', 'Kemi Bassey'), 'GET', $this->path());
         self::assertSame(404, $this->statusCode(), 'an account with no link to the event learns nothing');
+    }
+
+    #[Test]
+    public function endingTheEventEarlyTellsAnOpenWhosHereToReadAgain(): void
+    {
+        self::service(Connection::class)->executeStatement('UPDATE events SET hosts = :hosts WHERE id = :id', ['hosts' => '["Funmi Adeyemi"]', 'id' => $this->eventId]);
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/make-live');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::mockTime(new DateTimeImmutable('2027-03-06T17:00:00Z'));
+        $hub = self::service(RecordingHub::class);
+        $hub->published = [];
+
+        $this->as($this->owner, 'POST', '/api/events/' . $this->eventId . '/end');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $update = $hub->lastOn(RealtimeTopic::EventWhosHere->for($this->eventId)) ?? self::fail('the end published nothing to Who\'s here');
+        self::assertSame('[]', $update->getData());
+        self::assertTrue($update->isPrivate());
     }
 
     #[Test]

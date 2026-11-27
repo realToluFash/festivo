@@ -3915,7 +3915,11 @@
     "greetAsCounter": "{{count, number}} de {{max, number}}",
     "greetAsTooLong": "Acorte el nombre en el saludo a {{count, number}} caracteres como máximo.",
     "greetsThemAs": "Los mensajes le saludan como «{{greetAs}}».",
-    "greetsByFullName": "Los mensajes le saludan por su nombre completo."
+    "greetsByFullName": "Los mensajes le saludan por su nombre completo.",
+    "optedOutEmail": "Baja del correo electrónico el {{date}}",
+    "optedOutTexts": "Baja de los SMS el {{date}}",
+    "optedOutWhatsApp": "Baja de WhatsApp el {{date}}",
+    "onlyTheGuest": "Solo la persona invitada puede cambiarlo."
   },
   "guestNumbers": {
     "title": "Invitados",
@@ -7185,7 +7189,8 @@
     "nothingToFill": "No hay nada que rellenar, así que todos los invitados reciben exactamente este texto.",
     "nobodyToPreview": "Aún no ha elegido invitados, así que no hay nadie para la vista previa.",
     "whatSoirelySends": "Lo que envía Soirely",
-    "emailFrom": "Correo electrónico · de {{organisation}} vía Soirely"
+    "emailFrom": "Correo electrónico · de {{organisation}} vía Soirely",
+    "unsubscribed": "Se dio de baja"
   },
   "service": {
     "stage": {
@@ -7461,5 +7466,34 @@
     "empty": "Aún no hay nadie en ningún turno",
     "emptyLine": "Las horas aparecerán aquí cuando haya personas asignadas a turnos.",
     "openJobs": "Abrir Puestos y turnos"
+  },
+  "yourMessages": {
+    "title": "Sus mensajes",
+    "intro": "Elija cómo puede contactarle {{organisation}}. Esto no cambia nada para nadie más que use Soirely.",
+    "email": "Correo electrónico",
+    "texts": "SMS",
+    "whatsApp": "WhatsApp",
+    "on": "Activado",
+    "off": "Desactivado",
+    "noEmail": "{{organisation}} no tiene su dirección de correo electrónico.",
+    "noPhone": "{{organisation}} no tiene su número de teléfono.",
+    "emailOn": "Ha vuelto a activar los correos de {{organisation}}.",
+    "emailOff": "Ha desactivado los correos de {{organisation}}.",
+    "textsOn": "Ha vuelto a activar los SMS de {{organisation}}.",
+    "textsOff": "Ha desactivado los SMS de {{organisation}}.",
+    "whatsAppOn": "Ha activado los mensajes de WhatsApp de {{organisation}}.",
+    "whatsAppOff": "Ha desactivado los mensajes de WhatsApp de {{organisation}}.",
+    "foot": "Solo usted puede volver a activarlos. {{organisation}} puede ver cuáles ha desactivado y cuándo.",
+    "stopEmails": "Dejar de recibir correos de {{organisation}}",
+    "stopped": "Ya no recibirá correos de {{organisation}}.",
+    "undo": "Deshacer",
+    "saving": "Guardando…",
+    "loading": "Cargando…",
+    "failed": "No se ha podido guardar. No ha cambiado nada.",
+    "tryAgain": "Reintentar",
+    "back": "Volver",
+    "brokenTitle": "Este enlace no funciona",
+    "brokenBody": "No ha cambiado nada. Vuelva a abrir el enlace desde el correo más reciente que ha recibido.",
+    "wayIn": "Elija cómo puede contactarle {{organisation}}"
   }
 }

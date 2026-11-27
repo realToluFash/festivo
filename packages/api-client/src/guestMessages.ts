@@ -43,7 +43,13 @@ export interface AudienceBook {
 
 /** Why email can't tell a guest; `provider_blocked` and `failed` only ever end a delivery, never flag a guest. */
 export type NotSentReason =
-  'no_address' | 'bouncing' | 'complained' | 'provider_blocked' | 'failed';
+  | 'no_address'
+  | 'bouncing'
+  | 'complained'
+  | 'unsubscribed'
+  | 'opted_out'
+  | 'provider_blocked'
+  | 'failed';
 
 export type DeliveryState =
   'queued' | 'sent' | 'delivered' | 'reported_as_spam' | 'bounced' | 'not_sent';
@@ -96,7 +102,7 @@ export interface GuestMessageCheck {
 export interface PickableGuest {
   id: string;
   name: string;
-  flag: 'no_address' | 'bouncing' | 'complained' | null;
+  flag: 'no_address' | 'bouncing' | 'complained' | 'unsubscribed' | null;
   email?: string | null;
   /** The language Soirely's words reach them in (sc-3790). */
   language: string;

@@ -52,6 +52,7 @@ import {
   onNow,
   tonightSub,
 } from './stations.ts';
+import { type StaffLang, staffLangOf, staffQuery, staffTabWords } from './staffTabs.ts';
 import { useSwitcherStart } from './switcher.ts';
 import './guests.css';
 import './menu.css';
@@ -868,31 +869,35 @@ function PeoplePanel({
   );
 }
 
-/** The Staff page's tabs: Roster and Stations open each other; the rest are their own stories. */
+/** The Staff page's tabs, in the product's words for ?locale= (sc-99786): each opens its page in the same language. */
 export function StaffTabs({
   on,
   eventId,
   tell,
-  words = SW.tabs,
+  lang,
 }: {
   on: string;
   eventId: string;
   tell: Tell;
-  /** Each tab's shown name, in SW.tabs' order: the Roster's French (sc-73291). */
-  words?: readonly string[];
+  /** The Roster's own language; the other pages take ?locale=. */
+  lang?: StaffLang;
 }) {
+  const [params] = useSearchParams();
+  const shownLang = lang ?? staffLangOf(params.get('locale')) ?? 'en';
+  const words = staffTabWords(shownLang);
+  const query = staffQuery(shownLang);
   const pages: Record<string, string> = {
-    Roster: `/demo/events/${eventId}/staff/roster`,
-    'Jobs and shifts': `/demo/events/${eventId}/staff/jobs`,
-    Stations: `/demo/events/${eventId}/staff/stations`,
-    'Hours worked': `/demo/events/${eventId}/staff/hours`,
+    Roster: `/demo/events/${eventId}/staff/roster${query}`,
+    'Jobs and shifts': `/demo/events/${eventId}/staff/jobs${query}`,
+    Stations: `/demo/events/${eventId}/staff/stations${query}`,
+    'Hours worked': `/demo/events/${eventId}/staff/hours${query}`,
   };
 
   return (
-    <nav className="sn-tabs" aria-label={SW.title}>
+    <nav className="sn-tabs" aria-label={words.title}>
       {SW.tabs.map((tab, at) => {
         const to = pages[tab];
-        const shown = words[at] ?? tab;
+        const shown = words.tabs[at] ?? tab;
         if (tab === on)
           return (
             <span key={tab} className="sn-tab" aria-current="page">
