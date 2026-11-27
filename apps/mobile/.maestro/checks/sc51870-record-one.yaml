@@ -1,0 +1,34 @@
+# sc-51870: Record a reply for ${ONE_ID} (one place) in ${EVENT_ID}: Coming shows Who's coming for one place.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}?area=guests
+- extendedWaitUntil:
+    visible:
+      id: 'guests.search'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'guests.row.${ONE_ID}'
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: 'guests.row.${ONE_ID}'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.card.step'
+    timeout: 20000
+- tapOn:
+    id: 'guest.card.step'
+- extendedWaitUntil:
+    visible:
+      id: 'guest.record.save'
+    timeout: 10000
+- tapOn:
+    id: 'guest.record.coming'
+- scrollUntilVisible:
+    element:
+      id: 'guest.record.companion.0'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: coming-one

@@ -1,0 +1,13 @@
+async_aws:
+    clients:
+        s3:
+            type: s3
+            config:
+                endpoint: '%env(STORAGE_ENDPOINT)%'
+                region: '%env(STORAGE_REGION)%'
+                accessKeyId: '%env(STORAGE_KEY)%'
+                accessKeySecret: '%env(STORAGE_SECRET)%'
+                # Path style, because a bucket-as-subdomain URL needs DNS entries that
+                # do not exist for a container called "storage". Production on real S3
+                # can use either; this keeps one code path.
+                pathStyleEndpoint: true

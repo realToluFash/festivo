@@ -1,0 +1,16 @@
+# sc-3895: choose LATER's row in EVENT's night, then Skip it from the sheet. Pass METRO_URL, EVENT (an event that is happening) and LATER (the id of one of its later items).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/events/${EVENT}/night
+- extendedWaitUntil: { visible: { id: 'night.next' }, timeout: 15000 }
+- scroll
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: later-list
+- tapOn: { id: 'night.later.${LATER}' }
+- extendedWaitUntil: { visible: { id: 'night.chosen.skip.${LATER}' }, timeout: 8000 }
+- waitForAnimationToEnd
+- takeScreenshot: later-chosen
+- tapOn: { id: 'night.chosen.skip.${LATER}' }
+- waitForAnimationToEnd
+- takeScreenshot: later-skipped

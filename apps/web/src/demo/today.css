@@ -1,0 +1,26 @@
+/* Today's demo at a desk, in B Confetti: its frame, the sidebar's search and events; Needs you is components/todayNeeds.css. Measurements are the board's (Today-B-Web.dc.html, page 29); colours are tokens, so a scheme recolours it. */
+
+@import url('../components/today.css');
+@import url('../components/todayNeeds.css');
+
+.today {
+  display: flex;
+  height: 100vh;
+  background: var(--colorNeutralFill);
+  color: var(--colorInk);
+}
+
+.today-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  margin: var(--spaceMd) var(--spaceMd) var(--spaceMd) 0;
+  padding: var(--space3xl) var(--space5xl) var(--space6xl);
+  overflow-y: auto;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusCardLarge);
+  background: var(--colorCard);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--colorInk) 5%, transparent);
+}

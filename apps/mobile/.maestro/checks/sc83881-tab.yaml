@@ -1,0 +1,14 @@
+# sc-83881 helper: closes the switcher if open and taps the tab TAB (frame.home, frame.events…).
+appId: host.exp.Exponent
+---
+- runFlow:
+    when:
+      visible:
+        id: 'switcher.heading'
+    commands:
+      - tapOn:
+          point: '50%,75%'
+- tapOn:
+    id: ${TAB}
+- waitForAnimationToEnd:
+    timeout: 8000

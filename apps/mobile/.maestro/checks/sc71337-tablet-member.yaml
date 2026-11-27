@@ -1,0 +1,21 @@
+# sc-71337: on the tablet, a member opens an event from outside in the switcher, then the sidebar's person menu: Your organisations, Your events.
+appId: host.exp.Exponent
+---
+- runFlow: ../open-switcher.yaml
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- takeScreenshot: switcher
+- scrollUntilVisible: { element: { id: 'switcher.outside.${TO}' }, timeout: 10000 }
+- tapOn: { id: 'switcher.outside.${TO}' }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 6000, optional: true }
+- waitForAnimationToEnd
+- swipe: { start: '90%, 9%', end: '10%, 9%' }
+- waitForAnimationToEnd
+- swipe: { start: '90%, 9%', end: '10%, 9%' }
+- waitForAnimationToEnd
+- tapOn: { id: event.nav.more, optional: true }
+- extendedWaitUntil: { visible: { id: never.there }, timeout: 4000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: you
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: you-scrolled

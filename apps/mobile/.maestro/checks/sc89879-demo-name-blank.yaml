@@ -1,0 +1,11 @@
+# sc-89879: /demo/today?create=${STATE}, the demo create walk's refusal reads the catalogue's orgGeneral.nameBlank.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?create=${STATE}
+- waitForAnimationToEnd:
+    timeout: 8000
+- runFlow: ../developer-menu-close.yaml
+- extendedWaitUntil:
+    visible: 'Enter the organisation’s name\.'
+    timeout: 15000
+- takeScreenshot: demo-create

@@ -1,0 +1,54 @@
+# sc-30334: walk Create an organisation from the switcher's tile to the new organisation's Today.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/demo/today?switcher=one
+- extendedWaitUntil:
+    visible:
+      id: 'switcher.heading'
+    timeout: 30000
+- takeScreenshot: walk-01-switcher
+- tapOn:
+    id: 'switcher.tile.create'
+- extendedWaitUntil:
+    visible:
+      id: 'createWalk.name'
+    timeout: 10000
+- takeScreenshot: walk-02-step1-empty
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-03-step1-blank-refused
+- tapOn:
+    id: 'createWalk.name'
+- inputText: 'Lagos Ọmọ Ẹ̀gbẹ́ Events'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-04-step1-typed-keys-up
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-05-step2
+- tapOn:
+    id: 'createWalk.back'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-06-back-to-step1
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- tapOn:
+    id: 'createWalk.search'
+- inputText: 'nig'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-07-step2-search-keys-up
+- tapOn:
+    id: 'createWalk.country.NG'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-08-step2-picked
+- tapOn:
+    id: 'createWalk.primary'
+- waitForAnimationToEnd: { timeout: 3000 }
+- takeScreenshot: walk-09-step3-ready
+- tapOn:
+    id: 'createWalk.primary'
+- takeScreenshot: walk-10-creating
+- waitForAnimationToEnd: { timeout: 8000 }
+- takeScreenshot: walk-11-landed

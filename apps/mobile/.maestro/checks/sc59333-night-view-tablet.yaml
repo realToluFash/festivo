@@ -1,0 +1,14 @@
+# On a tablet turned to ${ORIENT}: the night as a can_view member sees it on ${EV}: View only, the line under it, Now over and Next late (sc-59333).
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV}/night
+- extendedWaitUntil:
+    visible:
+      id: night.now
+    timeout: 30000
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: view-top
+- scroll
+- takeScreenshot: view-later

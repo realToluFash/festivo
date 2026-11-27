@@ -1,0 +1,17 @@
+# sc-90463: at AX5, an event opened upright, then the iPad turned on its side once; the sidebar and the event's page. Vars: METRO_URL, EVENT_ID.
+appId: host.exp.Exponent
+---
+- setOrientation: PORTRAIT
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 6000, optional: true }
+- runFlow: ../developer-menu-close.yaml
+- waitForAnimationToEnd
+- takeScreenshot: event-up
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil: { visible: { id: 'never.there' }, timeout: 2000, optional: true }
+- waitForAnimationToEnd
+- takeScreenshot: event-side-top
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- swipe: { start: '8%, 85%', end: '8%, 15%', duration: 600 }
+- waitForAnimationToEnd
+- takeScreenshot: event-side-foot

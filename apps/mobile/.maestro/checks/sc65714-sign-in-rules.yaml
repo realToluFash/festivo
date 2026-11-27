@@ -1,0 +1,15 @@
+# sc-65714: Sign-in rules for a member without two-factor, with the rule's change date (the app's) and the two-factor due notice (the server's).
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '.*Turn it on by.*'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: sign-in-rules
+- swipe:
+    start: 50%, 80%
+    end: 50%, 25%
+- waitForAnimationToEnd
+- takeScreenshot: sign-in-rules-scrolled

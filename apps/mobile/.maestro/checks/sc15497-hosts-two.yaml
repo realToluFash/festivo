@@ -1,0 +1,22 @@
+# sc-15497 on sc-48600's Hosted by screen: ${EV_TWO} with the order saved on the web (Tayo Adeyemi, Funmi Adeyemi); Move Funmi Adeyemi up, then Remove; nothing saved.
+appId: host.exp.Exponent
+---
+- setOrientation: ${ORIENT}
+- openLink: ${METRO_URL}/--/events/${EV_TWO}/edit?at=hosts
+- extendedWaitUntil:
+    visible:
+      id: 'event.edit.hosts.save'
+    timeout: 30000
+- waitForAnimationToEnd
+- takeScreenshot: two
+- tapOn: 'Move Funmi Adeyemi up|Subir a Funmi Adeyemi|Déplacer Funmi Adeyemi vers le haut|Mover Funmi Adeyemi para cima'
+- waitForAnimationToEnd
+- takeScreenshot: moved
+- tapOn:
+    id: 'event.edit.hosts.remove.0'
+- waitForAnimationToEnd
+- takeScreenshot: removed
+- tapOn:
+    id: 'event.edit.hosts.cancel'
+- tapOn:
+    id: 'event.edit.hosts.discard'

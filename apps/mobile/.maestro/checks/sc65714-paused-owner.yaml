@@ -1,0 +1,15 @@
+# sc-65714: the paused owner's view of an owner claim, on the paused screen of the organisation they were working in.
+appId: host.exp.Exponent
+---
+- extendedWaitUntil:
+    visible:
+      id: 'ownerClaim.paused'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: paused-owner
+- scrollUntilVisible:
+    element:
+      id: 'ownerClaim.paused'
+    centerElement: true
+- takeScreenshot: paused-owner-claim

@@ -1,0 +1,49 @@
+# sc-75689: ${EVENT_ID} has a cover photo; its Cover part opened as Can edit, Remove photo chosen, then taken off the event: Save says the event is no longer available, no Try again, and a second Save says the same.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add
+- openLink: ${METRO_URL}/--/events/${EVENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: 'events.page'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'events.details.cover'
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: 'events.details.cover'
+- scrollUntilVisible:
+    element:
+      id: 'event.edit.cover.remove'
+    direction: DOWN
+- tapOn:
+    id: 'event.edit.cover.remove'
+- waitForAnimationToEnd
+- takeScreenshot: removed-chosen
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: remove
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: gone
+- tapOn:
+    id: 'event.edit.cover.save'
+- extendedWaitUntil:
+    visible: '{{t:eventEdit.eventGone}}'
+    timeout: 15000
+- assertNotVisible: '{{t:eventEdit.notSaved}}'
+- takeScreenshot: gone-again
+- runScript:
+    file: ../scripts/event-gone-elsewhere.js
+    env:
+      ACTION: add

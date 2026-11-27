@@ -1,0 +1,253 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Event;
+
+use App\Audit\Auditor;
+use App\Domain\Event\Model\ReplyDeadline;
+use App\Domain\Messaging\EventChanges\EventChangeRecorder;
+use App\Domain\Messaging\Model\EventDetails;
+use App\Domain\Messaging\NotificationScheduler;
+use App\Domain\Staff\ShiftNotice\ShiftNotices;
+use App\Entity\Event;
+use App\Entity\User;
+use App\Enum\Actor;
+use App\Enum\ErrorCode;
+use App\Enum\EventAction;
+use App\Enum\EventPhase;
+use App\Enum\EventStatus;
+use App\Http\EntityTag;
+use App\Http\Exception\ApiException;
+use App\Repository\StaffMemberRepository;
+use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Dict;
+use Psl\Iter;
+use Psl\Str;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
+
+final readonly class EventEditor
+{
+    public const string UPDATED = 'event.updated';
+
+    private const array SCHEDULE = ['startsAt', 'endsAt', 'timeZone'];
+
+    /** The recorded fields a shift notice tells the staff of (sc-4333): its day and its venue. Any other edit leaves their waiting notice's time alone. */
+    private const array TOLD_TO_STAFF = ['startsAt', 'timeZone', 'venueName'];
+
+    public function __construct(
+        private EventRules $eventRules,
+        private EventAmounts $eventAmounts,
+        private EntityManagerInterface $entityManager,
+        private Auditor $auditor,
+        private ClockInterface $clock,
+        private TranslatorInterface $translator,
+        private NotificationScheduler $notificationScheduler,
+        private EventChangeRecorder $eventChangeRecorder,
+        private ShiftNotices $shiftNotices,
+        private StaffMemberRepository $staffMemberRepository,
+    ) {
+    }
+
+    /**
+     * A field left out keeps its value. Start and end are wall-clock times, so a new zone alone keeps them as typed.
+     *
+     * A type sent as null is refused like a missing one on create: an event, once typed, stays typed (sc-3588).
+     * `hosts` replaces the whole list, and an event made live keeps at least one (sc-6713).
+     * A start moved onto or before Reply by moves Reply by to the day before it (sc-3780).
+     *
+     * @param array{name?: string, type?: ?string, startsAt?: string, endsAt?: string, timeZone?: string, currency?: string, venue?: array{name?: ?string, address?: ?string, addressId?: ?string}|null, arrivalNote?: ?string, hosts?: list<string>, replyBy?: ?string} $fields
+     */
+    public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
+    {
+        if (null === $ifMatch || '*' === Str\trim($ifMatch)) {
+            throw new ApiException(ErrorCode::PreconditionRequired, 'event.version_required');
+        }
+
+        return $this->entityManager->wrapInTransaction(function () use ($event, $ifMatch, $by, $fields): Event {
+            $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
+
+            if (!EntityTag::matches($ifMatch, EntityTag::of($event->getVersion()))) {
+                throw new ApiException(ErrorCode::PreconditionFailed, 'event.changed_since');
+            }
+
+            $before = self::recorded($event);
+            $details = EventDetails::of($event);
+            $phase = EventPhase::of($event->getStatus(), $event->getStartsAt(), $event->getEndsAt(), $this->clock->now());
+            $calledOff = EventPhase::calledOff($event->getEndedAt(), $event->getStartsAt());
+            $checked = $this->eventRules->check([
+                'name' => $fields['name'] ?? $event->getName(),
+                'type' => Iter\contains_key($fields, 'type') ? $fields['type'] : $event->getType()->value,
+                'startsAt' => $fields['startsAt'] ?? $event->getStartsAt()->format('Y-m-d\TH:i:s'),
+                'endsAt' => $fields['endsAt'] ?? $event->getEndsAt()->format('Y-m-d\TH:i:s'),
+                'timeZone' => $fields['timeZone'] ?? $event->getTimeZone(),
+                'currency' => $fields['currency'] ?? $event->getCurrency(),
+                ...Iter\contains_key($fields, 'venue') ? ['venue' => $fields['venue']] : [],
+                ...Iter\contains_key($fields, 'arrivalNote') ? ['arrivalNote' => $fields['arrivalNote']] : [],
+                ...Iter\contains_key($fields, 'hosts') ? ['hosts' => $fields['hosts']] : [],
+                ...Iter\contains_key($fields, 'replyBy') ? ['replyBy' => $fields['replyBy']] : [],
+            ], $event->getCurrency(), EventVenue::of($event));
+            $wasClosed = ReplyDeadline::of($event)?->passedAt($this->clock->now()) ?? false;
+
+            if ($checked['currency'] !== $event->getCurrency()) {
+                if ($this->eventAmounts->anyRecordedFor($event)) {
+                    throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
+                }
+
+                $this->eventAmounts->currencyChanged($event);
+            }
+
+            $event->setName($checked['name']);
+            $event->setType($checked['type']);
+            $event->setCurrency($checked['currency']);
+
+            if (Iter\contains_key($checked, 'venue')) {
+                EventVenue::write($event, $checked['venue']);
+            }
+
+            if (Iter\contains_key($checked, 'arrivalNote')) {
+                $event->setArrivalNote($checked['arrivalNote']);
+            }
+
+            if (Iter\contains_key($checked, 'hosts')) {
+                if ([] === $checked['hosts'] && [] !== $event->getHosts() && EventStatus::Draft !== $event->getStatus()) {
+                    throw new ApiException(ErrorCode::EventHostRequired, $this->translator->trans('event.last_host'));
+                }
+
+                $event->setHosts($checked['hosts']);
+            }
+
+            $schedule = [$checked['startsAt']->format(\DATE_ATOM), $checked['endsAt']->format(\DATE_ATOM), $checked['startsAt']->getTimezone()->getName()];
+
+            if ($schedule !== [$before['startsAt'], $before['endsAt'], $before['timeZone']]) {
+                $event->setTimes($checked['startsAt'], $checked['endsAt']);
+
+                if ($schedule[2] === $before['timeZone']) {
+                    $this->notificationScheduler->rescheduleForEvent($event);
+                } else {
+                    $this->notificationScheduler->rescheduleForNewZone($event);
+                }
+            }
+
+            $this->writeReplyBy($event, Iter\contains_key($checked, 'replyBy') ? $checked['replyBy'] : self::beforeStart($event->getReplyBy(), $checked['startsAt']), $wasClosed);
+
+            $changes = Auditor::diff($before, self::recorded($event));
+            $this->allow($phase, $calledOff, $changes);
+
+            if ([] !== $changes) {
+                $this->auditor->record(self::UPDATED, 'Event', $event->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
+                $this->eventChangeRecorder->edited($event, $by, $details, EventDetails::of($event));
+                $this->entityManager->flush();
+
+                if ([] !== Dict\select_keys($changes, self::TOLD_TO_STAFF)) {
+                    $this->shiftNotices->changed(...$this->staffMemberRepository->findOnEvent($event));
+                }
+            }
+
+            return $event;
+        });
+    }
+
+    /**
+     * What the audit log keeps of a venue: its name, its line, and where it is when that is known.
+     *
+     * @return array{venueName: ?string, venueAddress: ?string, venueCountryCode: ?string, venueCoordinates: ?array{float, float}}
+     */
+    public static function venueRecorded(Event $event): array
+    {
+        $venue = EventVenue::of($event);
+        $address = $venue?->address;
+
+        return [
+            'venueName' => $venue?->name,
+            'venueAddress' => $address?->formatted,
+            'venueCountryCode' => $address?->countryCode,
+            'venueCoordinates' => null === $address?->latitude || null === $address->longitude ? null : [$address->latitude, $address->longitude],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function recorded(Event $event): array
+    {
+        return [
+            'name' => $event->getName(),
+            'type' => $event->getType()->value,
+            'startsAt' => $event->getStartsAt()->format(\DATE_ATOM),
+            'endsAt' => $event->getEndsAt()->format(\DATE_ATOM),
+            'timeZone' => $event->getTimeZone(),
+            'currency' => $event->getCurrency(),
+            ...self::venueRecorded($event),
+            'arrivalNote' => $event->getArrivalNote(),
+            'hosts' => $event->getHosts(),
+            'replyBy' => $event->getReplyBy()?->format('Y-m-d'),
+        ];
+    }
+
+    /** The stored day, or the day before the start when the start has moved onto or before it. */
+    private static function beforeStart(?DateTimeImmutable $replyBy, DateTimeImmutable $startsAt): ?DateTimeImmutable
+    {
+        $startDay = $startsAt->format('Y-m-d');
+
+        if (null === $replyBy || $replyBy->format('Y-m-d') < $startDay) {
+            return $replyBy;
+        }
+
+        return new DateTimeImmutable($startDay, new DateTimeZone('UTC'))->sub(new DateInterval('P1D'));
+    }
+
+    /** A save that closes replies early keeps the day it did so, which the guest's page and card name; one that leaves them open forgets it. */
+    private function writeReplyBy(Event $event, ?DateTimeImmutable $replyBy, bool $wasClosed): void
+    {
+        if ($replyBy?->format('Y-m-d') !== $event->getReplyBy()?->format('Y-m-d')) {
+            $event->setReplyBy($replyBy);
+        }
+
+        $now = $this->clock->now();
+        $closed = ReplyDeadline::of($event)?->passedAt($now) ?? false;
+
+        if (!$closed) {
+            if (null !== $event->getRepliesClosedOn()) {
+                $event->setRepliesClosedOn(null);
+            }
+        } elseif (!$wasClosed) {
+            $event->setRepliesClosedOn(new DateTimeImmutable($now->setTimezone(new DateTimeZone($event->getTimeZone()))->format('Y-m-d'), new DateTimeZone('UTC')));
+        }
+    }
+
+    /**
+     * A change to the start, end or zone needs `edit_schedule`, and to anything else `edit`: a save of both needs both.
+     *
+     * @param list<string> $changed
+     *
+     * @return list<EventAction>
+     */
+    public static function actionsFor(array $changed): array
+    {
+        $schedule = Vec\filter($changed, static fn (string $field): bool => Iter\contains(self::SCHEDULE, $field));
+
+        return [
+            ...[] === $schedule ? [] : [EventAction::EditSchedule],
+            ...Iter\count($schedule) === Iter\count($changed) ? [] : [EventAction::Edit],
+        ];
+    }
+
+    /** @param array<string, mixed> $changes */
+    private function allow(EventPhase $phase, bool $calledOff, array $changes): void
+    {
+        foreach (self::actionsFor(Vec\keys($changes)) as $action) {
+            if (EventPhase::Finished === $phase && EventAction::EditSchedule === $action) {
+                throw new ApiException(ErrorCode::EventConcluded, $this->translator->trans($calledOff ? 'event.schedule_called_off' : 'event.schedule_concluded'));
+            }
+
+            if (!$phase->allows($action)) {
+                throw new ApiException(ErrorCode::EventStateInvalid, $this->translator->trans('event.state_invalid'), members: ['phase' => $phase->value]);
+            }
+        }
+    }
+}

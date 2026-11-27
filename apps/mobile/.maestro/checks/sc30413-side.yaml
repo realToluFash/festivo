@@ -1,0 +1,8 @@
+# sc-30413: the pairs and the loaded Calendar on a tablet on its side. The batch's reset turns the tablet upright before each check, so the turn is inside this one.
+appId: host.exp.Exponent
+---
+# At ${ORIENT}: LANDSCAPE_LEFT, or PORTRAIT on a landscape-native tablet such as Soirely_QA2_Tablet (sc-23471).
+- setOrientation: ${ORIENT}
+- waitForAnimationToEnd: { timeout: 4000 }
+- runFlow: sc30413-pairs.yaml
+- runFlow: sc30413-calendar-month.yaml
