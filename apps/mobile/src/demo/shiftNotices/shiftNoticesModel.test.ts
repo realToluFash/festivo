@@ -291,10 +291,10 @@ describe('the reminder card', () => {
 });
 
 describe('what the page offers', () => {
-  it('hides the three sends once Finished, and only then', () => {
+  it('hides the three sends and Copy link once Finished, and only then', () => {
     for (const state of SHIFT_STATES) {
       const finished = shiftStart(state).finished;
-      expect(briefingFor(shiftStart(state)).concluded).toBe(finished != null);
+      expect(briefingFor(shiftStart(state)).finished).toBe(finished != null);
       expect(sendsOffered(finished)).toBe(finished == null);
     }
   });

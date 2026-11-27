@@ -1099,7 +1099,7 @@ const STATES = {
     noticed(
       {
         name: 'Called off',
-        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again or Send to {n} changed; Copy link stays.',
+        note: 'Called off on Thursday, Oct 15 at 19:40, and told at once. No Send again, Send to {n} changed or Copy link, as on a finished event.',
         people: calledOff(),
       },
       { concluded: 'calledOff' },

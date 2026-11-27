@@ -430,7 +430,7 @@ function RosterView({
     }, ISSUE_MS);
   }
 
-  const acts = manage && !finished && !erased;
+  const acts = manage && !finished && !erased && !bf.concluded;
   const texts = sms != null && acts;
   const bulk = sms == null ? null : bulkCheck(entries, sms);
   const check =

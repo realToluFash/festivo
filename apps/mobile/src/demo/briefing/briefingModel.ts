@@ -402,8 +402,6 @@ export interface BriefingStart {
   /** 22:40 the night before (sc-3946): every shift starts after 09:00 and the event is not Happening now, so texts wait. */
   quiet: boolean;
   result: { lines: string[]; held: string[] } | null;
-  /** sc-4333: the event is Finished, so no send is offered while Copy link stays; the phone shows it too. */
-  concluded?: boolean;
   anyLayout?: boolean;
 }
 

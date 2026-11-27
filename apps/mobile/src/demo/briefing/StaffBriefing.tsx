@@ -144,7 +144,7 @@ export function useBriefing(
   const people: Person[] = roster.map((one) => ({ ...one, ...(extras[one.id] ?? NO_BRIEF) }));
   const manage = first.access === 'manage';
   const acts = manage && !first.finished;
-  const sends = acts && first.live && first.concluded !== true;
+  const sends = acts && first.live;
   const all = dueAll(people);
   const changed = dueChanged(people);
   const tally = tallyOf(people);
@@ -344,7 +344,7 @@ export function useBriefing(
         )}
         <View style={styles.acts}>
           <QuietButton
-            label={manage ? BW.editRules : BW.rules}
+            label={acts ? BW.editRules : BW.rules}
             onPress={() => open({ kind: 'rules', editing: false })}
             testID="briefing.rules"
           />
