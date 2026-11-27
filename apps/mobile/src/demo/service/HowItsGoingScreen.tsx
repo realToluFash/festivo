@@ -55,7 +55,10 @@ import {
   type RunOut,
   ITEM,
   alertOf,
+  answer,
+  askedNow,
   lateArrival,
+  options,
   openPanel,
   waitingWords,
 } from './RunOutModel.ts';
@@ -220,6 +223,7 @@ function ServiceLead({ start }: { start: ReturnType<typeof serviceStateOf> }) {
               testID="service.demo.late"
             />
           )}
+          {s.runOut != null && <AnswerSwitch r={s.runOut} apply={applyRunOut} />}
         </DemoOnly>
       </ScrollView>
       <TabBar
@@ -313,7 +317,12 @@ function Blocks({
         </Text>
       )}
       {runAlert != null && (
-        <RunOutAlertRow title={runAlert.title} sub={runAlert.sub} onChoose={onChoose} />
+        <RunOutAlertRow
+          title={runAlert.title}
+          sub={runAlert.sub}
+          count={runAlert.count}
+          onChoose={onChoose}
+        />
       )}
       {sum.alerts.map((a, i) => (
         <AlertRow
@@ -616,10 +625,12 @@ function RunOutKitchenRow({
 function RunOutAlertRow({
   title,
   sub,
+  count,
   onChoose,
 }: {
   title: string;
   sub: string;
+  count: string;
   onChoose: (ref: ViewInstance | null) => void;
 }) {
   const ref = useRef<ViewInstance | null>(null);
@@ -636,6 +647,11 @@ function RunOutAlertRow({
           <Text size={14} style={shared.secondary}>
             {sub}
           </Text>
+          {count !== '' && (
+            <Text size={14} weight="semibold" testID="service.alert.runOut.count">
+              {count}
+            </Text>
+          )}
         </View>
       </View>
       <PrimaryButton
@@ -875,3 +891,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
 });
+
+function AnswerSwitch({ r, apply }: { r: RunOut; apply: (next: RunOut) => void }) {
+  const g = askedNow(r).sort((a, b) => a.table - b.table || a.seat - b.seat)[0];
+  const o = g == null ? undefined : options(g).find((x) => x.no == null);
+  if (g == null || o == null) return null;
+  return (
+    <SecondaryButton
+      label={`At table ${g.table}, ${g.name} answers ${o.label}`}
+      onPress={() => apply(answer(r, g.id, o.item))}
+      testID="service.demo.answer"
+    />
+  );
+}
