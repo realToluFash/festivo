@@ -181,6 +181,25 @@ final class HardLimitsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aResendOfALapsedInvitationAsksForTheSeatItNoLongerHolds(): void
+    {
+        $this->invite('ada@example.com');
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::service(Connection::class)->executeStatement("UPDATE invitations SET expires_at = '2026-09-17 13:20:00' WHERE email = 'ada@example.com'");
+        $this->invite('ben@example.com');
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $this->invite('dan@example.com');
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $this->invite('ada@example.com');
+
+        self::assertSame(403, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame(['limit' => 'team_seats', 'used' => 3, 'allowed' => 3], $this->members('limit', 'used', 'allowed'));
+        self::em()->clear();
+        self::assertSame('2026-09-17', self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'ada@example.com'])?->getExpiresAt()->format('Y-m-d'));
+    }
+
+    #[Test]
     public function acceptingIsRefusedWhenItWouldTakeTheSeatsPastThePlanAndTheInvitationIsKept(): void
     {
         self::service(ScriptedHardLimits::class)->consulted = [];

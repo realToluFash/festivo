@@ -25,6 +25,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
+use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -45,6 +46,7 @@ final readonly class InvitationSender
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private HardLimitsInterface $hardLimits,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -77,8 +79,11 @@ final readonly class InvitationSender
     {
         $invitation = $this->invitationRepository->findPending($organisation, $address);
 
-        if (null === $invitation) {
+        if (null === $invitation || $invitation->getExpiresAt() <= $this->clock->now()) {
             $this->hardLimits->requireSeatToInvite($organisation);
+        }
+
+        if (null === $invitation) {
             $invitation = new Invitation($organisation, $address, $role, $by, TokenIssuer::hash($token), $expiresAt);
             $this->entityManager->persist($invitation);
         } else {
