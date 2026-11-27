@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { OrganisationEvent } from '@soirely/api-client';
-import { formatEventClock } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +7,7 @@ import { Animated } from 'react-native';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
-import { readPick } from '../kit/kitchenStation.ts';
+import { readPick, stationTime } from '../kit/kitchenStation.ts';
 import { useServerNow } from '../kit/serverNow.ts';
 import {
   type StationRowRead,
@@ -87,7 +86,7 @@ export function useServiceRowItem(event: OrganisationEvent, row: ServiceRow, rea
   };
 }
 
-/** Kitchen station (sc-95382): its line from the stations read and the device's last pick, its as of in the event's zone until sc-97945 moves it. */
+/** Kitchen station (sc-95382): its line from the stations read and the device's last pick, its as of in the device's zone (sc-97945). */
 export function useStationRowItem(event: OrganisationEvent) {
   const { t } = useTranslation();
   const accountId = useSignedIn().account?.id;
@@ -99,7 +98,7 @@ export function useStationRowItem(event: OrganisationEvent) {
       icon: 'tablet',
       title: t('station.wayIn.title'),
       said: (line) => t('station.wayIn.said', { line }),
-      asOf: (at) => formatEventClock(at, event.timeZone, dateLocale()),
+      asOf: (at) => stationTime(at, dateLocale()),
       read: () =>
         readStationRow(
           t,
