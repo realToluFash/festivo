@@ -35,7 +35,7 @@ export const KSW = {
   download: 'Download PDF',
   making: 'Making the PDF',
   print: 'Print',
-  made: '{{file}} is ready. The demo makes no PDF.',
+  made: '{{file}} is ready.',
   failed: 'The PDF could not be made. The sheet on this page is unchanged, and Print still works.',
   retry: 'Try again',
   coming: '{{count}} coming',
@@ -104,8 +104,8 @@ export type SheetState =
   | 'refused';
 export type SheetAccess = 'manage' | 'counts';
 export type Paper = 'a4' | 'letter';
-/** sc-34244: `plain` is sc-3911's menu, no items and every dish at the Pass; `items` gives the Main and the Dessert items and stations; `moved` is the same after a lead moves Grill before Kitchen. */
-export type SheetMenu = 'plain' | 'items' | 'moved';
+/** sc-34244: `plain` is sc-3911's menu, no items and every dish at the Pass; `items` gives the Main and the Dessert items and stations; `moved` is the same after a lead moves Grill before Kitchen; `long` is sc-3911's menu with Jollof rice and its Chicken variant at the AC's 120 and 60 characters. */
+export type SheetMenu = 'plain' | 'items' | 'moved' | 'long';
 
 export interface SheetStart {
   state: SheetState;
@@ -185,9 +185,33 @@ const noDiets = (world: PicksWorld): PicksWorld => ({
 /** The room of 48 from See picks; after the close, sc-1362's defaults; with no allergies, the same room with none recorded, before or after the close. A menu with items adds Fried yam to Coconut rice's side, picked by nobody, and an optional side to Zobo sorbet. */
 export function worldOf(state: SheetState, menu: SheetMenu = 'plain'): PicksWorld {
   const world = roomOf(state);
+  if (menu === 'long') return withLong(world);
 
   return menu === 'plain' ? world : withItems(world);
 }
+
+export const LONG_SHEET = {
+  dish: 'Smoky party jollof rice, cooked slowly over firewood, with fried sweet plantain, peppered beef, moin moin and a coleslaw',
+  variant: 'Grilled chicken thigh, suya-spiced, with scotch bonnet glaze',
+} as const;
+
+const withLong = (world: PicksWorld): PicksWorld => ({
+  ...world,
+  courses: world.courses.map((course) => ({
+    ...course,
+    dishes: course.dishes.map((dish) =>
+      dish.id === 'k2-jollof'
+        ? {
+            ...dish,
+            name: LONG_SHEET.dish,
+            variants: (dish.variants ?? []).map((one) =>
+              one.id === 'v-chicken' ? { ...one, name: LONG_SHEET.variant } : one,
+            ),
+          }
+        : dish,
+    ),
+  })),
+});
 
 function roomOf(state: SheetState): PicksWorld {
   if (state === 'closed') return withOther(picksAfterClose());
@@ -200,7 +224,7 @@ function roomOf(state: SheetState): PicksWorld {
 
 /** The stations' reading of the menu: none on sc-3911's own, so no course shows By station. */
 export function menuOf(menu: SheetMenu): ItemsMenu | null {
-  if (menu === 'plain') return null;
+  if (menu === 'plain' || menu === 'long') return null;
 
   return menu === 'moved' ? sampleMenu(['grill', 'kitchen', 'pastry']) : sampleMenu();
 }
@@ -405,6 +429,7 @@ const MENU_NAMES: Readonly<Record<SheetMenu, string>> = {
   plain: '',
   items: '',
   moved: ', after a lead moves Grill before Kitchen',
+  long: ', a 120-character dish and a 60-character variant',
 };
 
 const link = (

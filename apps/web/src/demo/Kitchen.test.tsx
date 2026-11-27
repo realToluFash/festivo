@@ -9,7 +9,7 @@ import { __setConfig, config } from '../config.ts';
 import { routes } from '../routes/index.tsx';
 import { resetSample } from './events.ts';
 import { KW, SHEET_A_PAGES, SHEET_STATE_NAMES, resetKitchen } from './kitchen.ts';
-import { KSW } from './kitchenSheet.ts';
+import { KSW, LONG_SHEET } from './kitchenSheet.ts';
 import { LONG_NAMES } from './kitchenChanges.ts';
 
 const tested = config();
@@ -520,11 +520,43 @@ describe('the sheet’s own states in A (sc-99611)', () => {
     expect(screen.getAllByText(KSW.room).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/not chosen, never given the default/u).length).toBeGreaterThan(0);
 
+    const heading = Number(
+      within(allergies())
+        .getByText(/^· \d+$/u)
+        .textContent?.replace(/\D/gu, ''),
+    );
+    const band = Number(
+      /^(\d+) people with allergies/u.exec(
+        screen.getByText(/people with allergies · /u).textContent ?? '',
+      )?.[1],
+    );
+    expect(heading).toBe(band);
+    expect(heading).toBeLessThan(
+      within(within(allergies()).getByRole('list')).getAllByRole('listitem').length,
+    );
+
     await kitchen('sheet_closed_counts');
 
     expect(within(allergies()).queryByText(/^No allergy · /u)).toBeNull();
     expect(within(allergies()).getByText(KW.namesNeed)).toBeDefined();
   });
+
+  it(
+    'puts a 120-character dish and a 60-character variant in a course and in the cells',
+    SLOW,
+    async () => {
+      await kitchen('sheet_long');
+
+      expect(LONG_SHEET.dish).toHaveLength(120);
+      expect(LONG_SHEET.variant).toHaveLength(60);
+      const main = screen.getByRole('region', { name: 'Main' });
+      expect(within(main).getByText(LONG_SHEET.dish)).toBeDefined();
+      expect(within(main).getByText(`Variant · ${LONG_SHEET.variant}`)).toBeDefined();
+      expect(
+        within(allergies()).getAllByText(new RegExp(LONG_SHEET.variant, 'u')).length,
+      ).toBeGreaterThan(0);
+    },
+  );
 
   it('says so when nothing is recorded', SLOW, async () => {
     await kitchen('sheet_no_allergies');
@@ -557,7 +589,9 @@ describe('the sheet’s own states in A (sc-99611)', () => {
     expect(screen.getByRole('alert').textContent).toContain(KSW.failed);
     fireEvent.click(screen.getByRole('button', { name: KSW.retry }));
     expect(screen.getByRole('button', { name: KSW.making })).toBeDefined();
-    await screen.findByText(/is ready\./u, {}, WAIT);
+    const said = await screen.findByText(/is ready\.$/u, {}, WAIT);
+    expect(said.textContent).toMatch(/^.+ kitchen sheet .+\.pdf is ready\.$/u);
+    expect(await screen.findByText(/^The demo makes no PDF\./u, {}, WAIT)).toBeDefined();
   });
 
   it('shows By station under a course with items', SLOW, async () => {
@@ -581,6 +615,7 @@ describe('the sheet’s own states in A (sc-99611)', () => {
     const linked = SHEET_A_PAGES.flatMap((page) => page.states.map((one) => one.to));
 
     for (const state of SHEET_STATE_NAMES) expect(linked).toContain(`${AT}?state=${state}`);
-    expect(SHEET_STATE_NAMES).toHaveLength(28);
+    expect(SHEET_STATE_NAMES).toHaveLength(27);
+    expect(linked).not.toContain(`${AT}?state=sheet_refused_counts`);
   });
 });

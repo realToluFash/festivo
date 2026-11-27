@@ -337,6 +337,11 @@ const SHEET_STATES = {
     menu: 'plain',
     pdf: 'failed',
   },
+  sheet_long: {
+    name: 'After the close, a 120-character dish and a 60-character variant in Main',
+    state: 'closed',
+    menu: 'long',
+  },
   stations_open: { name: 'By station: a menu with items', state: 'open', menu: 'items' },
   stations_closed: { name: 'By station after the close', state: 'closed', menu: 'items' },
   stations_moved: {
@@ -347,19 +352,24 @@ const SHEET_STATES = {
 } satisfies Record<string, { name: string; state: SheetState; menu: SheetMenu; pdf?: Pdf }>;
 
 type SheetStateBase = keyof typeof SHEET_STATES;
-export type SheetStateName = SheetStateBase | `${SheetStateBase}_counts`;
+/** Nothing about guests.manage shows before the sheet loads or on a 403, so these have no `_counts` twin. */
+const NO_SHEET = ['sheet_loading', 'sheet_unreached', 'sheet_refused'] as const;
+type NoSheet = (typeof NO_SHEET)[number];
+export type SheetStateName = SheetStateBase | `${Exclude<SheetStateBase, NoSheet>}_counts`;
 export type KitchenStateName = keyof typeof STATES | SheetStateName;
 
-export const SHEET_STATE_NAMES = Object.keys(SHEET_STATES).flatMap((one) => [
-  one,
-  `${one}_counts`,
-]) as SheetStateName[];
+const showsSheet = (base: string): boolean => !(NO_SHEET as readonly string[]).includes(base);
+
+export const SHEET_STATE_NAMES = Object.keys(SHEET_STATES).flatMap((one) =>
+  showsSheet(one) ? [one, `${one}_counts`] : [one],
+) as SheetStateName[];
 
 const COUNTS = '_counts';
 
 function sheetStateOf(value: string): { base: SheetStateBase; names: boolean } | null {
   const counts = value.endsWith(COUNTS);
   const base = counts ? value.slice(0, -COUNTS.length) : value;
+  if (counts && !showsSheet(base)) return null;
 
   return Object.hasOwn(SHEET_STATES, base)
     ? { base: base as SheetStateBase, names: !counts }
@@ -373,6 +383,7 @@ export function isKitchenState(value: string | null): value is KitchenStateName 
 function stateName(value: KitchenStateName): string {
   const sheet = sheetStateOf(value);
   if (sheet == null) return STATES[value as keyof typeof STATES].name;
+  if (!showsSheet(sheet.base)) return SHEET_STATES[sheet.base].name;
 
   return sheet.names
     ? `${SHEET_STATES[sheet.base].name}, with guests.manage`
@@ -860,7 +871,7 @@ export const CHANGES_PAGES: readonly { name: string; states: readonly DemoLink[]
   },
 ];
 
-const both = (states: readonly SheetStateBase[]): DemoLink[] =>
+const both = (states: readonly Exclude<SheetStateBase, NoSheet>[]): DemoLink[] =>
   states.flatMap((one) => [link(one), link(`${one}${COUNTS}` as SheetStateName)]);
 
 /** sc-3911's and sc-34244's states under the A top (sc-99611), each with and without guests.manage. */
@@ -873,11 +884,12 @@ export const SHEET_A_PAGES: readonly { name: string; states: readonly DemoLink[]
       'sheet_no_allergies',
       'sheet_closed_no_allergies',
       'sheet_no_diets',
+      'sheet_long',
     ]),
   },
   {
     name: 'Loading, could not be loaded, refused',
-    states: both(['sheet_loading', 'sheet_unreached', 'sheet_refused']),
+    states: NO_SHEET.map((one) => link(one)),
   },
   { name: 'The top’s Download PDF', states: both(['pdf_making', 'pdf_made', 'pdf_failed']) },
   {

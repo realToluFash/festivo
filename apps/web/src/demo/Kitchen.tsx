@@ -166,10 +166,11 @@ function Kitchen({ first, event, tell }: { first: KitchenStart; event: SampleEve
     const timer = window.setTimeout(() => {
       setPdfPressed(false);
       setPdf('made');
+      tell(kw(KW.noPdf, { file: pdfName(event, now) }));
     }, MAKE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [pdf, pdfPressed]);
+  }, [pdf, pdfPressed, tell, event, now]);
 
   function makePdf(): void {
     setPdfPressed(true);
