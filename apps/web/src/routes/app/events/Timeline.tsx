@@ -8,7 +8,9 @@ import {
   type MilestoneOwner,
   namesZone,
   milestoneMoment,
+  neverReached,
   serverClock,
+  shownBeside,
   shownPhase,
 } from '@soirely/domain';
 import { type RefObject, useEffect, useState } from 'react';
@@ -32,6 +34,14 @@ import './allDates.css';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; timeline: Timeline; at: Date };
+
+const FAILED: Load = { kind: 'failed' };
+
+/** The event's band, which the dates read beside (sc-98386): its Try again presses, each a read of the dates too, and whether it is up, which is how long a read that never reached Soirely keeps the dates shown. */
+export interface Beside {
+  reloads: number;
+  underBand: boolean;
+}
 
 const OWNER_WORD: Record<MilestoneOwner, string> = {
   event: 'timeline.owner_event',
@@ -59,31 +69,61 @@ export interface TimelineRead {
   retry: () => void;
 }
 
+/** One read of the dates, told apart by what starts it; `kept` holds only while the read that never reached Soirely is the one out or last finished, so a read still out shows what it loaded whatever the band does. */
+interface Read {
+  eventId: string;
+  status: OrganisationEvent['status'];
+  attempt: number;
+  reloads: number;
+}
+
+function sameRead(a: Read, b: Read): boolean {
+  return (
+    a.eventId === b.eventId &&
+    a.status === b.status &&
+    a.attempt === b.attempt &&
+    a.reloads === b.reloads
+  );
+}
+
 export function useTimeline(
   { id: eventId, status }: OrganisationEvent,
   heading: RefObject<HTMLHeadingElement | null>,
   now: Date,
+  { reloads, underBand }: Beside,
 ): TimelineRead {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [unreached, setUnreached] = useState<Read | null>(null);
   const [attempt, setAttempt] = useState(0);
   const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
+    const read: Read = { eventId, status, attempt, reloads };
 
     api.eventTimeline(eventId).then(
-      (timeline) => current && setLoad({ kind: 'loaded', timeline, at: serverClock.now() }),
-      () => current && setLoad({ kind: 'failed' }),
+      (timeline) => {
+        if (!current) return;
+        setLoad({ kind: 'loaded', timeline, at: serverClock.now() });
+      },
+      (error: unknown) => {
+        if (!current) return;
+        setLoad((was) => (was.kind === 'loaded' && neverReached(error) ? was : FAILED));
+        setUnreached(neverReached(error) ? read : null);
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [eventId, status, attempt]);
+  }, [eventId, status, attempt, reloads]);
+
+  const kept = unreached != null && sameRead(unreached, { eventId, status, attempt, reloads });
+  const shown = shownBeside(load, kept, underBand, FAILED);
 
   return {
-    load,
-    now: load.kind === 'loaded' && load.at > now ? load.at : now,
+    load: shown,
+    now: shown.kind === 'loaded' && shown.at > now ? shown.at : now,
     retried: attempt > 0,
     retry: () => {
       setLoad({ kind: 'loading' });
@@ -167,13 +207,15 @@ export function AllDates({
   event,
   now: tick,
   heading,
+  beside,
 }: {
   event: OrganisationEvent;
   now: Date;
   heading: RefObject<HTMLHeadingElement | null>;
+  beside: Beside;
 }) {
   const { t } = useTranslation();
-  const { load, now, retried, retry } = useTimeline(event, heading, tick);
+  const { load, now, retried, retry } = useTimeline(event, heading, tick, beside);
   const loadedAt = useLoadedAt(event);
   const strip = shownEvent(
     { ...listEventOf({ ...event, milestones: [] }), place: venuePlace(event.venue, t) },

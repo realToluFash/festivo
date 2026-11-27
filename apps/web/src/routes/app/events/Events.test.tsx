@@ -5909,6 +5909,254 @@ describe("An event's timeline: Coming up and All dates (sc-3624)", () => {
   });
 });
 
+describe("An event's dates keep what they loaded under the band (sc-98386)", () => {
+  function milestone(at: string, title: string, owner = 'event') {
+    return { at, title, note: null, owner, area: 'events', action: null, done: false };
+  }
+
+  const KITCHEN = {
+    ...milestone('2026-10-20T23:59:00+02:00', 'Give final numbers to the kitchen', 'you'),
+    area: 'menu',
+    action: { label: 'Open the kitchen sheet', link: '/app/events/ev_1/menu/kitchen' },
+  };
+  const STARTS = milestone('2026-10-24T18:00:00+02:00', 'Boda starts');
+  const ENDS = milestone('2026-10-25T02:00:00+02:00', 'Boda ends');
+  const WITH_KITCHEN = { timeZone: 'Europe/Madrid', milestones: [KITCHEN, STARTS, ENDS] };
+  const WITHOUT_KITCHEN = { timeZone: 'Europe/Madrid', milestones: [STARTS, ENDS] };
+
+  const live = () =>
+    event({
+      startsAt: '2026-10-24T18:00:00+02:00',
+      endsAt: '2026-10-25T02:00:00+02:00',
+      status: 'live',
+      phase: 'live',
+    });
+
+  /** Soirely as the band meets it: up, stopped (a fetch that fails), answering the dates with a 500, or answering the event while the dates' fetch drops. */
+  function soirely() {
+    const state = {
+      up: true,
+      datesUp: true,
+      timeline: (): Response | Promise<Response> => json(WITH_KITCHEN),
+      reads: 0,
+    };
+
+    answering({
+      'GET /api/events/ev_1': () => {
+        if (!state.up) throw new TypeError('Failed to fetch');
+
+        return json({ event: live() });
+      },
+      'GET /api/events/ev_1/timeline': () => {
+        state.reads += 1;
+        if (!state.up || !state.datesUp) throw new TypeError('Failed to fetch');
+
+        return state.timeline();
+      },
+    });
+
+    return state;
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-21T08:00:00Z'));
+    serverClock.observe(new Date('2026-10-21T08:00:00Z').toUTCString());
+    signedIn();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    serverClock.observe(new Date().toUTCString());
+  });
+
+  const box = () => document.querySelector('.offline-box .ev-offline') as HTMLElement | null;
+  const comingUp = () => screen.getByRole('region', { name: 'Coming up' });
+  const needsYou = () => screen.getByRole('heading', { name: /Needs you/ }).closest('.desk-block')!;
+  const nextUp = () => screen.queryByText('Next up: Give final numbers to the kitchen');
+
+  async function overviewLoaded(state: ReturnType<typeof soirely>) {
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    await waitFor(() => expect(nextUp()).not.toBeNull());
+    expect(state.reads).toBe(1);
+  }
+
+  /** The band's Try again, with the API stopped: both reads go out and neither is answered. */
+  async function tryAgainUnanswered(state: ReturnType<typeof soirely>) {
+    const reads = state.reads;
+    state.up = false;
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(state.reads).toBe(reads + 1));
+    await act(async () => {});
+  }
+
+  it('keeps Next up, Coming up and Needs you when the band’s Try again gets no answer, then shows the read that answers', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+    expect(within(comingUp()).getAllByRole('listitem')).toHaveLength(3);
+    expect(
+      within(needsYou() as HTMLElement).getByText('Give final numbers to the kitchen'),
+    ).toBeDefined();
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    await tryAgainUnanswered(state);
+
+    expect(box()).not.toBeNull();
+    expect(nextUp()).not.toBeNull();
+    expect(within(comingUp()).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(comingUp()).getByRole('link', { name: 'All dates' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Needs you, 1 thing' })).toBeDefined();
+    expect(screen.queryByText('Loading the dates…')).toBeNull();
+    expect(screen.queryByText('The dates did not load.')).toBeNull();
+
+    state.up = true;
+    state.timeline = () => json(WITHOUT_KITCHEN);
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(box()).toBeNull());
+    await waitFor(() => expect(screen.getByText('Nothing needs you')).toBeDefined());
+    expect(screen.getByRole('heading', { name: 'Needs you' })).toBeDefined();
+    expect(within(comingUp()).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(comingUp()).queryByText('Give final numbers to the kitchen')).toBeNull();
+    expect(nextUp()).toBeNull();
+  });
+
+  it('shows the kept rows, not the failed words, while the band has cleared on the event’s answer and the dates are still out', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    await tryAgainUnanswered(state);
+
+    state.up = true;
+    let answerDates = () => {};
+    state.timeline = () =>
+      new Promise<Response>((resolve) => {
+        answerDates = () => resolve(json(WITHOUT_KITCHEN));
+      });
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(box()).toBeNull());
+    expect(screen.queryByText('The dates did not load.')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(nextUp()).not.toBeNull();
+    expect(within(comingUp()).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(comingUp()).getByRole('link', { name: 'All dates' })).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Needs you, 1 thing' })).toBeDefined();
+
+    await act(async () => answerDates());
+
+    await waitFor(() => expect(within(comingUp()).getAllByRole('listitem')).toHaveLength(2));
+    expect(nextUp()).toBeNull();
+  });
+
+  it('does not keep a reload Soirely answers with a 500: the failed words, and no Next up', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    state.timeline = () => problem(500, 'internal_error');
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(box()).toBeNull());
+    await waitFor(() => expect(screen.getAllByText('The dates did not load.')).toHaveLength(2));
+    expect(within(comingUp()).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(
+      within(needsYou() as HTMLElement).getByRole('button', { name: 'Try again' }),
+    ).toBeDefined();
+    expect(within(comingUp()).queryByRole('listitem')).toBeNull();
+    expect(within(comingUp()).queryByRole('link', { name: 'All dates' })).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Needs you' })).toBeDefined();
+    expect(nextUp()).toBeNull();
+  });
+
+  it('fails the dates when their fetch drops while the event’s read answers: the band clears, and no stale dates stay with nothing saying so', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    state.datesUp = false;
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(box()).toBeNull());
+    await waitFor(() => expect(screen.getAllByText('The dates did not load.')).toHaveLength(2));
+    expect(within(comingUp()).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(comingUp()).queryByRole('listitem')).toBeNull();
+    expect(nextUp()).toBeNull();
+  });
+
+  it('keeps nothing on an event page opened with the API stopped, under the event kept from an earlier visit', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+    cleanup();
+
+    state.up = false;
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    await waitFor(() => expect(box()).not.toBeNull());
+
+    await waitFor(() => expect(screen.getAllByText('The dates did not load.')).toHaveLength(2));
+    expect(within(comingUp()).queryByRole('listitem')).toBeNull();
+    expect(within(needsYou() as HTMLElement).queryByRole('listitem')).toBeNull();
+    expect(document.querySelector('.ev-needs-clear')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Needs you' })).toBeDefined();
+    expect(nextUp()).toBeNull();
+    expect(screen.queryByText('Loading the dates…')).toBeNull();
+  });
+
+  it('keeps All dates, with its tags and actions, when the band’s Try again gets no answer, then shows the read that answers', async () => {
+    const state = soirely();
+    at('/app/events/ev_1/dates');
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(3));
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    await tryAgainUnanswered(state);
+
+    expect(box()).not.toBeNull();
+    expect(within(page).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(page).getByText('Overdue')).toBeDefined();
+    expect(within(page).getByText('Next up')).toBeDefined();
+    expect(within(page).getByRole('link', { name: 'Open the kitchen sheet' })).toBeDefined();
+    expect(within(page).queryByText('Loading the dates…')).toBeNull();
+    expect(within(page).queryByText('The dates did not load.')).toBeNull();
+
+    state.up = true;
+    state.timeline = () => json(WITHOUT_KITCHEN);
+    fireEvent.click(within(box()!).getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(box()).toBeNull());
+    await waitFor(() => expect(within(page).getAllByRole('listitem')).toHaveLength(2));
+    expect(within(page).queryByRole('link', { name: 'Open the kitchen sheet' })).toBeNull();
+  });
+
+  it('shows the failed words on All dates opened from a kept Coming up under the band with the API stopped', async () => {
+    const state = soirely();
+    await overviewLoaded(state);
+
+    act(() => connection.deviceOffline());
+    await waitFor(() => expect(box()).not.toBeNull());
+    state.up = false;
+    fireEvent.click(within(comingUp()).getByRole('link', { name: 'All dates' }));
+
+    const page = (await screen.findByRole('heading', { level: 1, name: 'All dates' })).closest(
+      '.dates',
+    )! as HTMLElement;
+    await within(page).findByText('The dates did not load.');
+    expect(within(page).getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(within(page).queryByRole('listitem')).toBeNull();
+    await waitFor(() => expect(box()).not.toBeNull());
+  });
+});
+
 describe('Someone who can only view an event is never told to change its dates or resume it (sc-50996)', () => {
   const PASSED = { startsAt: '2020-11-14T16:00:00+01:00', endsAt: '2020-11-15T02:00:00+01:00' };
   const AHEAD = { startsAt: '2030-11-14T16:00:00+01:00', endsAt: '2030-11-15T02:00:00+01:00' };

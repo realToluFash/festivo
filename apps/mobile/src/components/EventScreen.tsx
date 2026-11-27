@@ -237,7 +237,7 @@ export function EventScreen({
     signedIn.organisations,
   );
   if (moved != null && (area !== 'overview' || moved.into !== organisationId)) setMoved(null);
-  const { reload, freshen, change } = opened;
+  const { reload, freshen, change, refresh } = opened;
   const top = eventTop(kind, area, opened.kind);
   const { cardNamed, areaTitled } = top;
   const event = opened.kind === 'loaded' ? opened.event : null;
@@ -390,6 +390,7 @@ export function EventScreen({
             onChange={change}
             onEdit={onEdit}
             partRef={partRef}
+            watched={{ refresh, underBand: eventStale }}
             closedOnto={editing?.open === false ? editing : null}
             toast={
               toast?.eventId === eventId && toast.area === area
@@ -834,6 +835,8 @@ function useOpened(
   change: (event: OrganisationEvent) => void;
   stale: Stale | null;
   refreshing: boolean;
+  /** Counts the reloads, the band's Try again among them, for the dates the page reads beside the event (sc-98386). */
+  refresh: number;
 } {
   const organisationId = organisation?.id;
   const settled = openedWithoutAsking(accountLoaded, organisation, outside);
@@ -904,7 +907,16 @@ function useOpened(
   }, [eventId, organisationId, outside, asks, key, attempt, watch]);
 
   if (settled != null)
-    return { ...settled, retry, reload, freshen, change, stale: null, refreshing: false };
+    return {
+      ...settled,
+      retry,
+      reload,
+      freshen,
+      change,
+      stale: null,
+      refreshing: false,
+      refresh: attempt,
+    };
 
   return {
     ...(held.for === key ? held.opened : { kind: 'loading' }),
@@ -914,6 +926,7 @@ function useOpened(
     change,
     stale,
     refreshing,
+    refresh: attempt,
   };
 }
 
