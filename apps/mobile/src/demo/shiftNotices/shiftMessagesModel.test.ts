@@ -5,11 +5,13 @@ import {
   MESSAGE_KINDS,
   MY_SHIFT,
   SHIFT_MESSAGE_BOARDS,
+  canBeTimeSensitive,
   channelOf,
   OVERFLOW_SAMPLE,
   messageKindOf,
   messageOf,
   shiftLinesOf,
+  urgentOf,
 } from './shiftMessagesModel.ts';
 import { SAMPLE } from '../samples.ts';
 
@@ -172,6 +174,23 @@ describe('the reminder the day before (S3)', () => {
     expect(messageOf('reminder', 'whatsApp').button).toBe(MY_SHIFT);
     for (const channel of CHANNELS)
       expect(JSON.stringify(messageOf('reminder', channel))).not.toMatch(/tomorrow/iu);
+  });
+});
+
+describe('time-sensitive push inside 24 hours (pm #101995)', () => {
+  it('never makes the reminder time-sensitive, even from an old urgent link', () => {
+    expect(canBeTimeSensitive('reminder')).toBe(false);
+    expect(urgentOf('reminder', '1')).toBe(false);
+  });
+
+  it('makes a change or a removal time-sensitive only when the link asks', () => {
+    for (const kind of MESSAGE_KINDS.filter((one) => one !== 'reminder')) {
+      expect(canBeTimeSensitive(kind)).toBe(true);
+      expect(urgentOf(kind, '1')).toBe(true);
+      expect(urgentOf(kind, '0')).toBe(false);
+      expect(urgentOf(kind, undefined)).toBe(false);
+    }
+    expect(urgentOf('removed', '1')).toBe(true);
   });
 });
 

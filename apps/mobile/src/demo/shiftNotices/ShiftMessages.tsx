@@ -25,6 +25,7 @@ import {
   channelOf,
   messageKindOf,
   messageOf,
+  urgentOf,
 } from './shiftMessagesModel.ts';
 
 const hidden = {
@@ -44,7 +45,7 @@ export function ShiftMessagesRoute() {
   const params = useLocalSearchParams<{ kind?: string; channel?: string; urgent?: string }>();
   const kind = messageKindOf(params.kind);
   const channel = channelOf(params.channel);
-  const urgent = params.urgent === '1' && canBeTimeSensitive(kind);
+  const urgent = urgentOf(kind, params.urgent);
 
   return (
     <ShiftMessages

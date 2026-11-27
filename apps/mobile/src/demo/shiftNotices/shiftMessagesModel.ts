@@ -271,6 +271,10 @@ export function canBeTimeSensitive(kind: MessageKind): boolean {
   return kind !== 'reminder';
 }
 
+export function urgentOf(kind: MessageKind, raw: string | null | undefined): boolean {
+  return raw === '1' && canBeTimeSensitive(kind);
+}
+
 export function messageKindOf(raw: string | null | undefined): MessageKind {
   return MESSAGE_KINDS.find((one) => one === raw) ?? 'start_time';
 }
