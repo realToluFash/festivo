@@ -792,7 +792,7 @@ function RunViewEntry({ event, happening }: { event: OrganisationEvent; happenin
   );
 }
 
-/** Staff's way into the event's hours worked (sc-234), for anyone who can see its staff. */
+/** Staff's way into the event's hours worked (sc-234) and Who's here (sc-3918), for anyone who can see its staff. */
 function HoursEntry({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
   if (!event.permissions.includes('staff.read')) return null;
@@ -804,6 +804,14 @@ function HoursEntry({ event }: { event: OrganisationEvent }) {
         link
         onPress={() => router.push({ pathname: '/events/[id]/hours', params: { id: event.id } })}
         testID="events.staff.hours"
+      />
+      <SecondaryButton
+        label={t('whosHere.open')}
+        link
+        onPress={() =>
+          router.push({ pathname: '/events/[id]/whos-here', params: { id: event.id } })
+        }
+        testID="events.staff.whosHere"
       />
     </View>
   );

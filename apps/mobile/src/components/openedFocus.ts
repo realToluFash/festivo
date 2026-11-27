@@ -53,9 +53,8 @@ export function arrivedFocusStep(at: ArrivedFocus): 'wait' | 'focus' | 'hold' | 
   return at.focused ? 'hold' : 'focus';
 }
 
-/** Times the keys are raised on a field that took its focus at mount, `KEYS_RAISED_AGAIN_TICKS` apart: Android can drop the first, sent before it has given the window focus (qa #97238). */
-export const KEY_RAISES = 2;
-export const KEYS_RAISED_AGAIN_TICKS = 2;
+/** Ticks, `NEW_FIELD_BOUND_MS` apart, that the focus has stood before the keys are raised on a field that took it at mount: Android can drop a raise sent before it has given the window focus (qa #97238). */
+export const KEYS_RAISE_AFTER_TICKS = 2;
 
 export interface MountedKeys {
   os: string;
@@ -63,48 +62,44 @@ export interface MountedKeys {
   autoFocus: boolean | undefined;
   /** The field has input focus now, by its own focus and blur events. */
   focused: boolean;
-  /** Raises sent so far. Android reads the keys as down over a Modal, as a tablet's screens are, so whether they are up is no stop: the raises are counted instead, and a raise long after the first would undo the back key putting them down (lead, PR #3899). */
-  raises: number;
-  /** The tick of the last raise. */
-  raisedAt: number;
+  /** The first tick the field had the focus with no reader on, or null until then. */
+  focusedSince: number | null;
   /** As `ArrivedFocus.readerOn`: with a reader on, the field takes its focus at mount and nothing more, as at main before sc-92467. */
   readerOn: boolean | null;
+  /** A person has pressed the field. */
+  touched: boolean;
   ticks: number;
 }
 
-/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does now: Android gives it the caret but leaves the keys down, so once it has the focus, however late that comes, they are raised on it a tick after mount so the keyboard is bound to it, and once more soon after unless the field lost focus in between (sc-92467). `tick` waits a tick, `wait` waits for the focus or the reader. */
+/** What a field that took its focus at mount in an Android window that does not slide in, as on a tablet, does now: Android gives it the caret but leaves the keys down, so once it has had the focus for a while, however late that comes, they are raised on it (sc-92467). Only once: Back puts the keys down without blurring the field, and Android reads them as down over a Modal, as a tablet's screens are, so a second raise would bring back keys a person had put down (qa #98098). A pressed field gets none: the press raises the keys itself, and Back may already have put them down. `tick` waits a tick, `wait` waits for the focus or the reader. */
 export function mountedKeysStep(at: MountedKeys): 'tick' | 'wait' | 'raise' | 'done' {
   if (at.os !== 'android' || at.opened !== 'mount' || at.autoFocus !== true) return 'done';
-  if (at.readerOn === true || at.raises >= KEY_RAISES) return 'done';
-  if (at.raises > 0) {
-    if (!at.focused) return 'done';
-
-    return at.ticks < at.raisedAt + KEYS_RAISED_AGAIN_TICKS ? 'tick' : 'raise';
-  }
+  if (at.readerOn === true || at.touched) return 'done';
+  if (at.focusedSince != null && !at.focused) return 'done';
   if (at.ticks < 1) return 'tick';
   if (at.readerOn == null || !at.focused) return 'wait';
+  if (at.focusedSince == null) return 'tick';
 
-  return 'raise';
+  return at.ticks < at.focusedSince + KEYS_RAISE_AFTER_TICKS ? 'tick' : 'raise';
 }
 
-/** `mountedKeysStep` for one field, keeping its raises: once it is done, as after a blur, a focus that follows, as a tap makes, raises nothing more (lead, PR #3899). */
+/** `mountedKeysStep` for one field: once it has raised the keys or the field has lost focus, a focus that follows, as a tap makes, raises nothing more (lead, PR #3899). */
 export function mountedKeys(
   os: string,
   opened: OpenedFocus,
   autoFocus: boolean | undefined,
-): (at: Pick<MountedKeys, 'focused' | 'readerOn' | 'ticks'>) => 'tick' | 'wait' | 'raise' | 'done' {
-  let raises = 0;
-  let raisedAt = 0;
+): (
+  at: Pick<MountedKeys, 'focused' | 'readerOn' | 'touched' | 'ticks'>,
+) => 'tick' | 'wait' | 'raise' | 'done' {
+  let focusedSince: number | null = null;
   let done = false;
 
   return (at) => {
     if (done) return 'done';
-    const step = mountedKeysStep({ ...at, os, opened, autoFocus, raises, raisedAt });
-    if (step === 'raise') {
-      raises += 1;
-      raisedAt = at.ticks;
-    }
-    done = step === 'done';
+    const step = mountedKeysStep({ ...at, os, opened, autoFocus, focusedSince });
+    if (focusedSince == null && at.ticks >= 1 && at.focused && at.readerOn === false)
+      focusedSince = at.ticks;
+    done = step === 'raise' || step === 'done';
 
     return step;
   };
