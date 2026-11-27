@@ -800,6 +800,7 @@ export function sendBack(f: Floor): Floor {
           ...x,
           stage: 'To serve',
           sentBack: true,
+          kept: false,
           owed: [owed(items, 'Sent back', p.course ?? ROOM_COURSE, back), ...x.owed],
         }
       : { ...x, owed: x.owed.map((o, i) => (i === sh.owed ? { ...o, ...back } : o)) };

@@ -350,6 +350,16 @@ describe('live and offline', () => {
     expect(kemi?.kept).toBe(true);
     expect(stripLine(back)).toContain('2 taps waiting');
     expect(at(reconnect(back), 'Table 2').seats[7]?.kept).toBe(false);
+    const twice = at(
+      sendBack(pickReason(openSendBack(back, 'Table 2', 8, null), 'Wrong dish')),
+      'Table 2',
+    ).seats[7];
+    expect(twice?.stage).toBe('To serve');
+    expect(twice?.kept).toBe(false);
+    expect(twice?.owed.map((o) => [o.reason, o.kept])).toEqual([
+      ['Wrong dish', true],
+      [null, false],
+    ]);
     const online = floorSeed('table');
     const live = undo(sendBack(pickReason(openSendBack(online, 'Table 2', 8, null), 'Dropped')));
     expect(at(live, 'Table 2').seats[7]?.kept).toBe(false);
