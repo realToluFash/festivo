@@ -435,7 +435,7 @@ export function shiftPeople(): Person[] {
   }));
 }
 
-type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended' | 'shift'>>;
+type Edit = Partial<Pick<Person, 'brief' | 'notice' | 'ended' | 'shift' | 'more'>>;
 
 function edited(edits: Record<string, Edit>, base: Person[] = shiftPeople()): Person[] {
   return base.map((one) => ({ ...one, ...edits[one.id] }));
@@ -467,13 +467,15 @@ const waiting = (was: 'read' | 'sent', changes: readonly Change[]) => ({
 
 const SEVERAL: Record<string, Edit> = {
   dayo: {
-    shift: 'Saturday 15:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 15:00 to 23:00',
+    more: 1,
     ...waiting('read', [
       { field: 'shiftRetimed', now: 'Saturday 15:00–23:00', was: '17:00–23:00' },
     ]),
   },
   grace: {
-    shift: 'Saturday 16:00 to 23:00, Sunday 12:00 to 18:00',
+    shift: 'Saturday 16:00 to 23:00',
+    more: 1,
     ...waiting('sent', [{ field: 'shiftAdded', shift: 'Sunday 12:00–18:00' }]),
   },
   yusuf: {

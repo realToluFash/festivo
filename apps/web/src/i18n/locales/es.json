@@ -2495,7 +2495,9 @@
       "tryAgain": "Reintentar",
       "loading": "Cargando su noche…",
       "alone": "Este enlace es solo para usted. Su sesión sigue abierta hasta esta hora: {{time}}. No se guarda nada en este dispositivo.",
-      "beforeYouStart": "Antes de empezar"
+      "beforeYouStart": "Antes de empezar",
+      "title": "Your night",
+      "openFloor": "Open Floor"
     },
     "clock": {
       "clockIn": "Fichar entrada",

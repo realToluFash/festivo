@@ -330,9 +330,11 @@ permit = [
 # nothing is paid for by any more. The meter's usage reaches an open billing page
 # through the one realtime publisher (sc-3929). Storage is measured from the
 # sizes the object store reports for an organisation's kept files (sc-90252).
+# A use past 80% or 100% of an included amount is a Money notice scheduled and sent
+# through messaging, its sizes and percent written in the reader's locale (sc-3931).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Billing\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_billing", "@layer:domain_messaging", "@layer:locale", "@layer:repository", "@layer:deletion", "@layer:audit", "@layer:realtime", "@layer:storage", "App\\Domain\\Organisation\\Regions"]
 
 # Events check their zone and currency as an organisation's are checked (Regions,
 # AccountTimeZone), and each create goes to the audit trail (sc-1486). A venue's

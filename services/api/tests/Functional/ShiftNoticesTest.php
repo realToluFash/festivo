@@ -324,6 +324,45 @@ final class ShiftNoticesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aVenueChangeSetsChangedSinceSentClearedByThePushAndKeptWithoutIt(): void
+    {
+        $bisi = $this->person('Bisi Ola', '0803 111 0010');
+        $this->signedIn($bisi, 'bisi@example.com', withPush: false);
+        $this->assign($this->evening, $bisi);
+        $this->briefed($this->ada);
+        $this->briefed($bisi);
+        $this->editEvent(['venue' => ['name' => 'Eko Hotel', 'address' => null]]);
+
+        $waiting = Type\shape(['state' => Type\string(), 'changes' => Type\vec(Type\shape(['kind' => Type\string(), 'new' => Type\string(), 'old' => Type\string()], true))], true)->coerce($this->row($this->ada)['notice']);
+        self::assertSame('waiting', $waiting['state']);
+        self::assertSame([['kind' => 'venue', 'new' => 'Eko Hotel', 'old' => 'Harbour Hall']], Vec\map($waiting['changes'], static fn (array $change): array => ['kind' => $change['kind'], 'new' => $change['new'], 'old' => $change['old']]));
+        self::assertSame('changed', $this->row($this->ada)['briefing']);
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+
+        $this->at('2027-03-01T10:15:00Z');
+
+        self::assertSame(['notice' => ['state' => 'told', 'at' => '2027-03-01T11:15:00+01:00', 'channel' => 'push', 'ending' => null], 'briefing' => 'sent'], $this->row($this->ada));
+        self::assertSame(['notice' => null, 'briefing' => 'changed'], $this->row($bisi));
+    }
+
+    #[Test]
+    public function aDateChangeSetsChangedSinceSentAndPutBackWithinTheFifteenMinutesLeavesTheRowAsItWas(): void
+    {
+        $this->briefed($this->ada);
+        $this->editEvent(['startsAt' => '2027-03-13T16:00', 'endsAt' => '2027-03-14T02:00']);
+
+        self::assertSame('changed', $this->row($this->ada)['briefing']);
+        self::assertSame('waiting', Type\shape(['state' => Type\string()], true)->coerce($this->row($this->ada)['notice'])['state']);
+
+        $this->at('2027-03-01T10:05:00Z');
+        $this->editEvent(['startsAt' => '2027-03-06T16:00', 'endsAt' => '2027-03-07T02:00']);
+        $this->at('2027-03-01T10:30:00Z');
+
+        self::assertSame([], $this->pushes());
+        self::assertSame(['notice' => null, 'briefing' => 'sent'], $this->row($this->ada));
+    }
+
+    #[Test]
     public function aBriefedPersonWithoutPushIsSentNothingAndKeepsChangedSinceSent(): void
     {
         $bisi = $this->person('Bisi Ola', '0803 111 0010');
@@ -571,6 +610,7 @@ final class ShiftNoticesTest extends ApiTestCase
 
         self::assertSame([['Your shift is called off · Owambe', ['The event on Saturday 6 Mar will not go ahead. You do not need to come.'], '/app/events/' . $this->eventId . '/my-night']], $this->pushes());
         self::assertSame('called_off', Type\shape(['ending' => Type\string()], true)->coerce($this->row($this->ada)['notice'])['ending']);
+        self::assertSame('sent', $this->row($this->ada)['briefing']);
 
         $this->editTimes($this->evening, '2027-03-06T20:00', '2027-03-06T23:00');
         $this->at('2027-03-05T09:00:00Z');

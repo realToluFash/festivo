@@ -129,7 +129,16 @@ function wordSaid(t: TFunction, table: FloorTable): string {
 }
 
 /** Floor (sc-4021): every table, yours first, each in the plan's word; a table opens to its seats, where a held guest's choice and a plate sent back are made. */
-export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () => void }) {
+export function FloorScreen({
+  eventId,
+  onBack,
+  from = null,
+}: {
+  eventId: string;
+  onBack: () => void;
+  /** The way in it opened from (sc-98893): its ‹ names Overview or Your night. */
+  from?: 'overview' | 'night' | null;
+}) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const kind = useLayout().kind;
@@ -206,6 +215,12 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
   const tables = groups.flatMap((g) => (g.kind === 'noSection' ? [] : g.tables));
   const shown = tables.find((one) => one.key === open) ?? (wide ? tables[0] : undefined) ?? null;
   const inFront = !wide && open != null && shown != null;
+  const backLabel =
+    from == null
+      ? t('service.floor.listBack')
+      : from === 'overview'
+        ? t('eventNav.overview')
+        : t('myNight.title');
   const pad = phone ? tokens.spaceXl : 28;
   // A kept Send back's own plate carries the tap's key, and a kept Undo names its plate in the body.
   const keptOn = new Set(
@@ -248,12 +263,29 @@ export function FloorScreen({ eventId, onBack }: { eventId: string; onBack: () =
             <Pressable
               onPress={onBack}
               accessibilityRole="button"
+              accessibilityLabel={backLabel}
               style={styles.back}
               testID="floor.back"
             >
-              <Text size={15} weight="semibold" style={styles.accent}>
-                {t('service.floor.listBack')}
-              </Text>
+              {from == null ? (
+                <Text size={15} weight="semibold" style={styles.accent}>
+                  {backLabel}
+                </Text>
+              ) : (
+                <View style={styles.backTo}>
+                  <Text
+                    size={15}
+                    weight="semibold"
+                    style={styles.accent}
+                    importantForAccessibility="no"
+                  >
+                    ‹
+                  </Text>
+                  <Text size={15} weight="semibold" style={styles.accent}>
+                    {backLabel}
+                  </Text>
+                </View>
+              )}
             </Pressable>
             <View style={styles.header}>
               <Text size={wide ? 28 : 30} weight="bold" accessibilityRole="header">
@@ -1039,6 +1071,7 @@ const styles = StyleSheet.create({
   body: { paddingTop: tokens.spaceSm, gap: tokens.spaceXl, paddingBottom: 40 },
   tableBody: { paddingBottom: 140 },
   back: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  backTo: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXxs },
   header: { gap: tokens.spaceXs },
   strip: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
   live: { width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.colorAccent },

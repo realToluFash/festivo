@@ -2413,7 +2413,9 @@
       "tryAgain": "Try again",
       "loading": "Loading your night…",
       "alone": "This link is yours alone. You are signed in until {{time}}. Nothing stays on this device.",
-      "beforeYouStart": "Before you start"
+      "beforeYouStart": "Before you start",
+      "title": "Your night",
+      "openFloor": "Open Floor"
     },
     "clock": {
       "clockIn": "Clock in",

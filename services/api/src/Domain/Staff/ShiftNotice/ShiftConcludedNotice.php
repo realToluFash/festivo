@@ -42,6 +42,7 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         private ShiftUrgency $shiftUrgency,
         private StaffRosterPublisher $staffRosterPublisher,
         private TranslatorInterface $translator,
+        private ToldShifts $toldShifts,
     ) {
     }
 
@@ -142,13 +143,21 @@ final readonly class ShiftConcludedNotice implements NotificationTypeInterface, 
         );
     }
 
+    /** Once it has gone it is the last thing they were told, so a change still waiting at the call-off settles with it and the roster's Changed since sent clears, as ShiftChangeNotice's does. */
     public function finished(array $payload, NotificationDeliveryStatus $status): void
     {
         $entry = $this->entry($payload);
 
-        if (null !== $entry) {
-            $this->staffRosterPublisher->publish($entry->getEvent());
+        if (null === $entry) {
+            return;
         }
+
+        if (NotificationDeliveryStatus::Sent === $status) {
+            $this->toldShifts->settled($entry);
+            $this->entityManager->flush();
+        }
+
+        $this->staffRosterPublisher->publish($entry->getEvent());
     }
 
     /** @param array<string, mixed> $payload */

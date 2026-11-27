@@ -555,5 +555,18 @@
     "guest_message.event_ended": "Este evento terminó hace más de 30 días, así que ya no puede escribir a sus invitados.",
     "saved_audience.full": "Este evento tiene {most, number, ::group-auto} públicos guardados, el máximo posible. Elimine uno para guardar otro.",
     "validation.guest_greet_as_too_long": "Acorte el nombre en el saludo a {count, plural, one {{count, number, ::group-auto} carácter} many {{count, number, ::group-auto} de caracteres} other {{count, number, ::group-auto} caracteres}} como máximo.",
-    "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar."
+    "validation.guest_message_token_unknown": "No se ha enviado. Una parte del mensaje no se puede rellenar para cada invitado: elimínela y use Insertar.",
+    "usage_warning.drafts.heading_part": "{organisation} ha usado el {percent} de sus borradores del asistente incluidos",
+    "usage_warning.drafts.heading_all": "{organisation} ha usado todos sus borradores del asistente incluidos",
+    "usage_warning.storage.heading_part": "{organisation} ha usado el {percent} de su almacenamiento incluido",
+    "usage_warning.storage.heading_all": "{organisation} ha usado todo su almacenamiento incluido",
+    "usage.assistant_drafts_row": "{used, number, ::group-auto} de {included, plural, one {{included, number, ::group-auto} borrador del asistente} many {{included, number, ::group-auto} de borradores del asistente} other {{included, number, ::group-auto} borradores del asistente}}",
+    "usage.storage_row": "{used} de {included} de almacenamiento",
+    "usage.size.megabyte": "{size} MB",
+    "usage.size.gigabyte": "{size} GB",
+    "usage.size.terabyte": "{size} TB",
+    "usage_warning.drafts.next_part": "Cuando se agoten los borradores del asistente incluidos, cada borrador costará {count, plural, one {{count, number, ::group-auto} crédito} many {{count, number, ::group-auto} de créditos} other {{count, number, ::group-auto} créditos}}.",
+    "usage_warning.drafts.next_all": "Cada borrador del asistente cuesta ahora {count, plural, one {{count, number, ::group-auto} crédito} many {{count, number, ::group-auto} de créditos} other {{count, number, ::group-auto} créditos}} hasta que se renueven los borradores incluidos.",
+    "usage_warning.drafts.reset": "Los borradores del asistente incluidos se renuevan el {date}.",
+    "usage_warning.storage.next": "Puede seguir subiendo archivos y no se cobra nada."
 }
