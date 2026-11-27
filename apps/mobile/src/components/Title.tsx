@@ -22,7 +22,6 @@ import {
   wordsIn,
   wordsRoomKey,
   wholeLineHeight,
-  wordsPending,
   wordsSlot,
 } from '../layout/textSize.ts';
 import { useWindowFrame } from '../layout/useLayout.ts';
@@ -116,7 +115,7 @@ export function useWholeWords(
   const seenKey = `${roomKey}|${texts.join('\n')}`;
   const [measured, setMeasured] = useState<Readonly<Record<string, number>>>({});
   const [room, setRoom] = useState<{ key: string; width: number } | null>(null);
-  const [reported, setReported] = useState<{ window: string; width: number } | null>(null);
+  const [reported, setReported] = useState<number | null>(null);
   const [seen, setSeen] = useState<{ key: string; width: number } | null>(null);
   const widths = words.map((word) => measured[`${start}|${word}`]).filter((width) => width != null);
   const natural = texts.map((text) => measured[`${start}|${text}`]);
@@ -127,16 +126,14 @@ export function useWholeWords(
     {
       wrapped: wrapped ? seen.width : null,
       kept: room,
-      reported: given == null ? reported : { window: inWindow, width: given },
+      reported: given ?? reported,
     },
     start,
     inWindow,
     given,
   );
-  const drawn =
-    slot > 0 && widths.length === words.length
-      ? fitWidest(size, start, Math.max(...widths), slot)
-      : start;
+  const fitted = slot > 0 && widths.length === words.length;
+  const drawn = fitted ? fitWidest(size, start, Math.max(...widths), slot) : start;
 
   // Kept under its `wordsRoomKey`, the start, window and reported room, so it outlives a change of the texts.
   if (wrapped && (room?.key !== roomKey || room.width !== seen.width)) {
@@ -160,18 +157,14 @@ export function useWholeWords(
     measure,
     drawnAtStart: drawn === start,
     maxFontSizeMultiplier: drawn / size,
-    pending: wordsPending(look.room, slot, widths.length, words.length),
+    /** A text given a `room` is not drawn until it is fitted, so no frame cuts a word; one given no room never waits (sc-69816). */
+    pending: look.room !== undefined && !fitted,
     /** Its width and every word are known, so the size drawn is the fitted one. */
-    fitted: slot > 0 && widths.length === words.length,
+    fitted,
     // A box rounded a fraction short of its last line has iOS draw that line's words clipped on the line above (sc-69816).
     lineHeight: wholeLineHeight(size, drawn),
-    /** The width each of the texts has, whatever the texts say, for as long as the window keeps its width and its frame. */
-    room: (width: number) =>
-      setReported((current) =>
-        current?.window === inWindow && current.width === width
-          ? current
-          : { window: inWindow, width },
-      ),
+    /** The width each of the texts has, whatever the texts say, until its container reports another. */
+    room: setReported,
     /** The width a text drawn at the start was laid out at, its room if it wrapped. */
     seen: (width: number) => setSeen({ key: seenKey, width }),
   };

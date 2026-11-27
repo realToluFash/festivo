@@ -48,7 +48,8 @@ describe('the phone’s tab bars before their words are measured (sc-99214)', ()
   it('hides both bars’ labels until their size is fitted', () => {
     expect(cover).toMatch(/style: !words\.fitted && styles\.waiting,/u);
     expect(cover).toMatch(/\(widest === 0 \|\| slot === 0\) && styles\.waiting\]/u);
-    expect(title).toMatch(/fitted: slot > 0 && widths\.length === words\.length,/u);
+    expect(title).toMatch(/const fitted = slot > 0 && widths\.length === words\.length;/u);
+    expect(title).toMatch(/pending: look\.room !== undefined && !fitted,/u);
   });
 });
 
