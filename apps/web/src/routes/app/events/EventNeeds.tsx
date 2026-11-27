@@ -22,14 +22,7 @@ export function EventNeeds({
   const { t } = useTranslation();
   const rows =
     load.kind === 'loaded'
-      ? needRows(
-          load.timeline.milestones,
-          event.permissions,
-          load.timeline.timeZone,
-          now,
-          dateLocale(),
-          t,
-        )
+      ? needRows(load.timeline.milestones, event, load.timeline.timeZone, now, dateLocale(), t)
       : [];
   const loaded = load.kind === 'loaded';
 

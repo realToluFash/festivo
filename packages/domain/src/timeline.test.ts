@@ -4,6 +4,7 @@ import {
   comingUp,
   markedMilestones,
   type Milestone,
+  isNeed,
   isYours,
   milestoneDistance,
   needDue,
@@ -241,5 +242,30 @@ describe('how a need is due', () => {
       day: '2026-12-30',
       withYear: false,
     });
+  });
+});
+
+describe('isNeed', () => {
+  const mine = { owner: 'you', area: 'seating', done: false } as const;
+  const event = {
+    permissions: ['seating.manage'],
+    startsAt: '2026-06-10T12:00:00Z',
+    endsAt: '2026-06-10T20:00:00Z',
+  };
+  const NOW = new Date('2026-11-27T09:00:00Z');
+
+  it('gives a Finished event no row, ended or past its end', () => {
+    expect(isNeed(mine, { ...event, status: 'ended' }, NOW)).toBe(false);
+    expect(isNeed(mine, { ...event, status: 'live' }, NOW)).toBe(false);
+    expect(isNeed(mine, { ...event, status: 'paused' }, NOW)).toBe(false);
+  });
+
+  it('keeps a Draft’s row, and a live event before its end', () => {
+    expect(isNeed(mine, { ...event, status: 'draft' }, NOW)).toBe(true);
+    expect(isNeed(mine, { ...event, status: 'live' }, new Date('2026-06-10T10:00:00Z'))).toBe(true);
+  });
+
+  it('still asks for the reader’s own, undone milestone', () => {
+    expect(isNeed({ ...mine, done: true }, { ...event, status: 'draft' }, NOW)).toBe(false);
   });
 });

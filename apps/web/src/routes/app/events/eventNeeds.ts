@@ -1,7 +1,8 @@
 import {
+  type EventState,
   type Milestone,
   formatEventDate,
-  levelOf,
+  isNeed,
   milestoneDistance,
   notThisYear,
 } from '@soirely/domain';
@@ -46,7 +47,7 @@ function dueWords(
 /** The event's You milestones the reader's role changes, earliest first and a tie by title: the rows Today lists for this event (sc-29884, sc-32801). */
 export function needRows(
   milestones: readonly Milestone[],
-  permissions: readonly string[],
+  event: { permissions: readonly string[]; status: EventState; startsAt: string; endsAt: string },
   timeZone: string,
   now: Date,
   locale: string,
@@ -55,7 +56,7 @@ export function needRows(
   const byTitle = new Intl.Collator(locale);
 
   return milestones
-    .filter(({ owner, area }) => owner === 'you' && levelOf(permissions, area) === 'change')
+    .filter((milestone) => isNeed(milestone, event, now))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title))
     .map((milestone) => ({
       key: `${milestone.area}|${milestone.at}|${milestone.title}`,

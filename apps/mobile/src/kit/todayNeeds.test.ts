@@ -46,6 +46,8 @@ function event(name: string, overrides: Partial<YouEvent> = {}): YouEvent {
   return {
     shown: { id: name, name, mesh: 'rose', photo: null },
     startsAt: '2026-12-01T12:00:00Z',
+    endsAt: '2026-12-01T20:00:00Z',
+    status: 'live',
     timeZone: LONDON,
     permissions: ['menu.read', 'menu.manage'],
     milestones: [milestone('2026-11-20T23:59:00Z')],
@@ -54,6 +56,18 @@ function event(name: string, overrides: Partial<YouEvent> = {}): YouEvent {
 }
 
 const NOW = new Date('2026-11-10T09:00:00Z');
+
+describe('a Finished event', () => {
+  it('gives no row, and a Draft keeps its own', () => {
+    const ended = event('Ireti at 40', { status: 'ended', endsAt: '2026-06-10T20:00:00Z' });
+    const past = event('Dele', { status: 'live', endsAt: '2026-06-10T20:00:00Z' });
+    const draft = event('Tayo', { status: 'draft', endsAt: '2026-06-10T20:00:00Z' });
+
+    expect(needsOf([ended, past, draft], NOW, day).map((need) => need.event.name)).toEqual([
+      'Tayo',
+    ]);
+  });
+});
 
 describe('who a row is for', () => {
   it('lists a You milestone for a member holding its area’s manage permission', () => {

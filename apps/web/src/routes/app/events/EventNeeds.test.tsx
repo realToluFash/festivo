@@ -28,7 +28,14 @@ const KITCHEN = milestone('2026-11-08T22:59:00Z', {
   action: { label: 'Open the kitchen sheet', link: '/app/events/evt-1/kitchen' },
 });
 
-const event = (permissions: string[]) => ({ id: 'evt-1', permissions }) as OrganisationEvent;
+const event = (permissions: string[]) =>
+  ({
+    id: 'evt-1',
+    permissions,
+    status: 'live',
+    startsAt: '2026-12-01T12:00:00Z',
+    endsAt: '2026-12-01T20:00:00Z',
+  }) as OrganisationEvent;
 
 function read(load: TimelineRead['load'], retry = vi.fn()): TimelineRead {
   return { load, now: NOW, retried: false, retry };
@@ -134,7 +141,7 @@ describe('an event’s Needs you card', () => {
 describe('the rows', () => {
   const t = i18next.t.bind(i18next);
   const rows = (milestones: Milestone[], now = NOW) =>
-    needRows(milestones, ['menu.manage'], LAGOS, now, 'en-US', t);
+    needRows(milestones, event(['menu.manage']), LAGOS, now, 'en-US', t);
 
   it('counts the day in the event’s zone, not the reader’s', () => {
     // 23:59 in Lagos on 9 Nov is 22:59Z; to a reader in Los Angeles it is still 9 Nov afternoon.

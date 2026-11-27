@@ -1,4 +1,4 @@
-import { type Milestone, isYours } from '@soirely/domain';
+import { type EventState, type Milestone, isNeed } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import { dueWords } from './todayNeeds.ts';
@@ -15,7 +15,7 @@ type DayWords = (day: string, withYear: boolean) => string;
 /** This event's You milestones the reader can act on, earliest first and a tie by title in the shown language: Today's rows for one event, naming none (sc-32801). */
 export function eventNeeds(
   milestones: readonly Milestone[],
-  permissions: readonly string[],
+  event: { permissions: readonly string[]; status: EventState; startsAt: string; endsAt: string },
   timeZone: string,
   now: Date,
   locale: string,
@@ -25,7 +25,7 @@ export function eventNeeds(
   const byTitle = new Intl.Collator(locale);
 
   return milestones
-    .filter((milestone) => isYours(milestone, permissions))
+    .filter((milestone) => isNeed(milestone, event, now))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || byTitle.compare(a.title, b.title))
     .map((milestone) => {
       const { words: due, late } = dueWords(milestone.at, timeZone, now, day, t);

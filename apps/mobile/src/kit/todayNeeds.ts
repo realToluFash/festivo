@@ -1,5 +1,5 @@
 import type { ListedEvent } from '@soirely/api-client';
-import { type Milestone, isYours, needDue, needOrder } from '@soirely/domain';
+import { type EventState, type Milestone, isNeed, needDue, needOrder } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 
 import type { Need, ShownEvent } from './today.ts';
@@ -9,6 +9,8 @@ type DayWords = (day: string, withYear: boolean) => string;
 export interface YouEvent {
   shown: ShownEvent;
   startsAt: string;
+  endsAt: string;
+  status: EventState;
   timeZone: string;
   permissions: readonly string[];
   milestones: readonly Milestone[];
@@ -48,7 +50,7 @@ export function needsOf(
   return events
     .flatMap((event) =>
       event.milestones
-        .filter((milestone) => isYours(milestone, event.permissions))
+        .filter((milestone) => isNeed(milestone, event, now))
         .map((milestone) => ({ event, milestone })),
     )
     .sort((a, b) =>
@@ -86,6 +88,8 @@ export function needsToday(
     events.map((event) => ({
       shown: shown(event),
       startsAt: event.startsAt,
+      endsAt: event.endsAt,
+      status: event.status,
       timeZone: event.timeZone,
       permissions: event.permissions,
       milestones: event.milestones,

@@ -1,4 +1,5 @@
 import { dayDate, wallDay } from './calendar.ts';
+import { type EventState, eventPhase } from './eventStates.ts';
 import { levelOf } from './roles.ts';
 
 export const MILESTONE_OWNERS = ['event', 'you', 'automatic'] as const;
@@ -88,6 +89,15 @@ export function isYours(
   permissions: readonly string[],
 ): boolean {
   return owner === 'you' && done !== true && levelOf(permissions, area) === 'change';
+}
+
+/** A row of Needs you: the reader's own milestone, on an event that has not finished (sc-61015). A Finished event needs nothing; its areas keep their milestones as the event's record. */
+export function isNeed(
+  milestone: Pick<Milestone, 'owner' | 'area' | 'done'>,
+  event: { permissions: readonly string[]; status: EventState; startsAt: string; endsAt: string },
+  now: Date,
+): boolean {
+  return eventPhase(event, now) !== 'finished' && isYours(milestone, event.permissions);
 }
 
 export interface NeedKey {
