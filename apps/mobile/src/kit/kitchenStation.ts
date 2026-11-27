@@ -12,6 +12,7 @@ import {
   type ItemMark,
   type ItemState,
   type ServicePhase,
+  type TapExpected,
   type TapRefusal,
   UNDO_MINUTES,
   heldUpMinutes,
@@ -377,7 +378,7 @@ export function undoCloses(marks: Iterable<StationMark>): number[] {
 
 export type UndoPlan =
   | { kind: 'drop'; tapKey: string }
-  | { kind: 'send'; subject: string; expected: { item: ItemState } }
+  | { kind: 'send'; subject: string; expected: TapExpected }
   | { kind: 'unknown' };
 
 export function undoPlan(
@@ -392,7 +393,11 @@ export function undoPlan(
 
   return id == null
     ? { kind: 'unknown' }
-    : { kind: 'send', subject: id, expected: { item: mark.to } };
+    : {
+        kind: 'send',
+        subject: id,
+        expected: { item: mark.to, of: { courseId: mark.courseId, item: mark.key } },
+      };
 }
 
 /** The marks still open to Undo once these taps were refused as Not sent: a refused mark never landed, so there is nothing to undo. */
