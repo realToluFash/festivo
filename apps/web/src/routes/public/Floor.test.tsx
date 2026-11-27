@@ -292,10 +292,16 @@ describe('Floor in the browser (sc-4021)', () => {
     expect(screen.getAllByText('Chef’s choice').length).toBeGreaterThan(0);
     press('Send back');
 
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByRole('heading', { name: /chef’s choice/ }).textContent).not.toContain(
+      'Chef’s',
+    );
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Dropped/ }));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Send back' }));
+
     expect(
-      within(screen.getByRole('dialog')).getByRole('heading', { name: /chef’s choice/ })
-        .textContent,
-    ).not.toContain('Chef’s');
+      (await screen.findAllByText('Sent back: Ada Obi’s chef’s choice · Dropped')).length,
+    ).toBeGreaterThan(0);
   });
 
   it('draws no action at a table the person may not write at', async () => {
